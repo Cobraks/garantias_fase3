@@ -462,6 +462,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
 </div> <!-- /.form-container -->
 <!-- SUMARIO -->
 <aside class="summary-container" id="contract-summary" style="view-transition-name: resume-derecha">
+
     <div class="summary-modal">
         <button type="button" class="summary-close" aria-label="Cerrar resumen">&times;</button>
         <div class="summary-section summary-section--header">
@@ -475,6 +476,9 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                 <span class="summary-header__vendedor-value" data-summary-vendedor></span>
             </p>
         </div>
+
+
+
 
         <div class="summary-section summary-section--vehiculo">
             <h4>Vehículo</h4>
