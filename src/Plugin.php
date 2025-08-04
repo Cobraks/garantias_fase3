@@ -60,6 +60,7 @@ class Plugin
         }
         ProfileAvatar::init();
         SampleData::init();
+        AssetLoader::init();
 
         // 5) Cargar los grupos de campos ACF (solo si ACF está activo)
         add_action('acf/init', function () {
