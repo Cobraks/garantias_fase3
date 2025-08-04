@@ -2,8 +2,8 @@
 "use strict";
 
 import { updateNextButtonState } from "./form-navigation.js";
-import { debouncedUpdateSummary } from "./form-summary.js";
 import { getIcon } from "./config.js";
+import EventBus from "./event-bus.js";
 import {
   getSelectedModalidadId,
   setSelectedModalidadId,
@@ -86,7 +86,7 @@ function togglePlan(planCard) {
 
   // Refresca estado siguiente/resumen
   updateNextButtonState();
-  debouncedUpdateSummary();
+  EventBus.emit("form:change");
 }
 
 /**
