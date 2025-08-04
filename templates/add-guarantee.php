@@ -461,22 +461,24 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
     </div>
 </div> <!-- /.form-container -->
 <!-- SUMARIO -->
-<aside class="summary-container" style="view-transition-name: resume-derecha">
-    <div class="summary-section summary-section--header">
-        <h3>Resumen del Contrato</h3>
-        <p id="summary-canal-venta" class="summary-header__canal">
-            <strong>Canal de venta: </strong>
-            <span class="summary-header__canal-value" data-summary-canal></span>
-        </p>
-        <p id="summary-vendedor" class="summary-header__vendedor">
-            <strong>Vendedor: </strong>
-            <span class="summary-header__vendedor-value" data-summary-vendedor></span>
-        </p>
-    </div>
+<aside class="summary-container" id="contract-summary" style="view-transition-name: resume-derecha">
+    <div class="summary-modal">
+        <button type="button" class="summary-close" aria-label="Cerrar resumen">&times;</button>
+        <div class="summary-section summary-section--header">
+            <h3>Resumen del Contrato</h3>
+            <p id="summary-canal-venta" class="summary-header__canal">
+                <strong>Canal de venta: </strong>
+                <span class="summary-header__canal-value" data-summary-canal></span>
+            </p>
+            <p id="summary-vendedor" class="summary-header__vendedor">
+                <strong>Vendedor: </strong>
+                <span class="summary-header__vendedor-value" data-summary-vendedor></span>
+            </p>
+        </div>
 
-    <div class="summary-section summary-section--vehiculo">
-        <h4>Vehículo</h4>
-        <ul>
+        <div class="summary-section summary-section--vehiculo">
+            <h4>Vehículo</h4>
+            <ul>
             <li class="summary__item">
                 <span data-summary-field="tipo_vehiculo"></span>
             </li>
@@ -530,12 +532,12 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                 <span><span data-summary-field="doble_motor"></span></span>
             </li>
 
-        </ul>
-        <button class="summary-button">Editar datos del vehículo</button>
-    </div>
-    <div class="summary-section summary-section--cliente">
-        <h4>Cliente</h4>
-        <ul>
+            </ul>
+            <button class="summary-button">Editar datos del vehículo</button>
+        </div>
+        <div class="summary-section summary-section--cliente">
+            <h4>Cliente</h4>
+            <ul>
             <li class="summary__item">
                 <span data-summary-field="nombre_apellidos"></span>
             </li>
@@ -551,12 +553,12 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
             <li class="summary__item">
                 <span data-summary-field="direccion"></span>
             </li>
-        </ul>
-        <button class="summary-button">Editar datos del cliente</button>
-    </div>
-    <div class="summary-section summary-section--garantia">
-        <h4>Garantía</h4>
-        <ul>
+            </ul>
+            <button class="summary-button">Editar datos del cliente</button>
+        </div>
+        <div class="summary-section summary-section--garantia">
+            <h4>Garantía</h4>
+            <ul>
             <li class="summary__item">
                 <span data-summary-field="modalidad"></span>
             </li>
@@ -574,10 +576,12 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                 <span class="summary__item-prefix">Vencimiento del contrato: </span>
                 <span data-summary-field="vencimiento_contrato"></span>
             </li>
-        </ul>
-        <button class="summary-button">Editar datos garantía</button>
+            </ul>
+            <button class="summary-button">Editar datos garantía</button>
+        </div>
     </div>
 </aside>
+<button type="button" id="summary-toggle" class="summary-toggle" aria-controls="contract-summary" aria-expanded="false">Resumen</button>
 <?php
 // Cargar fragmento de footer
 TemplateLoader::load_part('footer', compact('is_add_guarantee'));

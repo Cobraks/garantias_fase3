@@ -387,11 +387,39 @@ function setupSummaryButtons() {
 	});
 }
 
+function setupSummaryModal() {
+        const summary = document.getElementById("contract-summary");
+        const toggle = document.getElementById("summary-toggle");
+        const closeBtn = summary ? summary.querySelector(".summary-close") : null;
+        if (!summary || !toggle) return;
+
+        const open = () => {
+                summary.classList.add("summary-container--modal");
+                toggle.setAttribute("aria-expanded", "true");
+        };
+        const close = () => {
+                summary.classList.remove("summary-container--modal");
+                toggle.setAttribute("aria-expanded", "false");
+        };
+
+        const toggleModal = () => {
+                if (summary.classList.contains("summary-container--modal")) {
+                        close();
+                } else {
+                        open();
+                }
+        };
+
+        toggle.addEventListener("click", toggleModal);
+        closeBtn && closeBtn.addEventListener("click", close);
+}
+
 // Inicializador principal
 export default function initSummary() {
         updateSummary();
         setupSummaryButtons();
         setupSummaryRefresh();
+        setupSummaryModal();
 }
 
 export { updateSummary, debouncedUpdateSummary, showSummarySectionForTab };
