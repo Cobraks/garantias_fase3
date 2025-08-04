@@ -15,7 +15,9 @@
         transition: border-radius .3s ease-in-out;
   }
   
-
+body {
+  background: green !important;
+}
   /* Contenedor de tabs */
   .tabs {
     position: relative;
