@@ -16,7 +16,7 @@
   }
   
 body {
-  background: red !important;
+  background: var(--background);
 }
   /* Contenedor de tabs */
   .tabs {
@@ -313,6 +313,68 @@ body {
         padding: var(--spacing-3);
         border-radius: var(--spacing-2);
         /* box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); */
+      }
+
+      .summary-toggle {
+        position: fixed;
+        bottom: var(--spacing-3);
+        right: var(--spacing-3);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        cursor: pointer;
+      }
+
+      .summary-close {
+        display: none;
+      }
+
+      @media (max-width: 1023px) {
+        .summary-container {
+          display: none;
+        }
+
+        .summary-container.summary-container--modal {
+          display: block;
+          position: fixed;
+          inset: 0;
+          background: #fff;
+          padding: var(--spacing-4);
+          z-index: 1001;
+          overflow-y: auto;
+        }
+
+        .summary-container.summary-container--modal::before {
+          content: "";
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.5);
+          z-index: -1;
+        }
+
+        .summary-close {
+          display: block;
+          position: absolute;
+          top: var(--spacing-2);
+          right: var(--spacing-2);
+          background: none;
+          border: none;
+          font-size: 2rem;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .summary-toggle {
+          display: flex;
+        }
       }
   
       .summary-section {
@@ -691,12 +753,17 @@ fill: #003048;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: var(--gap);
-      row-gap: 2.25rem;
+      row-gap: 1.5rem;
   }
   
   .form__input-container {
       position: relative;
       width: 100%;
+  }
+
+  .form__input-container--corto {
+      max-width: 200px;
+      min-width: 140px;
   }
   
   .form__suffix {
@@ -1868,7 +1935,7 @@ margin-top: .5rem;
 }
 
   .form__wrapper-inputs {
-    row-gap: 2rem;
+    row-gap: 1.5rem;
     column-gap: 1.5rem;
   }
   
