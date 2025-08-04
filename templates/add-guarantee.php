@@ -461,7 +461,8 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
     </div>
 </div> <!-- /.form-container -->
 <!-- SUMARIO -->
-<aside class="summary-container" style="view-transition-name: resume-derecha">
+<aside class="summary-container" id="contract-summary" style="view-transition-name: resume-derecha">
+    <button type="button" class="summary-close" aria-label="Cerrar resumen">&times;</button>
     <div class="summary-section summary-section--header">
         <h3>Resumen del Contrato</h3>
         <p id="summary-canal-venta" class="summary-header__canal">
@@ -578,6 +579,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
         <button class="summary-button">Editar datos garantía</button>
     </div>
 </aside>
+<button type="button" id="summary-toggle" class="summary-toggle" aria-controls="contract-summary" aria-expanded="false">Resumen</button>
 <?php
 // Cargar fragmento de footer
 TemplateLoader::load_part('footer', compact('is_add_guarantee'));
