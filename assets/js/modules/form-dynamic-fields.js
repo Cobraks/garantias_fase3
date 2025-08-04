@@ -8,7 +8,7 @@
 */
 
 import { updateNextButtonState } from "./form-navigation.js";
-import { debouncedUpdateSummary } from "./form-summary.js";
+import EventBus from "./event-bus.js";
 
 // Flota los labels de los selects si tienen valor (también en dinámicos)
 function updateSelectFloatingLabels() {
@@ -66,7 +66,7 @@ function toggleVehiculoFields() {
 
 	// Actualiza el estado de validación y resumen
         updateNextButtonState();
-        debouncedUpdateSummary();
+        EventBus.emit("form:change", tipoVehiculo);
 	// <- AQUÍ ESTÁ LA CLAVE: actualiza labels flotantes tras cambios
 	updateSelectFloatingLabels();
 }
@@ -91,7 +91,7 @@ function toggleCombustibleDependientes() {
 
 	// Refresca validación/resumen
         updateNextButtonState();
-        debouncedUpdateSummary();
+        EventBus.emit("form:change", combustible);
 }
 
 function initDynamicFields() {

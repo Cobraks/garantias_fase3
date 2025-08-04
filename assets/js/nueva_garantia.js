@@ -13,6 +13,7 @@ import initCalculations from "./modules/form-calculations.js";
 import initExampleData from "./modules/form-example-data.js";
 import initUserSelect from "./modules/form-user-select.js";
 import initContratacionSummary from "./modules/form-contratacion-summary.js";
+import EventBus from "./modules/event-bus.js";
 
 
 // ===== Inicialización global =====
@@ -51,4 +52,10 @@ document.addEventListener("DOMContentLoaded", () => {
         initUserSelect(FormCache);
 
         initContratacionSummary();
+
+        // Emite cambios del formulario de manera centralizada
+        FormCache.inputs.forEach((input) => {
+                const ev = input.tagName === "SELECT" ? "change" : "input";
+                input.addEventListener(ev, () => EventBus.emit("form:change", input));
+        });
 });

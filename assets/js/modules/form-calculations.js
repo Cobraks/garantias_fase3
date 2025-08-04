@@ -366,14 +366,7 @@ function renderRecargosHTML({
 				}
 				html += `</ul>`;
 
-// <<<<<<< i1d36g-codex/refactor-import-in-nueva_garantia.js
         const descuentosAplicadosSync = getDescuentosAplicablesSync(modalidad);
-// =======
-	// descuentos aplicados (sin await, se asume que ya están precargados cuando se renderiza admin)
-    // const descuentosAplicadosSync = getCurrentOfertas()
-	// 	? [] // se deja vacío aquí porque la lógica de admin usa renderRecargosHTML solo si todo ya está calculado
-	// 	: [];
-// >>>>>>> main
 
         if (descuentosAplicadosSync.length) {
                 html += `<ul class="form__plan-descuentos-list">`;

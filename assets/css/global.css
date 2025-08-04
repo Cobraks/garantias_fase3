@@ -11,6 +11,7 @@
   --card-border: #e2e8f0;
   --background: #eef0f4;
   --step-inactive: #d1d5db;
+  --step-active: var(--primary);
   --transition-speed: 0.3s;
   --spacing-1: 0.5rem; /* 8px */
   --spacing-2: 1rem;  /* 16px */
@@ -23,6 +24,28 @@
   --spacing-9: 4.5rem;
   --spacing-10: 5rem;
   --alturaHeader: 72px;
+
+  /* Variables heredadas para compatibilidad */
+  --primary-color: var(--primary);
+  --secondary-color: var(--secondary);
+  --text-primary: var(--text-color);
+  --text-muted: var(--text-secondary);
+  --primary-accent: var(--primary);
+  --card-bg: #fff;
+  --card-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  --danger-color: #dc2626;
+  --warning-color: #f59e0b;
+  --success-color: #16a34a;
+  --chart-color-1: var(--primary);
+  --chart-color-2: var(--secondary);
+  --chart-color-3: var(--text-secondary);
+  --neutral5: rgb(21, 21, 21);
+  --neutral20: #606060;
+  --neutral90: #f6f6f6;
+  --neutral95: #f8f8f8;
+  --outline: #a19ba4;
+  --gap: 1.5rem;
+  --black: #000;
 }
 
 *,

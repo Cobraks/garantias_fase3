@@ -7,8 +7,8 @@
 
 import { clearError, clearInfoMessage } from "./form-utils.js";
 import { updateNextButtonState } from "./form-navigation.js";
-import { debouncedUpdateSummary } from "./form-summary.js";
 import { filtrarModalidades } from "./form-calculations.js";
+import EventBus from "./event-bus.js";
 
 /**
  * Muestra u oculta el botón de limpiar dentro de un contenedor de input
@@ -40,9 +40,9 @@ function setupClearButtons() {
 			input.dispatchEvent(new Event("input"));
 
                         updateNextButtonState();
-                        debouncedUpdateSummary();
-		}
-	});
+                        EventBus.emit("form:change", input);
+                }
+        });
 
 	document.querySelectorAll(".form__input").forEach((input) => {
 		input.addEventListener("input", () => toggleClearButton(input));
@@ -69,7 +69,7 @@ function handleDateInputs() {
                 input.addEventListener("click", () => input.showPicker?.());
                 input.addEventListener("change", () => {
                         updateNextButtonState();
-                        debouncedUpdateSummary();
+                        EventBus.emit("form:change", input);
                 });
         });
 }
@@ -126,20 +126,20 @@ function init() {
         handleDateInputs();
 
 	// Limpia error visual de vendedor si cambia selección
-	const usuarioSelect = document.getElementById("usuario-rol");
-	if (usuarioSelect) {
-		usuarioSelect.addEventListener("change", () => {
+        const usuarioSelect = document.getElementById("usuario-rol");
+        if (usuarioSelect) {
+                usuarioSelect.addEventListener("change", () => {
                         clearError(usuarioSelect);
                         updateNextButtonState();
-                        debouncedUpdateSummary();
+                        EventBus.emit("form:change", usuarioSelect);
                 });
         }
-	const canalSelect = document.getElementById("canal-venta");
-	if (canalSelect) {
-		canalSelect.addEventListener("change", () => {
+        const canalSelect = document.getElementById("canal-venta");
+        if (canalSelect) {
+                canalSelect.addEventListener("change", () => {
                         clearError(canalSelect);
                         updateNextButtonState();
-                        debouncedUpdateSummary();
+                        EventBus.emit("form:change", canalSelect);
                 });
         }
 

@@ -10,10 +10,8 @@
 import FormCache from "./form-cache.js";
 import { validateField } from "./form-validation.js";
 import { filtrarModalidades } from "./form-calculations.js";
-import {
-        debouncedUpdateSummary,
-        showSummarySectionForTab,
-} from "./form-summary.js";
+import { showSummarySectionForTab } from "./form-summary.js";
+import EventBus from "./event-bus.js";
 
 // === Helpers de UI: colores y conectores ===
 function updateConnectors() {
@@ -108,8 +106,9 @@ function showTab(index) {
 			index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
 	}
 
-	// Actualiza estado
-	FormCache.currentTab = index;
+        // Actualiza estado
+        FormCache.currentTab = index;
+        EventBus.emit("navigation:tabChanged", index);
 
 	// --- Forzar recálculo de modalidades/planes al mostrar pasos relacionados ---
 	const currentFieldset = FormCache.fieldsets[index];
@@ -132,9 +131,6 @@ function showTab(index) {
 
 	// Actualiza UI dependientes
         updateNextButtonState();
-        if (typeof debouncedUpdateSummary === "function") {
-                debouncedUpdateSummary();
-        }
 }
 
 // === Validación de la pestaña actual ===

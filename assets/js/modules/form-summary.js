@@ -11,6 +11,7 @@ import { debounce } from "./form-utils.js";
 import { getUserRole } from "./config.js";
 import { showTab, isCurrentTabValid } from "./form-navigation.js";
 import FormCache from "./form-cache.js";
+import EventBus from "./event-bus.js";
 
 // Helper para saber si el tipo de vehículo es "camion"
 function isTipoCamion() {
@@ -337,37 +338,8 @@ const debouncedUpdateSummary = debounce(updateSummary, 120);
 
 // Lanza el resumen al cambiar datos del vehículo
 function setupSummaryRefresh() {
-	[
-		"marca",
-		"modelo",
-		"traccion",
-		"traccion_camion",
-		"mma",
-		"tipo_vehiculo",
-		"kilometros",
-		"fecha_primera_matriculacion",
-		"matricula",
-		"numero_bastidor",
-		"precio_venta",
-		"combustible",
-		"cambio",
-		"potencia",
-		"cilindrada",
-		"doble_motor",
-		// Añadimos canal y usuario para el resumen cabecera:
-		"canal-venta",
-		"usuario-rol",
-	].forEach((id) => {
-		const el = document.getElementById(id);
-		if (el) {
-			const ev = el.tagName === "SELECT" ? "change" : "input";
-			el.addEventListener(ev, debouncedUpdateSummary);
-		}
-	});
-	// Por si acaso, refresca al cambiar de tab (garantiza update)
-	document.querySelectorAll(".tabs__link").forEach((tab) => {
-		tab.addEventListener("click", debouncedUpdateSummary);
-	});
+        EventBus.on("form:change", debouncedUpdateSummary);
+        EventBus.on("navigation:tabChanged", debouncedUpdateSummary);
 }
 
 function showSummarySectionForTab(index) {

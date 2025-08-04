@@ -2,7 +2,7 @@
 "use strict";
 
 import { updateNextButtonState } from "./form-navigation.js";
-import { debouncedUpdateSummary } from "./form-summary.js";
+import EventBus from "./event-bus.js";
 
 /*
     - Rellena todos los campos del formulario con datos de ejemplo realistas.
@@ -52,7 +52,7 @@ function rellenarDatosEjemplo() {
 
         // --- Refresca botón Siguiente y resumen ---
         updateNextButtonState();
-        debouncedUpdateSummary();
+        EventBus.emit("form:change");
 }
 
 function initExampleData() {
