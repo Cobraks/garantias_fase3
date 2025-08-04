@@ -28,18 +28,26 @@ class AssetLoader
      */
     public static function enqueue_assets(): void
     {
-        // Encolar CSS
+        $base_path = plugin_dir_path(GARANTIAS360VO__FILE__);
+
+        // Encolar CSS global minificado con versionado por fecha de modificación
+        $css_rel  = 'assets/css/global.min.css';
+        $css_file = $base_path . $css_rel;
         wp_enqueue_style(
-            'go360-style',
-            plugins_url('assets/css/style_garantias.css', GARANTIAS360VO__FILE__)
+            'go360-global',
+            plugins_url($css_rel, GARANTIAS360VO__FILE__),
+            [],
+            file_exists($css_file) ? filemtime($css_file) : false
         );
 
-        // Encolar JS en el footer
+        // Encolar JS global minificado en el footer con versionado
+        $js_rel  = 'assets/js/global.min.js';
+        $js_file = $base_path . $js_rel;
         wp_enqueue_script(
-            'go360-script',
-            plugins_url('assets/js/global.js', GARANTIAS360VO__FILE__),
+            'go360-global',
+            plugins_url($js_rel, GARANTIAS360VO__FILE__),
             [],
-            false,
+            file_exists($js_file) ? filemtime($js_file) : false,
             true
         );
     }
