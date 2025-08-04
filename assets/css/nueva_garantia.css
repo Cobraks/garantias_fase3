@@ -1876,7 +1876,7 @@ margin-top: .5rem;
   
   
   
-      @media (min-width: 1024px) {
+@media (min-width: 1024px) {
   
 
         .summary-container {
@@ -1886,8 +1886,155 @@ margin-top: .5rem;
           min-height: 38.2%;
           max-height: calc(100vh - var(--alturaHeader) - var(--spacing-3) - var(--spacing-3) - var(--spacing-3));
           overflow-y: auto;
-        }
-      }
+  }
+}
+
+/* === UI Refresh Overrides === */
+/* Clean tab styles using design variables */
+.tabs__circle {
+  background: #fff;
+  border: 2px solid var(--step-inactive);
+  color: var(--step-inactive);
+}
+
+.tabs__link.completed .tabs__circle {
+  background: var(--card-bg);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.tabs__link.active .tabs__circle {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.tabs__title {
+  color: var(--text-secondary);
+}
+
+.tabs__link.completed .tabs__title,
+.tabs__link.active .tabs__title {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Input grid for better space usage */
+@media (min-width: 768px) {
+  .form__wrapper-inputs {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: var(--spacing-2);
+  }
+
+  .form__input-container {
+    grid-column: span 12;
+  }
+
+  .form__input-container--corto {
+    grid-column: span 6;
+  }
+
+  .form__input-container--tercio {
+    grid-column: span 4;
+  }
+}
+
+/* Navigation buttons fixed on mobile */
+@media (max-width: 767px) {
+  .nav-buttons {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    justify-content: space-between;
+    background: #fff;
+    padding: var(--spacing-2);
+    border-top: 1px solid var(--border-color);
+    z-index: 1000;
+  }
+}
+
+/* Floating summary button and modal */
+.summary-toggle {
+  position: fixed;
+  bottom: var(--spacing-3);
+  right: var(--spacing-3);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.summary-toggle:hover {
+  background: var(--secondary);
+}
+
+.summary-close {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .summary-container {
+    display: none;
+  }
+
+  .summary-container.summary-container--modal {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+  }
+
+  .summary-container.summary-container--modal::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .summary-modal {
+    background: var(--card-bg);
+    padding: var(--spacing-4);
+    border-radius: var(--spacing-2);
+    box-shadow: var(--card-shadow);
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .summary-close {
+    display: block;
+    position: absolute;
+    top: var(--spacing-1);
+    right: var(--spacing-1);
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-secondary);
+  }
+
+  .summary-toggle {
+    display: flex;
+  }
+}
+
   
   
   
