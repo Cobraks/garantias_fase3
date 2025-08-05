@@ -46,24 +46,32 @@ function getDynamicLimit(field) {
 }
 
 function validateWithDynamicLimit(input, showError) {
-	const field = input.id;
-	const limits = getDynamicLimit(field);
-	const raw = input.value.replace(/\./g, "").trim();
-	const value = parseInt(raw, 10);
+        const field = input.id;
+        const raw = input.value.replace(/\./g, "").trim();
+        const value = parseInt(raw, 10);
 
-	if (raw === "") {
-		if (showError) setError(input, "Este campo es obligatorio.");
-		return false;
-	}
-	if (isNaN(value)) {
-		if (showError) setError(input, "Introduce un valor válido.");
-		return false;
-	}
-	if (value < limits.min) {
-		if (showError)
-			setError(
-				input,
-				field === "potencia"
+        if (raw === "") {
+                if (showError) setError(input, "Este campo es obligatorio.");
+                return false;
+        }
+        if (isNaN(value)) {
+                if (showError) setError(input, "Introduce un valor válido.");
+                return false;
+        }
+        if (field === "potencia" && isTipoCamion()) {
+                if (value <= 0) {
+                        if (showError) setError(input, "Introduce un valor válido.");
+                        return false;
+                }
+                clearError(input);
+                return true;
+        }
+        const limits = getDynamicLimit(field);
+        if (value < limits.min) {
+                if (showError)
+                        setError(
+                                input,
+                                field === "potencia"
 					? `Potencia mínima ${limits.min} CV`
 					: `Cilindrada mínima ${limits.min} CC`
 			);
