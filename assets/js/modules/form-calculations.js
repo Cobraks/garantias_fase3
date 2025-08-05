@@ -75,12 +75,15 @@ const comparadores = {
 		"=": (input, val) =>
 			String(input || "").toLowerCase() === String(val || "").toLowerCase(),
 	},
-	bool: {
-		"=": (input, val) =>
-			Boolean(input) ===
-			(val === true || val === "true" || val === 1 || val === "1"),
-	},
+        bool: {
+                "=": (input, val) =>
+                        Boolean(input) ===
+                        (val === true || val === "true" || val === 1 || val === "1"),
+        },
 };
+
+// Orden de modalidades según la condición MMA
+const MMA_ORDER = ["entre_35_y_60", "entre_60_y_160", "mas_de_160"];
 
 // --------- Cálculo de recargos (suplementos) ---------
 function calcularRecargos(modalidad, valoresForm) {
@@ -535,12 +538,20 @@ function getCondicionGeneral(modalidad) {
 }
 
 function getCondicionesEspeciales(modalidad) {
-	const cm =
-		modalidad.acf?.condiciones_generales_y_tarifas?.condiciones_modalidad;
-	if (!cm) return [];
-	let arr = cm.condiciones_especiales || [];
-	if (!Array.isArray(arr)) arr = [arr];
-	return arr.map((x) => (typeof x === "object" ? x.value : x));
+        const cm =
+                modalidad.acf?.condiciones_generales_y_tarifas?.condiciones_modalidad;
+        if (!cm) return [];
+        let arr = cm.condiciones_especiales || [];
+        if (!Array.isArray(arr)) arr = [arr];
+        return arr.map((x) => (typeof x === "object" ? x.value : x));
+}
+
+function getCondicionMMA(modalidad) {
+        const cm =
+                modalidad.acf?.condiciones_generales_y_tarifas?.condiciones_modalidad;
+        if (!cm) return null;
+        const valores = getValoresModalidadCampo(cm.condicion_mma);
+        return valores[0] || null;
 }
 
 function determineValorComparar(modalidad, valoresForm) {
@@ -597,6 +608,30 @@ function setDynamicLimits(modalidades, valoresForm) {
         limits.cilindrada = cilLimits || { min: 0, max: 9000 };
         limits.potencia = potLimits || { min: 0, max: 3000 };
         setLimitesDinamicos(limits);
+}
+
+function modalidadAdmiteValor(modalidad, valoresForm) {
+        const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
+        const tarifas = cg?.tarifas || [];
+        const condicionesEspecialesArr = getCondicionesEspeciales(modalidad);
+        const esCamion = condicionesEspecialesArr.includes("mma");
+        const ejes = esCamion ? valoresForm.traccion_camion : null;
+
+        const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
+
+        return tarifas.some((tarifa) => {
+                const min = parseNumericFormValue(
+                        tarifa.valor_min ?? tarifa.valor_minimo
+                );
+                const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
+                const max =
+                        maxRaw === "" || maxRaw == null
+                                ? 99999999
+                                : parseNumericFormValue(maxRaw);
+                const checkValor = tipo === "ninguna" || (valor >= min && valor <= max);
+                const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes == ejes);
+                return checkValor && checkEjes;
+        });
 }
 
 function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
@@ -926,11 +961,11 @@ function renderPlans(modalidades, valoresForm) {
 
 // --------- FILTRADO PRINCIPAL ---------
 async function filtrarModalidades() {
-	const tipoVehiculoSeleccionado = getValorInput("tipo_vehiculo") || "";
-	const fechaPrimeraMatriculacion = getValorInput(
-		"fecha_primera_matriculacion"
-	);
-	const antiguedad = getAntiguedadFromDate(fechaPrimeraMatriculacion);
+        const tipoVehiculoSeleccionado = getValorInput("tipo_vehiculo") || "";
+        const fechaPrimeraMatriculacion = getValorInput(
+                "fecha_primera_matriculacion"
+        );
+        const antiguedad = getAntiguedadFromDate(fechaPrimeraMatriculacion);
 
 	const valoresForm = {
 		cilindrada: getValorInput("cilindrada") || 0,
@@ -941,58 +976,83 @@ async function filtrarModalidades() {
 		combustible: getValorInput("combustible") || null,
 	};
 
-	const modalidades = await fetchModalidades();
-	let disponibles = modalidades.filter(
-		(m) => m.tipo_vehiculo && m.tipo_vehiculo.includes(tipoVehiculoSeleccionado)
-	);
+        const modalidades = await fetchModalidades();
+        let candidatas = modalidades.filter(
+                (m) => m.tipo_vehiculo && m.tipo_vehiculo.includes(tipoVehiculoSeleccionado)
+        );
 
-	let garantiaNoDisponiblePorAntiguedad = false;
+        let garantiaNoDisponiblePorAntiguedad = false;
 
-	disponibles = disponibles.filter((m) => {
-		const cm = m.acf?.condiciones_generales_y_tarifas?.condiciones_modalidad;
-		if (!cm) return true;
+        function cumpleCondiciones(modalidad, incluirMMA) {
+                const cm =
+                        modalidad.acf?.condiciones_generales_y_tarifas?.condiciones_modalidad;
+                if (!cm) return true;
 
-		const condicionesEspecialesArr = getCondicionesEspeciales(m);
+                const condicionesEspecialesArr = getCondicionesEspeciales(modalidad);
 
-		for (const config of [
-			{
-				key: "combustible",
-				formField: "combustible",
-				modalidadField: "combustible",
-			},
-			{ key: "mma", formField: "mma", modalidadField: "condicion_mma" },
-		]) {
-			if (condicionesEspecialesArr.includes(config.key)) {
-				const valorFormulario = getValorInput(config.formField);
-				const valoresModalidad = getValoresModalidadCampo(
-					cm[config.modalidadField]
-				);
-				if (!valorFormulario) return false;
-				if (!valoresModalidad.includes(valorFormulario)) return false;
-			}
-		}
+                const configs = [
+                        {
+                                key: "combustible",
+                                formField: "combustible",
+                                modalidadField: "combustible",
+                        },
+                ];
+                if (incluirMMA) {
+                        configs.push({
+                                key: "mma",
+                                formField: "mma",
+                                modalidadField: "condicion_mma",
+                        });
+                }
 
-		if (condicionesEspecialesArr.includes("antiguedad")) {
-			const grupoAntiguedad = cm.condicion_por_antiguedad || {};
-			const desde = Number(grupoAntiguedad.desde || 0);
-			const hastaRaw = grupoAntiguedad.hasta;
-			const hasta =
-				hastaRaw !== "" && hastaRaw !== undefined ? Number(hastaRaw) : null;
+                for (const config of configs) {
+                        if (condicionesEspecialesArr.includes(config.key)) {
+                                const valorFormulario = getValorInput(config.formField);
+                                const valoresModalidad = getValoresModalidadCampo(
+                                        cm[config.modalidadField]
+                                );
+                                if (!valorFormulario) return false;
+                                if (!valoresModalidad.includes(valorFormulario)) return false;
+                        }
+                }
 
-			if (antiguedad === null || isNaN(antiguedad)) return false;
-			if (antiguedad <= 1) {
-				garantiaNoDisponiblePorAntiguedad = true;
-				return false;
-			}
-			if (antiguedad < desde) return false;
-			if (hasta !== null && antiguedad > hasta) return false;
-		}
-		return true;
-	});
+                if (condicionesEspecialesArr.includes("antiguedad")) {
+                        const grupoAntiguedad = cm.condicion_por_antiguedad || {};
+                        const desde = Number(grupoAntiguedad.desde || 0);
+                        const hastaRaw = grupoAntiguedad.hasta;
+                        const hasta =
+                                hastaRaw !== "" && hastaRaw !== undefined ? Number(hastaRaw) : null;
+
+                        if (antiguedad === null || isNaN(antiguedad)) return false;
+                        if (antiguedad <= 1) {
+                                garantiaNoDisponiblePorAntiguedad = true;
+                                return false;
+                        }
+                        if (antiguedad < desde) return false;
+                        if (hasta !== null && antiguedad > hasta) return false;
+                }
+                return true;
+        }
+
+        candidatas = candidatas.filter((m) => cumpleCondiciones(m, false));
+        candidatas.sort(
+                (a, b) =>
+                        MMA_ORDER.indexOf(getCondicionMMA(a)) -
+                        MMA_ORDER.indexOf(getCondicionMMA(b))
+        );
+
+        let disponibles = candidatas.filter((m) => cumpleCondiciones(m, true));
+
+        if (!disponibles.some((m) => modalidadAdmiteValor(m, valoresForm))) {
+                const alternativa = candidatas.find((m) =>
+                        modalidadAdmiteValor(m, valoresForm)
+                );
+                disponibles = alternativa ? [alternativa] : [];
+        }
 
     setVisibleModalidades(disponibles);
 
-	setDynamicLimits(disponibles, valoresForm);
+        setDynamicLimits(candidatas, valoresForm);
 
 	let mesesDisponibles = [];
 	if (disponibles.length) {
