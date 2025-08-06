@@ -739,19 +739,26 @@ function updateDuracionSelect(mesesDisponibles) {
 }
 
 // --------- RENDERIZADO DE PLANES ---------
-function renderPlans(modalidades, valoresForm) {
-	const plansContainer = document.getElementById("formPlans");
-	if (!plansContainer) return;
+function renderPlans(modalidades, valoresForm, opciones = {}) {
+        const plansContainer = document.getElementById("formPlans");
+        if (!plansContainer) return;
 
-	plansContainer.classList.remove("form__plans--featured");
+        const { mostrarMensajeAntiguedad = false } = opciones;
 
-	const preciosConIVA = document.getElementById("check-iva")?.checked !== false;
+        plansContainer.classList.remove("form__plans--featured");
 
-	if (!modalidades || !modalidades.length) {
-		plansContainer.innerHTML =
-			"<div>No hay garantías disponibles para estos filtros.</div>";
-		return;
-	}
+        const preciosConIVA = document.getElementById("check-iva")?.checked !== false;
+
+        if (!modalidades || !modalidades.length) {
+                const mensajeAntiguedad =
+                        "Vehículo supera la antigüedad máxima. Ponte en contacto con el Departamento Comercial de 360VO";
+                // En el futuro, estos mensajes podrían cargarse dinámicamente desde la configuración.
+                const texto = mostrarMensajeAntiguedad
+                        ? mensajeAntiguedad
+                        : "No hay garantías disponibles para estos filtros.";
+                plansContainer.innerHTML = `<div>${texto}</div>`;
+                return;
+        }
 
 	const sorted = modalidades.slice().sort((a, b) => {
 		const getOrden = (m) =>
@@ -981,7 +988,7 @@ async function filtrarModalidades() {
                 (m) => m.tipo_vehiculo && m.tipo_vehiculo.includes(tipoVehiculoSeleccionado)
         );
 
-        let garantiaNoDisponiblePorAntiguedad = false;
+        let antiguedadSuperaMaximo = false;
 
         function cumpleCondiciones(modalidad, incluirMMA) {
                 const cm =
@@ -1024,12 +1031,12 @@ async function filtrarModalidades() {
                                 hastaRaw !== "" && hastaRaw !== undefined ? Number(hastaRaw) : null;
 
                         if (antiguedad === null || isNaN(antiguedad)) return false;
-                        if (antiguedad <= 1) {
-                                garantiaNoDisponiblePorAntiguedad = true;
+                        if (antiguedad <= 1) return false;
+                        if (antiguedad < desde) return false;
+                        if (hasta !== null && antiguedad > hasta) {
+                                antiguedadSuperaMaximo = true;
                                 return false;
                         }
-                        if (antiguedad < desde) return false;
-                        if (hasta !== null && antiguedad > hasta) return false;
                 }
                 return true;
         }
@@ -1067,16 +1074,13 @@ async function filtrarModalidades() {
 		}
 	}
 
-	if (!disponibles.length && !garantiaNoDisponiblePorAntiguedad) {
-		updateDuracionSelect([]);
-		renderPlans([], valoresForm);
-	} else if (disponibles.length) {
-		updateDuracionSelect(mesesDisponibles);
-		renderPlans(disponibles, valoresForm);
-	} else {
-		updateDuracionSelect([]);
-		renderPlans([], valoresForm);
-	}
+        if (!disponibles.length) {
+                updateDuracionSelect([]);
+                renderPlans([], valoresForm, { mostrarMensajeAntiguedad: antiguedadSuperaMaximo });
+        } else {
+                updateDuracionSelect(mesesDisponibles);
+                renderPlans(disponibles, valoresForm);
+        }
 
 	await refreshOfertasDisplay();
 
