@@ -2,10 +2,11 @@
 "use strict";
 
 import {
-	eurosString,
-	parseNumericFormValue,
-	getAntiguedadFromDate,
-	IVA_PORCENTAJE,
+        eurosString,
+        parseNumericFormValue,
+        getAntiguedadFromDate,
+       IVA_PORCENTAJE,
+       debounce,
 } from "./form-utils.js";
 import {
 	fetchOfertas,
@@ -452,26 +453,28 @@ async function refreshOfertasDisplay(attempt = 0) {
 }
 
 async function updateOfertas() {
-	if (isProfesional()) {
-		await ensureCurrentUserIdReady();
-	}
+        if (isProfesional()) {
+                await ensureCurrentUserIdReady();
+        }
 
-	const usuarioId = getEffectiveProfessionalId();
-	if (!usuarioId) return;
-        const ofertas = await fetchOfertas(usuarioId);
+        const usuarioId = getEffectiveProfessionalId();
+        if (!usuarioId) return;
+
+        const [ofertas] = await Promise.all([
+                fetchOfertas(usuarioId),
+                filtrarModalidadesBase(),
+        ]);
         setCurrentOfertas(ofertas || []);
 
         const modalidadesVisibles = Array.isArray(getVisibleModalidades())
                 ? getVisibleModalidades()
                 : [];
 
-	await updateOfertasList(usuarioId, modalidadesVisibles);
+        await updateOfertasList(usuarioId, modalidadesVisibles);
 
         if (ENABLE_LOGS) log("Ofertas activas usuario:", ofertas);
 
-        filtrarModalidades();
-
-	document.dispatchEvent(new Event("ofertas:actualizadas"));
+        document.dispatchEvent(new Event("ofertas:actualizadas"));
 }
 
 // Legacy / compatibilidad temporal
@@ -695,26 +698,29 @@ function calcularPrecioBase(modalidad, valoresForm) {
 
 // --------- UI AUXILIARES ---------
 function updateDuracionSelect(mesesDisponibles) {
-	const select = document.getElementById("duracion");
-	if (!select) return;
-	const opciones = [
-		{ value: 6, label: "6 meses" },
-		{ value: 12, label: "12 meses" },
-		{ value: 24, label: "24 meses" },
-		{ value: 36, label: "36 meses" },
-	];
-	const valorSeleccionado = select.value;
-	select.innerHTML = "";
+        const select = document.getElementById("duracion");
+        if (!select) return;
+        const opciones = [
+                { value: 6, label: "6 meses" },
+                { value: 12, label: "12 meses" },
+                { value: 24, label: "24 meses" },
+                { value: 36, label: "36 meses" },
+        ];
+        const valorSeleccionado = select.value;
+        select.innerHTML = "";
 
-	if (!mesesDisponibles.length) {
-		const opt = document.createElement("option");
-		opt.value = "";
-		opt.textContent = "Sin opciones disponibles";
-		opt.disabled = true;
-		select.appendChild(opt);
-		return;
-	}
-	const mesesOrdenados = mesesDisponibles.slice().sort((a, b) => a - b);
+        if (!mesesDisponibles.length) {
+                const opt = document.createElement("option");
+                opt.value = "";
+                opt.textContent = "Sin opciones disponibles";
+                select.appendChild(opt);
+                select.disabled = true;
+                select.removeAttribute("required");
+                return;
+        }
+        select.disabled = false;
+        select.setAttribute("required", "required");
+        const mesesOrdenados = mesesDisponibles.slice().sort((a, b) => a - b);
 
 	let selectedValue;
 	if (mesesOrdenados.map(String).includes(valorSeleccionado)) {
@@ -739,19 +745,26 @@ function updateDuracionSelect(mesesDisponibles) {
 }
 
 // --------- RENDERIZADO DE PLANES ---------
-function renderPlans(modalidades, valoresForm) {
-	const plansContainer = document.getElementById("formPlans");
-	if (!plansContainer) return;
+function renderPlans(modalidades, valoresForm, opciones = {}) {
+        const plansContainer = document.getElementById("formPlans");
+        if (!plansContainer) return;
 
-	plansContainer.classList.remove("form__plans--featured");
+        const { mostrarMensajeAntiguedad = false } = opciones;
 
-	const preciosConIVA = document.getElementById("check-iva")?.checked !== false;
+        plansContainer.classList.remove("form__plans--featured");
 
-	if (!modalidades || !modalidades.length) {
-		plansContainer.innerHTML =
-			"<div>No hay garantías disponibles para estos filtros.</div>";
-		return;
-	}
+        const preciosConIVA = document.getElementById("check-iva")?.checked !== false;
+
+        if (!modalidades || !modalidades.length) {
+                const mensajeAntiguedad =
+                        "Vehículo supera la antigüedad máxima. Ponte en contacto con el Departamento Comercial de 360VO";
+                // En el futuro, estos mensajes podrían cargarse dinámicamente desde la configuración.
+                const texto = mostrarMensajeAntiguedad
+                        ? mensajeAntiguedad
+                        : "No hay garantías disponibles para estos filtros.";
+                plansContainer.innerHTML = `<div>${texto}</div>`;
+                return;
+        }
 
 	const sorted = modalidades.slice().sort((a, b) => {
 		const getOrden = (m) =>
@@ -960,7 +973,7 @@ function renderPlans(modalidades, valoresForm) {
 }
 
 // --------- FILTRADO PRINCIPAL ---------
-async function filtrarModalidades() {
+async function filtrarModalidadesBase() {
         const tipoVehiculoSeleccionado = getValorInput("tipo_vehiculo") || "";
         const fechaPrimeraMatriculacion = getValorInput(
                 "fecha_primera_matriculacion"
@@ -981,7 +994,8 @@ async function filtrarModalidades() {
                 (m) => m.tipo_vehiculo && m.tipo_vehiculo.includes(tipoVehiculoSeleccionado)
         );
 
-        let garantiaNoDisponiblePorAntiguedad = false;
+        let antiguedadSuperaMaximo = false;
+        let maxAntiguedadPermitida = 0;
 
         function cumpleCondiciones(modalidad, incluirMMA) {
                 const cm =
@@ -1023,13 +1037,21 @@ async function filtrarModalidades() {
                         const hasta =
                                 hastaRaw !== "" && hastaRaw !== undefined ? Number(hastaRaw) : null;
 
+                        if (hasta === null) {
+                                maxAntiguedadPermitida = Infinity;
+                        } else if (hasta > maxAntiguedadPermitida) {
+                                maxAntiguedadPermitida = hasta;
+                        }
+
                         if (antiguedad === null || isNaN(antiguedad)) return false;
-                        if (antiguedad <= 1) {
-                                garantiaNoDisponiblePorAntiguedad = true;
+                        if (antiguedad <= 1) return false;
+                        if (antiguedad < desde) return false;
+                        if (hasta !== null && antiguedad > hasta) {
+                                antiguedadSuperaMaximo = true;
                                 return false;
                         }
-                        if (antiguedad < desde) return false;
-                        if (hasta !== null && antiguedad > hasta) return false;
+                } else {
+                        maxAntiguedadPermitida = Infinity;
                 }
                 return true;
         }
@@ -1067,21 +1089,29 @@ async function filtrarModalidades() {
 		}
 	}
 
-	if (!disponibles.length && !garantiaNoDisponiblePorAntiguedad) {
-		updateDuracionSelect([]);
-		renderPlans([], valoresForm);
-	} else if (disponibles.length) {
-		updateDuracionSelect(mesesDisponibles);
-		renderPlans(disponibles, valoresForm);
-	} else {
-		updateDuracionSelect([]);
-		renderPlans([], valoresForm);
-	}
+        if (!disponibles.length) {
+                if (
+                        maxAntiguedadPermitida !== Infinity &&
+                        antiguedad != null &&
+                        antiguedad > maxAntiguedadPermitida
+                ) {
+                        antiguedadSuperaMaximo = true;
+                }
+                updateDuracionSelect([]);
+                renderPlans([], valoresForm, { mostrarMensajeAntiguedad: antiguedadSuperaMaximo });
+        } else {
+                updateDuracionSelect(mesesDisponibles);
+                renderPlans(disponibles, valoresForm);
+        }
 
 	await refreshOfertasDisplay();
 
-	return disponibles;
+        return disponibles;
 }
+
+const filtrarModalidades = debounce(() => {
+        filtrarModalidadesBase();
+}, 120);
 // --------- INIT ---------
 async function initCalculations() {
 	const dynamicFields = [
@@ -1165,13 +1195,13 @@ async function initCalculations() {
 		});
 	}
 
-	if (isProfesional()) {
-		await ensureCurrentUserIdReady();
-	}
-	await filtrarModalidades();
-	if (!document.getElementById("usuario-rol") && isProfesional()) {
-		await updateOfertas();
-	}
+        if (isProfesional()) {
+                await ensureCurrentUserIdReady();
+        }
+        await filtrarModalidadesBase();
+        if (!document.getElementById("usuario-rol") && isProfesional()) {
+                await updateOfertas();
+        }
 }
 
 // === EXPORTS NECESARIOS PARA OTROS MÓDULOS ===

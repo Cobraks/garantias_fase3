@@ -285,16 +285,15 @@ async function buildSummaryHTML() {
 let scheduled = null;
 function scheduleUpdate() {
 	if (scheduled) clearTimeout(scheduled);
-	scheduled = setTimeout(() => {
+        scheduled = setTimeout(() => {
                 if (typeof filtrarModalidades === "function") {
                         // actualizar modalidades antes de reconstruir resumen para que recargos reflejen el estado
-                        filtrarModalidades().finally(() => {
-                                buildSummaryHTML();
-                        });
+                        filtrarModalidades();
+                        setTimeout(buildSummaryHTML, 150);
                 } else {
                         buildSummaryHTML();
                 }
-	}, 100);
+        }, 100);
 }
 
 function setupListeners() {
