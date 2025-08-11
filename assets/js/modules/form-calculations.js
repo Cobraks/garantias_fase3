@@ -757,7 +757,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 
      if (!modalidades || !modalidades.length) {
 				const mensajeAntiguedad =
-					"Vehículo supera la antigüedad máxima. Ponte en contacto con el Departamento Comercial de 360VO";
+					"El vehículo supera la antigüedad máxima. Ponte en contacto con el Departamento Comercial de 360VO";
 
 				const texto = mostrarMensajeAntiguedad
 					? mensajeAntiguedad

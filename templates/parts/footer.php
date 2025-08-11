@@ -38,6 +38,7 @@ use GarantiasOnline360VO\Svg;
     $is_admin = $is_admin ?? user_can($current_user, 'manage_options');
     $is_comercial = $is_comercial ?? in_array('go_comercial', (array)$current_user->roles, true);
     $icon_percent_html = Svg::icon('percent');
+    $icon_warning_html = Svg::icon('warning');
     $icon_check_html = Svg::icon('check');
 
     if ($is_admin) {
