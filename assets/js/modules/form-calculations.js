@@ -786,7 +786,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                 const mensajeAntiguedad =
                         "El vehículo supera la antigüedad máxima. Ponte en contacto con el Departamento Comercial de 360VO";
                 const mensajeKilometros =
-                        "El vehículo supera el límite de kilómetros. Ponte en contacto con el Departamento Comercial de 360VO";
+                        "El vehículo supera el límite de antigüedad y kilómetros. Ponte en contacto con el Departamento Comercial de 360VO";
 
                 let texto = "No hay garantías disponibles para estos filtros.";
                 let variant = "empty";
