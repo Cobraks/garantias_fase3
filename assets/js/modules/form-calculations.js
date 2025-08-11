@@ -590,6 +590,7 @@ function setDynamicLimits(modalidades, valoresForm) {
         let cilLimits = null;
         let potLimits = null;
         let kmLimits = null;
+        let kmRequiresAntiguedad = false;
         let found = false;
 
         for (const modalidad of modalidades) {
@@ -619,6 +620,9 @@ function setDynamicLimits(modalidades, valoresForm) {
                                 if (desde < kmLimits.min) kmLimits.min = desde;
                                 if (hasta > kmLimits.max) kmLimits.max = hasta;
                         }
+                        if (condicionesEspecialesArr.includes("antiguedad")) {
+                                kmRequiresAntiguedad = true;
+                        }
                 }
         }
 
@@ -629,7 +633,9 @@ function setDynamicLimits(modalidades, valoresForm) {
         const limits = getLimitesDinamicos();
         limits.cilindrada = cilLimits || { min: 0, max: 9000 };
         limits.potencia = potLimits || { min: 0, max: 3000 };
-        limits.kilometros = kmLimits || { min: 0, max: Infinity };
+        limits.kilometros = kmRequiresAntiguedad
+                ? { min: 0, max: Infinity }
+                : kmLimits || { min: 0, max: Infinity };
         setLimitesDinamicos(limits);
 }
 
@@ -1071,6 +1077,11 @@ async function filtrarModalidadesBase() {
                         }
                 }
 
+                const esCamion = condicionesEspecialesArr.includes("mma");
+
+                let excedeAntiguedad = false;
+                let excedeKilometros = false;
+
                 if (condicionesEspecialesArr.includes("antiguedad")) {
                         const grupoAntiguedad = cm.condicion_por_antiguedad || {};
                         const desde = Number(grupoAntiguedad.desde || 0);
@@ -1088,8 +1099,7 @@ async function filtrarModalidadesBase() {
                         if (antiguedad <= 1) return false;
                         if (antiguedad < desde) return false;
                         if (hasta !== null && antiguedad > hasta) {
-                                antiguedadSuperaMaximo = true;
-                                return false;
+                                excedeAntiguedad = true;
                         }
                 } else {
                         maxAntiguedadPermitida = Infinity;
@@ -1114,11 +1124,31 @@ async function filtrarModalidadesBase() {
                         if (isNaN(kms)) return false;
                         if (kms < desdeKm) return false;
                         if (hastaKm !== null && kms > hastaKm) {
-                                kilometrosSuperaMaximo = true;
-                                return false;
+                                excedeKilometros = true;
                         }
                 } else {
                         maxKilometrosPermitidos = Infinity;
+                }
+
+                if (
+                        esCamion &&
+                        condicionesEspecialesArr.includes("antiguedad") &&
+                        condicionesEspecialesArr.includes("kilometraje")
+                ) {
+                        if (excedeAntiguedad && excedeKilometros) {
+                                kilometrosSuperaMaximo = true;
+                                return false;
+                        }
+                        return true;
+                }
+
+                if (excedeAntiguedad) {
+                        antiguedadSuperaMaximo = true;
+                        return false;
+                }
+                if (excedeKilometros) {
+                        kilometrosSuperaMaximo = true;
+                        return false;
                 }
                 return true;
         }
@@ -1157,7 +1187,9 @@ async function filtrarModalidadesBase() {
 	}
 
         if (!disponibles.length) {
+                const kmsVal = parseNumericFormValue(valoresForm.kilometros);
                 if (
+                        !kilometrosSuperaMaximo &&
                         maxAntiguedadPermitida !== Infinity &&
                         antiguedad != null &&
                         antiguedad > maxAntiguedadPermitida
@@ -1165,8 +1197,9 @@ async function filtrarModalidadesBase() {
                         antiguedadSuperaMaximo = true;
                 }
                 if (
+                        !antiguedadSuperaMaximo &&
                         maxKilometrosPermitidos !== Infinity &&
-                        parseNumericFormValue(valoresForm.kilometros) > maxKilometrosPermitidos
+                        kmsVal > maxKilometrosPermitidos
                 ) {
                         kilometrosSuperaMaximo = true;
                 }
