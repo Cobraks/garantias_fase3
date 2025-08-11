@@ -27,10 +27,10 @@ export function logDebug(...args) {
 // 1. Límites y constantes globales
 // ===============================
 export const numericLimits = {
-	kilometros: { min: 0, max: 400000 },
-	precio_venta: { min: 0, max: 999999 },
-	cilindrada: { min: 0, max: 9000 },
-	potencia: { min: 0, max: 3000 },
+        kilometros: { min: 0, max: Infinity },
+        precio_venta: { min: 0, max: 999999 },
+        cilindrada: { min: 0, max: 9000 },
+        potencia: { min: 0, max: 3000 },
 };
 
 export const IVA_PORCENTAJE = 21;

@@ -589,6 +589,7 @@ function getDynamicRangeFromTarifas(modalidad) {
 function setDynamicLimits(modalidades, valoresForm) {
         let cilLimits = null;
         let potLimits = null;
+        let kmLimits = null;
         let found = false;
 
         for (const modalidad of modalidades) {
@@ -601,6 +602,24 @@ function setDynamicLimits(modalidades, valoresForm) {
                         potLimits = getDynamicRangeFromTarifas(modalidad);
                         found = true;
                 }
+                const condicionesEspecialesArr = getCondicionesEspeciales(modalidad);
+                if (condicionesEspecialesArr.includes("kilometraje")) {
+                        const cm =
+                                modalidad.acf?.condiciones_generales_y_tarifas
+                                        ?.condiciones_modalidad || {};
+                        const grupoKm = cm.condicion_por_kilometros || {};
+                        const desde = parseNumericFormValue(grupoKm.desde || 0);
+                        const hastaRaw = grupoKm.hasta;
+                        const hasta =
+                                hastaRaw === "" || hastaRaw == null
+                                        ? Infinity
+                                        : parseNumericFormValue(hastaRaw);
+                        if (!kmLimits) kmLimits = { min: desde, max: hasta };
+                        else {
+                                if (desde < kmLimits.min) kmLimits.min = desde;
+                                if (hasta > kmLimits.max) kmLimits.max = hasta;
+                        }
+                }
         }
 
         if (!found) {
@@ -610,6 +629,7 @@ function setDynamicLimits(modalidades, valoresForm) {
         const limits = getLimitesDinamicos();
         limits.cilindrada = cilLimits || { min: 0, max: 9000 };
         limits.potencia = potLimits || { min: 0, max: 3000 };
+        limits.kilometros = kmLimits || { min: 0, max: Infinity };
         setLimitesDinamicos(limits);
 }
 
@@ -749,31 +769,38 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
         const plansContainer = document.getElementById("formPlans");
         if (!plansContainer) return;
 
-        const { mostrarMensajeAntiguedad = false } = opciones;
+        const { mostrarMensajeAntiguedad = false, mostrarMensajeKilometros = false } = opciones;
 
         plansContainer.classList.remove("form__plans--featured");
 
         const preciosConIVA = document.getElementById("check-iva")?.checked !== false;
 
-     if (!modalidades || !modalidades.length) {
-				const mensajeAntiguedad =
-					"El vehículo supera la antigüedad máxima. Ponte en contacto con el Departamento Comercial de 360VO";
+        if (!modalidades || !modalidades.length) {
+                const mensajeAntiguedad =
+                        "El vehículo supera la antigüedad máxima. Ponte en contacto con el Departamento Comercial de 360VO";
+                const mensajeKilometros =
+                        "El vehículo supera el límite de kilómetros. Ponte en contacto con el Departamento Comercial de 360VO";
 
-				const texto = mostrarMensajeAntiguedad
-					? mensajeAntiguedad
-					: "No hay garantías disponibles para estos filtros.";
+                let texto = "No hay garantías disponibles para estos filtros.";
+                let variant = "empty";
+                if (mostrarMensajeAntiguedad) {
+                        texto = mensajeAntiguedad;
+                        variant = "warning";
+                } else if (mostrarMensajeKilometros) {
+                        texto = mensajeKilometros;
+                        variant = "warning";
+                }
 
-				const variant = mostrarMensajeAntiguedad ? "warning" : "empty";
-				const iconHtml = getIcon("warning") || "";
+                const iconHtml = getIcon("warning") || "";
 
-				plansContainer.innerHTML = `
+                plansContainer.innerHTML = `
     <div class="form__plans-message form__plans-message--${variant}" role="alert" aria-live="polite">
       <span class="form__plans-message-icon" aria-hidden="true">${iconHtml}</span>
       <span class="form__plans-message-text">${texto}</span>
     </div>
   `;
-				return;
-			}
+                return;
+        }
 
 
 
@@ -991,14 +1018,15 @@ async function filtrarModalidadesBase() {
         );
         const antiguedad = getAntiguedadFromDate(fechaPrimeraMatriculacion);
 
-	const valoresForm = {
-		cilindrada: getValorInput("cilindrada") || 0,
-		potencia: getValorInput("potencia") || 0,
-		duracion: Number(getValorInput("duracion")) || 12,
-		traccion_camion: getValorInput("traccion_camion") || null,
-		mma: getValorInput("mma") || null,
-		combustible: getValorInput("combustible") || null,
-	};
+        const valoresForm = {
+                cilindrada: getValorInput("cilindrada") || 0,
+                potencia: getValorInput("potencia") || 0,
+                kilometros: getValorInput("kilometros") || 0,
+                duracion: Number(getValorInput("duracion")) || 12,
+                traccion_camion: getValorInput("traccion_camion") || null,
+                mma: getValorInput("mma") || null,
+                combustible: getValorInput("combustible") || null,
+        };
 
         const modalidades = await fetchModalidades();
         let candidatas = modalidades.filter(
@@ -1007,6 +1035,8 @@ async function filtrarModalidadesBase() {
 
         let antiguedadSuperaMaximo = false;
         let maxAntiguedadPermitida = 0;
+        let kilometrosSuperaMaximo = false;
+        let maxKilometrosPermitidos = 0;
 
         function cumpleCondiciones(modalidad, incluirMMA) {
                 const cm =
@@ -1064,6 +1094,32 @@ async function filtrarModalidadesBase() {
                 } else {
                         maxAntiguedadPermitida = Infinity;
                 }
+
+                if (condicionesEspecialesArr.includes("kilometraje")) {
+                        const grupoKm = cm.condicion_por_kilometros || {};
+                        const desdeKm = parseNumericFormValue(grupoKm.desde || 0);
+                        const hastaKmRaw = grupoKm.hasta;
+                        const hastaKm =
+                                hastaKmRaw !== "" && hastaKmRaw !== undefined
+                                        ? parseNumericFormValue(hastaKmRaw)
+                                        : null;
+
+                        if (hastaKm === null) {
+                                maxKilometrosPermitidos = Infinity;
+                        } else if (hastaKm > maxKilometrosPermitidos) {
+                                maxKilometrosPermitidos = hastaKm;
+                        }
+
+                        const kms = parseNumericFormValue(getValorInput("kilometros"));
+                        if (isNaN(kms)) return false;
+                        if (kms < desdeKm) return false;
+                        if (hastaKm !== null && kms > hastaKm) {
+                                kilometrosSuperaMaximo = true;
+                                return false;
+                        }
+                } else {
+                        maxKilometrosPermitidos = Infinity;
+                }
                 return true;
         }
 
@@ -1108,8 +1164,17 @@ async function filtrarModalidadesBase() {
                 ) {
                         antiguedadSuperaMaximo = true;
                 }
+                if (
+                        maxKilometrosPermitidos !== Infinity &&
+                        parseNumericFormValue(valoresForm.kilometros) > maxKilometrosPermitidos
+                ) {
+                        kilometrosSuperaMaximo = true;
+                }
                 updateDuracionSelect([]);
-                renderPlans([], valoresForm, { mostrarMensajeAntiguedad: antiguedadSuperaMaximo });
+                renderPlans([], valoresForm, {
+                        mostrarMensajeAntiguedad: antiguedadSuperaMaximo,
+                        mostrarMensajeKilometros: kilometrosSuperaMaximo,
+                });
         } else {
                 updateDuracionSelect(mesesDisponibles);
                 renderPlans(disponibles, valoresForm);

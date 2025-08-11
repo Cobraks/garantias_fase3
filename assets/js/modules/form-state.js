@@ -12,8 +12,9 @@ const formCache = {
 	selectedModalidadId: null,
 };
 let limitesDinamicos = {
-	cilindrada: { min: 0, max: 9000 },
-	potencia: { min: 0, max: 3000 },
+        cilindrada: { min: 0, max: 9000 },
+        potencia: { min: 0, max: 3000 },
+        kilometros: { min: 0, max: Infinity },
 };
 
 const listeners = {
