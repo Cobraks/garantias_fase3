@@ -755,16 +755,27 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 
         const preciosConIVA = document.getElementById("check-iva")?.checked !== false;
 
-        if (!modalidades || !modalidades.length) {
-                const mensajeAntiguedad =
-                        "Vehículo supera la antigüedad máxima. Ponte en contacto con el Departamento Comercial de 360VO";
-                // En el futuro, estos mensajes podrían cargarse dinámicamente desde la configuración.
-                const texto = mostrarMensajeAntiguedad
-                        ? mensajeAntiguedad
-                        : "No hay garantías disponibles para estos filtros.";
-                plansContainer.innerHTML = `<div>${texto}</div>`;
-                return;
-        }
+     if (!modalidades || !modalidades.length) {
+				const mensajeAntiguedad =
+					"Vehículo supera la antigüedad máxima. Ponte en contacto con el Departamento Comercial de 360VO";
+
+				const texto = mostrarMensajeAntiguedad
+					? mensajeAntiguedad
+					: "No hay garantías disponibles para estos filtros.";
+
+				const variant = mostrarMensajeAntiguedad ? "warning" : "empty";
+				const iconHtml = getIcon("warning") || "";
+
+				plansContainer.innerHTML = `
+    <div class="form__plans-message form__plans-message--${variant}" role="alert" aria-live="polite">
+      <span class="form__plans-message-icon" aria-hidden="true">${iconHtml}</span>
+      <span class="form__plans-message-text">${texto}</span>
+    </div>
+  `;
+				return;
+			}
+
+
 
 	const sorted = modalidades.slice().sort((a, b) => {
 		const getOrden = (m) =>

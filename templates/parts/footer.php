@@ -74,7 +74,8 @@ use GarantiasOnline360VO\Svg;
             },
             icons: {
                 clear: `<?php echo addslashes($icon_percent_html); ?>`,
-                check: `<?php echo addslashes($icon_check_html); ?>`
+                check: `<?php echo addslashes($icon_check_html); ?>`,
+                warning: `<?php echo addslashes($icon_warning_html); ?>`
             }
         };
 
@@ -87,7 +88,8 @@ use GarantiasOnline360VO\Svg;
         window.currentUserId = window.__GO_CONFIG__.user.currentUserId; // TODO legacy
         window.GO_ICONS = {
             clear: window.__GO_CONFIG__.icons.clear,
-            check: window.__GO_CONFIG__.icons.check
+            check: window.__GO_CONFIG__.icons.check,
+            warning: window.__GO_CONFIG__.icons.warning
         }; // TODO legacy
     </script>
     <script src="<?php echo esc_url(plugins_url('assets/js/nueva_garantia.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
