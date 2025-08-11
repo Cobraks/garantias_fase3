@@ -40,6 +40,7 @@ use GarantiasOnline360VO\Svg;
     $icon_percent_html = Svg::icon('percent');
     $icon_warning_html = Svg::icon('warning');
     $icon_check_html = Svg::icon('check');
+    $icon_pdf_html = Svg::icon('pdf');
 
     if ($is_admin) {
         $js_user_role = 'admin';
@@ -74,24 +75,12 @@ use GarantiasOnline360VO\Svg;
                 currentUserId: <?php echo (int) get_current_user_id(); ?>
             },
             icons: {
-                clear: `<?php echo addslashes($icon_percent_html); ?>`,
+                percent: `<?php echo addslashes($icon_percent_html); ?>`,
                 check: `<?php echo addslashes($icon_check_html); ?>`,
-                warning: `<?php echo addslashes($icon_warning_html); ?>`
+                warning: `<?php echo addslashes($icon_warning_html); ?>`,
+                pdf: `<?php echo addslashes($icon_pdf_html); ?>`
             }
         };
-
-        // Legacy fallbacks para compatibilidad temporal (TODO: eliminar cuando todo esté migrado)
-        window.GO_REST = {
-            root: window.__GO_CONFIG__.rest.root,
-            nonce: window.__GO_CONFIG__.rest.nonce
-        };
-        window.userRole = window.__GO_CONFIG__.user.role; // TODO legacy
-        window.currentUserId = window.__GO_CONFIG__.user.currentUserId; // TODO legacy
-        window.GO_ICONS = {
-            clear: window.__GO_CONFIG__.icons.clear,
-            check: window.__GO_CONFIG__.icons.check,
-            warning: window.__GO_CONFIG__.icons.warning
-        }; // TODO legacy
     </script>
     <script src="<?php echo esc_url(plugins_url('assets/js/nueva_garantia.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 
