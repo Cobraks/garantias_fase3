@@ -33,10 +33,11 @@ import { setupPlanSelection } from "./plan-selection.js";
 
 const ENABLE_LOGS = true;
 function log(...args) {
-	if (ENABLE_LOGS) console.log("[form-calculations]", ...args);
+        if (ENABLE_LOGS) console.log("[form-calculations]", ...args);
 }
 
 const MODALIDAD_CACHE_TTL = 5 * 60 * 1000; // 5 minutos de cache
+let filtroToken = 0;
 
 // --------- Helpers de formato auxiliares locales ---------
 function redondearEuros(valor) {
@@ -1018,6 +1019,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 
 // --------- FILTRADO PRINCIPAL ---------
 async function filtrarModalidadesBase() {
+        const token = ++filtroToken;
         const tipoVehiculoSeleccionado = getValorInput("tipo_vehiculo") || "";
         const fechaPrimeraMatriculacion = getValorInput(
                 "fecha_primera_matriculacion"
@@ -1035,6 +1037,7 @@ async function filtrarModalidadesBase() {
         };
 
         const modalidades = await fetchModalidades();
+        if (token !== filtroToken) return;
         let candidatas = modalidades.filter(
                 (m) => m.tipo_vehiculo && m.tipo_vehiculo.includes(tipoVehiculoSeleccionado)
         );
@@ -1170,6 +1173,7 @@ async function filtrarModalidadesBase() {
         }
 
     setVisibleModalidades(disponibles);
+        if (token !== filtroToken) return;
 
         setDynamicLimits(candidatas, valoresForm);
 
@@ -1213,7 +1217,8 @@ async function filtrarModalidadesBase() {
                 renderPlans(disponibles, valoresForm);
         }
 
-	await refreshOfertasDisplay();
+        await refreshOfertasDisplay();
+        if (token !== filtroToken) return;
 
         return disponibles;
 }
