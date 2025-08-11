@@ -1140,6 +1140,15 @@ background: #00C0FF;
   margin-top: 16px;
   transition: color var(--transition);
   font-size: 1rem;
+  height: 2.5rem;
+  text-decoration: none;
+  border-radius: .5rem;
+background: #eef5ff;
+  color: #0003bf;
+  padding-left: .5rem;
+  padding-right: 1rem;
+  font-size: .9rem;
+  border: solid 1px #968dff;
 }
 
 .form__plan--featured .form__plan-link {
@@ -1155,7 +1164,7 @@ background: #00C0FF;
 }
 
 .form__plan-link:hover {
-  text-decoration: underline;
+background: #e1eeff;
 }
 
 /* ===================================================================
