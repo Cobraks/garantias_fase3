@@ -862,44 +862,6 @@ add_action('acf/include_fields', function () {
                         'save_options' => 0,
                     ),
                     array(
-                        'key' => 'field_6878f5daccaab',
-                        'label' => 'MMA',
-                        'name' => 'mma',
-                        'aria-label' => '',
-                        'type' => 'select',
-                        'instructions' => '',
-                        'required' => 0,
-                        'conditional_logic' => array(
-                            array(
-                                array(
-                                    'field' => 'field_685e5ef3622a6',
-                                    'operator' => '==',
-                                    'value' => '1356',
-                                ),
-                            ),
-                        ),
-                        'wrapper' => array(
-                            'width' => '25',
-                            'class' => '',
-                            'id' => '',
-                        ),
-                        'choices' => array(
-                            'entre_35_y_60' => 'Entre 3,5 t y 6 t',
-                            'entre_60_y_160' => 'Entre 6 t y 16 t',
-                            'mas_de_160' => 'Más de 16 t',
-                        ),
-                        'default_value' => false,
-                        'return_format' => 'array',
-                        'multiple' => 0,
-                        'allow_null' => 0,
-                        'allow_in_bindings' => 0,
-                        'ui' => 0,
-                        'ajax' => 0,
-                        'placeholder' => '',
-                        'create_options' => 0,
-                        'save_options' => 0,
-                    ),
-                    array(
                         'key' => 'field_687a34b57412d',
                         'label' => 'Doble Motor',
                         'name' => 'doble_motor',
@@ -2333,7 +2295,6 @@ add_action('acf/include_fields', function () {
                                 ),
                                 'choices' => array(
                                     'combustible' => 'Combustible',
-                                    'mma' => 'MMA',
                                     'antiguedad' => 'Antigüedad',
                                 ),
                                 'default_value' => array(),
@@ -2385,41 +2346,6 @@ add_action('acf/include_fields', function () {
                                 'toggle' => 0,
                                 'save_custom' => 0,
                                 'custom_choice_button_text' => 'Añadir nueva opción',
-                            ),
-                            array(
-                                'key' => 'field_68771a2f7550a',
-                                'label' => 'Condición MMA',
-                                'name' => 'condicion_mma',
-                                'aria-label' => '',
-                                'type' => 'radio',
-                                'instructions' => '',
-                                'required' => 0,
-                                'conditional_logic' => array(
-                                    array(
-                                        array(
-                                            'field' => 'field_6880a744a8a9f',
-                                            'operator' => '==',
-                                            'value' => 'mma',
-                                        ),
-                                    ),
-                                ),
-                                'wrapper' => array(
-                                    'width' => '25',
-                                    'class' => '',
-                                    'id' => '',
-                                ),
-                                'choices' => array(
-                                    'entre_35_y_60' => 'Entre 3,5 t y 6 t',
-                                    'entre_60_y_160' => 'Entre 6 t y 16 t',
-                                    'mas_de_160' => 'Más de 16 t',
-                                ),
-                                'default_value' => '',
-                                'return_format' => 'array',
-                                'allow_null' => 0,
-                                'other_choice' => 0,
-                                'allow_in_bindings' => 0,
-                                'layout' => 'vertical',
-                                'save_other_choice' => 0,
                             ),
                             array(
                                 'key' => 'field_687e4c8e5a336',
@@ -2557,15 +2483,7 @@ add_action('acf/include_fields', function () {
                                 'type' => 'select',
                                 'instructions' => '',
                                 'required' => 0,
-                                'conditional_logic' => array(
-                                    array(
-                                        array(
-                                            'field' => 'field_6880a744a8a9f',
-                                            'operator' => '==',
-                                            'value' => 'mma',
-                                        ),
-                                    ),
-                                ),
+                                'conditional_logic' => 0,
                                 'wrapper' => array(
                                     'width' => '',
                                     'class' => '',

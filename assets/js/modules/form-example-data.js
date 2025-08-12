@@ -3,6 +3,7 @@
 
 import { updateNextButtonState } from "./form-navigation.js";
 import { debouncedUpdateSummary } from "./form-summary.js";
+import { filtrarModalidades } from "./form-calculations.js";
 
 /*
     - Rellena todos los campos del formulario con datos de ejemplo realistas.
@@ -53,6 +54,7 @@ function rellenarDatosEjemplo() {
         // --- Refresca botón Siguiente y resumen ---
         updateNextButtonState();
         debouncedUpdateSummary();
+        filtrarModalidades();
 }
 
 function initExampleData() {

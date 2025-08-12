@@ -15,9 +15,7 @@
         transition: border-radius .3s ease-in-out;
   }
   
-body {
-  background: red !important;
-}
+
   /* Contenedor de tabs */
   .tabs {
     position: relative;
@@ -1142,6 +1140,15 @@ background: #00C0FF;
   margin-top: 16px;
   transition: color var(--transition);
   font-size: 1rem;
+  text-decoration: none;
+  border-radius: .5rem;
+  height: 2.625rem;
+  color: var(--text-color);
+  padding-left: .5rem;
+  padding-right: 1rem;
+  font-size: .9rem;
+  border: solid 1px;
+  border-color: var(--card-border);
 }
 
 .form__plan--featured .form__plan-link {
@@ -1151,13 +1158,17 @@ background: #00C0FF;
 
 
 .form__plan-link-icon {
-  width: 1rem;
-  height: 1rem;
-  margin-right: 6px;
+width: 1.25rem;
+  height: 1.25rem;
+  margin-right: .5rem;
+  display: flex;
 }
 
 .form__plan-link:hover {
-  text-decoration: underline;
+background: #f5f9ff;
+  transition: all .1s ease-in;
+  border-color: #adb2ff;
+  color: #100e64;
 }
 
 /* ===================================================================
@@ -1531,6 +1542,19 @@ background: linear-gradient(-194deg,rgb(2, 0, 36) 0%, rgb(9, 9, 121) 35%, rgb(0,
 .form__plan-porcentaje-recargo {
   font-weight: 600;
 }
+
+
+
+/*Warning antigüedad*/
+.form__plans-message{display:flex;align-items:flex-start;gap:.75rem;padding:12px 14px;border-radius:10px;border:1px solid;font-size:.95rem;line-height:1.45;margin:10px 0}
+.form__plans-message--warning{background:#fff7e6;border-color:#ffdea8;color:#8a4b00}
+.form__plans-message--empty{background:#f7f7f8;border-color:#e5e7eb;color:#374151}
+.form__plans-message-icon svg{width:20px;height:20px;flex:0 0 20px}
+.form__plans-message-text{flex:1;min-width:0;word-wrap:break-word}
+/* @media (prefers-color-scheme: dark){
+  .form__plans-message--warning{background:#2b2112;border-color:#4a3a1e;color:#ffd08a}
+  .form__plans-message--empty{background:#1f2937;border-color:#374151;color:#e5e7eb}
+} */
 
 
 

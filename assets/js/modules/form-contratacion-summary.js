@@ -27,10 +27,9 @@ function getValoresForm() {
 		cilindrada: document.getElementById("cilindrada")?.value || 0,
 		potencia: document.getElementById("potencia")?.value || 0,
 		duracion: Number(document.getElementById("duracion")?.value) || 0,
-		traccion_camion: document.getElementById("traccion_camion")?.value || null,
-		mma: document.getElementById("mma")?.value || null,
-		combustible: document.getElementById("combustible")?.value || null,
-		cambio: document.getElementById("cambio")?.value || null,
+                traccion_camion: document.getElementById("traccion_camion")?.value || null,
+                combustible: document.getElementById("combustible")?.value || null,
+                cambio: document.getElementById("cambio")?.value || null,
 		// mantener el mismo formato que en renderPlans / filtrarModalidades
 		doble_motor: document.getElementById("doble_motor")?.value || null,
 		fecha_primera_matriculacion:
@@ -285,16 +284,15 @@ async function buildSummaryHTML() {
 let scheduled = null;
 function scheduleUpdate() {
 	if (scheduled) clearTimeout(scheduled);
-	scheduled = setTimeout(() => {
+        scheduled = setTimeout(() => {
                 if (typeof filtrarModalidades === "function") {
                         // actualizar modalidades antes de reconstruir resumen para que recargos reflejen el estado
-                        filtrarModalidades().finally(() => {
-                                buildSummaryHTML();
-                        });
+                        filtrarModalidades();
+                        setTimeout(buildSummaryHTML, 150);
                 } else {
                         buildSummaryHTML();
                 }
-	}, 100);
+        }, 100);
 }
 
 function setupListeners() {
@@ -305,13 +303,12 @@ function setupListeners() {
 		"canal-venta",
 		"cilindrada",
 		"potencia",
-		"combustible",
-		"cambio",
-		"traccion_camion",
-		"doble_motor",
-		"traccion",
-		"mma",
-		"fecha_primera_matriculacion",
+                "combustible",
+                "cambio",
+                "traccion_camion",
+                "doble_motor",
+                "traccion",
+                "fecha_primera_matriculacion",
 	].forEach((id) => {
 		const el = document.getElementById(id);
 		if (!el) return;
