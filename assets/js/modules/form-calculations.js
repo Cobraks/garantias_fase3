@@ -70,10 +70,10 @@ const tipoCondicion = {
 	doble_motor: "string",
 };
 const comparadores = {
-	num: {
-		">": (input, val) => Number(input) > Number(val),
-		"=": (input, val) => Number(input) === Number(val),
-	},
+        num: {
+                ">": (input, val) => Number(input) > Number(val),
+                "=": (input, val) => Number(input) === Number(val),
+        },
 	string: {
 		"=": (input, val) =>
 			String(input || "").toLowerCase() === String(val || "").toLowerCase(),
@@ -84,6 +84,14 @@ const comparadores = {
                         (val === true || val === "true" || val === 1 || val === "1"),
         },
 };
+
+function applyDesgloseVisibility() {
+        const check = document.getElementById("check-desglose");
+        const show = check && check.checked;
+        document.querySelectorAll(".form__plan-recargos").forEach((el) => {
+                el.style.display = show ? "" : "none";
+        });
+}
 
 
 // --------- Cálculo de recargos (suplementos) ---------
@@ -938,8 +946,9 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 		})
 		.join("");
 
-	if (anyFeatured) plansContainer.classList.add("form__plans--featured");
+        if (anyFeatured) plansContainer.classList.add("form__plans--featured");
     setupPlanSelection();
+    applyDesgloseVisibility();
 }
 
 // --------- FILTRADO PRINCIPAL ---------
@@ -1214,6 +1223,11 @@ async function initCalculations() {
                 });
         }
 
+        const inputCheckDesglose = document.getElementById("check-desglose");
+        if (inputCheckDesglose) {
+                inputCheckDesglose.addEventListener("change", applyDesgloseVisibility);
+        }
+
         const inputCanalVenta = document.getElementById("canal-venta");
         if (inputCanalVenta) {
                 inputCanalVenta.addEventListener("change", () => {
@@ -1235,7 +1249,10 @@ async function initCalculations() {
         }
         await filtrarModalidadesBase();
         if (!document.getElementById("usuario-rol") && isProfesional()) {
-                await updateOfertas();
+                const ofertas = getCurrentOfertas();
+                if (!ofertas || ofertas.length === 0) {
+                        await updateOfertas();
+                }
         }
 }
 
