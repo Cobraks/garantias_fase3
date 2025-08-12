@@ -31,7 +31,7 @@ import {
 } from "./form-state.js";
 import { setupPlanSelection } from "./plan-selection.js";
 
-const ENABLE_LOGS = true;
+const ENABLE_LOGS = false;
 function log(...args) {
         if (ENABLE_LOGS) console.log("[form-calculations]", ...args);
 }
@@ -84,8 +84,6 @@ const comparadores = {
         },
 };
 
-// Orden de modalidades según la condición MMA
-const MMA_ORDER = ["entre_35_y_60", "entre_60_y_160", "mas_de_160"];
 
 // --------- Cálculo de recargos (suplementos) ---------
 function calcularRecargos(modalidad, valoresForm) {
@@ -550,14 +548,6 @@ function getCondicionesEspeciales(modalidad) {
         return arr.map((x) => (typeof x === "object" ? x.value : x));
 }
 
-function getCondicionMMA(modalidad) {
-        const cm =
-                modalidad.acf?.condiciones_generales_y_tarifas?.condiciones_modalidad;
-        if (!cm) return null;
-        const valores = getValoresModalidadCampo(cm.condicion_mma);
-        return valores[0] || null;
-}
-
 function determineValorComparar(modalidad, valoresForm) {
 	const condicionGeneral = getCondicionGeneral(modalidad);
 	const cilindrada = parseNumericFormValue(valoresForm.cilindrada);
@@ -643,8 +633,7 @@ function setDynamicLimits(modalidades, valoresForm) {
 function modalidadAdmiteValor(modalidad, valoresForm) {
         const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
         const tarifas = cg?.tarifas || [];
-        const condicionesEspecialesArr = getCondicionesEspeciales(modalidad);
-        const esCamion = condicionesEspecialesArr.includes("mma");
+        const esCamion = valoresForm.tipo_vehiculo === "camion";
         const ejes = esCamion ? valoresForm.traccion_camion : null;
 
         const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
@@ -665,11 +654,10 @@ function modalidadAdmiteValor(modalidad, valoresForm) {
 }
 
 function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
-	const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
-	const tarifas = cg?.tarifas || [];
-	const condicionesEspecialesArr = getCondicionesEspeciales(modalidad);
-	const esCamion = condicionesEspecialesArr.includes("mma");
-	const ejes = esCamion ? valoresForm.traccion_camion : null;
+        const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
+        const tarifas = cg?.tarifas || [];
+        const esCamion = valoresForm.tipo_vehiculo === "camion";
+        const ejes = esCamion ? valoresForm.traccion_camion : null;
 
 	const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
 	const mesesPorGarantia = tarifas
@@ -692,14 +680,13 @@ function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
 }
 
 function calcularPrecioBase(modalidad, valoresForm) {
-	const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
-	const cm = cg?.condiciones_modalidad || {};
-	const tarifas = cg?.tarifas || [];
-	const condicionesEspeciales = getCondicionesEspeciales(modalidad);
-	const meses = Number(valoresForm.duracion);
-	const esCamion = condicionesEspeciales.includes("mma");
-	let ejes = null;
-	if (esCamion) ejes = valoresForm.traccion_camion;
+        const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
+        const cm = cg?.condiciones_modalidad || {};
+        const tarifas = cg?.tarifas || [];
+        const meses = Number(valoresForm.duracion);
+        const esCamion = valoresForm.tipo_vehiculo === "camion";
+        let ejes = null;
+        if (esCamion) ejes = valoresForm.traccion_camion;
 
 	const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
 
@@ -1027,12 +1014,12 @@ async function filtrarModalidadesBase() {
         const antiguedad = getAntiguedadFromDate(fechaPrimeraMatriculacion);
 
         const valoresForm = {
+                tipo_vehiculo: tipoVehiculoSeleccionado,
                 cilindrada: getValorInput("cilindrada") || 0,
                 potencia: getValorInput("potencia") || 0,
                 kilometros: getValorInput("kilometros") || 0,
                 duracion: Number(getValorInput("duracion")) || 12,
                 traccion_camion: getValorInput("traccion_camion") || null,
-                mma: getValorInput("mma") || null,
                 combustible: getValorInput("combustible") || null,
         };
 
@@ -1047,7 +1034,7 @@ async function filtrarModalidadesBase() {
         let kilometrosSuperaMaximo = false;
         let maxKilometrosPermitidos = 0;
 
-        function cumpleCondiciones(modalidad, incluirMMA) {
+        function cumpleCondiciones(modalidad) {
                 const cm =
                         modalidad.acf?.condiciones_generales_y_tarifas?.condiciones_modalidad;
                 if (!cm) return true;
@@ -1061,13 +1048,6 @@ async function filtrarModalidadesBase() {
                                 modalidadField: "combustible",
                         },
                 ];
-                if (incluirMMA) {
-                        configs.push({
-                                key: "mma",
-                                formField: "mma",
-                                modalidadField: "condicion_mma",
-                        });
-                }
 
                 for (const config of configs) {
                         if (condicionesEspecialesArr.includes(config.key)) {
@@ -1080,7 +1060,7 @@ async function filtrarModalidadesBase() {
                         }
                 }
 
-                const esCamion = condicionesEspecialesArr.includes("mma");
+                const esCamion = valoresForm.tipo_vehiculo === "camion";
 
                 let excedeAntiguedad = false;
                 let excedeKilometros = false;
@@ -1156,23 +1136,13 @@ async function filtrarModalidadesBase() {
                 return true;
         }
 
-        candidatas = candidatas.filter((m) => cumpleCondiciones(m, false));
-        candidatas.sort(
-                (a, b) =>
-                        MMA_ORDER.indexOf(getCondicionMMA(a)) -
-                        MMA_ORDER.indexOf(getCondicionMMA(b))
+        candidatas = candidatas.filter((m) => cumpleCondiciones(m));
+
+        let disponibles = candidatas.filter((m) =>
+                modalidadAdmiteValor(m, valoresForm)
         );
 
-        let disponibles = candidatas.filter((m) => cumpleCondiciones(m, true));
-
-        if (!disponibles.some((m) => modalidadAdmiteValor(m, valoresForm))) {
-                const alternativa = candidatas.find((m) =>
-                        modalidadAdmiteValor(m, valoresForm)
-                );
-                disponibles = alternativa ? [alternativa] : [];
-        }
-
-    setVisibleModalidades(disponibles);
+        setVisibleModalidades(disponibles);
         if (token !== filtroToken) return;
 
         setDynamicLimits(candidatas, valoresForm);
@@ -1228,20 +1198,19 @@ const filtrarModalidades = debounce(() => {
 }, 120);
 // --------- INIT ---------
 async function initCalculations() {
-	const dynamicFields = [
-		"tipo_vehiculo",
-		"combustible",
-		"mma",
-		"fecha_primera_matriculacion",
-		"cilindrada",
-		"potencia",
-		"duracion",
-		"traccion_camion",
-		"kilometros",
-		"traccion",
-		"cambio",
-		"doble_motor",
-	];
+        const dynamicFields = [
+                "tipo_vehiculo",
+                "combustible",
+                "fecha_primera_matriculacion",
+                "cilindrada",
+                "potencia",
+                "duracion",
+                "traccion_camion",
+                "kilometros",
+                "traccion",
+                "cambio",
+                "doble_motor",
+        ];
 	dynamicFields.forEach((id) => {
 		const input = document.getElementById(id);
 		if (input) {
@@ -1253,19 +1222,16 @@ async function initCalculations() {
 	if (inputTipoVehiculo) {
 		inputTipoVehiculo.addEventListener("change", (e) => {
 			const nuevoTipo = e.target.value;
-			if (nuevoTipo !== "camion") {
-				const campoEjes = document.getElementById("traccion_camion");
-				if (campoEjes) campoEjes.value = "";
-				const campoMMA = document.getElementById("mma");
-				if (campoMMA) campoMMA.value = "";
-			}
-			[
-				"potencia",
-				"cilindrada",
-				"combustible",
-				"mma",
-				"traccion_camion",
-			].forEach((id) => {
+                        if (nuevoTipo !== "camion") {
+                                const campoEjes = document.getElementById("traccion_camion");
+                                if (campoEjes) campoEjes.value = "";
+                        }
+                        [
+                                "potencia",
+                                "cilindrada",
+                                "combustible",
+                                "traccion_camion",
+                        ].forEach((id) => {
 				const campo = document.getElementById(id);
 				if (campo) {
 					campo.dispatchEvent(new Event("input", { bubbles: true }));

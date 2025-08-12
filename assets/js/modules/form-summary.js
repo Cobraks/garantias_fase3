@@ -165,19 +165,8 @@ function getSummaryText(fieldId) {
 		return { text: selectedText, error: false };
 	}
 
-	// MMA
-	if (fieldId === "mma") {
-		if (!isTipoCamion()) {
-			return { text: "No aplica", error: false };
-		}
-		const mma = document.getElementById("mma");
-		if (!mma || !mma.value) return { text: "Falta MMA", error: true };
-		const selectedText = mma.options[mma.selectedIndex]?.text?.trim() || "";
-		return { text: selectedText, error: false };
-	}
-
-	// Doble motor (depende de combustible)
-	if (fieldId === "doble_motor") {
+        // Doble motor (depende de combustible)
+        if (fieldId === "doble_motor") {
 		const combustible = document.getElementById("combustible")?.value;
 		const aplica = ["electrico", "hibrido", "gpl_gnc"].includes(combustible);
 		if (!aplica) {
@@ -298,12 +287,10 @@ function updateSummary() {
 	const liTraccionCamion = document.getElementById(
 		"summary-item-traccion-camion"
 	);
-	const liMma = document.getElementById("summary-item-mma");
-	const liDobleMotor = document.getElementById("summary-item-doble_motor");
+        const liDobleMotor = document.getElementById("summary-item-doble_motor");
 
-	if (liTraccion) liTraccion.style.display = isCamion ? "none" : "";
-	if (liTraccionCamion) liTraccionCamion.style.display = isCamion ? "" : "none";
-	if (liMma) liMma.style.display = isCamion ? "" : "none";
+        if (liTraccion) liTraccion.style.display = isCamion ? "none" : "";
+        if (liTraccionCamion) liTraccionCamion.style.display = isCamion ? "" : "none";
 
 	if (liDobleMotor) {
 		const combustible = document.getElementById("combustible")?.value;
@@ -340,10 +327,9 @@ function setupSummaryRefresh() {
 	[
 		"marca",
 		"modelo",
-		"traccion",
-		"traccion_camion",
-		"mma",
-		"tipo_vehiculo",
+                "traccion",
+                "traccion_camion",
+                "tipo_vehiculo",
 		"kilometros",
 		"fecha_primera_matriculacion",
 		"matricula",
