@@ -66,41 +66,40 @@
 		}
 
 		function renderRow(item) {
-			const estado =
-				typeof item.estado === "string" && item.estado
-					? item.estado
-					: typeof item.estado === "number"
-					? String(item.estado)
-					: "Desconocido";
-			const estadoClase = normalizeEstadoClase(estado);
-			const marca_modelo = item.marca ?? "-";
-			const mat = item.mat ?? item.matricula ?? "-";
-			const desde = item.desde ?? "-";
-			const hasta = item.hasta ?? "-";
-			const vendedor_name = item.vendedor ?? "-";
-			const plan = item.plan ?? "-";
-			const precio = item.precio ?? "-";
-			const canal_venta =
-				item.canal_venta && item.canal_venta.label
-					? item.canal_venta.label
-					: "-";
-			const vendedor_type = canal_venta;
+                        const estado =
+                                typeof item.estado === "string" && item.estado
+                                        ? item.estado
+                                        : typeof item.estado === "number"
+                                        ? String(item.estado)
+                                        : "Desconocido";
+                        const estadoClase = normalizeEstadoClase(estado);
+                        const marca_modelo = item.marca_modelo ?? "-";
+                        const mat = item.matricula ?? item.mat ?? "-";
+                        const desde = item.desde ?? "-";
+                        const hasta = item.hasta ?? "-";
+                        const concesionario = item.concesionario ?? "-";
+                        const plan = item.plan ?? "-";
+                        const precio = item.precio ?? "-";
+                        const canal_venta =
+                                item.canal_venta && item.canal_venta.label
+                                        ? item.canal_venta.label
+                                        : "-";
+                        const canalLabel = canal_venta;
 
 			const tr = document.createElement("tr");
 			tr.className = "guarantees-table__row";
 			tr.tabIndex = 0;
 			tr.dataset.id = item.id;
-			tr.dataset.matricula = mat;
-			tr.dataset.marca_modelo = marca_modelo;
-			tr.dataset.plan = plan;
-			tr.dataset.desde = desde;
-			tr.dataset.hasta = hasta;
-			tr.dataset.estado = estado;
-			tr.dataset.estadoclase = estadoClase;
-			tr.dataset.vendedor_name = vendedor_name;
-			tr.dataset.vendedor_type = vendedor_type;
-			tr.dataset.precio = precio;
-			tr.dataset.canalVenta = canal_venta;
+                        tr.dataset.matricula = mat;
+                        tr.dataset.marca_modelo = marca_modelo;
+                        tr.dataset.plan = plan;
+                        tr.dataset.desde = desde;
+                        tr.dataset.hasta = hasta;
+                        tr.dataset.estado = estado;
+                        tr.dataset.estadoclase = estadoClase;
+                        tr.dataset.concesionario = concesionario;
+                        tr.dataset.precio = precio;
+                        tr.dataset.canalVenta = canal_venta;
 
 			tr.innerHTML = `
 				<td data-label="Vehículo">
@@ -116,9 +115,9 @@
 					</div>
 				</td>
 				<td data-label="Vendedor">
-					<div class="guarantees-table__vendedor">
-						<div class="vendedor__name">${vendedor_name}</div>
-						<div class="vendedor__type">${vendedor_type}</div>
+                                                <div class="guarantees-table__vendedor">
+                                                <div class="vendedor__name">${concesionario}</div>
+                                                <div class="vendedor__type">${canalLabel}</div>
 					</div>
 				</td>
 				<td data-label="Garantía">
@@ -383,8 +382,8 @@
 				hasta: row.dataset.hasta ?? "-",
 				estado: row.dataset.estado ?? "Desconocido",
 				estadoclase: row.dataset.estadoclase ?? "pendiente",
-				concesionario: row.dataset.vendedor_name ?? "-",
-				canal_venta: row.dataset.vendedor_type ?? "-",
+                                concesionario: row.dataset.concesionario ?? "-",
+                                canal_venta: row.dataset.canalVenta ?? "-",
 				precio: row.dataset.precio ?? "-",
 				tipo: "-",
 				kilometros: "-",
