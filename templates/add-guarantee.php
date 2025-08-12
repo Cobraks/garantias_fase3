@@ -404,6 +404,12 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         <input id="check-iva" type="checkbox" class="switch" checked>
                         <label for="check-iva">Precios con IVA</label>
                     </div>
+                    <?php if ($is_admin) : ?>
+                    <div class="ofertas__desglose checkbox-wrapper-14">
+                        <input id="check-desglose" type="checkbox" class="switch">
+                        <label for="check-desglose">Desglose</label>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
             </div>

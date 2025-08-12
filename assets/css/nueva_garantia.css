@@ -1502,6 +1502,7 @@ border-color: #2bc3ff;
 /* Log de precios y recargos dentro del plan */
 
 .form__plan-recargos {
+  display: none;
   background: #faf0de;
   color: black;
   padding: .5rem;
