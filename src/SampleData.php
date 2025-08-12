@@ -69,7 +69,7 @@ class SampleData
 
         // Construir mapa título => ID de modalidad
         $plan_posts = get_posts([
-            'post_type'      => WarrantyPlanCPT::POST_TYPE,
+            'post_type'      => ModalidadesGarantiasCPT::POST_TYPE,
             'posts_per_page' => -1,
             'fields'         => 'ids',
         ]);
@@ -81,8 +81,19 @@ class SampleData
             }
         }
 
-        // URL de ejemplo para contrato PDF
-        $contract_url = 'https://www.gifted-blackwell.31-170-100-104.plesk.page/wp-content/uploads/2025/05/Pepito-Perez-Febrero-2025-copia-3.pdf';
+        // Taxonomías disponibles
+        $tipo_garantia_ids = get_terms(['taxonomy' => 'tipo_garantia', 'fields' => 'ids', 'hide_empty' => false]);
+        $nivel_garantia_ids = get_terms(['taxonomy' => 'nivel_garantia', 'fields' => 'ids', 'hide_empty' => false]);
+        $tipo_vehiculo_ids  = get_terms(['taxonomy' => 'tipo_vehiculo',  'fields' => 'ids', 'hide_empty' => false]);
+
+        // Documentos de prueba
+        $docs_path = plugin_dir_path(GARANTIAS360VO__FILE__) . 'assets/docs/';
+        $doc_ids = [
+            'certificado'      => self::upload_media($docs_path . 'contrato-ejemplo.pdf'),
+            'factura_proforma' => self::upload_media($docs_path . 'factura-ejemplo.pdf'),
+            'factura'          => self::upload_media($docs_path . 'factura-ejemplo.pdf'),
+        ];
+
         // IDs de usuarios profesionales
         $pros = [18, 2];
 
@@ -92,16 +103,16 @@ class SampleData
 
         // Lista de marca y modelo realistas
         $carros = [
-            'Ford Fiesta',
-            'Seat León',
-            'BMW Serie 3',
-            'Audi A4',
-            'Mercedes Clase C',
-            'Renault Clio',
-            'Volkswagen Golf',
-            'Toyota Corolla',
-            'Peugeot 208',
-            'Citroën C3'
+            ['Ford', 'Fiesta'],
+            ['Seat', 'León'],
+            ['BMW', 'Serie 3'],
+            ['Audi', 'A4'],
+            ['Mercedes', 'Clase C'],
+            ['Renault', 'Clio'],
+            ['Volkswagen', 'Golf'],
+            ['Toyota', 'Corolla'],
+            ['Peugeot', '208'],
+            ['Citroën', 'C3'],
         ];
 
         for ($i = 1; $i <= 20; $i++) {
@@ -114,9 +125,6 @@ class SampleData
             if (! $post_id || is_wp_error($post_id)) {
                 continue;
             }
-
-            // Generar UUID
-            update_field('estado_garantia_uuid', wp_generate_uuid4(), $post_id);
 
             // Seleccionar plan aleatorio
             $names = array_keys($plans);
@@ -136,25 +144,47 @@ class SampleData
             $end->add(new \DateInterval('P' . $months . 'M'));
             $end->sub(new \DateInterval('P1D'));
 
+            // Calcular meses restantes
+            $today           = new \DateTime('now');
+            $meses_restantes = max(0, (int) floor($today->diff($end)->days / 30));
+
             // Fecha de primera matriculación random entre 2019 y hoy
             $randTs = rand($min_matricula->getTimestamp(), $max_matricula->getTimestamp());
             $matric = (new \DateTime())->setTimestamp($randTs);
 
             // Actualizar campos ACF (fechas en formato Y-m-d para ACF date picker)
+            update_field('estado_garantia_estado_contratacion', (rand(0, 10) < 8 ? 'activada' : 'pendiente_pago'), $post_id);
             update_field('estado_garantia_inicio',      $start->format('Y-m-d'), $post_id);
             update_field('estado_garantia_finalizacion', $end->format('Y-m-d'),   $post_id);
-            update_field('estado_garantia_estado_contratacion', (rand(0, 10) < 8 ? 'activada' : 'pendiente'), $post_id);
+            update_field('estado_garantia_meses_restantes', $meses_restantes, $post_id);
+            update_field('estado_garantia_uuid', wp_generate_uuid4(), $post_id);
 
-            update_field('garantia_contratada_garantia',    $plan_id,   $post_id);
-            update_field('garantia_contratada_precio',      $price,     $post_id);
+            update_field('garantia_contratada_garantia', $plan_id, $post_id);
+            if (! empty($tipo_garantia_ids)) {
+                update_field('garantia_contratada_tipo_garantia', $tipo_garantia_ids[array_rand($tipo_garantia_ids)], $post_id);
+            }
+            if (! empty($nivel_garantia_ids)) {
+                update_field('garantia_contratada_nivel_garantia', $nivel_garantia_ids[array_rand($nivel_garantia_ids)], $post_id);
+            }
+            update_field('garantia_contratada_meses_contratados', $months, $post_id);
+            update_field('garantia_contratada_precio', $price, $post_id);
+            $metodos = ['transferencia', 'tarjeta', 'efectivo'];
+            update_field('garantia_contratada_metodo_pago', $metodos[array_rand($metodos)], $post_id);
             update_field('garantia_contratada_canal_venta', 'profesional', $post_id);
             update_field('garantia_contratada_concesionario_empresa_profesional', $pros[array_rand($pros)], $post_id);
+            update_field('garantia_contratada_documentacion_certificado_garantia', $doc_ids['certificado'], $post_id);
+            update_field('garantia_contratada_documentacion_factura_proforma', $doc_ids['factura_proforma'], $post_id);
+            update_field('garantia_contratada_documentacion_factura', $doc_ids['factura'], $post_id);
 
-            // Asignar PDF de contrato
-            $att_id = attachment_url_to_postid($contract_url);
-            if ($att_id) {
-                update_field('garantia_contratada_documentacion_contrato', $att_id, $post_id);
-            }
+            update_field('descuentos_y_recargos_precio_base', $price, $post_id);
+            $desc_rows = [
+                [
+                    'concepto' => 'Descuento promocional',
+                    'tipo'     => 'descuento',
+                    'valor'    => 10,
+                ],
+            ];
+            update_field('descuentos_y_recargos_listado_descuentos_recargos', $desc_rows, $post_id);
 
             // Datos del vehículo: matrícula formatos 1234BCD o M1234BC
             if (rand(0, 1)) {
@@ -166,19 +196,30 @@ class SampleData
             }
             update_field('datos_vehiculo_matricula', strtoupper($mat), $post_id);
 
-            // Marca y modelo realista
-            update_field('datos_vehiculo_marca_modelo', $carros[array_rand($carros)], $post_id);
-            // Tipo de vehículo
-            $tipos = ['Turismo', 'Furgoneta', 'Camión'];
-            update_field('datos_vehiculo_tipo_vehiculo', $tipos[array_rand($tipos)], $post_id);
-            update_field('datos_vehiculo_primera_matriculacion',    $matric->format('Y-m-d'), $post_id);
-            update_field('datos_vehiculo_kilometros',               rand(10000, 150000), $post_id);
-            update_field('datos_vehiculo_precio_venta',             rand(5000, 30000),   $post_id);
-            update_field('datos_vehiculo_numero_bastidor',          strtoupper(wp_generate_password(17, false, false)), $post_id);
-            update_field('datos_vehiculo_combustible',              ['Gasolina', 'Diésel', 'Híbrido'][rand(0, 2)], $post_id);
-            update_field('datos_vehiculo_cambio',                   ['Manual', 'Automático'][rand(0, 1)], $post_id);
-            update_field('datos_vehiculo_potencia',                 rand(75, 300) . ' cv', $post_id);
-            update_field('datos_vehiculo_Cilindrada',               rand(1, 3) . '000 cc', $post_id);
+            [$marca, $modelo] = $carros[array_rand($carros)];
+            update_field('datos_vehiculo_marca', $marca, $post_id);
+            update_field('datos_vehiculo_modelo', $modelo, $post_id);
+            if (! empty($tipo_vehiculo_ids)) {
+                update_field('datos_vehiculo_tipo_vehiculo', $tipo_vehiculo_ids[array_rand($tipo_vehiculo_ids)], $post_id);
+            }
+            update_field('datos_vehiculo_primera_matriculacion', $matric->format('Y-m-d'), $post_id);
+            update_field('datos_vehiculo_kilometros', rand(10000, 150000), $post_id);
+            update_field('datos_vehiculo_precio_venta', rand(5000, 30000), $post_id);
+            update_field('datos_vehiculo_numero_bastidor', strtoupper(wp_generate_password(17, false, false)), $post_id);
+            $combustibles = ['diesel', 'gasolina', 'electrico', 'hibrido', 'gpl_gnc'];
+            $combustible  = $combustibles[array_rand($combustibles)];
+            update_field('datos_vehiculo_combustible', $combustible, $post_id);
+            $cambios = ['manual', 'manual_pilotado', 'automatico'];
+            $cambio  = $cambios[array_rand($cambios)];
+            update_field('datos_vehiculo_cambio', $cambio, $post_id);
+            update_field('datos_vehiculo_potencia', rand(75, 300), $post_id);
+            if (in_array($combustible, ['electrico', 'hibrido', 'gpl_gnc'], true)) {
+                update_field('datos_vehiculo_potencia_kw', rand(50, 200), $post_id);
+            } else {
+                update_field('datos_vehiculo_cilindrada', rand(1000, 3000), $post_id);
+            }
+            $tracciones = ['4x4', 'delantera', 'trasera'];
+            update_field('datos_vehiculo_traccion', $tracciones[array_rand($tracciones)], $post_id);
 
             // Datos del cliente
             update_field('datos_cliente_nombre_y_apellidos',        'Cliente Ejemplo ' . $i, $post_id);
@@ -211,6 +252,40 @@ class SampleData
         }
         wp_safe_redirect(admin_url('edit.php?post_type=' . GuaranteeCPT::POST_TYPE . '&page=' . self::SUBMENU_SLUG . '&status=deleted'));
         exit;
+    }
+
+    /**
+     * Crea una attachment en la biblioteca de medios a partir de un archivo local.
+     */
+    private static function upload_media(string $path): ?int
+    {
+        if (! file_exists($path)) {
+            return null;
+        }
+        $contents = file_get_contents($path);
+        if ($contents === false) {
+            return null;
+        }
+        $filename = basename($path);
+        $upload   = wp_upload_bits($filename, null, $contents);
+        if (! empty($upload['error'])) {
+            return null;
+        }
+        $filetype = wp_check_filetype($filename, null);
+        $attachment = [
+            'post_mime_type' => $filetype['type'] ?? 'application/octet-stream',
+            'post_title'     => sanitize_file_name($filename),
+            'post_content'   => '',
+            'post_status'    => 'inherit',
+        ];
+        $attach_id = wp_insert_attachment($attachment, $upload['file']);
+        if (is_wp_error($attach_id)) {
+            return null;
+        }
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        $attach_data = wp_generate_attachment_metadata($attach_id, $upload['file']);
+        wp_update_attachment_metadata($attach_id, $attach_data);
+        return $attach_id;
     }
 }
 
