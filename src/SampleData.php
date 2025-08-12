@@ -60,31 +60,43 @@ class SampleData
             wp_die(__('No tienes permisos.', 'garantias-online-360vo'));
         }
 
-        // Definición de planes y precios
-        $plans = [
-            'Essential'      => 200,
-            'Essential Plus' => 250,
-            'Exclusive'      => 300,
-        ];
-
-        // Construir mapa título => ID de modalidad
-        $plan_posts = get_posts([
+        // Cargar modalidades disponibles con sus datos
+        $mods_raw = get_posts([
             'post_type'      => ModalidadesGarantiasCPT::POST_TYPE,
             'posts_per_page' => -1,
-            'fields'         => 'ids',
         ]);
-        $plan_map = [];
-        foreach ($plan_posts as $pid) {
-            $p = get_post($pid);
-            if ($p && isset($plans[$p->post_title])) {
-                $plan_map[$p->post_title] = $pid;
+        $mods = [];
+        foreach ($mods_raw as $m) {
+            $mid   = $m->ID;
+            $meses = get_field('detalles_modalidad_condiciones_modalidad_meses_disponibles', $mid);
+            $tarifas = get_field('detalles_modalidad_tarifas', $mid);
+            if (empty($tarifas)) {
+                continue;
             }
+            $canales_raw = get_field('detalles_modalidad_condiciones_modalidad_canal_venta', $mid);
+            $canales = [];
+            if (is_array($canales_raw)) {
+                foreach ($canales_raw as $c) {
+                    $canales[] = is_array($c) ? ($c['value'] ?? '') : $c;
+                }
+            }
+            if (empty($canales)) {
+                $canales = ['profesional'];
+            }
+            $mods[] = [
+                'id'            => $mid,
+                'tipo_garantia' => get_field('detalles_modalidad_tipo_garantia', $mid),
+                'nivel'         => get_field('detalles_modalidad_nivel_garantia', $mid),
+                'tipos_vehiculo'=> get_field('detalles_modalidad_tipo_vehiculo', $mid) ?: [],
+                'meses'         => $meses ?: [12],
+                'tarifas'       => $tarifas,
+                'canales'       => $canales,
+            ];
         }
-
-        // Taxonomías disponibles
-        $tipo_garantia_ids = get_terms(['taxonomy' => 'tipo_garantia', 'fields' => 'ids', 'hide_empty' => false]);
-        $nivel_garantia_ids = get_terms(['taxonomy' => 'nivel_garantia', 'fields' => 'ids', 'hide_empty' => false]);
-        $tipo_vehiculo_ids  = get_terms(['taxonomy' => 'tipo_vehiculo',  'fields' => 'ids', 'hide_empty' => false]);
+        if (empty($mods)) {
+            wp_safe_redirect(admin_url('edit.php?post_type=' . GuaranteeCPT::POST_TYPE . '&page=' . self::SUBMENU_SLUG));
+            exit;
+        }
 
         // Documentos de prueba
         $docs_path = plugin_dir_path(GARANTIAS360VO__FILE__) . 'assets/docs/';
@@ -126,21 +138,17 @@ class SampleData
                 continue;
             }
 
-            // Seleccionar plan aleatorio
-            $names = array_keys($plans);
-            $plan_name = $names[array_rand($names)];
-            $price     = $plans[$plan_name];
-            $plan_id   = $plan_map[$plan_name] ?? null;
-            if (! $plan_id) {
-                continue;
-            }
+            // Modalidad y tarifa aleatoria
+            $mod    = $mods[array_rand($mods)];
+            $tarifa = $mod['tarifas'][array_rand($mod['tarifas'])];
+            $months = (int) ($tarifa['duracion_meses'] ?? 12);
+            $price  = (float) ($tarifa['precio'] ?? 0);
+            $canal  = $mod['canales'][array_rand($mod['canales'])];
 
             // Fecha de inicio aleatoria últimos 6 meses
             $start = new \DateTime();
             $start->sub(new \DateInterval('P' . rand(0, 180) . 'D'));
-            // Duración en meses 12/24/36
-            $months = [12, 24, 36][array_rand([0, 1, 2])];
-            $end    = clone $start;
+            $end = clone $start;
             $end->add(new \DateInterval('P' . $months . 'M'));
             $end->sub(new \DateInterval('P1D'));
 
@@ -152,84 +160,96 @@ class SampleData
             $randTs = rand($min_matricula->getTimestamp(), $max_matricula->getTimestamp());
             $matric = (new \DateTime())->setTimestamp($randTs);
 
-            // Actualizar campos ACF (fechas en formato Y-m-d para ACF date picker)
-            update_field('estado_garantia_estado_contratacion', (rand(0, 10) < 8 ? 'activada' : 'pendiente_pago'), $post_id);
-            update_field('estado_garantia_inicio',      $start->format('Y-m-d'), $post_id);
-            update_field('estado_garantia_finalizacion', $end->format('Y-m-d'),   $post_id);
-            update_field('estado_garantia_meses_restantes', $meses_restantes, $post_id);
-            update_field('estado_garantia_uuid', wp_generate_uuid4(), $post_id);
+            // Estado de la garantía
+            update_post_meta($post_id, 'estado_garantia_estado_contratacion', (rand(0, 10) < 8 ? 'activada' : 'pendiente_pago'));
+            update_post_meta($post_id, 'estado_garantia_inicio', $start->format('Y-m-d'));
+            update_post_meta($post_id, 'estado_garantia_finalizacion', $end->format('Y-m-d'));
+            update_post_meta($post_id, 'estado_garantia_meses_restantes', $meses_restantes);
+            update_post_meta($post_id, 'estado_garantia_uuid', wp_generate_uuid4());
 
-            update_field('garantia_contratada_garantia', $plan_id, $post_id);
-            if (! empty($tipo_garantia_ids)) {
-                update_field('garantia_contratada_tipo_garantia', $tipo_garantia_ids[array_rand($tipo_garantia_ids)], $post_id);
+            // Garantía contratada
+            update_post_meta($post_id, 'garantia_contratada_garantia', $mod['id']);
+            if ($mod['tipo_garantia']) {
+                update_post_meta($post_id, 'garantia_contratada_tipo_garantia', $mod['tipo_garantia']);
+                wp_set_object_terms($post_id, $mod['tipo_garantia'], 'tipo_garantia');
             }
-            if (! empty($nivel_garantia_ids)) {
-                update_field('garantia_contratada_nivel_garantia', $nivel_garantia_ids[array_rand($nivel_garantia_ids)], $post_id);
+            if ($mod['nivel']) {
+                update_post_meta($post_id, 'garantia_contratada_nivel_garantia', $mod['nivel']);
+                wp_set_object_terms($post_id, $mod['nivel'], 'nivel_garantia');
             }
-            update_field('garantia_contratada_meses_contratados', $months, $post_id);
-            update_field('garantia_contratada_precio', $price, $post_id);
+            update_post_meta($post_id, 'garantia_contratada_meses_contratados', $months);
+            update_post_meta($post_id, 'garantia_contratada_precio', $price);
             $metodos = ['transferencia', 'tarjeta', 'efectivo'];
-            update_field('garantia_contratada_metodo_pago', $metodos[array_rand($metodos)], $post_id);
-            update_field('garantia_contratada_canal_venta', 'profesional', $post_id);
-            update_field('garantia_contratada_concesionario_empresa_profesional', $pros[array_rand($pros)], $post_id);
-            update_field('garantia_contratada_documentacion_certificado_garantia', $doc_ids['certificado'], $post_id);
-            update_field('garantia_contratada_documentacion_factura_proforma', $doc_ids['factura_proforma'], $post_id);
-            update_field('garantia_contratada_documentacion_factura', $doc_ids['factura'], $post_id);
+            $metodo  = $metodos[array_rand($metodos)];
+            update_post_meta($post_id, 'garantia_contratada_metodo_pago', $metodo);
+            update_post_meta($post_id, 'garantia_contratada_canal_venta', $canal);
+            update_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', $pros[array_rand($pros)]);
+            update_post_meta($post_id, 'garantia_contratada_documentacion_certificado_garantia', $doc_ids['certificado']);
+            update_post_meta($post_id, 'garantia_contratada_documentacion_factura_proforma', $doc_ids['factura_proforma']);
+            update_post_meta($post_id, 'garantia_contratada_documentacion_factura', $doc_ids['factura']);
 
-            update_field('descuentos_y_recargos_precio_base', $price, $post_id);
-            $desc_rows = [
+            update_post_meta($post_id, 'descuentos_y_recargos_precio_base', $price);
+            update_post_meta($post_id, 'descuentos_y_recargos_listado_descuentos_recargos', [
                 [
                     'concepto' => 'Descuento promocional',
                     'tipo'     => 'descuento',
                     'valor'    => 10,
                 ],
-            ];
-            update_field('descuentos_y_recargos_listado_descuentos_recargos', $desc_rows, $post_id);
+            ]);
 
-            // Datos del vehículo: matrícula formatos 1234BCD o M1234BC
+            // Datos del vehículo
             if (rand(0, 1)) {
-                // formato moderno
                 $mat = sprintf('%04d%s', rand(0, 9999), substr(str_shuffle('BCDFGHJKLMNPQRSTVWXYZ'), 0, 3));
             } else {
-                // antiguo español
                 $mat = 'M' . rand(1000, 9999) . substr(str_shuffle('BCDFGHJKLMNPQRSTVWXYZ'), 0, 2);
             }
-            update_field('datos_vehiculo_matricula', strtoupper($mat), $post_id);
-
             [$marca, $modelo] = $carros[array_rand($carros)];
-            update_field('datos_vehiculo_marca', $marca, $post_id);
-            update_field('datos_vehiculo_modelo', $modelo, $post_id);
-            if (! empty($tipo_vehiculo_ids)) {
-                update_field('datos_vehiculo_tipo_vehiculo', $tipo_vehiculo_ids[array_rand($tipo_vehiculo_ids)], $post_id);
+            $veh_tipo = null;
+            if (! empty($mod['tipos_vehiculo'])) {
+                $veh_tipo = $mod['tipos_vehiculo'][array_rand($mod['tipos_vehiculo'])];
+            } else {
+                $all_types = get_terms(['taxonomy' => 'tipo_vehiculo', 'fields' => 'ids', 'hide_empty' => false]);
+                if (! empty($all_types)) {
+                    $veh_tipo = $all_types[array_rand($all_types)];
+                }
             }
-            update_field('datos_vehiculo_primera_matriculacion', $matric->format('Y-m-d'), $post_id);
-            update_field('datos_vehiculo_kilometros', rand(10000, 150000), $post_id);
-            update_field('datos_vehiculo_precio_venta', rand(5000, 30000), $post_id);
-            update_field('datos_vehiculo_numero_bastidor', strtoupper(wp_generate_password(17, false, false)), $post_id);
+            update_post_meta($post_id, 'datos_vehiculo_matricula', strtoupper($mat));
+            update_post_meta($post_id, 'datos_vehiculo_marca', $marca);
+            update_post_meta($post_id, 'datos_vehiculo_modelo', $modelo);
+            if ($veh_tipo) {
+                update_post_meta($post_id, 'datos_vehiculo_tipo_vehiculo', $veh_tipo);
+                wp_set_object_terms($post_id, $veh_tipo, 'tipo_vehiculo');
+            }
+            update_post_meta($post_id, 'datos_vehiculo_primera_matriculacion', $matric->format('Y-m-d'));
+            update_post_meta($post_id, 'datos_vehiculo_kilometros', rand(10000, 150000));
+            update_post_meta($post_id, 'datos_vehiculo_precio_venta', rand(5000, 30000));
+            update_post_meta($post_id, 'datos_vehiculo_numero_bastidor', strtoupper(wp_generate_password(17, false, false)));
             $combustibles = ['diesel', 'gasolina', 'electrico', 'hibrido', 'gpl_gnc'];
             $combustible  = $combustibles[array_rand($combustibles)];
-            update_field('datos_vehiculo_combustible', $combustible, $post_id);
+            update_post_meta($post_id, 'datos_vehiculo_combustible', $combustible);
             $cambios = ['manual', 'manual_pilotado', 'automatico'];
             $cambio  = $cambios[array_rand($cambios)];
-            update_field('datos_vehiculo_cambio', $cambio, $post_id);
-            update_field('datos_vehiculo_potencia', rand(75, 300), $post_id);
+            update_post_meta($post_id, 'datos_vehiculo_cambio', $cambio);
+            update_post_meta($post_id, 'datos_vehiculo_potencia', rand(75, 300));
             if (in_array($combustible, ['electrico', 'hibrido', 'gpl_gnc'], true)) {
-                update_field('datos_vehiculo_potencia_kw', rand(50, 200), $post_id);
+                update_post_meta($post_id, 'datos_vehiculo_potencia_kw', rand(50, 200));
             } else {
-                update_field('datos_vehiculo_cilindrada', rand(1000, 3000), $post_id);
+                update_post_meta($post_id, 'datos_vehiculo_cilindrada', rand(1000, 3000));
             }
             $tracciones = ['4x4', 'delantera', 'trasera'];
-            update_field('datos_vehiculo_traccion', $tracciones[array_rand($tracciones)], $post_id);
+            update_post_meta($post_id, 'datos_vehiculo_traccion', $tracciones[array_rand($tracciones)]);
 
             // Datos del cliente
-            update_field('datos_cliente_nombre_y_apellidos',        'Cliente Ejemplo ' . $i, $post_id);
-            update_field('datos_cliente_dni',                       rand(10000000, 99999999) . chr(rand(65, 90)), $post_id);
-            update_field('datos_cliente_telefono',                  '6' . rand(60000000, 79999999), $post_id);
-            update_field('datos_cliente_email',                     'cliente' . $i . '@ejemplo.com', $post_id);
-            update_field('datos_cliente_direccion',                 ['C/ Mayor, 1', 'Av. Libertad, 23', 'P.º del Prado, 45'][rand(0, 2)], $post_id);
-            update_field('datos_cliente_localidad',                 ['Madrid', 'Barcelona', 'Valencia'][rand(0, 2)], $post_id);
-            update_field('datos_cliente_provincia',                 ['Madrid', 'Barcelona', 'Valencia'][rand(0, 2)], $post_id);
-            update_field('datos_cliente_codigo_postal',             rand(10000, 52999), $post_id);
+            update_post_meta($post_id, 'datos_cliente_nombre_y_apellidos', 'Cliente Ejemplo ' . $i);
+            update_post_meta($post_id, 'datos_cliente_dni', rand(10000000, 99999999) . chr(rand(65, 90)));
+            update_post_meta($post_id, 'datos_cliente_telefono', '6' . rand(60000000, 79999999));
+            update_post_meta($post_id, 'datos_cliente_email', 'cliente' . $i . '@ejemplo.com');
+            $dirs = ['C/ Mayor, 1', 'Av. Libertad, 23', 'P.º del Prado, 45'];
+            update_post_meta($post_id, 'datos_cliente_direccion', $dirs[array_rand($dirs)]);
+            $locs = ['Madrid', 'Barcelona', 'Valencia'];
+            update_post_meta($post_id, 'datos_cliente_localidad', $locs[array_rand($locs)]);
+            update_post_meta($post_id, 'datos_cliente_provincia', $locs[array_rand($locs)]);
+            update_post_meta($post_id, 'datos_cliente_codigo_postal', rand(10000, 52999));
         }
 
         wp_safe_redirect(admin_url('edit.php?post_type=' . GuaranteeCPT::POST_TYPE . '&page=' . self::SUBMENU_SLUG . '&status=generated'));
