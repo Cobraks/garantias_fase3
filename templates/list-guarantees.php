@@ -27,32 +27,61 @@ use GarantiasOnline360VO\Svg;
         </span>
     </div>
 
+    <?php
+    $estados = [
+        'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
+        'borrador'         => __('Borrador', 'garantias-online-360vo'),
+        'activada'         => __('Activada', 'garantias-online-360vo'),
+        'expirada'         => __('Expirada', 'garantias-online-360vo'),
+        'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+    ];
+    ?>
     <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Estado', 'garantias-online-360vo'); ?>">
         <option value=""><?php esc_html_e('Todos los estados', 'garantias-online-360vo'); ?></option>
-        <option value="Activa"><?php esc_html_e('Activa', 'garantias-online-360vo'); ?></option>
-        <option value="Pendiente"><?php esc_html_e('Pendiente de pago', 'garantias-online-360vo'); ?></option>
-        <option value="Expirada"><?php esc_html_e('Expirada', 'garantias-online-360vo'); ?></option>
+        <?php foreach ($estados as $value => $label) : ?>
+            <option value="<?php echo esc_attr($value); ?>"><?php echo esc_html($label); ?></option>
+        <?php endforeach; ?>
     </select>
 
-    <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Plan', 'garantias-online-360vo'); ?>">
-        <option value=""><?php esc_html_e('Todos los planes', 'garantias-online-360vo'); ?></option>
-        <option value="Essential"><?php esc_html_e('Essential', 'garantias-online-360vo'); ?></option>
-        <option value="Essential Plus"><?php esc_html_e('Essential Plus', 'garantias-online-360vo'); ?></option>
-        <option value="Exclusive"><?php esc_html_e('Exclusive', 'garantias-online-360vo'); ?></option>
+    <?php
+    $modalidades = get_posts([
+        'post_type'      => \GarantiasOnline360VO\ModalidadesGarantiasCPT::POST_TYPE,
+        'posts_per_page' => -1,
+        'post_status'    => 'publish',
+    ]);
+    ?>
+    <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Garantía', 'garantias-online-360vo'); ?>">
+        <option value=""><?php esc_html_e('Todas las garantías', 'garantias-online-360vo'); ?></option>
+        <?php foreach ($modalidades as $mod) : ?>
+            <option value="<?php echo esc_attr($mod->ID); ?>"><?php echo esc_html($mod->post_title); ?></option>
+        <?php endforeach; ?>
     </select>
 
+    <?php
+    $canales = [
+        'particular'  => __('Particular', 'garantias-online-360vo'),
+        'profesional' => __('Profesional', 'garantias-online-360vo'),
+        'gestoria'    => __('Gestoría', 'garantias-online-360vo'),
+    ];
+    ?>
     <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Canal de venta', 'garantias-online-360vo'); ?>">
         <option value=""><?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?></option>
-        <option value="Particular"><?php esc_html_e('Particular', 'garantias-online-360vo'); ?></option>
-        <option value="Profesional"><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></option>
-        <option value="Gestoría"><?php esc_html_e('Gestoría', 'garantias-online-360vo'); ?></option>
+        <?php foreach ($canales as $value => $label) : ?>
+            <option value="<?php echo esc_attr($value); ?>"><?php echo esc_html($label); ?></option>
+        <?php endforeach; ?>
     </select>
 
+    <?php
+    $concesionarios = get_users([
+        'role'   => 'go_profesional',
+        'fields' => ['ID', 'display_name'],
+    ]);
+    ?>
     <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Concesionario', 'garantias-online-360vo'); ?>">
         <option value=""><?php esc_html_e('Concesionario', 'garantias-online-360vo'); ?></option>
-        <option value="A"><?php esc_html_e('Concesionario A', 'garantias-online-360vo'); ?></option>
-        <option value="B"><?php esc_html_e('Concesionario B', 'garantias-online-360vo'); ?></option>
-        <option value="C"><?php esc_html_e('Concesionario C', 'garantias-online-360vo'); ?></option>
+        <?php foreach ($concesionarios as $user) : ?>
+            <option value="<?php echo esc_attr($user->ID); ?>"><?php echo esc_html($user->display_name); ?></option>
+        <?php endforeach; ?>
     </select>
 </div>
 

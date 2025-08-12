@@ -194,7 +194,9 @@ class GuaranteeRestController
             $post_id = $post->ID;
             // Usamos get_post_meta, NUNCA get_field aquí
             $mat    = get_post_meta($post_id, 'datos_vehiculo_matricula', true);
-            $marca  = get_post_meta($post_id, 'datos_vehiculo_marca_modelo', true);
+            $marca  = get_post_meta($post_id, 'datos_vehiculo_marca', true);
+            $modelo = get_post_meta($post_id, 'datos_vehiculo_modelo', true);
+            $marca_modelo = trim($marca . ' ' . $modelo);
             $desde  = get_post_meta($post_id, 'estado_garantia_inicio', true);
             $hasta  = get_post_meta($post_id, 'estado_garantia_finalizacion', true);
             $plan_id = get_post_meta($post_id, 'garantia_contratada_garantia', true);
@@ -212,15 +214,15 @@ class GuaranteeRestController
             $canal_venta_label = is_array($canal_venta_raw) && isset($canal_venta_raw['label']) ? $canal_venta_raw['label'] : (is_string($canal_venta_raw) ? ucfirst($canal_venta_raw) : '');
 
             $data[] = [
-                'id'         => $post_id,
-                'mat'        => $mat,
-                'marca'      => $marca,
-                'desde'      => $desde,
-                'hasta'      => $hasta,
-                'plan'       => $plan,
-                'precio'     => $precio,
-                'estado'     => $estado,
-                'vendedor'   => $vendor_name,
+                'id'          => $post_id,
+                'matricula'   => $mat,
+                'marca_modelo'=> $marca_modelo,
+                'desde'       => $desde,
+                'hasta'       => $hasta,
+                'plan'        => $plan,
+                'precio'      => $precio,
+                'estado'      => $estado,
+                'concesionario'=> $vendor_name,
                 'canal_venta' => [
                     'value' => $canal_venta_value,
                     'label' => $canal_venta_label
@@ -253,8 +255,12 @@ class GuaranteeRestController
         $id = (int) $request['id'];
         // Vehículo
         $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
-        $marca_modelo = get_post_meta($id, 'datos_vehiculo_marca_modelo', true);
-        $tipo = get_post_meta($id, 'datos_vehiculo_tipo_vehiculo', true);
+        $marca  = get_post_meta($id, 'datos_vehiculo_marca', true);
+        $modelo = get_post_meta($id, 'datos_vehiculo_modelo', true);
+        $marca_modelo = trim($marca . ' ' . $modelo);
+        $tipo_id = get_post_meta($id, 'datos_vehiculo_tipo_vehiculo', true);
+        $tipo_term = $tipo_id ? get_term($tipo_id, 'tipo_vehiculo') : null;
+        $tipo = $tipo_term && ! is_wp_error($tipo_term) ? $tipo_term->name : $tipo_id;
         $kilometros = get_post_meta($id, 'datos_vehiculo_kilometros', true);
         $primera_matriculacion = get_post_meta($id, 'datos_vehiculo_primera_matriculacion', true);
         $bastidor = get_post_meta($id, 'datos_vehiculo_numero_bastidor', true);
