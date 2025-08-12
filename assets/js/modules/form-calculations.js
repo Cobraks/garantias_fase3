@@ -1241,39 +1241,46 @@ async function initCalculations() {
 			setTimeout(filtrarModalidades, 10);
 		});
 	}
-	const inputDuracion = document.getElementById("duracion");
-	if (inputDuracion) {
-		inputDuracion.addEventListener("change", filtrarModalidades);
-	}
-	const inputVendedor = document.getElementById("usuario-rol");
-	if (inputVendedor) {
-		inputVendedor.addEventListener("change", async () => {
-			document
-				.querySelectorAll(".plan-price-value, .plan-price-value-noiva")
-				.forEach((el) => {
-					el.textContent = "";
-				});
-			document.querySelectorAll(".plan-price-skeleton").forEach((el) => {
-				el.style.display = "inline-block";
-			});
-			await updateOfertas();
-		});
-	}
+        // Helper para indicar visualmente que los precios se están recalculando
+        function showPlanPriceSkeleton() {
+                document
+                        .querySelectorAll(".form__plan-price-text")
+                        .forEach((el) => {
+                                el.style.display = "none";
+                        });
+                document.querySelectorAll(".plan-price-skeleton").forEach((el) => {
+                        el.style.display = "inline-block";
+                        el.style.opacity = "1";
+                });
+        }
 
-	const inputCheckIVA = document.getElementById("check-iva");
-	if (inputCheckIVA) {
-		inputCheckIVA.addEventListener("change", () => {
-			document
-				.querySelectorAll(".plan-price-value, .plan-price-value-noiva")
-				.forEach((el) => {
-					el.textContent = "";
-				});
-			document.querySelectorAll(".plan-price-skeleton").forEach((el) => {
-				el.style.display = "inline-block";
-			});
-			setTimeout(filtrarModalidades, 50);
-		});
-	}
+        const inputDuracion = document.getElementById("duracion");
+        if (inputDuracion) {
+                inputDuracion.addEventListener("change", filtrarModalidades);
+        }
+        const inputVendedor = document.getElementById("usuario-rol");
+        if (inputVendedor) {
+                inputVendedor.addEventListener("change", async () => {
+                        showPlanPriceSkeleton();
+                        await updateOfertas();
+                });
+        }
+
+        const inputCheckIVA = document.getElementById("check-iva");
+        if (inputCheckIVA) {
+                inputCheckIVA.addEventListener("change", () => {
+                        showPlanPriceSkeleton();
+                        setTimeout(filtrarModalidades, 50);
+                });
+        }
+
+        const inputCanalVenta = document.getElementById("canal-venta");
+        if (inputCanalVenta) {
+                inputCanalVenta.addEventListener("change", () => {
+                        showPlanPriceSkeleton();
+                        setTimeout(filtrarModalidades, 50);
+                });
+        }
 
         if (isProfesional()) {
                 await ensureCurrentUserIdReady();

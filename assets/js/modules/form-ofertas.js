@@ -192,12 +192,12 @@ export async function updateOfertasList(
 		}
 	}
 
-	// Loader
-	ul.innerHTML = "";
-	const loadingItem = document.createElement("li");
-	loadingItem.className = "ofertas__item";
-	loadingItem.textContent = "Cargando ofertas...";
-	ul.appendChild(loadingItem);
+        // Loader visual mientras se obtienen las ofertas
+        ul.innerHTML = "";
+        const loadingItem = document.createElement("li");
+        loadingItem.className = "ofertas__item ofertas__item--loading";
+        loadingItem.textContent = "Cargando ofertas...";
+        ul.appendChild(loadingItem);
 
 	const ofertas = await fetchOfertas(effectiveUserId, { force });
 	const now = Date.now() / 1000;
