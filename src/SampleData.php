@@ -80,8 +80,10 @@ class SampleData
                     $canales[] = is_array($c) ? ($c['value'] ?? '') : $c;
                 }
             }
+            // Solo permitimos profesional o particular para evitar campos condicionales complejos
+            $canales = array_values(array_intersect($canales, ['profesional', 'particular']));
             if (empty($canales)) {
-                $canales = ['profesional'];
+                $canales = ['profesional', 'particular'];
             }
             $mods[] = [
                 'id'            => $mid,
@@ -142,7 +144,7 @@ class SampleData
             $mod    = $mods[array_rand($mods)];
             $tarifa = $mod['tarifas'][array_rand($mod['tarifas'])];
             $months = (int) ($tarifa['duracion_meses'] ?? 12);
-            $price  = (float) ($tarifa['precio'] ?? 0);
+            $base_price = (float) ($tarifa['precio'] ?? 0);
             $canal  = $mod['canales'][array_rand($mod['canales'])];
 
             // Fecha de inicio aleatoria últimos 6 meses
@@ -178,24 +180,37 @@ class SampleData
                 wp_set_object_terms($post_id, $mod['nivel'], 'nivel_garantia');
             }
             update_post_meta($post_id, 'garantia_contratada_meses_contratados', $months);
-            update_post_meta($post_id, 'garantia_contratada_precio', $price);
-            $metodos = ['transferencia', 'tarjeta', 'efectivo'];
+            $rows = [];
+            if (rand(0, 1)) {
+                $rows[] = [
+                    'tipo'       => 'descuento',
+                    'porcentaje' => 10,
+                    'razon'      => 'Promoción',
+                ];
+            }
+            $final_price = $base_price;
+            foreach ($rows as $r) {
+                $pct = (float) ($r['porcentaje'] ?? 0);
+                if ($r['tipo'] === 'descuento') {
+                    $final_price -= ($base_price * $pct / 100);
+                } else {
+                    $final_price += ($base_price * $pct / 100);
+                }
+            }
+            update_post_meta($post_id, 'garantia_contratada_precio', $final_price);
+            $metodos = ['domiciliacion_bancaria', 'transferencia'];
             $metodo  = $metodos[array_rand($metodos)];
             update_post_meta($post_id, 'garantia_contratada_metodo_pago', $metodo);
             update_post_meta($post_id, 'garantia_contratada_canal_venta', $canal);
-            update_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', $pros[array_rand($pros)]);
+            if ($canal === 'profesional') {
+                update_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', $pros[array_rand($pros)]);
+            }
             update_post_meta($post_id, 'garantia_contratada_documentacion_certificado_garantia', $doc_ids['certificado']);
             update_post_meta($post_id, 'garantia_contratada_documentacion_factura_proforma', $doc_ids['factura_proforma']);
             update_post_meta($post_id, 'garantia_contratada_documentacion_factura', $doc_ids['factura']);
 
-            update_post_meta($post_id, 'descuentos_y_recargos_precio_base', $price);
-            update_post_meta($post_id, 'descuentos_y_recargos_listado_descuentos_recargos', [
-                [
-                    'concepto' => 'Descuento promocional',
-                    'tipo'     => 'descuento',
-                    'valor'    => 10,
-                ],
-            ]);
+            update_post_meta($post_id, 'descuentos_y_recargos_precio_base', $base_price);
+            update_post_meta($post_id, 'descuentos_y_recargos_listado_descuentos_recargos', $rows);
 
             // Datos del vehículo
             if (rand(0, 1)) {
@@ -233,11 +248,20 @@ class SampleData
             update_post_meta($post_id, 'datos_vehiculo_potencia', rand(75, 300));
             if (in_array($combustible, ['electrico', 'hibrido', 'gpl_gnc'], true)) {
                 update_post_meta($post_id, 'datos_vehiculo_potencia_kw', rand(50, 200));
+                update_post_meta($post_id, 'datos_vehiculo_doble_motor', rand(0, 1));
             } else {
                 update_post_meta($post_id, 'datos_vehiculo_cilindrada', rand(1000, 3000));
             }
+            $term = $veh_tipo ? get_term($veh_tipo, 'tipo_vehiculo') : null;
             $tracciones = ['4x4', 'delantera', 'trasera'];
-            update_post_meta($post_id, 'datos_vehiculo_traccion', $tracciones[array_rand($tracciones)]);
+            if ($term && false !== stripos($term->slug ?? $term->name, 'camion')) {
+                $traccion_camion = ['1_eje', '2_ejes', '3_ejes'];
+                update_post_meta($post_id, 'datos_vehiculo_traccion_camion', $traccion_camion[array_rand($traccion_camion)]);
+                $mmas = ['entre_35_y_60', 'entre_60_y_160', 'mas_de_160'];
+                update_post_meta($post_id, 'datos_vehiculo_mma', $mmas[array_rand($mmas)]);
+            } else {
+                update_post_meta($post_id, 'datos_vehiculo_traccion', $tracciones[array_rand($tracciones)]);
+            }
 
             // Datos del cliente
             update_post_meta($post_id, 'datos_cliente_nombre_y_apellidos', 'Cliente Ejemplo ' . $i);
@@ -250,6 +274,39 @@ class SampleData
             update_post_meta($post_id, 'datos_cliente_localidad', $locs[array_rand($locs)]);
             update_post_meta($post_id, 'datos_cliente_provincia', $locs[array_rand($locs)]);
             update_post_meta($post_id, 'datos_cliente_codigo_postal', rand(10000, 52999));
+
+            // Historial y logs
+            $log_time = current_time('d/m/Y g:i a');
+            update_post_meta($post_id, 'historial_y_logs_logs', [
+                [
+                    'evento'       => 'creada',
+                    'fecha_y_hora' => $log_time,
+                    'detalles'     => 'Creación automática',
+                ],
+            ]);
+
+            // Estado de la avería
+            update_post_meta($post_id, 'estado_averia_estado', 'abierta');
+            update_post_meta($post_id, 'estado_averia_fecha_apertura', $start->format('Y-m-d'));
+            update_post_meta($post_id, 'estado_averia_tipo_averia', 'otro');
+
+            // Información de la avería
+            update_post_meta($post_id, 'informacion_averia_descripcion_averia', 'Sin incidencias');
+            update_post_meta($post_id, 'informacion_averia_importes_resolucion_presupuesto_recibido', 0);
+            update_post_meta($post_id, 'informacion_averia_importes_resolucion_importe_autorizado', 0);
+            update_post_meta($post_id, 'informacion_averia_importes_resolucion_resolucion', '');
+
+            // Taller
+            update_post_meta($post_id, 'taller_taller_encargado', 'otro');
+            update_post_meta($post_id, 'taller_responsable', 'Responsable ' . $i);
+            update_post_meta($post_id, 'taller_telefono_taller', rand(900000000, 999999999));
+            update_post_meta($post_id, 'taller_correo_taller', 'taller' . $i . '@ejemplo.com');
+            update_post_meta($post_id, 'taller_direccion_taller', 'C/ Taller ' . $i);
+
+            // Historiales, notas
+            update_post_meta($post_id, 'historiales_notas_historial_comunicacion', 'Historial de comunicación de prueba');
+            update_post_meta($post_id, 'historiales_notas_notas_internas', 'Notas internas de prueba');
+            update_post_meta($post_id, 'historiales_notas_resumen', 'Resumen de prueba');
         }
 
         wp_safe_redirect(admin_url('edit.php?post_type=' . GuaranteeCPT::POST_TYPE . '&page=' . self::SUBMENU_SLUG . '&status=generated'));
