@@ -998,12 +998,12 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 											pdf
 												? `
                     <a class="form__plan-link" href="${pdf}" target="_blank" rel="noopener">
-                        <svg class="form__plan-link-icon" width="16" height="16" viewBox="0 0 24 24"></svg>
+                        <span class="form__plan-link-icon">${getIcon("pdf")}</span>
                         Ver cobertura ${title}
                     </a>
                     `
-												: ""
-										}
+                                                                                               : ""
+                                                                               }
                     <button class="form__plan-button" type="button">
                         <span class="form__plan-button-text">${buttonInner}</span>
                     </button>
