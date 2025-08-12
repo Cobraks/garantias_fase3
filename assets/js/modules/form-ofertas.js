@@ -158,20 +158,39 @@ export async function fetchOfertas(userId, { force = false } = {}) {
 		ofertasCache.set(effectiveUserId, { ofertas, fetchedAt: Date.now() });
 		setCurrentOfertas(ofertas);
 		return ofertas;
-	} catch (e) {
-		log("Error al obtener ofertas para usuario", effectiveUserId, e);
-		return [];
-	}
+        } catch (e) {
+                log("Error al obtener ofertas para usuario", effectiveUserId, e);
+                return [];
+        }
+}
+
+function showOfertasLoading(ul = null) {
+        const parent = document.querySelector(".form__ofertas");
+        if (!parent) return null;
+        if (!ul) {
+                ul = parent.querySelector("ul.ofertas__list");
+                if (!ul) {
+                        ul = document.createElement("ul");
+                        ul.className = "ofertas__list";
+                        parent.insertBefore(ul, parent.querySelector(".ofertas__iva"));
+                }
+        }
+        ul.innerHTML = "";
+        const li = document.createElement("li");
+        li.className = "ofertas__item ofertas__item--loading";
+        li.textContent = "Cargando ofertas...";
+        ul.appendChild(li);
+        return ul;
 }
 
 /**
  * Actualiza la lista visible de ofertas en DOM filtrando por modalidades actuales.
  */
 export async function updateOfertasList(
-	userId,
-	modalidadesVisibles = [],
-	container = null,
-	{ force = false } = {}
+        userId,
+        modalidadesVisibles = [],
+        container = null,
+        { force = false, ofertas = null, showLoading = true } = {},
 ) {
 	if (!userId) {
 		await ensureCurrentUserIdReady();
@@ -192,22 +211,20 @@ export async function updateOfertasList(
 		}
 	}
 
-	// Loader
-	ul.innerHTML = "";
-	const loadingItem = document.createElement("li");
-	loadingItem.className = "ofertas__item";
-	loadingItem.textContent = "Cargando ofertas...";
-	ul.appendChild(loadingItem);
+        if (showLoading) {
+                showOfertasLoading(ul);
+        }
 
-	const ofertas = await fetchOfertas(effectiveUserId, { force });
-	const now = Date.now() / 1000;
+        const ofertasData =
+                ofertas || (await fetchOfertas(effectiveUserId, { force }));
+        const now = Date.now() / 1000;
 
-	const visibles = filterOfertasPorModalidades(ofertas, modalidadesVisibles, {
-		incluirCaducadas: false,
-	});
-	const caducadas = filterOfertasPorModalidades(ofertas, modalidadesVisibles, {
-		incluirCaducadas: true,
-	}).filter(
+        const visibles = filterOfertasPorModalidades(ofertasData, modalidadesVisibles, {
+                incluirCaducadas: false,
+        });
+        const caducadas = filterOfertasPorModalidades(ofertasData, modalidadesVisibles, {
+                incluirCaducadas: true,
+        }).filter(
 		(o) =>
 			o.timestamp_caducidad &&
 			now > o.timestamp_caducidad &&
@@ -265,32 +282,48 @@ export function invalidateOfertasCache(userId) {
  * Utility público para refrescar ofertas basándose en el profesional y modalidades actuales.
  */
 let _refreshOfertasPending = null;
-export async function refreshOfertasDisplay(attempt = 0) {
-	const effectiveUserId = resolveUserId();
-	if (!effectiveUserId) {
-		if (attempt < 5) {
-			setTimeout(() => refreshOfertasDisplay(attempt + 1), 200);
-		}
-		return;
-	}
+export function refreshOfertasDisplay(attempt = 0) {
+        return new Promise((resolve) => {
+                const effectiveUserId = resolveUserId();
+                if (!effectiveUserId) {
+                        if (attempt < 5) {
+                                setTimeout(
+                                        () =>
+                                                refreshOfertasDisplay(attempt + 1).then(resolve),
+                                        200
+                                );
+                        } else {
+                                resolve();
+                        }
+                        return;
+                }
 
-	if (_refreshOfertasPending) clearTimeout(_refreshOfertasPending);
-	_refreshOfertasPending = setTimeout(async () => {
-		if (isNaProfesionalFallback()) {
-			await ensureCurrentUserIdReady();
-		}
-		const ofertas =
-			getCurrentOfertas() || (await fetchOfertas(effectiveUserId));
-		setCurrentOfertas(ofertas);
-		const modalidadesVisibles = getVisibleModalidades();
-		await updateOfertasList(effectiveUserId, modalidadesVisibles);
-		if (ENABLE_LOGS) {
-			log("Refresco ofertas tras cambio de filtros:", {
-				user: effectiveUserId,
-				modalidadesVisibles,
-			});
-		}
-	}, 50);
+                showOfertasLoading();
+
+                if (_refreshOfertasPending) clearTimeout(_refreshOfertasPending);
+                _refreshOfertasPending = setTimeout(async () => {
+                        if (isNaProfesionalFallback()) {
+                                await ensureCurrentUserIdReady();
+                        }
+                        const modalidadesVisibles = getVisibleModalidades();
+                        await updateOfertasList(
+                                effectiveUserId,
+                                modalidadesVisibles,
+                                null,
+                                {
+                                        force: true,
+                                        showLoading: false,
+                                }
+                        );
+                        if (ENABLE_LOGS) {
+                                log("Refresco ofertas tras cambio de filtros:", {
+                                        user: effectiveUserId,
+                                        modalidadesVisibles,
+                                });
+                        }
+                        resolve();
+                }, 50);
+        });
 }
 
 // pequeño helper para comprobar si estamos en rol profesional (por compatibilidad)
@@ -300,4 +333,4 @@ function isNaProfesionalFallback() {
 }
 
 // Exponer para compatibilidad legacy mínima
-export { refreshOfertasDisplay as updateOfertas };
+export { refreshOfertasDisplay as updateOfertas, showOfertasLoading };

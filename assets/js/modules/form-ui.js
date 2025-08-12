@@ -85,39 +85,6 @@ function createInfoMessage(container) {
 }
 
 /**
- * Shimmer: animación temporal al cambiar duración
- */
-function shimmerOnDurationChange() {
-	const wrappers = document.querySelectorAll(".form__plan-price-wrapper");
-	wrappers.forEach((wrapper) => {
-		const text = wrapper.querySelector(".form__plan-price-text");
-		const skeleton = wrapper.querySelector(".plan-price-skeleton");
-		if (text && skeleton) {
-			text.style.display = "none";
-			skeleton.style.display = "inline-block";
-			skeleton.style.opacity = "1";
-		}
-	});
-
-	setTimeout(() => {
-		wrappers.forEach((wrapper) => {
-			const text = wrapper.querySelector(".form__plan-price-text");
-			const skeleton = wrapper.querySelector(".plan-price-skeleton");
-			if (text && skeleton) {
-				skeleton.style.opacity = "0";
-				setTimeout(() => {
-					skeleton.style.display = "none";
-					text.style.visibility = "visible";
-				}, 120);
-			}
-		});
-                if (typeof filtrarModalidades === "function") {
-                        filtrarModalidades();
-                }
-	}, 500);
-}
-
-/**
  * Inicializador global del módulo de UI del formulario
  */
 function init() {
@@ -143,15 +110,6 @@ function init() {
                 });
         }
 
-	// Cambio de duración: shimmer + render
-        const duracionSelect = document.getElementById("duracion");
-        if (duracionSelect) {
-                const shimmerDurationListener = (e) => {
-                        e.preventDefault();
-                        shimmerOnDurationChange();
-                };
-                duracionSelect.addEventListener("change", shimmerDurationListener);
-        }
 }
 
 export default {
