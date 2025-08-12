@@ -3,7 +3,7 @@
 
 /*
     - Lógica de visibilidad y dependencias entre campos del formulario.
-    - Ahora gestiona el caso especial de "camion" mostrando traccion_camion y mma, ocultando traccion.
+    - Gestiona el caso especial de "camion" mostrando traccion_camion y ocultando traccion.
     - También muestra/oculta el select de doble motor en función del combustible seleccionado.
 */
 
@@ -30,10 +30,9 @@ function toggleVehiculoFields() {
 	const traccionContainer = document.querySelector(
 		".form__input-container--traccion"
 	);
-	const traccionCamionContainer = document.querySelector(
-		".form__input-container--traccion-camion"
-	);
-	const mmaContainer = document.querySelector(".form__input-container--mma");
+        const traccionCamionContainer = document.querySelector(
+                ".form__input-container--traccion-camion"
+        );
 
 	if (!tipoVehiculo) return;
 
@@ -56,15 +55,7 @@ function toggleVehiculoFields() {
 			if (traccionCamion) traccionCamion.value = "";
 		}
 	}
-	if (mmaContainer) {
-		mmaContainer.style.display = isCamion ? "" : "none";
-		if (!isCamion) {
-			const mma = mmaContainer.querySelector("#mma");
-			if (mma) mma.value = "";
-		}
-	}
-
-	// Actualiza el estado de validación y resumen
+        // Actualiza el estado de validación y resumen
         updateNextButtonState();
         debouncedUpdateSummary();
 	// <- AQUÍ ESTÁ LA CLAVE: actualiza labels flotantes tras cambios

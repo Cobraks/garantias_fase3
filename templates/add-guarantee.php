@@ -52,7 +52,6 @@ $combustible_choices = get_acf_group_subfield_choices('datos_vehiculo', 'combust
 $cambio_choices      = get_acf_group_subfield_choices('datos_vehiculo', 'cambio');
 $traccion_choices    = get_acf_group_subfield_choices('datos_vehiculo', 'traccion');
 $traccion_camion_choices = get_acf_group_subfield_choices('datos_vehiculo', 'traccion_camion');
-$mma_choices             = get_acf_group_subfield_choices('datos_vehiculo', 'mma');
 
 
 
@@ -192,16 +191,6 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         </select>
                         <label for="traccion_camion" class="form__placeholder form__placeholder--select">Tracción (ejes)</label>
                     </div>
-                    <div class="form__input-container form__input-container--mma" style="display:none;">
-                        <select id="mma" class="form__select" aria-label="MMA" required>
-                            <option value="" disabled selected>MMA</option>
-                            <?php foreach ($mma_choices as $key => $label): ?>
-                                <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <label for="mma" class="form__placeholder form__placeholder--select">MMA</label>
-                    </div>
-
                     <div class="form__input-container form__input-container--corto form__input-container--suffix">
                         <input id="potencia" class="form__input" type="text" placeholder=" " required />
                         <label for="potencia" class="form__placeholder">Potencia</label>
@@ -514,10 +503,6 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
             <li class="summary__item" id="summary-item-traccion-camion" style="display:none;">
                 <span>Tracción camión: <span data-summary-field="traccion_camion"></span></span>
             </li>
-            <li class="summary__item" id="summary-item-mma" style="display:none;">
-                <span>MMA: <span data-summary-field="mma"></span></span>
-            </li>
-
             <li class="summary__item">
                 <span data-summary-field="potencia"></span>
                 <span class="summary__item-sufix">cv</span>

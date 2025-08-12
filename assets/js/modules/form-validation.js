@@ -187,36 +187,36 @@ export function validateField(input, showError = false, isHardCheck = false) {
 		return true;
 	}
 
-	// Tracción / camión / mma
-	if (id === "traccion" || id === "traccion_camion" || id === "mma") {
-		if (isTipoCamion()) {
-			if (id === "traccion_camion" || id === "mma") {
-				if (!input.value) {
-					if (showError) setError(input, "Este campo es obligatorio.");
-					return false;
-				}
-				clearError(input);
-				return true;
-			}
-			if (id === "traccion") {
-				clearError(input);
-				return true;
-			}
-		} else {
-			if (id === "traccion") {
-				if (!input.value) {
-					if (showError) setError(input, "Este campo es obligatorio.");
-					return false;
-				}
-				clearError(input);
-				return true;
-			}
-			if (id === "traccion_camion" || id === "mma") {
-				clearError(input);
-				return true;
-			}
-		}
-	}
+        // Tracción / camión
+        if (id === "traccion" || id === "traccion_camion") {
+                if (isTipoCamion()) {
+                        if (id === "traccion_camion") {
+                                if (!input.value) {
+                                        if (showError) setError(input, "Este campo es obligatorio.");
+                                        return false;
+                                }
+                                clearError(input);
+                                return true;
+                        }
+                        if (id === "traccion") {
+                                clearError(input);
+                                return true;
+                        }
+                } else {
+                        if (id === "traccion") {
+                                if (!input.value) {
+                                        if (showError) setError(input, "Este campo es obligatorio.");
+                                        return false;
+                                }
+                                clearError(input);
+                                return true;
+                        }
+                        if (id === "traccion_camion") {
+                                clearError(input);
+                                return true;
+                        }
+                }
+        }
 
         // Potencia / cilindrada / kilometros con límites dinámicos
         if (id === "potencia" || id === "cilindrada" || id === "kilometros") {
@@ -355,12 +355,11 @@ function initValidation() {
 
 	// Revalidar dinámicos cuando cambian dependencias clave
 	[
-		"tipo_vehiculo",
-		"combustible",
-		"mma",
-		"traccion_camion",
-		"doble_motor",
-	].forEach((id) => {
+                "tipo_vehiculo",
+                "combustible",
+                "traccion_camion",
+                "doble_motor",
+        ].forEach((id) => {
 		const el = document.getElementById(id);
 		if (el) {
 			el.addEventListener("change", () => {
