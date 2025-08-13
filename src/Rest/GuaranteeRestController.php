@@ -23,16 +23,31 @@ class GuaranteeRestController
                     'callback'            => [__CLASS__, 'get_items'],
                     'permission_callback' => [__CLASS__, 'can_list'],
                     'args'                => [
-                        'page'     => [
+                        'page'         => [
                             'validate_callback' => 'absint',
                             'default'           => 1,
                         ],
-                        'per_page' => [
+                        'per_page'     => [
                             'validate_callback' => 'absint',
                             'default'           => $default_per_page,
                         ],
-                        'search'   => ['sanitize_callback' => 'sanitize_text_field'], // <--
+                        'search'       => ['sanitize_callback' => 'sanitize_text_field'],
+                        'estado'       => ['sanitize_callback' => 'sanitize_text_field'],
+                        'plan'         => ['validate_callback' => 'absint'],
+                        'canal'        => ['sanitize_callback' => 'sanitize_text_field'],
+                        'concesionario'=> ['validate_callback' => 'absint'],
                     ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/filters',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'get_filters'],
+                    'permission_callback' => [__CLASS__, 'can_list'],
                 ],
             ]
         );
@@ -109,16 +124,32 @@ class GuaranteeRestController
      */
     public static function get_items($request)
     {
-        $current_user = get_current_user_id();
-        $page         = absint($request['page']);
-        $per_page     = absint($request['per_page']);
-        $search       = isset($request['search']) ? sanitize_text_field($request['search']) : ''; // <--
+        $current_user  = get_current_user_id();
+        $page          = absint($request['page']);
+        $per_page      = absint($request['per_page']);
+        $search        = isset($request['search']) ? sanitize_text_field($request['search']) : '';
+        $estado        = isset($request['estado']) ? sanitize_text_field($request['estado']) : '';
+        $plan          = isset($request['plan']) ? absint($request['plan']) : 0;
+        $canal         = isset($request['canal']) ? sanitize_text_field($request['canal']) : '';
+        $concesionario = isset($request['concesionario']) ? absint($request['concesionario']) : 0;
 
         // ----- CACHING -----
         // Elimina search del cache_key porque si no el mismo usuario puede buscar cosas distintas y obtiene el cache anterior
         $cache_key = 'go_glist_' . $current_user . "_p{$page}_pp{$per_page}";
         if ($search) {
             $cache_key .= '_s_' . md5($search);
+        }
+        if ($estado) {
+            $cache_key .= '_e_' . md5($estado);
+        }
+        if ($plan) {
+            $cache_key .= '_pl_' . $plan;
+        }
+        if ($canal) {
+            $cache_key .= '_c_' . md5($canal);
+        }
+        if ($concesionario) {
+            $cache_key .= '_v_' . $concesionario;
         }
         $cache = get_transient($cache_key);
         if ($cache !== false) {
@@ -158,9 +189,36 @@ class GuaranteeRestController
             ];
         }
 
+        // ---- FILTROS ----
+        if ($estado) {
+            $meta_query[] = [
+                'key'   => 'estado_garantia_estado_contratacion',
+                'value' => $estado,
+            ];
+        }
+        if ($plan) {
+            $meta_query[] = [
+                'key'   => 'garantia_contratada_garantia',
+                'value' => $plan,
+            ];
+        }
+        if ($canal) {
+            $meta_query[] = [
+                'key'     => 'garantia_contratada_canal_venta',
+                'value'   => $canal,
+                'compare' => 'LIKE',
+            ];
+        }
+        if ($concesionario) {
+            $meta_query[] = [
+                'key'   => 'garantia_contratada_concesionario_empresa_profesional',
+                'value' => $concesionario,
+            ];
+        }
+
         // ---- SEARCH ----
         if ($search) {
-            $search_meta = [
+            $meta_query[] = [
                 'relation' => 'OR',
                 [
                     'key'     => 'datos_vehiculo_matricula',
@@ -168,23 +226,24 @@ class GuaranteeRestController
                     'compare' => 'LIKE',
                 ],
                 [
-                    'key'     => 'datos_vehiculo_marca_modelo',
+                    'key'     => 'datos_vehiculo_marca',
+                    'value'   => $search,
+                    'compare' => 'LIKE',
+                ],
+                [
+                    'key'     => 'datos_vehiculo_modelo',
                     'value'   => $search,
                     'compare' => 'LIKE',
                 ],
             ];
-            if (!empty($meta_query)) {
-                // Si ya tenemos restricción por usuario, hacemos AND
-                $meta_query[] = $search_meta;
-                $args['meta_query'] = [
-                    'relation' => 'AND',
-                    ...$meta_query
-                ];
+        }
+
+        if (!empty($meta_query)) {
+            if (count($meta_query) > 1) {
+                $args['meta_query'] = array_merge(['relation' => 'AND'], $meta_query);
             } else {
-                $args['meta_query'] = $search_meta;
+                $args['meta_query'] = $meta_query;
             }
-        } elseif (!empty($meta_query)) {
-            $args['meta_query'] = $meta_query;
         }
 
         $q = new WP_Query($args);
@@ -194,7 +253,9 @@ class GuaranteeRestController
             $post_id = $post->ID;
             // Usamos get_post_meta, NUNCA get_field aquí
             $mat    = get_post_meta($post_id, 'datos_vehiculo_matricula', true);
-            $marca  = get_post_meta($post_id, 'datos_vehiculo_marca_modelo', true);
+            $marca  = get_post_meta($post_id, 'datos_vehiculo_marca', true);
+            $modelo = get_post_meta($post_id, 'datos_vehiculo_modelo', true);
+            $marca_modelo = trim($marca . ' ' . $modelo);
             $desde  = get_post_meta($post_id, 'estado_garantia_inicio', true);
             $hasta  = get_post_meta($post_id, 'estado_garantia_finalizacion', true);
             $plan_id = get_post_meta($post_id, 'garantia_contratada_garantia', true);
@@ -214,7 +275,7 @@ class GuaranteeRestController
             $data[] = [
                 'id'         => $post_id,
                 'mat'        => $mat,
-                'marca'      => $marca,
+                'marca'      => $marca_modelo,
                 'desde'      => $desde,
                 'hasta'      => $hasta,
                 'plan'       => $plan,
@@ -253,7 +314,9 @@ class GuaranteeRestController
         $id = (int) $request['id'];
         // Vehículo
         $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
-        $marca_modelo = get_post_meta($id, 'datos_vehiculo_marca_modelo', true);
+        $marca = get_post_meta($id, 'datos_vehiculo_marca', true);
+        $modelo = get_post_meta($id, 'datos_vehiculo_modelo', true);
+        $marca_modelo = trim($marca . ' ' . $modelo);
         $tipo = get_post_meta($id, 'datos_vehiculo_tipo_vehiculo', true);
         $kilometros = get_post_meta($id, 'datos_vehiculo_kilometros', true);
         $primera_matriculacion = get_post_meta($id, 'datos_vehiculo_primera_matriculacion', true);
@@ -327,17 +390,120 @@ class GuaranteeRestController
         return rest_ensure_response($data);
     }
 
+    public static function get_filters($request)
+    {
+        $current_user = get_current_user_id();
+
+        $cache_key = 'go_gfilters_' . $current_user;
+        $cache = get_transient($cache_key);
+        if ($cache !== false) {
+            return $cache;
+        }
+
+        $meta_query = [];
+        if (!current_user_can('manage_options')) {
+            $user_profesional_ids = [$current_user];
+            $users_asignados = get_users([
+                'role'    => 'go_profesional',
+                'fields'  => 'ID',
+                'meta_query' => [
+                    [
+                        'key'     => 'ajustes_usuarios_comercial_asignado',
+                        'value'   => '"' . $current_user . '"',
+                        'compare' => 'LIKE',
+                    ]
+                ]
+            ]);
+            if ($users_asignados) {
+                $user_profesional_ids = array_unique(array_merge($user_profesional_ids, $users_asignados));
+            }
+            $meta_query[] = [
+                'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                'value'   => $user_profesional_ids,
+                'compare' => 'IN',
+            ];
+        }
+
+        $args = [
+            'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+            'post_status'    => 'publish',
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+        ];
+        if (!empty($meta_query)) {
+            if (count($meta_query) > 1) {
+                $args['meta_query'] = array_merge(['relation' => 'AND'], $meta_query);
+            } else {
+                $args['meta_query'] = $meta_query;
+            }
+        }
+
+        $q = new WP_Query($args);
+
+        $estados = [];
+        $plan_ids = [];
+        foreach ($q->posts as $post_id) {
+            $e = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+            if ($e) {
+                $estados[] = $e;
+            }
+            $pid = get_post_meta($post_id, 'garantia_contratada_garantia', true);
+            if ($pid) {
+                $plan_ids[] = $pid;
+            }
+        }
+
+        $estados = array_values(array_unique(array_filter($estados)));
+        sort($estados);
+
+        $planes = [];
+        $plan_ids = array_unique(array_filter($plan_ids));
+        foreach ($plan_ids as $pid) {
+            $title = get_the_title($pid);
+            if ($title) {
+                $planes[] = [
+                    'id'    => (int) $pid,
+                    'title' => $title,
+                ];
+            }
+        }
+
+        $users = get_users([
+            'role'   => 'go_profesional',
+            'fields' => ['ID', 'display_name'],
+        ]);
+        $concesionarios = [];
+        foreach ($users as $u) {
+            $concesionarios[] = [
+                'id'   => $u->ID,
+                'name' => $u->display_name,
+            ];
+        }
+
+        $response = new WP_REST_Response([
+            'estados'        => $estados,
+            'planes'         => $planes,
+            'concesionarios' => $concesionarios,
+        ]);
+
+        set_transient($cache_key, $response, 60);
+
+        return $response;
+    }
+
     /**
      * Limpia todos los transients del listado al guardar una garantía.
      */
     public static function clear_list_transients($post_id, $post, $update)
     {
         global $wpdb;
-        $pattern = '_transient_go_glist_%';
-        $wpdb->query($wpdb->prepare(
-            "DELETE FROM $wpdb->options WHERE option_name LIKE %s",
-            $pattern
-        ));
+        $patterns = ['_transient_go_glist_%', '_transient_go_gfilters_%'];
+        foreach ($patterns as $pattern) {
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM $wpdb->options WHERE option_name LIKE %s",
+                $pattern
+            ));
+        }
     }
     public static function clear_list_transients_on_delete($post_id)
     {

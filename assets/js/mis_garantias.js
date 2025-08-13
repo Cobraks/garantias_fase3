@@ -2,11 +2,20 @@
 	document.addEventListener("DOMContentLoaded", () => {
 		console.log("DOM loaded — inicializando mis_garantias.js");
 
-		const tbody = document.querySelector("tbody[data-current-page]");
-		const table = tbody.closest("table");
-		const listContainer = document.querySelector(".guarantees-list");
-		const scrollEnd = listContainer.querySelector("#scroll-end");
-		const spinner = scrollEnd.querySelector(".spinner");
+                const tbody = document.querySelector("tbody[data-current-page]");
+                const table = tbody.closest("table");
+                const listContainer = document.querySelector(".guarantees-list");
+                const scrollEnd = listContainer.querySelector("#scroll-end");
+                const spinner = scrollEnd.querySelector(".spinner");
+
+                const restRoot =
+                        (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.root) ||
+                        (window.GO_REST && window.GO_REST.root) ||
+                        "/wp-json/";
+                const restNonce =
+                        (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.nonce) ||
+                        (window.GO_REST && window.GO_REST.nonce) ||
+                        "";
 		const DEFAULT_PER = 12;
 		let perPage = DEFAULT_PER;
 		let currentPage = 1;
@@ -17,10 +26,22 @@
 		let searchQuery = "";
 		let lastValidQuery = "";
 		let lastValidResults = [];
-		const detail = document.querySelector(".guarantee-detail");
-		let panel1 = document.getElementById("detail-panel-1");
-		let panel2 = document.getElementById("detail-panel-2");
-		let lastEmptyPanel = panel1;
+                const detail = document.querySelector(".guarantee-detail");
+                let panel1 = document.getElementById("detail-panel-1");
+                let panel2 = document.getElementById("detail-panel-2");
+                let lastEmptyPanel = panel1;
+
+                const filterSelects = document.querySelectorAll(
+                        ".guarantees-list__filter"
+                );
+                const estadoSelect = filterSelects[0];
+                const planSelect = filterSelects[1];
+                const canalSelect = filterSelects[2];
+                const concesionarioSelect = filterSelects[3];
+                let selectedEstado = "";
+                let selectedPlan = "";
+                let selectedCanal = "";
+                let selectedConcesionario = "";
 
 		let resultMessage = document.querySelector(
 			".guarantees-list__result-message"
@@ -193,20 +214,40 @@
 			resultMessage.style.display = msg ? "block" : "none";
 		}
 
-		async function loadPage(page = 1, options = {}) {
-			if (isLoading || !hasMore) return;
-			isLoading = true;
-			spinner.style.display = "";
-			const search =
-				typeof options.search === "string" ? options.search : searchQuery;
-			try {
-				let url = `${GO_REST.root}go/v1/guarantees?page=${page}&per_page=${perPage}`;
-				if (search && search.length > 0) {
-					url += `&search=${encodeURIComponent(search)}`;
-				}
-				const res = await fetch(url, {
-					headers: { "X-WP-Nonce": GO_REST.nonce },
-				});
+                async function loadPage(page = 1, options = {}) {
+                        if (isLoading || !hasMore) return;
+                        isLoading = true;
+                        spinner.style.display = "";
+                        const search =
+                                typeof options.search === "string" ? options.search : searchQuery;
+                        const estado =
+                                typeof options.estado === "string" ? options.estado : selectedEstado;
+                        const plan =
+                                typeof options.plan !== "undefined"
+                                        ? options.plan
+                                        : selectedPlan;
+                        const canal =
+                                typeof options.canal === "string" ? options.canal : selectedCanal;
+                        const concesionario =
+                                typeof options.concesionario !== "undefined"
+                                        ? options.concesionario
+                                        : selectedConcesionario;
+                        try {
+                                const params = new URLSearchParams({
+                                        page,
+                                        per_page: perPage,
+                                });
+                                if (search && search.length > 0)
+                                        params.append("search", search);
+                                if (estado) params.append("estado", estado);
+                                if (plan) params.append("plan", plan);
+                                if (canal) params.append("canal", canal);
+                                if (concesionario)
+                                        params.append("concesionario", concesionario);
+                                let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
+                                const res = await fetch(url, {
+                                        headers: { "X-WP-Nonce": restNonce },
+                                });
 				if (!res.ok) throw `HTTP ${res.status}`;
 				totalPosts = +res.headers.get("X-WP-Total") || 0;
 				totalPages = +res.headers.get("X-WP-TotalPages") || 1;
@@ -260,11 +301,11 @@
 								(async () => {
 									try {
 										const res = await fetch(
-											`${GO_REST.root}go/v1/guarantees/${id}`,
-											{
-												headers: { "X-WP-Nonce": GO_REST.nonce },
-											}
-										);
+                                                                                `${restRoot}go/v1/guarantees/${id}`,
+                                                                                        {
+                                                                                                headers: { "X-WP-Nonce": restNonce },
+                                                                                        }
+                                                                                );
 										if (!res.ok) throw res.status;
 										const dataDetalle = await res.json();
 										detailCache.set(id, dataDetalle);
@@ -320,16 +361,16 @@
 			isLoading = true;
 			spinner.style.display = "";
 			try {
-				let res = await fetch(
-					`${GO_REST.root}go/v1/guarantees?page=1&per_page=1`,
-					{ headers: { "X-WP-Nonce": GO_REST.nonce } }
-				);
+                                let res = await fetch(
+                                        `${restRoot}go/v1/guarantees?page=1&per_page=1`,
+                                        { headers: { "X-WP-Nonce": restNonce } }
+                                );
 				if (!res.ok) throw res.status;
 				totalPosts = +res.headers.get("X-WP-Total") || 0;
-				res = await fetch(
-					`${GO_REST.root}go/v1/guarantees?page=1&per_page=${totalPosts}`,
-					{ headers: { "X-WP-Nonce": GO_REST.nonce } }
-				);
+                                res = await fetch(
+                                        `${restRoot}go/v1/guarantees?page=1&per_page=${totalPosts}`,
+                                        { headers: { "X-WP-Nonce": restNonce } }
+                                );
 				if (!res.ok) throw res.status;
 				const { data } = await res.json();
 				tbody.innerHTML = "";
@@ -658,8 +699,8 @@
 				if (!detailCache.has(id)) {
 					nextPanel.classList.add("loading");
 					try {
-						const res = await fetch(`${GO_REST.root}go/v1/guarantees/${id}`, {
-							headers: { "X-WP-Nonce": GO_REST.nonce },
+                                            const res = await fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                                    headers: { "X-WP-Nonce": restNonce },
 						});
 						if (!res.ok) throw res.status;
 						const data = await res.json();
@@ -689,8 +730,8 @@
 					const id = row.dataset.id;
 					if (detailCache.has(id)) return;
 					try {
-						const res = await fetch(`${GO_REST.root}go/v1/guarantees/${id}`, {
-							headers: { "X-WP-Nonce": GO_REST.nonce },
+                                            const res = await fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                                    headers: { "X-WP-Nonce": restNonce },
 						});
 						if (!res.ok) throw res.status;
 						const data = await res.json();
@@ -736,9 +777,9 @@
 			);
 		})();
 
-		(() => {
-			const filters = document.querySelector(".guarantees-list__filters"),
-				header = document.querySelector(".top-bar");
+                (() => {
+                        const filters = document.querySelector(".guarantees-list__filters"),
+                                header = document.querySelector(".top-bar");
 			if (filters && header) {
 				new IntersectionObserver(
 					([e]) => {
@@ -756,11 +797,92 @@
 					listContainer.scrollTop > 10 || detail.scrollTop > 10
 				);
 			listContainer.addEventListener("scroll", onScroll);
-			detail.addEventListener("scroll", onScroll);
-		})();
+                        detail.addEventListener("scroll", onScroll);
+                })();
 
-		const input = document.getElementById("buscador_mis_garantias");
-		const closeIcon = document.querySelector(".guarantees-list__close-icon");
+                async function fetchFilters() {
+                        try {
+                                const res = await fetch(
+                                        `${restRoot}go/v1/guarantees/filters`,
+                                        { headers: { "X-WP-Nonce": restNonce } }
+                                );
+                                if (!res.ok) throw res.status;
+                                const {
+                                        estados = [],
+                                        planes = [],
+                                        concesionarios = [],
+                                } = await res.json();
+                                if (estadoSelect) {
+                                        estadoSelect
+                                                .querySelectorAll("option:not(:first-child)")
+                                                .forEach((o) => o.remove());
+                                        estados.forEach((est) => {
+                                                const opt = document.createElement("option");
+                                                opt.value = est;
+                                                opt.textContent = est;
+                                                estadoSelect.appendChild(opt);
+                                        });
+                                }
+                                if (planSelect) {
+                                        planSelect
+                                                .querySelectorAll("option:not(:first-child)")
+                                                .forEach((o) => o.remove());
+                                        planes.forEach((pl) => {
+                                                const opt = document.createElement("option");
+                                                opt.value = pl.id;
+                                                opt.textContent = pl.title;
+                                                planSelect.appendChild(opt);
+                                        });
+                                }
+                                if (concesionarioSelect) {
+                                        concesionarioSelect
+                                                .querySelectorAll("option:not(:first-child)")
+                                                .forEach((o) => o.remove());
+                                        concesionarios.forEach((c) => {
+                                                const opt = document.createElement("option");
+                                                opt.value = c.id;
+                                                opt.textContent = c.name;
+                                                concesionarioSelect.appendChild(opt);
+                                        });
+                                }
+                        } catch (e) {
+                                console.error("❌ Error fetching filters:", e);
+                        }
+                }
+
+                function applyFilters() {
+                        currentPage = 1;
+                        hasMore = true;
+                        lastValidQuery = "";
+                        lastValidResults = [];
+                        loadPage(1);
+                }
+
+                if (estadoSelect)
+                        estadoSelect.addEventListener("change", () => {
+                                selectedEstado = estadoSelect.value;
+                                applyFilters();
+                        });
+                if (planSelect)
+                        planSelect.addEventListener("change", () => {
+                                selectedPlan = planSelect.value;
+                                applyFilters();
+                        });
+                if (canalSelect)
+                        canalSelect.addEventListener("change", () => {
+                                selectedCanal = canalSelect.value;
+                                applyFilters();
+                        });
+                if (concesionarioSelect)
+                        concesionarioSelect.addEventListener("change", () => {
+                                selectedConcesionario = concesionarioSelect.value;
+                                applyFilters();
+                        });
+
+                fetchFilters();
+
+                const input = document.getElementById("buscador_mis_garantias");
+                const closeIcon = document.querySelector(".guarantees-list__close-icon");
 		let debounceTimer = null;
 		const DEBOUNCE_MS = 300;
 
@@ -805,7 +927,7 @@
 			new IntersectionObserver(
 				(entries) => {
 					if (entries[0].isIntersecting && hasMore && !isLoading) {
-						loadPage(currentPage + 1, { search: searchQuery });
+                                                loadPage(currentPage + 1);
 					}
 				},
 				{ root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }

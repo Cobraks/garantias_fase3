@@ -29,16 +29,10 @@ use GarantiasOnline360VO\Svg;
 
     <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Estado', 'garantias-online-360vo'); ?>">
         <option value=""><?php esc_html_e('Todos los estados', 'garantias-online-360vo'); ?></option>
-        <option value="Activa"><?php esc_html_e('Activa', 'garantias-online-360vo'); ?></option>
-        <option value="Pendiente"><?php esc_html_e('Pendiente de pago', 'garantias-online-360vo'); ?></option>
-        <option value="Expirada"><?php esc_html_e('Expirada', 'garantias-online-360vo'); ?></option>
     </select>
 
     <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Plan', 'garantias-online-360vo'); ?>">
         <option value=""><?php esc_html_e('Todos los planes', 'garantias-online-360vo'); ?></option>
-        <option value="Essential"><?php esc_html_e('Essential', 'garantias-online-360vo'); ?></option>
-        <option value="Essential Plus"><?php esc_html_e('Essential Plus', 'garantias-online-360vo'); ?></option>
-        <option value="Exclusive"><?php esc_html_e('Exclusive', 'garantias-online-360vo'); ?></option>
     </select>
 
     <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Canal de venta', 'garantias-online-360vo'); ?>">
@@ -50,9 +44,6 @@ use GarantiasOnline360VO\Svg;
 
     <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Concesionario', 'garantias-online-360vo'); ?>">
         <option value=""><?php esc_html_e('Concesionario', 'garantias-online-360vo'); ?></option>
-        <option value="A"><?php esc_html_e('Concesionario A', 'garantias-online-360vo'); ?></option>
-        <option value="B"><?php esc_html_e('Concesionario B', 'garantias-online-360vo'); ?></option>
-        <option value="C"><?php esc_html_e('Concesionario C', 'garantias-online-360vo'); ?></option>
     </select>
 </div>
 
