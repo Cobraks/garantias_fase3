@@ -2,11 +2,20 @@
 	document.addEventListener("DOMContentLoaded", () => {
 		console.log("DOM loaded — inicializando mis_garantias.js");
 
-		const tbody = document.querySelector("tbody[data-current-page]");
-		const table = tbody.closest("table");
-		const listContainer = document.querySelector(".guarantees-list");
-		const scrollEnd = listContainer.querySelector("#scroll-end");
-		const spinner = scrollEnd.querySelector(".spinner");
+                const tbody = document.querySelector("tbody[data-current-page]");
+                const table = tbody.closest("table");
+                const listContainer = document.querySelector(".guarantees-list");
+                const scrollEnd = listContainer.querySelector("#scroll-end");
+                const spinner = scrollEnd.querySelector(".spinner");
+
+                const restRoot =
+                        (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.root) ||
+                        (window.GO_REST && window.GO_REST.root) ||
+                        "/wp-json/";
+                const restNonce =
+                        (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.nonce) ||
+                        (window.GO_REST && window.GO_REST.nonce) ||
+                        "";
 		const DEFAULT_PER = 12;
 		let perPage = DEFAULT_PER;
 		let currentPage = 1;
@@ -200,13 +209,13 @@
 			const search =
 				typeof options.search === "string" ? options.search : searchQuery;
 			try {
-				let url = `${GO_REST.root}go/v1/guarantees?page=${page}&per_page=${perPage}`;
+                let url = `${restRoot}go/v1/guarantees?page=${page}&per_page=${perPage}`;
 				if (search && search.length > 0) {
 					url += `&search=${encodeURIComponent(search)}`;
 				}
-				const res = await fetch(url, {
-					headers: { "X-WP-Nonce": GO_REST.nonce },
-				});
+                                const res = await fetch(url, {
+                                        headers: { "X-WP-Nonce": restNonce },
+                                });
 				if (!res.ok) throw `HTTP ${res.status}`;
 				totalPosts = +res.headers.get("X-WP-Total") || 0;
 				totalPages = +res.headers.get("X-WP-TotalPages") || 1;
@@ -260,11 +269,11 @@
 								(async () => {
 									try {
 										const res = await fetch(
-											`${GO_REST.root}go/v1/guarantees/${id}`,
-											{
-												headers: { "X-WP-Nonce": GO_REST.nonce },
-											}
-										);
+                                                                                `${restRoot}go/v1/guarantees/${id}`,
+                                                                                        {
+                                                                                                headers: { "X-WP-Nonce": restNonce },
+                                                                                        }
+                                                                                );
 										if (!res.ok) throw res.status;
 										const dataDetalle = await res.json();
 										detailCache.set(id, dataDetalle);
@@ -320,16 +329,16 @@
 			isLoading = true;
 			spinner.style.display = "";
 			try {
-				let res = await fetch(
-					`${GO_REST.root}go/v1/guarantees?page=1&per_page=1`,
-					{ headers: { "X-WP-Nonce": GO_REST.nonce } }
-				);
+                                let res = await fetch(
+                                        `${restRoot}go/v1/guarantees?page=1&per_page=1`,
+                                        { headers: { "X-WP-Nonce": restNonce } }
+                                );
 				if (!res.ok) throw res.status;
 				totalPosts = +res.headers.get("X-WP-Total") || 0;
-				res = await fetch(
-					`${GO_REST.root}go/v1/guarantees?page=1&per_page=${totalPosts}`,
-					{ headers: { "X-WP-Nonce": GO_REST.nonce } }
-				);
+                                res = await fetch(
+                                        `${restRoot}go/v1/guarantees?page=1&per_page=${totalPosts}`,
+                                        { headers: { "X-WP-Nonce": restNonce } }
+                                );
 				if (!res.ok) throw res.status;
 				const { data } = await res.json();
 				tbody.innerHTML = "";
@@ -658,8 +667,8 @@
 				if (!detailCache.has(id)) {
 					nextPanel.classList.add("loading");
 					try {
-						const res = await fetch(`${GO_REST.root}go/v1/guarantees/${id}`, {
-							headers: { "X-WP-Nonce": GO_REST.nonce },
+                                            const res = await fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                                    headers: { "X-WP-Nonce": restNonce },
 						});
 						if (!res.ok) throw res.status;
 						const data = await res.json();
@@ -689,8 +698,8 @@
 					const id = row.dataset.id;
 					if (detailCache.has(id)) return;
 					try {
-						const res = await fetch(`${GO_REST.root}go/v1/guarantees/${id}`, {
-							headers: { "X-WP-Nonce": GO_REST.nonce },
+                                            const res = await fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                                    headers: { "X-WP-Nonce": restNonce },
 						});
 						if (!res.ok) throw res.status;
 						const data = await res.json();

@@ -29,6 +29,18 @@ use GarantiasOnline360VO\Svg;
         defer></script>
 <?php endif; ?>
 
+<?php if ($is_list_page ?? false) : ?>
+    <script>
+        window.__GO_CONFIG__ = {
+            rest: {
+                root: "<?php echo esc_url(rest_url()); ?>",
+                nonce: "<?php echo esc_js(wp_create_nonce('wp_rest')); ?>"
+            }
+        };
+    </script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" defer></script>
+<?php endif; ?>
+
 <?php if (($is_add_guarantee ?? false)) : ?>
     <?php
     // Asegura que las variables existen (y previene errores)
