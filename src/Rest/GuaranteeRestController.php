@@ -53,6 +53,17 @@ class GuaranteeRestController
         );
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::BASE . '/autosave',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'autosave'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::BASE . '/(?P<id>\d+)',
             [
                 [
@@ -117,6 +128,41 @@ class GuaranteeRestController
         }
 
         return false;
+    }
+
+    public static function can_edit($request)
+    {
+        return is_user_logged_in();
+    }
+
+    public static function autosave($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+        $data    = isset($request['data']) && is_array($request['data']) ? $request['data'] : [];
+
+        if ($post_id > 0) {
+            $post = get_post($post_id);
+            if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+                $post_id = 0;
+            }
+        }
+
+        if ($post_id === 0) {
+            $post_id = wp_insert_post([
+                'post_type'   => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+                'post_status' => 'draft',
+                'post_title'  => __('Borrador de garantía', 'garantias-online-360vo'),
+                'post_author' => get_current_user_id(),
+            ]);
+        }
+
+        foreach ($data as $key => $value) {
+            $meta_key = sanitize_key($key);
+            $meta_val = is_scalar($value) ? sanitize_text_field($value) : wp_json_encode($value);
+            update_post_meta($post_id, $meta_key, $meta_val);
+        }
+
+        return new WP_REST_Response(['id' => $post_id]);
     }
 
     /**
