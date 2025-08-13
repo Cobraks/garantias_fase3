@@ -168,7 +168,12 @@ class GuaranteeRestController
                     'compare' => 'LIKE',
                 ],
                 [
-                    'key'     => 'datos_vehiculo_marca_modelo',
+                    'key'     => 'datos_vehiculo_marca',
+                    'value'   => $search,
+                    'compare' => 'LIKE',
+                ],
+                [
+                    'key'     => 'datos_vehiculo_modelo',
                     'value'   => $search,
                     'compare' => 'LIKE',
                 ],
@@ -194,7 +199,9 @@ class GuaranteeRestController
             $post_id = $post->ID;
             // Usamos get_post_meta, NUNCA get_field aquí
             $mat    = get_post_meta($post_id, 'datos_vehiculo_matricula', true);
-            $marca  = get_post_meta($post_id, 'datos_vehiculo_marca_modelo', true);
+            $marca  = get_post_meta($post_id, 'datos_vehiculo_marca', true);
+            $modelo = get_post_meta($post_id, 'datos_vehiculo_modelo', true);
+            $marca_modelo = trim($marca . ' ' . $modelo);
             $desde  = get_post_meta($post_id, 'estado_garantia_inicio', true);
             $hasta  = get_post_meta($post_id, 'estado_garantia_finalizacion', true);
             $plan_id = get_post_meta($post_id, 'garantia_contratada_garantia', true);
@@ -214,7 +221,7 @@ class GuaranteeRestController
             $data[] = [
                 'id'         => $post_id,
                 'mat'        => $mat,
-                'marca'      => $marca,
+                'marca'      => $marca_modelo,
                 'desde'      => $desde,
                 'hasta'      => $hasta,
                 'plan'       => $plan,
@@ -253,7 +260,9 @@ class GuaranteeRestController
         $id = (int) $request['id'];
         // Vehículo
         $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
-        $marca_modelo = get_post_meta($id, 'datos_vehiculo_marca_modelo', true);
+        $marca = get_post_meta($id, 'datos_vehiculo_marca', true);
+        $modelo = get_post_meta($id, 'datos_vehiculo_modelo', true);
+        $marca_modelo = trim($marca . ' ' . $modelo);
         $tipo = get_post_meta($id, 'datos_vehiculo_tipo_vehiculo', true);
         $kilometros = get_post_meta($id, 'datos_vehiculo_kilometros', true);
         $primera_matriculacion = get_post_meta($id, 'datos_vehiculo_primera_matriculacion', true);

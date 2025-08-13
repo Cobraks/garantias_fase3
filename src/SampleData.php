@@ -195,6 +195,7 @@ class SampleData
                 'tipo_vehiculo'    => $tipo_vehiculo_terms[array_rand($tipo_vehiculo_terms)]->term_id,
                 'marca'            => $veh['marca'],
                 'modelo'           => $veh['modelo'],
+                'marca_modelo'     => $veh['marca'] . ' ' . $veh['modelo'],
                 'matricula'        => $matricula,
                 'primera_matriculacion' => (new \DateTime('2015-01-01'))
                     ->add(new \DateInterval('P' . rand(0, 365 * 8) . 'D'))
