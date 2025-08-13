@@ -62,11 +62,30 @@ function toggleVehiculoFields() {
 	updateSelectFloatingLabels();
 }
 
+function updatePotenciaUnits() {
+        const combustible = document.getElementById("combustible")?.value;
+        const potenciaLabel = document.querySelector("label[for='potencia']");
+        const potenciaSuffix = document
+                .getElementById("potencia")
+                ?.closest(".form__input-container")
+                ?.querySelector(".form__suffix");
+        const summaryUnit = document.getElementById("summary-potencia-unit");
+        const isElectrico = combustible === "electrico";
+        if (potenciaLabel)
+                potenciaLabel.textContent = isElectrico
+                        ? "Potencia (kW)"
+                        : "Potencia (CV)";
+        if (potenciaSuffix)
+                potenciaSuffix.textContent = isElectrico ? "kW" : "CV";
+        if (summaryUnit)
+                summaryUnit.textContent = isElectrico ? "kW" : "CV";
+}
+
 function toggleCombustibleDependientes() {
-	const combustible = document.getElementById("combustible");
-	const dobleMotorContainer = document.querySelector(
-		".form__input-container--doble_motor"
-	);
+        const combustible = document.getElementById("combustible");
+        const dobleMotorContainer = document.querySelector(
+                ".form__input-container--doble_motor"
+        );
 	if (!combustible || !dobleMotorContainer) return;
 
 	const val = combustible.value;
@@ -80,8 +99,9 @@ function toggleCombustibleDependientes() {
 	// Actualiza floating label tras cambio
 	updateSelectFloatingLabels();
 
-	// Refresca validación/resumen
+        // Refresca validación/resumen
         updateNextButtonState();
+        updatePotenciaUnits();
         debouncedUpdateSummary();
 }
 
@@ -93,12 +113,13 @@ function initDynamicFields() {
 		toggleVehiculoFields();
 	}
 
-	const combustible = document.getElementById("combustible");
-	if (combustible) {
-		combustible.addEventListener("change", toggleCombustibleDependientes);
-		// Estado inicial:
-		toggleCombustibleDependientes();
-	}
+        const combustible = document.getElementById("combustible");
+        if (combustible) {
+                combustible.addEventListener("change", toggleCombustibleDependientes);
+                // Estado inicial:
+                toggleCombustibleDependientes();
+                updatePotenciaUnits();
+        }
 
 	// También flota labels de selects al cargar (en caso de edición)
 	updateSelectFloatingLabels();

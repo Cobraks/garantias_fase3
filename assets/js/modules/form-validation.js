@@ -27,8 +27,13 @@ import { getUserRole } from "./config.js";
 
 // === Helpers ===
 function isTipoCamion() {
-	const tipo = document.getElementById("tipo_vehiculo");
-	return tipo && tipo.value === "camion";
+        const tipo = document.getElementById("tipo_vehiculo");
+        return tipo && tipo.value === "camion";
+}
+
+function getPotenciaUnit() {
+        const combustible = document.getElementById("combustible")?.value;
+        return combustible === "electrico" ? "kW" : "CV";
 }
 
 function getDynamicLimit(field) {
@@ -71,7 +76,8 @@ function validateWithDynamicLimit(input, showError) {
         if (value < limits.min) {
                 if (showError) {
                         let msg;
-                        if (field === "potencia") msg = `Potencia mínima ${limits.min} CV`;
+                        if (field === "potencia")
+                                msg = `Potencia mínima ${limits.min} ${getPotenciaUnit()}`;
                         else if (field === "cilindrada")
                                 msg = `Cilindrada mínima ${limits.min} CC`;
                         else msg = `Kilometraje mínimo ${limits.min}`;
@@ -82,7 +88,8 @@ function validateWithDynamicLimit(input, showError) {
         if (value > limits.max) {
                 if (showError) {
                         let msg;
-                        if (field === "potencia") msg = `Potencia máxima ${limits.max} CV`;
+                        if (field === "potencia")
+                                msg = `Potencia máxima ${limits.max} ${getPotenciaUnit()}`;
                         else if (field === "cilindrada")
                                 msg = `Cilindrada máxima ${limits.max} CC`;
                         else msg = `Kilometraje máximo ${limits.max}`;

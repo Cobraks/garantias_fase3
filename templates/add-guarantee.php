@@ -193,8 +193,8 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                     </div>
                     <div class="form__input-container form__input-container--corto form__input-container--suffix">
                         <input id="potencia" class="form__input" type="text" placeholder=" " required />
-                        <label for="potencia" class="form__placeholder">Potencia</label>
-                        <span class="form__suffix">cv</span>
+                        <label for="potencia" class="form__placeholder">Potencia (CV)</label>
+                        <span class="form__suffix">CV</span>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
@@ -202,7 +202,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                     <div class="form__input-container form__input-container--corto form__input-container--suffix">
                         <input id="cilindrada" class="form__input" type="text" placeholder=" " required />
                         <label for="cilindrada" class="form__placeholder">Cilindrada</label>
-                        <span class="form__suffix">cc</span>
+                        <span class="form__suffix">CC</span>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
@@ -511,11 +511,11 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
             </li>
             <li class="summary__item">
                 <span data-summary-field="potencia"></span>
-                <span class="summary__item-sufix">cv</span>
+                <span class="summary__item-sufix" id="summary-potencia-unit">CV</span>
             </li>
             <li class="summary__item">
                 <span data-summary-field="cilindrada"></span>
-                <span class="summary__item-sufix">cc</span>
+                <span class="summary__item-sufix">CC</span>
             </li>
             <li class="summary__item" id="summary-item-doble_motor" style="display:none;">
                 <span><span data-summary-field="doble_motor"></span></span>

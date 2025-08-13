@@ -105,25 +105,29 @@ function describeTramo(modalidad, valoresForm) {
 	const overallMax =
 		maximosReales.length > 0 ? Math.max(...maximosReales) : matched.max;
 
-	if (tipo === "cilindrada") {
-		if (matched.min === 0) {
-			return `Precio base hasta ${matched.max.toLocaleString()}cc`;
-		}
-		// Si el matched.max es el tope real (igual a overallMax), lo tratamos como infinito
-		if (matched.max === overallMax || matched.max === Infinity) {
-			return `Precio base más de ${matched.min.toLocaleString()}cc`;
-		}
-		return `Precio base de ${matched.min.toLocaleString()}cc a ${matched.max.toLocaleString()}cc`;
-	} else if (tipo === "potencia") {
-		if (matched.min === 0) {
-			return `Precio base hasta ${matched.max.toLocaleString()} CV`;
-		}
-		if (matched.max === overallMax || matched.max === Infinity) {
-			return `Precio base más de ${matched.min.toLocaleString()} CV`;
-		}
-		return `Precio base de ${matched.min.toLocaleString()} CV a ${matched.max.toLocaleString()} CV`;
-	}
-	return "Precio base";
+        if (tipo === "cilindrada") {
+                if (matched.min === 0) {
+                        return `Precio base hasta ${matched.max.toLocaleString()} CC`;
+                }
+                // Si el matched.max es el tope real (igual a overallMax), lo tratamos como infinito
+                if (matched.max === overallMax || matched.max === Infinity) {
+                        return `Precio base más de ${matched.min.toLocaleString()} CC`;
+                }
+                return `Precio base de ${matched.min.toLocaleString()} CC a ${matched.max.toLocaleString()} CC`;
+        } else if (tipo === "potencia") {
+                const unit =
+                        document.getElementById("combustible")?.value === "electrico"
+                                ? "kW"
+                                : "CV";
+                if (matched.min === 0) {
+                        return `Precio base hasta ${matched.max.toLocaleString()} ${unit}`;
+                }
+                if (matched.max === overallMax || matched.max === Infinity) {
+                        return `Precio base más de ${matched.min.toLocaleString()} ${unit}`;
+                }
+                return `Precio base de ${matched.min.toLocaleString()} ${unit} a ${matched.max.toLocaleString()} ${unit}`;
+        }
+        return "Precio base";
 }
 
 async function buildSummaryHTML() {
