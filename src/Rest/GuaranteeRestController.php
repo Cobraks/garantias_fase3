@@ -141,19 +141,24 @@ class GuaranteeRestController
      */
     private static function normalize_decimal($value)
     {
-        if (is_numeric($value)) {
-            return (string) $value;
+        if (!is_numeric($value)) {
+            $value     = preg_replace('/[^0-9.,]/', '', (string) $value);
+            $lastComma = strrpos($value, ',');
+            $lastDot   = strrpos($value, '.');
+            $sep       = $lastComma > $lastDot ? ',' : '.';
+            $parts     = explode($sep, $value);
+            $intPart   = preg_replace('/[^0-9]/', '', $parts[0]);
+            $decPart   = isset($parts[1]) ? preg_replace('/[^0-9]/', '', $parts[1]) : '';
+            $value     = $decPart !== '' ? $intPart . '.' . $decPart : $intPart;
         }
 
-        $value     = preg_replace('/[^0-9.,]/', '', (string) $value);
-        $lastComma = strrpos($value, ',');
-        $lastDot   = strrpos($value, '.');
-        $sep       = $lastComma > $lastDot ? ',' : '.';
-        $parts     = explode($sep, $value);
-        $intPart   = preg_replace('/[^0-9]/', '', $parts[0]);
-        $decPart   = isset($parts[1]) ? preg_replace('/[^0-9]/', '', $parts[1]) : '';
+        if ($value === '' || $value === null) {
+            return '';
+        }
 
-        return $decPart !== '' ? $intPart . '.' . $decPart : $intPart;
+        $float = (float) $value;
+        $str   = (string) $float;
+        return strpos($str, '.') !== false ? rtrim(rtrim($str, '0'), '.') : $str;
     }
 
     public static function autosave($request)

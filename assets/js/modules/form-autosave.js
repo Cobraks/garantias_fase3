@@ -67,7 +67,10 @@ export default function initAutosave() {
                 const parts = cleaned.split(sep);
                 const intPart = parts[0].replace(/[.,]/g, "");
                 const decPart = parts[1] ? parts[1].replace(/[.,]/g, "") : "";
-                return decPart ? `${intPart}.${decPart}` : intPart;
+                const num = decPart
+                        ? parseFloat(`${intPart}.${decPart}`)
+                        : parseFloat(intPart);
+                return Number.isNaN(num) ? "" : num;
         };
 
         const skipFields = new Set([
