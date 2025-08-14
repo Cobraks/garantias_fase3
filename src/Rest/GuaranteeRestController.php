@@ -200,11 +200,15 @@ class GuaranteeRestController
         }
 
         if (isset($data['datos_vehiculo']) && is_array($data['datos_vehiculo'])) {
-            $vehiculo = [];
-            $numeric_fields = ['kilometros', 'precio_venta', 'potencia', 'potencia_kw', 'cilindrada'];
+            $vehiculo        = [];
+            $numeric_fields  = ['kilometros', 'potencia', 'potencia_kw', 'cilindrada'];
+            $decimal_fields  = ['precio_venta'];
             foreach ($data['datos_vehiculo'] as $k => $v) {
                 if (in_array($k, $numeric_fields, true)) {
-                    $v = str_replace(['.', ','], ['', '.'], $v);
+                    $v             = str_replace(['.', ','], '', $v);
+                    $vehiculo[$k] = is_numeric($v) ? $v : '';
+                } elseif (in_array($k, $decimal_fields, true)) {
+                    $v             = str_replace(',', '.', $v);
                     $vehiculo[$k] = is_numeric($v) ? $v : '';
                 } else {
                     $vehiculo[$k] = sanitize_text_field($v);
@@ -289,7 +293,7 @@ class GuaranteeRestController
                         }
                         break;
                     case 'precio':
-                        $v        = str_replace(['.', ','], ['', '.'], $v);
+                        $v        = str_replace(',', '.', $v);
                         $gc[$k]   = is_numeric($v) ? $v : '';
                         break;
                     case 'metodo_pago':
@@ -300,7 +304,7 @@ class GuaranteeRestController
                         if (is_array($v)) {
                             $dr = [];
                             if (isset($v['precio_base'])) {
-                                $base        = str_replace(['.', ','], ['', '.'], $v['precio_base']);
+                                $base               = str_replace(',', '.', $v['precio_base']);
                                 $dr['precio_base'] = is_numeric($base) ? $base : '';
                             }
                             $gc['descuentos_y_recargos'] = $dr;
@@ -309,6 +313,16 @@ class GuaranteeRestController
                     default:
                         $gc[$k] = sanitize_text_field($v);
                         break;
+                }
+            }
+            if (isset($gc['garantia'])) {
+                $tipo_terms = wp_get_post_terms($gc['garantia'], 'tipo_garantia', ['fields' => 'ids']);
+                if (!is_wp_error($tipo_terms) && !empty($tipo_terms)) {
+                    $gc['tipo_garantia'] = (int) $tipo_terms[0];
+                }
+                $nivel_terms = wp_get_post_terms($gc['garantia'], 'nivel_garantia', ['fields' => 'ids']);
+                if (!is_wp_error($nivel_terms) && !empty($nivel_terms)) {
+                    $gc['nivel_garantia'] = (int) $nivel_terms[0];
                 }
             }
             if (function_exists('update_field')) {
