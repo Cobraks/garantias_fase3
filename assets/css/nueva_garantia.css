@@ -13,6 +13,7 @@
         -ms-border-radius: 0;
         -o-border-radius: 0;
         transition: border-radius .3s ease-in-out;
+        position: relative;
   }
   
 
@@ -1972,6 +1973,8 @@ margin-top: .5rem;
   .autosave-status__icon {
     width: 16px;
     height: 16px;
+
+    position: absolute;
   }
 
   @keyframes go-spin {
