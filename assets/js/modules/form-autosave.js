@@ -2,7 +2,14 @@
 "use strict";
 
 import FormCache from "./form-cache.js";
-import { getRestRoot, getRestNonce, getIcon } from "./config.js";
+import {
+        getRestRoot,
+        getRestNonce,
+        getIcon,
+        getUserRole,
+        getCurrentUserId,
+} from "./config.js";
+import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
 
 export default function initAutosave() {
@@ -51,6 +58,14 @@ export default function initAutosave() {
                 "codigo_postal",
         ];
 
+        const skipFields = new Set([
+                "duracion",
+                "metodo_pago",
+                "canal-venta",
+                "usuario-rol",
+                "fecha_inicio_garantia",
+        ]);
+
         const container = document.querySelector(".form-container") || document.body;
         const status = document.createElement("div");
         status.className = "autosave-status autosave-status--hidden";
@@ -81,7 +96,7 @@ export default function initAutosave() {
                 const datosCliente = {};
 
                 FormCache.inputs.forEach((input) => {
-                        if (!input.id) return;
+                        if (!input.id || skipFields.has(input.id)) return;
                         let value = input.value;
                         if (numericFields.includes(input.id)) {
                                 value = value.replace(/\./g, "").replace(",", ".");
@@ -123,6 +138,98 @@ export default function initAutosave() {
 
                 if (Object.keys(datosCliente).length) {
                         payload.datos_cliente = datosCliente;
+                }
+
+                // --- Garantía contratada ---
+                const garantia = {};
+                const userRole = getUserRole();
+                const modalidadId = getSelectedModalidadId();
+                if (modalidadId) {
+                        garantia.garantia = modalidadId;
+                        const modalidad = getVisibleModalidades().find(
+                                (m) => String(m.ID) === String(modalidadId)
+                        );
+                        if (modalidad) {
+                                const tipo = Array.isArray(modalidad.tipo_garantia)
+                                        ? modalidad.tipo_garantia[0]
+                                        : modalidad.tipo_garantia;
+                                const nivel = Array.isArray(modalidad.nivel_garantia)
+                                        ? modalidad.nivel_garantia[0]
+                                        : modalidad.nivel_garantia;
+                                if (tipo) garantia.tipo_garantia = tipo;
+                                if (nivel) garantia.nivel_garantia = nivel;
+                        }
+                        const recargosEl = document.querySelector(
+                                ".form__plan.selected .form__plan-recargos-precios"
+                        );
+                        if (recargosEl) {
+                                const txt = recargosEl.textContent;
+                                const baseMatch = txt.match(/Precio base:\s*([0-9.,]+)/i);
+                                const finalMatch = txt.match(/Precio final \+ IVA:\s*([0-9.,]+)/i);
+                                if (baseMatch) {
+                                        garantia.descuentos_y_recargos = {
+                                                precio_base: baseMatch[1]
+                                                        .replace(/\./g, "")
+                                                        .replace(",", "."),
+                                        };
+                                }
+                                if (finalMatch) {
+                                        garantia.precio = finalMatch[1]
+                                                .replace(/\./g, "")
+                                                .replace(",", ".");
+                                }
+                        }
+                }
+
+                const duracionEl = document.getElementById("duracion");
+                if (duracionEl && duracionEl.value) {
+                        garantia.meses_contratados = duracionEl.value;
+                }
+
+                const metodoPagoEl = document.getElementById("metodo_pago");
+                if (metodoPagoEl && metodoPagoEl.value) {
+                        garantia.metodo_pago = metodoPagoEl.value;
+                }
+
+                if (userRole === "admin") {
+                        const canal = document.getElementById("canal-venta");
+                        if (canal && canal.value) {
+                                garantia.canal_venta = canal.value;
+                        }
+                        const usuario = document.getElementById("usuario-rol");
+                        if (usuario && usuario.value) {
+                                garantia.concesionario_empresa_profesional = usuario.value;
+                        }
+                } else if (userRole === "comercial") {
+                        garantia.canal_venta = "profesional";
+                        const usuario = document.getElementById("usuario-rol");
+                        if (usuario && usuario.value) {
+                                garantia.concesionario_empresa_profesional = usuario.value;
+                        }
+                } else if (userRole === "profesional") {
+                        garantia.canal_venta = "profesional";
+                        const currentId = getCurrentUserId();
+                        if (currentId) {
+                                garantia.concesionario_empresa_profesional = currentId;
+                        }
+                }
+
+                if (Object.keys(garantia).length) {
+                        payload.garantia_contratada = garantia;
+                }
+
+                // --- Estado de la garantía ---
+                const inicioEl = document.getElementById("fecha_inicio_garantia");
+                if (inicioEl && inicioEl.value) {
+                        const estado = { inicio: inicioEl.value };
+                        const meses = parseInt(garantia.meses_contratados || 0, 10);
+                        if (!isNaN(meses) && meses > 0) {
+                                const end = new Date(inicioEl.value);
+                                end.setMonth(end.getMonth() + meses);
+                                end.setDate(end.getDate() - 1);
+                                estado.finalizacion = end.toISOString().split("T")[0];
+                        }
+                        payload.estado_garantia = estado;
                 }
 
                 console.log("[AUTOSAVE] payload", payload);

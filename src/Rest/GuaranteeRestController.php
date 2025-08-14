@@ -273,6 +273,91 @@ class GuaranteeRestController
             unset($data['datos_cliente']);
         }
 
+        $meses_contratados = 0;
+        if (isset($data['garantia_contratada']) && is_array($data['garantia_contratada'])) {
+            $gc   = [];
+            foreach ($data['garantia_contratada'] as $k => $v) {
+                switch ($k) {
+                    case 'garantia':
+                    case 'tipo_garantia':
+                    case 'nivel_garantia':
+                    case 'meses_contratados':
+                    case 'concesionario_empresa_profesional':
+                        $gc[$k] = absint($v);
+                        if ($k === 'meses_contratados') {
+                            $meses_contratados = (int) $gc[$k];
+                        }
+                        break;
+                    case 'precio':
+                        $v        = str_replace(['.', ','], ['', '.'], $v);
+                        $gc[$k]   = is_numeric($v) ? $v : '';
+                        break;
+                    case 'metodo_pago':
+                    case 'canal_venta':
+                        $gc[$k] = sanitize_text_field($v);
+                        break;
+                    case 'descuentos_y_recargos':
+                        if (is_array($v)) {
+                            $dr = [];
+                            if (isset($v['precio_base'])) {
+                                $base        = str_replace(['.', ','], ['', '.'], $v['precio_base']);
+                                $dr['precio_base'] = is_numeric($base) ? $base : '';
+                            }
+                            $gc['descuentos_y_recargos'] = $dr;
+                        }
+                        break;
+                    default:
+                        $gc[$k] = sanitize_text_field($v);
+                        break;
+                }
+            }
+            if (function_exists('update_field')) {
+                update_field('garantia_contratada', $gc, $post_id);
+            } else {
+                foreach ($gc as $k => $v) {
+                    if (is_array($v)) {
+                        foreach ($v as $subk => $subv) {
+                            update_post_meta($post_id, 'garantia_contratada_' . $k . '_' . $subk, $subv);
+                        }
+                    } else {
+                        update_post_meta($post_id, 'garantia_contratada_' . $k, $v);
+                    }
+                }
+            }
+            error_log('[AUTOSAVE] Saved garantia_contratada for ID ' . $post_id . ': ' . wp_json_encode($gc));
+            unset($data['garantia_contratada']);
+        }
+
+        if (isset($data['estado_garantia']) && is_array($data['estado_garantia'])) {
+            $estado = [];
+            if (isset($data['estado_garantia']['inicio'])) {
+                $inicio        = sanitize_text_field($data['estado_garantia']['inicio']);
+                $estado['inicio'] = $inicio;
+                if ($inicio && $meses_contratados > 0) {
+                    $end = date_create($inicio);
+                    if ($end) {
+                        $end->modify("+{$meses_contratados} months");
+                        $end->modify('-1 day');
+                        $estado['finalizacion'] = $end->format('Y-m-d');
+                    }
+                }
+            }
+            if (isset($data['estado_garantia']['finalizacion']) && empty($estado['finalizacion'])) {
+                $estado['finalizacion'] = sanitize_text_field($data['estado_garantia']['finalizacion']);
+            }
+            if ($estado) {
+                if (function_exists('update_field')) {
+                    update_field('estado_garantia', $estado, $post_id);
+                } else {
+                    foreach ($estado as $k => $v) {
+                        update_post_meta($post_id, 'estado_garantia_' . $k, $v);
+                    }
+                }
+                error_log('[AUTOSAVE] Saved estado_garantia for ID ' . $post_id . ': ' . wp_json_encode($estado));
+            }
+            unset($data['estado_garantia']);
+        }
+
         foreach ($data as $key => $value) {
             $meta_key = sanitize_key($key);
             $meta_val = is_scalar($value) ? sanitize_text_field($value) : wp_json_encode($value);
