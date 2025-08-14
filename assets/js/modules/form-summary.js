@@ -168,22 +168,41 @@ function getSummaryText(fieldId) {
 
         // Doble motor (depende de combustible)
         if (fieldId === "doble_motor") {
-		const combustible = document.getElementById("combustible")?.value;
-		const aplica = ["electrico", "hibrido", "gpl_gnc"].includes(combustible);
-		if (!aplica) {
-			return { text: "No aplica", error: false };
-		}
-		const doble = document.getElementById("doble_motor");
-		if (!doble || !doble.value)
-			return { text: "Falta Doble motor", error: true };
-		const selectedText = doble.options[doble.selectedIndex]?.text?.trim() || "";
-		return { text: selectedText, error: false };
-	}
+                const combustible = document.getElementById("combustible")?.value;
+                const aplica = ["electrico", "hibrido", "gpl_gnc"].includes(combustible);
+                if (!aplica) {
+                        return { text: "No aplica", error: false };
+                }
+                const doble = document.getElementById("doble_motor");
+                if (!doble || !doble.value)
+                        return { text: "Falta Doble motor", error: true };
+                const selectedText = doble.options[doble.selectedIndex]?.text?.trim() || "";
+                return { text: selectedText, error: false };
+        }
 
-	// Por defecto: campo simple
-	const input = document.getElementById(fieldId);
-	if (input) {
-		if (!input.value.trim()) {
+        if (fieldId === "potencia") {
+                const potencia = document.getElementById("potencia");
+                const unit = document.getElementById("summary-potencia-unit");
+                if (!potencia || !potencia.value.trim()) {
+                        return { text: "Falta Potencia", error: true };
+                }
+                const combustible = document.getElementById("combustible")?.value;
+                if (combustible === "electrico") {
+                        const kw = parseFloat(
+                                potencia.value.replace(/\./g, "").replace(",", ".")
+                        );
+                        const cv = Math.round(kw * 1.3596);
+                        if (unit) unit.textContent = "CV";
+                        return { text: isNaN(cv) ? potencia.value : cv.toString(), error: false };
+                }
+                if (unit) unit.textContent = "CV";
+                return { text: potencia.value, error: false };
+        }
+
+        // Por defecto: campo simple
+        const input = document.getElementById(fieldId);
+        if (input) {
+                if (!input.value.trim()) {
 			const label = document.querySelector(`label[for="${fieldId}"]`);
 			return { text: "Falta " + (label?.textContent || fieldId), error: true };
 		}

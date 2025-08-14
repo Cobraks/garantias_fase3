@@ -101,6 +101,19 @@ export default function initAutosave() {
                         delete datosVehiculo.fecha_primera_matriculacion;
                 }
 
+                if (
+                        datosVehiculo.combustible === "electrico" &&
+                        datosVehiculo.potencia
+                ) {
+                        const kw = parseFloat(datosVehiculo.potencia);
+                        if (!isNaN(kw)) {
+                                datosVehiculo.potencia_kw = datosVehiculo.potencia;
+                                datosVehiculo.potencia = Math.round(
+                                        kw * 1.3596
+                                ).toString();
+                        }
+                }
+
                 if (Object.keys(datosVehiculo).length) {
                         payload.datos_vehiculo = datosVehiculo;
                         if (datosVehiculo.matricula) {

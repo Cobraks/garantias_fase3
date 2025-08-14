@@ -220,6 +220,22 @@ class GuaranteeRestController
                     $vehiculo['tipo_vehiculo'] = (int) $term->term_id;
                 }
             }
+
+            if (
+                isset($vehiculo['combustible']) &&
+                $vehiculo['combustible'] === 'electrico'
+            ) {
+                $kw = null;
+                if (isset($vehiculo['potencia_kw']) && $vehiculo['potencia_kw'] !== '') {
+                    $kw = (float) $vehiculo['potencia_kw'];
+                } elseif (isset($vehiculo['potencia']) && $vehiculo['potencia'] !== '') {
+                    $kw = (float) $vehiculo['potencia'];
+                    $vehiculo['potencia_kw'] = (string) $kw;
+                }
+                if ($kw !== null) {
+                    $vehiculo['potencia'] = (string) round($kw * 1.3596);
+                }
+            }
             if (function_exists('update_field')) {
                 update_field('datos_vehiculo', $vehiculo, $post_id);
             } else {
