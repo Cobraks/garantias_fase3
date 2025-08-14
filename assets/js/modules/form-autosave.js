@@ -58,6 +58,18 @@ export default function initAutosave() {
                 "codigo_postal",
         ];
 
+        const normalizePrice = (str) => {
+                if (typeof str !== "string") return str;
+                const cleaned = str.replace(/[^0-9.,]/g, "");
+                const lastComma = cleaned.lastIndexOf(",");
+                const lastDot = cleaned.lastIndexOf(".");
+                const sep = lastComma > lastDot ? "," : ".";
+                const parts = cleaned.split(sep);
+                const intPart = parts[0].replace(/[.,]/g, "");
+                const decPart = parts[1] ? parts[1].replace(/[.,]/g, "") : "";
+                return decPart ? `${intPart}.${decPart}` : intPart;
+        };
+
         const skipFields = new Set([
                 "duracion",
                 "metodo_pago",
@@ -99,7 +111,11 @@ export default function initAutosave() {
                         if (!input.id || skipFields.has(input.id)) return;
                         let value = input.value;
                         if (numericFields.includes(input.id)) {
-                                value = value.replace(/\./g, "").replace(",", ".");
+                                if (input.id === "precio_venta") {
+                                        value = normalizePrice(value);
+                                } else {
+                                        value = value.replace(/\./g, "").replace(",", ".");
+                                }
                         }
                         if (vehiculoFields.includes(input.id)) {
                                 datosVehiculo[input.id] = value;
@@ -168,15 +184,11 @@ export default function initAutosave() {
                                 const finalMatch = txt.match(/Precio final \+ IVA:\s*([0-9.,]+)/i);
                                 if (baseMatch) {
                                         garantia.descuentos_y_recargos = {
-                                                precio_base: baseMatch[1]
-                                                        .replace(/\./g, "")
-                                                        .replace(",", "."),
+                                                precio_base: normalizePrice(baseMatch[1]),
                                         };
                                 }
                                 if (finalMatch) {
-                                        garantia.precio = finalMatch[1]
-                                                .replace(/\./g, "")
-                                                .replace(",", ".");
+                                        garantia.precio = normalizePrice(finalMatch[1]);
                                 }
                         }
                 }

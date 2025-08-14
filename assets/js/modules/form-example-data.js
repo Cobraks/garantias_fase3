@@ -33,7 +33,7 @@ function rellenarDatosEjemplo() {
                 fecha_primera_matriculacion: "2018-05-10",
                 matricula: generarMatriculaAleatoria(),
                 numero_bastidor: "WBA8D61070A123456",
-                precio_venta: "17500",
+                precio_venta: "17500,50",
                 potencia: "150",
                 cilindrada: "3003",
 		dni: "12345678Z",
