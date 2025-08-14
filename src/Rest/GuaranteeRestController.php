@@ -332,6 +332,22 @@ class GuaranteeRestController
                                 $base               = self::normalize_decimal($v['precio_base']);
                                 $dr['precio_base'] = is_numeric($base) ? $base : '';
                             }
+                            if (!empty($v['listado_descuentos_recargos']) && is_array($v['listado_descuentos_recargos'])) {
+                                $list = [];
+                                foreach ($v['listado_descuentos_recargos'] as $row) {
+                                    $tipo = sanitize_text_field($row['tipo'] ?? '');
+                                    $por  = self::normalize_decimal($row['porcentaje'] ?? '');
+                                    $raz  = sanitize_text_field($row['razon'] ?? '');
+                                    $list[] = [
+                                        'tipo'       => $tipo,
+                                        'porcentaje' => is_numeric($por) ? $por : '',
+                                        'razon'      => $raz,
+                                    ];
+                                }
+                                if ($list) {
+                                    $dr['listado_descuentos_recargos'] = array_values($list);
+                                }
+                            }
                             $gc['descuentos_y_recargos'] = $dr;
                         }
                         break;

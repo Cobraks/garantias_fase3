@@ -11,6 +11,7 @@ import {
 } from "./config.js";
 import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
+import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.js";
 
 export default function initAutosave() {
         const form = document.getElementById("form-garantia");
@@ -177,21 +178,58 @@ export default function initAutosave() {
                                         : modalidad.nivel_garantia;
                                 if (tipo) garantia.tipo_garantia = tipo;
                                 if (nivel) garantia.nivel_garantia = nivel;
-                        }
-                        const recargosEl = document.querySelector(
-                                ".form__plan.selected .form__plan-recargos-precios"
-                        );
-                        if (recargosEl) {
-                                const txt = recargosEl.textContent;
-                                const baseMatch = txt.match(/Precio base:\s*([0-9.,]+)/i);
-                                const finalMatch = txt.match(/Precio final \+ IVA:\s*([0-9.,]+)/i);
-                                if (baseMatch) {
-                                        garantia.descuentos_y_recargos = {
-                                                precio_base: normalizePrice(baseMatch[1]),
-                                        };
+
+                                const dr = {};
+                                const recargosEl = document.querySelector(
+                                        ".form__plan.selected .form__plan-recargos-precios"
+                                );
+                                if (recargosEl) {
+                                        const txt = recargosEl.textContent;
+                                        const baseMatch = txt.match(/Precio base:\s*([0-9.,]+)/i);
+                                        const finalMatch = txt.match(/Precio final \+ IVA:\s*([0-9.,]+)/i);
+                                        if (baseMatch) {
+                                                dr.precio_base = normalizePrice(baseMatch[1]);
+                                        }
+                                        if (finalMatch) {
+                                                garantia.precio = normalizePrice(finalMatch[1]);
+                                        }
                                 }
-                                if (finalMatch) {
-                                        garantia.precio = normalizePrice(finalMatch[1]);
+
+                                const listado = [];
+                                const descuentos = await getDescuentosAplicables(modalidad);
+                                descuentos.forEach((d) => {
+                                        listado.push({
+                                                tipo: "descuento",
+                                                porcentaje: Math.round(d.porcentaje * 10000) / 100,
+                                                razon: d.nombre,
+                                        });
+                                });
+                                const valoresRecargo = { ...datosVehiculo };
+                                if (datosVehiculo.primera_matriculacion) {
+                                        valoresRecargo.fecha_primera_matriculacion =
+                                                datosVehiculo.primera_matriculacion;
+                                }
+                                const breakdown = calcularRecargos(
+                                        modalidad,
+                                        valoresRecargo
+                                );
+                                if (breakdown && Array.isArray(breakdown.detalles)) {
+                                        breakdown.detalles.forEach((det) => {
+                                                listado.push({
+                                                        tipo: "recargo",
+                                                        porcentaje:
+                                                                Math.round(
+                                                                        det.porcentajeAplicado * 10000
+                                                                ) / 100,
+                                                        razon: det.descripcion || "",
+                                                });
+                                        });
+                                }
+                                if (listado.length) {
+                                        dr.listado_descuentos_recargos = listado;
+                                }
+                                if (Object.keys(dr).length) {
+                                        garantia.descuentos_y_recargos = dr;
                                 }
                         }
                 }
