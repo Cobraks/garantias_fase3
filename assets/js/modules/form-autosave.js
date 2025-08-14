@@ -31,12 +31,24 @@ export default function initAutosave() {
                 "doble_motor",
         ];
 
+        const clienteFieldMap = {
+                nombre_apellidos: "nombre_y_apellidos",
+                dni: "dni",
+                telefono: "telefono",
+                correo: "email",
+                direccion: "direccion",
+                localidad: "localidad",
+                provincia: "provincia",
+                codigo_postal: "codigo_postal",
+        };
+
         const numericFields = [
                 "kilometros",
                 "precio_venta",
                 "potencia",
                 "potencia_kw",
                 "cilindrada",
+                "codigo_postal",
         ];
 
         const container = document.querySelector(".form-container") || document.body;
@@ -66,6 +78,7 @@ export default function initAutosave() {
 
                 const payload = {};
                 const datosVehiculo = {};
+                const datosCliente = {};
 
                 FormCache.inputs.forEach((input) => {
                         if (!input.id) return;
@@ -75,6 +88,8 @@ export default function initAutosave() {
                         }
                         if (vehiculoFields.includes(input.id)) {
                                 datosVehiculo[input.id] = value;
+                        } else if (clienteFieldMap[input.id]) {
+                                datosCliente[clienteFieldMap[input.id]] = value;
                         } else {
                                 payload[input.id] = value;
                         }
@@ -91,6 +106,10 @@ export default function initAutosave() {
                         if (datosVehiculo.matricula) {
                                 payload.matricula = datosVehiculo.matricula;
                         }
+                }
+
+                if (Object.keys(datosCliente).length) {
+                        payload.datos_cliente = datosCliente;
                 }
 
                 console.log("[AUTOSAVE] payload", payload);

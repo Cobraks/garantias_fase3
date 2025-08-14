@@ -231,6 +231,32 @@ class GuaranteeRestController
             unset($data['datos_vehiculo']);
         }
 
+        if (isset($data['datos_cliente']) && is_array($data['datos_cliente'])) {
+            $cliente = [];
+            foreach ($data['datos_cliente'] as $k => $v) {
+                switch ($k) {
+                    case 'email':
+                        $cliente[$k] = sanitize_email($v);
+                        break;
+                    case 'codigo_postal':
+                        $cliente[$k] = sanitize_text_field($v);
+                        break;
+                    default:
+                        $cliente[$k] = sanitize_text_field($v);
+                        break;
+                }
+            }
+            if (function_exists('update_field')) {
+                update_field('datos_cliente', $cliente, $post_id);
+            } else {
+                foreach ($cliente as $k => $v) {
+                    update_post_meta($post_id, 'datos_cliente_' . $k, $v);
+                }
+            }
+            error_log('[AUTOSAVE] Saved datos_cliente for ID ' . $post_id . ': ' . wp_json_encode($cliente));
+            unset($data['datos_cliente']);
+        }
+
         foreach ($data as $key => $value) {
             $meta_key = sanitize_key($key);
             $meta_val = is_scalar($value) ? sanitize_text_field($value) : wp_json_encode($value);
