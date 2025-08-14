@@ -3,7 +3,7 @@
 
 import FormCache from "./form-cache.js";
 import { getRestRoot, getRestNonce, getIcon } from "./config.js";
-import { debounce } from "./form-utils.js";
+import { debounce, setError } from "./form-utils.js";
 
 export default function initAutosave() {
         const form = document.getElementById("form-garantia");
@@ -46,6 +46,7 @@ export default function initAutosave() {
         icon.style.display = "none";
 
         let draftId = localStorage.getItem("go_draft_id");
+        let draftUuid = localStorage.getItem("go_draft_uuid");
 
         async function sendAutosave() {
                 console.log("[AUTOSAVE] Triggered", { draftId });
@@ -78,24 +79,35 @@ export default function initAutosave() {
                 console.log("[AUTOSAVE] payload", payload);
 
                 try {
-                        const res = await fetch(
-                                `${getRestRoot()}go/v1/guarantees/autosave`,
-                                {
-                                        method: "POST",
-                                        headers: {
-                                                "Content-Type": "application/json",
-                                                "X-WP-Nonce": getRestNonce(),
-                                        },
-                                        body: JSON.stringify({ id: draftId, data: payload }),
-                                }
-                        );
+                        const res = await fetch(`${getRestRoot()}go/v1/guarantees/autosave`, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": getRestNonce(),
+                                },
+                                body: JSON.stringify({ id: draftId, uuid: draftUuid, data: payload }),
+                        });
                         console.log("[AUTOSAVE] response status", res.status);
                         const json = await res.json();
                         console.log("[AUTOSAVE] response json", json);
+                        if (!res.ok) {
+                                if (res.status === 409 && json?.message) {
+                                        alert(json.message);
+                                        const plateInput = document.getElementById("matricula");
+                                        if (plateInput) setError(plateInput, json.message);
+                                }
+                                status.classList.add("autosave-status--hidden");
+                                return;
+                        }
                         if (json.id) {
                                 draftId = json.id;
                                 localStorage.setItem("go_draft_id", draftId);
                                 console.log("[AUTOSAVE] stored draftId", draftId);
+                        }
+                        if (json.uuid) {
+                                draftUuid = json.uuid;
+                                localStorage.setItem("go_draft_uuid", draftUuid);
+                                console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
                         spinner.style.display = "none";
                         icon.style.display = "inline-block";
