@@ -136,6 +136,26 @@ class GuaranteeRestController
         return is_user_logged_in();
     }
 
+    /**
+     * Normalize a price string to use dot as decimal separator.
+     */
+    private static function normalize_decimal($value)
+    {
+        if (is_numeric($value)) {
+            return (string) $value;
+        }
+
+        $value     = preg_replace('/[^0-9.,]/', '', (string) $value);
+        $lastComma = strrpos($value, ',');
+        $lastDot   = strrpos($value, '.');
+        $sep       = $lastComma > $lastDot ? ',' : '.';
+        $parts     = explode($sep, $value);
+        $intPart   = preg_replace('/[^0-9]/', '', $parts[0]);
+        $decPart   = isset($parts[1]) ? preg_replace('/[^0-9]/', '', $parts[1]) : '';
+
+        return $decPart !== '' ? $intPart . '.' . $decPart : $intPart;
+    }
+
     public static function autosave($request)
     {
         $post_id = isset($request['id']) ? absint($request['id']) : 0;
@@ -200,15 +220,15 @@ class GuaranteeRestController
         }
 
         if (isset($data['datos_vehiculo']) && is_array($data['datos_vehiculo'])) {
-            $vehiculo        = [];
-            $numeric_fields  = ['kilometros', 'potencia', 'potencia_kw', 'cilindrada'];
-            $decimal_fields  = ['precio_venta'];
+            $vehiculo       = [];
+            $numeric_fields = ['kilometros', 'potencia', 'potencia_kw', 'cilindrada'];
+            $decimal_fields = ['precio_venta'];
             foreach ($data['datos_vehiculo'] as $k => $v) {
                 if (in_array($k, $numeric_fields, true)) {
-                    $v             = str_replace(['.', ','], '', $v);
+                    $v            = str_replace(['.', ','], '', $v);
                     $vehiculo[$k] = is_numeric($v) ? $v : '';
                 } elseif (in_array($k, $decimal_fields, true)) {
-                    $v             = str_replace(',', '.', $v);
+                    $v            = self::normalize_decimal($v);
                     $vehiculo[$k] = is_numeric($v) ? $v : '';
                 } else {
                     $vehiculo[$k] = sanitize_text_field($v);
@@ -293,8 +313,8 @@ class GuaranteeRestController
                         }
                         break;
                     case 'precio':
-                        $v        = str_replace(',', '.', $v);
-                        $gc[$k]   = is_numeric($v) ? $v : '';
+                        $v      = self::normalize_decimal($v);
+                        $gc[$k] = is_numeric($v) ? $v : '';
                         break;
                     case 'metodo_pago':
                     case 'canal_venta':
@@ -304,7 +324,7 @@ class GuaranteeRestController
                         if (is_array($v)) {
                             $dr = [];
                             if (isset($v['precio_base'])) {
-                                $base               = str_replace(',', '.', $v['precio_base']);
+                                $base               = self::normalize_decimal($v['precio_base']);
                                 $dr['precio_base'] = is_numeric($base) ? $base : '';
                             }
                             $gc['descuentos_y_recargos'] = $dr;
