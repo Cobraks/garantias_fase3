@@ -13,6 +13,7 @@ import initCalculations from "./modules/form-calculations.js";
 import initExampleData from "./modules/form-example-data.js";
 import initUserSelect from "./modules/form-user-select.js";
 import initContratacionSummary from "./modules/form-contratacion-summary.js";
+import initAutosave from "./modules/form-autosave.js";
 
 
 // ===== Inicialización global =====
@@ -51,4 +52,5 @@ document.addEventListener("DOMContentLoaded", () => {
         initUserSelect(FormCache);
 
         initContratacionSummary();
+        initAutosave();
 });
