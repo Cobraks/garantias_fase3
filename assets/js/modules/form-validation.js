@@ -111,7 +111,7 @@ function validatePrecioVentaField(input, showError) {
         const parts = value.split(",");
         const intPart = parts[0].replace(/\./g, "");
         const decPart = parts[1] || "";
-        if (decPart.length > 2) {
+        if (decPart.length !== 0 && decPart.length !== 2) {
                 if (showError) setError(input, "Número de decimales no válido.");
                 return false;
         }
@@ -158,12 +158,12 @@ const inputLimitsApplier = {
                 input.value = input.value.replace(/\D/g, "").slice(0, 7);
         },
         precio_venta: (input) => {
-                let value = input.value.replace(/\./g, ",");
+                let value = input.value.replace(/\./g, "");
                 value = value.replace(/[^0-9,]/g, "");
                 const parts = value.split(",");
                 const intPart = parts[0].slice(0, 6);
-                const decPart = parts.slice(1).join("");
-                input.value = decPart ? `${intPart},${decPart}` : intPart;
+                const decPart = parts[1] !== undefined ? parts.slice(1).join("") : null;
+                input.value = decPart !== null ? `${intPart},${decPart}` : intPart;
         },
 	cilindrada: (input) => {
 		input.value = input.value.replace(/\D/g, "").slice(0, 4);
@@ -362,7 +362,7 @@ function setupInputValidationBehavior(input) {
 		}
 		// Formatear número cuando toca
                 if (numericLimits[id]) {
-                        if (id === "precio_venta") formatCurrency(input);
+                        if (id === "precio_venta") formatCurrency(input, true);
                         else formatNumber(input);
                 }
 		// Validación ligera (sin hard check)

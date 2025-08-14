@@ -194,13 +194,20 @@ export function formatNumber(input) {
         }
 }
 
-export function formatCurrency(input) {
+export function formatCurrency(input, keepTrailingComma = false) {
         if (!input) return;
         let value = input.value.replace(/\./g, "").replace(/[^0-9,]/g, "");
+        const endsWithComma = value.endsWith(",");
         const parts = value.split(",");
         const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         const decPart = parts.slice(1).join("");
-        input.value = decPart ? `${intPart},${decPart}` : intPart;
+        if (decPart) {
+                input.value = `${intPart},${decPart}`;
+        } else if (keepTrailingComma && endsWithComma) {
+                input.value = `${intPart},`;
+        } else {
+                input.value = intPart;
+        }
         logDebug(`formatCurrency(${input.id}): ${input.value}`);
 }
 
