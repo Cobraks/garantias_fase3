@@ -5,6 +5,7 @@ namespace GarantiasOnline360VO\Rest;
 use WP_REST_Server;
 use WP_Query;
 use WP_REST_Response;
+use WP_Error;
 
 class GuaranteeRestController
 {
@@ -48,6 +49,17 @@ class GuaranteeRestController
                     'methods'             => WP_REST_Server::READABLE,
                     'callback'            => [__CLASS__, 'get_filters'],
                     'permission_callback' => [__CLASS__, 'can_list'],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/autosave',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'autosave'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
                 ],
             ]
         );
@@ -117,6 +129,101 @@ class GuaranteeRestController
         }
 
         return false;
+    }
+
+    public static function can_edit($request)
+    {
+        return is_user_logged_in();
+    }
+
+    public static function autosave($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+        $uuid    = isset($request['uuid']) ? sanitize_text_field($request['uuid']) : '';
+        $data    = isset($request['data']) && is_array($request['data']) ? $request['data'] : [];
+
+        error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
+
+        $matricula = '';
+        if (isset($data['matricula'])) {
+            $matricula = sanitize_text_field($data['matricula']);
+        } elseif (isset($data['datos_vehiculo']['matricula'])) {
+            $matricula = sanitize_text_field($data['datos_vehiculo']['matricula']);
+        }
+
+        if ($post_id > 0) {
+            $post = get_post($post_id);
+            $stored_uuid = get_post_meta($post_id, 'estado_garantia_uuid', true);
+            if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE || !$uuid || $uuid !== $stored_uuid) {
+                $post_id = 0;
+            }
+        }
+
+        if ($matricula) {
+            $args = [
+                'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+                'post_status'    => ['draft', 'publish', 'pending', 'future'],
+                'meta_key'       => 'datos_vehiculo_matricula',
+                'meta_value'     => $matricula,
+                'fields'         => 'ids',
+                'posts_per_page' => 1,
+            ];
+            if ($post_id) {
+                $args['post__not_in'] = [$post_id];
+            }
+            $existing = get_posts($args);
+            if (!empty($existing)) {
+                return new WP_Error('duplicate_plate', __('Ya existe una garantía para este vehículo', 'garantias-online-360vo'), ['status' => 409]);
+            }
+        }
+
+        if ($post_id === 0) {
+            $title   = $matricula ? sprintf(__('Garantía %s', 'garantias-online-360vo'), $matricula) : __('Borrador de garantía', 'garantias-online-360vo');
+            $post_id = wp_insert_post([
+                'post_type'   => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+                'post_status' => 'draft',
+                'post_title'  => $title,
+                'post_author' => get_current_user_id(),
+            ]);
+            $uuid = wp_generate_uuid4();
+            update_post_meta($post_id, 'estado_garantia_uuid', $uuid);
+            error_log('[AUTOSAVE] Created draft guarantee ID ' . $post_id);
+        } elseif ($matricula) {
+            wp_update_post([
+                'ID'         => $post_id,
+                'post_title' => sprintf(__('Garantía %s', 'garantias-online-360vo'), $matricula),
+            ]);
+            error_log('[AUTOSAVE] Updated title for ID ' . $post_id);
+            if (!$uuid) {
+                $uuid = get_post_meta($post_id, 'estado_garantia_uuid', true);
+            }
+        }
+
+        if (isset($data['datos_vehiculo']) && is_array($data['datos_vehiculo'])) {
+            $vehiculo = [];
+            foreach ($data['datos_vehiculo'] as $k => $v) {
+                $vehiculo[$k] = sanitize_text_field($v);
+            }
+            if (function_exists('update_field')) {
+                update_field('datos_vehiculo', $vehiculo, $post_id);
+            } else {
+                foreach ($vehiculo as $k => $v) {
+                    update_post_meta($post_id, 'datos_vehiculo_' . $k, $v);
+                }
+            }
+            error_log('[AUTOSAVE] Saved datos_vehiculo for ID ' . $post_id . ': ' . wp_json_encode($vehiculo));
+            unset($data['datos_vehiculo']);
+        }
+
+        foreach ($data as $key => $value) {
+            $meta_key = sanitize_key($key);
+            $meta_val = is_scalar($value) ? sanitize_text_field($value) : wp_json_encode($value);
+            update_post_meta($post_id, $meta_key, $meta_val);
+        }
+
+        error_log('[AUTOSAVE] Completed for ID ' . $post_id);
+
+        return new WP_REST_Response(['id' => $post_id, 'uuid' => $uuid]);
     }
 
     /**
