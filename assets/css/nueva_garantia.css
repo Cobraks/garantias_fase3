@@ -1954,6 +1954,7 @@ margin-top: .5rem;
     box-shadow: 0 2px 6px rgba(0,0,0,.1);
     font-size: .875rem;
     z-index: 1000;
+      position: absolute;
   }
 
   .autosave-status--hidden {
@@ -1974,7 +1975,7 @@ margin-top: .5rem;
     width: 16px;
     height: 16px;
 
-    position: absolute;
+  
   }
 
   @keyframes go-spin {
