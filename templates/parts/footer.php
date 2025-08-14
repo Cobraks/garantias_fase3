@@ -53,6 +53,7 @@ use GarantiasOnline360VO\Svg;
     $icon_warning_html = Svg::icon('warning');
     $icon_check_html = Svg::icon('check');
     $icon_pdf_html = Svg::icon('pdf');
+    $icon_save_html = Svg::icon('save');
 
     if ($is_admin) {
         $js_user_role = 'admin';
@@ -90,7 +91,8 @@ use GarantiasOnline360VO\Svg;
                 percent: `<?php echo addslashes($icon_percent_html); ?>`,
                 check: `<?php echo addslashes($icon_check_html); ?>`,
                 warning: `<?php echo addslashes($icon_warning_html); ?>`,
-                pdf: `<?php echo addslashes($icon_pdf_html); ?>`
+                pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
+                save: `<?php echo addslashes($icon_save_html); ?>`
             }
         };
     </script>
