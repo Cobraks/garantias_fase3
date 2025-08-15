@@ -182,6 +182,18 @@ class GuaranteeRestController
             if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE || !$uuid || $uuid !== $stored_uuid) {
                 $post_id = 0;
             }
+        } elseif ($uuid) {
+            $found = get_posts([
+                'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+                'post_status'    => ['draft', 'publish', 'pending', 'future'],
+                'meta_key'       => 'estado_garantia_uuid',
+                'meta_value'     => $uuid,
+                'fields'         => 'ids',
+                'posts_per_page' => 1,
+            ]);
+            if (!empty($found)) {
+                $post_id = (int) $found[0];
+            }
         }
 
         if ($matricula) {

@@ -1,14 +1,17 @@
-# Changelog
+# Historial de cambios
+
+## 0.1.6 - 2025-08-16
+- Evita el aviso de matrícula duplicada al crear una garantía nueva.
+- Nota: queda pendiente mejorar la eficiencia, paginación y seguridad del sistema de logs.
 
 ## 0.1.5 - 2025-08-16
-- Format guarantee dates in Spanish locale and display prices with thousands separators and decimal commas.
+- Formateo de fechas al español y precios con separador de miles y coma decimal.
 
 ## 0.1.4 - 2025-08-15
-- Expose ACF status value/label pairs in REST responses and render labels in lists and detail views.
+- Exposición de pares valor/etiqueta del estado en la API REST y renderizado de etiquetas en listados y detalle.
 
 ## 0.1.3 - 2025-08-15
-- Display guarantee status label in badge while keeping status value for CSS class.
-- Bump plugin version.
+- La insignia de estado muestra la etiqueta traducida manteniendo el valor para clases CSS.
 
 ## 0.1.2 - 2025-08-15
-- Introduced guarantee logging system and REST API for dashboard feed.
+- Sistema de logs de garantías y API REST para el feed del panel.

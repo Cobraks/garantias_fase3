@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.6
+- Evita el aviso de matrícula duplicada al crear una garantía nueva.
+
 0.1.5
 - Fechas en formato español y precios con separador de miles.
 
