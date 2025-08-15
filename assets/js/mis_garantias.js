@@ -73,31 +73,35 @@
 		const urlMat = new URLSearchParams(window.location.search).get("matricula");
 		const detailCache = new Map();
 
-		function normalizeEstadoClase(estado) {
-			if (!estado) return "pendiente";
-			let val = estado
-				.toLowerCase()
-				.normalize("NFD")
-				.replace(/[\u0300-\u036f]/g, "")
-				.replace(/[^a-z0-9]/g, "");
-			if (val.startsWith("expir")) return "expirada";
-			if (val.startsWith("pendi")) return "pendiente";
-			if (val.startsWith("activa")) return "activada";
-			return val || "pendiente";
-		}
+                function normalizeEstadoClase(estado) {
+                        if (!estado) return "pendiente-pago";
+                        return String(estado)
+                                .toLowerCase()
+                                .normalize("NFD")
+                                .replace(/[\u0300-\u036f]/g, "")
+                                .replace(/[^a-z0-9]+/g, "-")
+                                .replace(/^-+|-+$/g, "");
+                }
 
 		function renderRow(item) {
-			const estado =
-				typeof item.estado === "string" && item.estado
-					? item.estado
-					: typeof item.estado === "number"
-					? String(item.estado)
-					: "Desconocido";
-			const estadoClase = normalizeEstadoClase(estado);
-			const marca_modelo = item.marca ?? "-";
-			const mat = item.mat ?? item.matricula ?? "-";
-			const desde = item.desde ?? "-";
-			const hasta = item.hasta ?? "-";
+                        const estadoData = item.estado || "";
+                        const estadoValue =
+                                typeof estadoData === "object" && estadoData.value
+                                        ? estadoData.value
+                                        : typeof estadoData === "string" && estadoData
+                                        ? estadoData
+                                        : typeof estadoData === "number"
+                                        ? String(estadoData)
+                                        : "";
+                        const estadoLabel =
+                                typeof estadoData === "object" && estadoData.label
+                                        ? estadoData.label
+                                        : estadoValue || "Desconocido";
+                        const estadoClase = normalizeEstadoClase(estadoValue);
+                        const marca_modelo = item.marca ?? "-";
+                        const mat = item.mat ?? item.matricula ?? "-";
+                        const desde = item.desde ?? "-";
+                        const hasta = item.hasta ?? "-";
 			const vendedor_name = item.vendedor ?? "-";
 			const plan = item.plan ?? "-";
 			const precio = item.precio ?? "-";
@@ -116,8 +120,8 @@
 			tr.dataset.plan = plan;
 			tr.dataset.desde = desde;
 			tr.dataset.hasta = hasta;
-			tr.dataset.estado = estado;
-			tr.dataset.estadoclase = estadoClase;
+                        tr.dataset.estado = estadoLabel;
+                        tr.dataset.estadoclase = estadoClase;
 			tr.dataset.vendedor_name = vendedor_name;
 			tr.dataset.vendedor_type = vendedor_type;
 			tr.dataset.precio = precio;
@@ -147,9 +151,9 @@
 						<span class="plan__name">${plan}</span>
 						<span class="plan__price">${precio}€</span>
 					</div>
-					<span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
-						${estado}
-					</span>
+                                          <span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
+                                                  ${estadoLabel}
+                                          </span>
 				</td>
 			`;
 			return tr;
@@ -422,8 +426,8 @@
 				plan: row.dataset.plan ?? "-",
 				desde: row.dataset.desde ?? "-",
 				hasta: row.dataset.hasta ?? "-",
-				estado: row.dataset.estado ?? "Desconocido",
-				estadoclase: row.dataset.estadoclase ?? "pendiente",
+                                estado: row.dataset.estado ?? "Desconocido",
+                                estadoclase: row.dataset.estadoclase ?? "pendiente-pago",
 				concesionario: row.dataset.vendedor_name ?? "-",
 				canal_venta: row.dataset.vendedor_type ?? "-",
 				precio: row.dataset.precio ?? "-",
@@ -493,19 +497,26 @@
 			`;
 		}
 
-		function renderFullDetail(data, rowData, skeletons = []) {
-			const skeleton = (field, fallback = "-") =>
-				skeletons.includes(field)
-					? `<span class="skeleton skeleton--${field}"></span>`
-					: data[field] ?? rowData[field] ?? fallback;
+                function renderFullDetail(data, rowData, skeletons = []) {
+                        const getFieldText = (val) =>
+                                val && typeof val === "object" && "label" in val
+                                        ? val.label
+                                        : val;
+                        const skeleton = (field, fallback = "-") =>
+                                skeletons.includes(field)
+                                        ? `<span class="skeleton skeleton--${field}"></span>`
+                                        : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
 
-			const mesesTotales = getDurationMeses(data.desde, data.hasta);
-			const mesesRestantes = getRestantesMeses(data.hasta);
+                        const mesesTotales = getDurationMeses(data.desde, data.hasta);
+                        const mesesRestantes = getRestantesMeses(data.hasta);
 
-			const estadoActual = data.estadoclase || data.estado || "pendiente";
-			const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
-				estadoActual
-			)}`;
+                        const estadoValue =
+                                (data.estado && data.estado.value) ||
+                                rowData.estadoclase ||
+                                "pendiente-pago";
+                        const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
+                                estadoValue
+                        )}`;
 
 			const planTitle = `${data.plan ?? "-"}${
 				mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
@@ -524,7 +535,10 @@
 									: "-"
 							})</span></p>
 						</div>
-						<div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
+                                                <div class="${badgeClase}">${skeleton(
+                                                        "estado",
+                                                        "Desconocido"
+                                                )}</div>
 					</div>
 					<div class="guarantee-detail__btn-container">
 						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
@@ -818,8 +832,10 @@
                                                 .forEach((o) => o.remove());
                                         estados.forEach((est) => {
                                                 const opt = document.createElement("option");
-                                                opt.value = est;
-                                                opt.textContent = est;
+                                                const val = typeof est === "object" ? est.value : est;
+                                                const lbl = typeof est === "object" ? est.label : est;
+                                                opt.value = val;
+                                                opt.textContent = lbl;
                                                 estadoSelect.appendChild(opt);
                                         });
                                 }

@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.4
+- Se muestran las etiquetas de estado correctas en listados y detalle, manteniendo el valor para clases CSS.
+
 
 ##Estructura de archivos
 garantias-online-360vo/
