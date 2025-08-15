@@ -43,6 +43,8 @@ class Plugin
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\OfertasRestController::class, 'register_routes']);
 
+        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeLogRestController::class, 'register_routes']);
+
 
 
         add_action('rest_api_init', function () {
@@ -81,6 +83,7 @@ class Plugin
         AssetCompiler::ensure_minified();
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
+        GuaranteeLogger::create_table();
     }
 
     /**
