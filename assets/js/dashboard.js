@@ -11,8 +11,20 @@
             const res = await fetch(`${go360Logs.endpoint}?page=${page}&per_page=${perPage}`, {
                 headers:{'X-WP-Nonce': go360Logs.nonce}
             });
-            if(!res.ok){ return; }
-            const data = await res.json();
+            if(!res.ok){
+                if(btn) btn.style.display='none';
+                return;
+            }
+            const clone = res.clone();
+            let data;
+            try {
+                data = await res.json();
+            } catch (err) {
+                const text = await clone.text();
+                console.error('Invalid JSON from logs endpoint', err, text);
+                if(btn) btn.style.display='none';
+                return;
+            }
             if(!Array.isArray(data) || data.length === 0){
                 if(btn) btn.style.display='none';
                 return;

@@ -10,6 +10,16 @@ class GuaranteeLogger
 {
     const TABLE = 'guarantee_logs';
 
+    public static function ensure_table(): void
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE;
+        $exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table));
+        if ($exists !== $table) {
+            self::create_table();
+        }
+    }
+
     public static function create_table(): void
     {
         global $wpdb;
@@ -35,6 +45,7 @@ class GuaranteeLogger
     {
         global $wpdb;
         $table = $wpdb->prefix . self::TABLE;
+        self::ensure_table();
 
         $wpdb->insert(
             $table,
@@ -53,6 +64,7 @@ class GuaranteeLogger
     {
         global $wpdb;
         $table = $wpdb->prefix . self::TABLE;
+        self::ensure_table();
         $where = [];
         $params = [];
 
@@ -74,6 +86,10 @@ class GuaranteeLogger
         $params[] = $offset;
 
         $prepared = $wpdb->prepare($sql, $params);
-        return $wpdb->get_results($prepared, ARRAY_A);
+        $results = $wpdb->get_results($prepared, ARRAY_A);
+        if ($wpdb->last_error) {
+            return [];
+        }
+        return $results ?: [];
     }
 }

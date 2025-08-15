@@ -3,7 +3,6 @@
 namespace GarantiasOnline360VO\Rest;
 
 use WP_REST_Server;
-use WP_REST_Response;
 use GarantiasOnline360VO\GuaranteeLogger;
 
 class GuaranteeLogRestController
@@ -56,6 +55,9 @@ class GuaranteeLogRestController
             'per_page'     => isset($request['per_page']) ? absint($request['per_page']) : 20,
         ];
         $logs = GuaranteeLogger::get_logs($args);
-        return new WP_REST_Response($logs);
+        if (is_wp_error($logs)) {
+            return $logs;
+        }
+        return rest_ensure_response($logs);
     }
 }
