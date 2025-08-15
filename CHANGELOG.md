@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.7 - 2025-08-16
+- Validación en tiempo real de matrículas duplicadas en el formulario de nueva garantía.
+
 ## 0.1.6 - 2025-08-16
 - Evita el aviso de matrícula duplicada al crear una garantía nueva.
 - Nota: queda pendiente mejorar la eficiencia, paginación y seguridad del sistema de logs.

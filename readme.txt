@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.7
+- Validación en tiempo real de matrículas duplicadas en la creación de garantías.
+
 0.1.6
 - Evita el aviso de matrícula duplicada al crear una garantía nueva.
 

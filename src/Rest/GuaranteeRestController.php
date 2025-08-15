@@ -65,6 +65,26 @@ class GuaranteeRestController
         );
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::BASE . '/check-plate',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'check_plate'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'matricula' => [
+                            'required'          => true,
+                            'sanitize_callback' => 'sanitize_text_field',
+                        ],
+                        'exclude'   => [
+                            'sanitize_callback' => 'sanitize_text_field',
+                        ],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::BASE . '/(?P<id>\d+)',
             [
                 [
@@ -434,6 +454,52 @@ class GuaranteeRestController
         error_log('[AUTOSAVE] Completed for ID ' . $post_id);
 
         return new WP_REST_Response(['id' => $post_id, 'uuid' => $uuid]);
+    }
+
+    public static function check_plate($request)
+    {
+        $matricula = isset($request['matricula']) ? sanitize_text_field($request['matricula']) : '';
+        if ($matricula === '') {
+            return new WP_Error('invalid_plate', __('Matrícula requerida', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $exclude = isset($request['exclude']) ? sanitize_text_field($request['exclude']) : '';
+        $post_id = 0;
+        if ($exclude) {
+            if (ctype_digit((string) $exclude)) {
+                $post_id = (int) $exclude;
+            } else {
+                $found = get_posts([
+                    'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+                    'post_status'    => ['draft', 'publish', 'pending', 'future'],
+                    'meta_key'       => 'estado_garantia_uuid',
+                    'meta_value'     => $exclude,
+                    'fields'         => 'ids',
+                    'posts_per_page' => 1,
+                ]);
+                if (!empty($found)) {
+                    $post_id = (int) $found[0];
+                }
+            }
+        }
+
+        $args = [
+            'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+            'post_status'    => ['draft', 'publish', 'pending', 'future'],
+            'meta_key'       => 'datos_vehiculo_matricula',
+            'meta_value'     => $matricula,
+            'fields'         => 'ids',
+            'posts_per_page' => 1,
+        ];
+        if ($post_id) {
+            $args['post__not_in'] = [$post_id];
+        }
+        $existing = get_posts($args);
+        if (!empty($existing)) {
+            return new WP_Error('duplicate_plate', __('Ya existe una garantía para este vehículo', 'garantias-online-360vo'), ['status' => 409]);
+        }
+
+        return rest_ensure_response(['exists' => false]);
     }
 
     /**
