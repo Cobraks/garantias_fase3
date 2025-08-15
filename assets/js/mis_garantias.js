@@ -71,7 +71,7 @@
 		let prevSelectedRow = null;
 		let prevIdx = null;
 		const urlMat = new URLSearchParams(window.location.search).get("matricula");
-		const detailCache = new Map();
+                const detailCache = new Map();
 
                 function normalizeEstadoClase(estado) {
                         if (!estado) return "pendiente-pago";
@@ -83,7 +83,74 @@
                                 .replace(/^-+|-+$/g, "");
                 }
 
-		function renderRow(item) {
+                function formatDate(value) {
+                        if (!value) return { iso: "-", display: "-" };
+                        let cleaned = String(value).replace(/[^0-9]/g, "");
+                        if (cleaned.length === 8) {
+                                const y = cleaned.slice(0, 4);
+                                const m = cleaned.slice(4, 6);
+                                const d = cleaned.slice(6, 8);
+                                const iso = `${y}-${m}-${d}`;
+                                const date = new Date(iso);
+                                if (!isNaN(date)) {
+                                        const display = new Intl.DateTimeFormat("es-ES", {
+                                                day: "numeric",
+                                                month: "long",
+                                                year: "numeric",
+                                        })
+                                                .format(date)
+                                                .replace(/ de /g, " ");
+                                        return { iso, display };
+                                }
+                                return { iso, display: `${d}/${m}/${y}` };
+                        }
+                        const date = new Date(value);
+                        if (!isNaN(date)) {
+                                const iso = date.toISOString().slice(0, 10);
+                                const display = new Intl.DateTimeFormat("es-ES", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                })
+                                        .format(date)
+                                        .replace(/ de /g, " ");
+                                return { iso, display };
+                        }
+                        return { iso: value, display: value };
+                }
+
+                function formatPrice(value) {
+                        if (value === null || value === undefined || value === "") return "-";
+                        const num =
+                                typeof value === "number"
+                                        ? value
+                                        : parseFloat(
+                                                  String(value)
+                                                          .replace(/[^0-9.,-]/g, "")
+                                                          .replace(",", ".")
+                                          );
+                        if (isNaN(num)) return String(value);
+                        return new Intl.NumberFormat("es-ES", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                        }).format(num);
+                }
+
+                function normalizeDetailData(data) {
+                        if (!data || typeof data !== "object") return data;
+                        const d = formatDate(data.desde);
+                        data.desde = d.iso;
+                        data.desde_fmt = d.display;
+                        const h = formatDate(data.hasta);
+                        data.hasta = h.iso;
+                        data.hasta_fmt = h.display;
+                        if (data.precio !== undefined) data.precio = formatPrice(data.precio);
+                        if (data.precio_venta !== undefined)
+                                data.precio_venta = formatPrice(data.precio_venta);
+                        return data;
+                }
+
+                function renderRow(item) {
                         const estadoData = item.estado || "";
                         const estadoValue =
                                 typeof estadoData === "object" && estadoData.value
@@ -100,31 +167,33 @@
                         const estadoClase = normalizeEstadoClase(estadoValue);
                         const marca_modelo = item.marca ?? "-";
                         const mat = item.mat ?? item.matricula ?? "-";
-                        const desde = item.desde ?? "-";
-                        const hasta = item.hasta ?? "-";
-			const vendedor_name = item.vendedor ?? "-";
-			const plan = item.plan ?? "-";
-			const precio = item.precio ?? "-";
-			const canal_venta =
-				item.canal_venta && item.canal_venta.label
-					? item.canal_venta.label
-					: "-";
-			const vendedor_type = canal_venta;
+                        const { iso: desdeIso, display: desde } = formatDate(item.desde);
+                        const { iso: hastaIso, display: hasta } = formatDate(item.hasta);
+                        const vendedor_name = item.vendedor ?? "-";
+                        const plan = item.plan ?? "-";
+                        const precio = formatPrice(item.precio);
+                        const canal_venta =
+                                item.canal_venta && item.canal_venta.label
+                                        ? item.canal_venta.label
+                                        : "-";
+                        const vendedor_type = canal_venta;
 
 			const tr = document.createElement("tr");
 			tr.className = "guarantees-table__row";
 			tr.tabIndex = 0;
 			tr.dataset.id = item.id;
-			tr.dataset.matricula = mat;
-			tr.dataset.marca_modelo = marca_modelo;
-			tr.dataset.plan = plan;
-			tr.dataset.desde = desde;
-			tr.dataset.hasta = hasta;
+                        tr.dataset.matricula = mat;
+                        tr.dataset.marca_modelo = marca_modelo;
+                        tr.dataset.plan = plan;
+                        tr.dataset.desde = desdeIso;
+                        tr.dataset.desdeFmt = desde;
+                        tr.dataset.hasta = hastaIso;
+                        tr.dataset.hastaFmt = hasta;
                         tr.dataset.estado = estadoLabel;
                         tr.dataset.estadoclase = estadoClase;
-			tr.dataset.vendedor_name = vendedor_name;
-			tr.dataset.vendedor_type = vendedor_type;
-			tr.dataset.precio = precio;
+                        tr.dataset.vendedor_name = vendedor_name;
+                        tr.dataset.vendedor_type = vendedor_type;
+                        tr.dataset.precio = precio;
 			tr.dataset.canalVenta = canal_venta;
 
 			tr.innerHTML = `
@@ -311,12 +380,12 @@
                                                                                         }
                                                                                 );
 										if (!res.ok) throw res.status;
-										const dataDetalle = await res.json();
-										detailCache.set(id, dataDetalle);
-										if (nextPanel.dataset.loadedId === String(id)) {
-											nextPanel.innerHTML = renderFullDetail(
-												dataDetalle,
-												rowData,
+                                                                                const dataDetalle = normalizeDetailData(await res.json());
+                                                                                detailCache.set(id, dataDetalle);
+                                                                                if (nextPanel.dataset.loadedId === String(id)) {
+                                                                                        nextPanel.innerHTML = renderFullDetail(
+                                                                                                dataDetalle,
+                                                                                                rowData,
 												[]
 											);
 										}
@@ -419,23 +488,33 @@
 			return months > 0 ? months : "-";
 		}
 
-		function buildRowData(row) {
-			return {
-				marca_modelo: row.dataset.marca_modelo ?? "-",
-				matricula: row.dataset.matricula ?? "-",
-				plan: row.dataset.plan ?? "-",
-				desde: row.dataset.desde ?? "-",
-				hasta: row.dataset.hasta ?? "-",
+                function buildRowData(row) {
+                        return {
+                                marca_modelo: row.dataset.marca_modelo ?? "-",
+                                matricula: row.dataset.matricula ?? "-",
+                                plan: row.dataset.plan ?? "-",
+                                desde: row.dataset.desde ?? "-",
+                                desde_fmt:
+                                        row.dataset.desdeFmt ??
+                                        (row.dataset.desde
+                                                ? formatDate(row.dataset.desde).display
+                                                : "-"),
+                                hasta: row.dataset.hasta ?? "-",
+                                hasta_fmt:
+                                        row.dataset.hastaFmt ??
+                                        (row.dataset.hasta
+                                                ? formatDate(row.dataset.hasta).display
+                                                : "-"),
                                 estado: row.dataset.estado ?? "Desconocido",
                                 estadoclase: row.dataset.estadoclase ?? "pendiente-pago",
-				concesionario: row.dataset.vendedor_name ?? "-",
-				canal_venta: row.dataset.vendedor_type ?? "-",
-				precio: row.dataset.precio ?? "-",
-				tipo: "-",
-				kilometros: "-",
-				primera_matriculacion: "-",
-				bastidor: "-",
-				precio_venta: "-",
+                                concesionario: row.dataset.vendedor_name ?? "-",
+                                canal_venta: row.dataset.vendedor_type ?? "-",
+                                precio: row.dataset.precio ?? "-",
+                                tipo: "-",
+                                kilometros: "-",
+                                primera_matriculacion: "-",
+                                bastidor: "-",
+                                precio_venta: "-",
 				combustible: "-",
 				cambio: "-",
 				potencia: "-",
@@ -527,14 +606,14 @@
 					<div class="guarantee-detail__header">
 						<h2>Garantía ${skeleton("matricula")}</h2>
 						<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
-						<div>
-							<p>${skeleton("desde")} — ${skeleton("hasta")}
-							<span class="guarantee-detail__plan-duration">(${
-								mesesRestantes !== "-"
-									? mesesRestantes + " meses restantes"
-									: "-"
-							})</span></p>
-						</div>
+                                                <div>
+                                                        <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
+                                                        <span class="guarantee-detail__plan-duration">(${
+                                                                mesesRestantes !== "-"
+                                                                        ? mesesRestantes + " meses restantes"
+                                                                        : "-"
+                                                        })</span></p>
+                                                </div>
                                                 <div class="${badgeClase}">${skeleton(
                                                         "estado",
                                                         "Desconocido"
@@ -717,11 +796,11 @@
                                                     headers: { "X-WP-Nonce": restNonce },
 						});
 						if (!res.ok) throw res.status;
-						const data = await res.json();
-						detailCache.set(id, data);
-						if (nextPanel.dataset.loadedId === String(id)) {
-							nextPanel.innerHTML = renderFullDetail(data, rowData, []);
-						}
+                                                const data = normalizeDetailData(await res.json());
+                                                detailCache.set(id, data);
+                                                if (nextPanel.dataset.loadedId === String(id)) {
+                                                        nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                                }
 					} catch (e) {
 						console.error("❌ Error fetch detalle:", e);
 					} finally {
@@ -748,12 +827,12 @@
                                                     headers: { "X-WP-Nonce": restNonce },
 						});
 						if (!res.ok) throw res.status;
-						const data = await res.json();
-						detailCache.set(id, data);
-					} catch (e) {
-						// Nada
-					}
-				},
+                                                const data = normalizeDetailData(await res.json());
+                                                detailCache.set(id, data);
+                                        } catch (e) {
+                                                // Nada
+                                        }
+                                },
 				true
 			);
 		}
