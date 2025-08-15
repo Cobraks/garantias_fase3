@@ -5,6 +5,7 @@ namespace GarantiasOnline360VO\Rest;
 use WP_REST_Server;
 use WP_Query;
 use WP_REST_Response;
+use WP_Error;
 
 class GuaranteeRestController
 {
@@ -48,6 +49,17 @@ class GuaranteeRestController
                     'methods'             => WP_REST_Server::READABLE,
                     'callback'            => [__CLASS__, 'get_filters'],
                     'permission_callback' => [__CLASS__, 'can_list'],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/autosave',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'autosave'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
                 ],
             ]
         );
@@ -117,6 +129,299 @@ class GuaranteeRestController
         }
 
         return false;
+    }
+
+    public static function can_edit($request)
+    {
+        return is_user_logged_in();
+    }
+
+    /**
+     * Normalize a price string to use dot as decimal separator.
+     */
+    private static function normalize_decimal($value)
+    {
+        if (!is_numeric($value)) {
+            $value     = preg_replace('/[^0-9.,]/', '', (string) $value);
+            $lastComma = strrpos($value, ',');
+            $lastDot   = strrpos($value, '.');
+            $sep       = $lastComma > $lastDot ? ',' : '.';
+            $parts     = explode($sep, $value);
+            $intPart   = preg_replace('/[^0-9]/', '', $parts[0]);
+            $decPart   = isset($parts[1]) ? preg_replace('/[^0-9]/', '', $parts[1]) : '';
+            $value     = $decPart !== '' ? $intPart . '.' . $decPart : $intPart;
+        }
+
+        if ($value === '' || $value === null) {
+            return '';
+        }
+
+        $float = (float) $value;
+        $str   = (string) $float;
+        return strpos($str, '.') !== false ? rtrim(rtrim($str, '0'), '.') : $str;
+    }
+
+    public static function autosave($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+        $uuid    = isset($request['uuid']) ? sanitize_text_field($request['uuid']) : '';
+        $data    = isset($request['data']) && is_array($request['data']) ? $request['data'] : [];
+
+        error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
+
+        $matricula = '';
+        if (isset($data['matricula'])) {
+            $matricula = sanitize_text_field($data['matricula']);
+        } elseif (isset($data['datos_vehiculo']['matricula'])) {
+            $matricula = sanitize_text_field($data['datos_vehiculo']['matricula']);
+        }
+
+        if ($post_id > 0) {
+            $post = get_post($post_id);
+            $stored_uuid = get_post_meta($post_id, 'estado_garantia_uuid', true);
+            if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE || !$uuid || $uuid !== $stored_uuid) {
+                $post_id = 0;
+            }
+        }
+
+        if ($matricula) {
+            $args = [
+                'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+                'post_status'    => ['draft', 'publish', 'pending', 'future'],
+                'meta_key'       => 'datos_vehiculo_matricula',
+                'meta_value'     => $matricula,
+                'fields'         => 'ids',
+                'posts_per_page' => 1,
+            ];
+            if ($post_id) {
+                $args['post__not_in'] = [$post_id];
+            }
+            $existing = get_posts($args);
+            if (!empty($existing)) {
+                return new WP_Error('duplicate_plate', __('Ya existe una garantía para este vehículo', 'garantias-online-360vo'), ['status' => 409]);
+            }
+        }
+
+        if ($post_id === 0) {
+            $title   = $matricula ? sprintf(__('Garantía %s', 'garantias-online-360vo'), $matricula) : __('Borrador de garantía', 'garantias-online-360vo');
+            $post_id = wp_insert_post([
+                'post_type'   => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+                'post_status' => 'draft',
+                'post_title'  => $title,
+                'post_author' => get_current_user_id(),
+            ]);
+            $uuid = wp_generate_uuid4();
+            update_post_meta($post_id, 'estado_garantia_uuid', $uuid);
+            error_log('[AUTOSAVE] Created draft guarantee ID ' . $post_id);
+        } elseif ($matricula) {
+            wp_update_post([
+                'ID'         => $post_id,
+                'post_title' => sprintf(__('Garantía %s', 'garantias-online-360vo'), $matricula),
+            ]);
+            error_log('[AUTOSAVE] Updated title for ID ' . $post_id);
+            if (!$uuid) {
+                $uuid = get_post_meta($post_id, 'estado_garantia_uuid', true);
+            }
+        }
+
+        if (isset($data['datos_vehiculo']) && is_array($data['datos_vehiculo'])) {
+            $vehiculo       = [];
+            $numeric_fields = ['kilometros', 'potencia', 'potencia_kw', 'cilindrada'];
+            $decimal_fields = ['precio_venta'];
+            foreach ($data['datos_vehiculo'] as $k => $v) {
+                if (in_array($k, $numeric_fields, true)) {
+                    $v            = str_replace(['.', ','], '', $v);
+                    $vehiculo[$k] = is_numeric($v) ? $v : '';
+                } elseif (in_array($k, $decimal_fields, true)) {
+                    $v            = self::normalize_decimal($v);
+                    $vehiculo[$k] = is_numeric($v) ? $v : '';
+                } else {
+                    $vehiculo[$k] = sanitize_text_field($v);
+                }
+            }
+            if (isset($vehiculo['fecha_primera_matriculacion'])) {
+                $vehiculo['primera_matriculacion'] = $vehiculo['fecha_primera_matriculacion'];
+                unset($vehiculo['fecha_primera_matriculacion']);
+            }
+            if (isset($vehiculo['tipo_vehiculo'])) {
+                $term = get_term_by('slug', $vehiculo['tipo_vehiculo'], 'tipo_vehiculo');
+                if ($term) {
+                    $vehiculo['tipo_vehiculo'] = (int) $term->term_id;
+                }
+            }
+
+            if (
+                isset($vehiculo['combustible']) &&
+                $vehiculo['combustible'] === 'electrico'
+            ) {
+                $kw = null;
+                if (isset($vehiculo['potencia_kw']) && $vehiculo['potencia_kw'] !== '') {
+                    $kw = (float) $vehiculo['potencia_kw'];
+                } elseif (isset($vehiculo['potencia']) && $vehiculo['potencia'] !== '') {
+                    $kw = (float) $vehiculo['potencia'];
+                    $vehiculo['potencia_kw'] = (string) $kw;
+                }
+                if ($kw !== null) {
+                    $vehiculo['potencia'] = (string) round($kw * 1.3596);
+                }
+            }
+            if (function_exists('update_field')) {
+                update_field('datos_vehiculo', $vehiculo, $post_id);
+            } else {
+                foreach ($vehiculo as $k => $v) {
+                    update_post_meta($post_id, 'datos_vehiculo_' . $k, $v);
+                }
+            }
+            error_log('[AUTOSAVE] Saved datos_vehiculo for ID ' . $post_id . ': ' . wp_json_encode($vehiculo));
+            unset($data['datos_vehiculo']);
+        }
+
+        if (isset($data['datos_cliente']) && is_array($data['datos_cliente'])) {
+            $cliente = [];
+            foreach ($data['datos_cliente'] as $k => $v) {
+                switch ($k) {
+                    case 'email':
+                        $cliente[$k] = sanitize_email($v);
+                        break;
+                    case 'codigo_postal':
+                        $cliente[$k] = sanitize_text_field($v);
+                        break;
+                    default:
+                        $cliente[$k] = sanitize_text_field($v);
+                        break;
+                }
+            }
+            if (function_exists('update_field')) {
+                update_field('datos_cliente', $cliente, $post_id);
+            } else {
+                foreach ($cliente as $k => $v) {
+                    update_post_meta($post_id, 'datos_cliente_' . $k, $v);
+                }
+            }
+            error_log('[AUTOSAVE] Saved datos_cliente for ID ' . $post_id . ': ' . wp_json_encode($cliente));
+            unset($data['datos_cliente']);
+        }
+
+        $meses_contratados = 0;
+        if (isset($data['garantia_contratada']) && is_array($data['garantia_contratada'])) {
+            $gc   = [];
+            foreach ($data['garantia_contratada'] as $k => $v) {
+                switch ($k) {
+                    case 'garantia':
+                    case 'tipo_garantia':
+                    case 'nivel_garantia':
+                    case 'meses_contratados':
+                    case 'concesionario_empresa_profesional':
+                        $gc[$k] = absint($v);
+                        if ($k === 'meses_contratados') {
+                            $meses_contratados = (int) $gc[$k];
+                        }
+                        break;
+                    case 'precio':
+                        $v      = self::normalize_decimal($v);
+                        $gc[$k] = is_numeric($v) ? $v : '';
+                        break;
+                    case 'metodo_pago':
+                    case 'canal_venta':
+                        $gc[$k] = sanitize_text_field($v);
+                        break;
+                    case 'descuentos_y_recargos':
+                        if (is_array($v)) {
+                            $dr = [];
+                            if (isset($v['precio_base'])) {
+                                $base               = self::normalize_decimal($v['precio_base']);
+                                $dr['precio_base'] = is_numeric($base) ? $base : '';
+                            }
+                            if (!empty($v['listado_descuentos_recargos']) && is_array($v['listado_descuentos_recargos'])) {
+                                $list = [];
+                                foreach ($v['listado_descuentos_recargos'] as $row) {
+                                    $tipo = sanitize_text_field($row['tipo'] ?? '');
+                                    $por  = self::normalize_decimal($row['porcentaje'] ?? '');
+                                    $raz  = sanitize_text_field($row['razon'] ?? '');
+                                    $list[] = [
+                                        'tipo'       => $tipo,
+                                        'porcentaje' => is_numeric($por) ? $por : '',
+                                        'razon'      => $raz,
+                                    ];
+                                }
+                                if ($list) {
+                                    $dr['listado_descuentos_recargos'] = array_values($list);
+                                }
+                            }
+                            $gc['descuentos_y_recargos'] = $dr;
+                        }
+                        break;
+                    default:
+                        $gc[$k] = sanitize_text_field($v);
+                        break;
+                }
+            }
+            if (isset($gc['garantia'])) {
+                $tipo_terms = wp_get_post_terms($gc['garantia'], 'tipo_garantia', ['fields' => 'ids']);
+                if (!is_wp_error($tipo_terms) && !empty($tipo_terms)) {
+                    $gc['tipo_garantia'] = (int) $tipo_terms[0];
+                }
+                $nivel_terms = wp_get_post_terms($gc['garantia'], 'nivel_garantia', ['fields' => 'ids']);
+                if (!is_wp_error($nivel_terms) && !empty($nivel_terms)) {
+                    $gc['nivel_garantia'] = (int) $nivel_terms[0];
+                }
+            }
+            if (function_exists('update_field')) {
+                update_field('garantia_contratada', $gc, $post_id);
+            } else {
+                foreach ($gc as $k => $v) {
+                    if (is_array($v)) {
+                        foreach ($v as $subk => $subv) {
+                            update_post_meta($post_id, 'garantia_contratada_' . $k . '_' . $subk, $subv);
+                        }
+                    } else {
+                        update_post_meta($post_id, 'garantia_contratada_' . $k, $v);
+                    }
+                }
+            }
+            error_log('[AUTOSAVE] Saved garantia_contratada for ID ' . $post_id . ': ' . wp_json_encode($gc));
+            unset($data['garantia_contratada']);
+        }
+
+        if (isset($data['estado_garantia']) && is_array($data['estado_garantia'])) {
+            $estado = [];
+            if (isset($data['estado_garantia']['inicio'])) {
+                $inicio        = sanitize_text_field($data['estado_garantia']['inicio']);
+                $estado['inicio'] = $inicio;
+                if ($inicio && $meses_contratados > 0) {
+                    $end = date_create($inicio);
+                    if ($end) {
+                        $end->modify("+{$meses_contratados} months");
+                        $end->modify('-1 day');
+                        $estado['finalizacion'] = $end->format('Y-m-d');
+                    }
+                }
+            }
+            if (isset($data['estado_garantia']['finalizacion']) && empty($estado['finalizacion'])) {
+                $estado['finalizacion'] = sanitize_text_field($data['estado_garantia']['finalizacion']);
+            }
+            if ($estado) {
+                if (function_exists('update_field')) {
+                    update_field('estado_garantia', $estado, $post_id);
+                } else {
+                    foreach ($estado as $k => $v) {
+                        update_post_meta($post_id, 'estado_garantia_' . $k, $v);
+                    }
+                }
+                error_log('[AUTOSAVE] Saved estado_garantia for ID ' . $post_id . ': ' . wp_json_encode($estado));
+            }
+            unset($data['estado_garantia']);
+        }
+
+        foreach ($data as $key => $value) {
+            $meta_key = sanitize_key($key);
+            $meta_val = is_scalar($value) ? sanitize_text_field($value) : wp_json_encode($value);
+            update_post_meta($post_id, $meta_key, $meta_val);
+        }
+
+        error_log('[AUTOSAVE] Completed for ID ' . $post_id);
+
+        return new WP_REST_Response(['id' => $post_id, 'uuid' => $uuid]);
     }
 
     /**

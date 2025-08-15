@@ -182,7 +182,19 @@ class SampleData
                 'concesionario_empresa_profesional'=> $profesionales ? $profesionales[array_rand($profesionales)] : 0,
                 'gestoria'                         => $gestorias ? $gestorias[array_rand($gestorias)] : 0,
                 'descuentos_y_recargos'            => [
-                    'precio_base' => rand(200, 1000),
+                    'precio_base'              => rand(200, 1000),
+                    'listado_descuentos_recargos' => [
+                        [
+                            'tipo'       => 'descuento',
+                            'porcentaje' => rand(1, 20),
+                            'razon'      => 'Descuento de ejemplo',
+                        ],
+                        [
+                            'tipo'       => 'recargo',
+                            'porcentaje' => rand(1, 15),
+                            'razon'      => 'Recargo de ejemplo',
+                        ],
+                    ],
                 ],
             ];
 

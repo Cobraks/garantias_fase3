@@ -185,13 +185,30 @@ export function clearInfoMessage(input) {
 }
 
 export function formatNumber(input) {
-	if (!input) return;
-	let value = input.value.replace(/\./g, "").replace(/[^\d]/g, "");
-	if (value) {
-		value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-		input.value = value;
-		logDebug(`formatNumber(${input.id}): ${value}`);
-	}
+        if (!input) return;
+        let value = input.value.replace(/\./g, "").replace(/[^\d]/g, "");
+        if (value) {
+                value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                input.value = value;
+                logDebug(`formatNumber(${input.id}): ${value}`);
+        }
+}
+
+export function formatCurrency(input, keepTrailingComma = false) {
+        if (!input) return;
+        let value = input.value.replace(/\./g, "").replace(/[^0-9,]/g, "");
+        const endsWithComma = value.endsWith(",");
+        const parts = value.split(",");
+        const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        const decPart = parts.slice(1).join("");
+        if (decPart) {
+                input.value = `${intPart},${decPart}`;
+        } else if (keepTrailingComma && endsWithComma) {
+                input.value = `${intPart},`;
+        } else {
+                input.value = intPart;
+        }
+        logDebug(`formatCurrency(${input.id}): ${input.value}`);
 }
 
 // ===============================

@@ -86,22 +86,23 @@ function getSummaryText(fieldId) {
 
 	// Vencimiento contrato
 	if (fieldId === "vencimiento_contrato") {
-		const fecha = document.getElementById("fecha_inicio_garantia");
-		const duracion = document.getElementById("duracion");
-		if (!fecha.value.trim())
-			return { text: "Falta fecha inicio garantía", error: true };
-		if (!duracion.value.trim()) return { text: "Falta duración", error: true };
-		if (fecha.getAttribute("aria-invalid") === "true")
-			return { text: "Fecha inicio incorrecta", error: true };
-		let startDate = new Date(fecha.value);
-		let months = 0;
-		if (duracion.value === "6_meses") months = 6;
-		if (duracion.value === "12_meses") months = 12;
-		if (duracion.value === "24_meses") months = 24;
-		if (duracion.value === "36_meses") months = 36;
-		let expDate = new Date(startDate);
-		expDate.setMonth(expDate.getMonth() + months);
-		expDate.setDate(expDate.getDate() - 1);
+                const fecha = document.getElementById("fecha_inicio_garantia");
+                const duracion = document.getElementById("duracion");
+                if (!fecha.value.trim())
+                        return { text: "Falta fecha inicio garantía", error: true };
+                if (!duracion.value.trim())
+                        return { text: "Falta duración", error: true };
+                if (fecha.getAttribute("aria-invalid") === "true")
+                        return { text: "Fecha inicio incorrecta", error: true };
+
+                const startDate = new Date(fecha.value);
+                const months = parseInt(duracion.value, 10);
+                if (isNaN(months) || months <= 0)
+                        return { text: "Falta duración", error: true };
+
+                const expDate = new Date(startDate);
+                expDate.setMonth(expDate.getMonth() + months);
+                expDate.setDate(expDate.getDate() - 1);
 		const monthNames = [
 			"enero",
 			"febrero",
@@ -167,22 +168,41 @@ function getSummaryText(fieldId) {
 
         // Doble motor (depende de combustible)
         if (fieldId === "doble_motor") {
-		const combustible = document.getElementById("combustible")?.value;
-		const aplica = ["electrico", "hibrido", "gpl_gnc"].includes(combustible);
-		if (!aplica) {
-			return { text: "No aplica", error: false };
-		}
-		const doble = document.getElementById("doble_motor");
-		if (!doble || !doble.value)
-			return { text: "Falta Doble motor", error: true };
-		const selectedText = doble.options[doble.selectedIndex]?.text?.trim() || "";
-		return { text: selectedText, error: false };
-	}
+                const combustible = document.getElementById("combustible")?.value;
+                const aplica = ["electrico", "hibrido", "gpl_gnc"].includes(combustible);
+                if (!aplica) {
+                        return { text: "No aplica", error: false };
+                }
+                const doble = document.getElementById("doble_motor");
+                if (!doble || !doble.value)
+                        return { text: "Falta Doble motor", error: true };
+                const selectedText = doble.options[doble.selectedIndex]?.text?.trim() || "";
+                return { text: selectedText, error: false };
+        }
 
-	// Por defecto: campo simple
-	const input = document.getElementById(fieldId);
-	if (input) {
-		if (!input.value.trim()) {
+        if (fieldId === "potencia") {
+                const potencia = document.getElementById("potencia");
+                const unit = document.getElementById("summary-potencia-unit");
+                if (!potencia || !potencia.value.trim()) {
+                        return { text: "Falta Potencia", error: true };
+                }
+                const combustible = document.getElementById("combustible")?.value;
+                if (combustible === "electrico") {
+                        const kw = parseFloat(
+                                potencia.value.replace(/\./g, "").replace(",", ".")
+                        );
+                        const cv = Math.round(kw * 1.3596);
+                        if (unit) unit.textContent = "CV";
+                        return { text: isNaN(cv) ? potencia.value : cv.toString(), error: false };
+                }
+                if (unit) unit.textContent = "CV";
+                return { text: potencia.value, error: false };
+        }
+
+        // Por defecto: campo simple
+        const input = document.getElementById(fieldId);
+        if (input) {
+                if (!input.value.trim()) {
 			const label = document.querySelector(`label[for="${fieldId}"]`);
 			return { text: "Falta " + (label?.textContent || fieldId), error: true };
 		}
@@ -330,9 +350,11 @@ function setupSummaryRefresh() {
                 "traccion",
                 "traccion_camion",
                 "tipo_vehiculo",
-		"kilometros",
-		"fecha_primera_matriculacion",
-		"matricula",
+                "kilometros",
+                "fecha_primera_matriculacion",
+                "fecha_inicio_garantia",
+                "duracion",
+                "matricula",
 		"numero_bastidor",
 		"precio_venta",
 		"combustible",

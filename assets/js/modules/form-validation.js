@@ -2,21 +2,22 @@
 "use strict";
 
 import {
-	debounce,
-	setError,
-	clearError,
-	clearInfoMessage,
-	formatNumber,
-	numericLimits,
-	PROVINCIAS,
-	validateNumeric,
-	validateDNIField,
-	validateTelefonoField,
-	validateCodigoPostalField,
-	validateEmailField,
-	validateRequiredField,
-	validateNumeroBastidorField,
-	validateMatriculaField,
+        debounce,
+        setError,
+        clearError,
+        clearInfoMessage,
+        formatNumber,
+        formatCurrency,
+        numericLimits,
+        PROVINCIAS,
+        validateNumeric,
+        validateDNIField,
+        validateTelefonoField,
+        validateCodigoPostalField,
+        validateEmailField,
+        validateRequiredField,
+        validateNumeroBastidorField,
+        validateMatriculaField,
 } from "./form-utils.js";
 
 import FormCache from "./form-cache.js";
@@ -101,6 +102,41 @@ function validateWithDynamicLimit(input, showError) {
         return true;
 }
 
+function validatePrecioVentaField(input, showError) {
+        const value = input.value.trim();
+        if (value === "") {
+                if (showError) setError(input, "Este campo es obligatorio.");
+                return false;
+        }
+        const parts = value.split(",");
+        const intPart = parts[0].replace(/\./g, "");
+        const decPart = parts[1] || "";
+        if (decPart.length !== 0 && decPart.length !== 2) {
+                if (showError) setError(input, "Número de decimales no válido.");
+                return false;
+        }
+        const num = parseFloat(intPart + (decPart ? "." + decPart : ""));
+        const limits = numericLimits.precio_venta;
+        if (isNaN(num)) {
+                if (showError) setError(input, "Debe ser un número.");
+                return false;
+        }
+        if (num < limits.min) {
+                if (showError) setError(input, `Debe ser mayor o igual a ${limits.min}.`);
+                return false;
+        }
+        if (num > limits.max) {
+                if (showError)
+                        setError(
+                                input,
+                                `El valor no puede exceder ${limits.max.toLocaleString()}.`
+                        );
+                return false;
+        }
+        clearError(input);
+        return true;
+}
+
 // === Sanitizadores / límites visuales por campo ===
 const inputLimitsApplier = {
 	numero_bastidor: (input) => {
@@ -122,7 +158,12 @@ const inputLimitsApplier = {
                 input.value = input.value.replace(/\D/g, "").slice(0, 7);
         },
         precio_venta: (input) => {
-                input.value = input.value.replace(/\D/g, "").slice(0, 6);
+                let value = input.value.replace(/\./g, "");
+                value = value.replace(/[^0-9,]/g, "");
+                const parts = value.split(",");
+                const intPart = parts[0].slice(0, 6);
+                const decPart = parts[1] !== undefined ? parts.slice(1).join("") : null;
+                input.value = decPart !== null ? `${intPart},${decPart}` : intPart;
         },
 	cilindrada: (input) => {
 		input.value = input.value.replace(/\D/g, "").slice(0, 4);
@@ -146,18 +187,20 @@ const inputLimitsApplier = {
 
 // === Validadores especiales mapeados ===
 const specialValidators = {
-	numero_bastidor: (input, showError, isHardCheck) =>
-		validateNumeroBastidorField(input, showError, isHardCheck),
-	matricula: (input, showError, isHardCheck) =>
-		validateMatriculaField(input, showError, isHardCheck),
-	dni: (input, showError, isHardCheck) =>
-		validateDNIField(input, showError, isHardCheck),
-	telefono: (input, showError, isHardCheck) =>
-		validateTelefonoField(input, showError, isHardCheck),
-	codigo_postal: (input, showError, isHardCheck) =>
-		validateCodigoPostalField(input, showError, isHardCheck),
-	correo: (input, showError, isHardCheck) =>
-		validateEmailField(input, showError, isHardCheck),
+        numero_bastidor: (input, showError, isHardCheck) =>
+                validateNumeroBastidorField(input, showError, isHardCheck),
+        matricula: (input, showError, isHardCheck) =>
+                validateMatriculaField(input, showError, isHardCheck),
+        dni: (input, showError, isHardCheck) =>
+                validateDNIField(input, showError, isHardCheck),
+        telefono: (input, showError, isHardCheck) =>
+                validateTelefonoField(input, showError, isHardCheck),
+        codigo_postal: (input, showError, isHardCheck) =>
+                validateCodigoPostalField(input, showError, isHardCheck),
+        correo: (input, showError, isHardCheck) =>
+                validateEmailField(input, showError, isHardCheck),
+        precio_venta: (input, showError) =>
+                validatePrecioVentaField(input, showError),
 };
 
 // === Función principal de validación ===
@@ -318,9 +361,10 @@ function setupInputValidationBehavior(input) {
 			inputLimitsApplier[id](input);
 		}
 		// Formatear número cuando toca
-		if (numericLimits[id]) {
-			formatNumber(input);
-		}
+                if (numericLimits[id]) {
+                        if (id === "precio_venta") formatCurrency(input, true);
+                        else formatNumber(input);
+                }
 		// Validación ligera (sin hard check)
 		validateField(input, true, false);
 		// UI updates
@@ -334,9 +378,10 @@ function setupInputValidationBehavior(input) {
 		if (inputLimitsApplier[id]) {
 			inputLimitsApplier[id](input);
 		}
-		if (numericLimits[id]) {
-			formatNumber(input);
-		}
+                if (numericLimits[id]) {
+                        if (id === "precio_venta") formatCurrency(input);
+                        else formatNumber(input);
+                }
 		validateField(input, true, true);
 		FormUI.toggleClearButton(input);
 		updateNextButtonState();
