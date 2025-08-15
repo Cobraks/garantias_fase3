@@ -1,3 +1,5 @@
+Consulta `CHANGELOG.md` para la cronología de mejoras.
+
 1.0.0
 - Añadida imagen de perfil
 

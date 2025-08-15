@@ -158,8 +158,18 @@ use GarantiasOnline360VO\Svg;
                                 <span class="plan__name"><?php echo esc_html($row['plan']); ?></span>
                                 <span class="plan__price"><?php echo esc_html($row['precio']); ?></span>
                             </div>
-                            <span class="guarantees-list__badge guarantees-list__badge--<?php echo strtolower($row['est']); ?>">
-                                <?php echo esc_html($row['est']); ?>
+                            <?php
+                            $status_value = sanitize_title($row['est']);
+                            $status_labels = [
+                                'activa'            => __('Activa', 'garantias-online-360vo'),
+                                'pendiente'         => __('Pendiente', 'garantias-online-360vo'),
+                                'pendiente-de-pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+                                'expirada'          => __('Expirada', 'garantias-online-360vo'),
+                            ];
+                            $status_label = $status_labels[$status_value] ?? $row['est'];
+                            ?>
+                            <span class="guarantees-list__badge guarantees-list__badge--<?php echo esc_attr($status_value); ?>">
+                                <?php echo esc_html($status_label); ?>
                             </span>
                         </td>
                     </tr>
