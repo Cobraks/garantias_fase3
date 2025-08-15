@@ -81,6 +81,7 @@ class Plugin
         AssetCompiler::ensure_minified();
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
+        \GarantiasOnline360VO\Logs\GuaranteeLog::create_table();
     }
 
     /**

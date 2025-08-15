@@ -5,6 +5,7 @@ namespace GarantiasOnline360VO\Rest;
 use WP_REST_Server;
 use WP_Query;
 use WP_REST_Response;
+use GarantiasOnline360VO\Logs\GuaranteeLog;
 
 class GuaranteeRestController
 {
@@ -65,10 +66,27 @@ class GuaranteeRestController
                 ],
             ]
         );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/logs',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'get_logs'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
+
 
         // Limpieza de transients al guardar/borrar garantías
         add_action('save_post_' . \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE, [__CLASS__, 'clear_list_transients'], 10, 3);
         add_action('deleted_post', [__CLASS__, 'clear_list_transients_on_delete']);
+        add_action('save_post_' . \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE, [__CLASS__, 'log_creation'], 10, 3);
+        add_action('updated_post_meta', [__CLASS__, 'log_state_change'], 10, 4);
     }
 
     public static function can_list($request)
@@ -385,6 +403,7 @@ class GuaranteeRestController
             'telefono_comprador' => $telefono_comprador ?: '-',
             'email_comprador' => $email_comprador ?: '-',
             'direccion_comprador' => $direccion_comprador ?: '-',
+            'logs' => GuaranteeLog::get_logs($id),
         ];
 
         return rest_ensure_response($data);
@@ -511,6 +530,33 @@ class GuaranteeRestController
         if ($post_type === \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
             self::clear_list_transients($post_id, null, false);
         }
+    }
+    public static function get_logs($request)
+    {
+        $id = absint($request['id']);
+        $logs = GuaranteeLog::get_logs($id);
+        return rest_ensure_response($logs);
+    }
+
+    public static function log_creation($post_id, $post, $update)
+    {
+        if (wp_is_post_revision($post_id) || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return;
+        }
+        if (! $update) {
+            GuaranteeLog::add_log($post_id, 'created', '', get_current_user_id());
+        }
+    }
+
+    public static function log_state_change($meta_id, $post_id, $meta_key, $meta_value)
+    {
+        if ($meta_key !== 'estado_garantia_estado_contratacion') {
+            return;
+        }
+        if (get_post_type($post_id) !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return;
+        }
+        GuaranteeLog::add_log($post_id, 'state_changed', $meta_value, get_current_user_id());
     }
 }
 
