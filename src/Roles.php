@@ -17,6 +17,20 @@ if (! defined('ABSPATH')) {
 class Roles
 {
     /**
+     * Capacidades personalizadas asociadas al CPT de garantía.
+     */
+    private const CAPS = [
+        'edit_garantia',
+        'read_garantia',
+        'delete_garantia',
+        'edit_garantias',
+        'edit_others_garantias',
+        'publish_garantias',
+        'read_private_garantias',
+        'delete_garantias',
+        'delete_others_garantias',
+    ];
+    /**
      * Añade los roles al activar el plugin
      */
     public static function add_roles(): void
@@ -86,6 +100,14 @@ class Roles
             __('Comercial', 'garantias-online-360vo'),
             $caps_comercial
         );
+
+        // Asegurar que el rol de administrador tenga todas las capacidades
+        $admin = get_role('administrator');
+        if ($admin) {
+            foreach (self::CAPS as $cap) {
+                $admin->add_cap($cap);
+            }
+        }
     }
 
     /**
@@ -97,5 +119,13 @@ class Roles
         remove_role('go_profesional');
         remove_role('go_gestoria');
         remove_role('go_comercial');
+
+        // Limpiar capacidades personalizadas del rol administrador
+        $admin = get_role('administrator');
+        if ($admin) {
+            foreach (self::CAPS as $cap) {
+                $admin->remove_cap($cap);
+            }
+        }
     }
 }

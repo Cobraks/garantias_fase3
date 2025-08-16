@@ -219,7 +219,7 @@ class GuaranteeRestController
         } elseif ($uuid) {
             $found = get_posts([
                 'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-                'post_status'    => ['draft', 'publish', 'pending', 'future'],
+                'post_status'    => \GarantiasOnline360VO\GuaranteeCPT::STATUSES,
                 'meta_key'       => 'estado_garantia_uuid',
                 'meta_value'     => $uuid,
                 'fields'         => 'ids',
@@ -233,7 +233,7 @@ class GuaranteeRestController
         if ($matricula) {
             $args = [
                 'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-                'post_status'    => ['draft', 'publish', 'pending', 'future'],
+                'post_status'    => \GarantiasOnline360VO\GuaranteeCPT::STATUSES,
                 'meta_key'       => 'datos_vehiculo_matricula',
                 'meta_value'     => $matricula,
                 'fields'         => 'ids',
@@ -487,13 +487,13 @@ class GuaranteeRestController
                 ['status' => 403]
             );
         }
-        $result = wp_update_post(['ID' => $post_id, 'post_status' => 'publish'], true);
+        $result = wp_update_post(['ID' => $post_id, 'post_status' => 'pendiente_pago'], true);
         if (is_wp_error($result)) {
             return $result;
         }
         $status = get_post_status($post_id);
-        if ($status !== 'publish') {
-            return new WP_Error('publish_failed', __('No se pudo publicar la garantía', 'garantias-online-360vo'), ['status' => 500]);
+        if ($status !== 'pendiente_pago') {
+            return new WP_Error('publish_failed', __('No se pudo cambiar el estado de la garantía', 'garantias-online-360vo'), ['status' => 500]);
         }
         return rest_ensure_response(['id' => $post_id, 'status' => $status]);
     }
@@ -513,7 +513,7 @@ class GuaranteeRestController
             } else {
                 $found = get_posts([
                     'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-                    'post_status'    => ['draft', 'publish', 'pending', 'future'],
+                    'post_status'    => \GarantiasOnline360VO\GuaranteeCPT::STATUSES,
                     'meta_key'       => 'estado_garantia_uuid',
                     'meta_value'     => $exclude,
                     'fields'         => 'ids',
@@ -527,7 +527,7 @@ class GuaranteeRestController
 
         $args = [
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-            'post_status'    => ['draft', 'publish', 'pending', 'future'],
+            'post_status'    => \GarantiasOnline360VO\GuaranteeCPT::STATUSES,
             'meta_key'       => 'datos_vehiculo_matricula',
             'meta_value'     => $matricula,
             'fields'         => 'ids',
@@ -586,7 +586,7 @@ class GuaranteeRestController
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
             'posts_per_page' => $per_page,
             'paged'          => $page,
-            'post_status'    => 'publish',
+            'post_status'    => \GarantiasOnline360VO\GuaranteeCPT::STATUSES,
         ];
 
         // Permisos: restringe por profesional/comercial salvo admins
@@ -692,7 +692,7 @@ class GuaranteeRestController
                 'borrador'         => __('Borrador', 'garantias-online-360vo'),
                 'activada'         => __('Activada', 'garantias-online-360vo'),
                 'expirada'         => __('Expirada', 'garantias-online-360vo'),
-                'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+                'expira_pronto'   => __('Expira pronto', 'garantias-online-360vo'),
             ];
             $estado_label = $estado_labels[$estado] ?? $estado;
 
@@ -775,7 +775,7 @@ class GuaranteeRestController
             'borrador'         => __('Borrador', 'garantias-online-360vo'),
             'activada'         => __('Activada', 'garantias-online-360vo'),
             'expirada'         => __('Expirada', 'garantias-online-360vo'),
-            'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+            'expira_pronto'   => __('Expira pronto', 'garantias-online-360vo'),
         ];
         $estado_label = $estado_labels[$estado] ?? $estado;
 
@@ -873,7 +873,7 @@ class GuaranteeRestController
 
         $args = [
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-            'post_status'    => 'publish',
+            'post_status'    => \GarantiasOnline360VO\GuaranteeCPT::STATUSES,
             'fields'         => 'ids',
             'posts_per_page' => -1,
         ];
@@ -907,7 +907,7 @@ class GuaranteeRestController
             'borrador'         => __('Borrador', 'garantias-online-360vo'),
             'activada'         => __('Activada', 'garantias-online-360vo'),
             'expirada'         => __('Expirada', 'garantias-online-360vo'),
-            'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+            'expira_pronto'   => __('Expira pronto', 'garantias-online-360vo'),
         ];
         $estados = array_map(function ($e) use ($estado_labels) {
             return [

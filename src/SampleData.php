@@ -117,7 +117,7 @@ class SampleData
         }
 
         // Opciones para campos select
-        $estados_contratacion = ['pendiente_pago', 'borrador', 'activada', 'expirada', 'pendiente_renovar'];
+        $estados_contratacion = ['borrador', 'pendiente_pago', 'activada', 'expira_pronto', 'expirada'];
         $meses_contratados    = [6, 12, 24, 36];
         $metodos_pago         = ['domiciliacion_bancaria', 'transferencia'];
         $canales_venta        = ['profesional', 'particular', 'gestoria'];
@@ -144,10 +144,11 @@ class SampleData
         ];
 
         for ($i = 1; $i <= 20; $i++) {
+            $status  = $estados_contratacion[array_rand($estados_contratacion)];
             $post_id = wp_insert_post([
                 'post_type'   => GuaranteeCPT::POST_TYPE,
                 'post_title'  => 'Garantía ' . wp_generate_password(4, false, false),
-                'post_status' => 'publish',
+                'post_status' => $status,
             ]);
             if (! $post_id || is_wp_error($post_id)) {
                 continue;
@@ -163,7 +164,7 @@ class SampleData
             $restan = max(0, $diff->m + ($diff->y * 12));
 
             $estado_garantia = [
-                'estado_contratacion' => $estados_contratacion[array_rand($estados_contratacion)],
+                'estado_contratacion' => $status,
                 'inicio'              => $start->format('Y-m-d'),
                 'finalizacion'        => $end->format('Y-m-d'),
                 'meses_restantes'     => $restan,

@@ -16,6 +16,16 @@ if (! defined('ABSPATH')) {
 class GuaranteeCPT
 {
     const POST_TYPE = 'garantia';
+    /**
+     * Lista de estados personalizados permitidos para las garantías.
+     */
+    public const STATUSES = [
+        'draft',           // Borrador
+        'pendiente_pago',  // Pendiente de pago
+        'activada',        // Activada
+        'expirada',        // Expirada
+        'expira_pronto',   // Expira pronto
+    ];
 
     /**
      * Inicializa los hooks necesarios
@@ -23,6 +33,7 @@ class GuaranteeCPT
     public static function init(): void
     {
         add_action('init', [__CLASS__, 'register_post_type']);
+        add_action('init', [__CLASS__, 'register_post_statuses']);
         add_filter('post_updated_messages', [__CLASS__, 'updated_messages']);
         add_action('save_post_' . self::POST_TYPE, [__CLASS__, 'handle_save'], 10, 3);
         add_action('transition_post_status', [__CLASS__, 'log_status_transition'], 10, 3);
@@ -54,10 +65,8 @@ class GuaranteeCPT
             'public'             => false,
             'show_ui'            => true,
             'show_in_menu'       => true,
-            // Se mantienen las capacidades por defecto para evitar
-            // restricciones inesperadas en roles como el administrador.
-            // 'capability_type'    => 'garantia',
-            // 'map_meta_cap'       => true,
+            'capability_type'    => 'garantia',
+            'map_meta_cap'       => true,
             'supports'           => ['title','custom-fields'],
             'menu_position'      => 20,
             'menu_icon'          => 'dashicons-awards',
@@ -67,6 +76,34 @@ class GuaranteeCPT
         ];
 
         register_post_type(self::POST_TYPE, $args);
+    }
+
+    /**
+     * Registra los estados personalizados de las garantías.
+     */
+    public static function register_post_statuses(): void
+    {
+        $statuses = [
+            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'activada'       => __('Activada', 'garantias-online-360vo'),
+            'expirada'       => __('Expirada', 'garantias-online-360vo'),
+            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
+        ];
+
+        foreach ($statuses as $status => $label) {
+            register_post_status($status, [
+                'label'                     => $label,
+                'public'                    => false,
+                'exclude_from_search'       => true,
+                'show_in_admin_all_list'    => true,
+                'show_in_admin_status_list' => true,
+                'label_count'               => _n_noop(
+                    "$label <span class='count'>(%s)</span>",
+                    "$label <span class='count'>(%s)</span>",
+                    'garantias-online-360vo'
+                ),
+            ]);
+        }
     }
 
     /**
@@ -115,8 +152,11 @@ class GuaranteeCPT
         if ($post->post_type !== self::POST_TYPE || $new_status === $old_status) {
             return;
         }
-        $user = get_current_user_id();
+        $user    = get_current_user_id();
         $details = sprintf('De %s a %s', $old_status, $new_status);
         GuaranteeLogger::log($user, $post->ID, 'status_changed', $details);
+
+        // Mantener sincronizado el meta de estado de contratación
+        update_post_meta($post->ID, 'estado_garantia_estado_contratacion', $new_status);
     }
 }

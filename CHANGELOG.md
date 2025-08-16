@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.1.13 - 2025-08-16
+- Registro de estados personalizados de garantía (pendiente de pago, activada, expirada y expira pronto).
+- Definición de capacidades propias del CPT y asignación automática al rol administrador.
+- Listado de garantías incluye borradores y estados internos; al contratar se marca como pendiente de pago.
+
 ## 0.1.12 - 2025-08-16
 - Restaura las capacidades por defecto del tipo de contenido para que los administradores vean todas las garantías.
 - Corrige la comprobación de permisos al publicar una garantía.

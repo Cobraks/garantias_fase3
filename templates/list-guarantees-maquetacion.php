@@ -26,8 +26,10 @@ use GarantiasOnline360VO\Svg;
 
     <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Estado', 'garantias-online-360vo'); ?>">
         <option value=""><?php esc_html_e('Todos los estados', 'garantias-online-360vo'); ?></option>
+        <option value="Borrador"><?php esc_html_e('Borrador', 'garantias-online-360vo'); ?></option>
+        <option value="Pendiente de pago"><?php esc_html_e('Pendiente de pago', 'garantias-online-360vo'); ?></option>
         <option value="Activa"><?php esc_html_e('Activa', 'garantias-online-360vo'); ?></option>
-        <option value="Pendiente"><?php esc_html_e('Pendiente de pago', 'garantias-online-360vo'); ?></option>
+        <option value="Expira pronto"><?php esc_html_e('Expira pronto', 'garantias-online-360vo'); ?></option>
         <option value="Expirada"><?php esc_html_e('Expirada', 'garantias-online-360vo'); ?></option>
     </select>
 
@@ -166,7 +168,7 @@ use GarantiasOnline360VO\Svg;
                                 'borrador'         => __('Borrador', 'garantias-online-360vo'),
                                 'activada'         => __('Activada', 'garantias-online-360vo'),
                                 'expirada'         => __('Expirada', 'garantias-online-360vo'),
-                                'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+                                'expira_pronto'   => __('Expira pronto', 'garantias-online-360vo'),
                             ];
                             $status_label = $status_labels[$status_raw] ?? $status_raw;
                             ?>

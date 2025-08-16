@@ -3,6 +3,10 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.13
+- Estados personalizados de garantía y capacidades propias del CPT.
+- Las garantías contratadas pasan a "Pendiente de pago" y el listado muestra todos los estados.
+
 0.1.12
 - Restaura capacidades por defecto para que los administradores vean todas las garantías y corrige la verificación de permisos al publicar.
 
