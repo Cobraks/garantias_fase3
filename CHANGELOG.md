@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.18 - 2025-08-16
+- El botón "Contratar" envía el formulario y cambia la garantía a "Pendiente de pago".
+
 ## 0.1.17 - 2025-08-16
 - Los estados personalizados aparecen en la caja de publicación y se elimina "Pendiente de revisión" del desplegable.
 

@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.18
+- El botón "Contratar" publica la garantía y la marca como "Pendiente de pago".
+
 0.1.17
 - Los estados personalizados se muestran en la caja de publicación y se oculta "Pendiente de revisión".
 
