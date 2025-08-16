@@ -103,10 +103,11 @@ function showTab(index) {
 	if (FormCache.prevButton) {
 		FormCache.prevButton.style.display = index === 0 ? "none" : "";
 	}
-	if (FormCache.nextButton) {
-		FormCache.nextButton.textContent =
-			index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
-	}
+        if (FormCache.nextButton) {
+                const isLast = index === FormCache.fieldsets.length - 1;
+                FormCache.nextButton.textContent = isLast ? "Contratar" : "Siguiente";
+                FormCache.nextButton.type = isLast ? "submit" : "button";
+        }
 
 	// Actualiza estado
 	FormCache.currentTab = index;
@@ -248,14 +249,12 @@ function setupTabNavigation() {
                         if (typeof showSummarySectionForTab === "function") {
                                 showSummarySectionForTab(FormCache.currentTab);
                         }
-			if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
-				FormCache.currentTab++;
-				showTab(FormCache.currentTab);
-			} else {
-				// último paso: delega en otro módulo (ej. form-submission)
-			}
-		});
-	}
+                        if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
+                                FormCache.currentTab++;
+                                showTab(FormCache.currentTab);
+                        }
+                });
+        }
 }
 
 // === EXPORTS ===

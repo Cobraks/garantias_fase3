@@ -65,6 +65,17 @@ class GuaranteeRestController
         );
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::BASE . '/contract',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'contract'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::BASE . '/check-plate',
             [
                 [
@@ -244,6 +255,7 @@ class GuaranteeRestController
             ]);
             $uuid = wp_generate_uuid4();
             update_post_meta($post_id, 'estado_garantia_uuid', $uuid);
+            update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'borrador');
             error_log('[AUTOSAVE] Created draft guarantee ID ' . $post_id);
         } elseif ($matricula) {
             wp_update_post([
@@ -456,6 +468,46 @@ class GuaranteeRestController
         return new WP_REST_Response(['id' => $post_id, 'uuid' => $uuid]);
     }
 
+    public static function contract($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+
+        if (!$post_id) {
+            return new WP_Error('invalid_id', __('ID de garantía inválido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error('not_found', __('Garantía no encontrada', 'garantias-online-360vo'), ['status' => 404]);
+        }
+
+        $grant_publish = function ($allcaps, $caps, $args, $user) {
+            $allcaps['edit_post']       = true;
+            $allcaps['edit_posts']      = true;
+            $allcaps['publish_posts']   = true;
+            $allcaps['publish_post']    = true;
+            return $allcaps;
+        };
+
+        add_filter('user_has_cap', $grant_publish, 10, 4);
+        $result = wp_update_post([
+            'ID'          => $post_id,
+            'post_status' => 'publish',
+        ], true);
+        if (!is_wp_error($result) && $result) {
+            wp_publish_post($post_id);
+        }
+        remove_filter('user_has_cap', $grant_publish, 10);
+
+        if (is_wp_error($result) || !$result) {
+            return new WP_Error('cannot_publish', __('No se pudo publicar la garantía', 'garantias-online-360vo'), ['status' => 500]);
+        }
+
+        update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'pendiente_pago');
+
+        return rest_ensure_response(['id' => $post_id, 'status' => 'publish']);
+    }
+
     public static function check_plate($request)
     {
         $matricula = isset($request['matricula']) ? sanitize_text_field($request['matricula']) : '';
@@ -544,7 +596,7 @@ class GuaranteeRestController
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
             'posts_per_page' => $per_page,
             'paged'          => $page,
-            'post_status'    => 'publish',
+            'post_status'    => ['draft', 'publish', 'pending', 'future'],
         ];
 
         // Permisos: restringe por profesional/comercial salvo admins
@@ -643,8 +695,15 @@ class GuaranteeRestController
             $hasta  = get_post_meta($post_id, 'estado_garantia_finalizacion', true);
             $plan_id = get_post_meta($post_id, 'garantia_contratada_garantia', true);
             $plan   = $plan_id ? get_the_title($plan_id) : '';
-            $precio = get_post_meta($post_id, 'garantia_contratada_precio', true);
-            $estado = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+            $precio      = get_post_meta($post_id, 'garantia_contratada_precio', true);
+            $estado_raw  = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+            if (is_array($estado_raw)) {
+                $estado_value = $estado_raw['value'] ?? '';
+                $estado_label = $estado_raw['label'] ?? '';
+            } else {
+                $estado_value = (string) $estado_raw;
+                $estado_label = '';
+            }
             $estado_labels = [
                 'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
                 'borrador'         => __('Borrador', 'garantias-online-360vo'),
@@ -652,7 +711,12 @@ class GuaranteeRestController
                 'expirada'         => __('Expirada', 'garantias-online-360vo'),
                 'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
             ];
-            $estado_label = $estado_labels[$estado] ?? $estado;
+            if ($estado_value === '' || !isset($estado_labels[$estado_value])) {
+                $estado_value = 'borrador';
+            }
+            if ($estado_label === '' || is_array($estado_label)) {
+                $estado_label = $estado_labels[$estado_value];
+            }
 
             $vendor_id = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
             $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
@@ -672,7 +736,7 @@ class GuaranteeRestController
                 'plan'       => $plan,
                 'precio'     => $precio,
                 'estado'     => [
-                    'value' => $estado,
+                    'value' => $estado_value,
                     'label' => $estado_label,
                 ],
                 'vendedor'   => $vendor_name,
@@ -727,7 +791,14 @@ class GuaranteeRestController
         $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
         $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
-        $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
+        $estado_raw = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
+        if (is_array($estado_raw)) {
+            $estado_value = $estado_raw['value'] ?? '';
+            $estado_label = $estado_raw['label'] ?? '';
+        } else {
+            $estado_value = (string) $estado_raw;
+            $estado_label = '';
+        }
         $estado_labels = [
             'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
             'borrador'         => __('Borrador', 'garantias-online-360vo'),
@@ -735,7 +806,12 @@ class GuaranteeRestController
             'expirada'         => __('Expirada', 'garantias-online-360vo'),
             'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
         ];
-        $estado_label = $estado_labels[$estado] ?? $estado;
+        if ($estado_value === '' || !isset($estado_labels[$estado_value])) {
+            $estado_value = 'borrador';
+        }
+        if ($estado_label === '' || is_array($estado_label)) {
+            $estado_label = $estado_labels[$estado_value];
+        }
 
         // Vendedor/concesionario
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
@@ -776,7 +852,7 @@ class GuaranteeRestController
             'desde' => $desde ?: '-',
             'hasta' => $hasta ?: '-',
             'estado' => [
-                'value' => $estado,
+                'value' => $estado_value,
                 'label' => $estado_label,
             ],
             'concesionario' => $concesionario ?: '-',
@@ -831,7 +907,7 @@ class GuaranteeRestController
 
         $args = [
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-            'post_status'    => 'publish',
+            'post_status'    => ['draft', 'publish', 'pending', 'future'],
             'fields'         => 'ids',
             'posts_per_page' => -1,
         ];
@@ -868,9 +944,10 @@ class GuaranteeRestController
             'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
         ];
         $estados = array_map(function ($e) use ($estado_labels) {
+            $label = $estado_labels[$e] ?? $estado_labels['borrador'];
             return [
                 'value' => $e,
-                'label' => $estado_labels[$e] ?? $e,
+                'label' => $label,
             ];
         }, $estados);
 

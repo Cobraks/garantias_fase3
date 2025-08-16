@@ -1,19 +1,51 @@
 // assets/js/modules/form-submission.js
 "use strict";
 
+import { getRestRoot, getRestNonce } from "./config.js";
+
 /*
     - Gestiona la lógica final de envío del formulario.
-    - Puede serializar datos, validar última vez y enviar por AJAX, fetch, etc.
-    - Por ahora, solo muestra un alert como placeholder.
+    - Envía la garantía creada al servidor para marcarla como contratada.
 */
 
 export default function initSubmission() {
-	const form = document.getElementById("form-nueva-garantia");
-	if (!form) return;
+        const form = document.getElementById("form-garantia");
+        if (!form) return;
 
-	form.addEventListener("submit", function (e) {
-		e.preventDefault();
-		// Aquí podrías serializar y enviar por AJAX/fetch...
-		alert("¡Formulario enviado correctamente! (esto es solo un ejemplo)");
-	});
+        form.addEventListener("submit", async function (e) {
+                e.preventDefault();
+
+                document.dispatchEvent(new CustomEvent("go:contracting"));
+
+                const draftId = localStorage.getItem("go_draft_id");
+                if (!draftId) {
+                        alert("No se ha encontrado la garantía a enviar");
+                        return;
+                }
+
+                try {
+                        const res = await fetch(`${getRestRoot()}go/v1/guarantees/contract`, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": getRestNonce(),
+                                },
+                                body: JSON.stringify({ id: draftId }),
+                        });
+
+                        const json = await res.json();
+                        if (!res.ok) {
+                                alert(json?.message || "Error al contratar la garantía");
+                                return;
+                        }
+
+                        localStorage.removeItem("go_draft_id");
+                        localStorage.removeItem("go_draft_uuid");
+                        document.dispatchEvent(new CustomEvent("go:contracted", { detail: { id: draftId } }));
+                        alert("¡Garantía contratada correctamente!");
+                } catch (err) {
+                        console.error("[SUBMISSION]", err);
+                        alert("Error al contratar la garantía");
+                }
+        });
 }
