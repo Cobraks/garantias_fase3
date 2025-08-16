@@ -1,5 +1,16 @@
 # Historial de cambios
 
+## 0.1.12 - 2025-08-16
+- Pantalla de éxito tras contratar con animación de confeti y enlaces a la documentación.
+- Mensajes y recordatorios de pago según el método seleccionado, con botones de contacto.
+
+## 0.1.11 - 2025-08-16
+- Muestra la etiqueta del canal de venta en el listado de garantías.
+- Nuevos estilos para las insignias "Pendiente de pago", "Sin finalizar" y "Expira pronto".
+
+## 0.1.10 - 2025-08-16
+- El listado de garantías incluye todos los estados de publicación, mostrando borradores como "Sin finalizar".
+
 ## 0.1.9 - 2025-08-16
 - Evita la creación de borradores duplicados al modificar la matrícula durante una nueva garantía.
 

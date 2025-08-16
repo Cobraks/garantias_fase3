@@ -454,6 +454,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
         <button id="form_prev_btn" type="button" class="btn btn-secondary">Anterior</button>
         <button id="form_next_btn" type="button" class="btn btn-primary">Siguiente</button>
     </div>
+    <?php \GarantiasOnline360VO\TemplateLoader::load_part('form-success'); ?>
 </div> <!-- /.form-container -->
 <!-- SUMARIO -->
 <aside class="summary-container" style="view-transition-name: resume-derecha">

@@ -100,7 +100,71 @@ export default function initAutosave() {
         let draftUuid = localStorage.getItem("go_draft_uuid");
         let saving = false;
 
-        async function sendAutosave() {
+        const navButtons = document.querySelector(".nav-buttons");
+        const successBlock = document.getElementById("form-success");
+        const summaryContainer = document.querySelector(".summary-container");
+
+        function launchConfetti() {
+                const holder = successBlock?.querySelector(
+                        ".form-success__confetti"
+                );
+                if (!holder) return;
+                for (let i = 0; i < 40; i++) {
+                        const piece = document.createElement("span");
+                        piece.className = "confetti-piece";
+                        piece.style.left = Math.random() * 100 + "%";
+                        piece.style.backgroundColor = `hsl(${Math.random() * 360},70%,60%)`;
+                        piece.style.animationDelay = Math.random() * 2 + "s";
+                        holder.appendChild(piece);
+                        setTimeout(() => piece.remove(), 5000);
+                }
+        }
+
+        function showSuccess(method, ref) {
+                form.style.display = "none";
+                navButtons && (navButtons.style.display = "none");
+                summaryContainer && (summaryContainer.style.display = "none");
+                if (successBlock) {
+                        successBlock.hidden = false;
+                        if (method === "transferencia" || method === "domiciliacion") {
+                                const pay = successBlock.querySelector(
+                                        ".form-success__payment"
+                                );
+                                if (pay) {
+                                        pay.hidden = false;
+                                        if (method === "transferencia") {
+                                                const transfer = pay.querySelector(
+                                                        ".form-success__transfer"
+                                                );
+                                                if (transfer) {
+                                                        transfer.hidden = false;
+                                                        const refEl = transfer.querySelector(
+                                                                "[data-ref]"
+                                                        );
+                                                        if (refEl) refEl.textContent = ref || "";
+                                                }
+                                        }
+                                }
+                        }
+                        successBlock
+                                .querySelectorAll("[data-copy]")
+                                .forEach((btn) => {
+                                        btn.addEventListener("click", () => {
+                                                const target = successBlock.querySelector(
+                                                        btn.getAttribute("data-copy")
+                                                );
+                                                if (target) {
+                                                        navigator.clipboard.writeText(
+                                                                target.textContent.trim()
+                                                        );
+                                                }
+                                        });
+                                });
+                        launchConfetti();
+                }
+        }
+
+        async function sendAutosave(finalize = false) {
                 if (saving) return;
                 saving = true;
 
@@ -289,6 +353,14 @@ export default function initAutosave() {
                         payload.estado_garantia = estado;
                 }
 
+                if (!payload.estado_garantia) payload.estado_garantia = {};
+                if (finalize) {
+                        payload.post_status = "publish";
+                        payload.estado_garantia.estado_contratacion = "pendiente_pago";
+                } else {
+                        payload.estado_garantia.estado_contratacion = "sin_finalizar";
+                }
+
                 console.log("[AUTOSAVE] payload", payload);
 
                 try {
@@ -322,6 +394,9 @@ export default function initAutosave() {
                                 localStorage.setItem("go_draft_uuid", draftUuid);
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
+                        if (finalize) {
+                                showSuccess(garantia.metodo_pago, draftUuid);
+                        }
                         spinner.style.display = "none";
                         icon.style.display = "inline-block";
                         text.textContent = "Guardado";
@@ -338,7 +413,9 @@ export default function initAutosave() {
 
         const debounced = debounce(sendAutosave, 300);
 
-        FormCache.nextButton?.addEventListener("click", debounced);
-        FormCache.prevButton?.addEventListener("click", debounced);
-        FormCache.tabs?.forEach((tab) => tab.addEventListener("click", debounced));
+        FormCache.nextButton?.addEventListener("click", () =>
+                debounced(FormCache.currentTab === FormCache.fieldsets.length - 1)
+        );
+        FormCache.prevButton?.addEventListener("click", () => debounced(false));
+        FormCache.tabs?.forEach((tab) => tab.addEventListener("click", () => debounced(false)));
 }
