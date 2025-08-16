@@ -452,7 +452,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
     <!-- Botones de Navegación -->
     <div class="nav-buttons">
         <button id="form_prev_btn" type="button" class="btn btn-secondary">Anterior</button>
-        <button id="form_next_btn" type="button" class="btn btn-primary">Siguiente</button>
+        <button id="form_next_btn" type="button" class="btn btn-primary"><span class="btn__text">Siguiente</span></button>
     </div>
     <?php \GarantiasOnline360VO\TemplateLoader::load_part('form-success'); ?>
 </div> <!-- /.form-container -->

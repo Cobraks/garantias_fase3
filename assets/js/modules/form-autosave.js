@@ -104,11 +104,18 @@ export default function initAutosave() {
         const successBlock = document.getElementById("form-success");
         const summaryContainer = document.querySelector(".summary-container");
         const tabs = document.querySelector(".tabs");
+        const nextBtn = document.getElementById("form_next_btn");
 
-        function fadeOut(el) {
+        function fadeOut(el, hide = true) {
                 if (!el) return;
                 el.classList.add("fade-out");
-                setTimeout(() => (el.style.display = "none"), 300);
+                const duration =
+                        parseFloat(
+                                getComputedStyle(el).transitionDuration || "0"
+                        ) * 1000;
+                if (hide) {
+                        setTimeout(() => (el.style.display = "none"), duration || 300);
+                }
         }
 
         function launchConfetti() {
@@ -128,51 +135,66 @@ export default function initAutosave() {
         }
 
         function showSuccess(method, ref) {
-                fadeOut(form);
+                fadeOut(form, false);
                 fadeOut(navButtons);
-                fadeOut(summaryContainer);
                 fadeOut(tabs);
-                if (successBlock) {
-                        successBlock.style.display = "block";
-                        requestAnimationFrame(() =>
-                                successBlock.classList.add("is-visible")
+                if (summaryContainer) {
+                        summaryContainer.classList.add("slide-out");
+                        container.classList.add("form-container--full");
+                        summaryContainer.addEventListener(
+                                "transitionend",
+                                () => {
+                                        summaryContainer.style.display = "none";
+                                        form.style.display = "none";
+                                        revealSuccess(method, ref);
+                                },
+                                { once: true }
                         );
-                        if (method === "transferencia" || method === "domiciliacion") {
-                                const pay = successBlock.querySelector(
-                                        ".form-success__payment"
-                                );
-                                if (pay) {
-                                        pay.hidden = false;
-                                        if (method === "transferencia") {
-                                                const transfer = pay.querySelector(
-                                                        ".form-success__transfer"
+                } else {
+                        setTimeout(() => {
+                                form.style.display = "none";
+                                revealSuccess(method, ref);
+                        }, 300);
+                }
+        }
+
+        function revealSuccess(method, ref) {
+                if (!successBlock) return;
+                successBlock.style.display = "block";
+                requestAnimationFrame(() => successBlock.classList.add("is-visible"));
+                if (method === "transferencia" || method === "domiciliacion") {
+                        const pay = successBlock.querySelector(".form-success__payment");
+                        if (pay) {
+                                pay.hidden = false;
+                                if (method === "transferencia") {
+                                        const transfer = pay.querySelector(
+                                                ".form-success__transfer"
+                                        );
+                                        if (transfer) {
+                                                transfer.hidden = false;
+                                                const refEl = transfer.querySelector(
+                                                        "[data-ref]"
                                                 );
-                                                if (transfer) {
-                                                        transfer.hidden = false;
-                                                        const refEl = transfer.querySelector(
-                                                                "[data-ref]"
-                                                        );
-                                                        if (refEl) refEl.textContent = ref || "";
-                                                }
+                                                if (refEl) refEl.textContent = ref || "";
                                         }
                                 }
                         }
-                        successBlock
-                                .querySelectorAll("[data-copy]")
-                                .forEach((btn) => {
-                                        btn.addEventListener("click", () => {
-                                                const target = successBlock.querySelector(
-                                                        btn.getAttribute("data-copy")
-                                                );
-                                                if (target) {
-                                                        navigator.clipboard.writeText(
-                                                                target.textContent.trim()
-                                                        );
-                                                }
-                                        });
-                                });
-                        launchConfetti();
                 }
+                successBlock
+                        .querySelectorAll("[data-copy]")
+                        .forEach((btn) => {
+                                btn.addEventListener("click", () => {
+                                        const target = successBlock.querySelector(
+                                                btn.getAttribute("data-copy")
+                                        );
+                                        if (target) {
+                                                navigator.clipboard.writeText(
+                                                        target.textContent.trim()
+                                                );
+                                        }
+                                });
+                        });
+                launchConfetti();
         }
 
         async function sendAutosave(finalize = false) {
@@ -185,6 +207,10 @@ export default function initAutosave() {
                 spinner.style.display = "inline-block";
                 icon.style.display = "none";
                 text.textContent = "Guardando";
+                if (finalize && nextBtn) {
+                        nextBtn.classList.add("is-loading");
+                        nextBtn.disabled = true;
+                }
 
                 const payload = {};
                 const datosVehiculo = {};
@@ -418,6 +444,10 @@ export default function initAutosave() {
                         console.error("[AUTOSAVE] error", e);
                         status.classList.add("autosave-status--hidden");
                 } finally {
+                        if (finalize && nextBtn) {
+                                nextBtn.classList.remove("is-loading");
+                                nextBtn.disabled = false;
+                        }
                         saving = false;
                 }
         }

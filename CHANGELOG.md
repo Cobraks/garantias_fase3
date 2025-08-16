@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.15 - 2025-08-16
+- Transición suave al finalizar la contratación: el resumen se desliza y el formulario se expande antes de mostrar la pantalla de éxito.
+- Spinner de carga en el botón "Contratar".
+
 ## 0.1.14 - 2025-08-16
 - Corrige la aparición prematura de la pantalla de éxito; ahora solo se muestra tras pulsar "Contratar".
 

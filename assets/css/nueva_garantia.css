@@ -1983,6 +1983,51 @@ margin-top: .5rem;
     transition: opacity .3s ease;
   }
 
+  .summary-container {
+    transition: transform .5s ease, opacity .5s ease;
+  }
+
+  .summary-container.slide-out {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  .form-container {
+    transition: width .5s ease;
+  }
+
+  .form-container.form-container--full {
+    width: 100%;
+  }
+
+  .btn.is-loading {
+    position: relative;
+    pointer-events: none;
+  }
+
+  .btn.is-loading .btn__text {
+    visibility: hidden;
+  }
+
+  .btn.is-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1rem;
+    height: 1rem;
+    margin-top: -0.5rem;
+    margin-left: -0.5rem;
+    border: 2px solid rgba(255, 255, 255, .3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: btn-spin .8s linear infinite;
+  }
+
+  @keyframes btn-spin {
+    to { transform: rotate(360deg); }
+  }
+
   .form-success {
     display: none;
     text-align: center;
