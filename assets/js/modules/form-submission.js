@@ -9,7 +9,7 @@ import { getRestRoot, getRestNonce } from "./config.js";
 */
 
 export default function initSubmission() {
-        const form = document.getElementById("form-nueva-garantia");
+        const form = document.getElementById("form-garantia");
         if (!form) return;
 
         form.addEventListener("submit", async function (e) {
