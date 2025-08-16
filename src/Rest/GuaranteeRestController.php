@@ -244,6 +244,11 @@ class GuaranteeRestController
             ]);
             $uuid = wp_generate_uuid4();
             update_post_meta($post_id, 'estado_garantia_uuid', $uuid);
+            if (function_exists('update_field')) {
+                update_field('estado_garantia', ['estado_contratacion' => 'sin_finalizar'], $post_id);
+            } else {
+                update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'sin_finalizar');
+            }
             error_log('[AUTOSAVE] Created draft guarantee ID ' . $post_id);
         } elseif ($matricula) {
             wp_update_post([
@@ -432,8 +437,20 @@ class GuaranteeRestController
             if (isset($data['estado_garantia']['finalizacion']) && empty($estado['finalizacion'])) {
                 $estado['finalizacion'] = sanitize_text_field($data['estado_garantia']['finalizacion']);
             }
+            if (isset($data['estado_garantia']['estado_contratacion'])) {
+                $ec = sanitize_text_field($data['estado_garantia']['estado_contratacion']);
+                $valid = ['pendiente_pago', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto'];
+                if (in_array($ec, $valid, true)) {
+                    $estado['estado_contratacion'] = $ec;
+                }
+            }
             if ($estado) {
                 if (function_exists('update_field')) {
+                    $existing = get_field('estado_garantia', $post_id);
+                    if (!is_array($existing)) {
+                        $existing = [];
+                    }
+                    $estado = array_merge($existing, $estado);
                     update_field('estado_garantia', $estado, $post_id);
                 } else {
                     foreach ($estado as $k => $v) {
@@ -443,6 +460,14 @@ class GuaranteeRestController
                 error_log('[AUTOSAVE] Saved estado_garantia for ID ' . $post_id . ': ' . wp_json_encode($estado));
             }
             unset($data['estado_garantia']);
+        }
+
+        if (isset($data['post_status'])) {
+            $ps = sanitize_text_field($data['post_status']);
+            if ($ps === 'publish') {
+                wp_update_post(['ID' => $post_id, 'post_status' => 'publish']);
+            }
+            unset($data['post_status']);
         }
 
         foreach ($data as $key => $value) {
@@ -646,11 +671,11 @@ class GuaranteeRestController
             $precio = get_post_meta($post_id, 'garantia_contratada_precio', true);
             $estado = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
             $estado_labels = [
-                'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
-                'borrador'         => __('Borrador', 'garantias-online-360vo'),
-                'activada'         => __('Activada', 'garantias-online-360vo'),
-                'expirada'         => __('Expirada', 'garantias-online-360vo'),
-                'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+                'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+                'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
+                'activada'       => __('Activada', 'garantias-online-360vo'),
+                'expirada'       => __('Expirada', 'garantias-online-360vo'),
+                'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
             ];
             $estado_label = $estado_labels[$estado] ?? $estado;
 
@@ -729,11 +754,11 @@ class GuaranteeRestController
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
         $estado_labels = [
-            'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
-            'borrador'         => __('Borrador', 'garantias-online-360vo'),
-            'activada'         => __('Activada', 'garantias-online-360vo'),
-            'expirada'         => __('Expirada', 'garantias-online-360vo'),
-            'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
+            'activada'       => __('Activada', 'garantias-online-360vo'),
+            'expirada'       => __('Expirada', 'garantias-online-360vo'),
+            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
         ];
         $estado_label = $estado_labels[$estado] ?? $estado;
 
@@ -861,11 +886,11 @@ class GuaranteeRestController
         $estados = array_values(array_unique(array_filter($estados)));
         sort($estados);
         $estado_labels = [
-            'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
-            'borrador'         => __('Borrador', 'garantias-online-360vo'),
-            'activada'         => __('Activada', 'garantias-online-360vo'),
-            'expirada'         => __('Expirada', 'garantias-online-360vo'),
-            'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
+            'activada'       => __('Activada', 'garantias-online-360vo'),
+            'expirada'       => __('Expirada', 'garantias-online-360vo'),
+            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
         ];
         $estados = array_map(function ($e) use ($estado_labels) {
             return [
