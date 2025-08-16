@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.11 - 2025-08-16
+- Muestra la etiqueta del canal de venta en el listado de garantías.
+- Nuevos estilos para las insignias "Pendiente de pago", "Sin finalizar" y "Expira pronto".
+
 ## 0.1.10 - 2025-08-16
 - El listado de garantías incluye todos los estados de publicación, mostrando borradores como "Sin finalizar".
 

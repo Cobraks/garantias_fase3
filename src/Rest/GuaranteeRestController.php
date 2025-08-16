@@ -685,8 +685,21 @@ class GuaranteeRestController
 
             // Canal de venta puede ser array (de ACF select) o string
             $canal_venta_raw = get_post_meta($post_id, 'garantia_contratada_canal_venta', true);
-            $canal_venta_value = is_array($canal_venta_raw) && isset($canal_venta_raw['value']) ? $canal_venta_raw['value'] : (is_string($canal_venta_raw) ? $canal_venta_raw : '');
-            $canal_venta_label = is_array($canal_venta_raw) && isset($canal_venta_raw['label']) ? $canal_venta_raw['label'] : (is_string($canal_venta_raw) ? ucfirst($canal_venta_raw) : '');
+            $canal_venta_value = is_array($canal_venta_raw) && isset($canal_venta_raw['value'])
+                ? $canal_venta_raw['value']
+                : (is_string($canal_venta_raw) ? $canal_venta_raw : '');
+            $canal_venta_label = '';
+            if (is_array($canal_venta_raw) && isset($canal_venta_raw['label'])) {
+                $canal_venta_label = $canal_venta_raw['label'];
+            } else {
+                $lookup = preg_replace('/^go_/i', '', $canal_venta_value);
+                $canal_choices = [
+                    'profesional' => __('Profesional', 'garantias-online-360vo'),
+                    'particular'  => __('Particular', 'garantias-online-360vo'),
+                    'gestoria'    => __('Gestoría', 'garantias-online-360vo'),
+                ];
+                $canal_venta_label = $canal_choices[$lookup] ?? ucfirst($lookup);
+            }
 
             $data[] = [
                 'id'         => $post_id,
@@ -768,7 +781,20 @@ class GuaranteeRestController
         $concesionario = $user ? $user->display_name : '';
 
         $canal_venta_raw = get_post_meta($id, 'garantia_contratada_canal_venta', true);
-        $canal_venta = is_array($canal_venta_raw) && isset($canal_venta_raw['label']) ? $canal_venta_raw['label'] : (is_string($canal_venta_raw) ? ucfirst($canal_venta_raw) : '');
+        $canal_venta_value = is_array($canal_venta_raw) && isset($canal_venta_raw['value'])
+            ? $canal_venta_raw['value']
+            : (is_string($canal_venta_raw) ? $canal_venta_raw : '');
+        if (is_array($canal_venta_raw) && isset($canal_venta_raw['label'])) {
+            $canal_venta = $canal_venta_raw['label'];
+        } else {
+            $lookup = preg_replace('/^go_/i', '', $canal_venta_value);
+            $canal_choices = [
+                'profesional' => __('Profesional', 'garantias-online-360vo'),
+                'particular'  => __('Particular', 'garantias-online-360vo'),
+                'gestoria'    => __('Gestoría', 'garantias-online-360vo'),
+            ];
+            $canal_venta = $canal_choices[$lookup] ?? ucfirst($lookup);
+        }
 
         // Documentación (rellena las URL si las tienes guardadas)
         $contrato_url = get_post_meta($id, 'docs_url_contrato', true) ?: '#';
