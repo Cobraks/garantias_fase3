@@ -27,10 +27,9 @@ function getValoresForm() {
 		cilindrada: document.getElementById("cilindrada")?.value || 0,
 		potencia: document.getElementById("potencia")?.value || 0,
 		duracion: Number(document.getElementById("duracion")?.value) || 0,
-		traccion_camion: document.getElementById("traccion_camion")?.value || null,
-		mma: document.getElementById("mma")?.value || null,
-		combustible: document.getElementById("combustible")?.value || null,
-		cambio: document.getElementById("cambio")?.value || null,
+                traccion_camion: document.getElementById("traccion_camion")?.value || null,
+                combustible: document.getElementById("combustible")?.value || null,
+                cambio: document.getElementById("cambio")?.value || null,
 		// mantener el mismo formato que en renderPlans / filtrarModalidades
 		doble_motor: document.getElementById("doble_motor")?.value || null,
 		fecha_primera_matriculacion:
@@ -106,25 +105,29 @@ function describeTramo(modalidad, valoresForm) {
 	const overallMax =
 		maximosReales.length > 0 ? Math.max(...maximosReales) : matched.max;
 
-	if (tipo === "cilindrada") {
-		if (matched.min === 0) {
-			return `Precio base hasta ${matched.max.toLocaleString()}cc`;
-		}
-		// Si el matched.max es el tope real (igual a overallMax), lo tratamos como infinito
-		if (matched.max === overallMax || matched.max === Infinity) {
-			return `Precio base más de ${matched.min.toLocaleString()}cc`;
-		}
-		return `Precio base de ${matched.min.toLocaleString()}cc a ${matched.max.toLocaleString()}cc`;
-	} else if (tipo === "potencia") {
-		if (matched.min === 0) {
-			return `Precio base hasta ${matched.max.toLocaleString()} CV`;
-		}
-		if (matched.max === overallMax || matched.max === Infinity) {
-			return `Precio base más de ${matched.min.toLocaleString()} CV`;
-		}
-		return `Precio base de ${matched.min.toLocaleString()} CV a ${matched.max.toLocaleString()} CV`;
-	}
-	return "Precio base";
+        if (tipo === "cilindrada") {
+                if (matched.min === 0) {
+                        return `Precio base hasta ${matched.max.toLocaleString()} CC`;
+                }
+                // Si el matched.max es el tope real (igual a overallMax), lo tratamos como infinito
+                if (matched.max === overallMax || matched.max === Infinity) {
+                        return `Precio base más de ${matched.min.toLocaleString()} CC`;
+                }
+                return `Precio base de ${matched.min.toLocaleString()} CC a ${matched.max.toLocaleString()} CC`;
+        } else if (tipo === "potencia") {
+                const unit =
+                        document.getElementById("combustible")?.value === "electrico"
+                                ? "kW"
+                                : "CV";
+                if (matched.min === 0) {
+                        return `Precio base hasta ${matched.max.toLocaleString()} ${unit}`;
+                }
+                if (matched.max === overallMax || matched.max === Infinity) {
+                        return `Precio base más de ${matched.min.toLocaleString()} ${unit}`;
+                }
+                return `Precio base de ${matched.min.toLocaleString()} ${unit} a ${matched.max.toLocaleString()} ${unit}`;
+        }
+        return "Precio base";
 }
 
 async function buildSummaryHTML() {
@@ -285,16 +288,15 @@ async function buildSummaryHTML() {
 let scheduled = null;
 function scheduleUpdate() {
 	if (scheduled) clearTimeout(scheduled);
-	scheduled = setTimeout(() => {
+        scheduled = setTimeout(() => {
                 if (typeof filtrarModalidades === "function") {
                         // actualizar modalidades antes de reconstruir resumen para que recargos reflejen el estado
-                        filtrarModalidades().finally(() => {
-                                buildSummaryHTML();
-                        });
+                        filtrarModalidades();
+                        setTimeout(buildSummaryHTML, 150);
                 } else {
                         buildSummaryHTML();
                 }
-	}, 100);
+        }, 100);
 }
 
 function setupListeners() {
@@ -305,13 +307,12 @@ function setupListeners() {
 		"canal-venta",
 		"cilindrada",
 		"potencia",
-		"combustible",
-		"cambio",
-		"traccion_camion",
-		"doble_motor",
-		"traccion",
-		"mma",
-		"fecha_primera_matriculacion",
+                "combustible",
+                "cambio",
+                "traccion_camion",
+                "doble_motor",
+                "traccion",
+                "fecha_primera_matriculacion",
 	].forEach((id) => {
 		const el = document.getElementById(id);
 		if (!el) return;

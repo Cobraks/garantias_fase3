@@ -3,7 +3,7 @@
 
 /*
     - Lógica de visibilidad y dependencias entre campos del formulario.
-    - Ahora gestiona el caso especial de "camion" mostrando traccion_camion y mma, ocultando traccion.
+    - Gestiona el caso especial de "camion" mostrando traccion_camion y ocultando traccion.
     - También muestra/oculta el select de doble motor en función del combustible seleccionado.
 */
 
@@ -30,10 +30,9 @@ function toggleVehiculoFields() {
 	const traccionContainer = document.querySelector(
 		".form__input-container--traccion"
 	);
-	const traccionCamionContainer = document.querySelector(
-		".form__input-container--traccion-camion"
-	);
-	const mmaContainer = document.querySelector(".form__input-container--mma");
+        const traccionCamionContainer = document.querySelector(
+                ".form__input-container--traccion-camion"
+        );
 
 	if (!tipoVehiculo) return;
 
@@ -56,26 +55,37 @@ function toggleVehiculoFields() {
 			if (traccionCamion) traccionCamion.value = "";
 		}
 	}
-	if (mmaContainer) {
-		mmaContainer.style.display = isCamion ? "" : "none";
-		if (!isCamion) {
-			const mma = mmaContainer.querySelector("#mma");
-			if (mma) mma.value = "";
-		}
-	}
-
-	// Actualiza el estado de validación y resumen
+        // Actualiza el estado de validación y resumen
         updateNextButtonState();
         debouncedUpdateSummary();
 	// <- AQUÍ ESTÁ LA CLAVE: actualiza labels flotantes tras cambios
 	updateSelectFloatingLabels();
 }
 
+function updatePotenciaUnits() {
+        const combustible = document.getElementById("combustible")?.value;
+        const potenciaLabel = document.querySelector("label[for='potencia']");
+        const potenciaSuffix = document
+                .getElementById("potencia")
+                ?.closest(".form__input-container")
+                ?.querySelector(".form__suffix");
+        const summaryUnit = document.getElementById("summary-potencia-unit");
+        const isElectrico = combustible === "electrico";
+        if (potenciaLabel)
+                potenciaLabel.textContent = isElectrico
+                        ? "Potencia (kW)"
+                        : "Potencia (CV)";
+        if (potenciaSuffix)
+                potenciaSuffix.textContent = isElectrico ? "kW" : "CV";
+        if (summaryUnit)
+                summaryUnit.textContent = isElectrico ? "kW" : "CV";
+}
+
 function toggleCombustibleDependientes() {
-	const combustible = document.getElementById("combustible");
-	const dobleMotorContainer = document.querySelector(
-		".form__input-container--doble_motor"
-	);
+        const combustible = document.getElementById("combustible");
+        const dobleMotorContainer = document.querySelector(
+                ".form__input-container--doble_motor"
+        );
 	if (!combustible || !dobleMotorContainer) return;
 
 	const val = combustible.value;
@@ -89,8 +99,9 @@ function toggleCombustibleDependientes() {
 	// Actualiza floating label tras cambio
 	updateSelectFloatingLabels();
 
-	// Refresca validación/resumen
+        // Refresca validación/resumen
         updateNextButtonState();
+        updatePotenciaUnits();
         debouncedUpdateSummary();
 }
 
@@ -102,12 +113,13 @@ function initDynamicFields() {
 		toggleVehiculoFields();
 	}
 
-	const combustible = document.getElementById("combustible");
-	if (combustible) {
-		combustible.addEventListener("change", toggleCombustibleDependientes);
-		// Estado inicial:
-		toggleCombustibleDependientes();
-	}
+        const combustible = document.getElementById("combustible");
+        if (combustible) {
+                combustible.addEventListener("change", toggleCombustibleDependientes);
+                // Estado inicial:
+                toggleCombustibleDependientes();
+                updatePotenciaUnits();
+        }
 
 	// También flota labels de selects al cargar (en caso de edición)
 	updateSelectFloatingLabels();

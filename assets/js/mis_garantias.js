@@ -2,11 +2,20 @@
 	document.addEventListener("DOMContentLoaded", () => {
 		console.log("DOM loaded — inicializando mis_garantias.js");
 
-		const tbody = document.querySelector("tbody[data-current-page]");
-		const table = tbody.closest("table");
-		const listContainer = document.querySelector(".guarantees-list");
-		const scrollEnd = listContainer.querySelector("#scroll-end");
-		const spinner = scrollEnd.querySelector(".spinner");
+                const tbody = document.querySelector("tbody[data-current-page]");
+                const table = tbody.closest("table");
+                const listContainer = document.querySelector(".guarantees-list");
+                const scrollEnd = listContainer.querySelector("#scroll-end");
+                const spinner = scrollEnd.querySelector(".spinner");
+
+                const restRoot =
+                        (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.root) ||
+                        (window.GO_REST && window.GO_REST.root) ||
+                        "/wp-json/";
+                const restNonce =
+                        (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.nonce) ||
+                        (window.GO_REST && window.GO_REST.nonce) ||
+                        "";
 		const DEFAULT_PER = 12;
 		let perPage = DEFAULT_PER;
 		let currentPage = 1;
@@ -17,10 +26,22 @@
 		let searchQuery = "";
 		let lastValidQuery = "";
 		let lastValidResults = [];
-		const detail = document.querySelector(".guarantee-detail");
-		let panel1 = document.getElementById("detail-panel-1");
-		let panel2 = document.getElementById("detail-panel-2");
-		let lastEmptyPanel = panel1;
+                const detail = document.querySelector(".guarantee-detail");
+                let panel1 = document.getElementById("detail-panel-1");
+                let panel2 = document.getElementById("detail-panel-2");
+                let lastEmptyPanel = panel1;
+
+                const filterSelects = document.querySelectorAll(
+                        ".guarantees-list__filter"
+                );
+                const estadoSelect = filterSelects[0];
+                const planSelect = filterSelects[1];
+                const canalSelect = filterSelects[2];
+                const concesionarioSelect = filterSelects[3];
+                let selectedEstado = "";
+                let selectedPlan = "";
+                let selectedCanal = "";
+                let selectedConcesionario = "";
 
 		let resultMessage = document.querySelector(
 			".guarantees-list__result-message"
@@ -50,56 +71,129 @@
 		let prevSelectedRow = null;
 		let prevIdx = null;
 		const urlMat = new URLSearchParams(window.location.search).get("matricula");
-		const detailCache = new Map();
+                const detailCache = new Map();
 
-		function normalizeEstadoClase(estado) {
-			if (!estado) return "pendiente";
-			let val = estado
-				.toLowerCase()
-				.normalize("NFD")
-				.replace(/[\u0300-\u036f]/g, "")
-				.replace(/[^a-z0-9]/g, "");
-			if (val.startsWith("expir")) return "expirada";
-			if (val.startsWith("pendi")) return "pendiente";
-			if (val.startsWith("activa")) return "activada";
-			return val || "pendiente";
-		}
+                function normalizeEstadoClase(estado) {
+                        if (!estado) return "pendiente-pago";
+                        return String(estado)
+                                .toLowerCase()
+                                .normalize("NFD")
+                                .replace(/[\u0300-\u036f]/g, "")
+                                .replace(/[^a-z0-9]+/g, "-")
+                                .replace(/^-+|-+$/g, "");
+                }
 
-		function renderRow(item) {
-			const estado =
-				typeof item.estado === "string" && item.estado
-					? item.estado
-					: typeof item.estado === "number"
-					? String(item.estado)
-					: "Desconocido";
-			const estadoClase = normalizeEstadoClase(estado);
-			const marca_modelo = item.marca ?? "-";
-			const mat = item.mat ?? item.matricula ?? "-";
-			const desde = item.desde ?? "-";
-			const hasta = item.hasta ?? "-";
-			const vendedor_name = item.vendedor ?? "-";
-			const plan = item.plan ?? "-";
-			const precio = item.precio ?? "-";
-			const canal_venta =
-				item.canal_venta && item.canal_venta.label
-					? item.canal_venta.label
-					: "-";
-			const vendedor_type = canal_venta;
+                function formatDate(value) {
+                        if (!value) return { iso: "-", display: "-" };
+                        let cleaned = String(value).replace(/[^0-9]/g, "");
+                        if (cleaned.length === 8) {
+                                const y = cleaned.slice(0, 4);
+                                const m = cleaned.slice(4, 6);
+                                const d = cleaned.slice(6, 8);
+                                const iso = `${y}-${m}-${d}`;
+                                const date = new Date(iso);
+                                if (!isNaN(date)) {
+                                        const display = new Intl.DateTimeFormat("es-ES", {
+                                                day: "numeric",
+                                                month: "long",
+                                                year: "numeric",
+                                        })
+                                                .format(date)
+                                                .replace(/ de /g, " ");
+                                        return { iso, display };
+                                }
+                                return { iso, display: `${d}/${m}/${y}` };
+                        }
+                        const date = new Date(value);
+                        if (!isNaN(date)) {
+                                const iso = date.toISOString().slice(0, 10);
+                                const display = new Intl.DateTimeFormat("es-ES", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                })
+                                        .format(date)
+                                        .replace(/ de /g, " ");
+                                return { iso, display };
+                        }
+                        return { iso: value, display: value };
+                }
+
+                function formatPrice(value) {
+                        if (value === null || value === undefined || value === "") return "-";
+                        const num =
+                                typeof value === "number"
+                                        ? value
+                                        : parseFloat(
+                                                  String(value)
+                                                          .replace(/[^0-9.,-]/g, "")
+                                                          .replace(",", ".")
+                                          );
+                        if (isNaN(num)) return String(value);
+                        return new Intl.NumberFormat("es-ES", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                        }).format(num);
+                }
+
+                function normalizeDetailData(data) {
+                        if (!data || typeof data !== "object") return data;
+                        const d = formatDate(data.desde);
+                        data.desde = d.iso;
+                        data.desde_fmt = d.display;
+                        const h = formatDate(data.hasta);
+                        data.hasta = h.iso;
+                        data.hasta_fmt = h.display;
+                        if (data.precio !== undefined) data.precio = formatPrice(data.precio);
+                        if (data.precio_venta !== undefined)
+                                data.precio_venta = formatPrice(data.precio_venta);
+                        return data;
+                }
+
+                function renderRow(item) {
+                        const estadoData = item.estado || "";
+                        const estadoValue =
+                                typeof estadoData === "object" && estadoData.value
+                                        ? estadoData.value
+                                        : typeof estadoData === "string" && estadoData
+                                        ? estadoData
+                                        : typeof estadoData === "number"
+                                        ? String(estadoData)
+                                        : "";
+                        const estadoLabel =
+                                typeof estadoData === "object" && estadoData.label
+                                        ? estadoData.label
+                                        : estadoValue || "Desconocido";
+                        const estadoClase = normalizeEstadoClase(estadoValue);
+                        const marca_modelo = item.marca ?? "-";
+                        const mat = item.mat ?? item.matricula ?? "-";
+                        const { iso: desdeIso, display: desde } = formatDate(item.desde);
+                        const { iso: hastaIso, display: hasta } = formatDate(item.hasta);
+                        const vendedor_name = item.vendedor ?? "-";
+                        const plan = item.plan ?? "-";
+                        const precio = formatPrice(item.precio);
+                        const canal_venta =
+                                item.canal_venta && item.canal_venta.label
+                                        ? item.canal_venta.label
+                                        : "-";
+                        const vendedor_type = canal_venta;
 
 			const tr = document.createElement("tr");
 			tr.className = "guarantees-table__row";
 			tr.tabIndex = 0;
 			tr.dataset.id = item.id;
-			tr.dataset.matricula = mat;
-			tr.dataset.marca_modelo = marca_modelo;
-			tr.dataset.plan = plan;
-			tr.dataset.desde = desde;
-			tr.dataset.hasta = hasta;
-			tr.dataset.estado = estado;
-			tr.dataset.estadoclase = estadoClase;
-			tr.dataset.vendedor_name = vendedor_name;
-			tr.dataset.vendedor_type = vendedor_type;
-			tr.dataset.precio = precio;
+                        tr.dataset.matricula = mat;
+                        tr.dataset.marca_modelo = marca_modelo;
+                        tr.dataset.plan = plan;
+                        tr.dataset.desde = desdeIso;
+                        tr.dataset.desdeFmt = desde;
+                        tr.dataset.hasta = hastaIso;
+                        tr.dataset.hastaFmt = hasta;
+                        tr.dataset.estado = estadoLabel;
+                        tr.dataset.estadoclase = estadoClase;
+                        tr.dataset.vendedor_name = vendedor_name;
+                        tr.dataset.vendedor_type = vendedor_type;
+                        tr.dataset.precio = precio;
 			tr.dataset.canalVenta = canal_venta;
 
 			tr.innerHTML = `
@@ -126,9 +220,9 @@
 						<span class="plan__name">${plan}</span>
 						<span class="plan__price">${precio}€</span>
 					</div>
-					<span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
-						${estado}
-					</span>
+                                          <span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
+                                                  ${estadoLabel}
+                                          </span>
 				</td>
 			`;
 			return tr;
@@ -193,20 +287,40 @@
 			resultMessage.style.display = msg ? "block" : "none";
 		}
 
-		async function loadPage(page = 1, options = {}) {
-			if (isLoading || !hasMore) return;
-			isLoading = true;
-			spinner.style.display = "";
-			const search =
-				typeof options.search === "string" ? options.search : searchQuery;
-			try {
-				let url = `${GO_REST.root}go/v1/guarantees?page=${page}&per_page=${perPage}`;
-				if (search && search.length > 0) {
-					url += `&search=${encodeURIComponent(search)}`;
-				}
-				const res = await fetch(url, {
-					headers: { "X-WP-Nonce": GO_REST.nonce },
-				});
+                async function loadPage(page = 1, options = {}) {
+                        if (isLoading || !hasMore) return;
+                        isLoading = true;
+                        spinner.style.display = "";
+                        const search =
+                                typeof options.search === "string" ? options.search : searchQuery;
+                        const estado =
+                                typeof options.estado === "string" ? options.estado : selectedEstado;
+                        const plan =
+                                typeof options.plan !== "undefined"
+                                        ? options.plan
+                                        : selectedPlan;
+                        const canal =
+                                typeof options.canal === "string" ? options.canal : selectedCanal;
+                        const concesionario =
+                                typeof options.concesionario !== "undefined"
+                                        ? options.concesionario
+                                        : selectedConcesionario;
+                        try {
+                                const params = new URLSearchParams({
+                                        page,
+                                        per_page: perPage,
+                                });
+                                if (search && search.length > 0)
+                                        params.append("search", search);
+                                if (estado) params.append("estado", estado);
+                                if (plan) params.append("plan", plan);
+                                if (canal) params.append("canal", canal);
+                                if (concesionario)
+                                        params.append("concesionario", concesionario);
+                                let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
+                                const res = await fetch(url, {
+                                        headers: { "X-WP-Nonce": restNonce },
+                                });
 				if (!res.ok) throw `HTTP ${res.status}`;
 				totalPosts = +res.headers.get("X-WP-Total") || 0;
 				totalPages = +res.headers.get("X-WP-TotalPages") || 1;
@@ -260,18 +374,18 @@
 								(async () => {
 									try {
 										const res = await fetch(
-											`${GO_REST.root}go/v1/guarantees/${id}`,
-											{
-												headers: { "X-WP-Nonce": GO_REST.nonce },
-											}
-										);
+                                                                                `${restRoot}go/v1/guarantees/${id}`,
+                                                                                        {
+                                                                                                headers: { "X-WP-Nonce": restNonce },
+                                                                                        }
+                                                                                );
 										if (!res.ok) throw res.status;
-										const dataDetalle = await res.json();
-										detailCache.set(id, dataDetalle);
-										if (nextPanel.dataset.loadedId === String(id)) {
-											nextPanel.innerHTML = renderFullDetail(
-												dataDetalle,
-												rowData,
+                                                                                const dataDetalle = normalizeDetailData(await res.json());
+                                                                                detailCache.set(id, dataDetalle);
+                                                                                if (nextPanel.dataset.loadedId === String(id)) {
+                                                                                        nextPanel.innerHTML = renderFullDetail(
+                                                                                                dataDetalle,
+                                                                                                rowData,
 												[]
 											);
 										}
@@ -320,16 +434,16 @@
 			isLoading = true;
 			spinner.style.display = "";
 			try {
-				let res = await fetch(
-					`${GO_REST.root}go/v1/guarantees?page=1&per_page=1`,
-					{ headers: { "X-WP-Nonce": GO_REST.nonce } }
-				);
+                                let res = await fetch(
+                                        `${restRoot}go/v1/guarantees?page=1&per_page=1`,
+                                        { headers: { "X-WP-Nonce": restNonce } }
+                                );
 				if (!res.ok) throw res.status;
 				totalPosts = +res.headers.get("X-WP-Total") || 0;
-				res = await fetch(
-					`${GO_REST.root}go/v1/guarantees?page=1&per_page=${totalPosts}`,
-					{ headers: { "X-WP-Nonce": GO_REST.nonce } }
-				);
+                                res = await fetch(
+                                        `${restRoot}go/v1/guarantees?page=1&per_page=${totalPosts}`,
+                                        { headers: { "X-WP-Nonce": restNonce } }
+                                );
 				if (!res.ok) throw res.status;
 				const { data } = await res.json();
 				tbody.innerHTML = "";
@@ -374,23 +488,33 @@
 			return months > 0 ? months : "-";
 		}
 
-		function buildRowData(row) {
-			return {
-				marca_modelo: row.dataset.marca_modelo ?? "-",
-				matricula: row.dataset.matricula ?? "-",
-				plan: row.dataset.plan ?? "-",
-				desde: row.dataset.desde ?? "-",
-				hasta: row.dataset.hasta ?? "-",
-				estado: row.dataset.estado ?? "Desconocido",
-				estadoclase: row.dataset.estadoclase ?? "pendiente",
-				concesionario: row.dataset.vendedor_name ?? "-",
-				canal_venta: row.dataset.vendedor_type ?? "-",
-				precio: row.dataset.precio ?? "-",
-				tipo: "-",
-				kilometros: "-",
-				primera_matriculacion: "-",
-				bastidor: "-",
-				precio_venta: "-",
+                function buildRowData(row) {
+                        return {
+                                marca_modelo: row.dataset.marca_modelo ?? "-",
+                                matricula: row.dataset.matricula ?? "-",
+                                plan: row.dataset.plan ?? "-",
+                                desde: row.dataset.desde ?? "-",
+                                desde_fmt:
+                                        row.dataset.desdeFmt ??
+                                        (row.dataset.desde
+                                                ? formatDate(row.dataset.desde).display
+                                                : "-"),
+                                hasta: row.dataset.hasta ?? "-",
+                                hasta_fmt:
+                                        row.dataset.hastaFmt ??
+                                        (row.dataset.hasta
+                                                ? formatDate(row.dataset.hasta).display
+                                                : "-"),
+                                estado: row.dataset.estado ?? "Desconocido",
+                                estadoclase: row.dataset.estadoclase ?? "pendiente-pago",
+                                concesionario: row.dataset.vendedor_name ?? "-",
+                                canal_venta: row.dataset.vendedor_type ?? "-",
+                                precio: row.dataset.precio ?? "-",
+                                tipo: "-",
+                                kilometros: "-",
+                                primera_matriculacion: "-",
+                                bastidor: "-",
+                                precio_venta: "-",
 				combustible: "-",
 				cambio: "-",
 				potencia: "-",
@@ -452,19 +576,26 @@
 			`;
 		}
 
-		function renderFullDetail(data, rowData, skeletons = []) {
-			const skeleton = (field, fallback = "-") =>
-				skeletons.includes(field)
-					? `<span class="skeleton skeleton--${field}"></span>`
-					: data[field] ?? rowData[field] ?? fallback;
+                function renderFullDetail(data, rowData, skeletons = []) {
+                        const getFieldText = (val) =>
+                                val && typeof val === "object" && "label" in val
+                                        ? val.label
+                                        : val;
+                        const skeleton = (field, fallback = "-") =>
+                                skeletons.includes(field)
+                                        ? `<span class="skeleton skeleton--${field}"></span>`
+                                        : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
 
-			const mesesTotales = getDurationMeses(data.desde, data.hasta);
-			const mesesRestantes = getRestantesMeses(data.hasta);
+                        const mesesTotales = getDurationMeses(data.desde, data.hasta);
+                        const mesesRestantes = getRestantesMeses(data.hasta);
 
-			const estadoActual = data.estadoclase || data.estado || "pendiente";
-			const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
-				estadoActual
-			)}`;
+                        const estadoValue =
+                                (data.estado && data.estado.value) ||
+                                rowData.estadoclase ||
+                                "pendiente-pago";
+                        const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
+                                estadoValue
+                        )}`;
 
 			const planTitle = `${data.plan ?? "-"}${
 				mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
@@ -475,15 +606,18 @@
 					<div class="guarantee-detail__header">
 						<h2>Garantía ${skeleton("matricula")}</h2>
 						<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
-						<div>
-							<p>${skeleton("desde")} — ${skeleton("hasta")}
-							<span class="guarantee-detail__plan-duration">(${
-								mesesRestantes !== "-"
-									? mesesRestantes + " meses restantes"
-									: "-"
-							})</span></p>
-						</div>
-						<div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
+                                                <div>
+                                                        <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
+                                                        <span class="guarantee-detail__plan-duration">(${
+                                                                mesesRestantes !== "-"
+                                                                        ? mesesRestantes + " meses restantes"
+                                                                        : "-"
+                                                        })</span></p>
+                                                </div>
+                                                <div class="${badgeClase}">${skeleton(
+                                                        "estado",
+                                                        "Desconocido"
+                                                )}</div>
 					</div>
 					<div class="guarantee-detail__btn-container">
 						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
@@ -658,15 +792,15 @@
 				if (!detailCache.has(id)) {
 					nextPanel.classList.add("loading");
 					try {
-						const res = await fetch(`${GO_REST.root}go/v1/guarantees/${id}`, {
-							headers: { "X-WP-Nonce": GO_REST.nonce },
+                                            const res = await fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                                    headers: { "X-WP-Nonce": restNonce },
 						});
 						if (!res.ok) throw res.status;
-						const data = await res.json();
-						detailCache.set(id, data);
-						if (nextPanel.dataset.loadedId === String(id)) {
-							nextPanel.innerHTML = renderFullDetail(data, rowData, []);
-						}
+                                                const data = normalizeDetailData(await res.json());
+                                                detailCache.set(id, data);
+                                                if (nextPanel.dataset.loadedId === String(id)) {
+                                                        nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                                }
 					} catch (e) {
 						console.error("❌ Error fetch detalle:", e);
 					} finally {
@@ -689,16 +823,16 @@
 					const id = row.dataset.id;
 					if (detailCache.has(id)) return;
 					try {
-						const res = await fetch(`${GO_REST.root}go/v1/guarantees/${id}`, {
-							headers: { "X-WP-Nonce": GO_REST.nonce },
+                                            const res = await fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                                    headers: { "X-WP-Nonce": restNonce },
 						});
 						if (!res.ok) throw res.status;
-						const data = await res.json();
-						detailCache.set(id, data);
-					} catch (e) {
-						// Nada
-					}
-				},
+                                                const data = normalizeDetailData(await res.json());
+                                                detailCache.set(id, data);
+                                        } catch (e) {
+                                                // Nada
+                                        }
+                                },
 				true
 			);
 		}
@@ -736,9 +870,9 @@
 			);
 		})();
 
-		(() => {
-			const filters = document.querySelector(".guarantees-list__filters"),
-				header = document.querySelector(".top-bar");
+                (() => {
+                        const filters = document.querySelector(".guarantees-list__filters"),
+                                header = document.querySelector(".top-bar");
 			if (filters && header) {
 				new IntersectionObserver(
 					([e]) => {
@@ -756,11 +890,94 @@
 					listContainer.scrollTop > 10 || detail.scrollTop > 10
 				);
 			listContainer.addEventListener("scroll", onScroll);
-			detail.addEventListener("scroll", onScroll);
-		})();
+                        detail.addEventListener("scroll", onScroll);
+                })();
 
-		const input = document.getElementById("buscador_mis_garantias");
-		const closeIcon = document.querySelector(".guarantees-list__close-icon");
+                async function fetchFilters() {
+                        try {
+                                const res = await fetch(
+                                        `${restRoot}go/v1/guarantees/filters`,
+                                        { headers: { "X-WP-Nonce": restNonce } }
+                                );
+                                if (!res.ok) throw res.status;
+                                const {
+                                        estados = [],
+                                        planes = [],
+                                        concesionarios = [],
+                                } = await res.json();
+                                if (estadoSelect) {
+                                        estadoSelect
+                                                .querySelectorAll("option:not(:first-child)")
+                                                .forEach((o) => o.remove());
+                                        estados.forEach((est) => {
+                                                const opt = document.createElement("option");
+                                                const val = typeof est === "object" ? est.value : est;
+                                                const lbl = typeof est === "object" ? est.label : est;
+                                                opt.value = val;
+                                                opt.textContent = lbl;
+                                                estadoSelect.appendChild(opt);
+                                        });
+                                }
+                                if (planSelect) {
+                                        planSelect
+                                                .querySelectorAll("option:not(:first-child)")
+                                                .forEach((o) => o.remove());
+                                        planes.forEach((pl) => {
+                                                const opt = document.createElement("option");
+                                                opt.value = pl.id;
+                                                opt.textContent = pl.title;
+                                                planSelect.appendChild(opt);
+                                        });
+                                }
+                                if (concesionarioSelect) {
+                                        concesionarioSelect
+                                                .querySelectorAll("option:not(:first-child)")
+                                                .forEach((o) => o.remove());
+                                        concesionarios.forEach((c) => {
+                                                const opt = document.createElement("option");
+                                                opt.value = c.id;
+                                                opt.textContent = c.name;
+                                                concesionarioSelect.appendChild(opt);
+                                        });
+                                }
+                        } catch (e) {
+                                console.error("❌ Error fetching filters:", e);
+                        }
+                }
+
+                function applyFilters() {
+                        currentPage = 1;
+                        hasMore = true;
+                        lastValidQuery = "";
+                        lastValidResults = [];
+                        loadPage(1);
+                }
+
+                if (estadoSelect)
+                        estadoSelect.addEventListener("change", () => {
+                                selectedEstado = estadoSelect.value;
+                                applyFilters();
+                        });
+                if (planSelect)
+                        planSelect.addEventListener("change", () => {
+                                selectedPlan = planSelect.value;
+                                applyFilters();
+                        });
+                if (canalSelect)
+                        canalSelect.addEventListener("change", () => {
+                                selectedCanal = canalSelect.value;
+                                applyFilters();
+                        });
+                if (concesionarioSelect)
+                        concesionarioSelect.addEventListener("change", () => {
+                                selectedConcesionario = concesionarioSelect.value;
+                                applyFilters();
+                        });
+
+                fetchFilters();
+
+                const input = document.getElementById("buscador_mis_garantias");
+                const closeIcon = document.querySelector(".guarantees-list__close-icon");
 		let debounceTimer = null;
 		const DEBOUNCE_MS = 300;
 
@@ -805,7 +1022,7 @@
 			new IntersectionObserver(
 				(entries) => {
 					if (entries[0].isIntersecting && hasMore && !isLoading) {
-						loadPage(currentPage + 1, { search: searchQuery });
+                                                loadPage(currentPage + 1);
 					}
 				},
 				{ root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }

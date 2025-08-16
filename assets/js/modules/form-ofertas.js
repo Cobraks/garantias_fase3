@@ -15,11 +15,41 @@ import {
 
 const ENABLE_LOGS = true;
 function log(...args) {
-	if (ENABLE_LOGS) console.log("[form-ofertas]", ...args);
+        if (ENABLE_LOGS) console.log("[form-ofertas]", ...args);
 }
 
 // Cache simple por userId con posibilidad de invalidar
 const ofertasCache = new Map(); // userId -> { ofertas, fetchedAt }
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
+
+function storageKey(userId) {
+        return `ofertas_${userId}`;
+}
+
+function getCachedOfertas(userId) {
+        if (ofertasCache.has(userId)) {
+                const cached = ofertasCache.get(userId);
+                if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
+                        return cached.ofertas;
+                }
+        }
+        const raw = sessionStorage.getItem(storageKey(userId));
+        if (raw) {
+                try {
+                        const parsed = JSON.parse(raw);
+                        if (
+                                Array.isArray(parsed.ofertas) &&
+                                Date.now() - parsed.fetchedAt < CACHE_TTL
+                        ) {
+                                ofertasCache.set(userId, parsed);
+                                return parsed.ofertas;
+                        }
+                } catch (e) {
+                        // ignore parse errors
+                }
+        }
+        return null;
+}
 
 /**
  * Resuelve el userId efectivo (profesional/admin seleccionando)
@@ -122,18 +152,18 @@ export async function fetchOfertas(userId, { force = false } = {}) {
 		await ensureCurrentUserIdReady();
 	}
 
-	const effectiveUserId = resolveUserId(userId);
-	if (!effectiveUserId) return [];
+        const effectiveUserId = resolveUserId(userId);
+        if (!effectiveUserId) return [];
 
-	if (!force && ofertasCache.has(effectiveUserId)) {
-		const cached = ofertasCache.get(effectiveUserId);
-		if (cached && Array.isArray(cached.ofertas)) {
-			if (ENABLE_LOGS)
-				log(`Usando cache de ofertas para usuario ${effectiveUserId}`);
-			setCurrentOfertas(cached.ofertas);
-			return cached.ofertas;
-		}
-	}
+        if (!force) {
+                const cached = getCachedOfertas(effectiveUserId);
+                if (cached) {
+                        if (ENABLE_LOGS)
+                                log(`Usando cache de ofertas para usuario ${effectiveUserId}`);
+                        setCurrentOfertas(cached);
+                        return cached;
+                }
+        }
 
 	const restRoot = getRestRoot();
 	const restNonce = getRestNonce();
@@ -154,24 +184,52 @@ export async function fetchOfertas(userId, { force = false } = {}) {
 		if (!res.ok) {
 			throw new Error(`Error al obtener ofertas: ${res.status}`);
 		}
-		const ofertas = await res.json();
-		ofertasCache.set(effectiveUserId, { ofertas, fetchedAt: Date.now() });
-		setCurrentOfertas(ofertas);
-		return ofertas;
-	} catch (e) {
-		log("Error al obtener ofertas para usuario", effectiveUserId, e);
-		return [];
-	}
+                const ofertas = await res.json();
+                const entry = { ofertas, fetchedAt: Date.now() };
+                ofertasCache.set(effectiveUserId, entry);
+                try {
+                        sessionStorage.setItem(
+                                storageKey(effectiveUserId),
+                                JSON.stringify(entry)
+                        );
+                } catch (e) {
+                        // storage might be full/disabled
+                }
+                setCurrentOfertas(ofertas);
+                return ofertas;
+        } catch (e) {
+                log("Error al obtener ofertas para usuario", effectiveUserId, e);
+                return [];
+        }
+}
+
+function showOfertasLoading(ul = null) {
+        const parent = document.querySelector(".form__ofertas");
+        if (!parent) return null;
+        if (!ul) {
+                ul = parent.querySelector("ul.ofertas__list");
+                if (!ul) {
+                        ul = document.createElement("ul");
+                        ul.className = "ofertas__list";
+                        parent.insertBefore(ul, parent.querySelector(".ofertas__iva"));
+                }
+        }
+        ul.innerHTML = "";
+        const li = document.createElement("li");
+        li.className = "ofertas__item ofertas__item--loading";
+        li.textContent = "Cargando ofertas...";
+        ul.appendChild(li);
+        return ul;
 }
 
 /**
  * Actualiza la lista visible de ofertas en DOM filtrando por modalidades actuales.
  */
 export async function updateOfertasList(
-	userId,
-	modalidadesVisibles = [],
-	container = null,
-	{ force = false } = {}
+        userId,
+        modalidadesVisibles = [],
+        container = null,
+        { force = false, ofertas = null, showLoading = true } = {},
 ) {
 	if (!userId) {
 		await ensureCurrentUserIdReady();
@@ -192,22 +250,20 @@ export async function updateOfertasList(
 		}
 	}
 
-	// Loader
-	ul.innerHTML = "";
-	const loadingItem = document.createElement("li");
-	loadingItem.className = "ofertas__item";
-	loadingItem.textContent = "Cargando ofertas...";
-	ul.appendChild(loadingItem);
+        if (showLoading) {
+                showOfertasLoading(ul);
+        }
 
-	const ofertas = await fetchOfertas(effectiveUserId, { force });
-	const now = Date.now() / 1000;
+        const ofertasData =
+                ofertas || (await fetchOfertas(effectiveUserId, { force }));
+        const now = Date.now() / 1000;
 
-	const visibles = filterOfertasPorModalidades(ofertas, modalidadesVisibles, {
-		incluirCaducadas: false,
-	});
-	const caducadas = filterOfertasPorModalidades(ofertas, modalidadesVisibles, {
-		incluirCaducadas: true,
-	}).filter(
+        const visibles = filterOfertasPorModalidades(ofertasData, modalidadesVisibles, {
+                incluirCaducadas: false,
+        });
+        const caducadas = filterOfertasPorModalidades(ofertasData, modalidadesVisibles, {
+                incluirCaducadas: true,
+        }).filter(
 		(o) =>
 			o.timestamp_caducidad &&
 			now > o.timestamp_caducidad &&
@@ -265,39 +321,62 @@ export function invalidateOfertasCache(userId) {
  * Utility público para refrescar ofertas basándose en el profesional y modalidades actuales.
  */
 let _refreshOfertasPending = null;
-export async function refreshOfertasDisplay(attempt = 0) {
-	const effectiveUserId = resolveUserId();
-	if (!effectiveUserId) {
-		if (attempt < 5) {
-			setTimeout(() => refreshOfertasDisplay(attempt + 1), 200);
-		}
-		return;
-	}
+export function refreshOfertasDisplay() {
+        return new Promise((resolve) => {
+                const effectiveUserId = resolveUserId();
+                if (!effectiveUserId) {
+                        resolve();
+                        return;
+                }
 
-	if (_refreshOfertasPending) clearTimeout(_refreshOfertasPending);
-	_refreshOfertasPending = setTimeout(async () => {
-		if (isNaProfesionalFallback()) {
-			await ensureCurrentUserIdReady();
-		}
-		const ofertas =
-			getCurrentOfertas() || (await fetchOfertas(effectiveUserId));
-		setCurrentOfertas(ofertas);
-		const modalidadesVisibles = getVisibleModalidades();
-		await updateOfertasList(effectiveUserId, modalidadesVisibles);
-		if (ENABLE_LOGS) {
-			log("Refresco ofertas tras cambio de filtros:", {
-				user: effectiveUserId,
-				modalidadesVisibles,
-			});
-		}
-	}, 50);
+                const hasCache = !!getCachedOfertas(effectiveUserId);
+
+                if (_refreshOfertasPending) clearTimeout(_refreshOfertasPending);
+                _refreshOfertasPending = setTimeout(async () => {
+                        if (!hasCache) showOfertasLoading();
+                        if (isNaProfesionalFallback()) {
+                                await ensureCurrentUserIdReady();
+                        }
+                        const modalidadesVisibles = getVisibleModalidades();
+                        await updateOfertasList(
+                                effectiveUserId,
+                                modalidadesVisibles,
+                                null,
+                                {
+                                        force: !hasCache,
+                                        showLoading: false,
+                                }
+                        );
+                        if (ENABLE_LOGS) {
+                                log("Refresco ofertas tras cambio de filtros:", {
+                                        user: effectiveUserId,
+                                        modalidadesVisibles,
+                                });
+                        }
+                        resolve();
+                }, 0);
+        });
 }
 
 // pequeño helper para comprobar si estamos en rol profesional (por compatibilidad)
 function isNaProfesionalFallback() {
-	const role = getEffectiveUserRole();
-	return role === "go_profesional" || role === "profesional";
+        const role = getEffectiveUserRole();
+        return role === "go_profesional" || role === "profesional";
 }
 
 // Exponer para compatibilidad legacy mínima
-export { refreshOfertasDisplay as updateOfertas };
+export { refreshOfertasDisplay as updateOfertas, showOfertasLoading };
+
+function prefetchAllVendorOffers() {
+        const select = document.getElementById("usuario-rol");
+        if (!select) return;
+        const ids = Array.from(select.options)
+                .map((o) => Number(o.value))
+                .filter((id) => !isNaN(id));
+        ids.forEach((id) => {
+                // ignorar errores individuales
+                fetchOfertas(id).catch(() => {});
+        });
+}
+
+document.addEventListener("DOMContentLoaded", prefetchAllVendorOffers);

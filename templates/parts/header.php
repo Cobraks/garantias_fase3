@@ -36,6 +36,13 @@ $profile_button = sprintf(
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/dashboard.min.css', GARANTIAS360VO__FILE__)); ?>">
+        <script>
+            var go360Logs = {
+                endpoint: '<?php echo esc_url_raw(rest_url('go/v1/logs')); ?>',
+                nonce: '<?php echo esc_js(wp_create_nonce('wp_rest')); ?>'
+            };
+        </script>
+        <script src="<?php echo esc_url(plugins_url('assets/js/dashboard.min.js', GARANTIAS360VO__FILE__)); ?>" defer></script>
     <?php endif; ?>
 
     <?php if (! empty($is_add_guarantee)) : ?>
@@ -144,7 +151,7 @@ $profile_button = sprintf(
                             </a>
                         </li>
                         <li class="menu-item button-item button-item--nueva-garantia">
-                            <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>">
+                            <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" data-reset-draft>
                                 <?php echo Svg::icon('new_shield', 'top-bar__icon'); ?>
                                 <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
                             </a>
@@ -174,7 +181,7 @@ $profile_button = sprintf(
                     </a>
                 </li>
                 <li class="mobile-menu__item">
-                    <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>">
+                    <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" data-reset-draft>
 
                         <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
                     </a>

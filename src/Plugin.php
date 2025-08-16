@@ -37,11 +37,14 @@ class Plugin
 
         // 4) Assets (minificado), REST, Admin, etc.
         add_action('init', [AssetCompiler::class, 'ensure_minified'], 1);
+        add_action('init', [GuaranteeLogger::class, 'ensure_table']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\UserRestController::class, 'register_routes']);
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\OfertasRestController::class, 'register_routes']);
+
+        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeLogRestController::class, 'register_routes']);
 
 
 
@@ -60,7 +63,6 @@ class Plugin
         }
         ProfileAvatar::init();
         SampleData::init();
-        AssetLoader::init();
 
         // 5) Cargar los grupos de campos ACF (solo si ACF está activo)
         add_action('acf/init', function () {
@@ -82,6 +84,7 @@ class Plugin
         AssetCompiler::ensure_minified();
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
+        GuaranteeLogger::create_table();
     }
 
     /**

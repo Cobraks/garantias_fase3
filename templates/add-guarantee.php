@@ -52,7 +52,6 @@ $combustible_choices = get_acf_group_subfield_choices('datos_vehiculo', 'combust
 $cambio_choices      = get_acf_group_subfield_choices('datos_vehiculo', 'cambio');
 $traccion_choices    = get_acf_group_subfield_choices('datos_vehiculo', 'traccion');
 $traccion_camion_choices = get_acf_group_subfield_choices('datos_vehiculo', 'traccion_camion');
-$mma_choices             = get_acf_group_subfield_choices('datos_vehiculo', 'mma');
 
 
 
@@ -192,20 +191,10 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         </select>
                         <label for="traccion_camion" class="form__placeholder form__placeholder--select">Tracción (ejes)</label>
                     </div>
-                    <div class="form__input-container form__input-container--mma" style="display:none;">
-                        <select id="mma" class="form__select" aria-label="MMA" required>
-                            <option value="" disabled selected>MMA</option>
-                            <?php foreach ($mma_choices as $key => $label): ?>
-                                <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <label for="mma" class="form__placeholder form__placeholder--select">MMA</label>
-                    </div>
-
                     <div class="form__input-container form__input-container--corto form__input-container--suffix">
                         <input id="potencia" class="form__input" type="text" placeholder=" " required />
-                        <label for="potencia" class="form__placeholder">Potencia</label>
-                        <span class="form__suffix">cv</span>
+                        <label for="potencia" class="form__placeholder">Potencia (CV)</label>
+                        <span class="form__suffix">CV</span>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
@@ -213,7 +202,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                     <div class="form__input-container form__input-container--corto form__input-container--suffix">
                         <input id="cilindrada" class="form__input" type="text" placeholder=" " required />
                         <label for="cilindrada" class="form__placeholder">Cilindrada</label>
-                        <span class="form__suffix">cc</span>
+                        <span class="form__suffix">CC</span>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
@@ -415,6 +404,12 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         <input id="check-iva" type="checkbox" class="switch" checked>
                         <label for="check-iva">Precios con IVA</label>
                     </div>
+                    <?php if ($is_admin) : ?>
+                    <div class="ofertas__desglose checkbox-wrapper-14">
+                        <input id="check-desglose" type="checkbox" class="switch">
+                        <label for="check-desglose">Desglose</label>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
             </div>
@@ -514,17 +509,13 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
             <li class="summary__item" id="summary-item-traccion-camion" style="display:none;">
                 <span>Tracción camión: <span data-summary-field="traccion_camion"></span></span>
             </li>
-            <li class="summary__item" id="summary-item-mma" style="display:none;">
-                <span>MMA: <span data-summary-field="mma"></span></span>
-            </li>
-
             <li class="summary__item">
                 <span data-summary-field="potencia"></span>
-                <span class="summary__item-sufix">cv</span>
+                <span class="summary__item-sufix" id="summary-potencia-unit">CV</span>
             </li>
             <li class="summary__item">
                 <span data-summary-field="cilindrada"></span>
-                <span class="summary__item-sufix">cc</span>
+                <span class="summary__item-sufix">CC</span>
             </li>
             <li class="summary__item" id="summary-item-doble_motor" style="display:none;">
                 <span><span data-summary-field="doble_motor"></span></span>
