@@ -481,18 +481,19 @@ class GuaranteeRestController
             return new WP_Error('not_found', __('Garantía no encontrada', 'garantias-online-360vo'), ['status' => 404]);
         }
 
-        $grant_publish = function ($allcaps) {
+        $grant_publish = function ($allcaps, $caps, $args, $user) {
+            $allcaps['edit_post']     = true;
             $allcaps['edit_posts']    = true;
             $allcaps['publish_posts'] = true;
             return $allcaps;
         };
 
-        add_filter('user_has_cap', $grant_publish);
+        add_filter('user_has_cap', $grant_publish, 10, 4);
         $result = wp_update_post([
             'ID'          => $post_id,
             'post_status' => 'publish',
         ], true);
-        remove_filter('user_has_cap', $grant_publish);
+        remove_filter('user_has_cap', $grant_publish, 10);
 
         if (is_wp_error($result) || !$result) {
             return new WP_Error('cannot_publish', __('No se pudo publicar la garantía', 'garantias-online-360vo'), ['status' => 500]);
@@ -701,8 +702,8 @@ class GuaranteeRestController
             }
             $estado_labels = [
                 'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
-                'sin_finalizar'  => __('Borrador', 'garantias-online-360vo'),
-                'borrador'       => __('Borrador', 'garantias-online-360vo'),
+                'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
+                'borrador'       => __('Sin finalizar', 'garantias-online-360vo'),
                 'activada'       => __('Activada', 'garantias-online-360vo'),
                 'expirada'       => __('Expirada', 'garantias-online-360vo'),
                 'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
@@ -794,8 +795,8 @@ class GuaranteeRestController
         }
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
-            'sin_finalizar'  => __('Borrador', 'garantias-online-360vo'),
-            'borrador'       => __('Borrador', 'garantias-online-360vo'),
+            'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
+            'borrador'       => __('Sin finalizar', 'garantias-online-360vo'),
             'activada'       => __('Activada', 'garantias-online-360vo'),
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
@@ -929,8 +930,8 @@ class GuaranteeRestController
         sort($estados);
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
-            'sin_finalizar'  => __('Borrador', 'garantias-online-360vo'),
-            'borrador'       => __('Borrador', 'garantias-online-360vo'),
+            'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
+            'borrador'       => __('Sin finalizar', 'garantias-online-360vo'),
             'activada'       => __('Activada', 'garantias-online-360vo'),
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
