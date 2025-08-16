@@ -103,10 +103,11 @@ function showTab(index) {
 	if (FormCache.prevButton) {
 		FormCache.prevButton.style.display = index === 0 ? "none" : "";
 	}
-	if (FormCache.nextButton) {
-		FormCache.nextButton.textContent =
-			index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
-	}
+        if (FormCache.nextButton) {
+                const isLast = index === FormCache.fieldsets.length - 1;
+                FormCache.nextButton.textContent = isLast ? "Contratar" : "Siguiente";
+                FormCache.nextButton.type = isLast ? "submit" : "button";
+        }
 
 	// Actualiza estado
 	FormCache.currentTab = index;
@@ -251,11 +252,6 @@ function setupTabNavigation() {
                         if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
                                 FormCache.currentTab++;
                                 showTab(FormCache.currentTab);
-                        } else {
-                                const form = document.getElementById("form-garantia");
-                                if (form) {
-                                        form.requestSubmit();
-                                }
                         }
                 });
         }
