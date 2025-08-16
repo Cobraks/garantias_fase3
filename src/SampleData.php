@@ -116,8 +116,8 @@ class SampleData
             ]);
         }
 
-        // Opciones para campos select
-        $estados_contratacion = ['draft', 'pendiente_pago', 'activada', 'expira_pronto', 'expirada'];
+        // Posibles estados del CPT de garantía
+        $post_statuses        = ['draft', 'pendiente_pago', 'activada', 'expira_pronto', 'expirada'];
         $meses_contratados    = [6, 12, 24, 36];
         $metodos_pago         = ['domiciliacion_bancaria', 'transferencia'];
         $canales_venta        = ['profesional', 'particular', 'gestoria'];
@@ -144,7 +144,7 @@ class SampleData
         ];
 
         for ($i = 1; $i <= 20; $i++) {
-            $status  = $estados_contratacion[array_rand($estados_contratacion)];
+            $status  = $post_statuses[array_rand($post_statuses)];
             $post_id = wp_insert_post([
                 'post_type'   => GuaranteeCPT::POST_TYPE,
                 'post_title'  => 'Garantía ' . wp_generate_password(4, false, false),

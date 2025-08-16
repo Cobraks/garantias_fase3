@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.20
+- Limpieza final del campo antiguo de estado y datos de ejemplo ajustados a los nuevos estados.
+
 0.1.19
 - Corrige el identificador del formulario para que "Contratar" cambie la garantía a "Pendiente de pago".
 

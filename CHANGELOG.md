@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.20 - 2025-08-16
+- Limpieza final del campo antiguo de "estado de contratación" y uso exclusivo de los nuevos estados del CPT.
+- Datos de ejemplo actualizados para emplear estos estados personalizados.
+
 ## 0.1.19 - 2025-08-16
 - Corrige el identificador del formulario para que "Contratar" cambie la garantía a "Pendiente de pago".
 
