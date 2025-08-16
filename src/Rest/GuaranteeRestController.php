@@ -556,7 +556,7 @@ class GuaranteeRestController
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
             'posts_per_page' => $per_page,
             'paged'          => $page,
-            'post_status'    => $estado ? $estado : GuaranteeStatuses::get_slugs(),
+            'post_status'    => $estado ? $estado : GuaranteeStatuses::all_with_default(),
         ];
 
         // Permisos: restringe por profesional/comercial salvo admins
@@ -832,7 +832,7 @@ class GuaranteeRestController
 
         $args = [
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-            'post_status'    => GuaranteeStatuses::get_slugs(),
+            'post_status'    => GuaranteeStatuses::all_with_default(),
             'fields'         => 'ids',
             'posts_per_page' => -1,
         ];

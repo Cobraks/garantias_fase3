@@ -117,7 +117,7 @@ class SampleData
         }
 
         // Opciones para campos select
-        $post_statuses = array_merge(['draft'], GuaranteeStatuses::get_slugs());
+        $post_statuses = GuaranteeStatuses::all_with_default();
         $meses_contratados    = [6, 12, 24, 36];
         $metodos_pago         = ['domiciliacion_bancaria', 'transferencia'];
         $canales_venta        = ['profesional', 'particular', 'gestoria'];

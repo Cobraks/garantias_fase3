@@ -39,6 +39,7 @@ class GuaranteeStatuses
                 'exclude_from_search'       => true,
                 'show_in_admin_all_list'    => true,
                 'show_in_admin_status_list' => true,
+                'post_type'                 => [GuaranteeCPT::POST_TYPE],
                 'label_count'               => _n_noop(
                     "$label <span class=\"count\">(%s)</span>",
                     "$label <span class=\"count\">(%s)</span>",

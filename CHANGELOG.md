@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.10 - 2025-08-16
+- Registra estados personalizados de garantía y permite listarlas en cualquier estado.
+- Elimina el uso del campo ACF `estado_contratacion`.
+
 ## 0.1.9 - 2025-08-16
 - Evita la creación de borradores duplicados al modificar la matrícula durante una nueva garantía.
 
