@@ -424,8 +424,15 @@ export default function initAutosave() {
 
         const debounced = debounce(sendAutosave, 300);
 
-        FormCache.nextButton?.addEventListener("click", () =>
-                debounced(FormCache.currentTab === FormCache.fieldsets.length - 1)
+        FormCache.nextButton?.addEventListener(
+                "click",
+                () => {
+                        const finalize =
+                                FormCache.currentTab ===
+                                FormCache.fieldsets.length - 1;
+                        debounced(finalize);
+                },
+                { capture: true }
         );
         FormCache.prevButton?.addEventListener("click", () => debounced(false));
         FormCache.tabs?.forEach((tab) => tab.addEventListener("click", () => debounced(false)));

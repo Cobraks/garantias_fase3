@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.14 - 2025-08-16
+- Corrige la aparición prematura de la pantalla de éxito; ahora solo se muestra tras pulsar "Contratar".
+
 ## 0.1.13 - 2025-08-16
 - La pantalla de éxito solo aparece tras pulsar “Contratar” y las pestañas se ocultan con una animación.
 - Estilos del panel de éxito trasladados a `nueva_garantia.css`.
