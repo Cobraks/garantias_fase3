@@ -99,9 +99,16 @@ export default function initAutosave() {
         let draftId = localStorage.getItem("go_draft_id");
         let draftUuid = localStorage.getItem("go_draft_uuid");
         let saving = false;
+        let disabled = false;
+
+        document.addEventListener("go:contracting", () => {
+                disabled = true;
+                draftId = null;
+                draftUuid = null;
+        });
 
         async function sendAutosave() {
-                if (saving) return;
+                if (saving || disabled) return;
                 saving = true;
 
                 console.log("[AUTOSAVE] Triggered", { draftId });

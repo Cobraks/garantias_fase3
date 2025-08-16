@@ -15,6 +15,8 @@ export default function initSubmission() {
         form.addEventListener("submit", async function (e) {
                 e.preventDefault();
 
+                document.dispatchEvent(new CustomEvent("go:contracting"));
+
                 const draftId = localStorage.getItem("go_draft_id");
                 if (!draftId) {
                         alert("No se ha encontrado la garantía a enviar");
@@ -38,6 +40,8 @@ export default function initSubmission() {
                         }
 
                         localStorage.removeItem("go_draft_id");
+                        localStorage.removeItem("go_draft_uuid");
+                        document.dispatchEvent(new CustomEvent("go:contracted", { detail: { id: draftId } }));
                         alert("¡Garantía contratada correctamente!");
                 } catch (err) {
                         console.error("[SUBMISSION]", err);

@@ -690,8 +690,15 @@ class GuaranteeRestController
             $hasta  = get_post_meta($post_id, 'estado_garantia_finalizacion', true);
             $plan_id = get_post_meta($post_id, 'garantia_contratada_garantia', true);
             $plan   = $plan_id ? get_the_title($plan_id) : '';
-            $precio = get_post_meta($post_id, 'garantia_contratada_precio', true);
-            $estado = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+            $precio      = get_post_meta($post_id, 'garantia_contratada_precio', true);
+            $estado_raw  = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+            if (is_array($estado_raw)) {
+                $estado_value = $estado_raw['value'] ?? '';
+                $estado_label = $estado_raw['label'] ?? '';
+            } else {
+                $estado_value = (string) $estado_raw;
+                $estado_label = '';
+            }
             $estado_labels = [
                 'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
                 'sin_finalizar'  => __('Borrador', 'garantias-online-360vo'),
@@ -700,7 +707,9 @@ class GuaranteeRestController
                 'expirada'       => __('Expirada', 'garantias-online-360vo'),
                 'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
             ];
-            $estado_label = $estado_labels[$estado] ?? $estado;
+            if ($estado_label === '' || is_array($estado_label)) {
+                $estado_label = $estado_labels[$estado_value] ?? $estado_value;
+            }
 
             $vendor_id = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
             $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
@@ -720,7 +729,7 @@ class GuaranteeRestController
                 'plan'       => $plan,
                 'precio'     => $precio,
                 'estado'     => [
-                    'value' => $estado,
+                    'value' => $estado_value,
                     'label' => $estado_label,
                 ],
                 'vendedor'   => $vendor_name,
@@ -775,7 +784,14 @@ class GuaranteeRestController
         $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
         $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
-        $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
+        $estado_raw = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
+        if (is_array($estado_raw)) {
+            $estado_value = $estado_raw['value'] ?? '';
+            $estado_label = $estado_raw['label'] ?? '';
+        } else {
+            $estado_value = (string) $estado_raw;
+            $estado_label = '';
+        }
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
             'sin_finalizar'  => __('Borrador', 'garantias-online-360vo'),
@@ -784,7 +800,9 @@ class GuaranteeRestController
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
         ];
-        $estado_label = $estado_labels[$estado] ?? $estado;
+        if ($estado_label === '' || is_array($estado_label)) {
+            $estado_label = $estado_labels[$estado_value] ?? $estado_value;
+        }
 
         // Vendedor/concesionario
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
@@ -825,7 +843,7 @@ class GuaranteeRestController
             'desde' => $desde ?: '-',
             'hasta' => $hasta ?: '-',
             'estado' => [
-                'value' => $estado,
+                'value' => $estado_value,
                 'label' => $estado_label,
             ],
             'concesionario' => $concesionario ?: '-',
