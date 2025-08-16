@@ -54,8 +54,10 @@ class GuaranteeCPT
             'public'             => false,
             'show_ui'            => true,
             'show_in_menu'       => true,
-            'capability_type'    => 'garantia',
-            'map_meta_cap'       => true,
+            // Se mantienen las capacidades por defecto para evitar
+            // restricciones inesperadas en roles como el administrador.
+            // 'capability_type'    => 'garantia',
+            // 'map_meta_cap'       => true,
             'supports'           => ['title','custom-fields'],
             'menu_position'      => 20,
             'menu_icon'          => 'dashicons-awards',

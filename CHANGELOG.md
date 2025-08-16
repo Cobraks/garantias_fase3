@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.12 - 2025-08-16
+- Restaura las capacidades por defecto del tipo de contenido para que los administradores vean todas las garantías.
+- Corrige la comprobación de permisos al publicar una garantía.
+
 ## 0.1.11 - 2025-08-16
 - Permite publicar garantías al contratar mapeando capacidades personalizadas del CPT y validando el resultado.
 

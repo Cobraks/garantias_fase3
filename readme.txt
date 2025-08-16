@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.12
+- Restaura capacidades por defecto para que los administradores vean todas las garantías y corrige la verificación de permisos al publicar.
+
 0.1.11
 - Permite publicar garantías desde el formulario al asignar capacidades específicas al tipo de contenido.
 
