@@ -3,13 +3,16 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
-0.1.15
-- Restaurado el menú de garantías para administradores y profesionales añadiendo `create_garantias`.
-- Al contratar, la garantía pasa automáticamente a "Pendiente de pago".
+0.1.17
+- Los estados personalizados se muestran en la caja de publicación y se oculta "Pendiente de revisión".
 
 0.1.16
 - Los estados de las garantías se gestionan mediante los estados estándar de WordPress.
 - Eliminado el campo ACF "Estado contratación" y sincronización de estados en la API.
+
+0.1.15
+- Restaurado el menú de garantías para administradores y profesionales añadiendo `create_garantias`.
+- Al contratar, la garantía pasa automáticamente a "Pendiente de pago".
 
 0.1.14
 - Restaura el menú de garantías para administradores y muestra las etiquetas de estado en español.

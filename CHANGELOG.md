@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.17 - 2025-08-16
+- Los estados personalizados aparecen en la caja de publicación y se elimina "Pendiente de revisión" del desplegable.
+
 ## 0.1.16 - 2025-08-16
 - Los estados de las garantías se manejan como estados de publicación estándar de WordPress.
 - Eliminado el meta "estado contratación" en favor del `post_status` y sincronización en la API.

@@ -52,6 +52,8 @@ class GuaranteeCPT
         add_action('save_post_' . self::POST_TYPE, [__CLASS__, 'handle_save'], 10, 3);
         add_action('transition_post_status', [__CLASS__, 'log_status_transition'], 10, 3);
         add_filter('display_post_states', [__CLASS__, 'display_post_states'], 10, 2);
+        add_action('admin_footer-post.php', [__CLASS__, 'admin_status_dropdown']);
+        add_action('admin_footer-post-new.php', [__CLASS__, 'admin_status_dropdown']);
     }
 
     /**
@@ -127,6 +129,37 @@ class GuaranteeCPT
                 ),
             ]);
         }
+    }
+
+    /**
+     * Añade los estados personalizados al desplegable de WP-Admin y elimina "Pendiente de revisión".
+     */
+    public static function admin_status_dropdown(): void
+    {
+        global $post;
+        if ($post->post_type !== self::POST_TYPE) {
+            return;
+        }
+
+        $statuses = self::get_status_labels();
+        unset($statuses['draft']);
+        ?>
+        <script>
+        jQuery(function($){
+            var $select = $('#post_status');
+            // Elimina "Pendiente de revisión"
+            $select.find('option[value="pending"]').remove();
+            <?php foreach ($statuses as $slug => $label) : ?>
+            if (!$select.find('option[value="<?php echo $slug; ?>"]').length) {
+                $select.append(new Option('<?php echo esc_js($label); ?>', '<?php echo $slug; ?>'));
+            }
+            <?php endforeach; ?>
+            var current = '<?php echo esc_js(get_post_status($post)); ?>';
+            $select.val(current);
+            $('#post-status-display').text($select.find('option:selected').text());
+        });
+        </script>
+        <?php
     }
 
     /**
