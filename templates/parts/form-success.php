@@ -2,25 +2,38 @@
 if (! defined('ABSPATH')) {
     exit;
 }
+
+use GarantiasOnline360VO\Svg;
 ?>
 <div id="form-success" class="form-success">
     <div class="form-success__confetti" aria-hidden="true"></div>
     <h2 class="form-success__title">¡Garantía registrada!</h2>
-    <p class="form-success__note">Para completar la contratación realiza el pago y revisa la documentación.</p>
+    <p class="form-success__note">Descarga la documentación y realiza el pago para activar tu certificado.</p>
     <div class="form-success__docs">
         <h3>Documentación</h3>
         <ul class="form-success__doc-list">
-            <li><a href="#" class="form-success__doc-link">Factura proforma</a></li>
-            <li><a href="#" class="form-success__doc-link">Certificado de garantía</a></li>
-            <li><a href="#" class="form-success__doc-link">Coberturas</a></li>
+            <li>
+                <a href="#" class="form-success__doc-link">
+                    <?php echo Svg::icon('pdf', 'form-success__doc-icon'); ?>
+                    Factura proforma
+                </a>
+            </li>
+            <li>
+                <a href="#" class="form-success__doc-link">
+                    <?php echo Svg::icon('pdf', 'form-success__doc-icon'); ?>
+                    Certificado de garantía
+                </a>
+            </li>
+            <li>
+                <a href="#" class="form-success__doc-link">
+                    <?php echo Svg::icon('pdf', 'form-success__doc-icon'); ?>
+                    Coberturas
+                </a>
+            </li>
         </ul>
     </div>
     <div class="form-success__payment" hidden>
-        <p class="form-success__payment-note">Contacta con nosotros para activar el certificado pasados 7 días desde su inicio.</p>
-        <div class="form-success__contact">
-            <a href="tel:+34900123456" class="btn btn-secondary">Llamar</a>
-            <a href="mailto:info@360vo.com" class="btn btn-secondary">Enviar correo</a>
-        </div>
+        <p class="form-success__payment-note">Contacta con 360VO 7 días después del inicio para activar el certificado.</p>
         <div class="form-success__transfer" hidden>
             <div class="form-success__field">
                 <span class="form-success__label">Referencia:</span>

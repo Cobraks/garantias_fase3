@@ -234,6 +234,10 @@
       }
   
       .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .5rem;
         padding: var(--spacing-1) var(--spacing-2);
         font-size: 1rem;
         border: none;
@@ -1993,31 +1997,24 @@ margin-top: .5rem;
   }
 
   .form-container {
-    transition: width .5s ease;
+    grid-column: span 1;
+    transition: width .5s ease, grid-column .5s ease;
   }
 
   .form-container.form-container--full {
     width: 100%;
+    grid-column: span 2;
   }
 
   .btn.is-loading {
-    position: relative;
     pointer-events: none;
   }
 
-  .btn.is-loading .btn__text {
-    visibility: hidden;
-  }
-
-  .btn.is-loading::after {
+  .btn.is-loading::before {
     content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
+    display: inline-block;
     width: 1rem;
     height: 1rem;
-    margin-top: -0.5rem;
-    margin-left: -0.5rem;
     border: 2px solid rgba(255, 255, 255, .3);
     border-top-color: #fff;
     border-radius: 50%;
@@ -2035,6 +2032,8 @@ margin-top: .5rem;
     opacity: 0;
     transition: opacity .3s ease;
     position: relative;
+    max-width: 480px;
+    margin: 0 auto;
   }
 
   .form-success.is-visible {
@@ -2054,19 +2053,46 @@ margin-top: .5rem;
     list-style: none;
     padding: 0;
     margin: 0 0 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    align-items: center;
   }
 
   .form-success__doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
     text-decoration: none;
     color: var(--color-primary);
+  }
+
+  .form-success__doc-icon {
+    width: 1rem;
+    height: 1rem;
   }
 
   .form-success__payment {
     margin-bottom: 1.5rem;
   }
 
+  .form-success__payment-note {
+    margin-bottom: 1rem;
+  }
+
   .form-success__field {
     margin-top: .5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+  }
+
+  .form-success__actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
   }
 
   .form-success__label {

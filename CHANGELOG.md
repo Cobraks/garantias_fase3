@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.1.16 - 2025-08-16
+- El formulario se expande a todo el ancho cuando desaparece el resumen.
+- El botón "Contratar" muestra un spinner a la izquierda del texto.
+- Pantalla de éxito con diseño mejorado e iconos PDF en la documentación.
+
 ## 0.1.15 - 2025-08-16
 - Transición suave al finalizar la contratación: el resumen se desliza y el formulario se expande antes de mostrar la pantalla de éxito.
 - Spinner de carga en el botón "Contratar".
