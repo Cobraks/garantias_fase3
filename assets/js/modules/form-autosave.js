@@ -100,7 +100,142 @@ export default function initAutosave() {
         let draftUuid = localStorage.getItem("go_draft_uuid");
         let saving = false;
 
-        async function sendAutosave() {
+        const navButtons = document.querySelector(".nav-buttons");
+        const successBlock = document.getElementById("form-success");
+        const summaryContainer = document.querySelector(".summary-container");
+        const tabs = document.querySelector(".tabs");
+        const nextBtn = document.getElementById("form_next_btn");
+
+        function fadeOut(el, hide = true) {
+                if (!el) return;
+                el.classList.add("fade-out");
+                const duration =
+                        parseFloat(
+                                getComputedStyle(el).transitionDuration || "0"
+                        ) * 1000;
+                if (hide) {
+                        setTimeout(() => (el.style.display = "none"), duration || 300);
+                }
+        }
+
+        function launchConfetti() {
+                const holder = successBlock?.querySelector(
+                        ".form-success__confetti"
+                );
+                if (!holder) return;
+                for (let i = 0; i < 40; i++) {
+                        const piece = document.createElement("span");
+                        piece.className = "confetti-piece";
+                        piece.style.left = Math.random() * 100 + "%";
+                        piece.style.backgroundColor = `hsl(${Math.random() * 360},70%,60%)`;
+                        piece.style.animationDelay = Math.random() * 2 + "s";
+                        holder.appendChild(piece);
+                        setTimeout(() => piece.remove(), 5000);
+                }
+        }
+
+        function showSuccess(method, plate, amount) {
+                fadeOut(form, false);
+                fadeOut(navButtons);
+                fadeOut(tabs);
+                if (summaryContainer) {
+                        summaryContainer.classList.add("slide-out");
+                        container.classList.add("form-container--full");
+                        summaryContainer.addEventListener(
+                                "transitionend",
+                                () => {
+                                        summaryContainer.style.display = "none";
+                                        form.style.display = "none";
+                                        revealSuccess(method, plate, amount);
+                                },
+                                { once: true }
+                        );
+                } else {
+                        setTimeout(() => {
+                                form.style.display = "none";
+                                revealSuccess(method, plate, amount);
+                        }, 300);
+                }
+        }
+
+        function revealSuccess(method, plate, amount) {
+                if (!successBlock) return;
+                successBlock.style.display = "block";
+                requestAnimationFrame(() => successBlock.classList.add("is-visible"));
+                if (method === "transferencia" || method === "domiciliacion") {
+                        const pay = successBlock.querySelector(".form-success__payment");
+                        if (pay) {
+                                pay.hidden = false;
+                                if (method === "transferencia") {
+                                        const transfer = pay.querySelector(
+                                                ".form-success__transfer"
+                                        );
+                                        if (transfer) {
+                                                transfer.hidden = false;
+                                                const reference = plate ? `Garantía ${plate}` : "";
+                                                transfer
+                                                        .querySelectorAll("[data-ref],[data-ref-text]")
+                                                        .forEach((el) => (el.textContent = reference));
+                                                const amountText = amount
+                                                        ? `${Number(amount).toLocaleString("es-ES", {
+                                                                  minimumFractionDigits: 2,
+                                                                  maximumFractionDigits: 2,
+                                                          })} €`
+                                                        : "";
+                                                transfer
+                                                        .querySelectorAll("[data-amount],[data-amount-text]")
+                                                        .forEach((el) => (el.textContent = amountText));
+                                        }
+                                }
+                        }
+                }
+                successBlock.querySelectorAll("[data-copy]").forEach((btn) => {
+                        btn.addEventListener("click", () => {
+                                const target = successBlock.querySelector(
+                                        btn.getAttribute("data-copy")
+                                );
+                                if (target) {
+                                        navigator.clipboard.writeText(
+                                                target.textContent.trim()
+                                        );
+                                        const label = btn.querySelector(
+                                                ".form-success__copy-text"
+                                        );
+                                        if (label) {
+                                                const original = btn.dataset.label || label.textContent;
+                                                label.textContent = btn.dataset.done || "Copiado";
+                                                setTimeout(
+                                                        () => (label.textContent = original),
+                                                        2000
+                                                );
+                                        } else {
+                                                const original =
+                                                        btn.dataset.label ||
+                                                        btn.getAttribute("aria-label") ||
+                                                        "";
+                                                const done = btn.dataset.done || "Copiado";
+                                                btn.setAttribute("aria-label", done);
+                                                setTimeout(() => {
+                                                        if (original) btn.setAttribute("aria-label", original);
+                                                }, 2000);
+                                        }
+                                        const toast = successBlock.querySelector(
+                                                ".form-success__toast"
+                                        );
+                                        if (toast) {
+                                                toast.classList.add("show");
+                                                setTimeout(
+                                                        () => toast.classList.remove("show"),
+                                                        2000
+                                                );
+                                        }
+                                }
+                        });
+                });
+                launchConfetti();
+        }
+
+        async function sendAutosave(finalize = false) {
                 if (saving) return;
                 saving = true;
 
@@ -110,6 +245,10 @@ export default function initAutosave() {
                 spinner.style.display = "inline-block";
                 icon.style.display = "none";
                 text.textContent = "Guardando";
+                if (finalize && nextBtn) {
+                        nextBtn.classList.add("is-loading");
+                        nextBtn.disabled = true;
+                }
 
                 const payload = {};
                 const datosVehiculo = {};
@@ -289,6 +428,14 @@ export default function initAutosave() {
                         payload.estado_garantia = estado;
                 }
 
+                if (!payload.estado_garantia) payload.estado_garantia = {};
+                if (finalize) {
+                        payload.post_status = "publish";
+                        payload.estado_garantia.estado_contratacion = "pendiente_pago";
+                } else {
+                        payload.estado_garantia.estado_contratacion = "sin_finalizar";
+                }
+
                 console.log("[AUTOSAVE] payload", payload);
 
                 try {
@@ -322,6 +469,13 @@ export default function initAutosave() {
                                 localStorage.setItem("go_draft_uuid", draftUuid);
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
+                        if (finalize) {
+                                showSuccess(
+                                        garantia.metodo_pago,
+                                        datosVehiculo.matricula,
+                                        garantia.precio
+                                );
+                        }
                         spinner.style.display = "none";
                         icon.style.display = "inline-block";
                         text.textContent = "Guardado";
@@ -332,13 +486,26 @@ export default function initAutosave() {
                         console.error("[AUTOSAVE] error", e);
                         status.classList.add("autosave-status--hidden");
                 } finally {
+                        if (finalize && nextBtn) {
+                                nextBtn.classList.remove("is-loading");
+                                nextBtn.disabled = false;
+                        }
                         saving = false;
                 }
         }
 
         const debounced = debounce(sendAutosave, 300);
 
-        FormCache.nextButton?.addEventListener("click", debounced);
-        FormCache.prevButton?.addEventListener("click", debounced);
-        FormCache.tabs?.forEach((tab) => tab.addEventListener("click", debounced));
+        FormCache.nextButton?.addEventListener(
+                "click",
+                () => {
+                        const finalize =
+                                FormCache.currentTab ===
+                                FormCache.fieldsets.length - 1;
+                        debounced(finalize);
+                },
+                { capture: true }
+        );
+        FormCache.prevButton?.addEventListener("click", () => debounced(false));
+        FormCache.tabs?.forEach((tab) => tab.addEventListener("click", () => debounced(false)));
 }
