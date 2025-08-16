@@ -65,6 +65,17 @@ class GuaranteeRestController
         );
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::BASE . '/contract',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'contract'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::BASE . '/check-plate',
             [
                 [
@@ -456,6 +467,29 @@ class GuaranteeRestController
         return new WP_REST_Response(['id' => $post_id, 'uuid' => $uuid]);
     }
 
+    public static function contract($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+
+        if (!$post_id) {
+            return new WP_Error('invalid_id', __('ID de garantía inválido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error('not_found', __('Garantía no encontrada', 'garantias-online-360vo'), ['status' => 404]);
+        }
+
+        wp_update_post([
+            'ID'          => $post_id,
+            'post_status' => 'publish',
+        ]);
+
+        update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'pendiente_pago');
+
+        return rest_ensure_response(['id' => $post_id, 'status' => 'publish']);
+    }
+
     public static function check_plate($request)
     {
         $matricula = isset($request['matricula']) ? sanitize_text_field($request['matricula']) : '';
@@ -544,7 +578,7 @@ class GuaranteeRestController
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
             'posts_per_page' => $per_page,
             'paged'          => $page,
-            'post_status'    => 'publish',
+            'post_status'    => ['draft', 'publish', 'pending', 'future'],
         ];
 
         // Permisos: restringe por profesional/comercial salvo admins
@@ -831,7 +865,7 @@ class GuaranteeRestController
 
         $args = [
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-            'post_status'    => 'publish',
+            'post_status'    => ['draft', 'publish', 'pending', 'future'],
             'fields'         => 'ids',
             'posts_per_page' => -1,
         ];
