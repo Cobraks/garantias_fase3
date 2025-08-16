@@ -165,8 +165,8 @@ use GarantiasOnline360VO\Svg;
                                 'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
                                 'borrador'         => __('Borrador', 'garantias-online-360vo'),
                                 'activada'         => __('Activada', 'garantias-online-360vo'),
+                                'expira_pronto'    => __('Expira pronto', 'garantias-online-360vo'),
                                 'expirada'         => __('Expirada', 'garantias-online-360vo'),
-                                'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
                             ];
                             $status_label = $status_labels[$status_raw] ?? $status_raw;
                             ?>

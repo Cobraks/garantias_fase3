@@ -289,6 +289,13 @@ export default function initAutosave() {
                         payload.estado_garantia = estado;
                 }
 
+                if (
+                        FormCache.fieldsets &&
+                        FormCache.currentTab === FormCache.fieldsets.length - 1
+                ) {
+                        payload.post_status = "pendiente_pago";
+                }
+
                 console.log("[AUTOSAVE] payload", payload);
 
                 try {

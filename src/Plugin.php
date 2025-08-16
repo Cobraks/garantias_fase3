@@ -30,6 +30,7 @@ class Plugin
         // 2) CPTs y taxonomías (necesario antes de sembrar)
         ModalidadesGarantiasCPT::init();
         GuaranteeCPT::init();
+        GuaranteeStatuses::init();
         Taxonomies::init();
 
         // 3) Seeder: dispara seed_terms() y luego seed_modalidades()
