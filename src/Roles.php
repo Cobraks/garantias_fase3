@@ -29,6 +29,7 @@ class Roles
         'read_private_garantias',
         'delete_garantias',
         'delete_others_garantias',
+        'create_garantias',
     ];
     /**
      * Añade los roles al activar el plugin
@@ -54,6 +55,7 @@ class Roles
             'edit_garantia'            => true,
             'edit_garantias'           => true,
             'publish_garantias'        => true,
+            'create_garantias'         => true,
             'delete_garantia'          => true,
             'delete_garantias'         => true,
             'edit_others_garantias'    => false,
@@ -70,6 +72,7 @@ class Roles
             'edit_garantia'            => false,
             'edit_garantias'           => false,
             'publish_garantias'        => false,
+            'create_garantias'         => false,
             'delete_garantia'          => false,
             'delete_garantias'         => false,
             'edit_others_garantias'    => false,

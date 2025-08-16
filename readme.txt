@@ -3,6 +3,10 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.15
+- Restaurado el menú de garantías para administradores y profesionales añadiendo `create_garantias`.
+- Al contratar, la garantía pasa automáticamente a "Pendiente de pago".
+
 0.1.14
 - Restaura el menú de garantías para administradores y muestra las etiquetas de estado en español.
 

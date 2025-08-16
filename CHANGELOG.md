@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.15 - 2025-08-16
+- Añade la capacidad `create_garantias` para restaurar el acceso completo de administradores y profesionales.
+- La contratación cambia el estado a "Pendiente de pago" y los listados de WP-Admin muestran etiquetas traducidas.
+
 ## 0.1.14 - 2025-08-16
 - Asegura las capacidades del CPT para administradores en cada carga, recuperando el menú de Garantías.
 - Los listados muestran "Borrador" en lugar de "Draft" y las garantías contratadas pasan a "Pendiente de pago".

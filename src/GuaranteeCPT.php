@@ -37,6 +37,7 @@ class GuaranteeCPT
         add_filter('post_updated_messages', [__CLASS__, 'updated_messages']);
         add_action('save_post_' . self::POST_TYPE, [__CLASS__, 'handle_save'], 10, 3);
         add_action('transition_post_status', [__CLASS__, 'log_status_transition'], 10, 3);
+        add_filter('display_post_states', [__CLASS__, 'display_post_states'], 10, 2);
     }
 
     /**
@@ -67,6 +68,18 @@ class GuaranteeCPT
             'show_in_menu'       => true,
             'capability_type'    => 'garantia',
             'map_meta_cap'       => true,
+            'capabilities'       => [
+                'edit_post'          => 'edit_garantia',
+                'read_post'          => 'read_garantia',
+                'delete_post'        => 'delete_garantia',
+                'edit_posts'         => 'edit_garantias',
+                'edit_others_posts'  => 'edit_others_garantias',
+                'publish_posts'      => 'publish_garantias',
+                'read_private_posts' => 'read_private_garantias',
+                'delete_posts'       => 'delete_garantias',
+                'delete_others_posts'=> 'delete_others_garantias',
+                'create_posts'       => 'create_garantias',
+            ],
             'supports'           => ['title','custom-fields'],
             'menu_position'      => 20,
             'menu_icon'          => 'dashicons-awards',
@@ -161,5 +174,27 @@ class GuaranteeCPT
         // Mantener sincronizado el meta de estado de contratación
         $meta_status = $new_status === 'draft' ? 'borrador' : $new_status;
         update_post_meta($post->ID, 'estado_garantia_estado_contratacion', $meta_status);
+    }
+
+    /**
+     * Muestra etiquetas legibles en el listado de WP-Admin.
+     */
+    public static function display_post_states($states, $post)
+    {
+        if ($post->post_type !== self::POST_TYPE) {
+            return $states;
+        }
+        $map = [
+            'draft'          => __('Borrador', 'garantias-online-360vo'),
+            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'activada'       => __('Activada', 'garantias-online-360vo'),
+            'expirada'       => __('Expirada', 'garantias-online-360vo'),
+            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
+        ];
+        $status = get_post_status($post);
+        if (isset($map[$status])) {
+            $states[$status] = $map[$status];
+        }
+        return $states;
     }
 }
