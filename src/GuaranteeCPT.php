@@ -144,6 +144,8 @@ class GuaranteeCPT
         $user = get_current_user_id();
         if (! $update) {
             GuaranteeLogger::log($user, $post_id, 'created');
+            // Establece el estado meta inicial en borrador
+            update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'borrador');
         }
     }
 
@@ -157,6 +159,7 @@ class GuaranteeCPT
         GuaranteeLogger::log($user, $post->ID, 'status_changed', $details);
 
         // Mantener sincronizado el meta de estado de contratación
-        update_post_meta($post->ID, 'estado_garantia_estado_contratacion', $new_status);
+        $meta_status = $new_status === 'draft' ? 'borrador' : $new_status;
+        update_post_meta($post->ID, 'estado_garantia_estado_contratacion', $meta_status);
     }
 }

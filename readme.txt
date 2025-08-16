@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.14
+- Restaura el menú de garantías para administradores y muestra las etiquetas de estado en español.
+
 0.1.13
 - Estados personalizados de garantía y capacidades propias del CPT.
 - Las garantías contratadas pasan a "Pendiente de pago" y el listado muestra todos los estados.

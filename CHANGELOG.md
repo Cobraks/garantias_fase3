@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.14 - 2025-08-16
+- Asegura las capacidades del CPT para administradores en cada carga, recuperando el menú de Garantías.
+- Los listados muestran "Borrador" en lugar de "Draft" y las garantías contratadas pasan a "Pendiente de pago".
+
 ## 0.1.13 - 2025-08-16
 - Registro de estados personalizados de garantía (pendiente de pago, activada, expirada y expira pronto).
 - Definición de capacidades propias del CPT y asignación automática al rol administrador.

@@ -491,6 +491,7 @@ class GuaranteeRestController
         if (is_wp_error($result)) {
             return $result;
         }
+        update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'pendiente_pago');
         $status = get_post_status($post_id);
         if ($status !== 'pendiente_pago') {
             return new WP_Error('publish_failed', __('No se pudo cambiar el estado de la garantía', 'garantias-online-360vo'), ['status' => 500]);
@@ -687,11 +688,17 @@ class GuaranteeRestController
             $plan   = $plan_id ? get_the_title($plan_id) : '';
             $precio = get_post_meta($post_id, 'garantia_contratada_precio', true);
             $estado = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+            if (!$estado) {
+                $estado = get_post_status($post_id);
+            }
+            if ($estado === 'draft') {
+                $estado = 'borrador';
+            }
             $estado_labels = [
-                'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
-                'borrador'         => __('Borrador', 'garantias-online-360vo'),
-                'activada'         => __('Activada', 'garantias-online-360vo'),
-                'expirada'         => __('Expirada', 'garantias-online-360vo'),
+                'borrador'        => __('Borrador', 'garantias-online-360vo'),
+                'pendiente_pago'  => __('Pendiente de pago', 'garantias-online-360vo'),
+                'activada'        => __('Activada', 'garantias-online-360vo'),
+                'expirada'        => __('Expirada', 'garantias-online-360vo'),
                 'expira_pronto'   => __('Expira pronto', 'garantias-online-360vo'),
             ];
             $estado_label = $estado_labels[$estado] ?? $estado;
@@ -770,11 +777,17 @@ class GuaranteeRestController
         $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
+        if (!$estado) {
+            $estado = get_post_status($id);
+        }
+        if ($estado === 'draft') {
+            $estado = 'borrador';
+        }
         $estado_labels = [
-            'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
-            'borrador'         => __('Borrador', 'garantias-online-360vo'),
-            'activada'         => __('Activada', 'garantias-online-360vo'),
-            'expirada'         => __('Expirada', 'garantias-online-360vo'),
+            'borrador'        => __('Borrador', 'garantias-online-360vo'),
+            'pendiente_pago'  => __('Pendiente de pago', 'garantias-online-360vo'),
+            'activada'        => __('Activada', 'garantias-online-360vo'),
+            'expirada'        => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'   => __('Expira pronto', 'garantias-online-360vo'),
         ];
         $estado_label = $estado_labels[$estado] ?? $estado;
@@ -891,6 +904,12 @@ class GuaranteeRestController
         $plan_ids = [];
         foreach ($q->posts as $post_id) {
             $e = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+            if (!$e) {
+                $e = get_post_status($post_id);
+            }
+            if ($e === 'draft') {
+                $e = 'borrador';
+            }
             if ($e) {
                 $estados[] = $e;
             }
@@ -903,10 +922,10 @@ class GuaranteeRestController
         $estados = array_values(array_unique(array_filter($estados)));
         sort($estados);
         $estado_labels = [
-            'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
-            'borrador'         => __('Borrador', 'garantias-online-360vo'),
-            'activada'         => __('Activada', 'garantias-online-360vo'),
-            'expirada'         => __('Expirada', 'garantias-online-360vo'),
+            'borrador'        => __('Borrador', 'garantias-online-360vo'),
+            'pendiente_pago'  => __('Pendiente de pago', 'garantias-online-360vo'),
+            'activada'        => __('Activada', 'garantias-online-360vo'),
+            'expirada'        => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'   => __('Expira pronto', 'garantias-online-360vo'),
         ];
         $estados = array_map(function ($e) use ($estado_labels) {

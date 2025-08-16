@@ -128,4 +128,20 @@ class Roles
             }
         }
     }
+
+    /**
+     * Asegura que el rol administrador disponga siempre de las capacidades personalizadas.
+     * Se ejecuta en cada carga para evitar pérdidas tras actualizaciones.
+     */
+    public static function ensure_admin_caps(): void
+    {
+        $admin = get_role('administrator');
+        if ($admin) {
+            foreach (self::CAPS as $cap) {
+                if (! $admin->has_cap($cap)) {
+                    $admin->add_cap($cap);
+                }
+            }
+        }
+    }
 }
