@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.9 - 2025-08-16
+- Evita la creación de borradores duplicados al modificar la matrícula durante una nueva garantía.
+
 ## 0.1.8 - 2025-08-16
 - Bloqueo inmediato del botón “Siguiente” al comprobar matrículas duplicadas y reactivación al corregirlas.
 

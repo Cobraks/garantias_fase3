@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.9
+- Evita la creación de borradores duplicados al modificar la matrícula durante una nueva garantía.
+
 0.1.8
 - Bloqueo inmediato del botón “Siguiente” mientras se comprueban matrículas duplicadas.
 

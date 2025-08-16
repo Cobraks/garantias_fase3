@@ -151,7 +151,7 @@ $profile_button = sprintf(
                             </a>
                         </li>
                         <li class="menu-item button-item button-item--nueva-garantia">
-                            <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>">
+                            <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" data-reset-draft>
                                 <?php echo Svg::icon('new_shield', 'top-bar__icon'); ?>
                                 <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
                             </a>
@@ -181,7 +181,7 @@ $profile_button = sprintf(
                     </a>
                 </li>
                 <li class="mobile-menu__item">
-                    <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>">
+                    <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" data-reset-draft>
 
                         <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
                     </a>
