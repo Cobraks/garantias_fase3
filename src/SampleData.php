@@ -117,7 +117,7 @@ class SampleData
         }
 
         // Opciones para campos select
-        $estados_contratacion = ['pendiente_pago', 'borrador', 'activada', 'expirada', 'pendiente_renovar'];
+        $estados_contratacion = ['pendiente_pago', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto'];
         $meses_contratados    = [6, 12, 24, 36];
         $metodos_pago         = ['domiciliacion_bancaria', 'transferencia'];
         $canales_venta        = ['profesional', 'particular', 'gestoria'];
