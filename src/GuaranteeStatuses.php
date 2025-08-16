@@ -117,6 +117,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (pending) {
         pending.remove();
     }
+    var current = document.getElementById('hidden_post_status');
+    if (current) {
+        select.value = current.value;
+    }
 });
 </script>
 JS;

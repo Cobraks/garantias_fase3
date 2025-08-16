@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.15 - 2025-08-16
+- Asegura que el rol administrador conserve las capacidades para editar garantías publicadas.
+- Mantiene la selección del estado personalizado en el editor al cargar la página.
+
 ## 0.1.14 - 2025-08-16
 - Añade capacidades para editar y borrar garantías publicadas.
 - Elimina el uso de jQuery en el desplegable de estados personalizados.

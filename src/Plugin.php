@@ -32,6 +32,7 @@ class Plugin
         GuaranteeCPT::init();
         GuaranteeStatuses::init();
         Taxonomies::init();
+        Roles::grant_admin_caps();
 
         // 3) Seeder: dispara seed_terms() y luego seed_modalidades()
         Seeder::init();

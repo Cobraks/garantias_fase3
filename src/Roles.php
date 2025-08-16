@@ -17,6 +17,24 @@ if (! defined('ABSPATH')) {
 class Roles
 {
     /**
+     * Capacidades base para usuarios que pueden gestionar garantías.
+     * Se reutilizan al crear roles y al garantizar permisos al administrador.
+     */
+    private const MANAGE_CAPS = [
+        'read'                     => true,
+        'edit_garantia'            => true,
+        'edit_garantias'           => true,
+        'publish_garantias'        => true,
+        'delete_garantia'          => true,
+        'delete_garantias'         => true,
+        'edit_others_garantias'    => false,
+        'delete_others_garantias'  => false,
+        'edit_published_garantias' => true,
+        'delete_published_garantias' => true,
+        'read_private_garantias'   => true,
+    ];
+
+    /**
      * Añade los roles al activar el plugin
      */
     public static function add_roles(): void
@@ -37,19 +55,7 @@ class Roles
         ];
 
         // Profesional: puede crear y gestionar sus propias garantías
-        $caps_profesional = [
-            'read'                     => true,
-            'edit_garantia'            => true,
-            'edit_garantias'           => true,
-            'publish_garantias'        => true,
-            'delete_garantia'          => true,
-            'delete_garantias'         => true,
-            'edit_others_garantias'    => false,
-            'delete_others_garantias'  => false,
-            'edit_published_garantias' => true,
-            'delete_published_garantias' => true,
-            'read_private_garantias'   => true,
-        ];
+        $caps_profesional = self::MANAGE_CAPS;
 
         // Gestoría: mismas capacidades que profesional
         $caps_gestoria = $caps_profesional;
@@ -93,13 +99,23 @@ class Roles
             $caps_comercial
         );
 
-        // Ensure administrators can manage guarantees
+        self::grant_admin_caps();
+    }
+
+    /**
+     * Asegura que el rol administrador siempre dispone de las capacidades necesarias.
+     * Se ejecuta en cada carga del plugin para evitar que una actualización deje
+     * al administrador sin permisos para editar garantías publicadas.
+     */
+    public static function grant_admin_caps(): void
+    {
         $admin = get_role('administrator');
-        if ($admin) {
-            foreach ($caps_profesional as $cap => $grant) {
-                if ($grant) {
-                    $admin->add_cap($cap);
-                }
+        if (! $admin) {
+            return;
+        }
+        foreach (self::MANAGE_CAPS as $cap => $grant) {
+            if ($grant && ! $admin->has_cap($cap)) {
+                $admin->add_cap($cap);
             }
         }
     }
