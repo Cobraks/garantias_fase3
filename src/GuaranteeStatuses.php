@@ -77,10 +77,27 @@ class GuaranteeStatuses
         $options = '';
         foreach (self::STATUSES as $status => $label) {
             $selected = $post->post_status === $status ? " selected='selected'" : '';
-            $label    = esc_js($label);
+            $label    = esc_html($label);
             $options .= "<option value='{$status}'{$selected}>{$label}</option>";
         }
-        echo "<script>jQuery(function($){var s=$('#post_status');if(s.length){s.append('{$options}');}});</script>";
+        $json_statuses = wp_json_encode(self::STATUSES);
+        $current       = esc_js($post->post_status);
+        echo <<<JS
+<script>
+jQuery(function($){
+    var s = $('#post_status');
+    if(s.length){
+        s.append('{$options}');
+        s.find('option[value="pending"]').remove();
+    }
+    var statuses = {$json_statuses};
+    if(statuses['{$current}']){
+        $('#post-status-display').text(statuses['{$current}']);
+        $('#hidden_post_status').val('{$current}');
+    }
+});
+</script>
+JS;
     }
 
     /**

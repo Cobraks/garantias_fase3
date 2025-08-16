@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.11 - 2025-08-16
+- Muestra los estados personalizados en el editor de garantías y oculta "Pendiente de revisión".
+
 ## 0.1.10 - 2025-08-16
 - Registra estados personalizados de garantía y permite listarlas en cualquier estado.
 - Elimina el uso del campo ACF `estado_contratacion`.
