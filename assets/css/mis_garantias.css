@@ -296,11 +296,16 @@ section.guarantees-list.sticky-active {
 .guarantees-table__row.selected .guarantees-list__badge--activada {
     background-color: #16a34a;
 }
-.guarantees-table__row.selected .guarantees-list__badge--pendiente {
+.guarantees-table__row.selected .guarantees-list__badge--pendiente,
+.guarantees-table__row.selected .guarantees-list__badge--pendiente-pago,
+.guarantees-table__row.selected .guarantees-list__badge--pendiente-renovar {
     background-color: #f59e0b;
 }
 .guarantees-table__row.selected .guarantees-list__badge--expirada {
     background-color: #dc2626;
+}
+.guarantees-table__row.selected .guarantees-list__badge--borrador {
+    background-color: #6b7280;
 }
 
 .guarantees-table td {
@@ -335,9 +340,12 @@ section.guarantees-list.sticky-active {
     white-space: nowrap;
     border: solid 1px;
 }
-.guarantees-list__badge--activada    { color: #16a34a; }
-.guarantees-list__badge--expirada  { color: #dc2626; }
-.guarantees-list__badge--pendiente { color: #f59e0b; }
+.guarantees-list__badge--activada       { color: #16a34a; }
+.guarantees-list__badge--expirada       { color: #dc2626; }
+.guarantees-list__badge--pendiente,
+.guarantees-list__badge--pendiente-pago,
+.guarantees-list__badge--pendiente-renovar { color: #f59e0b; }
+.guarantees-list__badge--borrador        { color: #6b7280; }
 
 /* Periodo Validez */
 .guarantees-table__period > div {
