@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.12 - 2025-08-16
+- Los estados personalizados se tratan como publicados y aparecen en el desplegable del metabox de publicación.
+- La vista "Todas" de garantías incluye también los estados personalizados.
+
 ## 0.1.11 - 2025-08-16
 - Muestra los estados personalizados en el editor de garantías y oculta "Pendiente de revisión".
 

@@ -86,6 +86,16 @@ class Roles
             __('Comercial', 'garantias-online-360vo'),
             $caps_comercial
         );
+
+        // Ensure administrators can manage guarantees
+        $admin = get_role('administrator');
+        if ($admin) {
+            foreach ($caps_profesional as $cap => $grant) {
+                if ($grant) {
+                    $admin->add_cap($cap);
+                }
+            }
+        }
     }
 
     /**

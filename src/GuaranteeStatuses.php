@@ -25,6 +25,7 @@ class GuaranteeStatuses
         add_filter('display_post_states', [__CLASS__, 'display_post_states']);
         add_action('admin_footer-post.php', [__CLASS__, 'append_statuses_to_dropdown']);
         add_action('admin_footer-post-new.php', [__CLASS__, 'append_statuses_to_dropdown']);
+        add_action('pre_get_posts', [__CLASS__, 'include_in_admin_all']);
     }
 
     /**
@@ -35,11 +36,10 @@ class GuaranteeStatuses
         foreach (self::STATUSES as $status => $label) {
             register_post_status($status, [
                 'label'                     => _x($label, 'post status', 'garantias-online-360vo'),
-                'public'                    => false,
+                'public'                    => true,
                 'exclude_from_search'       => true,
                 'show_in_admin_all_list'    => true,
                 'show_in_admin_status_list' => true,
-                'post_type'                 => [GuaranteeCPT::POST_TYPE],
                 'label_count'               => _n_noop(
                     "$label <span class=\"count\">(%s)</span>",
                     "$label <span class=\"count\">(%s)</span>",
@@ -63,6 +63,26 @@ class GuaranteeStatuses
             $states[$post->post_status] = $statuses[$post->post_status];
         }
         return $states;
+    }
+
+    /**
+     * Include custom statuses in the "All" admin list view
+     */
+    public static function include_in_admin_all($query): void
+    {
+        if (! is_admin() || ! $query->is_main_query()) {
+            return;
+        }
+
+        $post_type = $query->get('post_type');
+        if ($post_type !== GuaranteeCPT::POST_TYPE) {
+            return;
+        }
+
+        $status = $query->get('post_status');
+        if (! $status || $status === 'any') {
+            $query->set('post_status', self::all_with_default());
+        }
     }
 
     /**
@@ -94,6 +114,7 @@ jQuery(function($){
     if(statuses['{$current}']){
         $('#post-status-display').text(statuses['{$current}']);
         $('#hidden_post_status').val('{$current}');
+        $('#publish').val('Actualizar');
     }
 });
 </script>
