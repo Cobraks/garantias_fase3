@@ -298,13 +298,14 @@ section.guarantees-list.sticky-active {
 }
 .guarantees-table__row.selected .guarantees-list__badge--pendiente,
 .guarantees-table__row.selected .guarantees-list__badge--pendiente-pago,
-.guarantees-table__row.selected .guarantees-list__badge--pendiente-renovar {
+.guarantees-table__row.selected .guarantees-list__badge--expira-pronto {
     background-color: #f59e0b;
 }
 .guarantees-table__row.selected .guarantees-list__badge--expirada {
     background-color: #dc2626;
 }
-.guarantees-table__row.selected .guarantees-list__badge--borrador {
+.guarantees-table__row.selected .guarantees-list__badge--borrador,
+.guarantees-table__row.selected .guarantees-list__badge--sin-finalizar {
     background-color: #6b7280;
 }
 
@@ -344,8 +345,9 @@ section.guarantees-list.sticky-active {
 .guarantees-list__badge--expirada       { color: #dc2626; }
 .guarantees-list__badge--pendiente,
 .guarantees-list__badge--pendiente-pago,
-.guarantees-list__badge--pendiente-renovar { color: #f59e0b; }
-.guarantees-list__badge--borrador        { color: #6b7280; }
+.guarantees-list__badge--expira-pronto { color: #f59e0b; }
+.guarantees-list__badge--borrador,
+.guarantees-list__badge--sin-finalizar { color: #6b7280; }
 
 /* Periodo Validez */
 .guarantees-table__period > div {

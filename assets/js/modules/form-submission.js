@@ -37,6 +37,7 @@ export default function initSubmission() {
                                 return;
                         }
 
+                        localStorage.removeItem("go_draft_id");
                         alert("¡Garantía contratada correctamente!");
                 } catch (err) {
                         console.error("[SUBMISSION]", err);
