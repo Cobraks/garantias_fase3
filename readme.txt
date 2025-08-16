@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.8
+- Bloqueo inmediato del botón “Siguiente” mientras se comprueban matrículas duplicadas.
+
 0.1.7
 - Validación en tiempo real de matrículas duplicadas en la creación de garantías.
 

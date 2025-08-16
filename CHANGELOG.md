@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.8 - 2025-08-16
+- Bloqueo inmediato del botón “Siguiente” al comprobar matrículas duplicadas y reactivación al corregirlas.
+
 ## 0.1.7 - 2025-08-16
 - Validación en tiempo real de matrículas duplicadas en el formulario de nueva garantía.
 
