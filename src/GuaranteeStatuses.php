@@ -40,6 +40,8 @@ class GuaranteeStatuses
                 'exclude_from_search'       => true,
                 'show_in_admin_all_list'    => true,
                 'show_in_admin_status_list' => true,
+                'show_in_metabox_dropdown'  => true,
+                'show_in_inline_dropdown'   => true,
                 'label_count'               => _n_noop(
                     "$label <span class=\"count\">(%s)</span>",
                     "$label <span class=\"count\">(%s)</span>",
@@ -94,27 +96,18 @@ class GuaranteeStatuses
         if (! $post || $post->post_type !== GuaranteeCPT::POST_TYPE) {
             return;
         }
-        $options = '';
-        foreach (self::STATUSES as $status => $label) {
-            $selected = $post->post_status === $status ? " selected='selected'" : '';
-            $label    = esc_html($label);
-            $options .= "<option value='{$status}'{$selected}>{$label}</option>";
-        }
         $json_statuses = wp_json_encode(self::STATUSES);
-        $current       = esc_js($post->post_status);
         echo <<<JS
 <script>
 jQuery(function($){
-    var s = $('#post_status');
+    var s = $('#post_status'), statuses = {$json_statuses};
     if(s.length){
-        s.append('{$options}');
+        $.each(statuses, function(val, label){
+            if(!s.find('option[value="' + val + '"]').length){
+                s.append(new Option(label, val));
+            }
+        });
         s.find('option[value="pending"]').remove();
-    }
-    var statuses = {$json_statuses};
-    if(statuses['{$current}']){
-        $('#post-status-display').text(statuses['{$current}']);
-        $('#hidden_post_status').val('{$current}');
-        $('#publish').val('Actualizar');
     }
 });
 </script>

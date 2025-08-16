@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.13 - 2025-08-16
+- Corrige la aparición de los estados personalizados en el editor de garantías.
+
 ## 0.1.12 - 2025-08-16
 - Los estados personalizados se tratan como publicados y aparecen en el desplegable del metabox de publicación.
 - La vista "Todas" de garantías incluye también los estados personalizados.
