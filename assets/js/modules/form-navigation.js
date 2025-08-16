@@ -252,7 +252,7 @@ function setupTabNavigation() {
                                 FormCache.currentTab++;
                                 showTab(FormCache.currentTab);
                         } else {
-                                const form = document.getElementById("form-nueva-garantia");
+                                const form = document.getElementById("form-garantia");
                                 if (form) {
                                         if (typeof form.requestSubmit === "function") {
                                                 form.requestSubmit();

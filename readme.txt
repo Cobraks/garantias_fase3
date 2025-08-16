@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.19
+- Corrige el identificador del formulario para que "Contratar" cambie la garantía a "Pendiente de pago".
+
 0.1.18
 - El botón "Contratar" publica la garantía y la marca como "Pendiente de pago".
 

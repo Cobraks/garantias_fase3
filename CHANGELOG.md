@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.19 - 2025-08-16
+- Corrige el identificador del formulario para que "Contratar" cambie la garantía a "Pendiente de pago".
+
 ## 0.1.18 - 2025-08-16
 - El botón "Contratar" envía el formulario y cambia la garantía a "Pendiente de pago".
 
