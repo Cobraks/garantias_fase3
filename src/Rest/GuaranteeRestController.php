@@ -65,6 +65,40 @@ class GuaranteeRestController
         );
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::BASE . '/check-plate',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'check_plate'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'matricula' => [
+                            'required'          => true,
+                            'sanitize_callback' => 'sanitize_text_field',
+                        ],
+                        'exclude'   => [
+                            'sanitize_callback' => 'sanitize_text_field',
+                        ],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/publish',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'publish'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::BASE . '/(?P<id>\d+)',
             [
                 [
@@ -181,6 +215,18 @@ class GuaranteeRestController
             $stored_uuid = get_post_meta($post_id, 'estado_garantia_uuid', true);
             if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE || !$uuid || $uuid !== $stored_uuid) {
                 $post_id = 0;
+            }
+        } elseif ($uuid) {
+            $found = get_posts([
+                'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+                'post_status'    => ['draft', 'publish', 'pending', 'future'],
+                'meta_key'       => 'estado_garantia_uuid',
+                'meta_value'     => $uuid,
+                'fields'         => 'ids',
+                'posts_per_page' => 1,
+            ]);
+            if (!empty($found)) {
+                $post_id = (int) $found[0];
             }
         }
 
@@ -424,6 +470,66 @@ class GuaranteeRestController
         return new WP_REST_Response(['id' => $post_id, 'uuid' => $uuid]);
     }
 
+    public static function publish($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+        if (!$post_id) {
+            return new WP_Error('invalid_id', __('ID de garantía no válido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error('not_found', __('Garantía no encontrada', 'garantias-online-360vo'), ['status' => 404]);
+        }
+        wp_update_post(['ID' => $post_id, 'post_status' => 'publish']);
+        return rest_ensure_response(['id' => $post_id, 'status' => 'publish']);
+    }
+
+    public static function check_plate($request)
+    {
+        $matricula = isset($request['matricula']) ? sanitize_text_field($request['matricula']) : '';
+        if ($matricula === '') {
+            return new WP_Error('invalid_plate', __('Matrícula requerida', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $exclude = isset($request['exclude']) ? sanitize_text_field($request['exclude']) : '';
+        $post_id = 0;
+        if ($exclude) {
+            if (ctype_digit((string) $exclude)) {
+                $post_id = (int) $exclude;
+            } else {
+                $found = get_posts([
+                    'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+                    'post_status'    => ['draft', 'publish', 'pending', 'future'],
+                    'meta_key'       => 'estado_garantia_uuid',
+                    'meta_value'     => $exclude,
+                    'fields'         => 'ids',
+                    'posts_per_page' => 1,
+                ]);
+                if (!empty($found)) {
+                    $post_id = (int) $found[0];
+                }
+            }
+        }
+
+        $args = [
+            'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+            'post_status'    => ['draft', 'publish', 'pending', 'future'],
+            'meta_key'       => 'datos_vehiculo_matricula',
+            'meta_value'     => $matricula,
+            'fields'         => 'ids',
+            'posts_per_page' => 1,
+        ];
+        if ($post_id) {
+            $args['post__not_in'] = [$post_id];
+        }
+        $existing = get_posts($args);
+        if (!empty($existing)) {
+            return new WP_Error('duplicate_plate', __('Ya existe una garantía para este vehículo', 'garantias-online-360vo'), ['status' => 409]);
+        }
+
+        return rest_ensure_response(['exists' => false]);
+    }
+
     /**
      * Listado paginado, cacheado por usuario y página.
      */
@@ -567,6 +673,14 @@ class GuaranteeRestController
             $plan   = $plan_id ? get_the_title($plan_id) : '';
             $precio = get_post_meta($post_id, 'garantia_contratada_precio', true);
             $estado = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+            $estado_labels = [
+                'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
+                'borrador'         => __('Borrador', 'garantias-online-360vo'),
+                'activada'         => __('Activada', 'garantias-online-360vo'),
+                'expirada'         => __('Expirada', 'garantias-online-360vo'),
+                'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+            ];
+            $estado_label = $estado_labels[$estado] ?? $estado;
 
             $vendor_id = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
             $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
@@ -585,7 +699,10 @@ class GuaranteeRestController
                 'hasta'      => $hasta,
                 'plan'       => $plan,
                 'precio'     => $precio,
-                'estado'     => $estado,
+                'estado'     => [
+                    'value' => $estado,
+                    'label' => $estado_label,
+                ],
                 'vendedor'   => $vendor_name,
                 'canal_venta' => [
                     'value' => $canal_venta_value,
@@ -639,6 +756,14 @@ class GuaranteeRestController
         $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
+        $estado_labels = [
+            'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
+            'borrador'         => __('Borrador', 'garantias-online-360vo'),
+            'activada'         => __('Activada', 'garantias-online-360vo'),
+            'expirada'         => __('Expirada', 'garantias-online-360vo'),
+            'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+        ];
+        $estado_label = $estado_labels[$estado] ?? $estado;
 
         // Vendedor/concesionario
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
@@ -678,7 +803,10 @@ class GuaranteeRestController
             'precio' => $precio ?: '-',
             'desde' => $desde ?: '-',
             'hasta' => $hasta ?: '-',
-            'estado' => $estado ?: '-',
+            'estado' => [
+                'value' => $estado,
+                'label' => $estado_label,
+            ],
             'concesionario' => $concesionario ?: '-',
             'canal_venta' => $canal_venta ?: '-',
             'contrato_url' => $contrato_url,
@@ -760,6 +888,19 @@ class GuaranteeRestController
 
         $estados = array_values(array_unique(array_filter($estados)));
         sort($estados);
+        $estado_labels = [
+            'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
+            'borrador'         => __('Borrador', 'garantias-online-360vo'),
+            'activada'         => __('Activada', 'garantias-online-360vo'),
+            'expirada'         => __('Expirada', 'garantias-online-360vo'),
+            'pendiente_renovar'=> __('Pendiente de renovación', 'garantias-online-360vo'),
+        ];
+        $estados = array_map(function ($e) use ($estado_labels) {
+            return [
+                'value' => $e,
+                'label' => $estado_labels[$e] ?? $e,
+            ];
+        }, $estados);
 
         $planes = [];
         $plan_ids = array_unique(array_filter($plan_ids));

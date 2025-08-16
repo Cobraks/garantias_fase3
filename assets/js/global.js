@@ -33,7 +33,7 @@ console.log("GO360 script cargado");
                         });
                 }
 
-                const newLinks = document.querySelectorAll('a[href*="nueva-garantia"]');
+                const newLinks = document.querySelectorAll('[data-reset-draft]');
                 newLinks.forEach((link) => {
                         link.addEventListener("click", () => {
                                 localStorage.removeItem("go_draft_id");

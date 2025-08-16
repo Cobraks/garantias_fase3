@@ -3,17 +3,37 @@
 
 /*
     - Gestiona la lógica final de envío del formulario.
-    - Puede serializar datos, validar última vez y enviar por AJAX, fetch, etc.
-    - Por ahora, solo muestra un alert como placeholder.
+    - Al pulsar "Contratar" publica la garantía en borrador mediante la API REST.
 */
 
-export default function initSubmission() {
-	const form = document.getElementById("form-nueva-garantia");
-	if (!form) return;
+import { getRestRoot, getRestNonce } from "./config.js";
 
-	form.addEventListener("submit", function (e) {
-		e.preventDefault();
-		// Aquí podrías serializar y enviar por AJAX/fetch...
-		alert("¡Formulario enviado correctamente! (esto es solo un ejemplo)");
-	});
+export default function initSubmission() {
+        const form = document.getElementById("form-nueva-garantia");
+        if (!form) return;
+
+        form.addEventListener("submit", async function (e) {
+                e.preventDefault();
+                const draftId = localStorage.getItem("go_draft_id");
+                if (!draftId) {
+                        alert("No se encontró la garantía en borrador.");
+                        return;
+                }
+                try {
+                        const res = await fetch(`${getRestRoot()}go/v1/guarantees/${draftId}/publish`, {
+                                method: "POST",
+                                headers: {
+                                        "X-WP-Nonce": getRestNonce(),
+                                },
+                        });
+                        const json = await res.json();
+                        if (!res.ok) throw json?.message || "Error al publicar la garantía.";
+                        localStorage.removeItem("go_draft_id");
+                        localStorage.removeItem("go_draft_uuid");
+                        alert("Garantía contratada correctamente.");
+                } catch (err) {
+                        console.error("[SUBMIT]", err);
+                        alert(err);
+                }
+        });
 }
