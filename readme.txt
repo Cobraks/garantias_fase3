@@ -3,6 +3,9 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 1.0.0
 - Añadida imagen de perfil
 
+0.1.11
+- Permite publicar garantías desde el formulario al asignar capacidades específicas al tipo de contenido.
+
 0.1.10
 - Al pulsar "Contratar", la garantía pasa de borrador a publicada.
 

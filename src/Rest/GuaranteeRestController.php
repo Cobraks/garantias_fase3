@@ -480,8 +480,18 @@ class GuaranteeRestController
         if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
             return new WP_Error('not_found', __('Garantía no encontrada', 'garantias-online-360vo'), ['status' => 404]);
         }
-        wp_update_post(['ID' => $post_id, 'post_status' => 'publish']);
-        return rest_ensure_response(['id' => $post_id, 'status' => 'publish']);
+        if (!current_user_can('publish_post', $post_id)) {
+            return new WP_Error('forbidden', __('No tienes permisos para publicar esta garantía', 'garantias-online-360vo'), ['status' => 403]);
+        }
+        $result = wp_update_post(['ID' => $post_id, 'post_status' => 'publish'], true);
+        if (is_wp_error($result)) {
+            return $result;
+        }
+        $status = get_post_status($post_id);
+        if ($status !== 'publish') {
+            return new WP_Error('publish_failed', __('No se pudo publicar la garantía', 'garantias-online-360vo'), ['status' => 500]);
+        }
+        return rest_ensure_response(['id' => $post_id, 'status' => $status]);
     }
 
     public static function check_plate($request)

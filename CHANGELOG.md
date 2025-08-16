@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.11 - 2025-08-16
+- Permite publicar garantías al contratar mapeando capacidades personalizadas del CPT y validando el resultado.
+
 ## 0.1.10 - 2025-08-16
 - Al pulsar "Contratar", la garantía pasa de borrador a publicada.
 - Nota: revisar el sistema en próximas iteraciones, aunque actualmente funciona correctamente.
