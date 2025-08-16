@@ -481,10 +481,21 @@ class GuaranteeRestController
             return new WP_Error('not_found', __('Garantía no encontrada', 'garantias-online-360vo'), ['status' => 404]);
         }
 
-        wp_update_post([
+        $grant_publish = function ($allcaps) {
+            $allcaps['publish_posts'] = true;
+            return $allcaps;
+        };
+
+        add_filter('user_has_cap', $grant_publish);
+        $result = wp_update_post([
             'ID'          => $post_id,
             'post_status' => 'publish',
-        ]);
+        ], true);
+        remove_filter('user_has_cap', $grant_publish);
+
+        if (is_wp_error($result)) {
+            return $result;
+        }
 
         update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'pendiente_pago');
 
