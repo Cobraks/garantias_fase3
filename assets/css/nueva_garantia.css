@@ -2059,122 +2059,121 @@ margin-top: .5rem;
     font-size: 2rem;
     margin: 0;
   }
-
-  .form-success__alert {
-    background: #fff8e6;
-    border-left: 4px solid #ffc107;
-    padding: 1rem;
-    margin: 1.5rem;
-    border-radius: 4px;
+  .form-success__docs {
     display: flex;
-    align-items: center;
-    gap: .75rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+    margin: 1.5rem 0;
   }
 
-  .form-success__alert-icon {
+  .form-success__doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    background: #fff;
+    border: 1px solid #e1ecff;
+    border-radius: 8px;
+    padding: .75rem 1.25rem;
+    font-size: .875rem;
+    color: #64748b;
+    text-decoration: none;
+    transition: background .2s ease, border-color .2s ease;
+  }
+
+  .form-success__doc-link:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+
+  .form-success__doc-icon {
     width: 1.25rem;
     height: 1.25rem;
-    color: #ffc107;
+    flex-shrink: 0;
   }
 
-  .form-success__section {
+  .form-success__payment {
+    background: #f8fbff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
     padding: 1.5rem;
+    margin: 1rem 1.5rem 0;
   }
 
-  .form-success__section-title {
+  .form-success__transfer-title {
     display: flex;
     align-items: center;
     gap: .5rem;
-    color: #0056b3;
-    font-size: 1.25rem;
+    font-size: 1.1rem;
+    font-weight: 600;
     margin: 0 0 1rem;
-    padding-bottom: .5rem;
-    border-bottom: 2px solid #f0f5ff;
+    color: #1f2937;
   }
 
-  .form-success__section-icon {
+  .form-success__transfer-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .form-success__transfer-note {
+    background: #D9EDF7;
+    color: #31708F;
+    padding: .75rem;
+    border-radius: 6px;
+    font-size: .875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: 1rem;
+  }
+
+  .form-success__transfer-note-icon {
     width: 1rem;
     height: 1rem;
   }
 
-  .form-success__docs-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+  .form-success__transfer-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .875rem;
   }
 
-  .form-success__doc-card {
-    background: #f8fbff;
-    border: 1px solid #e1ecff;
-    border-radius: 8px;
-    padding: 1rem;
-    text-align: center;
-    text-decoration: none;
-    color: inherit;
-    transition: transform .3s ease, box-shadow .3s ease;
-    display: block;
-  }
-
-  .form-success__doc-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 12px rgba(0, 86, 179, 0.1);
-  }
-
-  .form-success__doc-card-icon {
-    width: 2rem;
-    height: 2rem;
-    color: #0077e6;
-    margin-bottom: .5rem;
-  }
-
-  .form-success__doc-title {
+  .form-success__transfer-table th {
+    text-align: left;
+    padding: .5rem 0;
     font-weight: 600;
+    color: #1f2937;
   }
 
-  .form-success__payment-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
-  }
-
-  .form-success__detail {
-    background: #fff;
-    border-radius: 8px;
-    padding: 1rem;
-    box-shadow: 0 2px 8px rgba(0, 86, 179, 0.08);
-  }
-
-  .form-success__detail-label {
-    font-size: .85rem;
-    color: #666;
-    margin-bottom: .5rem;
-    display: block;
-  }
-
-  .form-success__detail-value {
-    font-weight: 600;
+  .form-success__transfer-table td {
+    padding: .5rem 0;
+    color: #606060;
     word-break: break-all;
-    margin-bottom: .5rem;
-    display: block;
+  }
+
+  .form-success__action {
+    width: 40px;
+    text-align: right;
   }
 
   .form-success__copy {
-    background: #e6f0ff;
-    border: none;
-    color: #0077e6;
-    padding: .5rem .75rem;
-    border-radius: 4px;
-    font-size: .85rem;
     cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    color: #2563eb;
     display: inline-flex;
     align-items: center;
-    gap: .25rem;
-    transition: background .3s ease;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    transition: background .2s ease;
   }
 
   .form-success__copy:hover {
-    background: #d0e3ff;
+    background: #e6f0ff;
   }
 
   .form-success__copy-icon {

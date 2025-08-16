@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.20 - 2025-08-16
+- Mezcla de estilos para el panel de éxito: cabecera original con enlaces de documentos en fila.
+- Instrucciones de transferencia en tarjeta con tabla y botones de copiado.
+
 ## 0.1.19 - 2025-08-16
 - Panel de éxito renovado con cabecera degradada y aviso destacado.
 - Documentación mostrada en tarjetas y detalles de transferencia en bloques copiables con aviso.
