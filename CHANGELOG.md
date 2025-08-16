@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.13 - 2025-08-16
+- La pantalla de éxito solo aparece tras pulsar “Contratar” y las pestañas se ocultan con una animación.
+- Estilos del panel de éxito trasladados a `nueva_garantia.css`.
+
 ## 0.1.12 - 2025-08-16
 - Pantalla de éxito tras contratar con animación de confeti y enlaces a la documentación.
 - Mensajes y recordatorios de pago según el método seleccionado, con botones de contacto.

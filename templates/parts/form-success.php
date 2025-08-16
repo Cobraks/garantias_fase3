@@ -3,7 +3,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 ?>
-<div id="form-success" class="form-success" hidden>
+<div id="form-success" class="form-success">
     <div class="form-success__confetti" aria-hidden="true"></div>
     <h2 class="form-success__title">¡Garantía registrada!</h2>
     <p class="form-success__note">Para completar la contratación realiza el pago y revisa la documentación.</p>

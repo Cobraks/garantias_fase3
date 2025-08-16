@@ -103,6 +103,13 @@ export default function initAutosave() {
         const navButtons = document.querySelector(".nav-buttons");
         const successBlock = document.getElementById("form-success");
         const summaryContainer = document.querySelector(".summary-container");
+        const tabs = document.querySelector(".tabs");
+
+        function fadeOut(el) {
+                if (!el) return;
+                el.classList.add("fade-out");
+                setTimeout(() => (el.style.display = "none"), 300);
+        }
 
         function launchConfetti() {
                 const holder = successBlock?.querySelector(
@@ -121,11 +128,15 @@ export default function initAutosave() {
         }
 
         function showSuccess(method, ref) {
-                form.style.display = "none";
-                navButtons && (navButtons.style.display = "none");
-                summaryContainer && (summaryContainer.style.display = "none");
+                fadeOut(form);
+                fadeOut(navButtons);
+                fadeOut(summaryContainer);
+                fadeOut(tabs);
                 if (successBlock) {
-                        successBlock.hidden = false;
+                        successBlock.style.display = "block";
+                        requestAnimationFrame(() =>
+                                successBlock.classList.add("is-visible")
+                        );
                         if (method === "transferencia" || method === "domiciliacion") {
                                 const pay = successBlock.querySelector(
                                         ".form-success__payment"
