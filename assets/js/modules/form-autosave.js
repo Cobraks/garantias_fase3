@@ -134,7 +134,7 @@ export default function initAutosave() {
                 }
         }
 
-        function showSuccess(method, ref) {
+        function showSuccess(method, plate, amount) {
                 fadeOut(form, false);
                 fadeOut(navButtons);
                 fadeOut(tabs);
@@ -146,19 +146,19 @@ export default function initAutosave() {
                                 () => {
                                         summaryContainer.style.display = "none";
                                         form.style.display = "none";
-                                        revealSuccess(method, ref);
+                                        revealSuccess(method, plate, amount);
                                 },
                                 { once: true }
                         );
                 } else {
                         setTimeout(() => {
                                 form.style.display = "none";
-                                revealSuccess(method, ref);
+                                revealSuccess(method, plate, amount);
                         }, 300);
                 }
         }
 
-        function revealSuccess(method, ref) {
+        function revealSuccess(method, plate, amount) {
                 if (!successBlock) return;
                 successBlock.style.display = "block";
                 requestAnimationFrame(() => successBlock.classList.add("is-visible"));
@@ -172,28 +172,46 @@ export default function initAutosave() {
                                         );
                                         if (transfer) {
                                                 transfer.hidden = false;
-                                                const refEl = transfer.querySelector(
-                                                        "[data-ref]"
-                                                );
-                                                if (refEl) refEl.textContent = ref || "";
+                                                const reference = plate ? `Garantía ${plate}` : "";
+                                                transfer
+                                                        .querySelectorAll("[data-ref],[data-ref-text]")
+                                                        .forEach((el) => (el.textContent = reference));
+                                                const amountText = amount
+                                                        ? `${Number(amount).toLocaleString("es-ES", {
+                                                                  minimumFractionDigits: 2,
+                                                                  maximumFractionDigits: 2,
+                                                          })} €`
+                                                        : "";
+                                                transfer
+                                                        .querySelectorAll("[data-amount],[data-amount-text]")
+                                                        .forEach((el) => (el.textContent = amountText));
                                         }
                                 }
                         }
                 }
-                successBlock
-                        .querySelectorAll("[data-copy]")
-                        .forEach((btn) => {
-                                btn.addEventListener("click", () => {
-                                        const target = successBlock.querySelector(
-                                                btn.getAttribute("data-copy")
+                successBlock.querySelectorAll("[data-copy]").forEach((btn) => {
+                        btn.addEventListener("click", () => {
+                                const target = successBlock.querySelector(
+                                        btn.getAttribute("data-copy")
+                                );
+                                if (target) {
+                                        navigator.clipboard.writeText(
+                                                target.textContent.trim()
                                         );
-                                        if (target) {
-                                                navigator.clipboard.writeText(
-                                                        target.textContent.trim()
+                                        const label = btn.querySelector(
+                                                ".form-success__copy-text"
+                                        );
+                                        if (label) {
+                                                const original = btn.dataset.label || label.textContent;
+                                                label.textContent = btn.dataset.done || "Copiado";
+                                                setTimeout(
+                                                        () => (label.textContent = original),
+                                                        2000
                                                 );
                                         }
-                                });
+                                }
                         });
+                });
                 launchConfetti();
         }
 
@@ -432,7 +450,11 @@ export default function initAutosave() {
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
                         if (finalize) {
-                                showSuccess(garantia.metodo_pago, draftUuid);
+                                showSuccess(
+                                        garantia.metodo_pago,
+                                        datosVehiculo.matricula,
+                                        garantia.precio
+                                );
                         }
                         spinner.style.display = "none";
                         icon.style.display = "inline-block";

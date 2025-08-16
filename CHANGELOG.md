@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.1.17 - 2025-08-16
+- Mensaje de pago simplificado con aviso destacado.
+- Documentación mostrada como botones alineados en una fila.
+- Datos de transferencia con referencia, IBAN y cantidad copiables.
+
 ## 0.1.16 - 2025-08-16
 - El formulario se expande a todo el ancho cuando desaparece el resumen.
 - El botón "Contratar" muestra un spinner a la izquierda del texto.
