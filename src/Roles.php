@@ -17,6 +17,21 @@ if (! defined('ABSPATH')) {
 class Roles
 {
     /**
+     * Capacidades personalizadas asociadas al CPT de garantía.
+     */
+    private const CAPS = [
+        'edit_garantia',
+        'read_garantia',
+        'delete_garantia',
+        'edit_garantias',
+        'edit_others_garantias',
+        'publish_garantias',
+        'read_private_garantias',
+        'delete_garantias',
+        'delete_others_garantias',
+        'create_garantias',
+    ];
+    /**
      * Añade los roles al activar el plugin
      */
     public static function add_roles(): void
@@ -40,6 +55,7 @@ class Roles
             'edit_garantia'            => true,
             'edit_garantias'           => true,
             'publish_garantias'        => true,
+            'create_garantias'         => true,
             'delete_garantia'          => true,
             'delete_garantias'         => true,
             'edit_others_garantias'    => false,
@@ -56,6 +72,7 @@ class Roles
             'edit_garantia'            => false,
             'edit_garantias'           => false,
             'publish_garantias'        => false,
+            'create_garantias'         => false,
             'delete_garantia'          => false,
             'delete_garantias'         => false,
             'edit_others_garantias'    => false,
@@ -86,6 +103,14 @@ class Roles
             __('Comercial', 'garantias-online-360vo'),
             $caps_comercial
         );
+
+        // Asegurar que el rol de administrador tenga todas las capacidades
+        $admin = get_role('administrator');
+        if ($admin) {
+            foreach (self::CAPS as $cap) {
+                $admin->add_cap($cap);
+            }
+        }
     }
 
     /**
@@ -97,5 +122,29 @@ class Roles
         remove_role('go_profesional');
         remove_role('go_gestoria');
         remove_role('go_comercial');
+
+        // Limpiar capacidades personalizadas del rol administrador
+        $admin = get_role('administrator');
+        if ($admin) {
+            foreach (self::CAPS as $cap) {
+                $admin->remove_cap($cap);
+            }
+        }
+    }
+
+    /**
+     * Asegura que el rol administrador disponga siempre de las capacidades personalizadas.
+     * Se ejecuta en cada carga para evitar pérdidas tras actualizaciones.
+     */
+    public static function ensure_admin_caps(): void
+    {
+        $admin = get_role('administrator');
+        if ($admin) {
+            foreach (self::CAPS as $cap) {
+                if (! $admin->has_cap($cap)) {
+                    $admin->add_cap($cap);
+                }
+            }
+        }
     }
 }

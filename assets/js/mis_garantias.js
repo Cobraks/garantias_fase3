@@ -71,56 +71,129 @@
 		let prevSelectedRow = null;
 		let prevIdx = null;
 		const urlMat = new URLSearchParams(window.location.search).get("matricula");
-		const detailCache = new Map();
+                const detailCache = new Map();
 
-		function normalizeEstadoClase(estado) {
-			if (!estado) return "pendiente";
-			let val = estado
-				.toLowerCase()
-				.normalize("NFD")
-				.replace(/[\u0300-\u036f]/g, "")
-				.replace(/[^a-z0-9]/g, "");
-			if (val.startsWith("expir")) return "expirada";
-			if (val.startsWith("pendi")) return "pendiente";
-			if (val.startsWith("activa")) return "activada";
-			return val || "pendiente";
-		}
+                function normalizeEstadoClase(estado) {
+                        if (!estado) return "pendiente-pago";
+                        return String(estado)
+                                .toLowerCase()
+                                .normalize("NFD")
+                                .replace(/[\u0300-\u036f]/g, "")
+                                .replace(/[^a-z0-9]+/g, "-")
+                                .replace(/^-+|-+$/g, "");
+                }
 
-		function renderRow(item) {
-			const estado =
-				typeof item.estado === "string" && item.estado
-					? item.estado
-					: typeof item.estado === "number"
-					? String(item.estado)
-					: "Desconocido";
-			const estadoClase = normalizeEstadoClase(estado);
-			const marca_modelo = item.marca ?? "-";
-			const mat = item.mat ?? item.matricula ?? "-";
-			const desde = item.desde ?? "-";
-			const hasta = item.hasta ?? "-";
-			const vendedor_name = item.vendedor ?? "-";
-			const plan = item.plan ?? "-";
-			const precio = item.precio ?? "-";
-			const canal_venta =
-				item.canal_venta && item.canal_venta.label
-					? item.canal_venta.label
-					: "-";
-			const vendedor_type = canal_venta;
+                function formatDate(value) {
+                        if (!value) return { iso: "-", display: "-" };
+                        let cleaned = String(value).replace(/[^0-9]/g, "");
+                        if (cleaned.length === 8) {
+                                const y = cleaned.slice(0, 4);
+                                const m = cleaned.slice(4, 6);
+                                const d = cleaned.slice(6, 8);
+                                const iso = `${y}-${m}-${d}`;
+                                const date = new Date(iso);
+                                if (!isNaN(date)) {
+                                        const display = new Intl.DateTimeFormat("es-ES", {
+                                                day: "numeric",
+                                                month: "long",
+                                                year: "numeric",
+                                        })
+                                                .format(date)
+                                                .replace(/ de /g, " ");
+                                        return { iso, display };
+                                }
+                                return { iso, display: `${d}/${m}/${y}` };
+                        }
+                        const date = new Date(value);
+                        if (!isNaN(date)) {
+                                const iso = date.toISOString().slice(0, 10);
+                                const display = new Intl.DateTimeFormat("es-ES", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                })
+                                        .format(date)
+                                        .replace(/ de /g, " ");
+                                return { iso, display };
+                        }
+                        return { iso: value, display: value };
+                }
+
+                function formatPrice(value) {
+                        if (value === null || value === undefined || value === "") return "-";
+                        const num =
+                                typeof value === "number"
+                                        ? value
+                                        : parseFloat(
+                                                  String(value)
+                                                          .replace(/[^0-9.,-]/g, "")
+                                                          .replace(",", ".")
+                                          );
+                        if (isNaN(num)) return String(value);
+                        return new Intl.NumberFormat("es-ES", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                        }).format(num);
+                }
+
+                function normalizeDetailData(data) {
+                        if (!data || typeof data !== "object") return data;
+                        const d = formatDate(data.desde);
+                        data.desde = d.iso;
+                        data.desde_fmt = d.display;
+                        const h = formatDate(data.hasta);
+                        data.hasta = h.iso;
+                        data.hasta_fmt = h.display;
+                        if (data.precio !== undefined) data.precio = formatPrice(data.precio);
+                        if (data.precio_venta !== undefined)
+                                data.precio_venta = formatPrice(data.precio_venta);
+                        return data;
+                }
+
+                function renderRow(item) {
+                        const estadoData = item.estado || "";
+                        const estadoValue =
+                                typeof estadoData === "object" && estadoData.value
+                                        ? estadoData.value
+                                        : typeof estadoData === "string" && estadoData
+                                        ? estadoData
+                                        : typeof estadoData === "number"
+                                        ? String(estadoData)
+                                        : "";
+                        const estadoLabel =
+                                typeof estadoData === "object" && estadoData.label
+                                        ? estadoData.label
+                                        : estadoValue || "Desconocido";
+                        const estadoClase = normalizeEstadoClase(estadoValue);
+                        const marca_modelo = item.marca ?? "-";
+                        const mat = item.mat ?? item.matricula ?? "-";
+                        const { iso: desdeIso, display: desde } = formatDate(item.desde);
+                        const { iso: hastaIso, display: hasta } = formatDate(item.hasta);
+                        const vendedor_name = item.vendedor ?? "-";
+                        const plan = item.plan ?? "-";
+                        const precio = formatPrice(item.precio);
+                        const canal_venta =
+                                item.canal_venta && item.canal_venta.label
+                                        ? item.canal_venta.label
+                                        : "-";
+                        const vendedor_type = canal_venta;
 
 			const tr = document.createElement("tr");
 			tr.className = "guarantees-table__row";
 			tr.tabIndex = 0;
 			tr.dataset.id = item.id;
-			tr.dataset.matricula = mat;
-			tr.dataset.marca_modelo = marca_modelo;
-			tr.dataset.plan = plan;
-			tr.dataset.desde = desde;
-			tr.dataset.hasta = hasta;
-			tr.dataset.estado = estado;
-			tr.dataset.estadoclase = estadoClase;
-			tr.dataset.vendedor_name = vendedor_name;
-			tr.dataset.vendedor_type = vendedor_type;
-			tr.dataset.precio = precio;
+                        tr.dataset.matricula = mat;
+                        tr.dataset.marca_modelo = marca_modelo;
+                        tr.dataset.plan = plan;
+                        tr.dataset.desde = desdeIso;
+                        tr.dataset.desdeFmt = desde;
+                        tr.dataset.hasta = hastaIso;
+                        tr.dataset.hastaFmt = hasta;
+                        tr.dataset.estado = estadoLabel;
+                        tr.dataset.estadoclase = estadoClase;
+                        tr.dataset.vendedor_name = vendedor_name;
+                        tr.dataset.vendedor_type = vendedor_type;
+                        tr.dataset.precio = precio;
 			tr.dataset.canalVenta = canal_venta;
 
 			tr.innerHTML = `
@@ -147,9 +220,9 @@
 						<span class="plan__name">${plan}</span>
 						<span class="plan__price">${precio}€</span>
 					</div>
-					<span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
-						${estado}
-					</span>
+                                          <span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
+                                                  ${estadoLabel}
+                                          </span>
 				</td>
 			`;
 			return tr;
@@ -307,12 +380,12 @@
                                                                                         }
                                                                                 );
 										if (!res.ok) throw res.status;
-										const dataDetalle = await res.json();
-										detailCache.set(id, dataDetalle);
-										if (nextPanel.dataset.loadedId === String(id)) {
-											nextPanel.innerHTML = renderFullDetail(
-												dataDetalle,
-												rowData,
+                                                                                const dataDetalle = normalizeDetailData(await res.json());
+                                                                                detailCache.set(id, dataDetalle);
+                                                                                if (nextPanel.dataset.loadedId === String(id)) {
+                                                                                        nextPanel.innerHTML = renderFullDetail(
+                                                                                                dataDetalle,
+                                                                                                rowData,
 												[]
 											);
 										}
@@ -415,23 +488,33 @@
 			return months > 0 ? months : "-";
 		}
 
-		function buildRowData(row) {
-			return {
-				marca_modelo: row.dataset.marca_modelo ?? "-",
-				matricula: row.dataset.matricula ?? "-",
-				plan: row.dataset.plan ?? "-",
-				desde: row.dataset.desde ?? "-",
-				hasta: row.dataset.hasta ?? "-",
-				estado: row.dataset.estado ?? "Desconocido",
-				estadoclase: row.dataset.estadoclase ?? "pendiente",
-				concesionario: row.dataset.vendedor_name ?? "-",
-				canal_venta: row.dataset.vendedor_type ?? "-",
-				precio: row.dataset.precio ?? "-",
-				tipo: "-",
-				kilometros: "-",
-				primera_matriculacion: "-",
-				bastidor: "-",
-				precio_venta: "-",
+                function buildRowData(row) {
+                        return {
+                                marca_modelo: row.dataset.marca_modelo ?? "-",
+                                matricula: row.dataset.matricula ?? "-",
+                                plan: row.dataset.plan ?? "-",
+                                desde: row.dataset.desde ?? "-",
+                                desde_fmt:
+                                        row.dataset.desdeFmt ??
+                                        (row.dataset.desde
+                                                ? formatDate(row.dataset.desde).display
+                                                : "-"),
+                                hasta: row.dataset.hasta ?? "-",
+                                hasta_fmt:
+                                        row.dataset.hastaFmt ??
+                                        (row.dataset.hasta
+                                                ? formatDate(row.dataset.hasta).display
+                                                : "-"),
+                                estado: row.dataset.estado ?? "Desconocido",
+                                estadoclase: row.dataset.estadoclase ?? "pendiente-pago",
+                                concesionario: row.dataset.vendedor_name ?? "-",
+                                canal_venta: row.dataset.vendedor_type ?? "-",
+                                precio: row.dataset.precio ?? "-",
+                                tipo: "-",
+                                kilometros: "-",
+                                primera_matriculacion: "-",
+                                bastidor: "-",
+                                precio_venta: "-",
 				combustible: "-",
 				cambio: "-",
 				potencia: "-",
@@ -493,19 +576,26 @@
 			`;
 		}
 
-		function renderFullDetail(data, rowData, skeletons = []) {
-			const skeleton = (field, fallback = "-") =>
-				skeletons.includes(field)
-					? `<span class="skeleton skeleton--${field}"></span>`
-					: data[field] ?? rowData[field] ?? fallback;
+                function renderFullDetail(data, rowData, skeletons = []) {
+                        const getFieldText = (val) =>
+                                val && typeof val === "object" && "label" in val
+                                        ? val.label
+                                        : val;
+                        const skeleton = (field, fallback = "-") =>
+                                skeletons.includes(field)
+                                        ? `<span class="skeleton skeleton--${field}"></span>`
+                                        : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
 
-			const mesesTotales = getDurationMeses(data.desde, data.hasta);
-			const mesesRestantes = getRestantesMeses(data.hasta);
+                        const mesesTotales = getDurationMeses(data.desde, data.hasta);
+                        const mesesRestantes = getRestantesMeses(data.hasta);
 
-			const estadoActual = data.estadoclase || data.estado || "pendiente";
-			const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
-				estadoActual
-			)}`;
+                        const estadoValue =
+                                (data.estado && data.estado.value) ||
+                                rowData.estadoclase ||
+                                "pendiente-pago";
+                        const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
+                                estadoValue
+                        )}`;
 
 			const planTitle = `${data.plan ?? "-"}${
 				mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
@@ -516,15 +606,18 @@
 					<div class="guarantee-detail__header">
 						<h2>Garantía ${skeleton("matricula")}</h2>
 						<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
-						<div>
-							<p>${skeleton("desde")} — ${skeleton("hasta")}
-							<span class="guarantee-detail__plan-duration">(${
-								mesesRestantes !== "-"
-									? mesesRestantes + " meses restantes"
-									: "-"
-							})</span></p>
-						</div>
-						<div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
+                                                <div>
+                                                        <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
+                                                        <span class="guarantee-detail__plan-duration">(${
+                                                                mesesRestantes !== "-"
+                                                                        ? mesesRestantes + " meses restantes"
+                                                                        : "-"
+                                                        })</span></p>
+                                                </div>
+                                                <div class="${badgeClase}">${skeleton(
+                                                        "estado",
+                                                        "Desconocido"
+                                                )}</div>
 					</div>
 					<div class="guarantee-detail__btn-container">
 						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
@@ -703,11 +796,11 @@
                                                     headers: { "X-WP-Nonce": restNonce },
 						});
 						if (!res.ok) throw res.status;
-						const data = await res.json();
-						detailCache.set(id, data);
-						if (nextPanel.dataset.loadedId === String(id)) {
-							nextPanel.innerHTML = renderFullDetail(data, rowData, []);
-						}
+                                                const data = normalizeDetailData(await res.json());
+                                                detailCache.set(id, data);
+                                                if (nextPanel.dataset.loadedId === String(id)) {
+                                                        nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                                }
 					} catch (e) {
 						console.error("❌ Error fetch detalle:", e);
 					} finally {
@@ -734,12 +827,12 @@
                                                     headers: { "X-WP-Nonce": restNonce },
 						});
 						if (!res.ok) throw res.status;
-						const data = await res.json();
-						detailCache.set(id, data);
-					} catch (e) {
-						// Nada
-					}
-				},
+                                                const data = normalizeDetailData(await res.json());
+                                                detailCache.set(id, data);
+                                        } catch (e) {
+                                                // Nada
+                                        }
+                                },
 				true
 			);
 		}
@@ -818,8 +911,10 @@
                                                 .forEach((o) => o.remove());
                                         estados.forEach((est) => {
                                                 const opt = document.createElement("option");
-                                                opt.value = est;
-                                                opt.textContent = est;
+                                                const val = typeof est === "object" ? est.value : est;
+                                                const lbl = typeof est === "object" ? est.label : est;
+                                                opt.value = val;
+                                                opt.textContent = lbl;
                                                 estadoSelect.appendChild(opt);
                                         });
                                 }

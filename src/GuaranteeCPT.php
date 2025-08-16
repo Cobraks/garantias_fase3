@@ -16,6 +16,30 @@ if (! defined('ABSPATH')) {
 class GuaranteeCPT
 {
     const POST_TYPE = 'garantia';
+    /**
+     * Lista de estados personalizados permitidos para las garantías.
+     */
+    public const STATUSES = [
+        'draft',          // Borrador
+        'pendiente_pago', // Pendiente de pago
+        'activada',       // Activada
+        'expira_pronto',  // Expira pronto
+        'expirada',       // Expirada
+    ];
+
+    /**
+     * Devuelve el mapa slug => etiqueta de los estados.
+     */
+    public static function get_status_labels(): array
+    {
+        return [
+            'draft'          => __('Borrador', 'garantias-online-360vo'),
+            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'activada'       => __('Activada', 'garantias-online-360vo'),
+            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
+            'expirada'       => __('Expirada', 'garantias-online-360vo'),
+        ];
+    }
 
     /**
      * Inicializa los hooks necesarios
@@ -23,7 +47,13 @@ class GuaranteeCPT
     public static function init(): void
     {
         add_action('init', [__CLASS__, 'register_post_type']);
+        add_action('init', [__CLASS__, 'register_post_statuses']);
         add_filter('post_updated_messages', [__CLASS__, 'updated_messages']);
+        add_action('save_post_' . self::POST_TYPE, [__CLASS__, 'handle_save'], 10, 3);
+        add_action('transition_post_status', [__CLASS__, 'log_status_transition'], 10, 3);
+        add_filter('display_post_states', [__CLASS__, 'display_post_states'], 10, 2);
+        add_action('admin_footer-post.php', [__CLASS__, 'admin_status_dropdown']);
+        add_action('admin_footer-post-new.php', [__CLASS__, 'admin_status_dropdown']);
     }
 
     /**
@@ -52,8 +82,20 @@ class GuaranteeCPT
             'public'             => false,
             'show_ui'            => true,
             'show_in_menu'       => true,
-            // 'capability_type'    => 'garantia',
-            // 'map_meta_cap'       => true,
+            'capability_type'    => 'garantia',
+            'map_meta_cap'       => true,
+            'capabilities'       => [
+                'edit_post'          => 'edit_garantia',
+                'read_post'          => 'read_garantia',
+                'delete_post'        => 'delete_garantia',
+                'edit_posts'         => 'edit_garantias',
+                'edit_others_posts'  => 'edit_others_garantias',
+                'publish_posts'      => 'publish_garantias',
+                'read_private_posts' => 'read_private_garantias',
+                'delete_posts'       => 'delete_garantias',
+                'delete_others_posts'=> 'delete_others_garantias',
+                'create_posts'       => 'create_garantias',
+            ],
             'supports'           => ['title','custom-fields'],
             'menu_position'      => 20,
             'menu_icon'          => 'dashicons-awards',
@@ -63,6 +105,61 @@ class GuaranteeCPT
         ];
 
         register_post_type(self::POST_TYPE, $args);
+    }
+
+    /**
+     * Registra los estados personalizados de las garantías.
+     */
+    public static function register_post_statuses(): void
+    {
+        $statuses = self::get_status_labels();
+        unset($statuses['draft']);
+
+        foreach ($statuses as $status => $label) {
+            register_post_status($status, [
+                'label'                     => $label,
+                'public'                    => false,
+                'exclude_from_search'       => true,
+                'show_in_admin_all_list'    => true,
+                'show_in_admin_status_list' => true,
+                'label_count'               => _n_noop(
+                    "$label <span class='count'>(%s)</span>",
+                    "$label <span class='count'>(%s)</span>",
+                    'garantias-online-360vo'
+                ),
+            ]);
+        }
+    }
+
+    /**
+     * Añade los estados personalizados al desplegable de WP-Admin y elimina "Pendiente de revisión".
+     */
+    public static function admin_status_dropdown(): void
+    {
+        global $post;
+        if ($post->post_type !== self::POST_TYPE) {
+            return;
+        }
+
+        $statuses = self::get_status_labels();
+        unset($statuses['draft']);
+        ?>
+        <script>
+        jQuery(function($){
+            var $select = $('#post_status');
+            // Elimina "Pendiente de revisión"
+            $select.find('option[value="pending"]').remove();
+            <?php foreach ($statuses as $slug => $label) : ?>
+            if (!$select.find('option[value="<?php echo $slug; ?>"]').length) {
+                $select.append(new Option('<?php echo esc_js($label); ?>', '<?php echo $slug; ?>'));
+            }
+            <?php endforeach; ?>
+            var current = '<?php echo esc_js(get_post_status($post)); ?>';
+            $select.val(current);
+            $('#post-status-display').text($select.find('option:selected').text());
+        });
+        </script>
+        <?php
     }
 
     /**
@@ -93,5 +190,42 @@ class GuaranteeCPT
         ];
 
         return $messages;
+    }
+
+    public static function handle_save($post_id, $post, $update): void
+    {
+        if (wp_is_post_autosave($post_id) || wp_is_post_revision($post_id)) {
+            return;
+        }
+        $user = get_current_user_id();
+        if (! $update) {
+            GuaranteeLogger::log($user, $post_id, 'created');
+        }
+    }
+
+    public static function log_status_transition($new_status, $old_status, $post): void
+    {
+        if ($post->post_type !== self::POST_TYPE || $new_status === $old_status) {
+            return;
+        }
+        $user    = get_current_user_id();
+        $details = sprintf('De %s a %s', $old_status, $new_status);
+        GuaranteeLogger::log($user, $post->ID, 'status_changed', $details);
+    }
+
+    /**
+     * Muestra etiquetas legibles en el listado de WP-Admin.
+     */
+    public static function display_post_states($states, $post)
+    {
+        if ($post->post_type !== self::POST_TYPE) {
+            return $states;
+        }
+        $map = self::get_status_labels();
+        $status = get_post_status($post);
+        if (isset($map[$status])) {
+            $states[$status] = $map[$status];
+        }
+        return $states;
     }
 }

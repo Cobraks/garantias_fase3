@@ -248,14 +248,23 @@ function setupTabNavigation() {
                         if (typeof showSummarySectionForTab === "function") {
                                 showSummarySectionForTab(FormCache.currentTab);
                         }
-			if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
-				FormCache.currentTab++;
-				showTab(FormCache.currentTab);
-			} else {
-				// último paso: delega en otro módulo (ej. form-submission)
-			}
-		});
-	}
+                        if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
+                                FormCache.currentTab++;
+                                showTab(FormCache.currentTab);
+                        } else {
+                                const form = document.getElementById("form-garantia");
+                                if (form) {
+                                        if (typeof form.requestSubmit === "function") {
+                                                form.requestSubmit();
+                                        } else {
+                                                form.dispatchEvent(
+                                                        new Event("submit", { cancelable: true, bubbles: true })
+                                                );
+                                        }
+                                }
+                        }
+                });
+        }
 }
 
 // === EXPORTS ===

@@ -98,8 +98,12 @@ export default function initAutosave() {
 
         let draftId = localStorage.getItem("go_draft_id");
         let draftUuid = localStorage.getItem("go_draft_uuid");
+        let saving = false;
 
         async function sendAutosave() {
+                if (saving) return;
+                saving = true;
+
                 console.log("[AUTOSAVE] Triggered", { draftId });
 
                 status.classList.remove("autosave-status--hidden");
@@ -327,6 +331,8 @@ export default function initAutosave() {
                 } catch (e) {
                         console.error("[AUTOSAVE] error", e);
                         status.classList.add("autosave-status--hidden");
+                } finally {
+                        saving = false;
                 }
         }
 

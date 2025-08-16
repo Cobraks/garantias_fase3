@@ -1,5 +1,61 @@
+Consulta `CHANGELOG.md` para la cronología de mejoras.
+
 1.0.0
 - Añadida imagen de perfil
+
+0.1.20
+- Limpieza final del campo antiguo de estado y datos de ejemplo ajustados a los nuevos estados.
+
+0.1.19
+- Corrige el identificador del formulario para que "Contratar" cambie la garantía a "Pendiente de pago".
+
+0.1.18
+- El botón "Contratar" publica la garantía y la marca como "Pendiente de pago".
+
+0.1.17
+- Los estados personalizados se muestran en la caja de publicación y se oculta "Pendiente de revisión".
+
+0.1.16
+- Los estados de las garantías se gestionan mediante los estados estándar de WordPress.
+- Eliminado el campo ACF "Estado contratación" y sincronización de estados en la API.
+
+0.1.15
+- Restaurado el menú de garantías para administradores y profesionales añadiendo `create_garantias`.
+- Al contratar, la garantía pasa automáticamente a "Pendiente de pago".
+
+0.1.14
+- Restaura el menú de garantías para administradores y muestra las etiquetas de estado en español.
+
+0.1.13
+- Estados personalizados de garantía y capacidades propias del CPT.
+- Las garantías contratadas pasan a "Pendiente de pago" y el listado muestra todos los estados.
+
+0.1.12
+- Restaura capacidades por defecto para que los administradores vean todas las garantías y corrige la verificación de permisos al publicar.
+
+0.1.11
+- Permite publicar garantías desde el formulario al asignar capacidades específicas al tipo de contenido.
+
+0.1.10
+- Al pulsar "Contratar", la garantía pasa de borrador a publicada.
+
+0.1.9
+- Evita la creación de borradores duplicados al modificar la matrícula durante una nueva garantía.
+
+0.1.8
+- Bloqueo inmediato del botón “Siguiente” mientras se comprueban matrículas duplicadas.
+
+0.1.7
+- Validación en tiempo real de matrículas duplicadas en la creación de garantías.
+
+0.1.6
+- Evita el aviso de matrícula duplicada al crear una garantía nueva.
+
+0.1.5
+- Fechas en formato español y precios con separador de miles.
+
+0.1.4
+- Se muestran las etiquetas de estado correctas en listados y detalle, manteniendo el valor para clases CSS.
 
 
 ##Estructura de archivos
