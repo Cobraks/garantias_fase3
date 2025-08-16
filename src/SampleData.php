@@ -117,7 +117,7 @@ class SampleData
         }
 
         // Opciones para campos select
-        $estados_contratacion = ['borrador', 'pendiente_pago', 'activada', 'expira_pronto', 'expirada'];
+        $estados_contratacion = ['draft', 'pendiente_pago', 'activada', 'expira_pronto', 'expirada'];
         $meses_contratados    = [6, 12, 24, 36];
         $metodos_pago         = ['domiciliacion_bancaria', 'transferencia'];
         $canales_venta        = ['profesional', 'particular', 'gestoria'];
@@ -164,11 +164,10 @@ class SampleData
             $restan = max(0, $diff->m + ($diff->y * 12));
 
             $estado_garantia = [
-                'estado_contratacion' => $status,
-                'inicio'              => $start->format('Y-m-d'),
-                'finalizacion'        => $end->format('Y-m-d'),
-                'meses_restantes'     => $restan,
-                'uuid'                => wp_generate_uuid4(),
+                'inicio'          => $start->format('Y-m-d'),
+                'finalizacion'    => $end->format('Y-m-d'),
+                'meses_restantes' => $restan,
+                'uuid'            => wp_generate_uuid4(),
             ];
 
             $modalidad_id = $modalidades ? $modalidades[array_rand($modalidades)] : 0;

@@ -491,7 +491,6 @@ class GuaranteeRestController
         if (is_wp_error($result)) {
             return $result;
         }
-        update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'pendiente_pago');
         $status = get_post_status($post_id);
         if ($status !== 'pendiente_pago') {
             return new WP_Error('publish_failed', __('No se pudo cambiar el estado de la garantía', 'garantias-online-360vo'), ['status' => 500]);
@@ -583,11 +582,12 @@ class GuaranteeRestController
         }
 
         // ----- QUERY -----
+        $status_query = $estado ? ($estado === 'borrador' ? 'draft' : $estado) : \GarantiasOnline360VO\GuaranteeCPT::STATUSES;
         $args = [
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
             'posts_per_page' => $per_page,
             'paged'          => $page,
-            'post_status'    => \GarantiasOnline360VO\GuaranteeCPT::STATUSES,
+            'post_status'    => $status_query,
         ];
 
         // Permisos: restringe por profesional/comercial salvo admins
@@ -616,12 +616,6 @@ class GuaranteeRestController
         }
 
         // ---- FILTROS ----
-        if ($estado) {
-            $meta_query[] = [
-                'key'   => 'estado_garantia_estado_contratacion',
-                'value' => $estado,
-            ];
-        }
         if ($plan) {
             $meta_query[] = [
                 'key'   => 'garantia_contratada_garantia',
@@ -687,21 +681,10 @@ class GuaranteeRestController
             $plan_id = get_post_meta($post_id, 'garantia_contratada_garantia', true);
             $plan   = $plan_id ? get_the_title($plan_id) : '';
             $precio = get_post_meta($post_id, 'garantia_contratada_precio', true);
-            $estado = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
-            if (!$estado) {
-                $estado = get_post_status($post_id);
-            }
-            if ($estado === 'draft') {
-                $estado = 'borrador';
-            }
-            $estado_labels = [
-                'borrador'        => __('Borrador', 'garantias-online-360vo'),
-                'pendiente_pago'  => __('Pendiente de pago', 'garantias-online-360vo'),
-                'activada'        => __('Activada', 'garantias-online-360vo'),
-                'expirada'        => __('Expirada', 'garantias-online-360vo'),
-                'expira_pronto'   => __('Expira pronto', 'garantias-online-360vo'),
-            ];
-            $estado_label = $estado_labels[$estado] ?? $estado;
+            $estado_wp = get_post_status($post_id);
+            $estado = $estado_wp === 'draft' ? 'borrador' : $estado_wp;
+            $labels = \GarantiasOnline360VO\GuaranteeCPT::get_status_labels();
+            $estado_label = $labels[$estado_wp] ?? $estado;
 
             $vendor_id = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
             $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
@@ -776,21 +759,10 @@ class GuaranteeRestController
         $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
         $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
-        $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
-        if (!$estado) {
-            $estado = get_post_status($id);
-        }
-        if ($estado === 'draft') {
-            $estado = 'borrador';
-        }
-        $estado_labels = [
-            'borrador'        => __('Borrador', 'garantias-online-360vo'),
-            'pendiente_pago'  => __('Pendiente de pago', 'garantias-online-360vo'),
-            'activada'        => __('Activada', 'garantias-online-360vo'),
-            'expirada'        => __('Expirada', 'garantias-online-360vo'),
-            'expira_pronto'   => __('Expira pronto', 'garantias-online-360vo'),
-        ];
-        $estado_label = $estado_labels[$estado] ?? $estado;
+        $estado_wp = get_post_status($id);
+        $estado = $estado_wp === 'draft' ? 'borrador' : $estado_wp;
+        $labels = \GarantiasOnline360VO\GuaranteeCPT::get_status_labels();
+        $estado_label = $labels[$estado_wp] ?? $estado;
 
         // Vendedor/concesionario
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
@@ -900,40 +872,22 @@ class GuaranteeRestController
 
         $q = new WP_Query($args);
 
-        $estados = [];
         $plan_ids = [];
         foreach ($q->posts as $post_id) {
-            $e = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
-            if (!$e) {
-                $e = get_post_status($post_id);
-            }
-            if ($e === 'draft') {
-                $e = 'borrador';
-            }
-            if ($e) {
-                $estados[] = $e;
-            }
             $pid = get_post_meta($post_id, 'garantia_contratada_garantia', true);
             if ($pid) {
                 $plan_ids[] = $pid;
             }
         }
 
-        $estados = array_values(array_unique(array_filter($estados)));
-        sort($estados);
-        $estado_labels = [
-            'borrador'        => __('Borrador', 'garantias-online-360vo'),
-            'pendiente_pago'  => __('Pendiente de pago', 'garantias-online-360vo'),
-            'activada'        => __('Activada', 'garantias-online-360vo'),
-            'expirada'        => __('Expirada', 'garantias-online-360vo'),
-            'expira_pronto'   => __('Expira pronto', 'garantias-online-360vo'),
-        ];
-        $estados = array_map(function ($e) use ($estado_labels) {
-            return [
-                'value' => $e,
-                'label' => $estado_labels[$e] ?? $e,
+        $labels = \GarantiasOnline360VO\GuaranteeCPT::get_status_labels();
+        $estados = [];
+        foreach ($labels as $slug => $label) {
+            $estados[] = [
+                'value' => $slug === 'draft' ? 'borrador' : $slug,
+                'label' => $label,
             ];
-        }, $estados);
+        }
 
         $planes = [];
         $plan_ids = array_unique(array_filter($plan_ids));

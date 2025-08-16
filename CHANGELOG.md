@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.16 - 2025-08-16
+- Los estados de las garantías se manejan como estados de publicación estándar de WordPress.
+- Eliminado el meta "estado contratación" en favor del `post_status` y sincronización en la API.
+
 ## 0.1.15 - 2025-08-16
 - Añade la capacidad `create_garantias` para restaurar el acceso completo de administradores y profesionales.
 - La contratación cambia el estado a "Pendiente de pago" y los listados de WP-Admin muestran etiquetas traducidas.

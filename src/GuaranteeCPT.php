@@ -20,12 +20,26 @@ class GuaranteeCPT
      * Lista de estados personalizados permitidos para las garantías.
      */
     public const STATUSES = [
-        'draft',           // Borrador
-        'pendiente_pago',  // Pendiente de pago
-        'activada',        // Activada
-        'expirada',        // Expirada
-        'expira_pronto',   // Expira pronto
+        'draft',          // Borrador
+        'pendiente_pago', // Pendiente de pago
+        'activada',       // Activada
+        'expira_pronto',  // Expira pronto
+        'expirada',       // Expirada
     ];
+
+    /**
+     * Devuelve el mapa slug => etiqueta de los estados.
+     */
+    public static function get_status_labels(): array
+    {
+        return [
+            'draft'          => __('Borrador', 'garantias-online-360vo'),
+            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'activada'       => __('Activada', 'garantias-online-360vo'),
+            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
+            'expirada'       => __('Expirada', 'garantias-online-360vo'),
+        ];
+    }
 
     /**
      * Inicializa los hooks necesarios
@@ -96,12 +110,8 @@ class GuaranteeCPT
      */
     public static function register_post_statuses(): void
     {
-        $statuses = [
-            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
-            'activada'       => __('Activada', 'garantias-online-360vo'),
-            'expirada'       => __('Expirada', 'garantias-online-360vo'),
-            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
-        ];
+        $statuses = self::get_status_labels();
+        unset($statuses['draft']);
 
         foreach ($statuses as $status => $label) {
             register_post_status($status, [
@@ -157,8 +167,6 @@ class GuaranteeCPT
         $user = get_current_user_id();
         if (! $update) {
             GuaranteeLogger::log($user, $post_id, 'created');
-            // Establece el estado meta inicial en borrador
-            update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'borrador');
         }
     }
 
@@ -170,10 +178,6 @@ class GuaranteeCPT
         $user    = get_current_user_id();
         $details = sprintf('De %s a %s', $old_status, $new_status);
         GuaranteeLogger::log($user, $post->ID, 'status_changed', $details);
-
-        // Mantener sincronizado el meta de estado de contratación
-        $meta_status = $new_status === 'draft' ? 'borrador' : $new_status;
-        update_post_meta($post->ID, 'estado_garantia_estado_contratacion', $meta_status);
     }
 
     /**
@@ -184,13 +188,7 @@ class GuaranteeCPT
         if ($post->post_type !== self::POST_TYPE) {
             return $states;
         }
-        $map = [
-            'draft'          => __('Borrador', 'garantias-online-360vo'),
-            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
-            'activada'       => __('Activada', 'garantias-online-360vo'),
-            'expirada'       => __('Expirada', 'garantias-online-360vo'),
-            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
-        ];
+        $map = self::get_status_labels();
         $status = get_post_status($post);
         if (isset($map[$status])) {
             $states[$status] = $map[$status];
