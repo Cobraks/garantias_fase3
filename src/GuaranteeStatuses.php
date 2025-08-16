@@ -99,15 +99,23 @@ class GuaranteeStatuses
         $json_statuses = wp_json_encode(self::STATUSES);
         echo <<<JS
 <script>
-jQuery(function($){
-    var s = $('#post_status'), statuses = {$json_statuses};
-    if(s.length){
-        $.each(statuses, function(val, label){
-            if(!s.find('option[value="' + val + '"]').length){
-                s.append(new Option(label, val));
-            }
+document.addEventListener('DOMContentLoaded', function() {
+    var select = document.getElementById('post_status');
+    if (!select) return;
+    var statuses = {$json_statuses};
+    Object.entries(statuses).forEach(function(entry) {
+        var value = entry[0];
+        var label = entry[1];
+        var exists = Array.prototype.some.call(select.options, function(o){
+            return o.value === value;
         });
-        s.find('option[value="pending"]').remove();
+        if (!exists) {
+            select.add(new Option(label, value));
+        }
+    });
+    var pending = select.querySelector('option[value="pending"]');
+    if (pending) {
+        pending.remove();
     }
 });
 </script>

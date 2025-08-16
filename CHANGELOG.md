@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.14 - 2025-08-16
+- Añade capacidades para editar y borrar garantías publicadas.
+- Elimina el uso de jQuery en el desplegable de estados personalizados.
+
 ## 0.1.13 - 2025-08-16
 - Corrige la aparición de los estados personalizados en el editor de garantías.
 

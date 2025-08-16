@@ -31,6 +31,8 @@ class Roles
             'delete_garantias'         => false,
             'edit_others_garantias'    => false,
             'delete_others_garantias'  => false,
+            'edit_published_garantias' => false,
+            'delete_published_garantias' => false,
             'read_private_garantias'   => true,
         ];
 
@@ -44,6 +46,8 @@ class Roles
             'delete_garantias'         => true,
             'edit_others_garantias'    => false,
             'delete_others_garantias'  => false,
+            'edit_published_garantias' => true,
+            'delete_published_garantias' => true,
             'read_private_garantias'   => true,
         ];
 
@@ -60,6 +64,8 @@ class Roles
             'delete_garantias'         => false,
             'edit_others_garantias'    => false,
             'delete_others_garantias'  => false,
+            'edit_published_garantias' => false,
+            'delete_published_garantias' => false,
             'read_private_garantias'   => true,
         ];
 
