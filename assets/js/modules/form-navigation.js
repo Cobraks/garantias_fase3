@@ -92,27 +92,25 @@ function clearPlanSelectionError() {
 	if (existing) existing.remove();
 }
 
-// === Estado visual + saltos de pestaña ===
-function showTab(index) {
-	FormCache.fieldsets.forEach((fs, i) =>
-		fs.classList.toggle("form__tab-content--active", i === index)
-	);
-	FormCache.tabs.forEach((tab, i) =>
-		tab.classList.toggle("active", i === index)
-	);
-	if (FormCache.prevButton) {
-		FormCache.prevButton.style.display = index === 0 ? "none" : "";
-	}
-	if (FormCache.nextButton) {
-		FormCache.nextButton.textContent =
-			index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
-	}
+// === Estado visual + saltos de pestaña con animaciones ===
+function finalizeTabChange(index) {
+        FormCache.fieldsets.forEach((fs, i) =>
+                fs.classList.toggle("form__tab-content--active", i === index)
+        );
+        FormCache.tabs.forEach((tab, i) =>
+                tab.classList.toggle("active", i === index)
+        );
+        if (FormCache.prevButton) {
+                FormCache.prevButton.style.display = index === 0 ? "none" : "";
+        }
+        if (FormCache.nextButton) {
+                FormCache.nextButton.textContent =
+                        index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
+        }
 
-	// Actualiza estado
-	FormCache.currentTab = index;
+        FormCache.currentTab = index;
 
-	// --- Forzar recálculo de modalidades/planes al mostrar pasos relacionados ---
-	const currentFieldset = FormCache.fieldsets[index];
+        const currentFieldset = FormCache.fieldsets[index];
         if (
                 currentFieldset &&
                 (currentFieldset.id === "seleccionar-garantia" ||
@@ -123,18 +121,55 @@ function showTab(index) {
                 }
         }
 
-	// Limpia error de plan si ya hay uno seleccionado
-	if (currentFieldset.id === "seleccionar-garantia") {
-		if (document.querySelector(".form__plan.selected")) {
-			clearPlanSelectionError();
-		}
-	}
+        if (currentFieldset.id === "seleccionar-garantia") {
+                if (document.querySelector(".form__plan.selected")) {
+                        clearPlanSelectionError();
+                }
+        }
 
-	// Actualiza UI dependientes
         updateNextButtonState();
         if (typeof debouncedUpdateSummary === "function") {
                 debouncedUpdateSummary();
         }
+}
+
+function showTab(index) {
+        const previousIndex = FormCache.currentTab;
+        if (index === previousIndex) {
+                finalizeTabChange(index);
+                return;
+        }
+        const direction = index > previousIndex ? 1 : -1;
+        const currentFieldset = FormCache.fieldsets[previousIndex];
+        const targetFieldset = FormCache.fieldsets[index];
+        if (!currentFieldset || !targetFieldset) return;
+
+        const outClass =
+                direction === 1
+                        ? "form__tab-content--slide-out-left"
+                        : "form__tab-content--slide-out-right";
+        const inClass =
+                direction === 1
+                        ? "form__tab-content--slide-in-right"
+                        : "form__tab-content--slide-in-left";
+
+        targetFieldset.style.display = "block";
+        targetFieldset.classList.add("form__tab-content--animating", inClass);
+        currentFieldset.classList.add(outClass);
+
+        targetFieldset.addEventListener(
+                "animationend",
+                () => {
+                        currentFieldset.classList.remove(outClass, "form__tab-content--active");
+                        currentFieldset.style.display = "none";
+                        targetFieldset.classList.remove(
+                                "form__tab-content--animating",
+                                inClass
+                        );
+                        finalizeTabChange(index);
+                },
+                { once: true }
+        );
 }
 
 // === Validación de la pestaña actual ===
@@ -207,26 +242,25 @@ function updateNextButtonState() {
 function setupTabNavigation() {
 	if (!FormCache.tabs) return;
 
-	FormCache.tabs.forEach((tab, index) => {
-		tab.addEventListener("click", () => {
-			if (
-				index < FormCache.currentTab || // retroceder siempre
-				(index > FormCache.currentTab && isCurrentTabValid())
-			) {
-				FormCache.currentTab = index;
-				showTab(index);
-			}
-		});
-	});
+        FormCache.tabs.forEach((tab, index) => {
+                tab.addEventListener("click", () => {
+                        if (
+                                index < FormCache.currentTab || // retroceder siempre
+                                (index > FormCache.currentTab && isCurrentTabValid())
+                        ) {
+                                showTab(index);
+                        }
+                });
+        });
 
-	if (FormCache.prevButton) {
-		FormCache.prevButton.addEventListener("click", () => {
-			if (FormCache.currentTab > 0) {
-				FormCache.currentTab--;
-				showTab(FormCache.currentTab);
-			}
-		});
-	}
+        if (FormCache.prevButton) {
+                FormCache.prevButton.addEventListener("click", () => {
+                        if (FormCache.currentTab > 0) {
+                                const targetIndex = FormCache.currentTab - 1;
+                                showTab(targetIndex);
+                        }
+                });
+        }
 
 	if (FormCache.nextButton) {
 		FormCache.nextButton.addEventListener("click", () => {
@@ -248,14 +282,14 @@ function setupTabNavigation() {
                         if (typeof showSummarySectionForTab === "function") {
                                 showSummarySectionForTab(FormCache.currentTab);
                         }
-			if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
-				FormCache.currentTab++;
-				showTab(FormCache.currentTab);
-			} else {
-				// último paso: delega en otro módulo (ej. form-submission)
-			}
-		});
-	}
+                        if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
+                                const targetIndex = FormCache.currentTab + 1;
+                                showTab(targetIndex);
+                        } else {
+                                // último paso: delega en otro módulo (ej. form-submission)
+                        }
+                });
+        }
 }
 
 // === EXPORTS ===

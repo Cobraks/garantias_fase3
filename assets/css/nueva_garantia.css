@@ -450,6 +450,8 @@ background: transparent;
       padding-inline: var(--spacing-2);
       max-width: 406px;
       margin-inline: auto;
+      position: relative;
+      overflow: hidden;
   }
   
   .form__tab-content {
@@ -608,6 +610,7 @@ fill: #003048;
   
   .form__tab-content--active {
       display: block;
+      position: relative;
   }
   
   .form__button-container {
@@ -2243,4 +2246,47 @@ margin-top: .5rem;
       transform: translate(var(--drift), 100vh) rotate(720deg);
       opacity: 0;
     }
+  }
+
+  .form__tab-content--animating {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+  }
+
+  .form__tab-content--slide-in-right {
+      animation: slideInRight .3s forwards;
+  }
+
+  .form__tab-content--slide-in-left {
+      animation: slideInLeft .3s forwards;
+  }
+
+  .form__tab-content--slide-out-left {
+      animation: slideOutLeft .3s forwards;
+  }
+
+  .form__tab-content--slide-out-right {
+      animation: slideOutRight .3s forwards;
+  }
+
+  @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes slideInLeft {
+      from { transform: translateX(-100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes slideOutLeft {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(-100%); opacity: 0; }
+  }
+
+  @keyframes slideOutRight {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
   }
