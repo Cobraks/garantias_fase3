@@ -92,11 +92,49 @@ function clearPlanSelectionError() {
 	if (existing) existing.remove();
 }
 
-// === Estado visual + saltos de pestaña con animaciones ===
-function finalizeTabChange(index) {
-        FormCache.fieldsets.forEach((fs, i) =>
-                fs.classList.toggle("form__tab-content--active", i === index)
+// === Estado visual + saltos de pestaña ===
+function animateTabTransition(oldIndex, newIndex) {
+        const oldFs = FormCache.fieldsets[oldIndex];
+        const newFs = FormCache.fieldsets[newIndex];
+        if (!newFs) return;
+
+        const forward = newIndex > oldIndex;
+        const inClass = forward ? "tab-slide-in-right" : "tab-slide-in-left";
+        const outClass = forward ? "tab-slide-out-left" : "tab-slide-out-right";
+
+        newFs.style.display = "block";
+        newFs.classList.add("is-sliding", inClass, "form__tab-content--active");
+
+        if (oldFs) {
+                oldFs.classList.add("is-sliding", outClass);
+                oldFs.addEventListener(
+                        "animationend",
+                        function handleOld() {
+                                oldFs.classList.remove(
+                                        "is-sliding",
+                                        outClass,
+                                        "form__tab-content--active"
+                                );
+                                oldFs.style.display = "none";
+                                oldFs.removeEventListener("animationend", handleOld);
+                        }
+                );
+        }
+
+        newFs.addEventListener(
+                "animationend",
+                function handleNew() {
+                        newFs.classList.remove("is-sliding", inClass);
+                        newFs.removeEventListener("animationend", handleNew);
+                }
         );
+}
+
+function showTab(index) {
+        const previousIndex = FormCache.currentTab;
+        if (index !== previousIndex) {
+                animateTabTransition(previousIndex, index);
+        }
         FormCache.tabs.forEach((tab, i) =>
                 tab.classList.toggle("active", i === index)
         );
@@ -108,8 +146,10 @@ function finalizeTabChange(index) {
                         index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
         }
 
+        // Actualiza estado
         FormCache.currentTab = index;
 
+        // --- Forzar recálculo de modalidades/planes al mostrar pasos relacionados ---
         const currentFieldset = FormCache.fieldsets[index];
         if (
                 currentFieldset &&
@@ -121,55 +161,18 @@ function finalizeTabChange(index) {
                 }
         }
 
+        // Limpia error de plan si ya hay uno seleccionado
         if (currentFieldset.id === "seleccionar-garantia") {
                 if (document.querySelector(".form__plan.selected")) {
                         clearPlanSelectionError();
                 }
         }
 
+        // Actualiza UI dependientes
         updateNextButtonState();
         if (typeof debouncedUpdateSummary === "function") {
                 debouncedUpdateSummary();
         }
-}
-
-function showTab(index) {
-        const previousIndex = FormCache.currentTab;
-        if (index === previousIndex) {
-                finalizeTabChange(index);
-                return;
-        }
-        const direction = index > previousIndex ? 1 : -1;
-        const currentFieldset = FormCache.fieldsets[previousIndex];
-        const targetFieldset = FormCache.fieldsets[index];
-        if (!currentFieldset || !targetFieldset) return;
-
-        const outClass =
-                direction === 1
-                        ? "form__tab-content--slide-out-left"
-                        : "form__tab-content--slide-out-right";
-        const inClass =
-                direction === 1
-                        ? "form__tab-content--slide-in-right"
-                        : "form__tab-content--slide-in-left";
-
-        targetFieldset.style.display = "block";
-        targetFieldset.classList.add("form__tab-content--animating", inClass);
-        currentFieldset.classList.add(outClass);
-
-        targetFieldset.addEventListener(
-                "animationend",
-                () => {
-                        currentFieldset.classList.remove(outClass, "form__tab-content--active");
-                        currentFieldset.style.display = "none";
-                        targetFieldset.classList.remove(
-                                "form__tab-content--animating",
-                                inClass
-                        );
-                        finalizeTabChange(index);
-                },
-                { once: true }
-        );
 }
 
 // === Validación de la pestaña actual ===
@@ -256,8 +259,7 @@ function setupTabNavigation() {
         if (FormCache.prevButton) {
                 FormCache.prevButton.addEventListener("click", () => {
                         if (FormCache.currentTab > 0) {
-                                const targetIndex = FormCache.currentTab - 1;
-                                showTab(targetIndex);
+                                showTab(FormCache.currentTab - 1);
                         }
                 });
         }
@@ -283,8 +285,7 @@ function setupTabNavigation() {
                                 showSummarySectionForTab(FormCache.currentTab);
                         }
                         if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
-                                const targetIndex = FormCache.currentTab + 1;
-                                showTab(targetIndex);
+                                showTab(FormCache.currentTab + 1);
                         } else {
                                 // último paso: delega en otro módulo (ej. form-submission)
                         }
