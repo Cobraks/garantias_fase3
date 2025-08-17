@@ -231,49 +231,84 @@ export default function initAutosave() {
                                 }
                         }
                 }
+                function copyText(text) {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                return navigator.clipboard.writeText(text);
+                        }
+                        const textarea = document.createElement("textarea");
+                        textarea.value = text;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(textarea);
+                        return Promise.resolve();
+                }
+
+                function showToast(message) {
+                        const toast = successBlock.querySelector(
+                                ".form-success__toast"
+                        );
+                        if (toast) {
+                                toast.textContent = message || "Copiado al portapapeles.";
+                                toast.classList.add("show");
+                                setTimeout(
+                                        () => toast.classList.remove("show"),
+                                        2000
+                                );
+                        }
+                }
+
                 successBlock.querySelectorAll("[data-copy]").forEach((btn) => {
                         btn.addEventListener("click", () => {
                                 const target = successBlock.querySelector(
                                         btn.getAttribute("data-copy")
                                 );
                                 if (target) {
-                                        navigator.clipboard.writeText(
-                                                target.textContent.trim()
-                                        );
-                                        const label = btn.querySelector(
-                                                ".form-success__copy-text"
-                                        );
-                                        if (label) {
-                                                const original = btn.dataset.label || label.textContent;
-                                                label.textContent = btn.dataset.done || "Copiado";
-                                                setTimeout(
-                                                        () => (label.textContent = original),
-                                                        2000
+                                        copyText(target.textContent.trim()).then(() => {
+                                                const label = btn.querySelector(
+                                                        ".form-success__copy-text"
                                                 );
-                                        } else {
-                                                const original =
-                                                        btn.dataset.label ||
-                                                        btn.getAttribute("aria-label") ||
-                                                        "";
-                                                const done = btn.dataset.done || "Copiado";
-                                                btn.setAttribute("aria-label", done);
-                                                setTimeout(() => {
-                                                        if (original) btn.setAttribute("aria-label", original);
-                                                }, 2000);
-                                        }
-                                        const toast = successBlock.querySelector(
-                                                ".form-success__toast"
-                                        );
-                                        if (toast) {
-                                                toast.classList.add("show");
-                                                setTimeout(
-                                                        () => toast.classList.remove("show"),
-                                                        2000
-                                                );
-                                        }
+                                                if (label) {
+                                                        const original = btn.dataset.label || label.textContent;
+                                                        label.textContent = btn.dataset.done || "Copiado";
+                                                        setTimeout(
+                                                                () => (label.textContent = original),
+                                                                2000
+                                                        );
+                                                } else {
+                                                        const original =
+                                                                btn.dataset.label ||
+                                                                btn.getAttribute("aria-label") ||
+                                                                "";
+                                                        const done = btn.dataset.done || "Copiado";
+                                                        btn.setAttribute("aria-label", done);
+                                                        setTimeout(() => {
+                                                                if (original)
+                                                                        btn.setAttribute(
+                                                                                "aria-label",
+                                                                                original
+                                                                        );
+                                                        }, 2000);
+                                                }
+                                                showToast(btn.dataset.toast);
+                                        });
                                 }
                         });
                 });
+                successBlock
+                        .querySelectorAll("[data-ref],[data-iban],[data-amount]")
+                        .forEach((el) => {
+                                el.addEventListener("click", () => {
+                                        copyText(el.textContent.trim()).then(() => {
+                                                showToast(el.dataset.toast);
+                                        });
+                                });
+                        });
+                const sound = successBlock.querySelector("#form-success__sound");
+                if (sound) {
+                        sound.currentTime = 0;
+                        sound.play().catch(() => {});
+                }
                 launchConfetti();
         }
 
