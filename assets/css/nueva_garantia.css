@@ -2069,12 +2069,6 @@ margin-top: .5rem;
     font-size: 1.125rem;
     font-weight: 500;
   }
-  .form-success__docs-heading {
-    text-align: center;
-    font-size: 1.25rem;
-    color: #1f2937;
-    margin: 1rem 0 .5rem;
-  }
   .form-success__docs {
     display: grid;
     grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
@@ -2082,8 +2076,17 @@ margin-top: .5rem;
     margin: 1.5rem 0;
   }
 
+  .form-success__details-link {
+    display: block;
+    text-align: center;
+    margin-top: 0.5rem;
+    color: #2563eb;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
   .document-card {
-    background: #f8fbff;
+    background: #fff;
     border: 1px solid #e1ecff;
     border-radius: 8px;
     padding: 1.25rem;
@@ -2112,14 +2115,8 @@ margin-top: .5rem;
     margin: 0 0 .25rem;
   }
 
-  .document-card__desc {
-    font-size: .875rem;
-    color: #64748b;
-    margin: 0;
-  }
-
   .form-success__payment {
-    background: #f8fbff;
+    background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
     padding: 1.5rem;
@@ -2142,9 +2139,10 @@ margin-top: .5rem;
   }
 
   .form-success__transfer-note {
-    background: #D9EDF7;
-    color: #31708F;
+    background: #fffbe6;
+    color: #92400e;
     padding: .75rem;
+    border-left: 4px solid #f59e0b;
     border-radius: 6px;
     font-size: .875rem;
     font-weight: 500;
@@ -2162,7 +2160,7 @@ margin-top: .5rem;
   .form-success__transfer-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: .875rem;
+    font-size: 1rem;
   }
 
   .form-success__transfer-table th {
@@ -2179,6 +2177,10 @@ margin-top: .5rem;
     display: flex;
     align-items: center;
     gap: .5rem;
+  }
+
+  .form-success__copy-target {
+    cursor: pointer;
   }
 
   .form-success__copy {
