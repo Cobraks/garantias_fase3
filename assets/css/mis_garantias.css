@@ -296,8 +296,14 @@ section.guarantees-list.sticky-active {
 .guarantees-table__row.selected .guarantees-list__badge--activada {
     background-color: #16a34a;
 }
-.guarantees-table__row.selected .guarantees-list__badge--pendiente {
+.guarantees-table__row.selected .guarantees-list__badge--pendiente-pago {
     background-color: #f59e0b;
+}
+.guarantees-table__row.selected .guarantees-list__badge--sin-finalizar {
+    background-color: #6b7280;
+}
+.guarantees-table__row.selected .guarantees-list__badge--expira-pronto {
+    background-color: #fbbf24;
 }
 .guarantees-table__row.selected .guarantees-list__badge--expirada {
     background-color: #dc2626;
@@ -335,9 +341,11 @@ section.guarantees-list.sticky-active {
     white-space: nowrap;
     border: solid 1px;
 }
-.guarantees-list__badge--activada    { color: #16a34a; }
-.guarantees-list__badge--expirada  { color: #dc2626; }
-.guarantees-list__badge--pendiente { color: #f59e0b; }
+.guarantees-list__badge--activada      { color: #16a34a; }
+.guarantees-list__badge--expirada      { color: #dc2626; }
+.guarantees-list__badge--pendiente-pago{ color: #f59e0b; }
+.guarantees-list__badge--sin-finalizar { color: #6b7280; }
+.guarantees-list__badge--expira-pronto { color: #fbbf24; }
 
 /* Periodo Validez */
 .guarantees-table__period > div {
@@ -637,13 +645,14 @@ section.guarantees-list.sticky-active {
 .guarantee-detail__badge--activada {
     background-color: #16a34a;
 }
-
-.guarantee-detail__badge--pendiente {
-    background-color: #f59e0b ;
+.guarantee-detail__badge--pendiente-pago {
+    background-color: #f59e0b;
 }
-
-.guarantee-detail__badge--activada {
-    background-color: #16a34a;
+.guarantee-detail__badge--sin-finalizar {
+    background-color: #6b7280;
+}
+.guarantee-detail__badge--expira-pronto {
+    background-color: #fbbf24;
 }
 
 .guarantee-detail__plan-duration {
@@ -953,3 +962,4 @@ section.guarantees-list.sticky-active {
     opacity: 0 !important;
     transform: translateY(24px) !important;
 } */
+
