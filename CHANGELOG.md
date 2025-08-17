@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.21 - 2025-08-16
+- Panel de éxito con tarjetas de documentación y subtítulo del plan.
+- Tabla de transferencia con iconos de copiado en línea y confeti explosivo.
+
 ## 0.1.20 - 2025-08-16
 - Mezcla de estilos para el panel de éxito: cabecera original con enlaces de documentos en fila.
 - Instrucciones de transferencia en tarjeta con tabla y botones de copiado.

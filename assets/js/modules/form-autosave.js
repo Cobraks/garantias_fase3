@@ -119,22 +119,27 @@ export default function initAutosave() {
         }
 
         function launchConfetti() {
-                const holder = successBlock?.querySelector(
+                const back = successBlock?.querySelector(
                         ".form-success__confetti"
                 );
-                if (!holder) return;
-                for (let i = 0; i < 40; i++) {
+                if (!back) return;
+                for (let i = 0; i < 60; i++) {
                         const piece = document.createElement("span");
                         piece.className = "confetti-piece";
-                        piece.style.left = Math.random() * 100 + "%";
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = Math.random() * 300;
+                        piece.style.setProperty("--tx", `${Math.cos(angle) * dist}px`);
+                        piece.style.setProperty("--ty", `${Math.sin(angle) * dist}px`);
                         piece.style.backgroundColor = `hsl(${Math.random() * 360},70%,60%)`;
-                        piece.style.animationDelay = Math.random() * 2 + "s";
-                        holder.appendChild(piece);
-                        setTimeout(() => piece.remove(), 5000);
+                        piece.style.animationDelay = Math.random() * 0.5 + "s";
+                        const parent = Math.random() > 0.5 ? successBlock : back;
+                        parent.appendChild(piece);
+                        piece.style.zIndex = parent === back ? 0 : 3;
+                        setTimeout(() => piece.remove(), 3500);
                 }
         }
 
-        function showSuccess(method, plate, amount) {
+        function showSuccess(method, plate, amount, level, months) {
                 fadeOut(form, false);
                 fadeOut(navButtons);
                 fadeOut(tabs);
@@ -146,22 +151,29 @@ export default function initAutosave() {
                                 () => {
                                         summaryContainer.style.display = "none";
                                         form.style.display = "none";
-                                        revealSuccess(method, plate, amount);
+                                        revealSuccess(method, plate, amount, level, months);
                                 },
                                 { once: true }
                         );
                 } else {
                         setTimeout(() => {
                                 form.style.display = "none";
-                                revealSuccess(method, plate, amount);
+                                revealSuccess(method, plate, amount, level, months);
                         }, 300);
                 }
         }
 
-        function revealSuccess(method, plate, amount) {
+        function revealSuccess(method, plate, amount, level, months) {
                 if (!successBlock) return;
                 successBlock.style.display = "block";
                 requestAnimationFrame(() => successBlock.classList.add("is-visible"));
+                const plan = successBlock.querySelector("[data-plan]");
+                if (plan) {
+                        const lvl = level ? level.replace(/[-_]/g, " ") : "";
+                        const monthsText = months ? `${months} meses` : "";
+                        const text = [lvl, monthsText].filter(Boolean).join(" ");
+                        plan.textContent = text.replace(/\b\w/g, (c) => c.toUpperCase());
+                }
                 if (method === "transferencia" || method === "domiciliacion") {
                         const pay = successBlock.querySelector(".form-success__payment");
                         if (pay) {
@@ -473,7 +485,9 @@ export default function initAutosave() {
                                 showSuccess(
                                         garantia.metodo_pago,
                                         datosVehiculo.matricula,
-                                        garantia.precio
+                                        garantia.precio,
+                                        garantia.nivel_garantia,
+                                        garantia.meses_contratados
                                 );
                         }
                         spinner.style.display = "none";

@@ -11,19 +11,23 @@ use GarantiasOnline360VO\Svg;
     <header class="form-success__header">
 <?php echo Svg::icon('shield_alt', 'form-success__header-icon'); ?>
         <h2 class="form-success__title">¡Garantía registrada!</h2>
+        <p class="form-success__subtitle" data-plan></p>
     </header>
     <div class="form-success__docs">
-        <a href="#" class="form-success__doc-link">
-            <?php echo Svg::icon('pdf', 'form-success__doc-icon'); ?>
-            <span>Factura proforma</span>
+        <a href="#" class="document-card">
+            <?php echo Svg::icon('pdf', 'document-card__icon'); ?>
+            <h3 class="document-card__title">Factura proforma</h3>
+            <p class="document-card__desc">Documento con los detalles de tu compra</p>
         </a>
-        <a href="#" class="form-success__doc-link">
-            <?php echo Svg::icon('pdf', 'form-success__doc-icon'); ?>
-            <span>Certificado de garantía</span>
+        <a href="#" class="document-card">
+            <?php echo Svg::icon('pdf', 'document-card__icon'); ?>
+            <h3 class="document-card__title">Certificado de garantía</h3>
+            <p class="document-card__desc">Documento oficial de tu cobertura</p>
         </a>
-        <a href="#" class="form-success__doc-link">
-            <?php echo Svg::icon('pdf', 'form-success__doc-icon'); ?>
-            <span>Coberturas</span>
+        <a href="#" class="document-card">
+            <?php echo Svg::icon('pdf', 'document-card__icon'); ?>
+            <h3 class="document-card__title">Coberturas</h3>
+            <p class="document-card__desc">Detalles de tu plan de protección</p>
         </a>
     </div>
 
@@ -40,30 +44,15 @@ use GarantiasOnline360VO\Svg;
             <tbody>
                 <tr>
                     <th scope="row">Referencia</th>
-                    <td data-ref></td>
-                    <td class="form-success__action">
-                        <button class="form-success__copy" data-copy="[data-ref]" data-label="Copiar referencia" data-done="¡Referencia copiada!" aria-label="Copiar referencia">
-                            <?php echo Svg::icon('copy', 'form-success__copy-icon'); ?>
-                        </button>
-                    </td>
+                    <td><span data-ref></span><button class="form-success__copy" data-copy="[data-ref]" data-label="Copiar referencia" data-done="¡Referencia copiada!" aria-label="Copiar referencia"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
                 </tr>
                 <tr>
                     <th scope="row">IBAN</th>
-                    <td data-iban>ES00 0000 0000 0000 0000 0000</td>
-                    <td class="form-success__action">
-                        <button class="form-success__copy" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="¡IBAN copiado!" aria-label="Copiar IBAN">
-                            <?php echo Svg::icon('copy', 'form-success__copy-icon'); ?>
-                        </button>
-                    </td>
+                    <td><span data-iban>ES00 0000 0000 0000 0000 0000</span><button class="form-success__copy" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="¡IBAN copiado!" aria-label="Copiar IBAN"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
                 </tr>
                 <tr>
                     <th scope="row">Cantidad</th>
-                    <td data-amount></td>
-                    <td class="form-success__action">
-                        <button class="form-success__copy" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="¡Cantidad copiada!" aria-label="Copiar cantidad">
-                            <?php echo Svg::icon('copy', 'form-success__copy-icon'); ?>
-                        </button>
-                    </td>
+                    <td><span data-amount></span><button class="form-success__copy" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="¡Cantidad copiada!" aria-label="Copiar cantidad"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
                 </tr>
             </tbody>
         </table>
