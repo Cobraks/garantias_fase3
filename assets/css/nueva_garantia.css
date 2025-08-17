@@ -2226,25 +2226,15 @@ margin-top: .5rem;
 
   .confetti-piece {
     position: absolute;
-    left: 50%;
-    top: 50%;
+    top: -10px;
     border-radius: 50%;
     opacity: .9;
-    transform: translate(-50%, -50%);
-    animation: confetti-burst 3s ease-out forwards;
+    animation: confetti-fall linear forwards;
   }
 
-  @keyframes confetti-burst {
-    0% {
-      transform: translate(-50%, -50%) scale(1) rotate(0deg);
-      opacity: 1;
-    }
-    80% {
-      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(720deg);
-      opacity: 1;
-    }
-    100% {
-      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 400px)) rotate(1080deg);
+  @keyframes confetti-fall {
+    to {
+      transform: translate(var(--drift), 100vh) rotate(720deg);
       opacity: 0;
     }
   }

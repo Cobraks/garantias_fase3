@@ -31,30 +31,32 @@ use GarantiasOnline360VO\Svg;
     </div>
 
     <div class="form-success__payment" hidden>
-        <h3 class="form-success__transfer-title">
-            <?php echo Svg::icon('info', 'form-success__transfer-icon'); ?>
-            Transferencia bancaria
-        </h3>
-        <p class="form-success__transfer-note">
-            <?php echo Svg::icon('warning', 'form-success__transfer-note-icon'); ?>
-            Realiza el pago antes de 7 días para activar tu certificado.
-        </p>
-        <table class="form-success__transfer-table">
-            <tbody>
-                <tr>
-                    <th scope="row">Referencia</th>
-                    <td><span data-ref></span><button class="form-success__copy" data-copy="[data-ref]" data-label="Copiar referencia" data-done="¡Referencia copiada!" aria-label="Copiar referencia"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
-                </tr>
-                <tr>
-                    <th scope="row">IBAN</th>
-                    <td><span data-iban>ES00 0000 0000 0000 0000 0000</span><button class="form-success__copy" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="¡IBAN copiado!" aria-label="Copiar IBAN"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
-                </tr>
-                <tr>
-                    <th scope="row">Cantidad</th>
-                    <td><span data-amount></span><button class="form-success__copy" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="¡Cantidad copiada!" aria-label="Copiar cantidad"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="form-success__transfer" hidden>
+            <h3 class="form-success__transfer-title">
+                <?php echo Svg::icon('info', 'form-success__transfer-icon'); ?>
+                Transferencia bancaria
+            </h3>
+            <p class="form-success__transfer-note">
+                <?php echo Svg::icon('warning', 'form-success__transfer-note-icon'); ?>
+                Realiza el pago antes de 7 días para activar tu certificado.
+            </p>
+            <table class="form-success__transfer-table">
+                <tbody>
+                    <tr>
+                        <th scope="row">Referencia</th>
+                        <td><span data-ref></span><button class="form-success__copy" data-copy="[data-ref]" data-label="Copiar referencia" data-done="¡Referencia copiada!" aria-label="Copiar referencia"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">IBAN</th>
+                        <td><span data-iban>ES00 0000 0000 0000 0000 0000</span><button class="form-success__copy" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="¡IBAN copiado!" aria-label="Copiar IBAN"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Cantidad</th>
+                        <td><span data-amount></span><button class="form-success__copy" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="¡Cantidad copiada!" aria-label="Copiar cantidad"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <div class="form-success__toast" aria-hidden="true">¡Copiado al portapapeles!</div>

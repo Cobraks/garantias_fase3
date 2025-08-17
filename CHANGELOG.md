@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.24 - 2025-08-16
+- Rellena la referencia "Garantía [matrícula]" y la cantidad final en la tabla de transferencia.
+- Confeti renovado con caída superior y piezas en primer y segundo plano.
+
 ## 0.1.23 - 2025-08-16
 - Referencia y cantidad rellenadas correctamente desde el formulario.
 - Cabecera y subtítulo estilizados con encabezado de documentación.

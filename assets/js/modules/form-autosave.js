@@ -133,19 +133,23 @@ export default function initAutosave() {
                 for (let i = 0; i < 120; i++) {
                         const piece = document.createElement("span");
                         piece.className = "confetti-piece";
-                        const dx = (Math.random() - 0.5) * 600;
-                        const dy = Math.random() * -300;
-                        piece.style.setProperty("--dx", `${dx}px`);
-                        piece.style.setProperty("--dy", `${dy}px`);
+                        piece.style.left = `${Math.random() * 100}%`;
                         const size = Math.random() * 6 + 6;
                         piece.style.width = `${size}px`;
                         piece.style.height = `${size}px`;
                         piece.style.backgroundColor =
                                 colors[Math.floor(Math.random() * colors.length)];
+                        piece.style.animationDuration = `${
+                                Math.random() * 2 + 3
+                        }s`;
+                        piece.style.animationDelay = `${Math.random()}s`;
+                        const drift = (Math.random() - 0.5) * 200;
+                        piece.style.setProperty("--drift", `${drift}px`);
                         const front = Math.random() > 0.5;
-                        (front ? successBlock : layer).appendChild(piece);
                         piece.style.zIndex = front ? 3 : 0;
-                        setTimeout(() => piece.remove(), 4000);
+                        const parent = front ? successBlock : layer;
+                        parent.appendChild(piece);
+                        setTimeout(() => piece.remove(), 5000);
                 }
         }
 
