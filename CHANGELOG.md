@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.1.22 - 2025-08-16
+- Cabecera del panel de éxito simplificada con título y plan.
+- Tabla de transferencia muestra referencia "Garantía [matrícula]" y cantidad final.
+- Contenedor de pago alineado con el resto y confeti con caída mejorada.
+
 ## 0.1.21 - 2025-08-16
 - Panel de éxito con tarjetas de documentación y subtítulo del plan.
 - Tabla de transferencia con iconos de copiado en línea y confeti explosivo.

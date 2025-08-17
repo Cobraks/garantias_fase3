@@ -123,14 +123,19 @@ export default function initAutosave() {
                         ".form-success__confetti"
                 );
                 if (!back) return;
-                for (let i = 0; i < 60; i++) {
+                const colors = [
+                        "#e2001b",
+                        "#2563eb",
+                        "#ffd700",
+                        "#4CAF50",
+                        "#9C27B0",
+                ];
+                for (let i = 0; i < 80; i++) {
                         const piece = document.createElement("span");
                         piece.className = "confetti-piece";
-                        const angle = Math.random() * Math.PI * 2;
-                        const dist = Math.random() * 300;
-                        piece.style.setProperty("--tx", `${Math.cos(angle) * dist}px`);
-                        piece.style.setProperty("--ty", `${Math.sin(angle) * dist}px`);
-                        piece.style.backgroundColor = `hsl(${Math.random() * 360},70%,60%)`;
+                        piece.style.left = Math.random() * 100 + "%";
+                        piece.style.backgroundColor =
+                                colors[Math.floor(Math.random() * colors.length)];
                         piece.style.animationDelay = Math.random() * 0.5 + "s";
                         const parent = Math.random() > 0.5 ? successBlock : back;
                         parent.appendChild(piece);

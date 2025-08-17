@@ -8,11 +8,8 @@ use GarantiasOnline360VO\Svg;
 <div id="form-success" class="form-success">
     <div class="form-success__confetti" aria-hidden="true"></div>
 
-    <header class="form-success__header">
-<?php echo Svg::icon('shield_alt', 'form-success__header-icon'); ?>
-        <h2 class="form-success__title">¡Garantía registrada!</h2>
-        <p class="form-success__subtitle" data-plan></p>
-    </header>
+    <h2 class="form-success__title">¡Garantía registrada!</h2>
+    <p class="form-success__subtitle" data-plan></p>
     <div class="form-success__docs">
         <a href="#" class="document-card">
             <?php echo Svg::icon('pdf', 'document-card__icon'); ?>
