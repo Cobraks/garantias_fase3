@@ -10,6 +10,8 @@ use GarantiasOnline360VO\Svg;
 
     <h2 class="form-success__title">¡Garantía registrada!</h2>
     <p class="form-success__subtitle" data-plan></p>
+
+    <h3 class="form-success__docs-heading">Documentación</h3>
     <div class="form-success__docs">
         <a href="#" class="document-card">
             <?php echo Svg::icon('pdf', 'document-card__icon'); ?>

@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.1.23 - 2025-08-16
+- Referencia y cantidad rellenadas correctamente desde el formulario.
+- Cabecera y subtítulo estilizados con encabezado de documentación.
+- Confeti explosivo con animación central y piezas en primer y segundo plano.
+
 ## 0.1.22 - 2025-08-16
 - Cabecera del panel de éxito simplificada con título y plan.
 - Tabla de transferencia muestra referencia "Garantía [matrícula]" y cantidad final.

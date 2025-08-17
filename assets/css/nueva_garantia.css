@@ -2056,15 +2056,24 @@ margin-top: .5rem;
   }
 
   .form-success__title {
-    font-size: 1.75rem;
-    margin: 0 0 .25rem;
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: center;
+    margin: 0 0 .5rem;
     color: #2563eb;
   }
   .form-success__subtitle {
     margin: 0 0 1.5rem;
     text-align: center;
-    color: #64748b;
-    font-size: 1rem;
+    color: #1e40af;
+    font-size: 1.125rem;
+    font-weight: 500;
+  }
+  .form-success__docs-heading {
+    text-align: center;
+    font-size: 1.25rem;
+    color: #1f2937;
+    margin: 1rem 0 .5rem;
   }
   .form-success__docs {
     display: grid;
@@ -2217,16 +2226,25 @@ margin-top: .5rem;
 
   .confetti-piece {
     position: absolute;
-    top: -10px;
-    width: 8px;
-    height: 8px;
+    left: 50%;
+    top: 50%;
     border-radius: 50%;
-    animation: confetti-fall 3s linear forwards;
+    opacity: .9;
+    transform: translate(-50%, -50%);
+    animation: confetti-burst 3s ease-out forwards;
   }
 
-  @keyframes confetti-fall {
-    to {
-      transform: translateY(300px) rotate(360deg);
+  @keyframes confetti-burst {
+    0% {
+      transform: translate(-50%, -50%) scale(1) rotate(0deg);
+      opacity: 1;
+    }
+    80% {
+      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(720deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 400px)) rotate(1080deg);
       opacity: 0;
     }
   }

@@ -119,10 +119,10 @@ export default function initAutosave() {
         }
 
         function launchConfetti() {
-                const back = successBlock?.querySelector(
+                const layer = successBlock?.querySelector(
                         ".form-success__confetti"
                 );
-                if (!back) return;
+                if (!layer) return;
                 const colors = [
                         "#e2001b",
                         "#2563eb",
@@ -130,17 +130,22 @@ export default function initAutosave() {
                         "#4CAF50",
                         "#9C27B0",
                 ];
-                for (let i = 0; i < 80; i++) {
+                for (let i = 0; i < 120; i++) {
                         const piece = document.createElement("span");
                         piece.className = "confetti-piece";
-                        piece.style.left = Math.random() * 100 + "%";
+                        const dx = (Math.random() - 0.5) * 600;
+                        const dy = Math.random() * -300;
+                        piece.style.setProperty("--dx", `${dx}px`);
+                        piece.style.setProperty("--dy", `${dy}px`);
+                        const size = Math.random() * 6 + 6;
+                        piece.style.width = `${size}px`;
+                        piece.style.height = `${size}px`;
                         piece.style.backgroundColor =
                                 colors[Math.floor(Math.random() * colors.length)];
-                        piece.style.animationDelay = Math.random() * 0.5 + "s";
-                        const parent = Math.random() > 0.5 ? successBlock : back;
-                        parent.appendChild(piece);
-                        piece.style.zIndex = parent === back ? 0 : 3;
-                        setTimeout(() => piece.remove(), 3500);
+                        const front = Math.random() > 0.5;
+                        (front ? successBlock : layer).appendChild(piece);
+                        piece.style.zIndex = front ? 3 : 0;
+                        setTimeout(() => piece.remove(), 4000);
                 }
         }
 
@@ -177,7 +182,9 @@ export default function initAutosave() {
                         const lvl = level ? level.replace(/[-_]/g, " ") : "";
                         const monthsText = months ? `${months} meses` : "";
                         const text = [lvl, monthsText].filter(Boolean).join(" ");
-                        plan.textContent = text.replace(/\b\w/g, (c) => c.toUpperCase());
+                        plan.textContent = text
+                                .trim()
+                                .replace(/\b\w/g, (c) => c.toUpperCase());
                 }
                 if (method === "transferencia" || method === "domiciliacion") {
                         const pay = successBlock.querySelector(".form-success__payment");
@@ -189,19 +196,33 @@ export default function initAutosave() {
                                         );
                                         if (transfer) {
                                                 transfer.hidden = false;
-                                                const reference = plate ? `Garantía ${plate}` : "";
-                                                transfer
-                                                        .querySelectorAll("[data-ref],[data-ref-text]")
-                                                        .forEach((el) => (el.textContent = reference));
-                                                const amountText = amount
-                                                        ? `${Number(amount).toLocaleString("es-ES", {
-                                                                  minimumFractionDigits: 2,
-                                                                  maximumFractionDigits: 2,
-                                                          })} €`
+                                                const reference = plate
+                                                        ? `Garantía ${plate.toUpperCase()}`
                                                         : "";
                                                 transfer
-                                                        .querySelectorAll("[data-amount],[data-amount-text]")
-                                                        .forEach((el) => (el.textContent = amountText));
+                                                        .querySelectorAll("[data-ref],[data-ref-text]")
+                                                        .forEach(
+                                                                (el) =>
+                                                                        (el.textContent = reference)
+                                                        );
+                                                const amountText =
+                                                        amount !== undefined && amount !== null
+                                                                ? `${Number(amount).toLocaleString(
+                                                                          "es-ES",
+                                                                          {
+                                                                                  minimumFractionDigits: 2,
+                                                                                  maximumFractionDigits: 2,
+                                                                          }
+                                                                  )} €`
+                                                                : "";
+                                                transfer
+                                                        .querySelectorAll(
+                                                                "[data-amount],[data-amount-text]"
+                                                        )
+                                                        .forEach(
+                                                                (el) =>
+                                                                        (el.textContent = amountText)
+                                                        );
                                         }
                                 }
                         }
