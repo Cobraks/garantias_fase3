@@ -153,6 +153,12 @@
                                         data.kilometros = new Intl.NumberFormat("es-ES").format(kms);
                                 }
                         }
+                        if (data.cilindrada !== undefined) {
+                                const cc = parseInt(String(data.cilindrada).replace(/[^0-9]/g, ""), 10);
+                                if (!isNaN(cc)) {
+                                        data.cilindrada = new Intl.NumberFormat("es-ES").format(cc);
+                                }
+                        }
                         return data;
                 }
 
@@ -615,10 +621,15 @@
                                 }
                                 return `<li><strong>Potencia:</strong> ${val}${unit}</li>`;
                         };
-                        const skeleton = (field, fallback = "-") =>
-                                skeletons.includes(field)
-                                        ? `<span class="skeleton skeleton--${field}"></span>`
-                                        : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
+                       const skeleton = (field, fallback = "-") =>
+                               skeletons.includes(field)
+                                       ? `<span class="skeleton skeleton--${field}"></span>`
+                                       : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
+
+                       const isFilled = (field) => {
+                               const val = getFieldText(data[field]) ?? getFieldText(rowData[field]);
+                               return !!val && val !== "-";
+                       };
 
                         const mesesTotales = getDurationMeses(data.desde, data.hasta);
                         const mesesRestantes = getRestantesMeses(data.hasta);
@@ -668,42 +679,76 @@
                                                 <button type="button" class="guarantee-detail__btn guarantee-detail__btn--delete">Eliminar garantía</button>
                                         </div>`
                                         }
-                                        <section class="detail__section detail__section--fast-actions">
-                                                <h3 class="detail__section-title">Canal de venta</h3>
-                                                        <p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
-                                                        ${renderFastActions(
-                                                                data.concesionario ?? rowData.concesionario,
-                                                                data.telefono_vendedor ?? rowData.telefono_vendedor,
-                                                                data.email_vendedor ?? rowData.email_vendedor,
-                                                                skeletons
-                                                        )}
-                                        </section>
-                                        <section class="detail__section">
-                                                <h3>Datos del vehículo</h3>
-                                                <ul>
-                                                        ${renderField("marca_modelo", "Marca/Modelo")}
-                                                        ${renderField("tipo", "Tipo")}
-                                                        ${renderField("kilometros", "Kilómetros", " km")}
-                                                        ${renderField("primera_matriculacion", "1ª Matriculación")}
-                                                        ${renderField("matricula", "Matrícula")}
-                                                        ${renderField("bastidor", "Nº Bastidor")}
-                                                        ${renderField("precio_venta", "Precio venta", " €")}
-                                                </ul>
-                                        </section>
-                                        <section class="detail__section">
-                                                <h3>Detalles técnicos</h3>
-                                                <ul>
-                                                        ${renderField("combustible", "Combustible")}
-                                                        ${renderField("cambio", "Cambio")}
-                                                        ${renderPotencia()}
-                                                        ${renderField("cilindrada", "Cilindrada")}
-                                                </ul>
-                                        </section>
-                        `;
-                }
+                                        ${(() => {
+                                                const showCanal = isFilled("canal_venta") && isFilled("concesionario");
+                                                return showCanal
+                                                        ? `<section class="detail__section detail__section--fast-actions">
+                                                                <h3 class="detail__section-title">Canal de venta</h3>
+                                                                <p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
+                                                                ${renderFastActions(
+                                                                        data.concesionario ?? rowData.concesionario,
+                                                                        data.telefono_vendedor ?? rowData.telefono_vendedor,
+                                                                        data.email_vendedor ?? rowData.email_vendedor,
+                                                                        skeletons
+                                                                )}
+                                                        </section>`
+                                                        : "";
+                                        })()}
+                                        ${(() => {
+                                                const vehiculoFields = [
+                                                        "marca_modelo",
+                                                        "tipo",
+                                                        "kilometros",
+                                                        "primera_matriculacion",
+                                                        "matricula",
+                                                        "bastidor",
+                                                        "precio_venta",
+                                                ];
+                                                const vehiculoComplete = vehiculoFields.every(isFilled);
+                                                return vehiculoComplete
+                                                        ? `<section class="detail__section">
+                                                                <h3>Datos del vehículo</h3>
+                                                                <ul>
+                                                                        ${renderField("marca_modelo", "Marca/Modelo")}
+                                                                        ${renderField("tipo", "Tipo")}
+                                                                        ${renderField("kilometros", "Kilómetros", " km")}
+                                                                        ${renderField("primera_matriculacion", "1ª Matriculación")}
+                                                                        ${renderField("matricula", "Matrícula")}
+                                                                        ${renderField("bastidor", "Nº Bastidor")}
+                                                                        ${renderField("precio_venta", "Precio venta", " €")}
+                                                                </ul>
+                                                        </section>`
+                                                        : `<section class="detail__section detail__section--incomplete">
+                                                                <h3>Datos del vehículo</h3>
+                                                                <div class="detail__section-message">Faltan los datos del vehículo</div>
+                                                        </section>`;
+                                        })()}
+                                        ${(() => {
+                                                const combVal =
+                                                        (data.combustible && data.combustible.value) ||
+                                                        (rowData.combustible && rowData.combustible.value) ||
+                                                        "";
+                                                const powerField = combVal === "electrico" ? "potencia_kw" : "potencia";
+                                                const techFields = ["combustible", "cambio", powerField, "cilindrada"];
+                                                const techComplete = techFields.every(isFilled);
+                                                return techComplete
+                                                        ? `<section class="detail__section">
+                                                                <h3>Detalles técnicos</h3>
+                                                                <ul>
+                                                                        ${renderField("combustible", "Combustible")}
+                                                                        ${renderField("cambio", "Cambio")}
+                                                                        ${renderPotencia()}
+                                                                        ${renderField("cilindrada", "Cilindrada", " CC")}
+                                                                </ul>
+                                                        </section>`
+                                                        : `<section class="detail__section detail__section--incomplete">
+                                                                <h3>Detalles técnicos</h3>
+                                                                <div class="detail__section-message">Faltan los detalles técnicos</div>
+                                                        </section>`;
+                                        })()}
                                         <section class="detail__section detail__section--docs">
-						<h3 class="detail__section-title">Documentación</h3>
-						<ul class="detail__docs-list">
+                                                <h3 class="detail__section-title">Documentación</h3>
+                                                <ul class="detail__docs-list">
 							<li class="detail__docs-item">
 								<button type="button" class="detail__docs-btn" data-doc-url="${skeleton(
 									"contrato_url",
@@ -737,32 +782,59 @@
 								</button>
 							</li>
 						</ul>
-					</section>
-					<section class="detail__section">
-						<h3>Datos del comprador</h3>
-						<ul>
-							<li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
-							<li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
-							<li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
-							<li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
-							<li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
-						</ul>
-						<ul class="fast-actions">
-							<li class="fast-actions__item">
-								<a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
-									<span class="fast-actions__label">Cliente</span>
-								</a>
-							</li>
-							<li class="fast-actions__item">
-								<a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
-									<span class="fast-actions__label">Cliente</span>
-								</a>
-							</li>
-						</ul>
-					</section>
-				</div>
-			`;
-		}
+                                        </section>
+                                        ${(() => {
+                                                const buyerFields = [
+                                                        "nombre_comprador",
+                                                        "dni_comprador",
+                                                        "telefono_comprador",
+                                                        "email_comprador",
+                                                        "direccion_comprador",
+                                                ];
+                                                const buyerComplete = buyerFields.every(isFilled);
+                                                return buyerComplete
+                                                        ? `<section class="detail__section">
+                                                                <h3>Datos del comprador</h3>
+                                                                <ul>
+                                                                        <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
+                                                                        <li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
+                                                                        <li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
+                                                                        <li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
+                                                                        <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
+                                                                </ul>
+                                                                <ul class="fast-actions">
+                                                                        <li class="fast-actions__item">
+                                                                                <a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
+                                                                                        <span class="fast-actions__label">Cliente</span>
+                                                                                </a>
+                                                                        </li>
+                                                                        <li class="fast-actions__item">
+                                                                                <a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
+                                                                                        <span class="fast-actions__label">Cliente</span>
+                                                                                </a>
+                                                                        </li>
+                                                                </ul>
+                                                        </section>`
+                                                        : `<section class="detail__section detail__section--incomplete">
+                                                                <h3>Datos del comprador</h3>
+                                                                <div class="detail__section-message">Faltan los datos del comprador</div>
+                                                                <ul class="fast-actions">
+                                                                        <li class="fast-actions__item">
+                                                                                <a href="tel:-" class="fast-actions__link">
+                                                                                        <span class="fast-actions__label">Cliente</span>
+                                                                                </a>
+                                                                        </li>
+                                                                        <li class="fast-actions__item">
+                                                                                <a href="mailto:-" class="fast-actions__link">
+                                                                                        <span class="fast-actions__label">Cliente</span>
+                                                                                </a>
+                                                                        </li>
+                                                                </ul>
+                                                        </section>`;
+                                        })()}
+                                </div>
+                        `;
+                }
 
 		function initRowSelection() {
 			tbody.addEventListener("click", async function (e) {

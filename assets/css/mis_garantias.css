@@ -765,6 +765,14 @@ section.guarantees-list.sticky-active {
     color: #e02424;
 }
 
+.detail__section--incomplete .detail__section-message {
+    background: #520000;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    color: #ffb0b0;
+    margin-bottom: 1rem;
+}
+
 /* 4) ESCRITORIO ≥1024px: tabla clásica + detalle a la derecha */
 @media (min-width: 1024px) {
 
