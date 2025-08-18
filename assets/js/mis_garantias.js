@@ -147,6 +147,12 @@
                         if (data.precio !== undefined) data.precio = formatPrice(data.precio);
                         if (data.precio_venta !== undefined)
                                 data.precio_venta = formatPrice(data.precio_venta);
+                        if (data.kilometros !== undefined) {
+                                const kms = parseInt(String(data.kilometros).replace(/[^0-9]/g, ""), 10);
+                                if (!isNaN(kms)) {
+                                        data.kilometros = new Intl.NumberFormat("es-ES").format(kms);
+                                }
+                        }
                         return data;
                 }
 
@@ -517,8 +523,9 @@
                                 precio_venta: "-",
 				combustible: "-",
 				cambio: "-",
-				potencia: "-",
-				cilindrada: "-",
+                                potencia: "-",
+                                potencia_kw: "-",
+                                cilindrada: "-",
 				telefono_vendedor: "-",
 				email_vendedor: "-",
 				contrato_url: "#",
@@ -541,8 +548,9 @@
 			"precio_venta",
 			"combustible",
 			"cambio",
-			"potencia",
-			"cilindrada",
+                        "potencia",
+                        "potencia_kw",
+                        "cilindrada",
 			"telefono_vendedor",
 			"email_vendedor",
 			"nombre_comprador",
@@ -581,6 +589,32 @@
                                 val && typeof val === "object" && "label" in val
                                         ? val.label
                                         : val;
+                        const renderField = (field, label, suffix = "") => {
+                                if (skeletons.includes(field)) {
+                                        return `<li><strong>${label}:</strong> <span class="skeleton skeleton--${field}"></span>${suffix}</li>`;
+                                }
+                                const val = getFieldText(data[field]) ?? getFieldText(rowData[field]);
+                                if (!val || val === "-") {
+                                        return `<li class="detail__field detail__field--missing"><strong>${label}:</strong> Falta ${label}</li>`;
+                                }
+                                return `<li><strong>${label}:</strong> ${val}${suffix}</li>`;
+                        };
+                        const renderPotencia = () => {
+                                const combVal =
+                                        (data.combustible && data.combustible.value) ||
+                                        (rowData.combustible && rowData.combustible.value) ||
+                                        "";
+                                const field = combVal === "electrico" ? "potencia_kw" : "potencia";
+                                const unit = combVal === "electrico" ? " kW" : " CV";
+                                if (skeletons.includes(field)) {
+                                        return `<li><strong>Potencia:</strong> <span class="skeleton skeleton--${field}"></span></li>`;
+                                }
+                                const val = getFieldText(data[field]) ?? getFieldText(rowData[field]);
+                                if (!val || val === "-") {
+                                        return `<li class="detail__field detail__field--missing"><strong>Potencia:</strong> Falta Potencia</li>`;
+                                }
+                                return `<li><strong>Potencia:</strong> ${val}${unit}</li>`;
+                        };
                         const skeleton = (field, fallback = "-") =>
                                 skeletons.includes(field)
                                         ? `<span class="skeleton skeleton--${field}"></span>`
@@ -597,71 +631,77 @@
                                 estadoValue
                         )}`;
 
-			const planTitle = `${data.plan ?? "-"}${
-				mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
-			}`;
+                        const planTitle = `${data.plan ?? "-"}${
+                                mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
+                        }`;
+                        const showPlan = estadoValue !== "sin_finalizar";
 
-			return `
-				<div class="guarantee-detail__inner">
-					<div class="guarantee-detail__header">
-						<h2>Garantía ${skeleton("matricula")}</h2>
-						<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
+                        return `
+                                <div class="guarantee-detail__inner">
+                                        <div class="guarantee-detail__header">
+                                                <h2>Garantía ${skeleton("matricula")}</h2>
+                                                ${
+                                                        showPlan
+                                                                ? `<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
                                                 <div>
                                                         <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
-                                                        <span class="guarantee-detail__plan-duration">(${
-                                                                mesesRestantes !== "-"
-                                                                        ? mesesRestantes + " meses restantes"
-                                                                        : "-"
-                                                        })</span></p>
-                                                </div>
+                                                        <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p>
+                                                </div>`
+                                                                : ""
+                                                }
                                                 <div class="${badgeClase}">${skeleton(
                                                         "estado",
                                                         "Desconocido"
                                                 )}</div>
-					</div>
-					<div class="guarantee-detail__btn-container">
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
-
-							<span class="guarantee-detail__btn-text">Abrir expediente</span>
-						</button>
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
-					</div>
-					<section class="detail__section detail__section--fast-actions">
-						<h3 class="detail__section-title">Canal de venta</h3>
-							<p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
-							${renderFastActions(
-								data.concesionario ?? rowData.concesionario,
-								data.telefono_vendedor ?? rowData.telefono_vendedor,
-								data.email_vendedor ?? rowData.email_vendedor,
-								skeletons
-							)}
-					</section>
-					<section class="detail__section">
-						<h3>Datos del vehículo</h3>
-						<ul>
-							<li><strong>Marca/Modelo:</strong> ${skeleton("marca_modelo")}</li>
-							<li><strong>Tipo:</strong> ${skeleton("tipo", "-")}</li>
-							<li><strong>Kilómetros:</strong> ${skeleton("kilometros", "-")} km</li>
-							<li><strong>1ª Matriculación:</strong> ${skeleton(
-								"primera_matriculacion",
-								"-"
-							)}</li>
-							<li><strong>Matrícula:</strong> ${skeleton("matricula")}</li>
-							<li><strong>Nº Bastidor:</strong> ${skeleton("bastidor", "-")}</li>
-							<li><strong>Precio venta:</strong> ${skeleton("precio_venta", "-")} €</li>
-						</ul>
-					</section>
-					<section class="detail__section">
-						<h3>Detalles técnicos</h3>
-						<ul>
-							<li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
-							<li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
-							<li><strong>Potencia:</strong> ${skeleton("potencia", "-")}</li>
-							<li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")}</li>
-						</ul>
-					</section>
-					<section class="detail__section detail__section--docs">
+                                        </div>
+                                        ${
+                                                showPlan
+                                                        ? `<div class="guarantee-detail__btn-container">
+                                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
+                                                        <span class="guarantee-detail__btn-text">Abrir expediente</span>
+                                                </button>
+                                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
+                                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
+                                        </div>`
+                                                        : `<div class="guarantee-detail__btn-container">
+                                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--continue">Continuar garantía</button>
+                                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--delete">Eliminar garantía</button>
+                                        </div>`
+                                        }
+                                        <section class="detail__section detail__section--fast-actions">
+                                                <h3 class="detail__section-title">Canal de venta</h3>
+                                                        <p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
+                                                        ${renderFastActions(
+                                                                data.concesionario ?? rowData.concesionario,
+                                                                data.telefono_vendedor ?? rowData.telefono_vendedor,
+                                                                data.email_vendedor ?? rowData.email_vendedor,
+                                                                skeletons
+                                                        )}
+                                        </section>
+                                        <section class="detail__section">
+                                                <h3>Datos del vehículo</h3>
+                                                <ul>
+                                                        ${renderField("marca_modelo", "Marca/Modelo")}
+                                                        ${renderField("tipo", "Tipo")}
+                                                        ${renderField("kilometros", "Kilómetros", " km")}
+                                                        ${renderField("primera_matriculacion", "1ª Matriculación")}
+                                                        ${renderField("matricula", "Matrícula")}
+                                                        ${renderField("bastidor", "Nº Bastidor")}
+                                                        ${renderField("precio_venta", "Precio venta", " €")}
+                                                </ul>
+                                        </section>
+                                        <section class="detail__section">
+                                                <h3>Detalles técnicos</h3>
+                                                <ul>
+                                                        ${renderField("combustible", "Combustible")}
+                                                        ${renderField("cambio", "Cambio")}
+                                                        ${renderPotencia()}
+                                                        ${renderField("cilindrada", "Cilindrada")}
+                                                </ul>
+                                        </section>
+                        `;
+                }
+                                        <section class="detail__section detail__section--docs">
 						<h3 class="detail__section-title">Documentación</h3>
 						<ul class="detail__docs-list">
 							<li class="detail__docs-item">
