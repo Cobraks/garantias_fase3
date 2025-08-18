@@ -767,7 +767,7 @@ class GuaranteeRestController
         $combustible_val = get_post_meta($id, 'datos_vehiculo_combustible', true);
         $combustible = ['value' => '', 'label' => ''];
         if ($combustible_val !== '') {
-            $comb_field = function_exists('get_field_object') ? get_field_object('datos_vehiculo_combustible') : null;
+            $comb_field = function_exists('get_field_object') ? get_field_object('datos_vehiculo_combustible', $id) : null;
             $label = $comb_field['choices'][$combustible_val] ?? $combustible_val;
             $combustible = ['value' => $combustible_val, 'label' => $label];
         }
@@ -775,7 +775,7 @@ class GuaranteeRestController
         $cambio_val = get_post_meta($id, 'datos_vehiculo_cambio', true);
         $cambio = ['value' => '', 'label' => ''];
         if ($cambio_val !== '') {
-            $cambio_field = function_exists('get_field_object') ? get_field_object('datos_vehiculo_cambio') : null;
+            $cambio_field = function_exists('get_field_object') ? get_field_object('datos_vehiculo_cambio', $id) : null;
             $label = $cambio_field['choices'][$cambio_val] ?? $cambio_val;
             $cambio = ['value' => $cambio_val, 'label' => $label];
         }
