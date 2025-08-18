@@ -448,16 +448,17 @@ background: transparent;
       flex: 1;
       padding-top: 4rem;
       padding-top: 0;
-      padding-inline: var(--spacing-2);
       max-width: 406px;
       margin-inline: auto;
       position: relative;
-      overflow: hidden;
+
   }
 
   .form__tab-content {
       display: none;
       padding-top: 2rem;
+      /* El padding lateral se aplica aquí para no estrechar el formulario */
+      padding-inline: var(--spacing-2);
   }
 
   .form__tab-content.tab-enter,
@@ -466,15 +467,17 @@ background: transparent;
       top: 0;
       left: 0;
       width: 100%;
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease, opacity 0.3s ease;
   }
 
   .form__tab-content.tab-enter {
       display: block;
+      opacity: 0;
   }
 
   .form__tab-content.tab-exit {
       display: block;
+      opacity: 1;
   }
   
   .form__tab-content#finalizar .form__wrapper-inputs {

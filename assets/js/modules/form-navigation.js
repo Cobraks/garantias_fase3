@@ -105,6 +105,7 @@ function showTab(index) {
         newFieldset.style.display = displayMode;
         newFieldset.classList.add("tab-enter");
         newFieldset.style.transform = `translateX(${direction * 100}%)`;
+        newFieldset.style.opacity = "0";
 
         const container = newFieldset.parentElement;
         const startHeight = prevFieldset ? prevFieldset.offsetHeight : newFieldset.offsetHeight;
@@ -114,13 +115,16 @@ function showTab(index) {
         if (prevFieldset && prevFieldset !== newFieldset) {
                 prevFieldset.classList.add("tab-exit");
                 prevFieldset.style.transform = "translateX(0)";
+                prevFieldset.style.opacity = "1";
         }
 
         requestAnimationFrame(() => {
                 container.style.height = endHeight + "px";
                 newFieldset.style.transform = "translateX(0)";
+                newFieldset.style.opacity = "1";
                 if (prevFieldset && prevFieldset !== newFieldset) {
                         prevFieldset.style.transform = `translateX(${direction * -100}%)`;
+                        prevFieldset.style.opacity = "0";
                 }
         });
 
@@ -130,6 +134,7 @@ function showTab(index) {
                 newFieldset.classList.add("form__tab-content--active");
                 newFieldset.style.display = "";
                 newFieldset.style.transform = "";
+                newFieldset.style.opacity = "";
 
                 if (prevFieldset && prevFieldset !== newFieldset) {
                         prevFieldset.classList.remove(
@@ -138,6 +143,7 @@ function showTab(index) {
                         );
                         prevFieldset.style.display = "none";
                         prevFieldset.style.transform = "";
+                        prevFieldset.style.opacity = "";
                 }
 
                 container.style.height = "";
