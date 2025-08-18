@@ -102,32 +102,33 @@ function animateTabTransition(oldIndex, newIndex) {
         const inClass = forward ? "tab-slide-in-right" : "tab-slide-in-left";
         const outClass = forward ? "tab-slide-out-left" : "tab-slide-out-right";
 
+        const form = document.getElementById("form-garantia");
+        if (form) {
+                const refFs = oldFs || newFs;
+                form.style.height = refFs.offsetHeight + "px";
+        }
+
         newFs.style.display = "block";
         newFs.classList.add("is-sliding", inClass, "form__tab-content--active");
 
         if (oldFs) {
                 oldFs.classList.add("is-sliding", outClass);
-                oldFs.addEventListener(
-                        "animationend",
-                        function handleOld() {
-                                oldFs.classList.remove(
-                                        "is-sliding",
-                                        outClass,
-                                        "form__tab-content--active"
-                                );
-                                oldFs.style.display = "none";
-                                oldFs.removeEventListener("animationend", handleOld);
-                        }
-                );
         }
 
-        newFs.addEventListener(
-                "animationend",
-                function handleNew() {
-                        newFs.classList.remove("is-sliding", inClass);
-                        newFs.removeEventListener("animationend", handleNew);
+        setTimeout(() => {
+                newFs.classList.remove("is-sliding", inClass);
+                if (oldFs) {
+                        oldFs.classList.remove(
+                                "is-sliding",
+                                outClass,
+                                "form__tab-content--active"
+                        );
+                        oldFs.style.display = "none";
                 }
-        );
+                if (form) {
+                        form.style.height = "";
+                }
+        }, 300);
 }
 
 function showTab(index) {
