@@ -37,13 +37,14 @@
     pointer-events: none;   /* Permite que los clics pasen a los tabs */
     height: .25rem;
   }
-  
+
   /* Cada segmento (barra) de conexión */
   .connector {
     position: absolute;
     height: 2px;
     background: var(--step-inactive);
     height: .25rem;
+    transition: background 0.3s ease;
   }
   
   /* Para 4 tabs, se asume que sus centros están en:
@@ -447,14 +448,36 @@ background: transparent;
       flex: 1;
       padding-top: 4rem;
       padding-top: 0;
-      padding-inline: var(--spacing-2);
       max-width: 406px;
       margin-inline: auto;
+      position: relative;
+
   }
-  
+
   .form__tab-content {
       display: none;
       padding-top: 2rem;
+      /* El padding lateral se aplica aquí para no estrechar el formulario */
+      padding-inline: var(--spacing-2);
+  }
+
+  .form__tab-content.tab-enter,
+  .form__tab-content.tab-exit {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  .form__tab-content.tab-enter {
+      display: block;
+      opacity: 0;
+  }
+
+  .form__tab-content.tab-exit {
+      display: block;
+      opacity: 1;
   }
   
   .form__tab-content#finalizar .form__wrapper-inputs {
@@ -606,9 +629,9 @@ fill: #003048;
 
 
   
-  .form__tab-content--active {
-      display: block;
-  }
+.form__tab-content--active {
+    display: block;
+}
   
   .form__button-container {
       display: flex;
