@@ -94,25 +94,72 @@ function clearPlanSelectionError() {
 
 // === Estado visual + saltos de pestaña ===
 function showTab(index) {
-	FormCache.fieldsets.forEach((fs, i) =>
-		fs.classList.toggle("form__tab-content--active", i === index)
-	);
-	FormCache.tabs.forEach((tab, i) =>
-		tab.classList.toggle("active", i === index)
-	);
-	if (FormCache.prevButton) {
-		FormCache.prevButton.style.display = index === 0 ? "none" : "";
-	}
-	if (FormCache.nextButton) {
-		FormCache.nextButton.textContent =
-			index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
-	}
+        const previousIndex = FormCache.currentTab;
+        const prevFieldset = FormCache.fieldsets[previousIndex];
+        const newFieldset = FormCache.fieldsets[index];
 
-	// Actualiza estado
-	FormCache.currentTab = index;
+        if (!newFieldset) return;
 
-	// --- Forzar recálculo de modalidades/planes al mostrar pasos relacionados ---
-	const currentFieldset = FormCache.fieldsets[index];
+        // Animación de salida
+        if (prevFieldset && prevFieldset !== newFieldset) {
+                prevFieldset.classList.add("tab-exit");
+                requestAnimationFrame(() => {
+                        prevFieldset.classList.add("tab-exit-active");
+                });
+                prevFieldset.addEventListener(
+                        "transitionend",
+                        function handleExit(e) {
+                                if (e.target !== prevFieldset) return;
+                                prevFieldset.classList.remove(
+                                        "tab-exit",
+                                        "tab-exit-active",
+                                        "form__tab-content--active"
+                                );
+                                prevFieldset.style.display = "none";
+                                prevFieldset.removeEventListener(
+                                        "transitionend",
+                                        handleExit
+                                );
+                        }
+                );
+        }
+
+        // Animación de entrada
+        const displayMode = newFieldset.id === "finalizar" ? "flex" : "block";
+        newFieldset.style.display = displayMode;
+        newFieldset.classList.add("tab-enter");
+        requestAnimationFrame(() => {
+                newFieldset.classList.add("tab-enter-active");
+        });
+        newFieldset.addEventListener(
+                "transitionend",
+                function handleEnter(e) {
+                        if (e.target !== newFieldset) return;
+                        newFieldset.classList.remove("tab-enter", "tab-enter-active");
+                        newFieldset.classList.add("form__tab-content--active");
+                        newFieldset.style.display = "";
+                        newFieldset.removeEventListener("transitionend", handleEnter);
+                }
+        );
+
+        // Tabs visuales
+        FormCache.tabs.forEach((tab, i) =>
+                tab.classList.toggle("active", i === index)
+        );
+
+        if (FormCache.prevButton) {
+                FormCache.prevButton.style.display = index === 0 ? "none" : "";
+        }
+        if (FormCache.nextButton) {
+                FormCache.nextButton.textContent =
+                        index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
+        }
+
+        // Actualiza estado
+        FormCache.currentTab = index;
+
+        // --- Forzar recálculo de modalidades/planes al mostrar pasos relacionados ---
+        const currentFieldset = newFieldset;
         if (
                 currentFieldset &&
                 (currentFieldset.id === "seleccionar-garantia" ||
@@ -123,14 +170,14 @@ function showTab(index) {
                 }
         }
 
-	// Limpia error de plan si ya hay uno seleccionado
-	if (currentFieldset.id === "seleccionar-garantia") {
-		if (document.querySelector(".form__plan.selected")) {
-			clearPlanSelectionError();
-		}
-	}
+        // Limpia error de plan si ya hay uno seleccionado
+        if (currentFieldset.id === "seleccionar-garantia") {
+                if (document.querySelector(".form__plan.selected")) {
+                        clearPlanSelectionError();
+                }
+        }
 
-	// Actualiza UI dependientes
+        // Actualiza UI dependientes
         updateNextButtonState();
         if (typeof debouncedUpdateSummary === "function") {
                 debouncedUpdateSummary();
@@ -190,7 +237,6 @@ function updateNextButtonState() {
 
         if (FormCache.nextButton) {
                 FormCache.nextButton.classList.toggle("disabled", !allValid);
-                FormCache.nextButton.style.cursor = allValid ? "pointer" : "not-allowed";
         }
 
         // Marcar/desmarcar pestaña completada en cache
@@ -207,26 +253,24 @@ function updateNextButtonState() {
 function setupTabNavigation() {
 	if (!FormCache.tabs) return;
 
-	FormCache.tabs.forEach((tab, index) => {
-		tab.addEventListener("click", () => {
-			if (
-				index < FormCache.currentTab || // retroceder siempre
-				(index > FormCache.currentTab && isCurrentTabValid())
-			) {
-				FormCache.currentTab = index;
-				showTab(index);
-			}
-		});
-	});
+        FormCache.tabs.forEach((tab, index) => {
+                tab.addEventListener("click", () => {
+                        if (
+                                index < FormCache.currentTab || // retroceder siempre
+                                (index > FormCache.currentTab && isCurrentTabValid())
+                        ) {
+                                showTab(index);
+                        }
+                });
+        });
 
 	if (FormCache.prevButton) {
-		FormCache.prevButton.addEventListener("click", () => {
-			if (FormCache.currentTab > 0) {
-				FormCache.currentTab--;
-				showTab(FormCache.currentTab);
-			}
-		});
-	}
+                FormCache.prevButton.addEventListener("click", () => {
+                        if (FormCache.currentTab > 0) {
+                                showTab(FormCache.currentTab - 1);
+                        }
+                });
+        }
 
 	if (FormCache.nextButton) {
 		FormCache.nextButton.addEventListener("click", () => {
@@ -248,14 +292,13 @@ function setupTabNavigation() {
                         if (typeof showSummarySectionForTab === "function") {
                                 showSummarySectionForTab(FormCache.currentTab);
                         }
-			if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
-				FormCache.currentTab++;
-				showTab(FormCache.currentTab);
-			} else {
-				// último paso: delega en otro módulo (ej. form-submission)
-			}
-		});
-	}
+                        if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
+                                showTab(FormCache.currentTab + 1);
+                        } else {
+                                // último paso: delega en otro módulo (ej. form-submission)
+                        }
+                });
+        }
 }
 
 // === EXPORTS ===

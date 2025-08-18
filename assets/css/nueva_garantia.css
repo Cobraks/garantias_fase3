@@ -37,13 +37,14 @@
     pointer-events: none;   /* Permite que los clics pasen a los tabs */
     height: .25rem;
   }
-  
+
   /* Cada segmento (barra) de conexión */
   .connector {
     position: absolute;
     height: 2px;
     background: var(--step-inactive);
     height: .25rem;
+    transition: background 0.3s ease;
   }
   
   /* Para 4 tabs, se asume que sus centros están en:
@@ -455,6 +456,28 @@ background: transparent;
   .form__tab-content {
       display: none;
       padding-top: 2rem;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .form__tab-content.tab-enter {
+      display: block;
+      opacity: 0;
+      transform: translateX(2rem);
+  }
+
+  .form__tab-content.tab-enter-active {
+      opacity: 1;
+      transform: translateX(0);
+  }
+
+  .form__tab-content.tab-exit {
+      opacity: 1;
+      transform: translateX(0);
+  }
+
+  .form__tab-content.tab-exit-active {
+      opacity: 0;
+      transform: translateX(-2rem);
   }
   
   .form__tab-content#finalizar .form__wrapper-inputs {
@@ -608,6 +631,8 @@ fill: #003048;
   
   .form__tab-content--active {
       display: block;
+      opacity: 1;
+      transform: translateX(0);
   }
   
   .form__button-container {
