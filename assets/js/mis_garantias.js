@@ -884,13 +884,18 @@
 					{ root: null, threshold: 0, rootMargin: "-50px" }
 				).observe(header);
 			}
-			const onScroll = () =>
-				document.body.classList.toggle(
-					"scrolled",
-					listContainer.scrollTop > 10 || detail.scrollTop > 10
-				);
-			listContainer.addEventListener("scroll", onScroll);
-                        detail.addEventListener("scroll", onScroll);
+                        const onScroll = () => {
+                                const activePanel = detail.querySelector(".guarantee-detail__panel.active");
+                                const detailScrolled = activePanel ? activePanel.scrollTop > 10 : false;
+                                document.body.classList.toggle(
+                                        "scrolled",
+                                        listContainer.scrollTop > 10 || detailScrolled
+                                );
+                        };
+                        listContainer.addEventListener("scroll", onScroll);
+                        detail.querySelectorAll(".guarantee-detail__panel").forEach((p) =>
+                                p.addEventListener("scroll", onScroll)
+                        );
                 })();
 
                 async function fetchFilters() {
