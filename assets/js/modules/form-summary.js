@@ -415,7 +415,6 @@ function setupSummaryButtons() {
                                 alert("Completa todos los campos antes de continuar.");
                                 return;
                         }
-                        FormCache.currentTab = targetTabIndex;
                         if (typeof showTab === "function") {
                                 showTab(targetTabIndex);
                         }
