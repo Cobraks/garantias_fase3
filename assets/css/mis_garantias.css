@@ -695,9 +695,20 @@ section.guarantees-list.sticky-active {
     margin-right: auto;
 }
 
+.guarantee-detail__btn--continue {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+.guarantee-detail__btn--delete {
+    background-color: transparent;
+    color: #e02424;
+    border: 1px solid var(--border-color);
+}
+
 .guarantee-detail__btn-icon {
     width: 24px;
-    height: 24pxrem;
+    height: 24px;
     flex-shrink: 0;
 }
 
@@ -718,8 +729,20 @@ section.guarantees-list.sticky-active {
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
+ .guarantee-detail__btn--delete:hover {
+    background-color: #fee2e2;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
 .guarantee-detail__btn--report:active {
     background-color: #9e1a1a;
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+ .guarantee-detail__btn--delete:active {
+    background-color: #fecaca;
     transform: translateY(0);
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
@@ -727,6 +750,20 @@ section.guarantees-list.sticky-active {
 .guarantee-detail__btn--report:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(224,36,36,0.5);
+}
+
+.guarantee-detail__btn--continue:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.5);
+}
+
+ .guarantee-detail__btn--delete:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(224,36,36,0.3);
+}
+ 
+.detail__value--missing {
+    color: #e02424;
 }
 
 /* 4) ESCRITORIO ≥1024px: tabla clásica + detalle a la derecha */
