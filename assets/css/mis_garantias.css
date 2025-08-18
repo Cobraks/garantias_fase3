@@ -415,14 +415,10 @@ section.guarantees-list.sticky-active {
     border-radius: var(--spacing-2);
     padding: var(--spacing-4);
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 7rem);
-    transition: max-height 300ms ease;
+    height: 100%;
     position: relative;
     overflow-x: hidden;
     cursor: default;
-}
-.guarantee-detail.sticky-active {
-    max-height: calc(100vh - var(--spacing-4) - 7.5rem);
 }
 
 /* Contenedor ocultando overflow */
@@ -743,7 +739,7 @@ section.guarantees-list.sticky-active {
         position: sticky;
         /* top: calc(var(--alturaHeader) + var(--spacing-2)); */
         align-self: start;
-        max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem);
+        height: 100%;
         overflow-x: hidden;
         margin-top: 0;
         padding-top: 0;
@@ -873,11 +869,6 @@ section.guarantees-list.sticky-active {
 
 
 /* Contenedor de paneles */
-.guarantee-detail {
-    position: relative;
-    overflow-x: hidden;
-}
-
 /* Estilos base para ambos paneles */
 .guarantee-detail__panel {
     position: absolute;
