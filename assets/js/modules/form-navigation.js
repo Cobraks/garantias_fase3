@@ -98,38 +98,49 @@ function showTab(index) {
         const prevFieldset = FormCache.fieldsets[previousIndex];
         const newFieldset = FormCache.fieldsets[index];
 
-        if (!newFieldset) return;
+        if (!newFieldset || index === previousIndex) return;
 
+        const direction = index > previousIndex ? 1 : -1;
         const displayMode = newFieldset.id === "finalizar" ? "flex" : "block";
         newFieldset.style.display = displayMode;
         newFieldset.classList.add("tab-enter");
+        newFieldset.style.transform = `translateX(${direction * 100}%)`;
+
+        const container = newFieldset.parentElement;
+        const startHeight = prevFieldset ? prevFieldset.offsetHeight : newFieldset.offsetHeight;
+        const endHeight = newFieldset.offsetHeight;
+        container.style.height = startHeight + "px";
 
         if (prevFieldset && prevFieldset !== newFieldset) {
                 prevFieldset.classList.add("tab-exit");
+                prevFieldset.style.transform = "translateX(0)";
         }
 
         requestAnimationFrame(() => {
-                newFieldset.classList.add("tab-enter-active");
+                container.style.height = endHeight + "px";
+                newFieldset.style.transform = "translateX(0)";
                 if (prevFieldset && prevFieldset !== newFieldset) {
-                        prevFieldset.classList.add("tab-exit-active");
+                        prevFieldset.style.transform = `translateX(${direction * -100}%)`;
                 }
         });
 
         function handleTransitionEnd(e) {
                 if (e.target !== newFieldset) return;
-                newFieldset.classList.remove("tab-enter", "tab-enter-active");
+                newFieldset.classList.remove("tab-enter");
                 newFieldset.classList.add("form__tab-content--active");
                 newFieldset.style.display = "";
+                newFieldset.style.transform = "";
 
                 if (prevFieldset && prevFieldset !== newFieldset) {
                         prevFieldset.classList.remove(
                                 "tab-exit",
-                                "tab-exit-active",
                                 "form__tab-content--active"
                         );
                         prevFieldset.style.display = "none";
+                        prevFieldset.style.transform = "";
                 }
 
+                container.style.height = "";
                 newFieldset.removeEventListener("transitionend", handleTransitionEnd);
         }
 

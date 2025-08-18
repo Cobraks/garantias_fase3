@@ -452,12 +452,12 @@ background: transparent;
       max-width: 406px;
       margin-inline: auto;
       position: relative;
+      overflow: hidden;
   }
 
   .form__tab-content {
       display: none;
       padding-top: 2rem;
-      transition: opacity 0.3s ease;
   }
 
   .form__tab-content.tab-enter,
@@ -466,23 +466,15 @@ background: transparent;
       top: 0;
       left: 0;
       width: 100%;
+      transition: transform 0.3s ease;
   }
 
   .form__tab-content.tab-enter {
       display: block;
-      opacity: 0;
-  }
-
-  .form__tab-content.tab-enter-active {
-      opacity: 1;
   }
 
   .form__tab-content.tab-exit {
-      opacity: 1;
-  }
-
-  .form__tab-content.tab-exit-active {
-      opacity: 0;
+      display: block;
   }
   
   .form__tab-content#finalizar .form__wrapper-inputs {
@@ -634,11 +626,9 @@ fill: #003048;
 
 
   
-  .form__tab-content--active {
-      display: block;
-      opacity: 1;
-      transform: translateX(0);
-  }
+.form__tab-content--active {
+    display: block;
+}
   
   .form__button-container {
       display: flex;
