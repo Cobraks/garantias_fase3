@@ -94,25 +94,82 @@ function clearPlanSelectionError() {
 
 // === Estado visual + saltos de pestaña ===
 function showTab(index) {
-	FormCache.fieldsets.forEach((fs, i) =>
-		fs.classList.toggle("form__tab-content--active", i === index)
-	);
-	FormCache.tabs.forEach((tab, i) =>
-		tab.classList.toggle("active", i === index)
-	);
-	if (FormCache.prevButton) {
-		FormCache.prevButton.style.display = index === 0 ? "none" : "";
-	}
-	if (FormCache.nextButton) {
-		FormCache.nextButton.textContent =
-			index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
-	}
+        const previousIndex = FormCache.currentTab;
+        const prevFieldset = FormCache.fieldsets[previousIndex];
+        const newFieldset = FormCache.fieldsets[index];
 
-	// Actualiza estado
-	FormCache.currentTab = index;
+        if (!newFieldset || index === previousIndex) return;
 
-	// --- Forzar recálculo de modalidades/planes al mostrar pasos relacionados ---
-	const currentFieldset = FormCache.fieldsets[index];
+        const direction = index > previousIndex ? 1 : -1;
+        const displayMode = newFieldset.id === "finalizar" ? "flex" : "block";
+        newFieldset.style.display = displayMode;
+        newFieldset.classList.add("tab-enter");
+        newFieldset.style.transform = `translateX(${direction * 100}%)`;
+        newFieldset.style.opacity = "0";
+
+        const container = newFieldset.parentElement;
+        const startHeight = prevFieldset ? prevFieldset.offsetHeight : newFieldset.offsetHeight;
+        const endHeight = newFieldset.offsetHeight;
+        container.style.height = startHeight + "px";
+
+        if (prevFieldset && prevFieldset !== newFieldset) {
+                prevFieldset.classList.add("tab-exit");
+                prevFieldset.style.transform = "translateX(0)";
+                prevFieldset.style.opacity = "1";
+        }
+
+        requestAnimationFrame(() => {
+                container.style.height = endHeight + "px";
+                newFieldset.style.transform = "translateX(0)";
+                newFieldset.style.opacity = "1";
+                if (prevFieldset && prevFieldset !== newFieldset) {
+                        prevFieldset.style.transform = `translateX(${direction * -100}%)`;
+                        prevFieldset.style.opacity = "0";
+                }
+        });
+
+        function handleTransitionEnd(e) {
+                if (e.target !== newFieldset) return;
+                newFieldset.classList.remove("tab-enter");
+                newFieldset.classList.add("form__tab-content--active");
+                newFieldset.style.display = "";
+                newFieldset.style.transform = "";
+                newFieldset.style.opacity = "";
+
+                if (prevFieldset && prevFieldset !== newFieldset) {
+                        prevFieldset.classList.remove(
+                                "tab-exit",
+                                "form__tab-content--active"
+                        );
+                        prevFieldset.style.display = "none";
+                        prevFieldset.style.transform = "";
+                        prevFieldset.style.opacity = "";
+                }
+
+                container.style.height = "";
+                newFieldset.removeEventListener("transitionend", handleTransitionEnd);
+        }
+
+        newFieldset.addEventListener("transitionend", handleTransitionEnd);
+
+        // Tabs visuales
+        FormCache.tabs.forEach((tab, i) =>
+                tab.classList.toggle("active", i === index)
+        );
+
+        if (FormCache.prevButton) {
+                FormCache.prevButton.style.display = index === 0 ? "none" : "";
+        }
+        if (FormCache.nextButton) {
+                FormCache.nextButton.textContent =
+                        index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
+        }
+
+        // Actualiza estado
+        FormCache.currentTab = index;
+
+        // --- Forzar recálculo de modalidades/planes al mostrar pasos relacionados ---
+        const currentFieldset = newFieldset;
         if (
                 currentFieldset &&
                 (currentFieldset.id === "seleccionar-garantia" ||
@@ -123,14 +180,14 @@ function showTab(index) {
                 }
         }
 
-	// Limpia error de plan si ya hay uno seleccionado
-	if (currentFieldset.id === "seleccionar-garantia") {
-		if (document.querySelector(".form__plan.selected")) {
-			clearPlanSelectionError();
-		}
-	}
+        // Limpia error de plan si ya hay uno seleccionado
+        if (currentFieldset.id === "seleccionar-garantia") {
+                if (document.querySelector(".form__plan.selected")) {
+                        clearPlanSelectionError();
+                }
+        }
 
-	// Actualiza UI dependientes
+        // Actualiza UI dependientes
         updateNextButtonState();
         if (typeof debouncedUpdateSummary === "function") {
                 debouncedUpdateSummary();
@@ -190,7 +247,6 @@ function updateNextButtonState() {
 
         if (FormCache.nextButton) {
                 FormCache.nextButton.classList.toggle("disabled", !allValid);
-                FormCache.nextButton.style.cursor = allValid ? "pointer" : "not-allowed";
         }
 
         // Marcar/desmarcar pestaña completada en cache
@@ -207,26 +263,24 @@ function updateNextButtonState() {
 function setupTabNavigation() {
 	if (!FormCache.tabs) return;
 
-	FormCache.tabs.forEach((tab, index) => {
-		tab.addEventListener("click", () => {
-			if (
-				index < FormCache.currentTab || // retroceder siempre
-				(index > FormCache.currentTab && isCurrentTabValid())
-			) {
-				FormCache.currentTab = index;
-				showTab(index);
-			}
-		});
-	});
+        FormCache.tabs.forEach((tab, index) => {
+                tab.addEventListener("click", () => {
+                        if (
+                                index < FormCache.currentTab || // retroceder siempre
+                                (index > FormCache.currentTab && isCurrentTabValid())
+                        ) {
+                                showTab(index);
+                        }
+                });
+        });
 
 	if (FormCache.prevButton) {
-		FormCache.prevButton.addEventListener("click", () => {
-			if (FormCache.currentTab > 0) {
-				FormCache.currentTab--;
-				showTab(FormCache.currentTab);
-			}
-		});
-	}
+                FormCache.prevButton.addEventListener("click", () => {
+                        if (FormCache.currentTab > 0) {
+                                showTab(FormCache.currentTab - 1);
+                        }
+                });
+        }
 
 	if (FormCache.nextButton) {
 		FormCache.nextButton.addEventListener("click", () => {
@@ -248,14 +302,13 @@ function setupTabNavigation() {
                         if (typeof showSummarySectionForTab === "function") {
                                 showSummarySectionForTab(FormCache.currentTab);
                         }
-			if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
-				FormCache.currentTab++;
-				showTab(FormCache.currentTab);
-			} else {
-				// último paso: delega en otro módulo (ej. form-submission)
-			}
-		});
-	}
+                        if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
+                                showTab(FormCache.currentTab + 1);
+                        } else {
+                                // último paso: delega en otro módulo (ej. form-submission)
+                        }
+                });
+        }
 }
 
 // === EXPORTS ===
