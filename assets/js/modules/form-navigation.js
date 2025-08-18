@@ -93,26 +93,65 @@ function clearPlanSelectionError() {
 }
 
 // === Estado visual + saltos de pestaña ===
+function animateTabTransition(oldIndex, newIndex) {
+        const oldFs = FormCache.fieldsets[oldIndex];
+        const newFs = FormCache.fieldsets[newIndex];
+        if (!newFs) return;
+
+        const forward = newIndex > oldIndex;
+        const inClass = forward ? "tab-slide-in-right" : "tab-slide-in-left";
+        const outClass = forward ? "tab-slide-out-left" : "tab-slide-out-right";
+
+        const form = document.getElementById("form-garantia");
+        if (form) {
+                const refFs = oldFs || newFs;
+                form.style.height = refFs.offsetHeight + "px";
+        }
+
+        newFs.style.display = "block";
+        newFs.classList.add("is-sliding", inClass, "form__tab-content--active");
+
+        if (oldFs) {
+                oldFs.classList.add("is-sliding", outClass);
+        }
+
+        setTimeout(() => {
+                newFs.classList.remove("is-sliding", inClass);
+                if (oldFs) {
+                        oldFs.classList.remove(
+                                "is-sliding",
+                                outClass,
+                                "form__tab-content--active"
+                        );
+                        oldFs.style.display = "none";
+                }
+                if (form) {
+                        form.style.height = "";
+                }
+        }, 300);
+}
+
 function showTab(index) {
-	FormCache.fieldsets.forEach((fs, i) =>
-		fs.classList.toggle("form__tab-content--active", i === index)
-	);
-	FormCache.tabs.forEach((tab, i) =>
-		tab.classList.toggle("active", i === index)
-	);
-	if (FormCache.prevButton) {
-		FormCache.prevButton.style.display = index === 0 ? "none" : "";
-	}
-	if (FormCache.nextButton) {
-		FormCache.nextButton.textContent =
-			index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
-	}
+        const previousIndex = FormCache.currentTab;
+        if (index !== previousIndex) {
+                animateTabTransition(previousIndex, index);
+        }
+        FormCache.tabs.forEach((tab, i) =>
+                tab.classList.toggle("active", i === index)
+        );
+        if (FormCache.prevButton) {
+                FormCache.prevButton.style.display = index === 0 ? "none" : "";
+        }
+        if (FormCache.nextButton) {
+                FormCache.nextButton.textContent =
+                        index === FormCache.fieldsets.length - 1 ? "Contratar" : "Siguiente";
+        }
 
-	// Actualiza estado
-	FormCache.currentTab = index;
+        // Actualiza estado
+        FormCache.currentTab = index;
 
-	// --- Forzar recálculo de modalidades/planes al mostrar pasos relacionados ---
-	const currentFieldset = FormCache.fieldsets[index];
+        // --- Forzar recálculo de modalidades/planes al mostrar pasos relacionados ---
+        const currentFieldset = FormCache.fieldsets[index];
         if (
                 currentFieldset &&
                 (currentFieldset.id === "seleccionar-garantia" ||
@@ -123,14 +162,14 @@ function showTab(index) {
                 }
         }
 
-	// Limpia error de plan si ya hay uno seleccionado
-	if (currentFieldset.id === "seleccionar-garantia") {
-		if (document.querySelector(".form__plan.selected")) {
-			clearPlanSelectionError();
-		}
-	}
+        // Limpia error de plan si ya hay uno seleccionado
+        if (currentFieldset.id === "seleccionar-garantia") {
+                if (document.querySelector(".form__plan.selected")) {
+                        clearPlanSelectionError();
+                }
+        }
 
-	// Actualiza UI dependientes
+        // Actualiza UI dependientes
         updateNextButtonState();
         if (typeof debouncedUpdateSummary === "function") {
                 debouncedUpdateSummary();
@@ -207,26 +246,24 @@ function updateNextButtonState() {
 function setupTabNavigation() {
 	if (!FormCache.tabs) return;
 
-	FormCache.tabs.forEach((tab, index) => {
-		tab.addEventListener("click", () => {
-			if (
-				index < FormCache.currentTab || // retroceder siempre
-				(index > FormCache.currentTab && isCurrentTabValid())
-			) {
-				FormCache.currentTab = index;
-				showTab(index);
-			}
-		});
-	});
+        FormCache.tabs.forEach((tab, index) => {
+                tab.addEventListener("click", () => {
+                        if (
+                                index < FormCache.currentTab || // retroceder siempre
+                                (index > FormCache.currentTab && isCurrentTabValid())
+                        ) {
+                                showTab(index);
+                        }
+                });
+        });
 
-	if (FormCache.prevButton) {
-		FormCache.prevButton.addEventListener("click", () => {
-			if (FormCache.currentTab > 0) {
-				FormCache.currentTab--;
-				showTab(FormCache.currentTab);
-			}
-		});
-	}
+        if (FormCache.prevButton) {
+                FormCache.prevButton.addEventListener("click", () => {
+                        if (FormCache.currentTab > 0) {
+                                showTab(FormCache.currentTab - 1);
+                        }
+                });
+        }
 
 	if (FormCache.nextButton) {
 		FormCache.nextButton.addEventListener("click", () => {
@@ -248,14 +285,13 @@ function setupTabNavigation() {
                         if (typeof showSummarySectionForTab === "function") {
                                 showSummarySectionForTab(FormCache.currentTab);
                         }
-			if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
-				FormCache.currentTab++;
-				showTab(FormCache.currentTab);
-			} else {
-				// último paso: delega en otro módulo (ej. form-submission)
-			}
-		});
-	}
+                        if (FormCache.currentTab < FormCache.fieldsets.length - 1) {
+                                showTab(FormCache.currentTab + 1);
+                        } else {
+                                // último paso: delega en otro módulo (ej. form-submission)
+                        }
+                });
+        }
 }
 
 // === EXPORTS ===
