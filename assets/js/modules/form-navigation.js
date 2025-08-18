@@ -100,47 +100,40 @@ function showTab(index) {
 
         if (!newFieldset) return;
 
-        // Animación de salida
-        if (prevFieldset && prevFieldset !== newFieldset) {
-                prevFieldset.classList.add("tab-exit");
-                requestAnimationFrame(() => {
-                        prevFieldset.classList.add("tab-exit-active");
-                });
-                prevFieldset.addEventListener(
-                        "transitionend",
-                        function handleExit(e) {
-                                if (e.target !== prevFieldset) return;
-                                prevFieldset.classList.remove(
-                                        "tab-exit",
-                                        "tab-exit-active",
-                                        "form__tab-content--active"
-                                );
-                                prevFieldset.style.display = "none";
-                                prevFieldset.removeEventListener(
-                                        "transitionend",
-                                        handleExit
-                                );
-                        }
-                );
-        }
-
-        // Animación de entrada
         const displayMode = newFieldset.id === "finalizar" ? "flex" : "block";
         newFieldset.style.display = displayMode;
         newFieldset.classList.add("tab-enter");
+
+        if (prevFieldset && prevFieldset !== newFieldset) {
+                prevFieldset.classList.add("tab-exit");
+        }
+
         requestAnimationFrame(() => {
                 newFieldset.classList.add("tab-enter-active");
-        });
-        newFieldset.addEventListener(
-                "transitionend",
-                function handleEnter(e) {
-                        if (e.target !== newFieldset) return;
-                        newFieldset.classList.remove("tab-enter", "tab-enter-active");
-                        newFieldset.classList.add("form__tab-content--active");
-                        newFieldset.style.display = "";
-                        newFieldset.removeEventListener("transitionend", handleEnter);
+                if (prevFieldset && prevFieldset !== newFieldset) {
+                        prevFieldset.classList.add("tab-exit-active");
                 }
-        );
+        });
+
+        function handleTransitionEnd(e) {
+                if (e.target !== newFieldset) return;
+                newFieldset.classList.remove("tab-enter", "tab-enter-active");
+                newFieldset.classList.add("form__tab-content--active");
+                newFieldset.style.display = "";
+
+                if (prevFieldset && prevFieldset !== newFieldset) {
+                        prevFieldset.classList.remove(
+                                "tab-exit",
+                                "tab-exit-active",
+                                "form__tab-content--active"
+                        );
+                        prevFieldset.style.display = "none";
+                }
+
+                newFieldset.removeEventListener("transitionend", handleTransitionEnd);
+        }
+
+        newFieldset.addEventListener("transitionend", handleTransitionEnd);
 
         // Tabs visuales
         FormCache.tabs.forEach((tab, i) =>

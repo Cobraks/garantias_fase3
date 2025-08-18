@@ -451,33 +451,38 @@ background: transparent;
       padding-inline: var(--spacing-2);
       max-width: 406px;
       margin-inline: auto;
+      position: relative;
   }
-  
+
   .form__tab-content {
       display: none;
       padding-top: 2rem;
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      transition: opacity 0.3s ease;
+  }
+
+  .form__tab-content.tab-enter,
+  .form__tab-content.tab-exit {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
   }
 
   .form__tab-content.tab-enter {
       display: block;
       opacity: 0;
-      transform: translateX(2rem);
   }
 
   .form__tab-content.tab-enter-active {
       opacity: 1;
-      transform: translateX(0);
   }
 
   .form__tab-content.tab-exit {
       opacity: 1;
-      transform: translateX(0);
   }
 
   .form__tab-content.tab-exit-active {
       opacity: 0;
-      transform: translateX(-2rem);
   }
   
   .form__tab-content#finalizar .form__wrapper-inputs {
