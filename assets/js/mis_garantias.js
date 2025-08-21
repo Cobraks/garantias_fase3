@@ -605,10 +605,10 @@
 			const label = skeletons.includes("concesionario")
 				? `<span class="skeleton skeleton--nombre"></span>`
 				: vendedor ?? "-";
-			const tel = skeletons.includes("telefono_vendedor")
-				? ""
-				: telefono ?? "-";
-			const mail = skeletons.includes("email_vendedor") ? "" : email ?? "-";
+                        const tel = skeletons.includes("telefono_vendedor")
+                                ? ""
+                                : telefono ?? "";
+                        const mail = skeletons.includes("email_vendedor") ? "" : email ?? "";
 			return `
 				<ul class="fast-actions">
 					<li class="fast-actions__item">
@@ -659,7 +659,8 @@
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
-    const canalVentaText = data.canal_venta ?? rowData.canal_venta;
+    const canalVentaText =
+        getFieldText(data.canal_venta) ?? getFieldText(rowData.canal_venta);
     const concesionarioText = data.concesionario ?? rowData.concesionario;
 
     const isFilled = (val) => {
@@ -709,7 +710,7 @@
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--fast-actions">
                                 <h3 class="detail__section-title">Canal de venta</h3>
-                                <p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
+                                <p>${canalVentaText ?? "-"}, ${concesionarioText ?? "-"}</p>
                                 ${renderFastActions(
                                         concesionarioText,
                                         data.telefono_vendedor ?? rowData.telefono_vendedor,
@@ -814,7 +815,7 @@
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--fast-actions">
                                 <h3 class="detail__section-title">Canal de venta</h3>
-                                <p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
+                                <p>${canalVentaText ?? "-"}, ${concesionarioText ?? "-"}</p>
                                 ${renderFastActions(
                                         concesionarioText,
                                         data.telefono_vendedor ?? rowData.telefono_vendedor,
