@@ -160,11 +160,29 @@
                                         data.kilometros = num.toLocaleString("es-ES");
                                 }
                         }
+                        if (data.cilindrada === undefined && data.Cilindrada !== undefined) {
+                                data.cilindrada = data.Cilindrada;
+                        }
+                        if (data.cilindrada !== undefined) {
+                                const num = parseInt(String(data.cilindrada).replace(/[^0-9]/g, ""), 10);
+                                if (!isNaN(num)) {
+                                        data.cilindrada = num.toLocaleString("es-ES");
+                                }
+                        }
+                        if (data.potencia !== undefined) {
+                                const num = parseInt(String(data.potencia).replace(/[^0-9]/g, ""), 10);
+                                if (!isNaN(num)) {
+                                        data.potencia = num.toLocaleString("es-ES");
+                                }
+                        }
                         if (data.combustible && typeof data.combustible === "object") {
-                                data.combustible = data.combustible.label || data.combustible.value || data.combustible;
+                                data.combustible = data.combustible.label || data.combustible.name || data.combustible.value || data.combustible;
                         }
                         if (data.cambio && typeof data.cambio === "object") {
-                                data.cambio = data.cambio.label || data.cambio.value || data.cambio;
+                                data.cambio = data.cambio.label || data.cambio.name || data.cambio.value || data.cambio;
+                        }
+                        if (data.tipo && typeof data.tipo === "object") {
+                                data.tipo = data.tipo.label || data.tipo.name || data.tipo.value || data.tipo;
                         }
                         return data;
                 }
