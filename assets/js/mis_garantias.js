@@ -21,6 +21,8 @@
                                 window.__GO_CONFIG__.user &&
                                 window.__GO_CONFIG__.user.role) ||
                         "user";
+                const isAdmin =
+                        userRole === "administrator" || userRole === "admin";
                 const DEFAULT_PER = 12;
 		let perPage = DEFAULT_PER;
 		let currentPage = 1;
@@ -639,6 +641,8 @@
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
+    const canalVentaText = data.canal_venta ?? rowData.canal_venta;
+    const concesionarioText = data.concesionario ?? rowData.concesionario;
 
     const isFilled = (val) => {
         if (val === undefined || val === null) return false;
@@ -662,6 +666,8 @@
         isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
     const hasDocs = docFields.every((field) => isFilled(data[field]));
     const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
+    const showChannelSection =
+        isAdmin && isFilled(canalVentaText) && isFilled(concesionarioText);
 
     if (isSinFinalizar) {
         return `
@@ -683,12 +689,12 @@
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
                 </div>
-                ${userRole === "admin"
+                ${showChannelSection
                         ? `<section class="detail__section detail__section--fast-actions">
                                 <h3 class="detail__section-title">Canal de venta</h3>
                                 <p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
                                 ${renderFastActions(
-                                        data.concesionario ?? rowData.concesionario,
+                                        concesionarioText,
                                         data.telefono_vendedor ?? rowData.telefono_vendedor,
                                         data.email_vendedor ?? rowData.email_vendedor,
                                         skeletons
@@ -788,16 +794,18 @@
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
                 </div>
-                <section class="detail__section detail__section--fast-actions">
-                        <h3 class="detail__section-title">Canal de venta</h3>
+                ${showChannelSection
+                        ? `<section class="detail__section detail__section--fast-actions">
+                                <h3 class="detail__section-title">Canal de venta</h3>
                                 <p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
                                 ${renderFastActions(
-                                        data.concesionario ?? rowData.concesionario,
+                                        concesionarioText,
                                         data.telefono_vendedor ?? rowData.telefono_vendedor,
                                         data.email_vendedor ?? rowData.email_vendedor,
                                         skeletons
                                 )}
-                </section>
+                        </section>`
+                        : ""}
                 <section class="detail__section">
                         <h3>Datos del vehículo</h3>
                         <ul>
