@@ -16,7 +16,12 @@
                         (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.nonce) ||
                         (window.GO_REST && window.GO_REST.nonce) ||
                         "";
-		const DEFAULT_PER = 12;
+                const userRole =
+                        (window.__GO_CONFIG__ &&
+                                window.__GO_CONFIG__.user &&
+                                window.__GO_CONFIG__.user.role) ||
+                        "user";
+                const DEFAULT_PER = 12;
 		let perPage = DEFAULT_PER;
 		let currentPage = 1;
 		let totalPages = 1;
@@ -678,6 +683,18 @@
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
                 </div>
+                ${userRole === "admin"
+                        ? `<section class="detail__section detail__section--fast-actions">
+                                <h3 class="detail__section-title">Canal de venta</h3>
+                                <p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
+                                ${renderFastActions(
+                                        data.concesionario ?? rowData.concesionario,
+                                        data.telefono_vendedor ?? rowData.telefono_vendedor,
+                                        data.email_vendedor ?? rowData.email_vendedor,
+                                        skeletons
+                                )}
+                        </section>`
+                        : ""}
                 <section class="detail__section">
                         <h3>Datos del vehículo</h3>
                         <ul>
