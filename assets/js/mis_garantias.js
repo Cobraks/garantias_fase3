@@ -626,19 +626,27 @@
     const hasGuaranteeInfo = Boolean(
         data.plan && data.desde_fmt && data.hasta_fmt
     );
-    const hasDocs = Boolean(
-        data.contrato_url ||
-            data.condicionado_url ||
-            data.cobertura_url ||
-            data.factura_url
-    );
-    const hasBuyerInfo = [
+
+    const isFilled = (val) => {
+        if (val === undefined || val === null) return false;
+        const str = String(val).trim();
+        return str !== "" && str !== "-" && str !== "#";
+    };
+    const docFields = [
+        "contrato_url",
+        "condicionado_url",
+        "cobertura_url",
+        "factura_url",
+    ];
+    const buyerFields = [
         "nombre_comprador",
         "dni_comprador",
         "telefono_comprador",
         "email_comprador",
         "direccion_comprador",
-    ].every((field) => data[field]);
+    ];
+    const hasDocs = docFields.every((field) => isFilled(data[field]));
+    const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
 
     if (isSinFinalizar) {
         return `
@@ -730,7 +738,7 @@
                                         </a>
                                 </li>
                         </ul>`
-                            : `<p class="detail__alert-section">Datos del cliente pendientes</p>`}
+                            : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
         </div>`;
     }
