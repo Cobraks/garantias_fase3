@@ -623,11 +623,33 @@
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
 
+    const hasGuaranteeInfo = Boolean(
+        data.plan && data.desde_fmt && data.hasta_fmt
+    );
+    const hasDocs = Boolean(
+        data.contrato_url ||
+            data.condicionado_url ||
+            data.cobertura_url ||
+            data.factura_url
+    );
+    const hasBuyerInfo = [
+        "nombre_comprador",
+        "dni_comprador",
+        "telefono_comprador",
+        "email_comprador",
+        "direccion_comprador",
+    ].every((field) => data[field]);
+
     if (isSinFinalizar) {
         return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${skeleton("matricula")}</h2>
+                        ${hasGuaranteeInfo
+                            ? `<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
+                        <div><p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
+                                <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p></div>`
+                            : ""}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
@@ -661,11 +683,54 @@
                 </section>
                 <section class="detail__section detail__section--docs">
                         <h3 class="detail__section-title">Documentación</h3>
-                        <p class="detail__alert-section">Documentación no disponible</p>
+                        ${hasDocs
+                            ? `<ul class="detail__docs-list">
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("contrato_url", "#")}" aria-label="Ver documento Contrato">
+                                                <span class="detail__docs-label">Contrato</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" aria-label="Ver documento Condicionado">
+                                                <span class="detail__docs-label">Condicionado</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" aria-label="Ver documento Cobertura">
+                                                <span class="detail__docs-label">Cobertura</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" aria-label="Ver documento Factura">
+                                                <span class="detail__docs-label">Factura</span>
+                                        </button>
+                                </li>
+                        </ul>`
+                            : `<p class="detail__alert-section">Documentación no disponible</p>`}
                 </section>
                 <section class="detail__section">
                         <h3>Datos del comprador</h3>
-                        <p class="detail__alert-section">Datos del cliente pendientes</p>
+                        ${hasBuyerInfo
+                            ? `<ul>
+                                <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
+                                <li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
+                                <li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
+                                <li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
+                                <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
+                        </ul>
+                        <ul class="fast-actions">
+                                <li class="fast-actions__item">
+                                        <a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
+                                                <span class="fast-actions__label">Cliente</span>
+                                        </a>
+                                </li>
+                                <li class="fast-actions__item">
+                                        <a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
+                                                <span class="fast-actions__label">Cliente</span>
+                                        </a>
+                                </li>
+                        </ul>`
+                            : `<p class="detail__alert-section">Datos del cliente pendientes</p>`}
                 </section>
         </div>`;
     }
