@@ -22,7 +22,7 @@
                                 window.__GO_CONFIG__.user.role) ||
                         "user";
                 const isAdmin =
-                        userRole === "administrator" || userRole === "admin";
+                        ["administrator", "admin", "go_garantias", "go_comercial"].includes(userRole);
                 const DEFAULT_PER = 12;
 		let perPage = DEFAULT_PER;
 		let currentPage = 1;
