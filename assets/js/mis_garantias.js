@@ -589,163 +589,188 @@
 		}
 
                 function renderFullDetail(data, rowData, skeletons = []) {
-                        const getFieldText = (val) =>
-                                val && typeof val === "object" && "label" in val
-                                        ? val.label
-                                        : val;
-                        const skeleton = (field, fallback = "-") =>
-                                skeletons.includes(field)
-                                        ? `<span class="skeleton skeleton--${field}"></span>`
-                                        : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
+    const getFieldText = (val) =>
+        val && typeof val === "object" && "label" in val
+            ? val.label
+            : val;
+    const skeleton = (field, fallback = "-") =>
+        skeletons.includes(field)
+            ? `<span class="skeleton skeleton--${field}"></span>`
+            : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
 
-                        const mesesTotales = getDurationMeses(data.desde, data.hasta);
-                        const mesesRestantes = getRestantesMeses(data.hasta);
+    const mesesTotales = getDurationMeses(data.desde, data.hasta);
+    const mesesRestantes = getRestantesMeses(data.hasta);
 
-                        const estadoValue =
-                                (data.estado && data.estado.value) ||
-                                rowData.estadoclase ||
-                                "pendiente-pago";
-                        const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
-                                estadoValue
-                        )}`;
+    const estadoValue =
+        (data.estado && data.estado.value) ||
+        rowData.estadoclase ||
+        "pendiente-pago";
+    const isSinFinalizar = estadoValue === "sin_finalizar";
+    const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
+        estadoValue
+    )}`;
 
-                        const planTitle = `${data.plan ?? "-"}${
-                                mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
-                        }`;
-                        const fuelRaw = (
-                                data.combustible ?? rowData.combustible ?? ""
-                        )
-                                .toString()
-                                .toLowerCase();
-                        const isElectric = fuelRaw
-                                .normalize("NFD")
-                                .replace(/[\u0300-\u036f]/g, "") === "electrico";
-                        const potenciaUnidad = isElectric ? "kW" : "CV";
+    const planTitle = `${data.plan ?? "-"}${
+        mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
+    }`;
+    const fuelRaw = (
+        data.combustible ?? rowData.combustible ?? ""
+    )
+        .toString()
+        .toLowerCase();
+    const isElectric = fuelRaw
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") === "electrico";
+    const potenciaUnidad = isElectric ? "kW" : "CV";
 
-                        return `
-                                <div class="guarantee-detail__inner">
-					<div class="guarantee-detail__header">
-						<h2>Garantía ${skeleton("matricula")}</h2>
-						<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
-                                                <div>
-                                                        <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
-                                                        <span class="guarantee-detail__plan-duration">(${
-                                                                mesesRestantes !== "-"
-                                                                        ? mesesRestantes + " meses restantes"
-                                                                        : "-"
-                                                        })</span></p>
-                                                </div>
-                                                <div class="${badgeClase}">${skeleton(
-                                                        "estado",
-                                                        "Desconocido"
-                                                )}</div>
-					</div>
-					<div class="guarantee-detail__btn-container">
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
+    if (isSinFinalizar) {
+        return `
+        <div class="guarantee-detail__inner">
+                <div class="guarantee-detail__header">
+                        <h2>Garantía ${skeleton("matricula")}</h2>
+                        <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
+                        <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
+                </div>
+                <div class="guarantee-detail__btn-container">
+                        <button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">
+                                <span class="guarantee-detail__btn-text">Continuar con la garantía</span>
+                        </button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
+                </div>
+                <section class="detail__section">
+                        <h3>Datos del vehículo</h3>
+                        <ul>
+                                <li><strong>Marca/Modelo:</strong> ${skeleton("marca_modelo")}</li>
+                                <li><strong>Tipo:</strong> ${skeleton("tipo", "-")}</li>
+                                <li><strong>Kilómetros:</strong> ${skeleton("kilometros", "-")} km</li>
+                                <li><strong>1ª Matriculación:</strong> ${skeleton("primera_matriculacion", "-")}</li>
+                                <li><strong>Matrícula:</strong> ${skeleton("matricula")}</li>
+                                <li><strong>Nº Bastidor:</strong> ${skeleton("bastidor", "-")}</li>
+                                <li><strong>Precio venta:</strong> ${skeleton("precio_venta", "-")} €</li>
+                        </ul>
+                </section>
+                <section class="detail__section">
+                        <h3>Detalles técnicos</h3>
+                        <ul>
+                                <li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
+                                <li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
+                                <li><strong>Potencia:</strong> ${skeleton("potencia", "-")} ${potenciaUnidad}</li>
+                                <li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")} CC</li>
+                        </ul>
+                </section>
+                <section class="detail__section detail__section--docs">
+                        <h3 class="detail__section-title">Documentación</h3>
+                        <p class="detail__alert-section">Documentación no disponible</p>
+                </section>
+                <section class="detail__section">
+                        <h3>Datos del comprador</h3>
+                        <p class="detail__alert-section">Datos del cliente pendientes</p>
+                </section>
+        </div>`;
+    }
 
-							<span class="guarantee-detail__btn-text">Abrir expediente</span>
-						</button>
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
-					</div>
-					<section class="detail__section detail__section--fast-actions">
-						<h3 class="detail__section-title">Canal de venta</h3>
-							<p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
-							${renderFastActions(
-								data.concesionario ?? rowData.concesionario,
-								data.telefono_vendedor ?? rowData.telefono_vendedor,
-								data.email_vendedor ?? rowData.email_vendedor,
-								skeletons
-							)}
-					</section>
-					<section class="detail__section">
-						<h3>Datos del vehículo</h3>
-						<ul>
-							<li><strong>Marca/Modelo:</strong> ${skeleton("marca_modelo")}</li>
-							<li><strong>Tipo:</strong> ${skeleton("tipo", "-")}</li>
-							<li><strong>Kilómetros:</strong> ${skeleton("kilometros", "-")} km</li>
-							<li><strong>1ª Matriculación:</strong> ${skeleton(
-								"primera_matriculacion",
-								"-"
-							)}</li>
-							<li><strong>Matrícula:</strong> ${skeleton("matricula")}</li>
-							<li><strong>Nº Bastidor:</strong> ${skeleton("bastidor", "-")}</li>
-							<li><strong>Precio venta:</strong> ${skeleton("precio_venta", "-")} €</li>
-						</ul>
-					</section>
-					<section class="detail__section">
-						<h3>Detalles técnicos</h3>
-						<ul>
-                                                        <li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
-                                                        <li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
-                                                        <li><strong>Potencia:</strong> ${skeleton("potencia", "-")} ${potenciaUnidad}</li>
-                                                        <li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")} CC</li>
-                                                </ul>
-                                        </section>
-                                        <section class="detail__section detail__section--docs">
-						<h3 class="detail__section-title">Documentación</h3>
-						<ul class="detail__docs-list">
-							<li class="detail__docs-item">
-								<button type="button" class="detail__docs-btn" data-doc-url="${skeleton(
-									"contrato_url",
-									"#"
-								)}" aria-label="Ver documento Contrato">
-									<span class="detail__docs-label">Contrato</span>
-								</button>
-							</li>
-							<li class="detail__docs-item">
-								<button type="button" class="detail__docs-btn" data-doc-url="${skeleton(
-									"condicionado_url",
-									"#"
-								)}" aria-label="Ver documento Condicionado">
-									<span class="detail__docs-label">Condicionado</span>
-								</button>
-							</li>
-							<li class="detail__docs-item">
-								<button type="button" class="detail__docs-btn" data-doc-url="${skeleton(
-									"cobertura_url",
-									"#"
-								)}" aria-label="Ver documento Cobertura">
-									<span class="detail__docs-label">Cobertura</span>
-								</button>
-							</li>
-							<li class="detail__docs-item">
-								<button type="button" class="detail__docs-btn" data-doc-url="${skeleton(
-									"factura_url",
-									"#"
-								)}" aria-label="Ver documento Factura">
-									<span class="detail__docs-label">Factura</span>
-								</button>
-							</li>
-						</ul>
-					</section>
-					<section class="detail__section">
-						<h3>Datos del comprador</h3>
-						<ul>
-							<li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
-							<li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
-							<li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
-							<li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
-							<li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
-						</ul>
-						<ul class="fast-actions">
-							<li class="fast-actions__item">
-								<a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
-									<span class="fast-actions__label">Cliente</span>
-								</a>
-							</li>
-							<li class="fast-actions__item">
-								<a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
-									<span class="fast-actions__label">Cliente</span>
-								</a>
-							</li>
-						</ul>
-					</section>
-				</div>
-			`;
-		}
+    return `
+        <div class="guarantee-detail__inner">
+                <div class="guarantee-detail__header">
+                        <h2>Garantía ${skeleton("matricula")}</h2>
+                        <h3 class="guarantee-detail__plan-title">${planTitle}</h3>
+                        <div>
+                                <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
+                                <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p>
+                        </div>
+                        <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
+                </div>
+                <div class="guarantee-detail__btn-container">
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
+                                <span class="guarantee-detail__btn-text">Abrir expediente</span>
+                        </button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
+                </div>
+                <section class="detail__section detail__section--fast-actions">
+                        <h3 class="detail__section-title">Canal de venta</h3>
+                                <p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
+                                ${renderFastActions(
+                                        data.concesionario ?? rowData.concesionario,
+                                        data.telefono_vendedor ?? rowData.telefono_vendedor,
+                                        data.email_vendedor ?? rowData.email_vendedor,
+                                        skeletons
+                                )}
+                </section>
+                <section class="detail__section">
+                        <h3>Datos del vehículo</h3>
+                        <ul>
+                                <li><strong>Marca/Modelo:</strong> ${skeleton("marca_modelo")}</li>
+                                <li><strong>Tipo:</strong> ${skeleton("tipo", "-")}</li>
+                                <li><strong>Kilómetros:</strong> ${skeleton("kilometros", "-")} km</li>
+                                <li><strong>1ª Matriculación:</strong> ${skeleton("primera_matriculacion", "-")}</li>
+                                <li><strong>Matrícula:</strong> ${skeleton("matricula")}</li>
+                                <li><strong>Nº Bastidor:</strong> ${skeleton("bastidor", "-")}</li>
+                                <li><strong>Precio venta:</strong> ${skeleton("precio_venta", "-")} €</li>
+                        </ul>
+                </section>
+                <section class="detail__section">
+                        <h3>Detalles técnicos</h3>
+                        <ul>
+                                <li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
+                                <li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
+                                <li><strong>Potencia:</strong> ${skeleton("potencia", "-")} ${potenciaUnidad}</li>
+                                <li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")} CC</li>
+                        </ul>
+                </section>
+                <section class="detail__section detail__section--docs">
+                        <h3 class="detail__section-title">Documentación</h3>
+                        <ul class="detail__docs-list">
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("contrato_url", "#")}" aria-label="Ver documento Contrato">
+                                                <span class="detail__docs-label">Contrato</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" aria-label="Ver documento Condicionado">
+                                                <span class="detail__docs-label">Condicionado</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" aria-label="Ver documento Cobertura">
+                                                <span class="detail__docs-label">Cobertura</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" aria-label="Ver documento Factura">
+                                                <span class="detail__docs-label">Factura</span>
+                                        </button>
+                                </li>
+                        </ul>
+                </section>
+                <section class="detail__section">
+                        <h3>Datos del comprador</h3>
+                        <ul>
+                                <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
+                                <li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
+                                <li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
+                                <li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
+                                <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
+                        </ul>
+                        <ul class="fast-actions">
+                                <li class="fast-actions__item">
+                                        <a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
+                                                <span class="fast-actions__label">Cliente</span>
+                                        </a>
+                                </li>
+                                <li class="fast-actions__item">
+                                        <a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
+                                                <span class="fast-actions__label">Cliente</span>
+                                        </a>
+                                </li>
+                        </ul>
+                </section>
+        </div>
+    `;
+}
 
-		function initRowSelection() {
+function initRowSelection() {
 			tbody.addEventListener("click", async function (e) {
 				const row = e.target.closest(".guarantees-table__row");
 				if (!row) return;
