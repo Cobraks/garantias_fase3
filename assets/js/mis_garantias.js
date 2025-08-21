@@ -147,6 +147,18 @@
                         if (data.precio !== undefined) data.precio = formatPrice(data.precio);
                         if (data.precio_venta !== undefined)
                                 data.precio_venta = formatPrice(data.precio_venta);
+                        if (data.kilometros !== undefined) {
+                                const num = parseInt(String(data.kilometros).replace(/[^0-9]/g, ""), 10);
+                                if (!isNaN(num)) {
+                                        data.kilometros = num.toLocaleString("es-ES");
+                                }
+                        }
+                        if (data.combustible && typeof data.combustible === "object") {
+                                data.combustible = data.combustible.label || data.combustible.value || data.combustible;
+                        }
+                        if (data.cambio && typeof data.cambio === "object") {
+                                data.cambio = data.cambio.label || data.cambio.value || data.cambio;
+                        }
                         return data;
                 }
 
@@ -597,12 +609,21 @@
                                 estadoValue
                         )}`;
 
-			const planTitle = `${data.plan ?? "-"}${
-				mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
-			}`;
+                        const planTitle = `${data.plan ?? "-"}${
+                                mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
+                        }`;
+                        const fuelRaw = (
+                                data.combustible ?? rowData.combustible ?? ""
+                        )
+                                .toString()
+                                .toLowerCase();
+                        const isElectric = fuelRaw
+                                .normalize("NFD")
+                                .replace(/[\u0300-\u036f]/g, "") === "electrico";
+                        const potenciaUnidad = isElectric ? "kW" : "CV";
 
-			return `
-				<div class="guarantee-detail__inner">
+                        return `
+                                <div class="guarantee-detail__inner">
 					<div class="guarantee-detail__header">
 						<h2>Garantía ${skeleton("matricula")}</h2>
 						<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
@@ -655,13 +676,13 @@
 					<section class="detail__section">
 						<h3>Detalles técnicos</h3>
 						<ul>
-							<li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
-							<li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
-							<li><strong>Potencia:</strong> ${skeleton("potencia", "-")}</li>
-							<li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")}</li>
-						</ul>
-					</section>
-					<section class="detail__section detail__section--docs">
+                                                        <li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
+                                                        <li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
+                                                        <li><strong>Potencia:</strong> ${skeleton("potencia", "-")} ${potenciaUnidad}</li>
+                                                        <li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")} CC</li>
+                                                </ul>
+                                        </section>
+                                        <section class="detail__section detail__section--docs">
 						<h3 class="detail__section-title">Documentación</h3>
 						<ul class="detail__docs-list">
 							<li class="detail__docs-item">

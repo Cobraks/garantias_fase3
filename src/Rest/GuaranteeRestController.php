@@ -749,15 +749,23 @@ class GuaranteeRestController
         $marca = get_post_meta($id, 'datos_vehiculo_marca', true);
         $modelo = get_post_meta($id, 'datos_vehiculo_modelo', true);
         $marca_modelo = trim($marca . ' ' . $modelo);
-        $tipo = get_post_meta($id, 'datos_vehiculo_tipo_vehiculo', true);
+        $tipo_id = get_post_meta($id, 'datos_vehiculo_tipo_vehiculo', true);
+        $tipo_term = $tipo_id ? get_term($tipo_id, 'tipo_vehiculo') : null;
+        $tipo = ($tipo_term && !is_wp_error($tipo_term)) ? $tipo_term->name : $tipo_id;
         $kilometros = get_post_meta($id, 'datos_vehiculo_kilometros', true);
         $primera_matriculacion = get_post_meta($id, 'datos_vehiculo_primera_matriculacion', true);
         $bastidor = get_post_meta($id, 'datos_vehiculo_numero_bastidor', true);
         $precio_venta = get_post_meta($id, 'datos_vehiculo_precio_venta', true);
-        $combustible = get_post_meta($id, 'datos_vehiculo_combustible', true);
-        $cambio = get_post_meta($id, 'datos_vehiculo_cambio', true);
+        $combustible_raw = function_exists('get_field') ? get_field('datos_vehiculo_combustible', $id) : get_post_meta($id, 'datos_vehiculo_combustible', true);
+        $combustible = is_array($combustible_raw)
+            ? ($combustible_raw['label'] ?? $combustible_raw['value'] ?? '')
+            : $combustible_raw;
+        $cambio_raw = function_exists('get_field') ? get_field('datos_vehiculo_cambio', $id) : get_post_meta($id, 'datos_vehiculo_cambio', true);
+        $cambio = is_array($cambio_raw)
+            ? ($cambio_raw['label'] ?? $cambio_raw['value'] ?? '')
+            : $cambio_raw;
         $potencia = get_post_meta($id, 'datos_vehiculo_potencia', true);
-        $cilindrada = get_post_meta($id, 'datos_vehiculo_Cilindrada', true);
+        $cilindrada = get_post_meta($id, 'datos_vehiculo_cilindrada', true);
 
         // Plan
         $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
