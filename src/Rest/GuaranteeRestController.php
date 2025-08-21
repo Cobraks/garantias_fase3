@@ -189,6 +189,19 @@ class GuaranteeRestController
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
+        $current_user = wp_get_current_user();
+        if (in_array('go_profesional', (array) $current_user->roles, true)) {
+            if (!isset($data['garantia_contratada']) || !is_array($data['garantia_contratada'])) {
+                $data['garantia_contratada'] = [];
+            }
+            if (!isset($data['garantia_contratada']['canal_venta'])) {
+                $data['garantia_contratada']['canal_venta'] = 'profesional';
+            }
+            if (!isset($data['garantia_contratada']['concesionario_empresa_profesional'])) {
+                $data['garantia_contratada']['concesionario_empresa_profesional'] = $current_user->ID;
+            }
+        }
+
         $matricula = '';
         if (isset($data['matricula'])) {
             $matricula = sanitize_text_field($data['matricula']);
