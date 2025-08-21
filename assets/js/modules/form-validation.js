@@ -259,10 +259,12 @@ export function validateField(input, showError = false, isHardCheck = false) {
 			if (showError) {
 				const userRole =
                                         getUserRole() || document.body.dataset.userRole || "";
-				const msg =
-					userRole === "comercial" || userRole === "profesional"
-						? "Selecciona profesional"
-						: "Selecciona vendedor";
+                               const msg =
+                                       userRole === "comercial" ||
+                                       userRole === "profesional" ||
+                                       userRole === "go_profesional"
+                                               ? "Selecciona profesional"
+                                               : "Selecciona vendedor";
 				setError(input, msg);
 			}
 			return false;

@@ -479,13 +479,13 @@ export default function initAutosave() {
                         if (usuario && usuario.value) {
                                 garantia.concesionario_empresa_profesional = usuario.value;
                         }
-                } else if (userRole === "profesional") {
-                        garantia.canal_venta = "profesional";
-                        const currentId = getCurrentUserId();
-                        if (currentId) {
-                                garantia.concesionario_empresa_profesional = currentId;
-                        }
-                }
+               } else if (userRole === "profesional" || userRole === "go_profesional") {
+                       garantia.canal_venta = "profesional";
+                       const currentId = getCurrentUserId();
+                       if (currentId) {
+                               garantia.concesionario_empresa_profesional = currentId;
+                       }
+               }
 
                 if (Object.keys(garantia).length) {
                         payload.garantia_contratada = garantia;

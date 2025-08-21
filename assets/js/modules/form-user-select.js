@@ -178,9 +178,9 @@ function setupSepaWatcher() {
 			// Pero por si no hay usuario-rol aún seleccionado, hacemos refresh con fallback
 			let target = null;
                         const role = getUserRole();
-                        if (role === "profesional") {
-                                target = getCurrentUserId();
-                        } else if (role === "admin" || role === "comercial") {
+                       if (role === "profesional" || role === "go_profesional") {
+                               target = getCurrentUserId();
+                       } else if (role === "admin" || role === "comercial") {
                                 const v = document.getElementById("usuario-rol");
                                 target = (v && v.value) || getCurrentUserId();
                         } else {
@@ -192,10 +192,10 @@ function setupSepaWatcher() {
 
 	// Inicial: disparar al cargar con el objetivo apropiado
 	let initialTarget = null;
-        const role = getUserRole();
-        if (role === "profesional") {
-                initialTarget = getCurrentUserId();
-        } else if (role === "admin" || role === "comercial") {
+       const role = getUserRole();
+       if (role === "profesional" || role === "go_profesional") {
+               initialTarget = getCurrentUserId();
+       } else if (role === "admin" || role === "comercial") {
                 const v = document.getElementById("usuario-rol");
                 initialTarget = (v && v.value) || getCurrentUserId();
         } else {
