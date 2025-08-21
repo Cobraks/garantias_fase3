@@ -98,6 +98,17 @@ export default function initAutosave() {
 
         let draftId = localStorage.getItem("go_draft_id");
         let draftUuid = localStorage.getItem("go_draft_uuid");
+        const params = new URLSearchParams(window.location.search);
+        const urlId = params.get("id");
+        const urlUuid = params.get("uuid");
+        if (!draftId && urlId) {
+                draftId = urlId;
+                localStorage.setItem("go_draft_id", draftId);
+        }
+        if (!draftUuid && urlUuid) {
+                draftUuid = urlUuid;
+                localStorage.setItem("go_draft_uuid", draftUuid);
+        }
         let saving = false;
 
         const navButtons = document.querySelector(".nav-buttons");
@@ -117,6 +128,70 @@ export default function initAutosave() {
                         setTimeout(() => (el.style.display = "none"), duration || 300);
                 }
         }
+
+        async function loadDraft() {
+                if (!draftId) return;
+                try {
+                        const res = await fetch(
+                                `${getRestRoot()}go/v1/guarantees/${draftId}`,
+                                { headers: { "X-WP-Nonce": getRestNonce() } }
+                        );
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        if (data.uuid && !draftUuid) {
+                                draftUuid = data.uuid;
+                                localStorage.setItem("go_draft_uuid", draftUuid);
+                        }
+                        const map = {
+                                tipo_vehiculo: data.tipo_value,
+                                marca: data.marca,
+                                modelo: data.modelo,
+                                kilometros: data.kilometros,
+                                fecha_primera_matriculacion:
+                                        data.primera_matriculacion,
+                                matricula:
+                                        data.matricula && data.matricula !== "-"
+                                                ? data.matricula
+                                                : "",
+                                numero_bastidor: data.bastidor,
+                                precio_venta: data.precio_venta,
+                                combustible: data.combustible_value,
+                                cambio: data.cambio_value,
+                                traccion: data.traccion,
+                                traccion_camion: data.traccion_camion,
+                                potencia: data.potencia,
+                                potencia_kw: data.potencia_kw,
+                                cilindrada: data.cilindrada,
+                                nombre_apellidos: data.nombre_comprador,
+                                dni: data.dni_comprador,
+                                telefono: data.telefono_comprador,
+                                correo: data.email_comprador,
+                                direccion: data.direccion_comprador,
+                        };
+                        Object.entries(map).forEach(([id, val]) => {
+                                if (
+                                        val === undefined ||
+                                        val === null ||
+                                        val === "" ||
+                                        val === "-"
+                                )
+                                        return;
+                                const el = document.getElementById(id);
+                                if (!el) return;
+                                el.value = val;
+                                el.dispatchEvent(
+                                        new Event("input", { bubbles: true })
+                                );
+                                el.dispatchEvent(
+                                        new Event("change", { bubbles: true })
+                                );
+                        });
+                } catch (e) {
+                        console.error("[AUTOSAVE] loadDraft", e);
+                }
+        }
+
+        loadDraft();
 
         function launchConfetti() {
                 const layer = successBlock?.querySelector(

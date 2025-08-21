@@ -80,6 +80,30 @@
 		const urlMat = new URLSearchParams(window.location.search).get("matricula");
                 const detailCache = new Map();
 
+                document.addEventListener("click", (e) => {
+                        const btn = e.target.closest(
+                                ".guarantee-detail__btn--continue"
+                        );
+                        if (!btn) return;
+                        const panel = btn.closest(".guarantee-detail__panel");
+                        const id = panel?.dataset.loadedId;
+                        if (id) {
+                                localStorage.setItem("go_draft_id", id);
+                                const data = detailCache.get(id);
+                                if (data && data.uuid) {
+                                        localStorage.setItem(
+                                                "go_draft_uuid",
+                                                data.uuid
+                                        );
+                                }
+                        }
+                        const data = id ? detailCache.get(id) : null;
+                        const uuid = data && data.uuid ? data.uuid : "";
+                        window.location.href =
+                                "/garantias-online/nueva-garantia?uuid=" +
+                                encodeURIComponent(uuid);
+                });
+
                 function normalizeEstadoClase(estado) {
                         if (!estado) return "pendiente-pago";
                         return String(estado)
