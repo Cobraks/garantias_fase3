@@ -182,7 +182,7 @@
                         const { iso: desdeIso, display: desde } = formatDate(item.desde);
                         const { iso: hastaIso, display: hasta } = formatDate(item.hasta);
                         const vendedor_name = item.vendedor ?? "-";
-                        const plan = item.plan ?? "-";
+                        const plan = item.plan ?? "";
                         const precio = formatPrice(item.precio);
                         const canal_venta =
                                 item.canal_venta && item.canal_venta.label
@@ -190,55 +190,67 @@
                                         : "-";
                         const vendedor_type = canal_venta;
 
-			const tr = document.createElement("tr");
-			tr.className = "guarantees-table__row";
-			tr.tabIndex = 0;
-			tr.dataset.id = item.id;
+                        const hasPlan = plan !== "" && plan !== "-";
+                        const hasPeriod =
+                                desde !== "-" &&
+                                hasta !== "-" &&
+                                desde !== "" &&
+                                hasta !== "";
+
+                        const periodHtml = hasPeriod
+                                ? `<div class="guarantees-table__period">
+                                                <div><strong>Desde:</strong> <time>${desde}</time></div>
+                                                <div><strong>Hasta:</strong> <time>${hasta}</time></div>
+                                        </div>`
+                                : "-";
+                        const planHtml = hasPlan
+                                ? `<div class="guarantees-table__plan">
+                                                <span class="plan__name">${plan}</span>
+                                                <span class="plan__price">${precio}€</span>
+                                        </div>`
+                                : "";
+
+                        const tr = document.createElement("tr");
+                        tr.className = "guarantees-table__row";
+                        tr.tabIndex = 0;
+                        tr.dataset.id = item.id;
                         tr.dataset.matricula = mat;
                         tr.dataset.marca_modelo = marca_modelo;
-                        tr.dataset.plan = plan;
-                        tr.dataset.desde = desdeIso;
-                        tr.dataset.desdeFmt = desde;
-                        tr.dataset.hasta = hastaIso;
-                        tr.dataset.hastaFmt = hasta;
+                        tr.dataset.plan = hasPlan ? plan : "";
+                        tr.dataset.desde = hasPeriod ? desdeIso : "";
+                        tr.dataset.desdeFmt = hasPeriod ? desde : "";
+                        tr.dataset.hasta = hasPeriod ? hastaIso : "";
+                        tr.dataset.hastaFmt = hasPeriod ? hasta : "";
                         tr.dataset.estado = estadoLabel;
                         tr.dataset.estadoclase = estadoClase;
                         tr.dataset.vendedor_name = vendedor_name;
                         tr.dataset.vendedor_type = vendedor_type;
-                        tr.dataset.precio = precio;
-			tr.dataset.canalVenta = canal_venta;
+                        tr.dataset.precio = hasPlan ? precio : "";
+                        tr.dataset.canalVenta = canal_venta;
 
-			tr.innerHTML = `
-				<td data-label="Vehículo">
-					<div class="guarantees-table__vehiculo">
-						<strong>${marca_modelo}</strong>
-						<div class="vehiculo__mat">${mat}</div>
-					</div>
-				</td>
-				<td data-label="Validez">
-					<div class="guarantees-table__period">
-						<div><strong>Desde:</strong> <time>${desde}</time></div>
-						<div><strong>Hasta:</strong> <time>${hasta}</time></div>
-					</div>
-				</td>
-				<td data-label="Vendedor">
-					<div class="guarantees-table__vendedor">
-						<div class="vendedor__name">${vendedor_name}</div>
-						<div class="vendedor__type">${vendedor_type}</div>
-					</div>
-				</td>
-				<td data-label="Garantía">
-					<div class="guarantees-table__plan">
-						<span class="plan__name">${plan}</span>
-						<span class="plan__price">${precio}€</span>
-					</div>
+                        tr.innerHTML = `
+                                <td data-label="Vehículo">
+                                        <div class="guarantees-table__vehiculo">
+                                                <strong>${marca_modelo}</strong>
+                                                <div class="vehiculo__mat">${mat}</div>
+                                        </div>
+                                </td>
+                                <td data-label="Validez">${periodHtml}</td>
+                                <td data-label="Vendedor">
+                                        <div class="guarantees-table__vendedor">
+                                                <div class="vendedor__name">${vendedor_name}</div>
+                                                <div class="vendedor__type">${vendedor_type}</div>
+                                        </div>
+                                </td>
+                                <td data-label="Garantía">
+                                        ${planHtml}
                                           <span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
                                                   ${estadoLabel}
                                           </span>
-				</td>
-			`;
-			return tr;
-		}
+                                </td>
+                        `;
+                        return tr;
+                }
 
 		function renderEmptyDetail() {
 			return `
@@ -623,10 +635,6 @@
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
 
-    const hasGuaranteeInfo = Boolean(
-        data.plan && data.desde_fmt && data.hasta_fmt
-    );
-
     const isFilled = (val) => {
         if (val === undefined || val === null) return false;
         const str = String(val).trim();
@@ -645,6 +653,8 @@
         "email_comprador",
         "direccion_comprador",
     ];
+    const hasGuaranteeInfo =
+        isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
     const hasDocs = docFields.every((field) => isFilled(data[field]));
     const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
 

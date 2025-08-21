@@ -257,11 +257,7 @@ class GuaranteeRestController
             ]);
             $uuid = wp_generate_uuid4();
             update_post_meta($post_id, 'estado_garantia_uuid', $uuid);
-            if (function_exists('update_field')) {
-                update_field('estado_garantia', ['estado_contratacion' => 'sin_finalizar'], $post_id);
-            } else {
-                update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'sin_finalizar');
-            }
+            update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'sin_finalizar');
             error_log('[AUTOSAVE] Created draft guarantee ID ' . $post_id);
         } elseif ($matricula) {
             wp_update_post([
@@ -416,17 +412,13 @@ class GuaranteeRestController
                     $gc['nivel_garantia'] = (int) $nivel_terms[0];
                 }
             }
-            if (function_exists('update_field')) {
-                update_field('garantia_contratada', $gc, $post_id);
-            } else {
-                foreach ($gc as $k => $v) {
-                    if (is_array($v)) {
-                        foreach ($v as $subk => $subv) {
-                            update_post_meta($post_id, 'garantia_contratada_' . $k . '_' . $subk, $subv);
-                        }
-                    } else {
-                        update_post_meta($post_id, 'garantia_contratada_' . $k, $v);
+            foreach ($gc as $k => $v) {
+                if (is_array($v)) {
+                    foreach ($v as $subk => $subv) {
+                        update_post_meta($post_id, 'garantia_contratada_' . $k . '_' . $subk, $subv);
                     }
+                } else {
+                    update_post_meta($post_id, 'garantia_contratada_' . $k, $v);
                 }
             }
             error_log('[AUTOSAVE] Saved garantia_contratada for ID ' . $post_id . ': ' . wp_json_encode($gc));
@@ -458,17 +450,8 @@ class GuaranteeRestController
                 }
             }
             if ($estado) {
-                if (function_exists('update_field')) {
-                    $existing = get_field('estado_garantia', $post_id);
-                    if (!is_array($existing)) {
-                        $existing = [];
-                    }
-                    $estado = array_merge($existing, $estado);
-                    update_field('estado_garantia', $estado, $post_id);
-                } else {
-                    foreach ($estado as $k => $v) {
-                        update_post_meta($post_id, 'estado_garantia_' . $k, $v);
-                    }
+                foreach ($estado as $k => $v) {
+                    update_post_meta($post_id, 'estado_garantia_' . $k, $v);
                 }
                 error_log('[AUTOSAVE] Saved estado_garantia for ID ' . $post_id . ': ' . wp_json_encode($estado));
             }
@@ -843,10 +826,10 @@ class GuaranteeRestController
             'cambio' => $cambio ?: '-',
             'potencia' => $potencia ?: '-',
             'cilindrada' => $cilindrada ?: '-',
-            'plan' => $plan ?: '-',
-            'precio' => $precio ?: '-',
-            'desde' => $desde ?: '-',
-            'hasta' => $hasta ?: '-',
+            'plan' => $plan,
+            'precio' => $precio,
+            'desde' => $desde,
+            'hasta' => $hasta,
             'estado' => [
                 'value' => $estado,
                 'label' => $estado_label,
