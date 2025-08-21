@@ -666,8 +666,7 @@
         isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
     const hasDocs = docFields.every((field) => isFilled(data[field]));
     const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
-    const showChannelSection =
-        isAdmin && isFilled(canalVentaText) && isFilled(concesionarioText);
+    const showChannelSection = isAdmin;
 
     if (isSinFinalizar) {
         return `
