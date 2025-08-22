@@ -189,6 +189,19 @@ class GuaranteeRestController
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
+        $current_user = wp_get_current_user();
+        if (in_array('go_profesional', (array) $current_user->roles, true)) {
+            if (!isset($data['garantia_contratada']) || !is_array($data['garantia_contratada'])) {
+                $data['garantia_contratada'] = [];
+            }
+            if (!isset($data['garantia_contratada']['canal_venta'])) {
+                $data['garantia_contratada']['canal_venta'] = 'profesional';
+            }
+            if (!isset($data['garantia_contratada']['concesionario_empresa_profesional'])) {
+                $data['garantia_contratada']['concesionario_empresa_profesional'] = $current_user->ID;
+            }
+        }
+
         $matricula = '';
         if (isset($data['matricula'])) {
             $matricula = sanitize_text_field($data['matricula']);
@@ -244,11 +257,7 @@ class GuaranteeRestController
             ]);
             $uuid = wp_generate_uuid4();
             update_post_meta($post_id, 'estado_garantia_uuid', $uuid);
-            if (function_exists('update_field')) {
-                update_field('estado_garantia', ['estado_contratacion' => 'sin_finalizar'], $post_id);
-            } else {
-                update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'sin_finalizar');
-            }
+            update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'sin_finalizar');
             error_log('[AUTOSAVE] Created draft guarantee ID ' . $post_id);
         } elseif ($matricula) {
             wp_update_post([
@@ -403,17 +412,13 @@ class GuaranteeRestController
                     $gc['nivel_garantia'] = (int) $nivel_terms[0];
                 }
             }
-            if (function_exists('update_field')) {
-                update_field('garantia_contratada', $gc, $post_id);
-            } else {
-                foreach ($gc as $k => $v) {
-                    if (is_array($v)) {
-                        foreach ($v as $subk => $subv) {
-                            update_post_meta($post_id, 'garantia_contratada_' . $k . '_' . $subk, $subv);
-                        }
-                    } else {
-                        update_post_meta($post_id, 'garantia_contratada_' . $k, $v);
+            foreach ($gc as $k => $v) {
+                if (is_array($v)) {
+                    foreach ($v as $subk => $subv) {
+                        update_post_meta($post_id, 'garantia_contratada_' . $k . '_' . $subk, $subv);
                     }
+                } else {
+                    update_post_meta($post_id, 'garantia_contratada_' . $k, $v);
                 }
             }
             error_log('[AUTOSAVE] Saved garantia_contratada for ID ' . $post_id . ': ' . wp_json_encode($gc));
@@ -445,17 +450,8 @@ class GuaranteeRestController
                 }
             }
             if ($estado) {
-                if (function_exists('update_field')) {
-                    $existing = get_field('estado_garantia', $post_id);
-                    if (!is_array($existing)) {
-                        $existing = [];
-                    }
-                    $estado = array_merge($existing, $estado);
-                    update_field('estado_garantia', $estado, $post_id);
-                } else {
-                    foreach ($estado as $k => $v) {
-                        update_post_meta($post_id, 'estado_garantia_' . $k, $v);
-                    }
+                foreach ($estado as $k => $v) {
+                    update_post_meta($post_id, 'estado_garantia_' . $k, $v);
                 }
                 error_log('[AUTOSAVE] Saved estado_garantia for ID ' . $post_id . ': ' . wp_json_encode($estado));
             }
@@ -749,15 +745,33 @@ class GuaranteeRestController
         $marca = get_post_meta($id, 'datos_vehiculo_marca', true);
         $modelo = get_post_meta($id, 'datos_vehiculo_modelo', true);
         $marca_modelo = trim($marca . ' ' . $modelo);
-        $tipo = get_post_meta($id, 'datos_vehiculo_tipo_vehiculo', true);
+        $tipo_id = get_post_meta($id, 'datos_vehiculo_tipo_vehiculo', true);
+        $tipo_term = $tipo_id ? get_term($tipo_id, 'tipo_vehiculo') : null;
+        $tipo = ($tipo_term && !is_wp_error($tipo_term)) ? $tipo_term->name : $tipo_id;
+        $tipo_slug = ($tipo_term && !is_wp_error($tipo_term)) ? $tipo_term->slug : '';
         $kilometros = get_post_meta($id, 'datos_vehiculo_kilometros', true);
         $primera_matriculacion = get_post_meta($id, 'datos_vehiculo_primera_matriculacion', true);
         $bastidor = get_post_meta($id, 'datos_vehiculo_numero_bastidor', true);
         $precio_venta = get_post_meta($id, 'datos_vehiculo_precio_venta', true);
-        $combustible = get_post_meta($id, 'datos_vehiculo_combustible', true);
-        $cambio = get_post_meta($id, 'datos_vehiculo_cambio', true);
+        $combustible_raw = function_exists('get_field') ? get_field('datos_vehiculo_combustible', $id) : get_post_meta($id, 'datos_vehiculo_combustible', true);
+        $combustible_label = is_array($combustible_raw)
+            ? ($combustible_raw['label'] ?? $combustible_raw['value'] ?? '')
+            : $combustible_raw;
+        $combustible_value = is_array($combustible_raw)
+            ? ($combustible_raw['value'] ?? $combustible_raw['label'] ?? '')
+            : $combustible_raw;
+        $cambio_raw = function_exists('get_field') ? get_field('datos_vehiculo_cambio', $id) : get_post_meta($id, 'datos_vehiculo_cambio', true);
+        $cambio_label = is_array($cambio_raw)
+            ? ($cambio_raw['label'] ?? $cambio_raw['value'] ?? '')
+            : $cambio_raw;
+        $cambio_value = is_array($cambio_raw)
+            ? ($cambio_raw['value'] ?? $cambio_raw['label'] ?? '')
+            : $cambio_raw;
+        $traccion = get_post_meta($id, 'datos_vehiculo_traccion', true);
+        $traccion_camion = get_post_meta($id, 'datos_vehiculo_traccion_camion', true);
         $potencia = get_post_meta($id, 'datos_vehiculo_potencia', true);
-        $cilindrada = get_post_meta($id, 'datos_vehiculo_Cilindrada', true);
+        $potencia_kw = get_post_meta($id, 'datos_vehiculo_potencia_kw', true);
+        $cilindrada = get_post_meta($id, 'datos_vehiculo_cilindrada', true);
 
         // Plan
         $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
@@ -808,24 +822,38 @@ class GuaranteeRestController
         $telefono_comprador = get_post_meta($id, 'datos_cliente_telefono', true);
         $email_comprador = get_post_meta($id, 'datos_cliente_email', true);
         $direccion_comprador = get_post_meta($id, 'datos_cliente_direccion', true);
+        $localidad_comprador = get_post_meta($id, 'datos_cliente_localidad', true);
+        $provincia_comprador = get_post_meta($id, 'datos_cliente_provincia', true);
+        $codigo_postal_comprador = get_post_meta($id, 'datos_cliente_codigo_postal', true);
+
+        $uuid = get_post_meta($id, 'estado_garantia_uuid', true);
 
         $data = [
             'id' => $id,
+            'uuid' => $uuid,
             'matricula' => $matricula ?: '-',
             'marca_modelo' => $marca_modelo ?: '-',
+            'marca' => $marca ?: '',
+            'modelo' => $modelo ?: '',
             'tipo' => $tipo ?: '-',
+            'tipo_value' => $tipo_slug,
             'kilometros' => $kilometros ?: '-',
             'primera_matriculacion' => $primera_matriculacion ?: '-',
             'bastidor' => $bastidor ?: '-',
             'precio_venta' => $precio_venta ?: '-',
-            'combustible' => $combustible ?: '-',
-            'cambio' => $cambio ?: '-',
+            'combustible' => $combustible_label ?: '-',
+            'combustible_value' => $combustible_value ?: '',
+            'cambio' => $cambio_label ?: '-',
+            'cambio_value' => $cambio_value ?: '',
+            'traccion' => $traccion ?: '',
+            'traccion_camion' => $traccion_camion ?: '',
             'potencia' => $potencia ?: '-',
+            'potencia_kw' => $potencia_kw ?: '',
             'cilindrada' => $cilindrada ?: '-',
-            'plan' => $plan ?: '-',
-            'precio' => $precio ?: '-',
-            'desde' => $desde ?: '-',
-            'hasta' => $hasta ?: '-',
+            'plan' => $plan,
+            'precio' => $precio,
+            'desde' => $desde,
+            'hasta' => $hasta,
             'estado' => [
                 'value' => $estado,
                 'label' => $estado_label,
@@ -841,6 +869,9 @@ class GuaranteeRestController
             'telefono_comprador' => $telefono_comprador ?: '-',
             'email_comprador' => $email_comprador ?: '-',
             'direccion_comprador' => $direccion_comprador ?: '-',
+            'localidad_comprador' => $localidad_comprador ?: '-',
+            'provincia_comprador' => $provincia_comprador ?: '-',
+            'codigo_postal_comprador' => $codigo_postal_comprador ?: '-',
         ];
 
         return rest_ensure_response($data);
