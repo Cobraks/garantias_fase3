@@ -56,9 +56,13 @@ function getSummaryText(fieldId) {
 			} else {
 				canalText = "No seleccionado";
 			}
-		} else if (userRole === "comercial" || userRole === "profesional") {
-			canalText = "Profesional";
-		} else {
+               } else if (
+                       userRole === "comercial" ||
+                       userRole === "profesional" ||
+                       userRole === "go_profesional"
+               ) {
+                       canalText = "Profesional";
+               } else {
 			canalText = "-";
 		}
 		return { text: canalText, error: false };
@@ -287,16 +291,20 @@ function updateSummaryHeader() {
 			vendedorText = "No seleccionado";
 		}
 		if (vendedorSpan) vendedorSpan.textContent = vendedorText;
-	} else if (userRole === "comercial" || userRole === "profesional") {
-		if (canalP) canalP.style.display = "";
-		if (vendedorP) vendedorP.style.display = "none";
-		if (canalSpan) canalSpan.textContent = "Profesional";
-		if (vendedorSpan) vendedorSpan.textContent = "";
-	} else {
-		// Usuario normal, no mostrar nada
-		if (canalSpan) canalSpan.textContent = "-";
-		if (vendedorSpan) vendedorSpan.textContent = "-";
-	}
+       } else if (
+               userRole === "comercial" ||
+               userRole === "profesional" ||
+               userRole === "go_profesional"
+       ) {
+               if (canalP) canalP.style.display = "";
+               if (vendedorP) vendedorP.style.display = "none";
+               if (canalSpan) canalSpan.textContent = "Profesional";
+               if (vendedorSpan) vendedorSpan.textContent = "";
+       } else {
+               // Usuario normal, no mostrar nada
+               if (canalSpan) canalSpan.textContent = "-";
+               if (vendedorSpan) vendedorSpan.textContent = "-";
+       }
 }
 
 // Refresca el resumen

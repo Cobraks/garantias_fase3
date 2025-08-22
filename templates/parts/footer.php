@@ -30,11 +30,32 @@ use GarantiasOnline360VO\Svg;
 <?php endif; ?>
 
 <?php if ($is_list_page ?? false) : ?>
+    <?php
+    if (!isset($current_user) || !($current_user instanceof WP_User)) {
+        $current_user = wp_get_current_user();
+    }
+    $is_admin = user_can($current_user, 'manage_options');
+    $is_comercial = in_array('go_comercial', (array) $current_user->roles, true);
+    if ($is_admin) {
+        $js_user_role = 'admin';
+    } elseif (in_array('go_profesional', (array) $current_user->roles, true)) {
+        $js_user_role = 'go_profesional';
+    } elseif (in_array('go_garantias', (array) $current_user->roles, true)) {
+        $js_user_role = 'go_garantias';
+    } elseif ($is_comercial) {
+        $js_user_role = 'go_comercial';
+    } else {
+        $js_user_role = 'user';
+    }
+    ?>
     <script>
         window.__GO_CONFIG__ = {
             rest: {
                 root: "<?php echo esc_url(rest_url()); ?>",
                 nonce: "<?php echo esc_js(wp_create_nonce('wp_rest')); ?>"
+            },
+            user: {
+                role: "<?php echo esc_js($js_user_role); ?>"
             }
         };
     </script>
