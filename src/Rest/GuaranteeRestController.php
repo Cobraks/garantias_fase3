@@ -822,6 +822,9 @@ class GuaranteeRestController
         $telefono_comprador = get_post_meta($id, 'datos_cliente_telefono', true);
         $email_comprador = get_post_meta($id, 'datos_cliente_email', true);
         $direccion_comprador = get_post_meta($id, 'datos_cliente_direccion', true);
+        $localidad_comprador = get_post_meta($id, 'datos_cliente_localidad', true);
+        $provincia_comprador = get_post_meta($id, 'datos_cliente_provincia', true);
+        $codigo_postal_comprador = get_post_meta($id, 'datos_cliente_codigo_postal', true);
 
         $uuid = get_post_meta($id, 'estado_garantia_uuid', true);
 
@@ -866,6 +869,9 @@ class GuaranteeRestController
             'telefono_comprador' => $telefono_comprador ?: '-',
             'email_comprador' => $email_comprador ?: '-',
             'direccion_comprador' => $direccion_comprador ?: '-',
+            'localidad_comprador' => $localidad_comprador ?: '-',
+            'provincia_comprador' => $provincia_comprador ?: '-',
+            'codigo_postal_comprador' => $codigo_postal_comprador ?: '-',
         ];
 
         return rest_ensure_response($data);

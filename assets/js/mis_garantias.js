@@ -598,15 +598,18 @@
 				condicionado_url: "#",
 				cobertura_url: "#",
 				factura_url: "#",
-				nombre_comprador: "-",
-				dni_comprador: "-",
-				telefono_comprador: "-",
-				email_comprador: "-",
-				direccion_comprador: "-",
-			};
-		}
+                                nombre_comprador: "-",
+                                dni_comprador: "-",
+                                telefono_comprador: "-",
+                                email_comprador: "-",
+                                direccion_comprador: "-",
+                                localidad_comprador: "-",
+                                provincia_comprador: "-",
+                                codigo_postal_comprador: "-",
+                        };
+                }
 
-		const skeletonFields = [
+                const skeletonFields = [
 			"tipo",
 			"kilometros",
 			"primera_matriculacion",
@@ -618,12 +621,15 @@
 			"cilindrada",
 			"telefono_vendedor",
 			"email_vendedor",
-			"nombre_comprador",
-			"dni_comprador",
-			"telefono_comprador",
-			"email_comprador",
-			"direccion_comprador",
-		];
+                        "nombre_comprador",
+                        "dni_comprador",
+                        "telefono_comprador",
+                        "email_comprador",
+                        "direccion_comprador",
+                        "localidad_comprador",
+                        "provincia_comprador",
+                        "codigo_postal_comprador",
+                ];
 
 		function renderFastActions(vendedor, telefono, email, skeletons = []) {
 			const label = skeletons.includes("concesionario")
@@ -704,6 +710,9 @@
         "telefono_comprador",
         "email_comprador",
         "direccion_comprador",
+        "localidad_comprador",
+        "provincia_comprador",
+        "codigo_postal_comprador",
     ];
     const hasGuaranteeInfo =
         isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
@@ -800,6 +809,9 @@
                                 <li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
                                 <li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
                                 <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
+                                <li><strong>Localidad:</strong> ${skeleton("localidad_comprador", "-")}</li>
+                                <li><strong>Provincia:</strong> ${skeleton("provincia_comprador", "-")}</li>
+                                <li><strong>Código Postal:</strong> ${skeleton("codigo_postal_comprador", "-")}</li>
                         </ul>
                         <ul class="fast-actions">
                                 <li class="fast-actions__item">
@@ -902,6 +914,9 @@
                                 <li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
                                 <li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
                                 <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
+                                <li><strong>Localidad:</strong> ${skeleton("localidad_comprador", "-")}</li>
+                                <li><strong>Provincia:</strong> ${skeleton("provincia_comprador", "-")}</li>
+                                <li><strong>Código Postal:</strong> ${skeleton("codigo_postal_comprador", "-")}</li>
                         </ul>
                         <ul class="fast-actions">
                                 <li class="fast-actions__item">

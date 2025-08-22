@@ -167,6 +167,9 @@ export default function initAutosave() {
                                 telefono: data.telefono_comprador,
                                 correo: data.email_comprador,
                                 direccion: data.direccion_comprador,
+                                localidad: data.localidad_comprador,
+                                provincia: data.provincia_comprador,
+                                codigo_postal: data.codigo_postal_comprador,
                         };
                         Object.entries(map).forEach(([id, val]) => {
                                 if (
