@@ -58,6 +58,7 @@
                 let selectedPlan = "";
                 let selectedCanal = "";
                 let selectedConcesionario = "";
+                let currentListAbort = null;
 
 		let resultMessage = document.querySelector(
 			".guarantees-list__result-message"
@@ -87,6 +88,9 @@
 		const urlMat = new URLSearchParams(window.location.search).get("matricula");
                 const detailCache = new Map();
                 const detailPromises = new Map();
+                const PREFETCH_LIMIT = 3;
+                const prefetchQueue = [];
+                let activePrefetch = 0;
 
                 function prefetchDetail(id) {
                         if (detailCache.has(id)) {
@@ -114,6 +118,29 @@
                                 });
                         detailPromises.set(id, p);
                         return p;
+                }
+
+                function runPrefetch() {
+                        if (activePrefetch >= PREFETCH_LIMIT || prefetchQueue.length === 0) return;
+                        const nextId = prefetchQueue.shift();
+                        activePrefetch++;
+                        prefetchDetail(nextId)
+                                .catch(() => {})
+                                .finally(() => {
+                                        activePrefetch--;
+                                        runPrefetch();
+                                });
+                }
+                function schedulePrefetch(id) {
+                        if (
+                                detailCache.has(id) ||
+                                detailPromises.has(id) ||
+                                prefetchQueue.includes(id)
+                        ) {
+                                return;
+                        }
+                        prefetchQueue.push(id);
+                        runPrefetch();
                 }
 
                 document.addEventListener("click", (e) => {
@@ -531,6 +558,8 @@
                                         ? options.concesionario
                                         : selectedConcesionario;
                         try {
+                                if (currentListAbort) currentListAbort.abort();
+                                currentListAbort = new AbortController();
                                 const params = new URLSearchParams({
                                         page,
                                         per_page: perPage,
@@ -545,6 +574,7 @@
                                 let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
                                 const res = await fetch(url, {
                                         headers: { "X-WP-Nonce": restNonce },
+                                        signal: currentListAbort.signal,
                                 });
 				if (!res.ok) throw `HTTP ${res.status}`;
 				totalPosts = +res.headers.get("X-WP-Total") || 0;
@@ -571,7 +601,6 @@
 				if (data.length > 0) {
                                         for (const item of data) {
                                                 tbody.appendChild(renderRow(item));
-                                                prefetchDetail(item.id);
                                         }
 					setResultMessage("");
 					// AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
@@ -629,7 +658,6 @@
 					) {
                                                 for (const item of lastValidResults) {
                                                         tbody.appendChild(renderRow(item));
-                                                        prefetchDetail(item.id);
                                                 }
 						setResultMessage(
 							`No se han encontrado garantías para <strong>"${search}"</strong>. Mostrando resultados de <strong>"${lastValidQuery}"</strong>.`
@@ -648,43 +676,6 @@
 			}
 		}
 
-		async function loadAllAndSelect() {
-			isLoading = true;
-			spinner.style.display = "";
-			try {
-                                let res = await fetch(
-                                        `${restRoot}go/v1/guarantees?page=1&per_page=1`,
-                                        { headers: { "X-WP-Nonce": restNonce } }
-                                );
-				if (!res.ok) throw res.status;
-				totalPosts = +res.headers.get("X-WP-Total") || 0;
-                                res = await fetch(
-                                        `${restRoot}go/v1/guarantees?page=1&per_page=${totalPosts}`,
-                                        { headers: { "X-WP-Nonce": restNonce } }
-                                );
-				if (!res.ok) throw res.status;
-				const { data } = await res.json();
-				tbody.innerHTML = "";
-				setResultMessage("");
-                                for (const item of data) {
-                                        tbody.appendChild(renderRow(item));
-                                        prefetchDetail(item.id);
-                                }
-				const allRows = Array.from(
-					document.querySelectorAll(".guarantees-table__row")
-				);
-				const idx = allRows.findIndex((r) => r.dataset.matricula === urlMat);
-				if (idx >= 0) {
-					allRows[idx].scrollIntoView({ block: "center" });
-					setTimeout(() => allRows[idx].click(), 100);
-				}
-			} catch (err) {
-				console.error("❌ Error en loadAllAndSelect:", err);
-			} finally {
-				isLoading = false;
-				spinner.style.display = "none";
-			}
-		}
 
 		function getDurationMeses(desde, hasta) {
 			const d1 = new Date(desde);
@@ -1183,7 +1174,7 @@ function initRowSelection() {
                                         const row = e.target.closest(".guarantees-table__row");
                                         if (!row) return;
                                         const id = row.dataset.id;
-                                        prefetchDetail(id);
+                                        schedulePrefetch(id);
                                 },
                                 true
                         );
@@ -1375,18 +1366,18 @@ function initRowSelection() {
 			loadPage(1);
 		});
 
-		if (!urlMat) {
-			new IntersectionObserver(
-				(entries) => {
-					if (entries[0].isIntersecting && hasMore && !isLoading) {
+                if (!urlMat) {
+                        new IntersectionObserver(
+                                (entries) => {
+                                        if (entries[0].isIntersecting && hasMore && !isLoading) {
                                                 loadPage(currentPage + 1);
-					}
-				},
-				{ root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }
-			).observe(scrollEnd);
-			loadPage(1);
-		} else {
-			loadAllAndSelect();
-		}
-	});
+                                        }
+                                },
+                                { root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }
+                        ).observe(scrollEnd);
+                        loadPage(1);
+                } else {
+                        loadPage(1, { search: urlMat });
+                }
+        });
 })();

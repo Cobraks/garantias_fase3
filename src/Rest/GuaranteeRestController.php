@@ -734,7 +734,7 @@ class GuaranteeRestController
         $response->header('X-WP-Total',      $total_posts);
         $response->header('X-WP-TotalPages', $total_pages);
 
-        set_transient($cache_key, $response, 60); // 60 segundos de cache
+        set_transient($cache_key, $response, 300); // 5 minutos de cache
 
         return $response;
     }
@@ -745,6 +745,11 @@ class GuaranteeRestController
     public static function get_item($request)
     {
         $id = (int) $request['id'];
+        $cache_key = 'go_gdetail_' . $id;
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return rest_ensure_response($cached);
+        }
         // Vehículo
         $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
         $marca = get_post_meta($id, 'datos_vehiculo_marca', true);
@@ -881,6 +886,8 @@ class GuaranteeRestController
             'codigo_postal_comprador' => $codigo_postal_comprador ?: '-',
         ];
 
+        set_transient($cache_key, $data, 300);
+
         return rest_ensure_response($data);
     }
 
@@ -993,7 +1000,7 @@ class GuaranteeRestController
             'concesionarios' => $concesionarios,
         ]);
 
-        set_transient($cache_key, $response, 60);
+        set_transient($cache_key, $response, 300);
 
         return $response;
     }
@@ -1004,7 +1011,7 @@ class GuaranteeRestController
     public static function clear_list_transients($post_id, $post, $update)
     {
         global $wpdb;
-        $patterns = ['_transient_go_glist_%', '_transient_go_gfilters_%'];
+        $patterns = ['_transient_go_glist_%', '_transient_go_gfilters_%', '_transient_go_gdetail_%'];
         foreach ($patterns as $pattern) {
             $wpdb->query($wpdb->prepare(
                 "DELETE FROM $wpdb->options WHERE option_name LIKE %s",
