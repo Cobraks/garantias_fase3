@@ -777,6 +777,7 @@ class GuaranteeRestController
         $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
         $plan    = $plan_id ? get_the_title($plan_id) : '';
         $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
+        $metodo_pago = get_post_meta($id, 'garantia_contratada_metodo_pago', true);
         $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
@@ -852,6 +853,7 @@ class GuaranteeRestController
             'cilindrada' => $cilindrada ?: '-',
             'plan' => $plan,
             'precio' => $precio,
+            'metodo_pago' => $metodo_pago ?: '',
             'desde' => $desde,
             'hasta' => $hasta,
             'estado' => [
