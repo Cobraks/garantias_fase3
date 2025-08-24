@@ -23,8 +23,9 @@
                         "user";
                 const isAdmin =
                         ["administrator", "admin", "go_garantias", "go_comercial"].includes(userRole);
+                const isProfesional = userRole === "go_profesional";
                 const DEFAULT_PER = 12;
-		let perPage = DEFAULT_PER;
+                let perPage = DEFAULT_PER;
 		let currentPage = 1;
 		let totalPages = 1;
 		let totalPosts = 0;
@@ -734,12 +735,12 @@
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                ${showActions ? `<div class="guarantee-detail__btn-container">
+                ${(showActions || isProfesional) ? `<div class="guarantee-detail__btn-container">
                         <button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">
                                 <span class="guarantee-detail__btn-text">Continuar con la garantía</span>
                         </button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
+                        ${showActions ? `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>` : ``}
                 </div>` : ``}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--fast-actions">
