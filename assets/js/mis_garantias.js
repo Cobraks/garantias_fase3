@@ -23,8 +23,17 @@
                         "user";
                 const isAdmin =
                         ["administrator", "admin", "go_garantias", "go_comercial"].includes(userRole);
+                const isProfesional = userRole === "go_profesional";
+                const copyIcon = `<svg xmlns="http://www.w3.org/2000/svg" height="16" viewBox="0 0 24 24" width="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
+                const saveStatus = document.createElement("div");
+                saveStatus.className = "autosave-status autosave-status--hidden";
+                saveStatus.innerHTML =
+                        '<span class="autosave-status__spinner"></span>' +
+                        '<span class="autosave-status__icon" style="display:none"></span>' +
+                        '<span class="autosave-status__text">Guardando</span>';
+                document.body.appendChild(saveStatus);
                 const DEFAULT_PER = 12;
-		let perPage = DEFAULT_PER;
+                let perPage = DEFAULT_PER;
 		let currentPage = 1;
 		let totalPages = 1;
 		let totalPosts = 0;
@@ -60,16 +69,14 @@
 			table.insertAdjacentElement("afterend", resultMessage);
 		}
 
-		if (!panel1 || !panel2) {
-			detail.innerHTML = `
-				<div class="guarantee-detail__panel active" id="detail-panel-1">
-					${detail.innerHTML}
-				</div>
-				<div class="guarantee-detail__panel" id="detail-panel-2"></div>
-			`;
-			panel1 = document.getElementById("detail-panel-1");
-			panel2 = document.getElementById("detail-panel-2");
-		}
+                if (!panel1 || !panel2) {
+                        detail.innerHTML =
+                                '<div class="guarantee-detail__panel active" id="detail-panel-1">' +
+                                detail.innerHTML +
+                                '</div><div class="guarantee-detail__panel" id="detail-panel-2"></div>';
+                        panel1 = document.getElementById("detail-panel-1");
+                        panel2 = document.getElementById("detail-panel-2");
+                }
 
 		let activePanel = panel1;
 		let inactivePanel = panel2;
@@ -79,6 +86,35 @@
 		let prevIdx = null;
 		const urlMat = new URLSearchParams(window.location.search).get("matricula");
                 const detailCache = new Map();
+                const detailPromises = new Map();
+
+                function prefetchDetail(id) {
+                        if (detailCache.has(id)) {
+                                return Promise.resolve(detailCache.get(id));
+                        }
+                        if (detailPromises.has(id)) {
+                                return detailPromises.get(id);
+                        }
+                        const p = fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                headers: { "X-WP-Nonce": restNonce },
+                        })
+                                .then((res) => {
+                                        if (!res.ok) throw res.status;
+                                        return res.json();
+                                })
+                                .then((json) => {
+                                        const data = normalizeDetailData(json);
+                                        detailCache.set(id, data);
+                                        detailPromises.delete(id);
+                                        return data;
+                                })
+                                .catch((err) => {
+                                        detailPromises.delete(id);
+                                        throw err;
+                                });
+                        detailPromises.set(id, p);
+                        return p;
+                }
 
                 document.addEventListener("click", (e) => {
                         const btn = e.target.closest(
@@ -102,6 +138,122 @@
                         window.location.href =
                                 "/garantias-online/nueva-garantia?uuid=" +
                                 encodeURIComponent(uuid);
+                });
+
+                function handleConfirmClick(e) {
+                        const btn = e.target.closest(
+                                ".guarantee-detail__btn--confirm"
+                        );
+                        if (!btn) return;
+                        const panel = btn.closest(".guarantee-detail__panel");
+                        const id = panel?.dataset.loadedId;
+                        if (!id) return;
+                        const cacheData = detailCache.get(id);
+                        const uuid = cacheData && cacheData.uuid ? cacheData.uuid : "";
+                        if (!uuid) return;
+                        btn.disabled = true;
+                        saveStatus.classList.remove("autosave-status--hidden");
+                        let row;
+                        fetch(`${restRoot}go/v1/guarantees/autosave`, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": restNonce,
+                                },
+                                body: JSON.stringify({
+                                        id,
+                                        uuid,
+                                        data: {
+                                                estado_garantia: {
+                                                        estado_contratacion: "activada",
+                                                },
+                                        },
+                                }),
+                        })
+                                .then((res) => {
+                                        if (!res.ok) throw res.status;
+                                        detailCache.delete(id);
+                                        row = tbody.querySelector(
+                                                `.guarantees-table__row[data-id="${id}"]`
+                                        );
+                                        if (row) {
+                                                row.dataset.estadoclase = "activada";
+                                                row.dataset.estado = "Activada";
+                                                const badge = row.querySelector(
+                                                        ".guarantees-list__badge"
+                                                );
+                                                if (badge) {
+                                                        badge.textContent = "Activada";
+                                                        badge.className =
+                                                                "guarantees-list__badge guarantees-list__badge--activada";
+                                                }
+                                        }
+                                        return fetch(
+                                                `${restRoot}go/v1/guarantees/${id}`,
+                                                { headers: { "X-WP-Nonce": restNonce } }
+                                        );
+                                })
+                                .then((detailRes) => {
+                                        if (!detailRes.ok) throw detailRes.status;
+                                        const rowData = row ? buildRowData(row) : {};
+                                        return detailRes
+                                                .json()
+                                                .then((json) => {
+                                                        const data = normalizeDetailData(json);
+                                                        detailCache.set(id, data);
+                                                        panel.innerHTML = renderFullDetail(
+                                                                data,
+                                                                rowData,
+                                                                []
+                                                        );
+                                                });
+                                })
+                                .catch((err) => {
+                                        console.error("Error confirm payment:", err);
+                                })
+                                .finally(() => {
+                                        btn.disabled = false;
+                                        saveStatus.classList.add("autosave-status--hidden");
+                                });
+                }
+                document.addEventListener("click", handleConfirmClick);
+
+                document.addEventListener("click", (e) => {
+                        const btn = e.target.closest("[data-copy]");
+                        if (!btn) return;
+                        const panel = btn.closest(".guarantee-detail__panel");
+                        const target = panel.querySelector(btn.dataset.copy);
+                        if (!target) return;
+                        const text = target.textContent.trim();
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(text).then(() => {
+                                        const toast = panel.querySelector(
+                                                ".detail__copy-toast"
+                                        );
+                                        if (toast) {
+                                                toast.textContent =
+                                                        btn.dataset.toast || "Copiado";
+                                                toast.classList.add("show");
+                                                setTimeout(
+                                                        () => toast.classList.remove("show"),
+                                                        2000
+                                                );
+                                        }
+                                        const original = btn.getAttribute(
+                                                "aria-label"
+                                        );
+                                        const done = btn.dataset.done || "Copiado";
+                                        btn.setAttribute("aria-label", done);
+                                        setTimeout(() => {
+                                                if (original) {
+                                                        btn.setAttribute(
+                                                                "aria-label",
+                                                                original
+                                                        );
+                                                }
+                                        }, 2000);
+                                });
+                        }
                 });
 
                 function normalizeEstadoClase(estado) {
@@ -417,9 +569,10 @@
 				hasMore = currentPage < totalPages;
 
 				if (data.length > 0) {
-					for (const item of data) {
-						tbody.appendChild(renderRow(item));
-					}
+                                        for (const item of data) {
+                                                tbody.appendChild(renderRow(item));
+                                                prefetchDetail(item.id);
+                                        }
 					setResultMessage("");
 					// AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
 					if (data.length === 1 && search && search.length > 0) {
@@ -431,45 +584,36 @@
 							const currentActive = activePanel;
 							const nextPanel = activePanel === panel1 ? panel2 : panel1;
 
-							if (detailCache.has(id)) {
-								const dataDetalle = detailCache.get(id);
-								nextPanel.innerHTML = renderFullDetail(
-									dataDetalle,
-									rowData,
-									[]
-								);
-							} else {
-								nextPanel.innerHTML = renderFullDetail(
-									rowData,
-									rowData,
-									skeletonFields
-								);
-								(async () => {
-									try {
-										const res = await fetch(
-                                                                                `${restRoot}go/v1/guarantees/${id}`,
-                                                                                        {
-                                                                                                headers: { "X-WP-Nonce": restNonce },
-                                                                                        }
-                                                                                );
-										if (!res.ok) throw res.status;
-                                                                                const dataDetalle = normalizeDetailData(await res.json());
-                                                                                detailCache.set(id, dataDetalle);
+                                                        if (detailCache.has(id)) {
+                                                                const dataDetalle = detailCache.get(id);
+                                                                nextPanel.innerHTML = renderFullDetail(
+                                                                        dataDetalle,
+                                                                        rowData,
+                                                                        []
+                                                                );
+                                                        } else {
+                                                                nextPanel.classList.add("loading");
+                                                                nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                                                prefetchDetail(id)
+                                                                        .then((dataDetalle) => {
                                                                                 if (nextPanel.dataset.loadedId === String(id)) {
                                                                                         nextPanel.innerHTML = renderFullDetail(
                                                                                                 dataDetalle,
                                                                                                 rowData,
-												[]
-											);
-										}
-									} catch (e) {}
-								})();
-							}
-							nextPanel.dataset.loadedId = id;
-							activePanel = nextPanel;
-							inactivePanel = currentActive;
-							currentActive.classList.remove("active");
-							nextPanel.classList.add("active");
+                                                                                                []
+                                                                                        );
+                                                                                }
+                                                                        })
+                                                                        .catch(() => {})
+                                                                        .finally(() => {
+                                                                                nextPanel.classList.remove("loading");
+                                                                        });
+                                                        }
+                                                        nextPanel.dataset.loadedId = id;
+                                                        activePanel = nextPanel;
+                                                        inactivePanel = currentActive;
+                                                        currentActive.classList.remove("active");
+                                                        nextPanel.classList.add("active");
 						}
 					}
 				} else {
@@ -483,9 +627,10 @@
 						search.length > 0 // <= SOLO si hay búsqueda, no si está vacío
 						
 					) {
-						for (const item of lastValidResults) {
-							tbody.appendChild(renderRow(item));
-						}
+                                                for (const item of lastValidResults) {
+                                                        tbody.appendChild(renderRow(item));
+                                                        prefetchDetail(item.id);
+                                                }
 						setResultMessage(
 							`No se han encontrado garantías para <strong>"${search}"</strong>. Mostrando resultados de <strong>"${lastValidQuery}"</strong>.`
 						);
@@ -521,9 +666,10 @@
 				const { data } = await res.json();
 				tbody.innerHTML = "";
 				setResultMessage("");
-				for (const item of data) {
-					tbody.appendChild(renderRow(item));
-				}
+                                for (const item of data) {
+                                        tbody.appendChild(renderRow(item));
+                                        prefetchDetail(item.id);
+                                }
 				const allRows = Array.from(
 					document.querySelectorAll(".guarantees-table__row")
 				);
@@ -609,28 +755,6 @@
                         };
                 }
 
-                const skeletonFields = [
-			"tipo",
-			"kilometros",
-			"primera_matriculacion",
-			"bastidor",
-			"precio_venta",
-			"combustible",
-			"cambio",
-			"potencia",
-			"cilindrada",
-			"telefono_vendedor",
-			"email_vendedor",
-                        "nombre_comprador",
-                        "dni_comprador",
-                        "telefono_comprador",
-                        "email_comprador",
-                        "direccion_comprador",
-                        "localidad_comprador",
-                        "provincia_comprador",
-                        "codigo_postal_comprador",
-                ];
-
 		function renderFastActions(vendedor, telefono, email, skeletons = []) {
 			const label = skeletons.includes("concesionario")
 				? `<span class="skeleton skeleton--nombre"></span>`
@@ -672,10 +796,10 @@
         (data.estado && data.estado.value) ||
         rowData.estadoclase ||
         "pendiente-pago";
-    const isSinFinalizar = estadoValue === "sin_finalizar";
-    const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
-        estadoValue
-    )}`;
+    const estadoClase = normalizeEstadoClase(estadoValue);
+    const isSinFinalizar = estadoClase === "sin-finalizar";
+    const isPendientePago = estadoClase === "pendiente-pago";
+    const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
 
     const planTitle = `${data.plan ?? "-"}${
         mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
@@ -719,6 +843,7 @@
     const hasDocs = docFields.every((field) => isFilled(data[field]));
     const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
     const showChannelSection = isAdmin;
+    const showActions = isAdmin;
 
     if (isSinFinalizar) {
         return `
@@ -733,13 +858,13 @@
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                <div class="guarantee-detail__btn-container">
+                ${(showActions || isProfesional) ? `<div class="guarantee-detail__btn-container">
                         <button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">
                                 <span class="guarantee-detail__btn-text">Continuar con la garantía</span>
                         </button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
-                </div>
+                        ${showActions ? `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>` : ``}
+                </div>` : ``}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--fast-actions">
                                 <h3 class="detail__section-title">Canal de venta</h3>
@@ -830,6 +955,46 @@
         </div>`;
     }
 
+    const actionsHtml = showActions
+        ? isPendientePago
+            ? `<div class="guarantee-detail__btn-container">
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="Confirmar pago">
+                                <span class="guarantee-detail__btn-text">Confirmar pago</span>
+                        </button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
+                </div>`
+            : `<div class="guarantee-detail__btn-container">
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
+                                <span class="guarantee-detail__btn-text">Abrir expediente</span>
+                        </button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
+                </div>`
+        : ``;
+    const paymentHtml = isPendientePago && !isAdmin
+        ? (() => {
+                if ((data.metodo_pago || rowData.metodo_pago) === "transferencia") {
+                        const concepto = `Garantía ${skeleton("matricula")}`;
+                        const cantidad = `${skeleton("precio", "0")} €`;
+                        const iban = "ES00 0000 0000 0000 0000 0000";
+                        return `<section class="detail__section detail__section--payment">
+                                <p class="detail__payment-note">Recuerda realizar la transferencia para activar tu garantía.</p>
+                                <table class="detail__transfer-table">
+                                        <tbody>
+                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                        </tbody>
+                                </table>
+                                <div class="detail__copy-toast" aria-hidden="true"></div>
+                        </section>`;
+                }
+                return `<section class="detail__section detail__section--payment">
+                                <p class="detail__payment-note">El pago se procesará mediante domiciliación bancaria.</p>
+                        </section>`;
+        })()
+        : ``;
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
@@ -841,13 +1006,8 @@
                         </div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                <div class="guarantee-detail__btn-container">
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
-                                <span class="guarantee-detail__btn-text">Abrir expediente</span>
-                        </button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
-                </div>
+                ${actionsHtml}
+                ${paymentHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--fast-actions">
                                 <h3 class="detail__section-title">Canal de venta</h3>
@@ -969,55 +1129,46 @@ function initRowSelection() {
 
 				const rowData = buildRowData(row);
 
-				if (detailCache.has(id)) {
-					const data = detailCache.get(id);
-					nextPanel.innerHTML = renderFullDetail(data, rowData, []);
-				} else {
-					nextPanel.innerHTML = renderFullDetail(
-						rowData,
-						rowData,
-						skeletonFields
-					);
-				}
-				nextPanel.dataset.loadedId = id;
+                                if (detailCache.has(id)) {
+                                        const data = detailCache.get(id);
+                                        nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                } else {
+                                        nextPanel.classList.add("loading");
+                                        nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                }
+                                nextPanel.dataset.loadedId = id;
 
-				activePanel = nextPanel;
-				inactivePanel = currentActive;
-				currentActive.classList.add(
-					forward ? "slide-out-left" : "slide-out-right"
-				);
-				nextPanel.classList.add(forward ? "slide-in-right" : "slide-in-left");
-				nextPanel.classList.add("active");
-				currentActive.classList.remove("active");
-				currentActive.addEventListener(
-					"animationend",
-					() => {
-						currentActive.classList.remove("slide-out-left", "slide-out-right");
-						nextPanel.classList.remove("slide-in-left", "slide-in-right");
-					},
-					{ once: true }
-				);
+                                activePanel = nextPanel;
+                                inactivePanel = currentActive;
+                                currentActive.classList.add(
+                                        forward ? "slide-out-left" : "slide-out-right"
+                                );
+                                nextPanel.classList.add(forward ? "slide-in-right" : "slide-in-left");
+                                nextPanel.classList.add("active");
+                                currentActive.classList.remove("active");
+                                currentActive.addEventListener(
+                                        "animationend",
+                                        () => {
+                                                currentActive.classList.remove("slide-out-left", "slide-out-right");
+                                                nextPanel.classList.remove("slide-in-left", "slide-in-right");
+                                        },
+                                        { once: true }
+                                );
 
-				prevSelectedRow = row;
+                                prevSelectedRow = row;
 
-				if (!detailCache.has(id)) {
-					nextPanel.classList.add("loading");
-					try {
-                                            const res = await fetch(`${restRoot}go/v1/guarantees/${id}`, {
-                                                    headers: { "X-WP-Nonce": restNonce },
-						});
-						if (!res.ok) throw res.status;
-                                                const data = normalizeDetailData(await res.json());
-                                                detailCache.set(id, data);
+                                if (!detailCache.has(id)) {
+                                        try {
+                                                const data = await prefetchDetail(id);
                                                 if (nextPanel.dataset.loadedId === String(id)) {
                                                         nextPanel.innerHTML = renderFullDetail(data, rowData, []);
                                                 }
-					} catch (e) {
-						console.error("❌ Error fetch detalle:", e);
-					} finally {
-						nextPanel.classList.remove("loading");
-					}
-				}
+                                        } catch (e) {
+                                                console.error("❌ Error fetch detalle:", e);
+                                        } finally {
+                                                nextPanel.classList.remove("loading");
+                                        }
+                                }
 			});
 
 			tbody.addEventListener("keydown", function (e) {
@@ -1026,26 +1177,16 @@ function initRowSelection() {
 				if (row) row.click();
 			});
 
-			tbody.addEventListener(
-				"mouseenter",
-				async function (e) {
-					const row = e.target.closest(".guarantees-table__row");
-					if (!row) return;
-					const id = row.dataset.id;
-					if (detailCache.has(id)) return;
-					try {
-                                            const res = await fetch(`${restRoot}go/v1/guarantees/${id}`, {
-                                                    headers: { "X-WP-Nonce": restNonce },
-						});
-						if (!res.ok) throw res.status;
-                                                const data = normalizeDetailData(await res.json());
-                                                detailCache.set(id, data);
-                                        } catch (e) {
-                                                // Nada
-                                        }
+                        tbody.addEventListener(
+                                "mouseenter",
+                                function (e) {
+                                        const row = e.target.closest(".guarantees-table__row");
+                                        if (!row) return;
+                                        const id = row.dataset.id;
+                                        prefetchDetail(id);
                                 },
-				true
-			);
+                                true
+                        );
 		}
 		initRowSelection();
 
