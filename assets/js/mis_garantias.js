@@ -62,16 +62,14 @@
 			table.insertAdjacentElement("afterend", resultMessage);
 		}
 
-		if (!panel1 || !panel2) {
-			detail.innerHTML = `
-				<div class="guarantee-detail__panel active" id="detail-panel-1">
-					${detail.innerHTML}
-				</div>
-				<div class="guarantee-detail__panel" id="detail-panel-2"></div>
-			`;
-			panel1 = document.getElementById("detail-panel-1");
-			panel2 = document.getElementById("detail-panel-2");
-		}
+                if (!panel1 || !panel2) {
+                        detail.innerHTML =
+                                '<div class="guarantee-detail__panel active" id="detail-panel-1">' +
+                                detail.innerHTML +
+                                '</div><div class="guarantee-detail__panel" id="detail-panel-2"></div>';
+                        panel1 = document.getElementById("detail-panel-1");
+                        panel2 = document.getElementById("detail-panel-2");
+                }
 
 		let activePanel = panel1;
 		let inactivePanel = panel2;
@@ -106,7 +104,7 @@
                                 encodeURIComponent(uuid);
                 });
 
-                document.addEventListener("click", async (e) => {
+                function handleConfirmClick(e) {
                         const btn = e.target.closest(
                                 ".guarantee-detail__btn--confirm"
                         );
@@ -115,57 +113,66 @@
                         const id = panel?.dataset.loadedId;
                         if (!id) return;
                         btn.disabled = true;
-                        try {
-                                const res = await fetch(
-                                        `${restRoot}go/v1/guarantees/autosave`,
-                                        {
-                                                method: "POST",
-                                                headers: {
-                                                        "Content-Type": "application/json",
-                                                        "X-WP-Nonce": restNonce,
-                                                },
-                                                body: JSON.stringify({
-                                                        id,
-                                                        estado_garantia: {
-                                                                estado_contratacion: "activada",
-                                                        },
-                                                }),
-                                        }
-                                );
-                                if (!res.ok) throw res.status;
-                                detailCache.delete(id);
-                                const row = tbody.querySelector(
-                                        `.guarantees-table__row[data-id="${id}"]`
-                                );
-                                if (row) {
-                                        row.dataset.estadoclase = "activada";
-                                        row.dataset.estado = "Activada";
-                                        const badge = row.querySelector(
-                                                ".guarantees-list__badge"
+                        let row;
+                        fetch(`${restRoot}go/v1/guarantees/autosave`, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": restNonce,
+                                },
+                                body: JSON.stringify({
+                                        id,
+                                        estado_garantia: {
+                                                estado_contratacion: "activada",
+                                        },
+                                }),
+                        })
+                                .then((res) => {
+                                        if (!res.ok) throw res.status;
+                                        detailCache.delete(id);
+                                        row = tbody.querySelector(
+                                                `.guarantees-table__row[data-id="${id}"]`
                                         );
-                                        if (badge) {
-                                                badge.textContent = "Activada";
-                                                badge.className =
-                                                        "guarantees-list__badge guarantees-list__badge--activada";
+                                        if (row) {
+                                                row.dataset.estadoclase = "activada";
+                                                row.dataset.estado = "Activada";
+                                                const badge = row.querySelector(
+                                                        ".guarantees-list__badge"
+                                                );
+                                                if (badge) {
+                                                        badge.textContent = "Activada";
+                                                        badge.className =
+                                                                "guarantees-list__badge guarantees-list__badge--activada";
+                                                }
                                         }
-                                }
-                                const detailRes = await fetch(
-                                        `${restRoot}go/v1/guarantees/${id}`,
-                                        { headers: { "X-WP-Nonce": restNonce } }
-                                );
-                                if (!detailRes.ok) throw detailRes.status;
-                                const rowData = row ? buildRowData(row) : {};
-                                const data = normalizeDetailData(
-                                        await detailRes.json()
-                                );
-                                detailCache.set(id, data);
-                                panel.innerHTML = renderFullDetail(data, rowData, []);
-                        } catch (err) {
-                                console.error("Error confirm payment:", err);
-                        } finally {
-                                btn.disabled = false;
-                        }
-                });
+                                        return fetch(
+                                                `${restRoot}go/v1/guarantees/${id}`,
+                                                { headers: { "X-WP-Nonce": restNonce } }
+                                        );
+                                })
+                                .then((detailRes) => {
+                                        if (!detailRes.ok) throw detailRes.status;
+                                        const rowData = row ? buildRowData(row) : {};
+                                        return detailRes
+                                                .json()
+                                                .then((json) => {
+                                                        const data = normalizeDetailData(json);
+                                                        detailCache.set(id, data);
+                                                        panel.innerHTML = renderFullDetail(
+                                                                data,
+                                                                rowData,
+                                                                []
+                                                        );
+                                                });
+                                })
+                                .catch((err) => {
+                                        console.error("Error confirm payment:", err);
+                                })
+                                .finally(() => {
+                                        btn.disabled = false;
+                                });
+                }
+                document.addEventListener("click", handleConfirmClick);
 
                 document.addEventListener("click", (e) => {
                         const btn = e.target.closest("[data-copy]");
