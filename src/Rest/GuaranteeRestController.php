@@ -114,10 +114,15 @@ class GuaranteeRestController
             return false;
         }
 
-        $current_user = get_current_user_id();
+        $current_user = wp_get_current_user();
+        $uid = $current_user->ID;
 
-        // Admin puede ver todo
-        if (current_user_can('manage_options')) {
+        // Admin o roles internos pueden ver todo
+        if (
+            current_user_can('manage_options') ||
+            in_array('go_garantias', (array) $current_user->roles, true) ||
+            in_array('go_comercial', (array) $current_user->roles, true)
+        ) {
             return true;
         }
 
@@ -127,7 +132,7 @@ class GuaranteeRestController
         $profesional = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
         $profesional_id = is_array($profesional) && isset($profesional['ID']) ? $profesional['ID'] : $profesional;
 
-        if ((int)$current_user === (int)$profesional_id) {
+        if ((int)$uid === (int)$profesional_id) {
             return true;
         }
 
@@ -143,7 +148,7 @@ class GuaranteeRestController
                     }
                 }
             }
-            if (in_array((int)$current_user, $comercial_ids, true)) {
+            if (in_array((int)$uid, $comercial_ids, true)) {
                 return true;
             }
         }
@@ -777,6 +782,7 @@ class GuaranteeRestController
         $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
         $plan    = $plan_id ? get_the_title($plan_id) : '';
         $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
+        $metodo_pago = get_post_meta($id, 'garantia_contratada_metodo_pago', true);
         $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
@@ -852,6 +858,7 @@ class GuaranteeRestController
             'cilindrada' => $cilindrada ?: '-',
             'plan' => $plan,
             'precio' => $precio,
+            'metodo_pago' => $metodo_pago ?: '',
             'desde' => $desde,
             'hasta' => $hasta,
             'estado' => [
