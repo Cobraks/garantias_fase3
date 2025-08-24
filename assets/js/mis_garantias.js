@@ -719,6 +719,7 @@
     const hasDocs = docFields.every((field) => isFilled(data[field]));
     const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
     const showChannelSection = isAdmin;
+    const showActions = isAdmin;
 
     if (isSinFinalizar) {
         return `
@@ -733,13 +734,13 @@
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                <div class="guarantee-detail__btn-container">
+                ${showActions ? `<div class="guarantee-detail__btn-container">
                         <button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">
                                 <span class="guarantee-detail__btn-text">Continuar con la garantía</span>
                         </button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
-                </div>
+                </div>` : ``}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--fast-actions">
                                 <h3 class="detail__section-title">Canal de venta</h3>
@@ -841,13 +842,13 @@
                         </div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                <div class="guarantee-detail__btn-container">
+                ${showActions ? `<div class="guarantee-detail__btn-container">
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
                                 <span class="guarantee-detail__btn-text">Abrir expediente</span>
                         </button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
-                </div>
+                </div>` : ``}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--fast-actions">
                                 <h3 class="detail__section-title">Canal de venta</h3>
