@@ -670,14 +670,52 @@
 				}
 			} catch (err) {
 				console.error("❌ Error en loadPage:", err);
-			} finally {
-				isLoading = false;
-				spinner.style.display = hasMore ? "" : "none";
-			}
-		}
+                        } finally {
+                                isLoading = false;
+                                spinner.style.display = hasMore ? "" : "none";
+                        }
+                }
+
+                async function loadUntilRow(id, page = 1) {
+                        await loadPage(page);
+                        const found = tbody.querySelector(
+                                `.guarantees-table__row[data-id="${id}"]`
+                        );
+                        if (!found && hasMore) {
+                                await loadUntilRow(id, page + 1);
+                        }
+                        return found;
+                }
+
+                async function loadAndSelectByPlate(plate) {
+                        try {
+                                const params = new URLSearchParams({
+                                        search: plate,
+                                        per_page: 1,
+                                });
+                                const res = await fetch(
+                                        `${restRoot}go/v1/guarantees?${params.toString()}`,
+                                        { headers: { "X-WP-Nonce": restNonce } }
+                                );
+                                if (!res.ok) throw res.status;
+                                const { data } = await res.json();
+                                if (data.length === 0) {
+                                        await loadPage(1);
+                                        return;
+                                }
+                                const id = data[0].id;
+                                const row = await loadUntilRow(id, 1);
+                                if (row) {
+                                        row.click();
+                                }
+                        } catch (e) {
+                                console.error("❌ Error loadAndSelectByPlate:", e);
+                                await loadPage(1);
+                        }
+                }
 
 
-		function getDurationMeses(desde, hasta) {
+                function getDurationMeses(desde, hasta) {
 			const d1 = new Date(desde);
 			const d2 = new Date(hasta);
 			if (isNaN(d1) || isNaN(d2)) return "-";
@@ -1366,18 +1404,19 @@ function initRowSelection() {
 			loadPage(1);
 		});
 
-                if (!urlMat) {
-                        new IntersectionObserver(
-                                (entries) => {
-                                        if (entries[0].isIntersecting && hasMore && !isLoading) {
-                                                loadPage(currentPage + 1);
-                                        }
-                                },
-                                { root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }
-                        ).observe(scrollEnd);
-                        loadPage(1);
+                new IntersectionObserver(
+                        (entries) => {
+                                if (entries[0].isIntersecting && hasMore && !isLoading) {
+                                        loadPage(currentPage + 1);
+                                }
+                        },
+                        { root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }
+                ).observe(scrollEnd);
+
+                if (urlMat) {
+                        loadAndSelectByPlate(urlMat);
                 } else {
-                        loadPage(1, { search: urlMat });
+                        loadPage(1);
                 }
         });
 })();

@@ -479,6 +479,9 @@ class GuaranteeRestController
 
         error_log('[AUTOSAVE] Completed for ID ' . $post_id);
 
+        // Clear cached list and detail responses so subsequent fetches reflect the update.
+        self::clear_list_transients($post_id, null, true);
+
         return new WP_REST_Response(['id' => $post_id, 'uuid' => $uuid]);
     }
 
