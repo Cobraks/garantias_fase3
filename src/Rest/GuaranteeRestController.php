@@ -574,7 +574,14 @@ class GuaranteeRestController
         $cilindrada = get_post_meta($id, 'datos_vehiculo_cilindrada', true);
 
         $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
-        $plan    = $plan_id ? get_the_title($plan_id) : '';
+        if ($plan_id) {
+            $custom_plan = function_exists('get_field')
+                ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
+                : '';
+            $plan = $custom_plan ?: get_the_title($plan_id);
+        } else {
+            $plan = '';
+        }
         $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
         $metodo_pago = get_post_meta($id, 'garantia_contratada_metodo_pago', true);
         $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
@@ -960,7 +967,10 @@ class GuaranteeRestController
         $planes = [];
         $plan_ids = array_unique(array_filter($plan_ids));
         foreach ($plan_ids as $pid) {
-            $title = get_the_title($pid);
+            $custom_title = function_exists('get_field')
+                ? get_field('detalles_modalidad_nombre_mostrar', $pid)
+                : '';
+            $title = $custom_title ?: get_the_title($pid);
             if ($title) {
                 $planes[] = [
                     'id'    => (int) $pid,
