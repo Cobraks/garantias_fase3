@@ -23,8 +23,24 @@
                         "user";
                 const isAdmin =
                         ["administrator", "admin", "go_garantias", "go_comercial"].includes(userRole);
+                const isProfesional = userRole === "go_profesional";
+                const copyIcon = '<svg height="16" viewBox="0 0 24 24" width="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+                const phoneIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M798-120q-125 0-247-54.5T329-329Q229-429 174.5-551T120-798q0-18 12-30t30-12h162q14 0 25 9.5t13 22.5l26 140q2 16-1 27t-11 19l-97 98q20 37 47.5 71.5T387-386q31 31 65 57.5t72 48.5l94-94q9-9 23.5-13.5T670-390l138 28q14 4 23 14.5t9 23.5v162q0 18-12 30t-30 12ZM241-600l66-66-17-94h-89q5 41 14 81t26 79Zm358 358q39 17 79.5 27t81.5 13v-88l-94-19-67 67ZM241-600Zm358 358Z"/></svg>';
+                const emailIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm320-280L160-640v400h640v-400L480-440Zm0-80 320-200H160l320 200ZM160-640v-80 480-400Z"/></svg>';
+                const userIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M234-276q51-39 114-61.5T480-360q69 0 132 22.5T726-276q35-41 54.5-93T800-480q0-133-93.5-226.5T480-800q-133 0-226.5 93.5T160-480q0 59 19.5 111t54.5 93Zm246-164q-59 0-99.5-40.5T340-580q0-59 40.5-99.5T480-720q59 0 99.5 40.5T620-580q0 59-40.5 99.5T480-440Zm0 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q53 0 100-15.5t86-44.5q-39-29-86-44.5T480-280q-53 0-100 15.5T294-220q39 29 86 44.5T480-160Zm0-360q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm0-60Zm0 360Z"/></svg>';
+                const warningIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/></svg>';
+                const heartIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Zm0-108q96-86 158-147.5t98-107q36-45.5 50-81t14-70.5q0-60-40-100t-100-40q-47 0-87 26.5T518-680h-76q-15-41-55-67.5T300-774q-60 0-100 40t-40 100q0 35 14 70.5t50 81q36 45.5 98 107T480-228Zm0-273Z"/></svg>';
+                const shareIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M680-80q-50 0-85-35t-35-85q0-6 3-28L282-392q-16 15-37 23.5t-45 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q24 0 45 8.5t37 23.5l281-164q-2-7-2.5-13.5T560-760q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-24 0-45-8.5T598-672L317-508q2 7 2.5 13.5t.5 14.5q0 8-.5 14.5T317-452l281 164q16-15 37-23.5t45-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-200q0-17-11.5-28.5T680-240q-17 0-28.5 11.5T640-200q0 17 11.5 28.5T680-160ZM200-440q17 0 28.5-11.5T240-480q0-17-11.5-28.5T200-520q-17 0-28.5 11.5T160-480q0 17 11.5 28.5T200-440Zm480-280q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0 520ZM200-480Zm480-280Z"/></svg>';
+                const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
+                const saveStatus = document.createElement("div");
+                saveStatus.className = "autosave-status autosave-status--hidden";
+                saveStatus.innerHTML =
+                        '<span class="autosave-status__spinner"></span>' +
+                        '<span class="autosave-status__icon" style="display:none"></span>' +
+                        '<span class="autosave-status__text">Guardando</span>';
+                document.body.appendChild(saveStatus);
                 const DEFAULT_PER = 12;
-		let perPage = DEFAULT_PER;
+                let perPage = DEFAULT_PER;
 		let currentPage = 1;
 		let totalPages = 1;
 		let totalPosts = 0;
@@ -49,6 +65,7 @@
                 let selectedPlan = "";
                 let selectedCanal = "";
                 let selectedConcesionario = "";
+                let currentListAbort = null;
 
 		let resultMessage = document.querySelector(
 			".guarantees-list__result-message"
@@ -60,25 +77,53 @@
 			table.insertAdjacentElement("afterend", resultMessage);
 		}
 
-		if (!panel1 || !panel2) {
-			detail.innerHTML = `
-				<div class="guarantee-detail__panel active" id="detail-panel-1">
-					${detail.innerHTML}
-				</div>
-				<div class="guarantee-detail__panel" id="detail-panel-2"></div>
-			`;
-			panel1 = document.getElementById("detail-panel-1");
-			panel2 = document.getElementById("detail-panel-2");
-		}
+                if (!panel1 || !panel2) {
+                        detail.innerHTML =
+                                '<div class="guarantee-detail__panel active" id="detail-panel-1">' +
+                                detail.innerHTML +
+                                '</div><div class="guarantee-detail__panel" id="detail-panel-2"></div>';
+                        panel1 = document.getElementById("detail-panel-1");
+                        panel2 = document.getElementById("detail-panel-2");
+                }
 
 		let activePanel = panel1;
 		let inactivePanel = panel2;
 		activePanel.classList.add("active");
 		inactivePanel.classList.remove("active");
-		let prevSelectedRow = null;
-		let prevIdx = null;
-		const urlMat = new URLSearchParams(window.location.search).get("matricula");
+                let prevSelectedRow = null;
+                let prevIdx = null;
+                const urlMat = new URLSearchParams(window.location.search).get("matricula");
                 const detailCache = new Map();
+                const detailPromises = new Map();
+                const loadedIds = new Set();
+
+                function fetchDetail(id) {
+                        if (detailCache.has(id)) {
+                                return Promise.resolve(detailCache.get(id));
+                        }
+                        if (detailPromises.has(id)) {
+                                return detailPromises.get(id);
+                        }
+                        const p = fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                headers: { "X-WP-Nonce": restNonce },
+                        })
+                                .then((res) => {
+                                        if (!res.ok) throw res.status;
+                                        return res.json();
+                                })
+                                .then((json) => {
+                                        const data = normalizeDetailData(json);
+                                        detailCache.set(id, data);
+                                        detailPromises.delete(id);
+                                        return data;
+                                })
+                                .catch((err) => {
+                                        detailPromises.delete(id);
+                                        throw err;
+                                });
+                        detailPromises.set(id, p);
+                        return p;
+                }
 
                 document.addEventListener("click", (e) => {
                         const btn = e.target.closest(
@@ -102,6 +147,157 @@
                         window.location.href =
                                 "/garantias-online/nueva-garantia?uuid=" +
                                 encodeURIComponent(uuid);
+                });
+
+                function handleConfirmClick(e) {
+                        const btn = e.target.closest(
+                                ".guarantee-detail__btn--confirm"
+                        );
+                        if (!btn) return;
+                        const panel = btn.closest(".guarantee-detail__panel");
+                        const id = panel?.dataset.loadedId;
+                        if (!id) return;
+                        const cacheData = detailCache.get(id);
+                        const uuid = cacheData && cacheData.uuid ? cacheData.uuid : "";
+                        if (!uuid) return;
+                        const textSpan = btn.querySelector(
+                                ".guarantee-detail__btn-text"
+                        );
+                        const originalText = textSpan
+                                ? textSpan.textContent
+                                : "";
+                        let spinner = btn.querySelector(
+                                ".guarantee-detail__btn-spinner"
+                        );
+                        if (!spinner) {
+                                spinner = document.createElement("span");
+                                spinner.className =
+                                        "guarantee-detail__btn-spinner";
+                                if (textSpan) {
+                                        btn.insertBefore(spinner, textSpan);
+                                } else {
+                                        btn.appendChild(spinner);
+                                }
+                        }
+                        if (textSpan) {
+                                textSpan.textContent =
+                                        "Activando garantía";
+                        }
+                        btn.disabled = true;
+                        saveStatus.classList.remove(
+                                "autosave-status--hidden"
+                        );
+                        let row;
+                        fetch(`${restRoot}go/v1/guarantees/autosave`, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": restNonce,
+                                },
+                                body: JSON.stringify({
+                                        id,
+                                        uuid,
+                                        data: {
+                                                estado_garantia: {
+                                                        estado_contratacion: "activada",
+                                                },
+                                        },
+                                }),
+                        })
+                                .then((res) => {
+                                        if (!res.ok) throw res.status;
+                                        detailCache.delete(id);
+                                        row = tbody.querySelector(
+                                                `.guarantees-table__row[data-id="${id}"]`
+                                        );
+                                        if (row) {
+                                                row.dataset.estadoclase = "activada";
+                                                row.dataset.estado = "Activada";
+                                                const badge = row.querySelector(
+                                                        ".guarantees-list__badge"
+                                                );
+                                                if (badge) {
+                                                        badge.textContent = "Activada";
+                                                        badge.className =
+                                                                "guarantees-list__badge guarantees-list__badge--activada";
+                                                }
+                                        }
+                                        return fetch(
+                                                `${restRoot}go/v1/guarantees/${id}`,
+                                                { headers: { "X-WP-Nonce": restNonce } }
+                                        );
+                                })
+                                .then((detailRes) => {
+                                        if (!detailRes.ok) throw detailRes.status;
+                                        const rowData = row ? buildRowData(row) : {};
+                                        return detailRes
+                                                .json()
+                                                .then((json) => {
+                                                        const data = normalizeDetailData(json);
+                                                        detailCache.set(id, data);
+                                                        panel.innerHTML = renderFullDetail(
+                                                                data,
+                                                                rowData,
+                                                                []
+                                                        );
+                                                });
+                                })
+                                .catch((err) => {
+                                        console.error("Error confirm payment:", err);
+                                })
+                                .finally(() => {
+                                        btn.disabled = false;
+                                        saveStatus.classList.add(
+                                                "autosave-status--hidden"
+                                        );
+                                        if (textSpan) {
+                                                textSpan.textContent =
+                                                        originalText ||
+                                                        "Confirmar pago";
+                                        }
+                                        if (spinner) {
+                                                spinner.remove();
+                                        }
+                                });
+                }
+                document.addEventListener("click", handleConfirmClick);
+
+                document.addEventListener("click", (e) => {
+                        const btn = e.target.closest("[data-copy]");
+                        if (!btn) return;
+                        const panel = btn.closest(".guarantee-detail__panel");
+                        const target = panel.querySelector(btn.dataset.copy);
+                        if (!target) return;
+                        const text = target.textContent.trim();
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(text).then(() => {
+                                        const toast = panel.querySelector(
+                                                ".detail__copy-toast"
+                                        );
+                                        if (toast) {
+                                                toast.textContent =
+                                                        btn.dataset.toast || "Copiado";
+                                                toast.classList.add("show");
+                                                setTimeout(
+                                                        () => toast.classList.remove("show"),
+                                                        2000
+                                                );
+                                        }
+                                        const original = btn.getAttribute(
+                                                "aria-label"
+                                        );
+                                        const done = btn.dataset.done || "Copiado";
+                                        btn.setAttribute("aria-label", done);
+                                        setTimeout(() => {
+                                                if (original) {
+                                                        btn.setAttribute(
+                                                                "aria-label",
+                                                                original
+                                                        );
+                                                }
+                                        }, 2000);
+                                });
+                        }
                 });
 
                 function normalizeEstadoClase(estado) {
@@ -379,6 +575,8 @@
                                         ? options.concesionario
                                         : selectedConcesionario;
                         try {
+                                if (currentListAbort) currentListAbort.abort();
+                                currentListAbort = new AbortController();
                                 const params = new URLSearchParams({
                                         page,
                                         per_page: perPage,
@@ -393,6 +591,7 @@
                                 let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
                                 const res = await fetch(url, {
                                         headers: { "X-WP-Nonce": restNonce },
+                                        signal: currentListAbort.signal,
                                 });
 				if (!res.ok) throw `HTTP ${res.status}`;
 				totalPosts = +res.headers.get("X-WP-Total") || 0;
@@ -416,10 +615,15 @@
 				currentPage = page;
 				hasMore = currentPage < totalPages;
 
-				if (data.length > 0) {
-					for (const item of data) {
-						tbody.appendChild(renderRow(item));
-					}
+                                if (data.length > 0) {
+                                        for (const item of data) {
+                                                if (item.detail) {
+                                                        detailCache.set(String(item.id), normalizeDetailData(item.detail));
+                                                }
+                                                if (loadedIds.has(item.id)) continue;
+                                                tbody.appendChild(renderRow(item));
+                                                loadedIds.add(item.id);
+                                        }
 					setResultMessage("");
 					// AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
 					if (data.length === 1 && search && search.length > 0) {
@@ -431,45 +635,36 @@
 							const currentActive = activePanel;
 							const nextPanel = activePanel === panel1 ? panel2 : panel1;
 
-							if (detailCache.has(id)) {
-								const dataDetalle = detailCache.get(id);
-								nextPanel.innerHTML = renderFullDetail(
-									dataDetalle,
-									rowData,
-									[]
-								);
-							} else {
-								nextPanel.innerHTML = renderFullDetail(
-									rowData,
-									rowData,
-									skeletonFields
-								);
-								(async () => {
-									try {
-										const res = await fetch(
-                                                                                `${restRoot}go/v1/guarantees/${id}`,
-                                                                                        {
-                                                                                                headers: { "X-WP-Nonce": restNonce },
-                                                                                        }
-                                                                                );
-										if (!res.ok) throw res.status;
-                                                                                const dataDetalle = normalizeDetailData(await res.json());
-                                                                                detailCache.set(id, dataDetalle);
+                                                        if (detailCache.has(id)) {
+                                                                const dataDetalle = detailCache.get(id);
+                                                                nextPanel.innerHTML = renderFullDetail(
+                                                                        dataDetalle,
+                                                                        rowData,
+                                                                        []
+                                                                );
+                                                        } else {
+                                                                nextPanel.classList.add("loading");
+                                                                nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                                                fetchDetail(id)
+                                                                        .then((dataDetalle) => {
                                                                                 if (nextPanel.dataset.loadedId === String(id)) {
                                                                                         nextPanel.innerHTML = renderFullDetail(
                                                                                                 dataDetalle,
                                                                                                 rowData,
-												[]
-											);
-										}
-									} catch (e) {}
-								})();
-							}
-							nextPanel.dataset.loadedId = id;
-							activePanel = nextPanel;
-							inactivePanel = currentActive;
-							currentActive.classList.remove("active");
-							nextPanel.classList.add("active");
+                                                                                                []
+                                                                                        );
+                                                                                }
+                                                                        })
+                                                                        .catch(() => {})
+                                                                        .finally(() => {
+                                                                                nextPanel.classList.remove("loading");
+                                                                        });
+                                                        }
+                                                        nextPanel.dataset.loadedId = id;
+                                                        activePanel = nextPanel;
+                                                        inactivePanel = currentActive;
+                                                        currentActive.classList.remove("active");
+                                                        nextPanel.classList.add("active");
 						}
 					}
 				} else {
@@ -483,9 +678,9 @@
 						search.length > 0 // <= SOLO si hay búsqueda, no si está vacío
 						
 					) {
-						for (const item of lastValidResults) {
-							tbody.appendChild(renderRow(item));
-						}
+                                                for (const item of lastValidResults) {
+                                                        tbody.appendChild(renderRow(item));
+                                                }
 						setResultMessage(
 							`No se han encontrado garantías para <strong>"${search}"</strong>. Mostrando resultados de <strong>"${lastValidQuery}"</strong>.`
 						);
@@ -497,50 +692,66 @@
 				}
 			} catch (err) {
 				console.error("❌ Error en loadPage:", err);
-			} finally {
-				isLoading = false;
-				spinner.style.display = hasMore ? "" : "none";
-			}
-		}
+                        } finally {
+                                isLoading = false;
+                                spinner.style.display = hasMore ? "" : "none";
+                        }
+                }
 
-		async function loadAllAndSelect() {
-			isLoading = true;
-			spinner.style.display = "";
-			try {
-                                let res = await fetch(
-                                        `${restRoot}go/v1/guarantees?page=1&per_page=1`,
+                async function preloadByPlate(plate) {
+                        try {
+                                const params = new URLSearchParams({
+                                        search: plate,
+                                        per_page: 1,
+                                });
+                                const res = await fetch(
+                                        `${restRoot}go/v1/guarantees?${params.toString()}`,
                                         { headers: { "X-WP-Nonce": restNonce } }
                                 );
-				if (!res.ok) throw res.status;
-				totalPosts = +res.headers.get("X-WP-Total") || 0;
-                                res = await fetch(
-                                        `${restRoot}go/v1/guarantees?page=1&per_page=${totalPosts}`,
-                                        { headers: { "X-WP-Nonce": restNonce } }
-                                );
-				if (!res.ok) throw res.status;
-				const { data } = await res.json();
-				tbody.innerHTML = "";
-				setResultMessage("");
-				for (const item of data) {
-					tbody.appendChild(renderRow(item));
-				}
-				const allRows = Array.from(
-					document.querySelectorAll(".guarantees-table__row")
-				);
-				const idx = allRows.findIndex((r) => r.dataset.matricula === urlMat);
-				if (idx >= 0) {
-					allRows[idx].scrollIntoView({ block: "center" });
-					setTimeout(() => allRows[idx].click(), 100);
-				}
-			} catch (err) {
-				console.error("❌ Error en loadAllAndSelect:", err);
-			} finally {
-				isLoading = false;
-				spinner.style.display = "none";
-			}
-		}
+                                if (!res.ok) throw res.status;
+                                const { data } = await res.json();
+                                if (data.length === 0) return;
+                                const item = data[0];
+                                const id = item.id;
+                                if (item.detail) {
+                                        detailCache.set(String(id), normalizeDetailData(item.detail));
+                                }
+                                let row = tbody.querySelector(`.guarantees-table__row[data-id="${id}"]`);
+                                if (!row) {
+                                        row = renderRow(item);
+                                        tbody.insertBefore(row, tbody.firstChild);
+                                        loadedIds.add(id);
+                                }
+                                if (prevSelectedRow) prevSelectedRow.classList.remove("selected");
+                                row.classList.add("selected");
+                                prevSelectedRow = row;
+                                const rowData = buildRowData(row);
+                                const currentActive = activePanel;
+                                const nextPanel = activePanel === panel1 ? panel2 : panel1;
+                                nextPanel.classList.add("loading");
+                                nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                fetchDetail(id)
+                                        .then((detailData) => {
+                                                if (nextPanel.dataset.loadedId === String(id)) {
+                                                        nextPanel.innerHTML = renderFullDetail(detailData, rowData, []);
+                                                }
+                                        })
+                                        .catch(() => {})
+                                        .finally(() => {
+                                                nextPanel.classList.remove("loading");
+                                        });
+                                nextPanel.dataset.loadedId = id;
+                                activePanel = nextPanel;
+                                inactivePanel = currentActive;
+                                currentActive.classList.remove("active");
+                                nextPanel.classList.add("active");
+                        } catch (e) {
+                                console.error("❌ Error preloadByPlate:", e);
+                        }
+                }
 
-		function getDurationMeses(desde, hasta) {
+
+                function getDurationMeses(desde, hasta) {
 			const d1 = new Date(desde);
 			const d2 = new Date(hasta);
 			if (isNaN(d1) || isNaN(d2)) return "-";
@@ -589,15 +800,17 @@
                                 bastidor: "-",
                                 precio_venta: "-",
 				combustible: "-",
-				cambio: "-",
-				potencia: "-",
-				cilindrada: "-",
-				telefono_vendedor: "-",
-				email_vendedor: "-",
-				contrato_url: "#",
-				condicionado_url: "#",
-				cobertura_url: "#",
-				factura_url: "#",
+                                cambio: "-",
+                                potencia: "-",
+                                cilindrada: "-",
+                                telefono_vendedor: "-",
+                                email_vendedor: "-",
+                                avatar_vendedor: "",
+                                vendedor_url: "#",
+                                contrato_url: "#",
+                                condicionado_url: "#",
+                                cobertura_url: "#",
+                                factura_url: "#",
                                 nombre_comprador: "-",
                                 dni_comprador: "-",
                                 telefono_comprador: "-",
@@ -609,51 +822,24 @@
                         };
                 }
 
-                const skeletonFields = [
-			"tipo",
-			"kilometros",
-			"primera_matriculacion",
-			"bastidor",
-			"precio_venta",
-			"combustible",
-			"cambio",
-			"potencia",
-			"cilindrada",
-			"telefono_vendedor",
-			"email_vendedor",
-                        "nombre_comprador",
-                        "dni_comprador",
-                        "telefono_comprador",
-                        "email_comprador",
-                        "direccion_comprador",
-                        "localidad_comprador",
-                        "provincia_comprador",
-                        "codigo_postal_comprador",
-                ];
-
-		function renderFastActions(vendedor, telefono, email, skeletons = []) {
-			const label = skeletons.includes("concesionario")
-				? `<span class="skeleton skeleton--nombre"></span>`
-				: vendedor ?? "-";
-                        const tel = skeletons.includes("telefono_vendedor")
-                                ? ""
-                                : telefono ?? "";
-                        const mail = skeletons.includes("email_vendedor") ? "" : email ?? "";
-			return `
-				<ul class="fast-actions">
-					<li class="fast-actions__item">
-						<a href="tel:${tel}" class="fast-actions__link">
-							<span class="fast-actions__label">${label}</span>
-						</a>
-					</li>
-					<li class="fast-actions__item">
-						<a href="mailto:${mail}" class="fast-actions__link">
-							<span class="fast-actions__label">${label}</span>
-						</a>
-					</li>
-				</ul>
-			`;
-		}
+                function renderFastActions(
+                        telefono,
+                        email,
+                        skeletons = [],
+                        telField = "telefono_vendedor",
+                        emailField = "email_vendedor"
+                ) {
+                        const tel = skeletons.includes(telField) ? "" : telefono ?? "";
+                        const mail = skeletons.includes(emailField) ? "" : email ?? "";
+                        const telHtml = tel
+                                ? `<li class="fast-actions__item"><a href="tel:${tel}" class="fast-actions__link"><span class="fast-actions__icon">${phoneIcon}</span><span class="fast-actions__label">${tel}</span></a></li>`
+                                : "";
+                        const mailHtml = mail
+                                ? `<li class="fast-actions__item"><a href="mailto:${mail}" class="fast-actions__link"><span class="fast-actions__icon">${emailIcon}</span><span class="fast-actions__label">${mail}</span></a></li>`
+                                : "";
+                        const content = `${telHtml}${mailHtml}`;
+                        return content ? `<ul class="fast-actions">${content}</ul>` : "";
+                }
 
                 function renderFullDetail(data, rowData, skeletons = []) {
     const getFieldText = (val) =>
@@ -672,10 +858,10 @@
         (data.estado && data.estado.value) ||
         rowData.estadoclase ||
         "pendiente-pago";
-    const isSinFinalizar = estadoValue === "sin_finalizar";
-    const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
-        estadoValue
-    )}`;
+    const estadoClase = normalizeEstadoClase(estadoValue);
+    const isSinFinalizar = estadoClase === "sin-finalizar";
+    const isPendientePago = estadoClase === "pendiente-pago";
+    const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
 
     const planTitle = `${data.plan ?? "-"}${
         mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
@@ -689,9 +875,6 @@
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
-    const canalVentaText =
-        getFieldText(data.canal_venta) ?? getFieldText(rowData.canal_venta);
-    const concesionarioText = data.concesionario ?? rowData.concesionario;
 
     const isFilled = (val) => {
         if (val === undefined || val === null) return false;
@@ -719,6 +902,7 @@
     const hasDocs = docFields.every((field) => isFilled(data[field]));
     const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
     const showChannelSection = isAdmin;
+    const showActions = isAdmin;
 
     if (isSinFinalizar) {
         return `
@@ -733,23 +917,31 @@
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                <div class="guarantee-detail__btn-container">
+                ${(showActions || isProfesional) ? `<div class="guarantee-detail__btn-container">
                         <button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">
                                 <span class="guarantee-detail__btn-text">Continuar con la garantía</span>
                         </button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
-                </div>
+                        ${showActions ? `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>` : ``}
+                </div>` : ``}
                 ${showChannelSection
-                        ? `<section class="detail__section detail__section--fast-actions">
+                        ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">Canal de venta</h3>
-                                <p>${canalVentaText ?? "-"}, ${concesionarioText ?? "-"}</p>
+                                <div class="vendor-card">
+                                        ${data.avatar_vendedor ?? rowData.avatar_vendedor
+                                            ? `<img src="${data.avatar_vendedor ?? rowData.avatar_vendedor}" alt="" class="vendor-card__avatar">`
+                                            : `<span class="vendor-card__avatar vendor-card__avatar--icon">${userIcon}</span>`}
+                                        <div class="vendor-card__info">
+                                                <p class="vendor-card__name">${skeleton("concesionario", "-")}</p>
+                                                <p class="vendor-card__role">${skeleton("canal_venta", "-")}</p>
+                                        </div>
+                                </div>
                                 ${renderFastActions(
-                                        concesionarioText,
                                         data.telefono_vendedor ?? rowData.telefono_vendedor,
                                         data.email_vendedor ?? rowData.email_vendedor,
                                         skeletons
                                 )}
+                                <a href="${data.vendedor_url ?? rowData.vendedor_url ?? '#'}" class="vendor-card__details-link">Ver detalles del cliente</a>
                         </section>`
                         : ""}
                 <section class="detail__section">
@@ -801,7 +993,7 @@
                             : `<p class="detail__alert-section">Documentación no disponible</p>`}
                 </section>
                 <section class="detail__section">
-                        <h3>Datos del comprador</h3>
+                        <h3>Datos del cliente</h3>
                         ${hasBuyerInfo
                             ? `<ul>
                                 <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
@@ -811,25 +1003,63 @@
                                 <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
                                 <li><strong>Localidad:</strong> ${skeleton("localidad_comprador", "-")}</li>
                                 <li><strong>Provincia:</strong> ${skeleton("provincia_comprador", "-")}</li>
+                        
                                 <li><strong>Código Postal:</strong> ${skeleton("codigo_postal_comprador", "-")}</li>
                         </ul>
-                        <ul class="fast-actions">
-                                <li class="fast-actions__item">
-                                        <a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
-                                                <span class="fast-actions__label">Cliente</span>
-                                        </a>
-                                </li>
-                                <li class="fast-actions__item">
-                                        <a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
-                                                <span class="fast-actions__label">Cliente</span>
-                                        </a>
-                                </li>
-                        </ul>`
+                        ${renderFastActions(
+                                data.telefono_comprador ?? rowData.telefono_comprador,
+                                data.email_comprador ?? rowData.email_comprador,
+                                skeletons,
+                                "telefono_comprador",
+                                "email_comprador"
+                        )}`
                             : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
         </div>`;
     }
 
+    const actionsHtml = showActions
+        ? isPendientePago
+            ? `<div class="guarantee-detail__btn-container">
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="Confirmar pago">
+                                <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
+                                <span class="guarantee-detail__btn-text">Confirmar pago</span>
+                        </button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
+                </div>`
+            : `<div class="guarantee-detail__btn-container">
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
+                                <span class="guarantee-detail__btn-icon">${warningIcon}</span>
+                                <span class="guarantee-detail__btn-text">Abrir expediente</span>
+                        </button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
+                </div>`
+        : ``;
+    const paymentHtml = isPendientePago && !isAdmin
+        ? (() => {
+                if ((data.metodo_pago || rowData.metodo_pago) === "transferencia") {
+                        const concepto = `Garantía ${skeleton("matricula")}`;
+                        const cantidad = `${skeleton("precio", "0")} €`;
+                        const iban = "ES00 0000 0000 0000 0000 0000";
+                        return `<section class="detail__section detail__section--payment">
+                                <p class="detail__payment-note">Recuerda realizar la transferencia para activar tu garantía.</p>
+                                <table class="detail__transfer-table">
+                                        <tbody>
+                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                        </tbody>
+                                </table>
+                                <div class="detail__copy-toast" aria-hidden="true"></div>
+                        </section>`;
+                }
+                return `<section class="detail__section detail__section--payment">
+                                <p class="detail__payment-note">El pago se procesará mediante domiciliación bancaria.</p>
+                        </section>`;
+        })()
+        : ``;
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
@@ -841,23 +1071,26 @@
                         </div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                <div class="guarantee-detail__btn-container">
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
-                                <span class="guarantee-detail__btn-text">Abrir expediente</span>
-                        </button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
-                </div>
+                ${actionsHtml}
+                ${paymentHtml}
                 ${showChannelSection
-                        ? `<section class="detail__section detail__section--fast-actions">
+                        ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">Canal de venta</h3>
-                                <p>${canalVentaText ?? "-"}, ${concesionarioText ?? "-"}</p>
+                                <div class="vendor-card">
+                                        ${data.avatar_vendedor ?? rowData.avatar_vendedor
+                                            ? `<img src="${data.avatar_vendedor ?? rowData.avatar_vendedor}" alt="" class="vendor-card__avatar">`
+                                            : `<span class="vendor-card__avatar vendor-card__avatar--icon">${userIcon}</span>`}
+                                        <div class="vendor-card__info">
+                                                <p class="vendor-card__name">${skeleton("concesionario", "-")}</p>
+                                                <p class="vendor-card__role">${skeleton("canal_venta", "-")}</p>
+                                        </div>
+                                </div>
                                 ${renderFastActions(
-                                        concesionarioText,
                                         data.telefono_vendedor ?? rowData.telefono_vendedor,
                                         data.email_vendedor ?? rowData.email_vendedor,
                                         skeletons
                                 )}
+                                <a href="${data.vendedor_url ?? rowData.vendedor_url ?? '#'}" class="vendor-card__details-link">Ver detalles del cliente</a>
                         </section>`
                         : ""}
                 <section class="detail__section">
@@ -907,7 +1140,7 @@
                         </ul>
                 </section>
                 <section class="detail__section">
-                        <h3>Datos del comprador</h3>
+                        <h3>Datos del cliente</h3>
                         <ul>
                                 <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
                                 <li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
@@ -918,18 +1151,13 @@
                                 <li><strong>Provincia:</strong> ${skeleton("provincia_comprador", "-")}</li>
                                 <li><strong>Código Postal:</strong> ${skeleton("codigo_postal_comprador", "-")}</li>
                         </ul>
-                        <ul class="fast-actions">
-                                <li class="fast-actions__item">
-                                        <a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
-                                                <span class="fast-actions__label">Cliente</span>
-                                        </a>
-                                </li>
-                                <li class="fast-actions__item">
-                                        <a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
-                                                <span class="fast-actions__label">Cliente</span>
-                                        </a>
-                                </li>
-                        </ul>
+                        ${renderFastActions(
+                                data.telefono_comprador ?? rowData.telefono_comprador,
+                                data.email_comprador ?? rowData.email_comprador,
+                                skeletons,
+                                "telefono_comprador",
+                                "email_comprador"
+                        )}
                 </section>
         </div>
     `;
@@ -969,84 +1197,54 @@ function initRowSelection() {
 
 				const rowData = buildRowData(row);
 
-				if (detailCache.has(id)) {
-					const data = detailCache.get(id);
-					nextPanel.innerHTML = renderFullDetail(data, rowData, []);
-				} else {
-					nextPanel.innerHTML = renderFullDetail(
-						rowData,
-						rowData,
-						skeletonFields
-					);
-				}
-				nextPanel.dataset.loadedId = id;
+                                if (detailCache.has(id)) {
+                                        const data = detailCache.get(id);
+                                        nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                } else {
+                                        nextPanel.classList.add("loading");
+                                        nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                }
+                                nextPanel.dataset.loadedId = id;
 
-				activePanel = nextPanel;
-				inactivePanel = currentActive;
-				currentActive.classList.add(
-					forward ? "slide-out-left" : "slide-out-right"
-				);
-				nextPanel.classList.add(forward ? "slide-in-right" : "slide-in-left");
-				nextPanel.classList.add("active");
-				currentActive.classList.remove("active");
-				currentActive.addEventListener(
-					"animationend",
-					() => {
-						currentActive.classList.remove("slide-out-left", "slide-out-right");
-						nextPanel.classList.remove("slide-in-left", "slide-in-right");
-					},
-					{ once: true }
-				);
+                                activePanel = nextPanel;
+                                inactivePanel = currentActive;
+                                currentActive.classList.add(
+                                        forward ? "slide-out-left" : "slide-out-right"
+                                );
+                                nextPanel.classList.add(forward ? "slide-in-right" : "slide-in-left");
+                                nextPanel.classList.add("active");
+                                currentActive.classList.remove("active");
+                                currentActive.addEventListener(
+                                        "animationend",
+                                        () => {
+                                                currentActive.classList.remove("slide-out-left", "slide-out-right");
+                                                nextPanel.classList.remove("slide-in-left", "slide-in-right");
+                                        },
+                                        { once: true }
+                                );
 
-				prevSelectedRow = row;
+                                prevSelectedRow = row;
 
-				if (!detailCache.has(id)) {
-					nextPanel.classList.add("loading");
-					try {
-                                            const res = await fetch(`${restRoot}go/v1/guarantees/${id}`, {
-                                                    headers: { "X-WP-Nonce": restNonce },
-						});
-						if (!res.ok) throw res.status;
-                                                const data = normalizeDetailData(await res.json());
-                                                detailCache.set(id, data);
+                                if (!detailCache.has(id)) {
+                                        try {
+                                                const data = await fetchDetail(id);
                                                 if (nextPanel.dataset.loadedId === String(id)) {
                                                         nextPanel.innerHTML = renderFullDetail(data, rowData, []);
                                                 }
-					} catch (e) {
-						console.error("❌ Error fetch detalle:", e);
-					} finally {
-						nextPanel.classList.remove("loading");
-					}
-				}
-			});
-
-			tbody.addEventListener("keydown", function (e) {
-				if (e.key !== "Enter") return;
-				const row = e.target.closest(".guarantees-table__row");
-				if (row) row.click();
-			});
-
-			tbody.addEventListener(
-				"mouseenter",
-				async function (e) {
-					const row = e.target.closest(".guarantees-table__row");
-					if (!row) return;
-					const id = row.dataset.id;
-					if (detailCache.has(id)) return;
-					try {
-                                            const res = await fetch(`${restRoot}go/v1/guarantees/${id}`, {
-                                                    headers: { "X-WP-Nonce": restNonce },
-						});
-						if (!res.ok) throw res.status;
-                                                const data = normalizeDetailData(await res.json());
-                                                detailCache.set(id, data);
                                         } catch (e) {
-                                                // Nada
+                                                console.error("❌ Error fetch detalle:", e);
+                                        } finally {
+                                                nextPanel.classList.remove("loading");
                                         }
-                                },
-				true
-			);
-		}
+                                }
+                        });
+
+                        tbody.addEventListener("keydown", function (e) {
+                                if (e.key !== "Enter") return;
+                                const row = e.target.closest(".guarantees-table__row");
+                                if (row) row.click();
+                        });
+                }
 		initRowSelection();
 
 		(() => {
@@ -1234,18 +1432,18 @@ function initRowSelection() {
 			loadPage(1);
 		});
 
-		if (!urlMat) {
-			new IntersectionObserver(
-				(entries) => {
-					if (entries[0].isIntersecting && hasMore && !isLoading) {
-                                                loadPage(currentPage + 1);
-					}
-				},
-				{ root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }
-			).observe(scrollEnd);
-			loadPage(1);
-		} else {
-			loadAllAndSelect();
-		}
-	});
+                new IntersectionObserver(
+                        (entries) => {
+                                if (entries[0].isIntersecting && hasMore && !isLoading) {
+                                        loadPage(currentPage + 1);
+                                }
+                        },
+                        { root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }
+                ).observe(scrollEnd);
+
+                loadPage(1);
+                if (urlMat) {
+                        preloadByPlate(urlMat);
+                }
+        });
 })();
