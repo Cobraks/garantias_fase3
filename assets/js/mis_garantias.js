@@ -31,6 +31,7 @@
                 const warningIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/></svg>';
                 const heartIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Zm0-108q96-86 158-147.5t98-107q36-45.5 50-81t14-70.5q0-60-40-100t-100-40q-47 0-87 26.5T518-680h-76q-15-41-55-67.5T300-774q-60 0-100 40t-40 100q0 35 14 70.5t50 81q36 45.5 98 107T480-228Zm0-273Z"/></svg>';
                 const shareIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M680-80q-50 0-85-35t-35-85q0-6 3-28L282-392q-16 15-37 23.5t-45 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q24 0 45 8.5t37 23.5l281-164q-2-7-2.5-13.5T560-760q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-24 0-45-8.5T598-672L317-508q2 7 2.5 13.5t.5 14.5q0 8-.5 14.5T317-452l281 164q16-15 37-23.5t45-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-200q0-17-11.5-28.5T680-240q-17 0-28.5 11.5T640-200q0 17 11.5 28.5T680-160ZM200-440q17 0 28.5-11.5T240-480q0-17-11.5-28.5T200-520q-17 0-28.5 11.5T160-480q0 17 11.5 28.5T200-440Zm480-280q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0 520ZM200-480Zm480-280Z"/></svg>';
+                const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
                 const saveStatus = document.createElement("div");
                 saveStatus.className = "autosave-status autosave-status--hidden";
                 saveStatus.innerHTML =
@@ -821,9 +822,15 @@
                         };
                 }
 
-                function renderFastActions(telefono, email, skeletons = []) {
-                        const tel = skeletons.includes("telefono_vendedor") ? "" : telefono ?? "";
-                        const mail = skeletons.includes("email_vendedor") ? "" : email ?? "";
+                function renderFastActions(
+                        telefono,
+                        email,
+                        skeletons = [],
+                        telField = "telefono_vendedor",
+                        emailField = "email_vendedor"
+                ) {
+                        const tel = skeletons.includes(telField) ? "" : telefono ?? "";
+                        const mail = skeletons.includes(emailField) ? "" : email ?? "";
                         const telHtml = tel
                                 ? `<li class="fast-actions__item"><a href="tel:${tel}" class="fast-actions__link"><span class="fast-actions__icon">${phoneIcon}</span><span class="fast-actions__label">${tel}</span></a></li>`
                                 : "";
@@ -986,7 +993,7 @@
                             : `<p class="detail__alert-section">Documentación no disponible</p>`}
                 </section>
                 <section class="detail__section">
-                        <h3>Datos del comprador</h3>
+                        <h3>Datos del cliente</h3>
                         ${hasBuyerInfo
                             ? `<ul>
                                 <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
@@ -996,20 +1003,16 @@
                                 <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
                                 <li><strong>Localidad:</strong> ${skeleton("localidad_comprador", "-")}</li>
                                 <li><strong>Provincia:</strong> ${skeleton("provincia_comprador", "-")}</li>
+                        
                                 <li><strong>Código Postal:</strong> ${skeleton("codigo_postal_comprador", "-")}</li>
                         </ul>
-                        <ul class="fast-actions">
-                                <li class="fast-actions__item">
-                                        <a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
-                                                <span class="fast-actions__label">Cliente</span>
-                                        </a>
-                                </li>
-                                <li class="fast-actions__item">
-                                        <a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
-                                                <span class="fast-actions__label">Cliente</span>
-                                        </a>
-                                </li>
-                        </ul>`
+                        ${renderFastActions(
+                                data.telefono_comprador ?? rowData.telefono_comprador,
+                                data.email_comprador ?? rowData.email_comprador,
+                                skeletons,
+                                "telefono_comprador",
+                                "email_comprador"
+                        )}`
                             : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
         </div>`;
@@ -1019,6 +1022,7 @@
         ? isPendientePago
             ? `<div class="guarantee-detail__btn-container">
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="Confirmar pago">
+                                <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
                                 <span class="guarantee-detail__btn-text">Confirmar pago</span>
                         </button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
@@ -1136,7 +1140,7 @@
                         </ul>
                 </section>
                 <section class="detail__section">
-                        <h3>Datos del comprador</h3>
+                        <h3>Datos del cliente</h3>
                         <ul>
                                 <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
                                 <li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
@@ -1147,18 +1151,13 @@
                                 <li><strong>Provincia:</strong> ${skeleton("provincia_comprador", "-")}</li>
                                 <li><strong>Código Postal:</strong> ${skeleton("codigo_postal_comprador", "-")}</li>
                         </ul>
-                        <ul class="fast-actions">
-                                <li class="fast-actions__item">
-                                        <a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
-                                                <span class="fast-actions__label">Cliente</span>
-                                        </a>
-                                </li>
-                                <li class="fast-actions__item">
-                                        <a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
-                                                <span class="fast-actions__label">Cliente</span>
-                                        </a>
-                                </li>
-                        </ul>
+                        ${renderFastActions(
+                                data.telefono_comprador ?? rowData.telefono_comprador,
+                                data.email_comprador ?? rowData.email_comprador,
+                                skeletons,
+                                "telefono_comprador",
+                                "email_comprador"
+                        )}
                 </section>
         </div>
     `;
