@@ -114,10 +114,15 @@ class GuaranteeRestController
             return false;
         }
 
-        $current_user = get_current_user_id();
+        $current_user = wp_get_current_user();
+        $uid = $current_user->ID;
 
-        // Admin puede ver todo
-        if (current_user_can('manage_options')) {
+        // Admin o roles internos pueden ver todo
+        if (
+            current_user_can('manage_options') ||
+            in_array('go_garantias', (array) $current_user->roles, true) ||
+            in_array('go_comercial', (array) $current_user->roles, true)
+        ) {
             return true;
         }
 
@@ -127,7 +132,7 @@ class GuaranteeRestController
         $profesional = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
         $profesional_id = is_array($profesional) && isset($profesional['ID']) ? $profesional['ID'] : $profesional;
 
-        if ((int)$current_user === (int)$profesional_id) {
+        if ((int)$uid === (int)$profesional_id) {
             return true;
         }
 
@@ -143,7 +148,7 @@ class GuaranteeRestController
                     }
                 }
             }
-            if (in_array((int)$current_user, $comercial_ids, true)) {
+            if (in_array((int)$uid, $comercial_ids, true)) {
                 return true;
             }
         }
@@ -474,6 +479,9 @@ class GuaranteeRestController
 
         error_log('[AUTOSAVE] Completed for ID ' . $post_id);
 
+        // Clear cached list and detail responses so subsequent fetches reflect the update.
+        self::clear_list_transients($post_id, null, true);
+
         return new WP_REST_Response(['id' => $post_id, 'uuid' => $uuid]);
     }
 
@@ -521,6 +529,169 @@ class GuaranteeRestController
         }
 
         return rest_ensure_response(['exists' => false]);
+    }
+
+    /**
+     * Collect all detail fields for a guarantee post.
+     */
+    private static function get_detail_data($id)
+    {
+        $id = (int) $id;
+
+        $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
+        $marca = get_post_meta($id, 'datos_vehiculo_marca', true);
+        $modelo = get_post_meta($id, 'datos_vehiculo_modelo', true);
+        $marca_modelo = trim($marca . ' ' . $modelo);
+        $tipo_id = get_post_meta($id, 'datos_vehiculo_tipo_vehiculo', true);
+        $tipo_term = $tipo_id ? get_term($tipo_id, 'tipo_vehiculo') : null;
+        $tipo = ($tipo_term && !is_wp_error($tipo_term)) ? $tipo_term->name : $tipo_id;
+        $tipo_slug = ($tipo_term && !is_wp_error($tipo_term)) ? $tipo_term->slug : '';
+        $kilometros = get_post_meta($id, 'datos_vehiculo_kilometros', true);
+        $primera_matriculacion = get_post_meta($id, 'datos_vehiculo_primera_matriculacion', true);
+        $bastidor = get_post_meta($id, 'datos_vehiculo_numero_bastidor', true);
+        $precio_venta = get_post_meta($id, 'datos_vehiculo_precio_venta', true);
+
+        $combustible_raw = function_exists('get_field') ? get_field('datos_vehiculo_combustible', $id) : get_post_meta($id, 'datos_vehiculo_combustible', true);
+        $combustible_label = is_array($combustible_raw)
+            ? ($combustible_raw['label'] ?? $combustible_raw['value'] ?? '')
+            : $combustible_raw;
+        $combustible_value = is_array($combustible_raw)
+            ? ($combustible_raw['value'] ?? $combustible_raw['label'] ?? '')
+            : $combustible_raw;
+
+        $cambio_raw = function_exists('get_field') ? get_field('datos_vehiculo_cambio', $id) : get_post_meta($id, 'datos_vehiculo_cambio', true);
+        $cambio_label = is_array($cambio_raw)
+            ? ($cambio_raw['label'] ?? $cambio_raw['value'] ?? '')
+            : $cambio_raw;
+        $cambio_value = is_array($cambio_raw)
+            ? ($cambio_raw['value'] ?? $cambio_raw['label'] ?? '')
+            : $cambio_raw;
+
+        $traccion = get_post_meta($id, 'datos_vehiculo_traccion', true);
+        $traccion_camion = get_post_meta($id, 'datos_vehiculo_traccion_camion', true);
+        $potencia = get_post_meta($id, 'datos_vehiculo_potencia', true);
+        $potencia_kw = get_post_meta($id, 'datos_vehiculo_potencia_kw', true);
+        $cilindrada = get_post_meta($id, 'datos_vehiculo_cilindrada', true);
+
+        $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
+        if ($plan_id) {
+            $custom_plan = function_exists('get_field')
+                ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
+                : '';
+            $plan = $custom_plan ?: get_the_title($plan_id);
+        } else {
+            $plan = '';
+        }
+        $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
+        $metodo_pago = get_post_meta($id, 'garantia_contratada_metodo_pago', true);
+        $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
+        $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
+        $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
+        $estado_labels = [
+            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
+            'activada'       => __('Activada', 'garantias-online-360vo'),
+            'expirada'       => __('Expirada', 'garantias-online-360vo'),
+            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
+        ];
+        $estado_label = $estado_labels[$estado] ?? $estado;
+
+        $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
+        $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
+        $concesionario = $user ? $user->display_name : '';
+
+        $canal_venta_raw = get_post_meta($id, 'garantia_contratada_canal_venta', true);
+        $canal_venta_value = is_array($canal_venta_raw) && isset($canal_venta_raw['value'])
+            ? $canal_venta_raw['value']
+            : (is_string($canal_venta_raw) ? $canal_venta_raw : '');
+        if (is_array($canal_venta_raw) && isset($canal_venta_raw['label'])) {
+            $canal_venta = $canal_venta_raw['label'];
+        } else {
+            $lookup = preg_replace('/^go_/i', '', $canal_venta_value);
+            $canal_choices = [
+                'profesional' => __('Profesional', 'garantias-online-360vo'),
+                'particular'  => __('Particular', 'garantias-online-360vo'),
+                'gestoria'    => __('Gestoría', 'garantias-online-360vo'),
+            ];
+            $canal_venta = $canal_choices[$lookup] ?? ucfirst($lookup);
+        }
+
+        $telefono_vendedor = $vendor_id
+            ? get_user_meta($vendor_id, 'datos_usuario_telefono', true)
+            : '';
+        $email_vendedor = $vendor_id
+            ? get_user_meta($vendor_id, 'datos_usuario_correo_electronico', true)
+            : '';
+        $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
+        $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
+
+        $contrato_url = get_post_meta($id, 'docs_url_contrato', true) ?: '#';
+        $condicionado_url = get_post_meta($id, 'docs_url_condicionado', true) ?: '#';
+        $cobertura_url = get_post_meta($id, 'docs_url_cobertura', true) ?: '#';
+        $factura_url = get_post_meta($id, 'docs_url_factura', true) ?: '#';
+
+        $nombre_comprador = get_post_meta($id, 'datos_cliente_nombre_y_apellidos', true);
+        $dni_comprador = get_post_meta($id, 'datos_cliente_dni', true);
+        $telefono_comprador = get_post_meta($id, 'datos_cliente_telefono', true);
+        $email_comprador = get_post_meta($id, 'datos_cliente_email', true);
+        $direccion_comprador = get_post_meta($id, 'datos_cliente_direccion', true);
+        $localidad_comprador = get_post_meta($id, 'datos_cliente_localidad', true);
+        $provincia_comprador = get_post_meta($id, 'datos_cliente_provincia', true);
+        $codigo_postal_comprador = get_post_meta($id, 'datos_cliente_codigo_postal', true);
+
+        $uuid = get_post_meta($id, 'estado_garantia_uuid', true);
+
+        return [
+            'id' => $id,
+            'uuid' => $uuid,
+            'matricula' => $matricula ?: '-',
+            'marca_modelo' => $marca_modelo ?: '-',
+            'marca' => $marca ?: '',
+            'modelo' => $modelo ?: '',
+            'tipo' => $tipo ?: '-',
+            'tipo_value' => $tipo_slug,
+            'kilometros' => $kilometros ?: '-',
+            'primera_matriculacion' => $primera_matriculacion ?: '-',
+            'bastidor' => $bastidor ?: '-',
+            'precio_venta' => $precio_venta ?: '-',
+            'combustible' => $combustible_label ?: '-',
+            'combustible_value' => $combustible_value ?: '',
+            'cambio' => $cambio_label ?: '-',
+            'cambio_value' => $cambio_value ?: '',
+            'traccion' => $traccion ?: '',
+            'traccion_camion' => $traccion_camion ?: '',
+            'potencia' => $potencia ?: '-',
+            'potencia_kw' => $potencia_kw ?: '',
+            'cilindrada' => $cilindrada ?: '-',
+            'plan' => $plan,
+            'precio' => $precio,
+            'metodo_pago' => $metodo_pago ?: '',
+            'desde' => $desde,
+            'hasta' => $hasta,
+            'estado' => [
+                'value' => $estado,
+                'label' => $estado_label,
+            ],
+            'concesionario' => $concesionario ?: '-',
+            'canal_venta' => $canal_venta ?: '-',
+            'canal_venta_value' => $canal_venta_value,
+            'telefono_vendedor' => $telefono_vendedor ?: '',
+            'email_vendedor' => $email_vendedor ?: '',
+            'avatar_vendedor' => $avatar_vendedor ?: '',
+            'vendedor_url' => $vendedor_url,
+            'contrato_url' => $contrato_url,
+            'condicionado_url' => $condicionado_url,
+            'cobertura_url' => $cobertura_url,
+            'factura_url' => $factura_url,
+            'nombre_comprador' => $nombre_comprador ?: '-',
+            'dni_comprador' => $dni_comprador ?: '-',
+            'telefono_comprador' => $telefono_comprador ?: '-',
+            'email_comprador' => $email_comprador ?: '-',
+            'direccion_comprador' => $direccion_comprador ?: '-',
+            'localidad_comprador' => $localidad_comprador ?: '-',
+            'provincia_comprador' => $provincia_comprador ?: '-',
+            'codigo_postal_comprador' => $codigo_postal_comprador ?: '-',
+        ];
     }
 
     /**
@@ -655,65 +826,27 @@ class GuaranteeRestController
         $data = [];
         foreach ($q->posts as $post) {
             $post_id = $post->ID;
-            // Usamos get_post_meta, NUNCA get_field aquí
-            $mat    = get_post_meta($post_id, 'datos_vehiculo_matricula', true);
-            $marca  = get_post_meta($post_id, 'datos_vehiculo_marca', true);
-            $modelo = get_post_meta($post_id, 'datos_vehiculo_modelo', true);
-            $marca_modelo = trim($marca . ' ' . $modelo);
-            $desde  = get_post_meta($post_id, 'estado_garantia_inicio', true);
-            $hasta  = get_post_meta($post_id, 'estado_garantia_finalizacion', true);
-            $plan_id = get_post_meta($post_id, 'garantia_contratada_garantia', true);
-            $plan   = $plan_id ? get_the_title($plan_id) : '';
-            $precio = get_post_meta($post_id, 'garantia_contratada_precio', true);
-            $estado = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
-            $estado_labels = [
-                'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
-                'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
-                'activada'       => __('Activada', 'garantias-online-360vo'),
-                'expirada'       => __('Expirada', 'garantias-online-360vo'),
-                'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
-            ];
-            $estado_label = $estado_labels[$estado] ?? $estado;
-
-            $vendor_id = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
-            $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
-            $vendor_name = $user ? $user->display_name : '';
-
-            // Canal de venta puede ser array (de ACF select) o string
-            $canal_venta_raw = get_post_meta($post_id, 'garantia_contratada_canal_venta', true);
-            $canal_venta_value = is_array($canal_venta_raw) && isset($canal_venta_raw['value'])
-                ? $canal_venta_raw['value']
-                : (is_string($canal_venta_raw) ? $canal_venta_raw : '');
-            $canal_venta_label = '';
-            if (is_array($canal_venta_raw) && isset($canal_venta_raw['label'])) {
-                $canal_venta_label = $canal_venta_raw['label'];
-            } else {
-                $lookup = preg_replace('/^go_/i', '', $canal_venta_value);
-                $canal_choices = [
-                    'profesional' => __('Profesional', 'garantias-online-360vo'),
-                    'particular'  => __('Particular', 'garantias-online-360vo'),
-                    'gestoria'    => __('Gestoría', 'garantias-online-360vo'),
-                ];
-                $canal_venta_label = $canal_choices[$lookup] ?? ucfirst($lookup);
+            $detail = get_transient('go_gdetail_' . $post_id);
+            if ($detail === false) {
+                $detail = self::get_detail_data($post_id);
+                set_transient('go_gdetail_' . $post_id, $detail, 300);
             }
 
             $data[] = [
                 'id'         => $post_id,
-                'mat'        => $mat,
-                'marca'      => $marca_modelo,
-                'desde'      => $desde,
-                'hasta'      => $hasta,
-                'plan'       => $plan,
-                'precio'     => $precio,
-                'estado'     => [
-                    'value' => $estado,
-                    'label' => $estado_label,
-                ],
-                'vendedor'   => $vendor_name,
+                'mat'        => $detail['matricula'],
+                'marca'      => $detail['marca_modelo'],
+                'desde'      => $detail['desde'],
+                'hasta'      => $detail['hasta'],
+                'plan'       => $detail['plan'],
+                'precio'     => $detail['precio'],
+                'estado'     => $detail['estado'],
+                'vendedor'   => $detail['concesionario'],
                 'canal_venta' => [
-                    'value' => $canal_venta_value,
-                    'label' => $canal_venta_label
+                    'value' => $detail['canal_venta_value'] ?? '',
+                    'label' => $detail['canal_venta'],
                 ],
+                'detail'     => $detail,
             ];
         }
 
@@ -729,7 +862,7 @@ class GuaranteeRestController
         $response->header('X-WP-Total',      $total_posts);
         $response->header('X-WP-TotalPages', $total_pages);
 
-        set_transient($cache_key, $response, 60); // 60 segundos de cache
+        set_transient($cache_key, $response, 300); // 5 minutos de cache
 
         return $response;
     }
@@ -740,139 +873,14 @@ class GuaranteeRestController
     public static function get_item($request)
     {
         $id = (int) $request['id'];
-        // Vehículo
-        $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
-        $marca = get_post_meta($id, 'datos_vehiculo_marca', true);
-        $modelo = get_post_meta($id, 'datos_vehiculo_modelo', true);
-        $marca_modelo = trim($marca . ' ' . $modelo);
-        $tipo_id = get_post_meta($id, 'datos_vehiculo_tipo_vehiculo', true);
-        $tipo_term = $tipo_id ? get_term($tipo_id, 'tipo_vehiculo') : null;
-        $tipo = ($tipo_term && !is_wp_error($tipo_term)) ? $tipo_term->name : $tipo_id;
-        $tipo_slug = ($tipo_term && !is_wp_error($tipo_term)) ? $tipo_term->slug : '';
-        $kilometros = get_post_meta($id, 'datos_vehiculo_kilometros', true);
-        $primera_matriculacion = get_post_meta($id, 'datos_vehiculo_primera_matriculacion', true);
-        $bastidor = get_post_meta($id, 'datos_vehiculo_numero_bastidor', true);
-        $precio_venta = get_post_meta($id, 'datos_vehiculo_precio_venta', true);
-        $combustible_raw = function_exists('get_field') ? get_field('datos_vehiculo_combustible', $id) : get_post_meta($id, 'datos_vehiculo_combustible', true);
-        $combustible_label = is_array($combustible_raw)
-            ? ($combustible_raw['label'] ?? $combustible_raw['value'] ?? '')
-            : $combustible_raw;
-        $combustible_value = is_array($combustible_raw)
-            ? ($combustible_raw['value'] ?? $combustible_raw['label'] ?? '')
-            : $combustible_raw;
-        $cambio_raw = function_exists('get_field') ? get_field('datos_vehiculo_cambio', $id) : get_post_meta($id, 'datos_vehiculo_cambio', true);
-        $cambio_label = is_array($cambio_raw)
-            ? ($cambio_raw['label'] ?? $cambio_raw['value'] ?? '')
-            : $cambio_raw;
-        $cambio_value = is_array($cambio_raw)
-            ? ($cambio_raw['value'] ?? $cambio_raw['label'] ?? '')
-            : $cambio_raw;
-        $traccion = get_post_meta($id, 'datos_vehiculo_traccion', true);
-        $traccion_camion = get_post_meta($id, 'datos_vehiculo_traccion_camion', true);
-        $potencia = get_post_meta($id, 'datos_vehiculo_potencia', true);
-        $potencia_kw = get_post_meta($id, 'datos_vehiculo_potencia_kw', true);
-        $cilindrada = get_post_meta($id, 'datos_vehiculo_cilindrada', true);
-
-        // Plan
-        $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
-        $plan    = $plan_id ? get_the_title($plan_id) : '';
-        $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
-        $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
-        $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
-        $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
-        $estado_labels = [
-            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
-            'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
-            'activada'       => __('Activada', 'garantias-online-360vo'),
-            'expirada'       => __('Expirada', 'garantias-online-360vo'),
-            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
-        ];
-        $estado_label = $estado_labels[$estado] ?? $estado;
-
-        // Vendedor/concesionario
-        $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
-        $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
-        $concesionario = $user ? $user->display_name : '';
-
-        $canal_venta_raw = get_post_meta($id, 'garantia_contratada_canal_venta', true);
-        $canal_venta_value = is_array($canal_venta_raw) && isset($canal_venta_raw['value'])
-            ? $canal_venta_raw['value']
-            : (is_string($canal_venta_raw) ? $canal_venta_raw : '');
-        if (is_array($canal_venta_raw) && isset($canal_venta_raw['label'])) {
-            $canal_venta = $canal_venta_raw['label'];
-        } else {
-            $lookup = preg_replace('/^go_/i', '', $canal_venta_value);
-            $canal_choices = [
-                'profesional' => __('Profesional', 'garantias-online-360vo'),
-                'particular'  => __('Particular', 'garantias-online-360vo'),
-                'gestoria'    => __('Gestoría', 'garantias-online-360vo'),
-            ];
-            $canal_venta = $canal_choices[$lookup] ?? ucfirst($lookup);
+        $cache_key = 'go_gdetail_' . $id;
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return rest_ensure_response($cached);
         }
+        $data = self::get_detail_data($id);
 
-        // Documentación (rellena las URL si las tienes guardadas)
-        $contrato_url = get_post_meta($id, 'docs_url_contrato', true) ?: '#';
-        $condicionado_url = get_post_meta($id, 'docs_url_condicionado', true) ?: '#';
-        $cobertura_url = get_post_meta($id, 'docs_url_cobertura', true) ?: '#';
-        $factura_url = get_post_meta($id, 'docs_url_factura', true) ?: '#';
-
-        // Comprador
-        $nombre_comprador = get_post_meta($id, 'datos_cliente_nombre_y_apellidos', true);
-        $dni_comprador = get_post_meta($id, 'datos_cliente_dni', true);
-        $telefono_comprador = get_post_meta($id, 'datos_cliente_telefono', true);
-        $email_comprador = get_post_meta($id, 'datos_cliente_email', true);
-        $direccion_comprador = get_post_meta($id, 'datos_cliente_direccion', true);
-        $localidad_comprador = get_post_meta($id, 'datos_cliente_localidad', true);
-        $provincia_comprador = get_post_meta($id, 'datos_cliente_provincia', true);
-        $codigo_postal_comprador = get_post_meta($id, 'datos_cliente_codigo_postal', true);
-
-        $uuid = get_post_meta($id, 'estado_garantia_uuid', true);
-
-        $data = [
-            'id' => $id,
-            'uuid' => $uuid,
-            'matricula' => $matricula ?: '-',
-            'marca_modelo' => $marca_modelo ?: '-',
-            'marca' => $marca ?: '',
-            'modelo' => $modelo ?: '',
-            'tipo' => $tipo ?: '-',
-            'tipo_value' => $tipo_slug,
-            'kilometros' => $kilometros ?: '-',
-            'primera_matriculacion' => $primera_matriculacion ?: '-',
-            'bastidor' => $bastidor ?: '-',
-            'precio_venta' => $precio_venta ?: '-',
-            'combustible' => $combustible_label ?: '-',
-            'combustible_value' => $combustible_value ?: '',
-            'cambio' => $cambio_label ?: '-',
-            'cambio_value' => $cambio_value ?: '',
-            'traccion' => $traccion ?: '',
-            'traccion_camion' => $traccion_camion ?: '',
-            'potencia' => $potencia ?: '-',
-            'potencia_kw' => $potencia_kw ?: '',
-            'cilindrada' => $cilindrada ?: '-',
-            'plan' => $plan,
-            'precio' => $precio,
-            'desde' => $desde,
-            'hasta' => $hasta,
-            'estado' => [
-                'value' => $estado,
-                'label' => $estado_label,
-            ],
-            'concesionario' => $concesionario ?: '-',
-            'canal_venta' => $canal_venta ?: '-',
-            'contrato_url' => $contrato_url,
-            'condicionado_url' => $condicionado_url,
-            'cobertura_url' => $cobertura_url,
-            'factura_url' => $factura_url,
-            'nombre_comprador' => $nombre_comprador ?: '-',
-            'dni_comprador' => $dni_comprador ?: '-',
-            'telefono_comprador' => $telefono_comprador ?: '-',
-            'email_comprador' => $email_comprador ?: '-',
-            'direccion_comprador' => $direccion_comprador ?: '-',
-            'localidad_comprador' => $localidad_comprador ?: '-',
-            'provincia_comprador' => $provincia_comprador ?: '-',
-            'codigo_postal_comprador' => $codigo_postal_comprador ?: '-',
-        ];
+        set_transient($cache_key, $data, 300);
 
         return rest_ensure_response($data);
     }
@@ -959,7 +967,10 @@ class GuaranteeRestController
         $planes = [];
         $plan_ids = array_unique(array_filter($plan_ids));
         foreach ($plan_ids as $pid) {
-            $title = get_the_title($pid);
+            $custom_title = function_exists('get_field')
+                ? get_field('detalles_modalidad_nombre_mostrar', $pid)
+                : '';
+            $title = $custom_title ?: get_the_title($pid);
             if ($title) {
                 $planes[] = [
                     'id'    => (int) $pid,
@@ -986,7 +997,7 @@ class GuaranteeRestController
             'concesionarios' => $concesionarios,
         ]);
 
-        set_transient($cache_key, $response, 60);
+        set_transient($cache_key, $response, 300);
 
         return $response;
     }
@@ -997,7 +1008,7 @@ class GuaranteeRestController
     public static function clear_list_transients($post_id, $post, $update)
     {
         global $wpdb;
-        $patterns = ['_transient_go_glist_%', '_transient_go_gfilters_%'];
+        $patterns = ['_transient_go_glist_%', '_transient_go_gfilters_%', '_transient_go_gdetail_%'];
         foreach ($patterns as $pattern) {
             $wpdb->query($wpdb->prepare(
                 "DELETE FROM $wpdb->options WHERE option_name LIKE %s",
