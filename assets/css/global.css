@@ -317,7 +317,7 @@ justify-content: space-between;
     color: var(--text-color);
 }
 
-.footer__legal ul {
+  .footer__legal ul {
     list-style: none;
     display: flex;
     gap: var(--spacing-2);
@@ -390,4 +390,20 @@ display: block;
       
         
     }
-}  
+}
+
+@media (min-width: 1600px) {
+  .top-bar,
+  .container,
+  .footer__wrapper {
+    max-width: 1600px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .top-bar,
+  .container,
+  .footer__wrapper {
+    max-width: 1800px;
+  }
+}
