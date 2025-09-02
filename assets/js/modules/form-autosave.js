@@ -268,7 +268,7 @@ export default function initAutosave() {
                                 .trim()
                                 .replace(/\b\w/g, (c) => c.toUpperCase());
                 }
-                if (method === "transferencia" || method === "domiciliacion") {
+                if (method === "transferencia" || method === "domiciliacion_bancaria") {
                         const pay = successBlock.querySelector(".form-success__payment");
                         if (pay) {
                                 pay.hidden = false;
@@ -597,7 +597,11 @@ export default function initAutosave() {
                 if (!payload.estado_garantia) payload.estado_garantia = {};
                 if (finalize) {
                         payload.post_status = "publish";
-                        payload.estado_garantia.estado_contratacion = "pendiente_pago";
+                        if (garantia.metodo_pago === "domiciliacion_bancaria") {
+                                payload.estado_garantia.estado_contratacion = "activada";
+                        } else {
+                                payload.estado_garantia.estado_contratacion = "pendiente_pago";
+                        }
                 } else {
                         payload.estado_garantia.estado_contratacion = "sin_finalizar";
                 }
