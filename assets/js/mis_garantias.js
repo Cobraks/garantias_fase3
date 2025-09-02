@@ -199,7 +199,10 @@
                                         },
                                 },
                         };
-                        if (metodo === "domiciliacion_bancaria") {
+                        if (
+                                typeof metodo === "string" &&
+                                metodo.toLowerCase().startsWith("domiciliacion")
+                        ) {
                                 body.data.garantia_contratada = {
                                         estado_cobro: { cobro_realizado: true },
                                 };
@@ -492,7 +495,10 @@
                         tr.dataset.ibanVendedor = item.detail.iban_vendedor || "";
 
                         const cobroBadgeHtml =
-                                tr.dataset.metodoPago === "domiciliacion_bancaria" &&
+                                tr.dataset.metodoPago &&
+                                tr.dataset.metodoPago
+                                        .toLowerCase()
+                                        .startsWith("domiciliacion") &&
                                 !tr.dataset.cobroRealizado
                                         ? `<span class="guarantees-list__badge guarantees-list__badge--pend-cobro">pend. cobro</span>`
                                         : "";
@@ -894,6 +900,7 @@
         data.metodo_pago ?? rowData.metodo_pago ?? ""
     )
         .toString()
+        .toLowerCase()
         .trim();
     const cobroRealizado = [
         data.cobro_realizado,
@@ -1059,13 +1066,13 @@
     const showConfirmBtn =
         showActions &&
         isPendientePago &&
-        !(isAdmin && metodoPago === "domiciliacion_bancaria" && !cobroRealizado);
+        !(isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado);
     const actionsHtml = showActions
         ? showConfirmBtn
             ? `<div class="guarantee-detail__btn-container">
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="Confirmar pago">
                                 <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
-                                <span class="guarantee-detail__btn-text">${metodoPago === "domiciliacion_bancaria" ? "Marcar garantía como pagada" : "Confirmar pago"}</span>
+                                <span class="guarantee-detail__btn-text">${metodoPago.startsWith("domiciliacion") ? "Marcar garantía como pagada" : "Confirmar pago"}</span>
                         </button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
@@ -1081,7 +1088,7 @@
         : ``;
 
     const paymentHtml = (() => {
-        if (isAdmin && metodoPago === "domiciliacion_bancaria" && !cobroRealizado) {
+        if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
             const concepto = `Garantía ${skeleton("matricula")}`;
             const cantidad = `${skeleton("precio", "0")} €`;
             const iban =

@@ -859,7 +859,12 @@ class GuaranteeRestController
         foreach ($q->posts as $post) {
             $post_id = $post->ID;
             $detail = get_transient('go_gdetail_' . $post_id);
-            if ($detail === false) {
+            if (
+                $detail === false ||
+                !is_array($detail) ||
+                !isset($detail['metodo_pago']) ||
+                !array_key_exists('cobro_realizado', $detail)
+            ) {
                 $detail = self::get_detail_data($post_id);
                 set_transient('go_gdetail_' . $post_id, $detail, 300);
             }
@@ -907,7 +912,12 @@ class GuaranteeRestController
         $id = (int) $request['id'];
         $cache_key = 'go_gdetail_' . $id;
         $cached = get_transient($cache_key);
-        if ($cached !== false) {
+        if (
+            $cached !== false &&
+            is_array($cached) &&
+            isset($cached['metodo_pago']) &&
+            array_key_exists('cobro_realizado', $cached)
+        ) {
             return rest_ensure_response($cached);
         }
         $data = self::get_detail_data($id);
