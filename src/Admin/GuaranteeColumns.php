@@ -9,6 +9,18 @@ if (! defined('ABSPATH')) {
 
 class GuaranteeColumns
 {
+    private static function estado_label(?string $estado): string
+    {
+        $labels = [
+            'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
+            'activada'       => __('Activada', 'garantias-online-360vo'),
+            'expirada'       => __('Expirada', 'garantias-online-360vo'),
+            'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
+        ];
+        return $labels[$estado] ?? '-';
+    }
+
     public static function init(): void
     {
         add_filter('manage_edit-' . GuaranteeCPT::POST_TYPE . '_columns', [__CLASS__, 'add_columns']);
@@ -35,8 +47,7 @@ class GuaranteeColumns
         $new['inicio'] = __('Inicio', 'garantias-online-360vo');
         $new['finalizacion'] = __('Finalización', 'garantias-online-360vo');
         $new['meses_contratados'] = __('Meses', 'garantias-online-360vo');
-        $new['vendedor'] = __('Vendedor', 'garantias-online-360vo');
-        $new['cliente'] = __('Cliente / Canal', 'garantias-online-360vo');
+        $new['vendedor'] = __('Vendedor / Canal', 'garantias-online-360vo');
 
         // Append remaining original columns (taxonomies, date, etc.)
         foreach ($columns as $key => $label) {
@@ -50,11 +61,7 @@ class GuaranteeColumns
         switch ($column) {
             case 'estado_contratacion':
                 $estado = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
-                if (is_array($estado) && isset($estado['label'])) {
-                    echo esc_html($estado['label']);
-                } else {
-                    echo '-';
-                }
+                echo esc_html(self::estado_label($estado));
                 break;
             case 'inicio':
                 echo esc_html(get_post_meta($post_id, 'estado_garantia_inicio', true) ?: '-');
@@ -68,6 +75,7 @@ class GuaranteeColumns
             case 'vendedor':
                 $canal = get_post_meta($post_id, 'garantia_contratada_canal_venta', true);
                 $canal_value = is_array($canal) && isset($canal['value']) ? $canal['value'] : (is_string($canal) ? $canal : '');
+                $canal_label = is_array($canal) && isset($canal['label']) ? $canal['label'] : ($canal_value ? ucfirst($canal_value) : '');
                 $user_id = 0;
                 if ($canal_value === 'profesional') {
                     $user_id = (int) get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
@@ -79,27 +87,16 @@ class GuaranteeColumns
                         $user_id = (int) $gestoria;
                     }
                 }
+                $vendor = '';
                 if ($user_id) {
                     $user = get_userdata($user_id);
                     if ($user) {
-                        echo esc_html($user->display_name);
-                        break;
+                        $vendor = $user->display_name;
                     }
                 }
-                echo '-';
-                break;
-            case 'cliente':
-                $nombre = get_post_meta($post_id, 'datos_cliente_nombre_y_apellidos', true);
-                $canal = get_post_meta($post_id, 'garantia_contratada_canal_venta', true);
-                $canal_label = '';
-                if (is_array($canal) && isset($canal['label'])) {
-                    $canal_label = $canal['label'];
-                } elseif (is_string($canal) && $canal !== '') {
-                    $canal_label = ucfirst($canal);
-                }
                 $parts = [];
-                if ($nombre) {
-                    $parts[] = $nombre;
+                if ($vendor) {
+                    $parts[] = $vendor;
                 }
                 if ($canal_label) {
                     $parts[] = $canal_label;
