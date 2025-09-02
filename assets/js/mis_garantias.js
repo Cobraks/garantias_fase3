@@ -341,33 +341,39 @@
                    wrapper.style.position = "relative";
                    table.style.position = "relative";
 
-                   const widths = ths.map((th) => th.offsetWidth);
-                   table.style.tableLayout = "fixed";
-                   const minWidths = ths.map((th, i) => {
-                           let max = th.scrollWidth;
-                           rows.forEach((tr) => {
-                                   const cell = tr.children[i];
-                                   if (cell) {
-                                           const style = getComputedStyle(cell);
-                                           const cellWidth =
-                                                   cell.scrollWidth +
-                                                   parseFloat(style.paddingLeft) +
-                                                   parseFloat(style.paddingRight);
-                                           max = Math.max(max, cellWidth);
-                                   }
-                           });
-                           return Math.max(50, Math.ceil(max));
-                   });
+                  const minWidths = ths.map((th, i) => {
+                          let max = 0;
+                          rows.forEach((tr) => {
+                                  const cell = tr.children[i];
+                                  if (cell) {
+                                          const style = getComputedStyle(cell);
+                                          const cellWidth =
+                                                  cell.scrollWidth +
+                                                  parseFloat(style.paddingLeft) +
+                                                  parseFloat(style.paddingRight);
+                                          max = Math.max(max, cellWidth);
+                                  }
+                          });
+                          return Math.max(50, Math.ceil(max));
+                  });
 
-                   ths.forEach((th, i) => {
-                           const w = widths[i];
-                           th.style.width = `${w}px`;
-                           rows.forEach((tr) => {
-                                   if (tr.children[i]) {
-                                           tr.children[i].style.width = `${w}px`;
-                                   }
-                           });
-                   });
+                  const totalMin = minWidths.reduce((s, w) => s + w, 0);
+                  const available = wrapper.clientWidth;
+                  const extra = Math.max(0, available - totalMin);
+                  const widths = minWidths.map((w) =>
+                          w + (extra * w) / totalMin
+                  );
+                  table.style.tableLayout = "fixed";
+
+                  ths.forEach((th, i) => {
+                          const w = widths[i];
+                          th.style.width = `${w}px`;
+                          rows.forEach((tr) => {
+                                  if (tr.children[i]) {
+                                          tr.children[i].style.width = `${w}px`;
+                                  }
+                          });
+                  });
 
                    const resizersWrap = document.createElement("div");
                    resizersWrap.className = "column-resizers";

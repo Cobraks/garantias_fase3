@@ -985,6 +985,9 @@ section.guarantees-list.sticky-active {
         border-bottom: 1px solid var(--border-color);
         padding-block: .5rem;
         border-bottom: solid var(--border-color) 1px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .guarantees-table tbody {
