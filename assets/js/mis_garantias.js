@@ -331,111 +331,121 @@
                }
 
            function initResizableColumns(table) {
-                   if (window.innerWidth < 1024) return;
+                   if (window.innerWidth < 1024 || !table) return;
+
+                   const wrapper = table.parentElement;
+                   wrapper.style.position = "relative";
+
                    const ths = Array.from(table.querySelectorAll("thead th"));
                    if (!ths.length) return;
 
-                   let rows = Array.from(table.querySelectorAll("tbody tr"));
-                   const wrapper = table.parentElement;
-                   wrapper.style.position = "relative";
-                   table.style.tableLayout = "fixed";
-
-                   const minWidths = ths.map((th, i) => {
-                           let max = th.scrollWidth;
-                           rows.forEach((tr) => {
-                                   const cell = tr.children[i];
-                                   if (cell) max = Math.max(max, cell.scrollWidth);
-                           });
-                           return Math.max(80, Math.ceil(max));
-                   });
-
-                   const widths = minWidths.slice();
-
-                   function applyWidth(idx, w) {
-                           ths[idx].style.width = `${w}px`;
-                           rows.forEach((tr) => {
-                                   const cell = tr.children[idx];
-                                   if (cell) cell.style.width = `${w}px`;
-                           });
+                   // create colgroup for easier width management
+                   let colgroup = table.querySelector("colgroup");
+                   if (!colgroup) {
+                           colgroup = document.createElement("colgroup");
+                           ths.forEach(() => colgroup.appendChild(document.createElement("col")));
+                           table.insertBefore(colgroup, table.firstChild);
                    }
+                   const cols = Array.from(colgroup.children);
 
-                   ths.forEach((_, i) => applyWidth(i, widths[i]));
+                   // measure initial widths and minimums based on content
+                   let rows = Array.from(table.querySelectorAll("tbody tr"));
+                   function computeMins() {
+                           const mins = ths.map((th, i) => {
+                                   let max = th.scrollWidth;
+                                   rows.forEach((tr) => {
+                                           const cell = tr.children[i];
+                                           if (cell) max = Math.max(max, cell.scrollWidth);
+                                   });
+                                   return Math.max(80, Math.ceil(max));
+                           });
+                           return mins;
+                   }
+                   let minWidths = computeMins();
+                   let widths = ths.map((th, i) => Math.max(minWidths[i], th.offsetWidth));
+                   widths.forEach((w, i) => (cols[i].style.width = `${w}px`));
 
-                   const resizersWrap = document.createElement("div");
-                   resizersWrap.className = "column-resizers";
-                   wrapper.appendChild(resizersWrap);
+                   // overlay for handles
+                   const overlay = document.createElement("div");
+                   overlay.className = "column-resizers";
+                   wrapper.appendChild(overlay);
 
-                   function positionResizers() {
+                   const handles = [];
+                   function createHandles() {
+                           overlay.innerHTML = "";
+                           handles.length = 0;
                            let left = 0;
-                           resizersWrap.innerHTML = "";
-                           for (let i = 0; i < ths.length - 1; i++) {
+                           for (let i = 0; i < widths.length - 1; i++) {
                                    left += widths[i];
-                                   const r = document.createElement("span");
-                                   r.className = "column-resizer";
-                                   r.style.left = `${left}px`;
-                                   resizersWrap.appendChild(r);
+                                   const h = document.createElement("span");
+                                   h.className = "column-resizer";
+                                   h.style.left = `${left - 4}px`;
+                                   overlay.appendChild(h);
+                                   handles.push(h);
 
-                                   r.addEventListener("mousedown", (e) => {
+                                   h.addEventListener("mousedown", (e) => {
                                            e.preventDefault();
                                            const startX = e.pageX;
-                                           const startLeft = widths[i];
-                                           const startRight = widths[i + 1];
-                                           const minLeft = minWidths[i];
-                                           const minRight = minWidths[i + 1];
+                                           const startW = widths[i];
+                                           const startNext = widths[i + 1];
 
-                                           function onMouseMove(ev) {
-                                                   const dx = ev.pageX - startX;
-                                                   let newLeft = startLeft + dx;
-                                                   if (newLeft < minLeft) newLeft = minLeft;
-                                                   let newRight = startLeft + startRight - newLeft;
-                                                   if (newRight < minRight) {
-                                                           newRight = minRight;
-                                                           newLeft = startLeft + startRight - newRight;
+                                           function onMove(ev) {
+                                                   let dx = ev.pageX - startX;
+                                                   let newW = startW + dx;
+                                                   let newNext = startNext - dx;
+                                                   if (newW < minWidths[i]) {
+                                                           newW = minWidths[i];
+                                                           newNext = startW + startNext - newW;
                                                    }
-                                                   widths[i] = newLeft;
-                                                   widths[i + 1] = newRight;
-                                                   applyWidth(i, newLeft);
-                                                   applyWidth(i + 1, newRight);
-                                                   updatePositions();
+                                                   if (newNext < minWidths[i + 1]) {
+                                                           newNext = minWidths[i + 1];
+                                                           newW = startW + startNext - newNext;
+                                                   }
+                                                   widths[i] = newW;
+                                                   widths[i + 1] = newNext;
+                                                   cols[i].style.width = `${newW}px`;
+                                                   cols[i + 1].style.width = `${newNext}px`;
+                                                   updateOverlay();
                                            }
 
-                                           function onMouseUp() {
-                                                   document.removeEventListener("mousemove", onMouseMove);
-                                                   document.removeEventListener("mouseup", onMouseUp);
+                                           function onUp() {
+                                                   document.removeEventListener("mousemove", onMove);
+                                                   document.removeEventListener("mouseup", onUp);
                                            }
 
-                                           document.addEventListener("mousemove", onMouseMove);
-                                           document.addEventListener("mouseup", onMouseUp);
+                                           document.addEventListener("mousemove", onMove);
+                                           document.addEventListener("mouseup", onUp);
                                    });
                            }
-                           updatePositions();
+                           updateOverlay();
                    }
 
-                   function updatePositions() {
+                   function updateOverlay() {
                            let left = 0;
-                           const rs = resizersWrap.children;
-                           for (let i = 0; i < rs.length; i++) {
+                           handles.forEach((h, i) => {
                                    left += widths[i];
-                                   rs[i].style.left = `${left}px`;
-                           }
-                           resizersWrap.style.width = `${table.offsetWidth}px`;
-                           resizersWrap.style.height = `${table.offsetHeight}px`;
-                           resizersWrap.style.top = `${table.offsetTop}px`;
-                           resizersWrap.style.left = `${table.offsetLeft}px`;
+                                   h.style.left = `${left - 4}px`;
+                           });
+                           overlay.style.width = `${table.offsetWidth}px`;
+                           overlay.style.height = `${table.offsetHeight}px`;
+                           overlay.style.top = `${table.offsetTop}px`;
+                           overlay.style.left = `${table.offsetLeft}px`;
                    }
 
-                   positionResizers();
+                   createHandles();
 
+                   // observe body for new rows that may alter min widths
                    const bodyObserver = new MutationObserver(() => {
                            rows = Array.from(table.querySelectorAll("tbody tr"));
-                           ths.forEach((_, i) => applyWidth(i, widths[i]));
-                           updatePositions();
+                           minWidths = computeMins();
+                           widths = widths.map((w, i) => Math.max(w, minWidths[i]));
+                           widths.forEach((w, i) => (cols[i].style.width = `${w}px`));
+                           createHandles();
                    });
                    bodyObserver.observe(table.tBodies[0], { childList: true });
+
                    window.addEventListener("resize", () => {
-                           rows = Array.from(table.querySelectorAll("tbody tr"));
-                           ths.forEach((_, i) => applyWidth(i, widths[i]));
-                           updatePositions();
+                           updateOverlay();
                    });
            }
 
