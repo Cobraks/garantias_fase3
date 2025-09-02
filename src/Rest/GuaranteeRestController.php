@@ -378,6 +378,18 @@ class GuaranteeRestController
                     case 'canal_venta':
                         $gc[$k] = sanitize_text_field($v);
                         break;
+                    case 'estado_cobro':
+                        if (is_array($v)) {
+                            $ec = [];
+                            if (isset($v['cobro_realizado'])) {
+                                $ec['cobro_realizado'] = $v['cobro_realizado'] ? 1 : 0;
+                            }
+                            if (isset($v['fecha_cobro'])) {
+                                $ec['fecha_cobro'] = sanitize_text_field($v['fecha_cobro']);
+                            }
+                            $gc['estado_cobro'] = $ec;
+                        }
+                        break;
                     case 'descuentos_y_recargos':
                         if (is_array($v)) {
                             $dr = [];
@@ -593,7 +605,10 @@ class GuaranteeRestController
             $plan = '';
         }
         $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
-        $metodo_pago = get_post_meta($id, 'garantia_contratada_metodo_pago', true);
+        $metodo_pago_raw = get_post_meta($id, 'garantia_contratada_metodo_pago', true);
+        $metodo_pago = is_array($metodo_pago_raw)
+            ? ($metodo_pago_raw['value'] ?? '')
+            : $metodo_pago_raw;
         $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
@@ -639,6 +654,11 @@ class GuaranteeRestController
         $condicionado_url = get_post_meta($id, 'docs_url_condicionado', true) ?: '#';
         $cobertura_url = get_post_meta($id, 'docs_url_cobertura', true) ?: '#';
         $factura_url = get_post_meta($id, 'docs_url_factura', true) ?: '#';
+
+        $cobro_realizado = get_post_meta($id, 'garantia_contratada_estado_cobro_cobro_realizado', true);
+        $iban_vendedor = $vendor_id
+            ? get_user_meta($vendor_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', true)
+            : '';
 
         $nombre_comprador = get_post_meta($id, 'datos_cliente_nombre_y_apellidos', true);
         $dni_comprador = get_post_meta($id, 'datos_cliente_dni', true);
@@ -693,6 +713,8 @@ class GuaranteeRestController
             'condicionado_url' => $condicionado_url,
             'cobertura_url' => $cobertura_url,
             'factura_url' => $factura_url,
+            'cobro_realizado' => $cobro_realizado ? true : false,
+            'iban_vendedor' => $iban_vendedor ?: '',
             'nombre_comprador' => $nombre_comprador ?: '-',
             'dni_comprador' => $dni_comprador ?: '-',
             'telefono_comprador' => $telefono_comprador ?: '-',
@@ -837,7 +859,12 @@ class GuaranteeRestController
         foreach ($q->posts as $post) {
             $post_id = $post->ID;
             $detail = get_transient('go_gdetail_' . $post_id);
-            if ($detail === false) {
+            if (
+                $detail === false ||
+                !is_array($detail) ||
+                !isset($detail['metodo_pago']) ||
+                !array_key_exists('cobro_realizado', $detail)
+            ) {
                 $detail = self::get_detail_data($post_id);
                 set_transient('go_gdetail_' . $post_id, $detail, 300);
             }
@@ -885,7 +912,12 @@ class GuaranteeRestController
         $id = (int) $request['id'];
         $cache_key = 'go_gdetail_' . $id;
         $cached = get_transient($cache_key);
-        if ($cached !== false) {
+        if (
+            $cached !== false &&
+            is_array($cached) &&
+            isset($cached['metodo_pago']) &&
+            array_key_exists('cobro_realizado', $cached)
+        ) {
             return rest_ensure_response($cached);
         }
         $data = self::get_detail_data($id);
