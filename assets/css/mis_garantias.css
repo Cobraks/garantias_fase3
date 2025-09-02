@@ -384,15 +384,6 @@ section.guarantees-list.sticky-active {
 .guarantees-table th {
     position: relative;
 }
-.column-resizer {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 4px;
-    height: 100%;
-    cursor: col-resize;
-    user-select: none;
-}
 
 /* --------------------------------------------------
    Animaciones de slide limpio (sin rebote)
@@ -1030,11 +1021,12 @@ section.guarantees-list.sticky-active {
     .column-resizer {
         position: absolute;
         top: 0;
+        right: -4px;
         bottom: 0;
         width: 8px;
         cursor: col-resize;
-        transform: translateX(-4px);
         z-index: 5;
+        touch-action: none;
     }
 
     .column-resizer::after {
