@@ -417,6 +417,12 @@ class GuaranteeRestController
                     $gc['nivel_garantia'] = (int) $nivel_terms[0];
                 }
             }
+            if (isset($gc['tipo_garantia'])) {
+                wp_set_post_terms($post_id, [(int) $gc['tipo_garantia']], 'tipo_garantia');
+            }
+            if (isset($gc['nivel_garantia'])) {
+                wp_set_post_terms($post_id, [(int) $gc['nivel_garantia']], 'nivel_garantia');
+            }
             foreach ($gc as $k => $v) {
                 if (is_array($v)) {
                     foreach ($v as $subk => $subv) {
