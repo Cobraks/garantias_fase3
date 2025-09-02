@@ -972,6 +972,7 @@ section.guarantees-list.sticky-active {
         /* height: 100%; */
         height: auto;
         table-layout: fixed;
+        position: relative;
     }
     
     .guarantees-table thead {
@@ -1018,6 +1019,31 @@ section.guarantees-list.sticky-active {
     /* keep consistent fences on last row */
     .guarantees-table tr:last-child td {
         border-bottom: 1px solid var(--border-color);
+    }
+
+    .guarantees-table th:last-child,
+    .guarantees-table td:last-child {
+        border-right: 1px solid var(--neutral90);
+    }
+
+    .column-resizer {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 8px;
+        cursor: col-resize;
+        transform: translateX(-4px);
+        z-index: 5;
+    }
+
+    .column-resizer::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+        background: var(--neutral90);
     }
     
     .guarantees-table td::before {

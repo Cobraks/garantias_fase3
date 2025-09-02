@@ -330,35 +330,86 @@
                                .replace(/^-+|-+$/g, "");
                }
 
-               function initResizableColumns(table) {
-                       const ths = table.querySelectorAll("thead th");
-                       ths.forEach((th, index) => {
-                               const resizer = document.createElement("span");
-                               resizer.className = "column-resizer";
-                               th.appendChild(resizer);
-                               let startX = 0;
-                               let startWidth = 0;
-                               const onMouseMove = (e) => {
-                                       const newWidth = Math.max(startWidth + e.pageX - startX, 50);
-                                       th.style.width = `${newWidth}px`;
-                                       table.querySelectorAll("tbody tr").forEach((tr) => {
-                                               if (tr.children[index]) {
-                                                       tr.children[index].style.width = `${newWidth}px`;
-                                               }
-                                       });
-                               };
-                               const onMouseUp = () => {
-                                       document.removeEventListener("mousemove", onMouseMove);
-                                       document.removeEventListener("mouseup", onMouseUp);
-                               };
-                               resizer.addEventListener("mousedown", (e) => {
-                                       startX = e.pageX;
-                                       startWidth = th.offsetWidth;
-                                       document.addEventListener("mousemove", onMouseMove);
-                                       document.addEventListener("mouseup", onMouseUp);
-                               });
-                       });
-               }
+              function initResizableColumns(table) {
+                      if (window.innerWidth < 1024) return;
+                      const MIN_WIDTH = 50;
+                      const ths = Array.from(table.querySelectorAll("thead th"));
+                      if (!ths.length) return;
+
+                      table.style.tableLayout = "fixed";
+                      table.style.position = "relative";
+
+                      // Fix initial widths so calculations use pixels
+                      ths.forEach((th) => {
+                              th.style.width = `${th.offsetWidth}px`;
+                      });
+
+                      const resizers = [];
+
+                      const setPositions = () => {
+                              resizers.forEach((resizer, i) => {
+                                      const th = ths[i];
+                                      resizer.style.left = `${th.offsetLeft + th.offsetWidth}px`;
+                              });
+                      };
+
+                      ths.forEach((th, index) => {
+                              if (index === ths.length - 1) return; // no resizer after last col
+
+                              const resizer = document.createElement("div");
+                              resizer.className = "column-resizer";
+                              table.appendChild(resizer);
+                              resizers.push(resizer);
+
+                              resizer.addEventListener("mousedown", (e) => {
+                                      const startX = e.pageX;
+                                      const leftCol = ths[index];
+                                      const rightCol = ths[index + 1];
+                                      const leftStart = leftCol.offsetWidth;
+                                      const rightStart = rightCol.offsetWidth;
+
+                                      const onMouseMove = (ev) => {
+                                              let dx = ev.pageX - startX;
+                                              let newLeft = Math.max(MIN_WIDTH, leftStart + dx);
+                                              let newRight = Math.max(MIN_WIDTH, rightStart - dx);
+                                              const total = leftStart + rightStart;
+
+                                              if (newLeft + newRight !== total) {
+                                                      if (newLeft === MIN_WIDTH) {
+                                                              newRight = total - MIN_WIDTH;
+                                                      } else if (newRight === MIN_WIDTH) {
+                                                              newLeft = total - MIN_WIDTH;
+                                                      }
+                                              }
+
+                                              leftCol.style.width = `${newLeft}px`;
+                                              rightCol.style.width = `${newRight}px`;
+
+                                              table.querySelectorAll("tbody tr").forEach((tr) => {
+                                                      if (tr.children[index]) {
+                                                              tr.children[index].style.width = `${newLeft}px`;
+                                                      }
+                                                      if (tr.children[index + 1]) {
+                                                              tr.children[index + 1].style.width = `${newRight}px`;
+                                                      }
+                                              });
+
+                                              setPositions();
+                                      };
+
+                                      const onMouseUp = () => {
+                                              document.removeEventListener("mousemove", onMouseMove);
+                                              document.removeEventListener("mouseup", onMouseUp);
+                                      };
+
+                                      document.addEventListener("mousemove", onMouseMove);
+                                      document.addEventListener("mouseup", onMouseUp);
+                              });
+                      });
+
+                      setPositions();
+                      window.addEventListener("resize", setPositions);
+              }
 
                 function formatDate(value) {
                         if (!value) return { iso: "-", display: "-" };
