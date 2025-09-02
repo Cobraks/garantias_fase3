@@ -890,10 +890,15 @@
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
-    const metodoPago = data.metodo_pago || rowData.metodo_pago || "";
-    const cobroRealizado = Boolean(
-        data.cobro_realizado ?? rowData.cobro_realizado
-    );
+    const metodoPago = (
+        data.metodo_pago ?? rowData.metodo_pago ?? ""
+    )
+        .toString()
+        .trim();
+    const cobroRealizado = [
+        data.cobro_realizado,
+        rowData.cobro_realizado,
+    ].some((v) => v === true || v === 1 || v === "1");
 
     const planTitle = `${data.plan ?? "-"}${
         mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
