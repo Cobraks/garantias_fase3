@@ -1138,8 +1138,8 @@
                         </div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                ${actionsHtml}
                 ${paymentHtml}
+                ${actionsHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">Canal de venta</h3>
