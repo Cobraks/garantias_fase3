@@ -23,7 +23,7 @@ class GuaranteeColumns
 
     public static function init(): void
     {
-        add_filter('manage_edit-' . GuaranteeCPT::POST_TYPE . '_columns', [__CLASS__, 'add_columns']);
+        add_filter('manage_' . GuaranteeCPT::POST_TYPE . '_posts_columns', [__CLASS__, 'add_columns']);
         add_action('manage_' . GuaranteeCPT::POST_TYPE . '_posts_custom_column', [__CLASS__, 'render_column'], 10, 2);
         add_filter('manage_edit-' . GuaranteeCPT::POST_TYPE . '_sortable_columns', [__CLASS__, 'sortable_columns']);
         add_action('pre_get_posts', [__CLASS__, 'handle_sorting']);
