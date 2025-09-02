@@ -177,6 +177,7 @@ section.guarantees-list {
     z-index: 99;
     max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem);
     overflow-y: auto;
+    overflow-x: hidden;
     transition: max-height 300ms ease;
     border-radius: 1rem;
 
@@ -249,7 +250,8 @@ section.guarantees-list.sticky-active {
 /* Hover sobre fila: fondo ligero y transición suave */
 .guarantees-table__row:hover {
     background-color: rgba(196, 196, 196, 0.1);
-    transition: background-color 200ms ease-in-out;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
 }
 
 /* Fila seleccionada: barra de acento y fondo suave */
@@ -308,6 +310,9 @@ section.guarantees-list.sticky-active {
 .guarantees-table__row.selected .guarantees-list__badge--expirada {
     background-color: #dc2626;
 }
+.guarantees-table__row.selected .guarantees-list__badge--pend-cobro {
+    background-color: #3b82f6;
+}
 
 .guarantees-table td {
     display: flex;
@@ -324,12 +329,18 @@ section.guarantees-list.sticky-active {
     margin-right: var(--spacing-2);
 }
 
-/* Plan y estado dentro de la celda Garantía */
+/* Plan y estado */
+.guarantees-table__estado,
 .guarantees-table__plan {
     display: flex;
     flex-wrap: wrap;
     gap: var(--spacing-1);
     margin-bottom: .15rem;
+}
+
+.guarantees-table td[data-label="Estado"],
+.guarantees-table td[data-label="Garantía"] {
+    justify-content: flex-start;
 }
 .guarantees-list__badge {
     padding: .25rem .75rem;
@@ -346,6 +357,7 @@ section.guarantees-list.sticky-active {
 .guarantees-list__badge--pendiente-pago{ color: #f59e0b; }
 .guarantees-list__badge--sin-finalizar { color: #6b7280; }
 .guarantees-list__badge--expira-pronto { color: #fbbf24; }
+.guarantees-list__badge--pend-cobro { color: #3b82f6; }
 
 /* Periodo Validez */
 .guarantees-table__period > div {
@@ -358,13 +370,19 @@ section.guarantees-list.sticky-active {
 }
 
 /* Vehículo cell */
-.guarantees-table__vehiculo strong {
-    display: block;
+.vehiculo__mat {
     font-weight: 600;
 }
-.vehiculo__mat {
-    color: var(--neutral20);
+.vehiculo__marca_modelo {
     font-size: .9rem;
+}
+.vendedor__type {
+    font-size: .9rem;
+    font-style: italic;
+}
+
+.guarantees-table th {
+    position: relative;
 }
 
 /* --------------------------------------------------
@@ -835,6 +853,17 @@ section.guarantees-list.sticky-active {
     border-radius: 6px;
     font-weight: 500;
 }
+.detail__payment-note--domiciliacion {
+    background: #e0f2fe;
+    color: #1d4ed8;
+    border-left-color: #3b82f6;
+    margin-bottom: var(--spacing-2);
+}
+
+.detail__section--payment {
+    border-bottom: solid 1px var(--border-color);
+    padding-bottom: var(--spacing-1);
+}
 
 .detail__transfer-table {
     width: 100%;
@@ -934,7 +963,7 @@ section.guarantees-list.sticky-active {
         flex-direction: column;
         /* height: 100%; */
         height: auto;
-        table-layout: fixed;
+        position: relative;
     }
     
     .guarantees-table thead {
@@ -956,6 +985,9 @@ section.guarantees-list.sticky-active {
         border-bottom: 1px solid var(--border-color);
         padding-block: .5rem;
         border-bottom: solid var(--border-color) 1px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .guarantees-table tbody {
@@ -976,13 +1008,48 @@ section.guarantees-list.sticky-active {
         padding: var(--spacing-2) var(--spacing-4);
         border-bottom: 1px solid var(--border-color);
         padding-block: var(--spacing-2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     /* keep consistent fences on last row */
     .guarantees-table tr:last-child td {
         border-bottom: 1px solid var(--border-color);
     }
-    
+
+    .guarantees-table th,
+    .guarantees-table td {
+        border-right: none;
+    }
+
+    .column-resizers {
+        position: absolute;
+        pointer-events: none;
+        z-index: 20;
+    }
+
+    .column-resizer {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 8px;
+        cursor: col-resize;
+        z-index: 10;
+        touch-action: none;
+        pointer-events: auto;
+    }
+
+    .column-resizer::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+        background: var(--neutral90);
+    }
+
     .guarantees-table td::before {
         content: none;
     }
