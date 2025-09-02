@@ -370,6 +370,22 @@ section.guarantees-list.sticky-active {
 }
 
 /* Vehículo cell */
+.guarantees-table__vehiculo,
+.guarantees-table__vendedor {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.guarantees-table__vehiculo > *,
+.guarantees-table__vendedor > * {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .vehiculo__mat {
     font-weight: 600;
 }
