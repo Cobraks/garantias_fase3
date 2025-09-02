@@ -339,6 +339,10 @@
                    const ths = Array.from(table.querySelectorAll("thead th"));
                    if (!ths.length) return;
 
+                   const MIN_WIDTH = 140;
+                   const MAX_WIDTH = 300;
+                   const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+
                    // create colgroup for easier width management
                    let colgroup = table.querySelector("colgroup");
                    if (!colgroup) {
@@ -348,21 +352,8 @@
                    }
                    const cols = Array.from(colgroup.children);
 
-                   // measure initial widths and minimums based on content
-                   let rows = Array.from(table.querySelectorAll("tbody tr"));
-                   function computeMins() {
-                           const mins = ths.map((th, i) => {
-                                   let max = th.scrollWidth;
-                                   rows.forEach((tr) => {
-                                           const cell = tr.children[i];
-                                           if (cell) max = Math.max(max, cell.scrollWidth);
-                                   });
-                                   return Math.max(80, Math.ceil(max));
-                           });
-                           return mins;
-                   }
-                   let minWidths = computeMins();
-                   let widths = ths.map((th, i) => Math.max(minWidths[i], th.offsetWidth));
+                   // base widths with fixed min and max constraints
+                   let widths = ths.map((th) => clamp(th.getBoundingClientRect().width, MIN_WIDTH, MAX_WIDTH));
                    widths.forEach((w, i) => (cols[i].style.width = `${w}px`));
 
                    // overlay for handles
@@ -390,17 +381,20 @@
                                            const startNext = widths[i + 1];
 
                                            function onMove(ev) {
-                                                   let dx = ev.pageX - startX;
-                                                   let newW = startW + dx;
-                                                   let newNext = startNext - dx;
-                                                   if (newW < minWidths[i]) {
-                                                           newW = minWidths[i];
-                                                           newNext = startW + startNext - newW;
+                                                   const dx = ev.pageX - startX;
+                                                   const total = startW + startNext;
+                                                   let newW = clamp(startW + dx, MIN_WIDTH, MAX_WIDTH);
+                                                   let newNext = total - newW;
+                                                   if (newNext < MIN_WIDTH) {
+                                                           newNext = MIN_WIDTH;
+                                                           newW = total - newNext;
                                                    }
-                                                   if (newNext < minWidths[i + 1]) {
-                                                           newNext = minWidths[i + 1];
-                                                           newW = startW + startNext - newNext;
+                                                   if (newNext > MAX_WIDTH) {
+                                                           newNext = MAX_WIDTH;
+                                                           newW = total - newNext;
                                                    }
+                                                   newW = clamp(newW, MIN_WIDTH, MAX_WIDTH);
+                                                   newNext = total - newW;
                                                    widths[i] = newW;
                                                    widths[i + 1] = newNext;
                                                    cols[i].style.width = `${newW}px`;
@@ -434,11 +428,9 @@
 
                    createHandles();
 
-                   // observe body for new rows that may alter min widths
+                   // observe body for new rows to keep overlay in sync
                    const bodyObserver = new MutationObserver(() => {
-                           rows = Array.from(table.querySelectorAll("tbody tr"));
-                           minWidths = computeMins();
-                           widths = widths.map((w, i) => Math.max(w, minWidths[i]));
+                           widths = widths.map((w) => clamp(w, MIN_WIDTH, MAX_WIDTH));
                            widths.forEach((w, i) => (cols[i].style.width = `${w}px`));
                            createHandles();
                    });

@@ -1021,6 +1021,8 @@ section.guarantees-list.sticky-active {
     .guarantees-table th,
     .guarantees-table td {
         border-right: none;
+        min-width: 140px;
+        max-width: 300px;
     }
 
     .column-resizers {
