@@ -981,9 +981,10 @@
     const estadoClase = normalizeEstadoClase(estadoValue);
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
+    const metodoPago = data.metodo_pago ?? rowData.metodo_pago;
+    const cobroRealizadoVal = data.cobro_realizado ?? rowData.cobro_realizado;
     const isPendienteCobro =
-        (data.metodo_pago ?? rowData.metodo_pago) === "domiciliacion_bancaria" &&
-        !(data.cobro_realizado ?? rowData.cobro_realizado);
+        metodoPago === "domiciliacion_bancaria" && cobroRealizadoVal === false;
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
 
     const planTitle = `${data.plan ?? "-"}${
