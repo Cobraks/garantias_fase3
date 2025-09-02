@@ -1014,17 +1014,13 @@ section.guarantees-list.sticky-active {
 
     .guarantees-table th,
     .guarantees-table td {
-        border-right: 1px solid var(--neutral90);
-    }
-
-    .guarantees-table th:last-child,
-    .guarantees-table td:last-child {
         border-right: none;
     }
 
     .column-resizers {
         position: absolute;
         pointer-events: none;
+        z-index: 20;
     }
 
     .column-resizer {

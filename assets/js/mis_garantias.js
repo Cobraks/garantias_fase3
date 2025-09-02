@@ -395,28 +395,47 @@
                            resizer.addEventListener("mousedown", (e) => {
                                    e.preventDefault();
                                    const startX = e.pageX;
-                                   const leftStart = widths[i];
-                                   const rightStart = widths[i + 1];
-                                   const total = leftStart + rightStart;
+                                   const startWidths = widths.slice();
                                    const minLeft = minWidths[i];
-                                   const minRight = minWidths[i + 1];
+                                   const rightIndices = [];
+                                   for (let j = i + 1; j < ths.length; j++) rightIndices.push(j);
+                                   const sumRight = rightIndices.reduce((s, idx) => s + startWidths[idx], 0);
+                                   const sumMinRight = rightIndices.reduce((s, idx) => s + minWidths[idx], 0);
+
+                                   function applyWidths() {
+                                           ths.forEach((th, idx) => {
+                                                   th.style.width = `${widths[idx]}px`;
+                                           });
+                                           const affected = [i, ...rightIndices];
+                                           rows.forEach((tr) => {
+                                                   affected.forEach((idx) => {
+                                                           const cell = tr.children[idx];
+                                                           if (cell) cell.style.width = `${widths[idx]}px`;
+                                                   });
+                                           });
+                                           updateResizers();
+                                   }
 
                                    function onMouseMove(ev) {
                                            let dx = ev.pageX - startX;
-                                           let newLeft = leftStart + dx;
-                                           if (newLeft < minLeft) newLeft = minLeft;
-                                           if (newLeft > total - minRight) newLeft = total - minRight;
-                                           let newRight = total - newLeft;
-
-                                           widths[i] = newLeft;
-                                           widths[i + 1] = newRight;
-                                           ths[i].style.width = `${newLeft}px`;
-                                           ths[i + 1].style.width = `${newRight}px`;
-                                           rows.forEach((tr) => {
-                                                   if (tr.children[i]) tr.children[i].style.width = `${newLeft}px`;
-                                                   if (tr.children[i + 1]) tr.children[i + 1].style.width = `${newRight}px`;
-                                           });
-                                           updateResizers();
+                                           let desired = startWidths[i] + dx;
+                                           if (desired < minLeft) desired = minLeft;
+                                           const maxLeft = startWidths[i] + (sumRight - sumMinRight);
+                                           if (desired > maxLeft) desired = maxLeft;
+                                           let delta = desired - widths[i];
+                                           widths[i] = desired;
+                                           if (delta > 0) {
+                                                   let remaining = delta;
+                                                   for (let j = i + 1; j < ths.length && remaining > 0; j++) {
+                                                           const avail = widths[j] - minWidths[j];
+                                                           const take = Math.min(avail, remaining);
+                                                           widths[j] -= take;
+                                                           remaining -= take;
+                                                   }
+                                           } else if (delta < 0) {
+                                                   widths[i + 1] += -delta;
+                                           }
+                                           applyWidths();
                                    }
 
                                    function onMouseUp() {
