@@ -105,7 +105,12 @@ class GuaranteeRestController
                     'methods'             => WP_REST_Server::CREATABLE,
                     'callback'            => [__CLASS__, 'mark_paid'],
                     'permission_callback' => function () {
-                        return current_user_can('manage_options');
+                        if (current_user_can('manage_options')) {
+                            return true;
+                        }
+                        $user = wp_get_current_user();
+                        return in_array('go_garantias', (array) $user->roles, true)
+                            || in_array('go_comercial', (array) $user->roles, true);
                     },
                     'args'                => [
                         'id' => ['validate_callback' => 'absint'],
@@ -633,8 +638,15 @@ class GuaranteeRestController
         $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
         $concesionario = $user ? $user->display_name : '';
         $iban = '';
-        if ($vendor_id && current_user_can('manage_options')) {
-            $iban = get_user_meta($vendor_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', true);
+        if ($vendor_id) {
+            $viewer = wp_get_current_user();
+            if (
+                current_user_can('manage_options') ||
+                in_array('go_garantias', (array) $viewer->roles, true) ||
+                in_array('go_comercial', (array) $viewer->roles, true)
+            ) {
+                $iban = get_user_meta($vendor_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', true);
+            }
         }
 
         $canal_venta_raw = get_post_meta($id, 'garantia_contratada_canal_venta', true);
