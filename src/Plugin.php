@@ -60,6 +60,7 @@ class Plugin
         AdminBar::init();
         if (is_admin()) {
             AdminMenu::init();
+            Admin\GuaranteeColumns::init();
         }
         ProfileAvatar::init();
         SampleData::init();

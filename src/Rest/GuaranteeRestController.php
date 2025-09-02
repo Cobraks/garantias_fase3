@@ -97,6 +97,22 @@ class GuaranteeRestController
                 ],
             ]
         );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/mark-paid',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'mark_paid'],
+                    'permission_callback' => function () {
+                        return current_user_can('manage_options');
+                    },
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
 
         // Limpieza de transients al guardar/borrar garantías
         add_action('save_post_' . \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE, [__CLASS__, 'clear_list_transients'], 10, 3);
@@ -354,6 +370,8 @@ class GuaranteeRestController
         }
 
         $meses_contratados = 0;
+        $gc = [];
+        $is_publishing = isset($data['post_status']) && sanitize_text_field($data['post_status']) === 'publish';
         if (isset($data['garantia_contratada']) && is_array($data['garantia_contratada'])) {
             $gc   = [];
             foreach ($data['garantia_contratada'] as $k => $v) {
@@ -417,6 +435,12 @@ class GuaranteeRestController
                     $gc['nivel_garantia'] = (int) $nivel_terms[0];
                 }
             }
+            if (isset($gc['tipo_garantia'])) {
+                wp_set_post_terms($post_id, [(int) $gc['tipo_garantia']], 'tipo_garantia');
+            }
+            if (isset($gc['nivel_garantia'])) {
+                wp_set_post_terms($post_id, [(int) $gc['nivel_garantia']], 'nivel_garantia');
+            }
             foreach ($gc as $k => $v) {
                 if (is_array($v)) {
                     foreach ($v as $subk => $subv) {
@@ -425,6 +449,10 @@ class GuaranteeRestController
                 } else {
                     update_post_meta($post_id, 'garantia_contratada_' . $k, $v);
                 }
+            }
+            if (($gc['metodo_pago'] ?? '') === 'domiciliacion_bancaria') {
+                update_post_meta($post_id, 'garantia_contratada_estado_cobro_cobro_realizado', 0);
+                update_post_meta($post_id, 'garantia_contratada_estado_cobro_fecha_cobro', '');
             }
             error_log('[AUTOSAVE] Saved garantia_contratada for ID ' . $post_id . ': ' . wp_json_encode($gc));
             unset($data['garantia_contratada']);
@@ -447,7 +475,9 @@ class GuaranteeRestController
             if (isset($data['estado_garantia']['finalizacion']) && empty($estado['finalizacion'])) {
                 $estado['finalizacion'] = sanitize_text_field($data['estado_garantia']['finalizacion']);
             }
-            if (isset($data['estado_garantia']['estado_contratacion'])) {
+            if ($is_publishing && ($gc['metodo_pago'] ?? '') === 'domiciliacion') {
+                $estado['estado_contratacion'] = 'activada';
+            } elseif (isset($data['estado_garantia']['estado_contratacion'])) {
                 $ec = sanitize_text_field($data['estado_garantia']['estado_contratacion']);
                 $valid = ['pendiente_pago', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto'];
                 if (in_array($ec, $valid, true)) {
@@ -584,6 +614,9 @@ class GuaranteeRestController
         }
         $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
         $metodo_pago = get_post_meta($id, 'garantia_contratada_metodo_pago', true);
+        $cobro_realizado = (bool) get_post_meta($id, 'garantia_contratada_estado_cobro_cobro_realizado', true);
+        $fecha_cobro_raw = get_post_meta($id, 'garantia_contratada_estado_cobro_fecha_cobro', true);
+        $fecha_cobro = $fecha_cobro_raw ? date_i18n('d/m/Y', strtotime($fecha_cobro_raw)) : '';
         $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
@@ -599,6 +632,10 @@ class GuaranteeRestController
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
         $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
         $concesionario = $user ? $user->display_name : '';
+        $iban = '';
+        if ($vendor_id && current_user_can('manage_options')) {
+            $iban = get_user_meta($vendor_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', true);
+        }
 
         $canal_venta_raw = get_post_meta($id, 'garantia_contratada_canal_venta', true);
         $canal_venta_value = is_array($canal_venta_raw) && isset($canal_venta_raw['value'])
@@ -666,6 +703,9 @@ class GuaranteeRestController
             'plan' => $plan,
             'precio' => $precio,
             'metodo_pago' => $metodo_pago ?: '',
+            'cobro_realizado' => $cobro_realizado,
+            'fecha_cobro' => $fecha_cobro,
+            'iban' => $iban,
             'desde' => $desde,
             'hasta' => $hasta,
             'estado' => [
@@ -883,6 +923,35 @@ class GuaranteeRestController
         set_transient($cache_key, $data, 300);
 
         return rest_ensure_response($data);
+    }
+
+    public static function mark_paid($request)
+    {
+        $id = (int) $request['id'];
+        if (!$id) {
+            return new WP_Error('invalid_id', __('ID inválido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+        update_post_meta($id, 'garantia_contratada_estado_cobro_cobro_realizado', 1);
+        $today = current_time('Y-m-d');
+        update_post_meta($id, 'garantia_contratada_estado_cobro_fecha_cobro', $today);
+        $vendor_id = (int) get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
+        $vendor    = $vendor_id ? get_userdata($vendor_id) : null;
+        $plan_id   = get_post_meta($id, 'garantia_contratada_garantia', true);
+        $plan      = $plan_id ? get_the_title($plan_id) : '';
+        $price     = get_post_meta($id, 'garantia_contratada_precio', true);
+        $concepto  = 'Garantía ' . get_post_meta($id, 'datos_vehiculo_matricula', true);
+        $current   = wp_get_current_user();
+        $detail    = wp_json_encode([
+            'user'     => $current->display_name,
+            'vendor'   => $vendor ? $vendor->display_name : '',
+            'concepto' => $concepto,
+            'fecha'    => current_time('mysql'),
+            'plan'     => $plan,
+            'precio'   => $price,
+        ]);
+        \GarantiasOnline360VO\GuaranteeLogger::log($current->ID, $id, 'cobro', $detail);
+        self::clear_list_transients($id, null, true);
+        return rest_ensure_response(['success' => true]);
     }
 
     public static function get_filters($request)

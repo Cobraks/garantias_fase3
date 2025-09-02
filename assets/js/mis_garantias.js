@@ -261,7 +261,99 @@
                                         }
                                 });
                 }
+                function handleChargeClick(e) {
+                        const btn = e.target.closest(
+                                ".guarantee-detail__btn--charge"
+                        );
+                        if (!btn) return;
+                        const panel = btn.closest(".guarantee-detail__panel");
+                        const id = panel?.dataset.loadedId;
+                        if (!id) return;
+                        const textSpan = btn.querySelector(
+                                ".guarantee-detail__btn-text"
+                        );
+                        const originalText = textSpan
+                                ? textSpan.textContent
+                                : "";
+                        let spinner = btn.querySelector(
+                                ".guarantee-detail__btn-spinner"
+                        );
+                        if (!spinner) {
+                                spinner = document.createElement("span");
+                                spinner.className =
+                                        "guarantee-detail__btn-spinner";
+                                if (textSpan) {
+                                        btn.insertBefore(spinner, textSpan);
+                                } else {
+                                        btn.appendChild(spinner);
+                                }
+                        }
+                        if (textSpan) {
+                                textSpan.textContent =
+                                        "Marcando pago";
+                        }
+                        btn.disabled = true;
+                        saveStatus.classList.remove(
+                                "autosave-status--hidden"
+                        );
+                        let row;
+                        fetch(`${restRoot}go/v1/guarantees/${id}/mark-paid`, {
+                                method: "POST",
+                                headers: { "X-WP-Nonce": restNonce },
+                        })
+                                .then((res) => {
+                                        if (!res.ok) throw res.status;
+                                        detailCache.delete(id);
+                                        row = tbody.querySelector(
+                                                `.guarantees-table__row[data-id="${id}"]`
+                                        );
+                                        if (row) {
+                                                row.dataset.cobroRealizado = "1";
+                                                const badge = row.querySelector(
+                                                        ".guarantees-list__badge--pendiente-cobro"
+                                                );
+                                                if (badge) badge.remove();
+                                        }
+                                        return fetch(
+                                                `${restRoot}go/v1/guarantees/${id}`,
+                                                { headers: { "X-WP-Nonce": restNonce } }
+                                        );
+                                })
+                                .then((detailRes) => {
+                                        if (!detailRes.ok) throw detailRes.status;
+                                        const rowData = row ? buildRowData(row) : {};
+                                        return detailRes
+                                                .json()
+                                                .then((json) => {
+                                                        const data = normalizeDetailData(json);
+                                                        detailCache.set(id, data);
+                                                        panel.innerHTML = renderFullDetail(
+                                                                data,
+                                                                rowData,
+                                                                []
+                                                        );
+                                                });
+                                })
+                                .catch((err) => {
+                                        console.error("Error mark paid:", err);
+                                })
+                                .finally(() => {
+                                        btn.disabled = false;
+                                        saveStatus.classList.add(
+                                                "autosave-status--hidden"
+                                        );
+                                        if (textSpan) {
+                                                textSpan.textContent =
+                                                        originalText ||
+                                                        "Marcar como pagada";
+                                        }
+                                        if (spinner) {
+                                                spinner.remove();
+                                        }
+                                });
+                }
                 document.addEventListener("click", handleConfirmClick);
+                document.addEventListener("click", handleChargeClick);
 
                 document.addEventListener("click", (e) => {
                         const btn = e.target.closest("[data-copy]");
@@ -405,6 +497,13 @@
                         if (data.tipo && typeof data.tipo === "object") {
                                 data.tipo = data.tipo.label || data.tipo.name || data.tipo.value || data.tipo;
                         }
+                        if (data.fecha_cobro) {
+                                const fc = formatDate(data.fecha_cobro);
+                                data.fecha_cobro = fc.display;
+                        }
+                        if (data.cobro_realizado !== undefined) {
+                                data.cobro_realizado = Boolean(data.cobro_realizado);
+                        }
                         return data;
                 }
 
@@ -435,6 +534,14 @@
                                         ? item.canal_venta.label
                                         : "-";
                         const vendedor_type = canal_venta;
+                        const metodo_pago =
+                                item.detail && item.detail.metodo_pago
+                                        ? item.detail.metodo_pago
+                                        : "";
+                        const cobro_realizado =
+                                item.detail && item.detail.cobro_realizado
+                                        ? "1"
+                                        : "0";
 
                         const hasPlan = plan !== "" && plan !== "-";
                         const hasPeriod =
@@ -473,6 +580,14 @@
                         tr.dataset.vendedor_type = vendedor_type;
                         tr.dataset.precio = hasPlan ? precio : "";
                         tr.dataset.canalVenta = canal_venta;
+                        tr.dataset.metodoPago = metodo_pago;
+                        tr.dataset.cobroRealizado = cobro_realizado;
+
+                        const cobroBadge =
+                                metodo_pago === "domiciliacion_bancaria" &&
+                                cobro_realizado !== "1"
+                                        ? `<span class="guarantees-list__badge guarantees-list__badge--pendiente-cobro">Pend. Cobro</span>`
+                                        : "";
 
                         tr.innerHTML = `
                                 <td data-label="Vehículo">
@@ -493,6 +608,7 @@
                                           <span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
                                                   ${estadoLabel}
                                           </span>
+                                          ${cobroBadge}
                                 </td>
                         `;
                         return tr;
@@ -795,6 +911,9 @@
                                 concesionario: row.dataset.vendedor_name ?? "-",
                                 canal_venta: row.dataset.vendedor_type ?? "-",
                                 precio: row.dataset.precio ?? "-",
+                                metodo_pago: row.dataset.metodoPago ?? "",
+                                cobro_realizado:
+                                        row.dataset.cobroRealizado === "1",
                                 tipo: "-",
                                 kilometros: "-",
                                 primera_matriculacion: "-",
@@ -862,6 +981,9 @@
     const estadoClase = normalizeEstadoClase(estadoValue);
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
+    const isPendienteCobro =
+        (data.metodo_pago ?? rowData.metodo_pago) === "domiciliacion_bancaria" &&
+        !(data.cobro_realizado ?? rowData.cobro_realizado);
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
 
     const planTitle = `${data.plan ?? "-"}${
@@ -1059,6 +1181,27 @@
                 }
                 return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note">El pago se procesará mediante domiciliación bancaria.</p>
+                        </section>`;
+        })()
+        : isAdmin && isPendienteCobro
+        ? (() => {
+                const concepto = `Garantía ${skeleton("matricula")}`;
+                const cantidad = `${skeleton("precio", "0")} €`;
+                const iban = skeleton("iban", "-");
+                return `<section class="detail__section detail__section--payment">
+                                <p class="detail__payment-note">Cobro pendiente por domiciliación bancaria. Realiza el cargo al cliente.</p>
+                                <table class="detail__transfer-table">
+                                        <tbody>
+                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                        </tbody>
+                                </table>
+                                <div class="detail__copy-toast" aria-hidden="true"></div>
+                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--charge" aria-label="Marcar garantía como pagada">
+                                        <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
+                                        <span class="guarantee-detail__btn-text">Marcar como pagada</span>
+                                </button>
                         </section>`;
         })()
         : ``;

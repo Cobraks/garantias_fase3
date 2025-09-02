@@ -299,6 +299,9 @@ section.guarantees-list.sticky-active {
 .guarantees-table__row.selected .guarantees-list__badge--pendiente-pago {
     background-color: #f59e0b;
 }
+.guarantees-table__row.selected .guarantees-list__badge--pendiente-cobro {
+    background-color: #f59e0b;
+}
 .guarantees-table__row.selected .guarantees-list__badge--sin-finalizar {
     background-color: #6b7280;
 }
@@ -344,6 +347,7 @@ section.guarantees-list.sticky-active {
 .guarantees-list__badge--activada      { color: #16a34a; }
 .guarantees-list__badge--expirada      { color: #dc2626; }
 .guarantees-list__badge--pendiente-pago{ color: #f59e0b; }
+.guarantees-list__badge--pendiente-cobro{ color: #f59e0b; }
 .guarantees-list__badge--sin-finalizar { color: #6b7280; }
 .guarantees-list__badge--expira-pronto { color: #fbbf24; }
 
