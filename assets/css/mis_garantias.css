@@ -177,6 +177,7 @@ section.guarantees-list {
     z-index: 99;
     max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem);
     overflow-y: auto;
+    overflow-x: hidden;
     transition: max-height 300ms ease;
     border-radius: 1rem;
 

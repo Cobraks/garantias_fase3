@@ -330,86 +330,110 @@
                                .replace(/^-+|-+$/g, "");
                }
 
-              function initResizableColumns(table) {
-                      if (window.innerWidth < 1024) return;
-                      const MIN_WIDTH = 50;
-                      const ths = Array.from(table.querySelectorAll("thead th"));
-                      if (!ths.length) return;
+             function initResizableColumns(table) {
+                     if (window.innerWidth < 1024) return;
+                     const ths = Array.from(table.querySelectorAll("thead th"));
+                     if (!ths.length) return;
 
-                      table.style.tableLayout = "fixed";
-                      table.style.position = "relative";
+                     table.style.tableLayout = "fixed";
+                     table.style.position = "relative";
 
-                      // Fix initial widths so calculations use pixels
-                      ths.forEach((th) => {
-                              th.style.width = `${th.offsetWidth}px`;
-                      });
+                     const rows = Array.from(table.querySelectorAll("tbody tr"));
 
-                      const resizers = [];
+                     const minWidths = ths.map((th, i) => {
+                             let max = th.getBoundingClientRect().width;
+                             rows.forEach((tr) => {
+                                     const cell = tr.children[i];
+                                     if (cell) {
+                                             const style = getComputedStyle(cell);
+                                             const cellWidth =
+                                                     cell.scrollWidth +
+                                                     parseFloat(style.paddingLeft) +
+                                                     parseFloat(style.paddingRight);
+                                             max = Math.max(max, cellWidth);
+                                     }
+                             });
+                             return Math.max(50, Math.ceil(max));
+                     });
 
-                      const setPositions = () => {
-                              resizers.forEach((resizer, i) => {
-                                      const th = ths[i];
-                                      resizer.style.left = `${th.offsetLeft + th.offsetWidth}px`;
-                              });
-                      };
+                     ths.forEach((th, i) => {
+                             const w = minWidths[i];
+                             th.style.width = `${w}px`;
+                             rows.forEach((tr) => {
+                                     if (tr.children[i]) {
+                                             tr.children[i].style.width = `${w}px`;
+                                     }
+                             });
+                     });
 
-                      ths.forEach((th, index) => {
-                              if (index === ths.length - 1) return; // no resizer after last col
+                     const resizers = [];
 
-                              const resizer = document.createElement("div");
-                              resizer.className = "column-resizer";
-                              table.appendChild(resizer);
-                              resizers.push(resizer);
+                     const setPositions = () => {
+                             resizers.forEach((resizer, i) => {
+                                     const th = ths[i];
+                                     resizer.style.left = `${th.offsetLeft + th.offsetWidth}px`;
+                             });
+                     };
 
-                              resizer.addEventListener("mousedown", (e) => {
-                                      const startX = e.pageX;
-                                      const leftCol = ths[index];
-                                      const rightCol = ths[index + 1];
-                                      const leftStart = leftCol.offsetWidth;
-                                      const rightStart = rightCol.offsetWidth;
+                     ths.forEach((th, index) => {
+                             if (index === ths.length - 1) return; // no resizer after last col
 
-                                      const onMouseMove = (ev) => {
-                                              let dx = ev.pageX - startX;
-                                              let newLeft = Math.max(MIN_WIDTH, leftStart + dx);
-                                              let newRight = Math.max(MIN_WIDTH, rightStart - dx);
-                                              const total = leftStart + rightStart;
+                             const resizer = document.createElement("div");
+                             resizer.className = "column-resizer";
+                             table.appendChild(resizer);
+                             resizers.push(resizer);
 
-                                              if (newLeft + newRight !== total) {
-                                                      if (newLeft === MIN_WIDTH) {
-                                                              newRight = total - MIN_WIDTH;
-                                                      } else if (newRight === MIN_WIDTH) {
-                                                              newLeft = total - MIN_WIDTH;
-                                                      }
-                                              }
+                             resizer.addEventListener("mousedown", (e) => {
+                                     const startX = e.pageX;
+                                     const leftCol = ths[index];
+                                     const rightCol = ths[index + 1];
+                                     const leftStart = leftCol.offsetWidth;
+                                     const rightStart = rightCol.offsetWidth;
+                                     const total = leftStart + rightStart;
+                                     const minLeft = minWidths[index];
+                                     const minRight = minWidths[index + 1];
 
-                                              leftCol.style.width = `${newLeft}px`;
-                                              rightCol.style.width = `${newRight}px`;
+                                     const onMouseMove = (ev) => {
+                                             let dx = ev.pageX - startX;
+                                             let newLeft = leftStart + dx;
+                                             let newRight = total - newLeft;
 
-                                              table.querySelectorAll("tbody tr").forEach((tr) => {
-                                                      if (tr.children[index]) {
-                                                              tr.children[index].style.width = `${newLeft}px`;
-                                                      }
-                                                      if (tr.children[index + 1]) {
-                                                              tr.children[index + 1].style.width = `${newRight}px`;
-                                                      }
-                                              });
+                                             if (newLeft < minLeft) {
+                                                     newLeft = minLeft;
+                                                     newRight = total - newLeft;
+                                             } else if (newRight < minRight) {
+                                                     newRight = minRight;
+                                                     newLeft = total - newRight;
+                                             }
 
-                                              setPositions();
-                                      };
+                                             leftCol.style.width = `${newLeft}px`;
+                                             rightCol.style.width = `${newRight}px`;
 
-                                      const onMouseUp = () => {
-                                              document.removeEventListener("mousemove", onMouseMove);
-                                              document.removeEventListener("mouseup", onMouseUp);
-                                      };
+                                             rows.forEach((tr) => {
+                                                     if (tr.children[index]) {
+                                                             tr.children[index].style.width = `${newLeft}px`;
+                                                     }
+                                                     if (tr.children[index + 1]) {
+                                                             tr.children[index + 1].style.width = `${newRight}px`;
+                                                     }
+                                             });
 
-                                      document.addEventListener("mousemove", onMouseMove);
-                                      document.addEventListener("mouseup", onMouseUp);
-                              });
-                      });
+                                             setPositions();
+                                     };
 
-                      setPositions();
-                      window.addEventListener("resize", setPositions);
-              }
+                                     const onMouseUp = () => {
+                                             document.removeEventListener("mousemove", onMouseMove);
+                                             document.removeEventListener("mouseup", onMouseUp);
+                                     };
+
+                                     document.addEventListener("mousemove", onMouseMove);
+                                     document.addEventListener("mouseup", onMouseUp);
+                             });
+                     });
+
+                     setPositions();
+                     window.addEventListener("resize", setPositions);
+             }
 
                 function formatDate(value) {
                         if (!value) return { iso: "-", display: "-" };
