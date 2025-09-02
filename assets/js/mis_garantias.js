@@ -330,93 +330,113 @@
                                .replace(/^-+|-+$/g, "");
                }
 
-            function initResizableColumns(table) {
-                    if (window.innerWidth < 1024) return;
-                    const ths = Array.from(table.querySelectorAll("thead th"));
-                    if (!ths.length) return;
+           function initResizableColumns(table) {
+                   if (window.innerWidth < 1024) return;
+                   const ths = Array.from(table.querySelectorAll("thead th"));
+                   if (!ths.length) return;
 
-                    table.style.tableLayout = "fixed";
+                   let rows = Array.from(table.querySelectorAll("tbody tr"));
 
-                    const rows = Array.from(table.querySelectorAll("tbody tr"));
+                   const wrapper = table.parentElement;
+                   wrapper.style.position = "relative";
+                   table.style.position = "relative";
 
-                    const minWidths = ths.map((th, i) => {
-                            let max = th.getBoundingClientRect().width;
-                            rows.forEach((tr) => {
-                                    const cell = tr.children[i];
-                                    if (cell) {
-                                            const style = getComputedStyle(cell);
-                                            const cellWidth =
-                                                    cell.scrollWidth +
-                                                    parseFloat(style.paddingLeft) +
-                                                    parseFloat(style.paddingRight);
-                                            max = Math.max(max, cellWidth);
-                                    }
-                            });
-                            return Math.max(50, Math.ceil(max));
-                    });
+                   const widths = ths.map((th) => th.offsetWidth);
+                   table.style.tableLayout = "fixed";
+                   const minWidths = ths.map((th, i) => {
+                           let max = th.scrollWidth;
+                           rows.forEach((tr) => {
+                                   const cell = tr.children[i];
+                                   if (cell) {
+                                           const style = getComputedStyle(cell);
+                                           const cellWidth =
+                                                   cell.scrollWidth +
+                                                   parseFloat(style.paddingLeft) +
+                                                   parseFloat(style.paddingRight);
+                                           max = Math.max(max, cellWidth);
+                                   }
+                           });
+                           return Math.max(50, Math.ceil(max));
+                   });
 
-                    ths.forEach((th, i) => {
-                            const w = minWidths[i];
-                            th.style.width = `${w}px`;
-                            rows.forEach((tr) => {
-                                    if (tr.children[i]) {
-                                            tr.children[i].style.width = `${w}px`;
-                                    }
-                            });
+                   ths.forEach((th, i) => {
+                           const w = widths[i];
+                           th.style.width = `${w}px`;
+                           rows.forEach((tr) => {
+                                   if (tr.children[i]) {
+                                           tr.children[i].style.width = `${w}px`;
+                                   }
+                           });
+                   });
 
-                            if (i === ths.length - 1) return; // no resizer for last col
+                   const resizersWrap = document.createElement("div");
+                   resizersWrap.className = "column-resizers";
+                   wrapper.appendChild(resizersWrap);
 
-                            const resizer = document.createElement("span");
-                            resizer.className = "column-resizer";
-                            th.appendChild(resizer);
+                   function updateResizers() {
+                           resizersWrap.style.width = `${table.offsetWidth}px`;
+                           resizersWrap.style.height = `${table.offsetHeight}px`;
+                           resizersWrap.style.top = `${table.offsetTop}px`;
+                           resizersWrap.style.left = `${table.offsetLeft}px`;
+                           let left = 0;
+                           ths.forEach((_, idx) => {
+                                   left += widths[idx];
+                                   const r = resizersWrap.children[idx];
+                                   if (r) r.style.left = `${left}px`;
+                           });
+                   }
 
-                            resizer.addEventListener("mousedown", (e) => {
-                                    e.preventDefault();
-                                    const startX = e.pageX;
-                                    const leftCol = ths[i];
-                                    const rightCol = ths[i + 1];
-                                    const leftStart = leftCol.offsetWidth;
-                                    const rightStart = rightCol.offsetWidth;
-                                    const total = leftStart + rightStart;
-                                    const minLeft = minWidths[i];
-                                    const minRight = minWidths[i + 1];
+                   ths.forEach((th, i) => {
+                           if (i === ths.length - 1) return;
+                           const resizer = document.createElement("span");
+                           resizer.className = "column-resizer";
+                           resizersWrap.appendChild(resizer);
 
-                                    function onMouseMove(ev) {
-                                            let dx = ev.pageX - startX;
-                                            let newLeft = leftStart + dx;
-                                            let newRight = total - newLeft;
+                           resizer.addEventListener("mousedown", (e) => {
+                                   e.preventDefault();
+                                   const startX = e.pageX;
+                                   const leftStart = widths[i];
+                                   const rightStart = widths[i + 1];
+                                   const total = leftStart + rightStart;
+                                   const minLeft = minWidths[i];
+                                   const minRight = minWidths[i + 1];
 
-                                            if (newLeft < minLeft) {
-                                                    newLeft = minLeft;
-                                                    newRight = total - newLeft;
-                                            } else if (newRight < minRight) {
-                                                    newRight = minRight;
-                                                    newLeft = total - newRight;
-                                            }
+                                   function onMouseMove(ev) {
+                                           let dx = ev.pageX - startX;
+                                           let newLeft = leftStart + dx;
+                                           if (newLeft < minLeft) newLeft = minLeft;
+                                           if (newLeft > total - minRight) newLeft = total - minRight;
+                                           let newRight = total - newLeft;
 
-                                            leftCol.style.width = `${newLeft}px`;
-                                            rightCol.style.width = `${newRight}px`;
+                                           widths[i] = newLeft;
+                                           widths[i + 1] = newRight;
+                                           ths[i].style.width = `${newLeft}px`;
+                                           ths[i + 1].style.width = `${newRight}px`;
+                                           rows.forEach((tr) => {
+                                                   if (tr.children[i]) tr.children[i].style.width = `${newLeft}px`;
+                                                   if (tr.children[i + 1]) tr.children[i + 1].style.width = `${newRight}px`;
+                                           });
+                                           updateResizers();
+                                   }
 
-                                            rows.forEach((tr) => {
-                                                    if (tr.children[i]) {
-                                                            tr.children[i].style.width = `${newLeft}px`;
-                                                    }
-                                                    if (tr.children[i + 1]) {
-                                                            tr.children[i + 1].style.width = `${newRight}px`;
-                                                    }
-                                            });
-                                    }
+                                   function onMouseUp() {
+                                           document.removeEventListener("mousemove", onMouseMove);
+                                           document.removeEventListener("mouseup", onMouseUp);
+                                   }
 
-                                    function onMouseUp() {
-                                            document.removeEventListener("mousemove", onMouseMove);
-                                            document.removeEventListener("mouseup", onMouseUp);
-                                    }
+                                   document.addEventListener("mousemove", onMouseMove);
+                                   document.addEventListener("mouseup", onMouseUp);
+                           });
+                   });
 
-                                    document.addEventListener("mousemove", onMouseMove);
-                                    document.addEventListener("mouseup", onMouseUp);
-                            });
-                    });
-            }
+                   updateResizers();
+                   const bodyObserver = new MutationObserver(() => {
+                           rows = Array.from(table.querySelectorAll("tbody tr"));
+                           updateResizers();
+                   });
+                   bodyObserver.observe(table.tBodies[0], { childList: true });
+                   window.addEventListener("resize", updateResizers);
+           }
 
                 function formatDate(value) {
                         if (!value) return { iso: "-", display: "-" };

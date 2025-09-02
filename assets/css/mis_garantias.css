@@ -963,7 +963,6 @@ section.guarantees-list.sticky-active {
         flex-direction: column;
         /* height: 100%; */
         height: auto;
-        table-layout: fixed;
         position: relative;
     }
     
@@ -1013,20 +1012,30 @@ section.guarantees-list.sticky-active {
         border-bottom: 1px solid var(--border-color);
     }
 
+    .guarantees-table th,
+    .guarantees-table td {
+        border-right: 1px solid var(--neutral90);
+    }
+
     .guarantees-table th:last-child,
     .guarantees-table td:last-child {
-        border-right: 1px solid var(--neutral90);
+        border-right: none;
+    }
+
+    .column-resizers {
+        position: absolute;
+        pointer-events: none;
     }
 
     .column-resizer {
         position: absolute;
         top: 0;
-        right: -4px;
         bottom: 0;
         width: 8px;
         cursor: col-resize;
-        z-index: 5;
+        z-index: 10;
         touch-action: none;
+        pointer-events: auto;
     }
 
     .column-resizer::after {
@@ -1038,7 +1047,7 @@ section.guarantees-list.sticky-active {
         width: 1px;
         background: var(--neutral90);
     }
-    
+
     .guarantees-table td::before {
         content: none;
     }
