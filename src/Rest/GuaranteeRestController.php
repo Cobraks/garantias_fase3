@@ -480,7 +480,7 @@ class GuaranteeRestController
             if (isset($data['estado_garantia']['finalizacion']) && empty($estado['finalizacion'])) {
                 $estado['finalizacion'] = sanitize_text_field($data['estado_garantia']['finalizacion']);
             }
-            if ($is_publishing && ($gc['metodo_pago'] ?? '') === 'domiciliacion') {
+            if ($is_publishing && ($gc['metodo_pago'] ?? '') === 'domiciliacion_bancaria') {
                 $estado['estado_contratacion'] = 'activada';
             } elseif (isset($data['estado_garantia']['estado_contratacion'])) {
                 $ec = sanitize_text_field($data['estado_garantia']['estado_contratacion']);

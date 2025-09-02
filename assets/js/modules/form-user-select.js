@@ -126,9 +126,9 @@ async function refreshMetodoPagoPorUsuario(targetUserId) {
 	select.appendChild(optTrans);
 
 	if (tieneSepa) {
-		const optDomic = document.createElement("option");
-		optDomic.value = "domiciliacion";
-		optDomic.textContent = "Domiciliación bancaria";
+                const optDomic = document.createElement("option");
+                optDomic.value = "domiciliacion_bancaria";
+                optDomic.textContent = "Domiciliación bancaria";
 		optDomic.selected = true;
 		select.appendChild(optDomic);
 		optTrans.selected = false;

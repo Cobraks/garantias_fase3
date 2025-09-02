@@ -438,7 +438,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                 <div class="form__input-container">
                     <select id="metodo_pago" class="form__select" aria-label="Selecciona la duración de la garantía" required>
                         <option value="transferencia">Transferencia bancaria</option>
-                        <!-- <option value="domiciliacion">Domiciliación bancaria</option> -->
+                        <!-- <option value="domiciliacion_bancaria">Domiciliación bancaria</option> -->
                     </select>
                     <label for="metodo_pago" class="form__placeholder form__placeholder--select">Método de pago</label>
                 </div>
