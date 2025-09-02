@@ -495,6 +495,7 @@
                         tr.dataset.ibanVendedor = item.detail.iban_vendedor || "";
 
                         const cobroBadgeHtml =
+                                isAdmin &&
                                 tr.dataset.metodoPago &&
                                 tr.dataset.metodoPago
                                         .toLowerCase()

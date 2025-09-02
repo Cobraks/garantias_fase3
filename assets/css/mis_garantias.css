@@ -843,6 +843,12 @@ section.guarantees-list.sticky-active {
     background: #e0f2fe;
     color: #1d4ed8;
     border-left-color: #3b82f6;
+    margin-bottom: var(--spacing-2);
+}
+
+.detail__section--payment {
+    border-bottom: solid 1px var(--border-color);
+    padding-bottom: var(--spacing-1);
 }
 
 .detail__transfer-table {
