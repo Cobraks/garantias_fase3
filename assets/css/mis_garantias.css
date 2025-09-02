@@ -308,6 +308,9 @@ section.guarantees-list.sticky-active {
 .guarantees-table__row.selected .guarantees-list__badge--expirada {
     background-color: #dc2626;
 }
+.guarantees-table__row.selected .guarantees-list__badge--pend-cobro {
+    background-color: #3b82f6;
+}
 
 .guarantees-table td {
     display: flex;
@@ -346,6 +349,7 @@ section.guarantees-list.sticky-active {
 .guarantees-list__badge--pendiente-pago{ color: #f59e0b; }
 .guarantees-list__badge--sin-finalizar { color: #6b7280; }
 .guarantees-list__badge--expira-pronto { color: #fbbf24; }
+.guarantees-list__badge--pend-cobro { color: #3b82f6; }
 
 /* Periodo Validez */
 .guarantees-table__period > div {
@@ -834,6 +838,11 @@ section.guarantees-list.sticky-active {
     border-left: 4px solid #f59e0b;
     border-radius: 6px;
     font-weight: 500;
+}
+.detail__payment-note--domiciliacion {
+    background: #e0f2fe;
+    color: #1d4ed8;
+    border-left-color: #3b82f6;
 }
 
 .detail__transfer-table {
