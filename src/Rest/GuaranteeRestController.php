@@ -797,7 +797,21 @@ class GuaranteeRestController
         }
 
         // ---- FILTROS ----
-        if ($estado) {
+        if ($estado === 'pendiente_cobro') {
+            $meta_query[] = [
+                'relation' => 'AND',
+                [
+                    'key'   => 'garantia_contratada_metodo_pago',
+                    'value' => 'domiciliacion_bancaria',
+                ],
+                [
+                    'key'     => 'garantia_contratada_estado_cobro_cobro_realizado',
+                    'value'   => 1,
+                    'compare' => '!=',
+                    'type'    => 'NUMERIC',
+                ],
+            ];
+        } elseif ($estado) {
             $meta_query[] = [
                 'key'   => 'estado_garantia_estado_contratacion',
                 'value' => $estado,
@@ -1005,6 +1019,13 @@ class GuaranteeRestController
                 'label' => $estado_labels[$e] ?? $e,
             ];
         }, $estados);
+
+        if (current_user_can('manage_options')) {
+            $estados[] = [
+                'value' => 'pendiente_cobro',
+                'label' => __('Pendiente de cobro', 'garantias-online-360vo'),
+            ];
+        }
 
         $planes = [];
         $plan_ids = array_unique(array_filter($plan_ids));
