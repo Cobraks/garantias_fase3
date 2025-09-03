@@ -56,6 +56,7 @@ use GarantiasOnline360VO\Svg;
                     <th><?php esc_html_e('Vehículo',  'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Validez',   'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Vendedor',  'garantias-online-360vo'); ?></th>
+                    <th><?php esc_html_e('Estado',    'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Garantía',  'garantias-online-360vo'); ?></th>
                 </tr>
             </thead>
