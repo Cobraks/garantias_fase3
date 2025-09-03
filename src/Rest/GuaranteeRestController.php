@@ -805,10 +805,17 @@ class GuaranteeRestController
                     'value' => 'domiciliacion_bancaria',
                 ],
                 [
-                    'key'     => 'garantia_contratada_estado_cobro_cobro_realizado',
-                    'value'   => 1,
-                    'compare' => '!=',
-                    'type'    => 'NUMERIC',
+                    'relation' => 'OR',
+                    [
+                        'key'     => 'garantia_contratada_estado_cobro_cobro_realizado',
+                        'value'   => 0,
+                        'compare' => '=',
+                        'type'    => 'NUMERIC',
+                    ],
+                    [
+                        'key'     => 'garantia_contratada_estado_cobro_cobro_realizado',
+                        'compare' => 'NOT EXISTS',
+                    ],
                 ],
             ];
         } elseif ($estado) {
