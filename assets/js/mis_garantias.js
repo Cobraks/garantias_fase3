@@ -99,6 +99,22 @@
                 const detailCache = new Map();
                 const detailPromises = new Map();
                 const loadedIds = new Set();
+                const listCache = new Map();
+
+                function buildListCacheKey(search = "", estado = "", plan = "", canal = "", concesionario = "") {
+                        return [search, estado, plan, canal, concesionario].join("|");
+                }
+
+                function renderFromCache(cache) {
+                        for (const item of cache.data) {
+                                tbody.appendChild(renderRow(item));
+                                loadedIds.add(item.id);
+                        }
+                        totalPages = cache.totalPages;
+                        totalPosts = cache.totalPosts;
+                        hasMore = currentPage < totalPages;
+                        spinner.style.display = hasMore ? "" : "none";
+                }
 
                 function fetchDetail(id) {
                         if (detailCache.has(id)) {
@@ -722,6 +738,13 @@
                                 typeof options.concesionario !== "undefined"
                                         ? options.concesionario
                                         : selectedConcesionario;
+                        const cacheKey = buildListCacheKey(
+                                search,
+                                estado,
+                                plan,
+                                canal,
+                                concesionario
+                        );
                         try {
                                 if (currentListAbort) currentListAbort.abort();
                                 currentListAbort = new AbortController();
@@ -744,9 +767,21 @@
 				if (!res.ok) throw `HTTP ${res.status}`;
 				totalPosts = +res.headers.get("X-WP-Total") || 0;
 				totalPages = +res.headers.get("X-WP-TotalPages") || 1;
-				const { data } = await res.json();
+                                const { data } = await res.json();
 
-				const esNuevaBusqueda = page === 1;
+                                const esNuevaBusqueda = page === 1;
+                                if (esNuevaBusqueda) {
+                                        listCache.set(cacheKey, {
+                                                data: data.slice(),
+                                                totalPages,
+                                                totalPosts,
+                                        });
+                                } else if (listCache.has(cacheKey)) {
+                                        const cache = listCache.get(cacheKey);
+                                        cache.data.push(...data);
+                                        cache.totalPages = totalPages;
+                                        cache.totalPosts = totalPosts;
+                                }
 				if (esNuevaBusqueda) {
 					setResultMessage("");
 					tbody.innerHTML = "";
@@ -1555,6 +1590,23 @@ function initRowSelection() {
                         hasMore = true;
                         lastValidQuery = "";
                         lastValidResults = [];
+                        const cacheKey = buildListCacheKey(
+                                searchQuery,
+                                selectedEstado,
+                                selectedPlan,
+                                selectedCanal,
+                                selectedConcesionario
+                        );
+                        tbody.innerHTML = "";
+                        loadedIds.clear();
+                        clearSelectionAndDetail();
+                        spinner.style.display = "";
+                        if (currentListAbort) currentListAbort.abort();
+                        isLoading = false;
+                        if (listCache.has(cacheKey)) {
+                                renderFromCache(listCache.get(cacheKey));
+                                return;
+                        }
                         loadPage(1);
                 }
 
@@ -1586,12 +1638,29 @@ function initRowSelection() {
 		let debounceTimer = null;
 		const DEBOUNCE_MS = 300;
 
-		function doSearch(query) {
-			searchQuery = query;
-			currentPage = 1;
-			hasMore = true;
-			loadPage(1, { search: searchQuery });
-		}
+                function doSearch(query) {
+                        searchQuery = query;
+                        currentPage = 1;
+                        hasMore = true;
+                        const cacheKey = buildListCacheKey(
+                                searchQuery,
+                                selectedEstado,
+                                selectedPlan,
+                                selectedCanal,
+                                selectedConcesionario
+                        );
+                        tbody.innerHTML = "";
+                        loadedIds.clear();
+                        clearSelectionAndDetail();
+                        spinner.style.display = "";
+                        if (currentListAbort) currentListAbort.abort();
+                        isLoading = false;
+                        if (listCache.has(cacheKey)) {
+                                renderFromCache(listCache.get(cacheKey));
+                                return;
+                        }
+                        loadPage(1, { search: searchQuery });
+                }
 
 		input.addEventListener("input", () => {
 			const value = input.value.trim();
