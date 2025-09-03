@@ -335,6 +335,7 @@
 
                    const wrapper = table.parentElement;
                    wrapper.style.position = "relative";
+                   table.style.tableLayout = "fixed";
 
                    const ths = Array.from(table.querySelectorAll("thead th"));
                    if (!ths.length) return;
@@ -365,12 +366,9 @@
                    function createHandles() {
                            overlay.innerHTML = "";
                            handles.length = 0;
-                           let left = 0;
                            for (let i = 0; i < widths.length - 1; i++) {
-                                   left += widths[i];
                                    const h = document.createElement("span");
                                    h.className = "column-resizer";
-                                   h.style.left = `${left - 4}px`;
                                    overlay.appendChild(h);
                                    handles.push(h);
 
@@ -393,8 +391,6 @@
                                                            newNext = MAX_WIDTH;
                                                            newW = total - newNext;
                                                    }
-                                                   newW = clamp(newW, MIN_WIDTH, MAX_WIDTH);
-                                                   newNext = total - newW;
                                                    widths[i] = newW;
                                                    widths[i + 1] = newNext;
                                                    cols[i].style.width = `${newW}px`;
@@ -415,22 +411,22 @@
                    }
 
                    function updateOverlay() {
-                           let left = 0;
-                           handles.forEach((h, i) => {
-                                   left += widths[i];
-                                   h.style.left = `${left - 4}px`;
-                           });
                            overlay.style.width = `${table.offsetWidth}px`;
                            overlay.style.height = `${table.offsetHeight}px`;
                            overlay.style.top = `${table.offsetTop}px`;
                            overlay.style.left = `${table.offsetLeft}px`;
+                           handles.forEach((h, i) => {
+                                   const th = ths[i];
+                                   const left = th.offsetLeft + th.offsetWidth;
+                                   h.style.left = `${left - 4}px`;
+                           });
                    }
 
                    createHandles();
 
                    // observe body for new rows to keep overlay in sync
                    const bodyObserver = new MutationObserver(() => {
-                           widths = widths.map((w) => clamp(w, MIN_WIDTH, MAX_WIDTH));
+                           widths = ths.map((th) => clamp(th.getBoundingClientRect().width, MIN_WIDTH, MAX_WIDTH));
                            widths.forEach((w, i) => (cols[i].style.width = `${w}px`));
                            createHandles();
                    });

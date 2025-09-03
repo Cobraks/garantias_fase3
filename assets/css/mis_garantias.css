@@ -969,8 +969,8 @@ section.guarantees-list.sticky-active {
 
 
     .guarantees-table {
-        /* border-collapse: collapse; */
-        border-collapse: initial;
+        border-collapse: collapse;
+        table-layout: fixed;
         margin-top: 0;
         /* box-shadow: 0 1px 3px rgba(0,0,0,0.05); */
         /* border-radius: 1rem; */
