@@ -8,7 +8,7 @@
 */
 
 export default function initSubmission() {
-        const form = document.getElementById("form-nueva-garantia");
+        const form = document.getElementById("form-garantia");
         if (!form) return;
 
         form.addEventListener("submit", async function (e) {
@@ -17,10 +17,15 @@ export default function initSubmission() {
                 const idField = form.querySelector('input[name="garantia_id"]');
                 const postId  = idField ? idField.value : '';
 
-                const button = form.querySelector('button[type="submit"]');
-                if (button) {
-                        button.disabled = true;
-                        button.textContent = "Generando certificado...";
+                const success  = document.getElementById("form-success");
+                const loading  = success ? success.querySelector("#doc-loading") : null;
+                const download = success ? success.querySelector("#doc-download") : null;
+
+                if (loading) {
+                        loading.style.display = "flex";
+                }
+                if (download) {
+                        download.hidden = true;
                 }
 
                 try {
@@ -29,12 +34,15 @@ export default function initSubmission() {
                                 credentials: "same-origin",
                         });
                         const data = await res.json();
-                        console.log("Documento generado", data);
+                        if (data.hash && download) {
+                                download.href = `/garantias-online/descargar/${data.hash}/`;
+                                download.hidden = false;
+                        }
                 } catch (err) {
                         console.error("Error generando PDF", err);
                 } finally {
-                        if (button) {
-                                button.disabled = false;
+                        if (loading) {
+                                loading.remove();
                         }
                 }
         });
