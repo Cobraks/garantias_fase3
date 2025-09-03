@@ -86,6 +86,13 @@ class Plugin
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
         GuaranteeLogger::create_table();
+
+        // Crear directorio privado para documentos
+        $dir = WP_CONTENT_DIR . '/private-docs';
+        if (! file_exists($dir)) {
+            wp_mkdir_p($dir);
+            @chmod($dir, 0750);
+        }
     }
 
     /**

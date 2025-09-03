@@ -8,12 +8,34 @@
 */
 
 export default function initSubmission() {
-	const form = document.getElementById("form-nueva-garantia");
-	if (!form) return;
+        const form = document.getElementById("form-nueva-garantia");
+        if (!form) return;
 
-	form.addEventListener("submit", function (e) {
-		e.preventDefault();
-		// Aquí podrías serializar y enviar por AJAX/fetch...
-		alert("¡Formulario enviado correctamente! (esto es solo un ejemplo)");
-	});
+        form.addEventListener("submit", async function (e) {
+                e.preventDefault();
+
+                const idField = form.querySelector('input[name="garantia_id"]');
+                const postId  = idField ? idField.value : '';
+
+                const button = form.querySelector('button[type="submit"]');
+                if (button) {
+                        button.disabled = true;
+                        button.textContent = "Generando certificado...";
+                }
+
+                try {
+                        const res  = await fetch(`/wp-json/go/v1/guarantees/${postId}/docs`, {
+                                method: "POST",
+                                credentials: "same-origin",
+                        });
+                        const data = await res.json();
+                        console.log("Documento generado", data);
+                } catch (err) {
+                        console.error("Error generando PDF", err);
+                } finally {
+                        if (button) {
+                                button.disabled = false;
+                        }
+                }
+        });
 }

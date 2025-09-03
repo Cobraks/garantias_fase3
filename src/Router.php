@@ -2,6 +2,9 @@
 
 namespace GarantiasOnline360VO;
 
+use GarantiasOnline360VO\Pdf\Storage;
+use GarantiasOnline360VO\Rest\GuaranteeRestController;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -18,6 +21,23 @@ class Router
     /** Decide qué hacer según el endpoint */
     public static function dispatch(): void
     {
+        $hash = get_query_var('go_doc');
+        if ($hash) {
+            $post_id = Storage::post_id_from_hash($hash);
+            if (! $post_id) {
+                status_header(404);
+                exit;
+            }
+            $request = new \WP_REST_Request('GET', '');
+            $request->set_param('id', $post_id);
+            if (! GuaranteeRestController::can_view($request)) {
+                status_header(403);
+                exit;
+            }
+            Storage::serve($hash);
+            exit;
+        }
+
         $endpoint = get_query_var(Rewrite::VAR_ENDPOINT);
 
         if (! $endpoint) {

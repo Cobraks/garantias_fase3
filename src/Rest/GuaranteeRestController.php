@@ -97,6 +97,20 @@ class GuaranteeRestController
                 ],
             ]
         );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\\d+)/docs',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'generate_docs'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
 
         // Limpieza de transients al guardar/borrar garantías
         add_action('save_post_' . \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE, [__CLASS__, 'clear_list_transients'], 10, 3);
@@ -1092,6 +1106,16 @@ class GuaranteeRestController
         if ($post_type === \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
             self::clear_list_transients($post_id, null, false);
         }
+    }
+
+    public static function generate_docs($request)
+    {
+        $post_id = (int) $request['id'];
+        $hash = \GarantiasOnline360VO\Pdf\Generator::generate($post_id);
+        if (is_wp_error($hash)) {
+            return $hash;
+        }
+        return new WP_REST_Response(['hash' => $hash], 200);
     }
 }
 
