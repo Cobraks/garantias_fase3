@@ -20,7 +20,15 @@ class Generator
         $modalidad_id = is_object($modalidad) ? $modalidad->ID : (int) $modalidad;
 
         $template = get_field('detalles_modalidad_documentos_certificado_garantia', $modalidad_id);
-        $path = is_array($template) && isset($template['path']) ? $template['path'] : '';
+        $path     = '';
+        if (is_array($template)) {
+            if (!empty($template['ID'])) {
+                $path = get_attached_file($template['ID']);
+            } elseif (!empty($template['url'])) {
+                $upload_dir = wp_upload_dir();
+                $path = str_replace($upload_dir['baseurl'], $upload_dir['basedir'], $template['url']);
+            }
+        }
 
         if (! $path || ! file_exists($path)) {
             return new WP_Error('no_template', __('Plantilla PDF no encontrada', 'garantias-online-360vo'));
@@ -31,8 +39,13 @@ class Generator
         $pdf->AddPage();
         $pdf->useTemplate($tpl);
 
-        // Aquí se rellenarían los campos con datos reales
-        // Ejemplo: $pdf->SetFont('Helvetica', '', 12); $pdf->SetXY(20, 20); $pdf->Write(5, 'Demo');
+        // Datos básicos de ejemplo
+        $matricula = get_field('datos_vehiculo_matricula', $post_id);
+        if ($matricula) {
+            $pdf->SetFont('Helvetica', '', 12);
+            $pdf->SetXY(20, 20);
+            $pdf->Write(5, $matricula);
+        }
 
         $hash = Storage::save($post_id, $pdf);
         return $hash;

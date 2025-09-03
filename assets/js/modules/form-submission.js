@@ -17,33 +17,27 @@ export default function initSubmission() {
                 const idField = form.querySelector('input[name="garantia_id"]');
                 const postId  = idField ? idField.value : '';
 
+                let data = null;
+                try {
+                        const res = await fetch(`/wp-json/go/v1/guarantees/${postId}/docs`, {
+                                method: "POST",
+                                credentials: "same-origin",
+                        });
+                        data = await res.json();
+                } catch (err) {
+                        console.error("Error generando PDF", err);
+                }
+
                 const success  = document.getElementById("form-success");
                 const loading  = success ? success.querySelector("#doc-loading") : null;
                 const download = success ? success.querySelector("#doc-download") : null;
 
+                if (data && data.hash && download) {
+                        download.href = `/garantias-online/descargar/${data.hash}/`;
+                        download.hidden = false;
+                }
                 if (loading) {
-                        loading.style.display = "flex";
-                }
-                if (download) {
-                        download.hidden = true;
-                }
-
-                try {
-                        const res  = await fetch(`/wp-json/go/v1/guarantees/${postId}/docs`, {
-                                method: "POST",
-                                credentials: "same-origin",
-                        });
-                        const data = await res.json();
-                        if (data.hash && download) {
-                                download.href = `/garantias-online/descargar/${data.hash}/`;
-                                download.hidden = false;
-                        }
-                } catch (err) {
-                        console.error("Error generando PDF", err);
-                } finally {
-                        if (loading) {
-                                loading.remove();
-                        }
+                        loading.remove();
                 }
         });
 }
