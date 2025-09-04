@@ -18,10 +18,14 @@ class PrivateDocsManager
     {
         $dir = self::get_dir();
         if (!file_exists($dir)) {
+            error_log('[PrivateDocsManager] creating directory ' . $dir);
             wp_mkdir_p($dir);
+        } else {
+            error_log('[PrivateDocsManager] directory exists ' . $dir);
         }
         $htaccess = $dir . '/.htaccess';
         if (!file_exists($htaccess)) {
+            error_log('[PrivateDocsManager] writing .htaccess');
             file_put_contents($htaccess, "Deny from all\n");
         }
     }
@@ -42,10 +46,12 @@ class PrivateDocsManager
         $iv = random_bytes(16);
         $encrypted = openssl_encrypt($binary, 'aes-256-cbc', self::get_key(), OPENSSL_RAW_DATA, $iv);
         if ($encrypted === false) {
+            error_log('[PrivateDocsManager] encryption failed for ' . $path);
             return '';
         }
         $data = base64_encode($iv . $encrypted);
-        file_put_contents($path, $data);
+        $written = file_put_contents($path, $data);
+        error_log('[PrivateDocsManager] stored ' . $path . ' bytes=' . $written);
         return $hash;
     }
 
@@ -53,15 +59,21 @@ class PrivateDocsManager
     {
         $path = self::get_dir() . '/' . $hash . '.' . $extension . '.enc';
         if (!file_exists($path)) {
+            error_log('[PrivateDocsManager] file not found ' . $path);
             return null;
         }
         $data = base64_decode(file_get_contents($path));
         if ($data === false) {
+            error_log('[PrivateDocsManager] base64 decode failed ' . $path);
             return null;
         }
         $iv = substr($data, 0, 16);
         $encrypted = substr($data, 16);
         $binary = openssl_decrypt($encrypted, 'aes-256-cbc', self::get_key(), OPENSSL_RAW_DATA, $iv);
-        return $binary === false ? null : $binary;
+        if ($binary === false) {
+            error_log('[PrivateDocsManager] decrypt failed ' . $path);
+            return null;
+        }
+        return $binary;
     }
 }

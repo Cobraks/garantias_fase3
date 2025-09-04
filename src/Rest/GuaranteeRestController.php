@@ -135,10 +135,13 @@ class GuaranteeRestController
                 return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
         }
         if (!$hash) {
+            error_log('[download_document] no hash for ' . $id . ' type ' . $type);
             return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
         }
+        error_log('[download_document] retrieving ' . $hash);
         $binary = PrivateDocsManager::retrieve($hash, 'pdf');
         if (!$binary) {
+            error_log('[download_document] retrieval failed ' . $hash);
             return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
         }
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_downloaded', $type);
@@ -550,10 +553,14 @@ class GuaranteeRestController
             $ps = sanitize_text_field($data['post_status']);
             if ($ps === 'publish') {
                 wp_update_post(['ID' => $post_id, 'post_status' => 'publish']);
+                error_log('[AUTOSAVE] generating certificate for ' . $post_id);
                 $hash = CertificateGenerator::generate($post_id);
+                error_log('[AUTOSAVE] certificate hash ' . $hash);
                 if ($hash) {
                     update_post_meta($post_id, 'documentacion_certificado_hash', $hash);
                     $certificate_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/document/certificado?_wpnonce=' . wp_create_nonce('wp_rest'));
+                } else {
+                    error_log('[AUTOSAVE] certificate generation failed');
                 }
             }
             unset($data['post_status']);
