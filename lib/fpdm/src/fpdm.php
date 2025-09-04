@@ -790,21 +790,21 @@ if (!call_user_func_array('class_exists', $__tmp)) {
 		
 			$OldLen=strlen($CurLine);
 			
-			//My PHP4/5 static call hack, only to make the callback $this->replace_value($matches,"$value") possible!
-			$callback_code='$THIS=new FPDM("[_STATIC_]");return $THIS->replace_value($matches,"'.$value.'");';
-			
-			$field_regexp='/^\/(\w+)\s?(\<|\()([^\)\>]*)(\)|\>)/';
-			
-			if(preg_match($field_regexp,$CurLine)) {
-				//modify it according to the new value $value
-				$CurLine = preg_replace_callback(
-					$field_regexp,
-					create_function('$matches',$callback_code),
-					$CurLine
-				);
-			}else {
-				if($verbose_set) echo("<br>WARNING:".htmlentities("Can not access to the value: $CurLine using regexp $field_regexp"));
-			}
+                        $field_regexp='/^\/(\w+)\s?(\<|\()([^\)\>]*)(\)|\>)/';
+
+                        if(preg_match($field_regexp,$CurLine)) {
+                                //modify it according to the new value $value
+                                $CurLine = preg_replace_callback(
+                                        $field_regexp,
+                                        function($matches) use ($value) {
+                                                $THIS = new FPDM('[_STATIC_]');
+                                                return $THIS->replace_value($matches, $value);
+                                        },
+                                        $CurLine
+                                );
+                        }else {
+                                if($verbose_set) echo("<br>WARNING:".htmlentities("Can not access to the value: $CurLine using regexp $field_regexp"));
+                        }
 			
 			
 			$NewLen=strlen($CurLine);
