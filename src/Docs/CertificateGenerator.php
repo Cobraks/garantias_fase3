@@ -1,7 +1,6 @@
 <?php
 namespace GarantiasOnline360VO\Docs;
 
-use mikehaertl\pdftk\Pdf;
 use setasign\Fpdi\Fpdi;
 use GarantiasOnline360VO\GuaranteeLogger;
 
@@ -38,42 +37,15 @@ class CertificateGenerator
                 $data['pdf_combustible'] = (string) $combustible;
             }
 
-            $binary = defined('GO_PDFTK_PATH') ? GO_PDFTK_PATH : 'pdftk';
-            error_log('[CertificateGenerator] using pdftk binary ' . $binary);
-            // Try to log version information to help debugging missing binaries
-            $versionOutput = @shell_exec(escapeshellcmd($binary) . ' --version 2>&1');
-            if ($versionOutput !== null) {
-                error_log('[CertificateGenerator] pdftk version output ' . trim($versionOutput));
-            }
-            $options = [
-                'useExec' => true,
-                'escapeArgs' => false,
-                'command' => $binary,
-            ];
-            $pdf = new Pdf($path, $options);
+            $pdf = new \FPDM($path);
             if ($data) {
-                $pdf->fillForm($data)->needAppearances()->flatten();
+                $pdf->Load($data);
             }
-
-            $content = $pdf->toString();
-            if ($content === false) {
-                $cmd = $pdf->getCommand();
-                $error = $pdf->getError();
-                error_log('[CertificateGenerator] pdftk error ' . $error);
-                if ($cmd) {
-                    error_log('[CertificateGenerator] pdftk command ' . $cmd->getCommand());
-                    error_log('[CertificateGenerator] pdftk exit code ' . $cmd->getExitCode());
-                    error_log('[CertificateGenerator] pdftk stderr ' . $cmd->getStdErr());
-                }
-                if (!$cmd || $cmd->getExitCode() === 127) {
-                    error_log('[CertificateGenerator] pdftk binary missing or not executable');
-                }
-                error_log('[CertificateGenerator] falling back to FPDI');
-                $content = self::generateWithFpdi($path, $combustible);
-            }
+            $pdf->Merge();
+            error_log('[CertificateGenerator] FPDM merge completed');
+            $content = $pdf->Output('S');
         } catch (\Throwable $e) {
-            error_log('[CertificateGenerator] pdftk exception ' . $e->getMessage());
-            error_log('[CertificateGenerator] falling back to FPDI');
+            error_log('[CertificateGenerator] FPDM merge failed ' . $e->getMessage());
             $content = self::generateWithFpdi($path, $combustible);
         }
 

@@ -34,12 +34,12 @@ class Plugin
             error_log('[Plugin] FPDI not found at ' . $fpdi);
         }
 
-        $pdftk = $base . '/lib/pdftk/autoload.php';
-        if (file_exists($pdftk)) {
-            require_once $pdftk;
-            error_log('[Plugin] loaded pdftk ' . $pdftk);
+        $fpdm = $base . '/lib/fpdm/autoload.php';
+        if (file_exists($fpdm)) {
+            require_once $fpdm;
+            error_log('[Plugin] loaded FPDM ' . $fpdm);
         } else {
-            error_log('[Plugin] pdftk not found at ' . $pdftk);
+            error_log('[Plugin] FPDM not found at ' . $fpdm);
         }
 
         if (! self::$instance) {

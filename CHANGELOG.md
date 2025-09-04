@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.26 - 2025-09-04
+- Sustituido pdftk por la librería FPDM para rellenar formularios PDF sin dependencias externas.
+
 ## 0.1.25 - 2025-09-04
 - Registra en el log la ruta de pdftk y avisa cuando el binario falta; usa FPDI solo si pdftk falla.
 
