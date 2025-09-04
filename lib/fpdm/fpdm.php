@@ -1513,10 +1513,16 @@ if (!call_user_func_array('class_exists', $__tmp)) {
          */
         function _set_text_value($stream,$value) {
         //---------------------------------------
-			$chunks=preg_split("/(\s*Td\s+[\<\(])([^\>\)]+)([\>\)]\s+Tj)/",$stream,0,PREG_SPLIT_DELIM_CAPTURE);
-			$chunks[2]=$value;
-			$stream=implode($chunks,'');
-			return $stream;
+                        if(!is_string($stream)) {
+                                return $stream;
+                        }
+                        $chunks=preg_split("/(\s*Td\s+[\<\(])([^\>\)]+)([\>\)]\s+Tj)/",$stream,0,PREG_SPLIT_DELIM_CAPTURE);
+                        if(!is_array($chunks) || count($chunks)<4) {
+                                return $stream;
+                        }
+                        $chunks[2]=$value;
+                        $stream=implode('', $chunks);
+                        return $stream;
         }
         
 	
