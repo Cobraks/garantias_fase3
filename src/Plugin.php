@@ -34,6 +34,14 @@ class Plugin
             error_log('[Plugin] FPDI not found at ' . $fpdi);
         }
 
+        $pdftk = $base . '/lib/pdftk/autoload.php';
+        if (file_exists($pdftk)) {
+            require_once $pdftk;
+            error_log('[Plugin] loaded pdftk ' . $pdftk);
+        } else {
+            error_log('[Plugin] pdftk not found at ' . $pdftk);
+        }
+
         if (! self::$instance) {
             self::$instance = new self();
             self::$instance->init_hooks();
