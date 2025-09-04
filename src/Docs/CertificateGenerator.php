@@ -3,6 +3,7 @@ namespace GarantiasOnline360VO\Docs;
 
 use setasign\Fpdi\Fpdi;
 use GarantiasOnline360VO\GuaranteeLogger;
+use FPDM;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -28,24 +29,43 @@ class CertificateGenerator
             error_log('[CertificateGenerator] template missing or unreadable: ' . $path);
             return null;
         }
+        $content = null;
         try {
-            $pdf = new Fpdi();
-            $pdf->AddPage();
-            $pdf->setSourceFile($path);
-            $tpl = $pdf->importPage(1);
-            $pdf->useTemplate($tpl, 0, 0);
-
+            $data = [];
             $combustible = get_post_meta($guarantee_id, 'datos_vehiculo_combustible', true);
             error_log('[CertificateGenerator] combustible ' . $combustible);
             if ($combustible) {
-                $pdf->SetFont('Helvetica', '', 12);
-                $pdf->SetXY(10, 10);
-                $pdf->Write(5, (string) $combustible);
+                $data['pdf_combustible'] = (string) $combustible;
             }
 
+            $cp = get_post_meta($guarantee_id, 'datos_cliente_codigo_postal', true);
+            error_log('[CertificateGenerator] cp ' . $cp);
+            if ($cp) {
+                $data['pdf_cp'] = (string) $cp;
+            }
+
+            $nombre = get_post_meta($guarantee_id, 'datos_cliente_nombre_y_apellidos', true);
+            error_log('[CertificateGenerator] nombre_apellidos ' . $nombre);
+            if ($nombre) {
+                $data['pdf_nombre_apellidos'] = (string) $nombre;
+            }
+
+            error_log('[CertificateGenerator] field data ' . wp_json_encode($data));
+
+            $pdf = new FPDM($path);
+            if ($data) {
+                $pdf->Load($data);
+            }
+            $pdf->Merge();
             $content = $pdf->Output('S');
+            error_log('[CertificateGenerator] FPDM merge completed');
         } catch (\Throwable $e) {
-            error_log('[CertificateGenerator] error ' . $e->getMessage());
+            error_log('[CertificateGenerator] FPDM error ' . $e->getMessage());
+            $content = self::generateWithFpdi($path, isset($combustible) ? $combustible : '');
+        }
+
+        if (!$content) {
+            error_log('[CertificateGenerator] no content generated');
             return null;
         }
         $hash = PrivateDocsManager::store($content, 'pdf');
@@ -54,5 +74,25 @@ class CertificateGenerator
             GuaranteeLogger::log(get_current_user_id(), $guarantee_id, 'document_generated', 'certificado');
         }
         return $hash ?: null;
+    }
+
+    private static function generateWithFpdi(string $path, string $combustible = ''): ?string
+    {
+        error_log('[CertificateGenerator] FPDI fallback using template ' . $path);
+        try {
+            $pdf = new Fpdi();
+            $pdf->AddPage();
+            $pdf->setSourceFile($path);
+            $tpl = $pdf->importPage(1);
+            $pdf->useTemplate($tpl, 0, 0);
+            if ($combustible) {
+                $pdf->SetFont('Arial', '', 12);
+                $pdf->Text(10, 10, (string) $combustible);
+            }
+            return $pdf->Output('S');
+        } catch (\Throwable $e) {
+            error_log('[CertificateGenerator] FPDI fallback failed ' . $e->getMessage());
+            return null;
+        }
     }
 }

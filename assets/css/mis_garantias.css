@@ -556,6 +556,22 @@ section.guarantees-list.sticky-active {
     font-weight: 500;
 }
 
+.detail__cert-link {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    margin: var(--spacing-2) 0;
+    text-decoration: none;
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.detail__cert-link svg {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
 /* Modal de previsualización (esqueleto) */
 .pdf-modal {
     position: fixed;

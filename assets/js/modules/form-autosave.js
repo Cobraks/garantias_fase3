@@ -270,12 +270,33 @@ export default function initAutosave() {
                                 .trim()
                                 .replace(/\b\w/g, (c) => c.toUpperCase());
                 }
-                const certLink = successBlock.querySelector(
-                        ".form-success__docs .document-card:nth-of-type(2)"
+                const loading = successBlock.querySelector(
+                        ".form-success__loading"
                 );
-                if (certLink && certUrl) {
-                        certLink.href = certUrl;
-                        certLink.target = "_blank";
+                const downloadLink = successBlock.querySelector(
+                        ".form-success__download"
+                );
+                if (loading) loading.hidden = false;
+                if (downloadLink) downloadLink.hidden = true;
+                if (downloadLink && certUrl) {
+                        downloadLink.href = certUrl;
+                        downloadLink.target = "_blank";
+                        downloadLink.innerHTML = `${getIcon(
+                                "pdf"
+                        )}<span>Descargar certificado</span>`;
+                        downloadLink.hidden = false;
+                        if (loading) loading.remove();
+                } else if (loading) {
+                        const spin = loading.querySelector(
+                                ".form-success__loading-spinner"
+                        );
+                        if (spin) spin.remove();
+                        const text = loading.querySelector(
+                                ".form-success__loading-text"
+                        );
+                        if (text) {
+                                text.textContent = "No se pudo generar el certificado";
+                        }
                 }
                 if (method === "transferencia" || method === "domiciliacion") {
                         const pay = successBlock.querySelector(".form-success__payment");
