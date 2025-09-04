@@ -3,6 +3,8 @@
 
 namespace GarantiasOnline360VO;
 
+use GarantiasOnline360VO\Docs\PrivateDocsManager;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -98,6 +100,7 @@ class Plugin
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
         GuaranteeLogger::create_table();
+        PrivateDocsManager::ensure_directory();
     }
 
     /**
