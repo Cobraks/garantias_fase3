@@ -17,6 +17,8 @@ $is_admin = user_can($current_user, 'manage_options');
 $is_comercial = in_array('go_comercial', $current_user->roles, true);
 // <- REVISAR
 
+error_log('[add-guarantee] template loaded for user ' . $current_user->ID);
+
 
 
 // Obtener los términos de la taxonomía "tipo_vehiculo"

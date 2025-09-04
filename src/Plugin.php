@@ -3,6 +3,8 @@
 
 namespace GarantiasOnline360VO;
 
+use GarantiasOnline360VO\Docs\PrivateDocsManager;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -19,11 +21,17 @@ class Plugin
         $fpdf = $base . '/lib/fpdf/fpdf.php';
         if (file_exists($fpdf)) {
             require_once $fpdf;
+            error_log('[Plugin] loaded FPDF ' . $fpdf);
+        } else {
+            error_log('[Plugin] FPDF not found at ' . $fpdf);
         }
 
         $fpdi = $base . '/lib/fpdi/autoload.php';
         if (file_exists($fpdi)) {
             require_once $fpdi;
+            error_log('[Plugin] loaded FPDI ' . $fpdi);
+        } else {
+            error_log('[Plugin] FPDI not found at ' . $fpdi);
         }
 
         if (! self::$instance) {
@@ -50,6 +58,7 @@ class Plugin
         // 4) Assets (minificado), REST, Admin, etc.
         add_action('init', [AssetCompiler::class, 'ensure_minified'], 1);
         add_action('init', [GuaranteeLogger::class, 'ensure_table']);
+        add_action('init', [PrivateDocsManager::class, 'ensure_directory']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\UserRestController::class, 'register_routes']);
@@ -98,6 +107,7 @@ class Plugin
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
         GuaranteeLogger::create_table();
+        PrivateDocsManager::ensure_directory();
     }
 
     /**

@@ -231,7 +231,8 @@ export default function initAutosave() {
                 }
         }
 
-        function showSuccess(method, plate, amount, level, months) {
+        function showSuccess(method, plate, amount, level, months, certUrl) {
+                console.log("[AUTOSAVE] showSuccess", { certUrl });
                 fadeOut(form, false);
                 fadeOut(navButtons);
                 fadeOut(tabs);
@@ -243,19 +244,20 @@ export default function initAutosave() {
                                 () => {
                                         summaryContainer.style.display = "none";
                                         form.style.display = "none";
-                                        revealSuccess(method, plate, amount, level, months);
+                                        revealSuccess(method, plate, amount, level, months, certUrl);
                                 },
                                 { once: true }
                         );
                 } else {
                         setTimeout(() => {
                                 form.style.display = "none";
-                                revealSuccess(method, plate, amount, level, months);
+                                revealSuccess(method, plate, amount, level, months, certUrl);
                         }, 300);
                 }
         }
 
-        function revealSuccess(method, plate, amount, level, months) {
+        function revealSuccess(method, plate, amount, level, months, certUrl) {
+                console.log("[AUTOSAVE] revealSuccess", { certUrl });
                 if (!successBlock) return;
                 successBlock.style.display = "block";
                 requestAnimationFrame(() => successBlock.classList.add("is-visible"));
@@ -267,6 +269,29 @@ export default function initAutosave() {
                         plan.textContent = text
                                 .trim()
                                 .replace(/\b\w/g, (c) => c.toUpperCase());
+                }
+                const certLink = successBlock.querySelector(
+                        ".form-success__certificate"
+                );
+                if (certLink) {
+                        const title = certLink.querySelector(
+                                ".document-card__title"
+                        );
+                        const spinnerEl = certLink.querySelector(
+                                ".document-card__spinner"
+                        );
+                        if (certUrl) {
+                                certLink.href = certUrl;
+                                certLink.target = "_blank";
+                                certLink.classList.remove("is-loading");
+                                if (spinnerEl) spinnerEl.remove();
+                                if (title)
+                                        title.textContent = "Certificado de garantía";
+                        } else {
+                                certLink.classList.add("is-loading");
+                                if (title)
+                                        title.textContent = "Generando documentos…";
+                        }
                 }
                 if (method === "transferencia" || method === "domiciliacion") {
                         const pay = successBlock.querySelector(".form-success__payment");
@@ -394,12 +419,12 @@ export default function initAutosave() {
                 if (saving) return;
                 saving = true;
 
-                console.log("[AUTOSAVE] Triggered", { draftId });
+                console.log("[AUTOSAVE] Triggered", { draftId, finalize });
 
                 status.classList.remove("autosave-status--hidden");
                 spinner.style.display = "inline-block";
                 icon.style.display = "none";
-                text.textContent = "Guardando";
+                text.textContent = finalize ? "Generando documentos..." : "Guardando";
                 if (finalize && nextBtn) {
                         nextBtn.classList.add("is-loading");
                         nextBtn.disabled = true;
@@ -608,6 +633,16 @@ export default function initAutosave() {
 
                 console.log("[AUTOSAVE] payload", payload);
 
+                if (finalize) {
+                        showSuccess(
+                                garantia.metodo_pago,
+                                datosVehiculo.matricula,
+                                garantia.precio,
+                                garantia.nivel_garantia,
+                                garantia.meses_contratados
+                        );
+                }
+
                 try {
                         const res = await fetch(`${getRestRoot()}go/v1/guarantees/autosave`, {
                                 method: "POST",
@@ -640,12 +675,13 @@ export default function initAutosave() {
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
                         if (finalize) {
-                                showSuccess(
+                                revealSuccess(
                                         garantia.metodo_pago,
                                         datosVehiculo.matricula,
                                         garantia.precio,
                                         garantia.nivel_garantia,
-                                        garantia.meses_contratados
+                                        garantia.meses_contratados,
+                                        json.certificate_url
                                 );
                         }
                         spinner.style.display = "none";
@@ -671,9 +707,10 @@ export default function initAutosave() {
         FormCache.nextButton?.addEventListener(
                 "click",
                 () => {
-                        const finalize =
+                const finalize =
                                 FormCache.currentTab ===
                                 FormCache.fieldsets.length - 1;
+                        console.log("[AUTOSAVE] next button click finalize=", finalize);
                         debounced(finalize);
                 },
                 { capture: true }

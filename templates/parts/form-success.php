@@ -12,17 +12,10 @@ use GarantiasOnline360VO\Svg;
     <p class="form-success__subtitle" data-plan></p>
 
     <div class="form-success__docs">
-        <a href="#" class="document-card">
+        <a href="#" class="document-card form-success__certificate is-loading" data-doc="certificado">
+            <span class="document-card__spinner spinner" aria-hidden="true"></span>
             <?php echo Svg::icon('pdf', 'document-card__icon'); ?>
-            <h3 class="document-card__title">Factura proforma</h3>
-        </a>
-        <a href="#" class="document-card">
-            <?php echo Svg::icon('pdf', 'document-card__icon'); ?>
-            <h3 class="document-card__title">Certificado de garantía</h3>
-        </a>
-        <a href="#" class="document-card">
-            <?php echo Svg::icon('pdf', 'document-card__icon'); ?>
-            <h3 class="document-card__title">Coberturas</h3>
+            <h3 class="document-card__title">Generando documentos…</h3>
         </a>
     </div>
     <a href="#" class="form-success__details-link">Ver garantía <span data-ref-text></span></a>
