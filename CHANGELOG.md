@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.29 - 2025-09-04
+- Manejo de errores al generar el certificado y almacenamiento cifrado en `private-docs`.
+- Generación del PDF con `pdf-lib` usando base64 nativo y listado de campos para depuración.
+
 ## 0.1.28 - 2025-09-04
 - Reemplazado el sistema de generación de certificados por pdf-lib ejecutado en el navegador.
 - Eliminadas las librerías FPDF, FPDI y FPDM del plugin.

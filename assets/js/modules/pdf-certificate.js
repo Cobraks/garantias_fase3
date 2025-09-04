@@ -1,25 +1,33 @@
 import { PDFDocument } from "../pdf-lib.min.js";
 
+function listFields(form) {
+        return form.getFields().map((f) => f.getName());
+}
+
 export async function generateCertificate({ templateUrl, combustible, cp, nombre }) {
         if (!templateUrl) return null;
-        const existingPdfBytes = await fetch(templateUrl).then((r) => r.arrayBuffer());
+        const existingPdfBytes = await fetch(templateUrl, { credentials: "same-origin" }).then((r) => r.arrayBuffer());
         const pdfDoc = await PDFDocument.load(existingPdfBytes);
         const form = pdfDoc.getForm();
-        if (combustible) {
-                form.getTextField("pdf_combustible").setText(String(combustible));
-        }
-        if (cp) {
-                form.getTextField("pdf_cp").setText(String(cp));
-        }
-        if (nombre) {
-                form.getTextField("pdf_nombre_apellidos").setText(String(nombre));
-        }
+        const available = listFields(form);
+
+        const setField = (name, value) => {
+                if (!value) return;
+                if (!available.includes(name)) {
+                        console.error(`[pdf-certificate] field ${name} not found`, available);
+                        return;
+                }
+                try {
+                        form.getTextField(name).setText(String(value));
+                } catch (e) {
+                        console.error(`[pdf-certificate] unable to set ${name}`, e, available);
+                }
+        };
+
+        setField("pdf_combustible", combustible);
+        setField("pdf_cp", cp);
+        setField("pdf_nombre_apellidos", nombre);
+
         form.flatten();
-        const pdfBytes = await pdfDoc.save();
-        let binary = "";
-        const len = pdfBytes.length;
-        for (let i = 0; i < len; i++) {
-                binary += String.fromCharCode(pdfBytes[i]);
-        }
-        return btoa(binary);
+        return await pdfDoc.saveAsBase64({ dataUri: false });
 }

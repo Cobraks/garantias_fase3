@@ -566,13 +566,16 @@ class GuaranteeRestController
                 $hash = '';
                 if (!empty($data['certificate_pdf'])) {
                     $binary = base64_decode($data['certificate_pdf']);
-                    if ($binary !== false) {
-                        $hash = PrivateDocsManager::store($binary, 'pdf');
-                        error_log('[AUTOSAVE] certificate hash ' . $hash);
-                    } else {
-                        error_log('[AUTOSAVE] invalid certificate_pdf for ' . $post_id);
-                    }
                     unset($data['certificate_pdf']);
+                    if ($binary === false) {
+                        error_log('[AUTOSAVE] invalid certificate_pdf for ' . $post_id);
+                        return new WP_Error('invalid_certificate', __('Certificado inválido', 'garantias-online-360vo'), ['status' => 400]);
+                    }
+                    $hash = PrivateDocsManager::store($binary, 'pdf');
+                    error_log('[AUTOSAVE] certificate hash ' . $hash);
+                    if (!$hash) {
+                        return new WP_Error('certificate_store_failed', __('No se pudo guardar el certificado', 'garantias-online-360vo'), ['status' => 500]);
+                    }
                 }
                 if ($hash) {
                     update_post_meta($post_id, 'documentacion_certificado_hash', $hash);
