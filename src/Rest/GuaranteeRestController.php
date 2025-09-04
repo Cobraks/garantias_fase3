@@ -128,8 +128,18 @@ class GuaranteeRestController
         $type = sanitize_key($request['type']);
         switch ($type) {
             case 'certificado':
-                $hash     = get_post_meta($id, 'documentacion_certificado_hash', true);
-                $filename = 'certificado.pdf';
+                $hash = get_post_meta($id, 'documentacion_certificado_hash', true);
+                $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
+                if ($plan_id) {
+                    $custom_plan = function_exists('get_field')
+                        ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
+                        : '';
+                    $plan = $custom_plan ?: get_the_title($plan_id);
+                } else {
+                    $plan = '';
+                }
+                $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
+                $filename = trim(sprintf('Certificado Garantía %s %s.pdf', $plan, $matricula));
                 break;
             default:
                 return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
@@ -147,7 +157,8 @@ class GuaranteeRestController
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_downloaded', $type);
         $response = new WP_REST_Response($binary, 200);
         $response->header('Content-Type', 'application/pdf');
-        $response->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        $disposition = sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s", $filename, rawurlencode($filename));
+        $response->header('Content-Disposition', $disposition);
         return $response;
     }
 
@@ -559,6 +570,7 @@ class GuaranteeRestController
                 if ($hash) {
                     update_post_meta($post_id, 'documentacion_certificado_hash', $hash);
                     $certificate_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/document/certificado?_wpnonce=' . wp_create_nonce('wp_rest'));
+                    $certificate_url = set_url_scheme($certificate_url, is_ssl() ? 'https' : 'http');
                 } else {
                     error_log('[AUTOSAVE] certificate generation failed');
                 }
@@ -735,6 +747,9 @@ class GuaranteeRestController
         $certificate_url = $cert_hash
             ? rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/document/certificado')
             : '';
+        if ($certificate_url) {
+            $certificate_url = set_url_scheme($certificate_url, is_ssl() ? 'https' : 'http');
+        }
 
         $cobro_realizado = get_post_meta($id, 'garantia_contratada_estado_cobro_cobro_realizado', true);
         $iban_vendedor = $vendor_id

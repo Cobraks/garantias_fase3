@@ -2070,6 +2070,40 @@ margin-top: .5rem;
     font-style: italic;
     font-weight: 500;
   }
+  .form-success__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    margin: 1.5rem 0;
+  }
+  .form-success__loading-spinner {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #2563eb;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: form-success-spin 1s linear infinite;
+  }
+  @keyframes form-success-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .form-success__download {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    margin: 1rem 0;
+    color: #2563eb;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .form-success__download svg {
+    width: 1rem;
+    height: 1rem;
+  }
   .form-success__docs {
     display: grid;
     grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
