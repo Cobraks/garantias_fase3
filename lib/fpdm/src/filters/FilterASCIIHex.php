@@ -53,13 +53,13 @@
 			$str=$data;
 			$hex = "";
 			$i = 0;
-			do {
-				$hex .= sprintf("%02x", ord($str{$i}));
-				$i++;
-			} while ($i < strlen($str));
-			return $hex;
-		}	
-		
-	}
-	
+                        do {
+                                $hex .= sprintf("%02x", ord($str[$i]));
+                                $i++;
+                        } while ($i < strlen($str));
+                        return $hex;
+                }
+
+        }
+
 ?>

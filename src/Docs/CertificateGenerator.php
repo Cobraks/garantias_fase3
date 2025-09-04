@@ -38,6 +38,20 @@ class CertificateGenerator
                 $data['pdf_combustible'] = (string) $combustible;
             }
 
+            $cp = get_post_meta($guarantee_id, 'datos_cliente_codigo_postal', true);
+            error_log('[CertificateGenerator] cp ' . $cp);
+            if ($cp) {
+                $data['pdf_cp'] = (string) $cp;
+            }
+
+            $nombre = get_post_meta($guarantee_id, 'datos_cliente_nombre_y_apellidos', true);
+            error_log('[CertificateGenerator] nombre_apellidos ' . $nombre);
+            if ($nombre) {
+                $data['pdf_nombre_apellidos'] = (string) $nombre;
+            }
+
+            error_log('[CertificateGenerator] field data ' . wp_json_encode($data));
+
             $pdf = new FPDM($path);
             if ($data) {
                 $pdf->Load($data);

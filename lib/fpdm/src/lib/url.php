@@ -130,8 +130,8 @@
 				if ($fold=='' || $fold=='.') continue;
 				if ($fold=='..' && $i>0 && end($out)!='..') array_pop($out);
 			else $out[]= $fold;
-			} return ($path{0}=='/'?'/':'').join('/', $out);
-		}
+                        } return ($path[0]=='/'?'/':'').join('/', $out);
+                }
 		
 		
 		//This part is from http://fr2.php.net/manual/en/function.parse-url.php

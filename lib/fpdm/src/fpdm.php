@@ -797,8 +797,7 @@ if (!call_user_func_array('class_exists', $__tmp)) {
                                 $CurLine = preg_replace_callback(
                                         $field_regexp,
                                         function($matches) use ($value) {
-                                                $THIS = new FPDM('[_STATIC_]');
-                                                return $THIS->replace_value($matches, $value);
+                                                return $this->replace_value($matches, $value);
                                         },
                                         $CurLine
                                 );
