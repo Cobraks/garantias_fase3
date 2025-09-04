@@ -51,6 +51,10 @@ class PrivateDocsManager
         }
         $data = base64_encode($iv . $encrypted);
         $written = file_put_contents($path, $data);
+        if ($written === false) {
+            error_log('[PrivateDocsManager] write failed for ' . $path);
+            return '';
+        }
         error_log('[PrivateDocsManager] stored ' . $path . ' bytes=' . $written);
         return $hash;
     }

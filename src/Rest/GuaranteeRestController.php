@@ -561,6 +561,7 @@ class GuaranteeRestController
                     $certificate_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/document/certificado?_wpnonce=' . wp_create_nonce('wp_rest'));
                 } else {
                     error_log('[AUTOSAVE] certificate generation failed');
+                    $certificate_error = __('No se pudo generar el certificado', 'garantias-online-360vo');
                 }
             }
             unset($data['post_status']);
@@ -581,6 +582,7 @@ class GuaranteeRestController
             'id' => $post_id,
             'uuid' => $uuid,
             'certificate_url' => $certificate_url,
+            'certificate_error' => $certificate_error ?? '',
         ]);
     }
 

@@ -684,6 +684,9 @@ export default function initAutosave() {
                         }
                         if (finalize) {
                                 setCertificateUrl(json.certificate_url);
+                                if (json.certificate_error) {
+                                        console.warn("[AUTOSAVE] certificate_error", json.certificate_error);
+                                }
                         }
                         spinner.style.display = "none";
                         icon.style.display = "inline-block";

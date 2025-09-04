@@ -35,6 +35,9 @@ class CertificateGenerator
             if ($combustible) {
                 $fields['pdf_combustible'] = (string) $combustible;
             }
+            if (empty($fields)) {
+                error_log('[CertificateGenerator] no fields to merge');
+            }
 
             $pdf = new \FPDM($path);
             $pdf->Load($fields);
