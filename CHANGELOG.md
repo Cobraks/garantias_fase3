@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.28 - 2025-09-04
+- Reemplazado el sistema de generación de certificados por pdf-lib ejecutado en el navegador.
+- Eliminadas las librerías FPDF, FPDI y FPDM del plugin.
+
 ## 0.1.27 - 2025-09-04
 - Eliminada la librería pdftk y su wrapper; FPDM se utiliza ahora para rellenar los campos del certificado.
 
