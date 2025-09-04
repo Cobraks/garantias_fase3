@@ -1,7 +1,6 @@
 <?php
 namespace GarantiasOnline360VO\Docs;
 
-use setasign\Fpdi\Fpdi;
 use GarantiasOnline360VO\GuaranteeLogger;
 
 if (!defined('ABSPATH')) {
@@ -29,20 +28,17 @@ class CertificateGenerator
             return null;
         }
         try {
-            $pdf = new Fpdi();
-            $pdf->AddPage();
-            $pdf->setSourceFile($path);
-            $tpl = $pdf->importPage(1);
-            $pdf->useTemplate($tpl, 0, 0);
-
             $combustible = get_post_meta($guarantee_id, 'datos_vehiculo_combustible', true);
             error_log('[CertificateGenerator] combustible ' . $combustible);
+
+            $fields = [];
             if ($combustible) {
-                $pdf->SetFont('Helvetica', '', 12);
-                $pdf->SetXY(10, 10);
-                $pdf->Write(5, (string) $combustible);
+                $fields['pdf_combustible'] = (string) $combustible;
             }
 
+            $pdf = new \FPDM($path);
+            $pdf->Load($fields);
+            $pdf->Merge();
             $content = $pdf->Output('S');
         } catch (\Throwable $e) {
             error_log('[CertificateGenerator] error ' . $e->getMessage());

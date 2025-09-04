@@ -34,6 +34,14 @@ class Plugin
             error_log('[Plugin] FPDI not found at ' . $fpdi);
         }
 
+        $fpdm = $base . '/lib/fpdm/fpdm.php';
+        if (file_exists($fpdm)) {
+            require_once $fpdm;
+            error_log('[Plugin] loaded FPDM ' . $fpdm);
+        } else {
+            error_log('[Plugin] FPDM not found at ' . $fpdm);
+        }
+
         if (! self::$instance) {
             self::$instance = new self();
             self::$instance->init_hooks();
