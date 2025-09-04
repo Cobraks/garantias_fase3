@@ -14,6 +14,18 @@ class Plugin
     /** Singleton */
     public static function run(): void
     {
+        $base = dirname(__DIR__);
+
+        $fpdf = $base . '/lib/fpdf/fpdf.php';
+        if (file_exists($fpdf)) {
+            require_once $fpdf;
+        }
+
+        $fpdi = $base . '/lib/fpdi/autoload.php';
+        if (file_exists($fpdi)) {
+            require_once $fpdi;
+        }
+
         if (! self::$instance) {
             self::$instance = new self();
             self::$instance->init_hooks();
