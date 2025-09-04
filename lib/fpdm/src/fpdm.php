@@ -2224,7 +2224,7 @@ class FPDM {
          */
         function Error($msg) {
         //--------------------
-        	die('<b>FPDF-Merge Error:</b> '.$msg);	
+                throw new \Exception('FPDF-Merge Error: '.$msg);
         }
 		
 		
