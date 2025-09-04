@@ -20,11 +20,12 @@ class CertificateGenerator
             error_log('[CertificateGenerator] missing modalidad');
             return null;
         }
-        $file = function_exists('get_field') ? get_field('documentos_certificado_garantia', $modalidad_id) : null;
-        $path = is_array($file) && !empty($file['path']) ? $file['path'] : '';
+        $file = function_exists('get_field') ? get_field('detalles_modalidad_documentos_certificado_garantia', $modalidad_id) : null;
+        error_log('[CertificateGenerator] field value ' . print_r($file, true));
+        $path = is_array($file) && isset($file['ID']) ? get_attached_file($file['ID']) : '';
         error_log('[CertificateGenerator] template path ' . $path);
         if (!$path || !file_exists($path)) {
-            error_log('[CertificateGenerator] template not found');
+            error_log('[CertificateGenerator] template missing or unreadable: ' . $path);
             return null;
         }
         try {
