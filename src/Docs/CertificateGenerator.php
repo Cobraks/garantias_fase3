@@ -38,9 +38,13 @@ class CertificateGenerator
                 $data['pdf_combustible'] = (string) $combustible;
             }
 
-            $pdf = new Pdf($path);
+            $options = ['useExec' => true, 'escapeArgs' => false];
+            if (defined('GO_PDFTK_PATH')) {
+                $options['command'] = GO_PDFTK_PATH;
+            }
+            $pdf = new Pdf($path, $options);
             if ($data) {
-                $pdf->fillForm($data)->flatten();
+                $pdf->fillForm($data)->needAppearances()->flatten();
             }
 
             $content = $pdf->toString();
