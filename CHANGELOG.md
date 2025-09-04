@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.27 - 2025-09-04
+- Eliminada la librería pdftk y su wrapper; FPDM se utiliza ahora para rellenar los campos del certificado.
+
 ## 0.1.26 - 2025-09-04
 - Sustituido pdftk por la librería FPDM para rellenar formularios PDF sin dependencias externas.
 
