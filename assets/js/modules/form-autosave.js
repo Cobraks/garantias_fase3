@@ -129,6 +129,52 @@ export default function initAutosave() {
                 }
         }
 
+        function showGeneratingDocsSpinner() {
+                const overlay = document.createElement("div");
+                overlay.className = "generating-docs";
+                overlay.innerHTML = `<span class="autosave-status__spinner"></span><span class="generating-docs__text">Generando documentos...</span>`;
+                document.body.appendChild(overlay);
+        }
+
+        function hideGeneratingDocsSpinner() {
+                const overlay = document.querySelector(".generating-docs");
+                if (overlay) overlay.remove();
+        }
+
+        function addDownloadLink(url) {
+                const link = document.querySelector("[data-certificado-link]");
+                if (link && url) {
+                        link.href = url;
+                }
+        }
+
+        function showErrorMessage(msg) {
+                alert(msg);
+        }
+
+        async function finalizeGuarantee(id, method, plate, amount, level, months) {
+                console.log("[Autosave] Finalizando garantía", { id });
+                showGeneratingDocsSpinner();
+                try {
+                        const res = await fetch(`${getRestRoot()}go/v1/guarantees/${id}/generate-certificado`, {
+                                method: "POST",
+                                headers: { "X-WP-Nonce": getRestNonce() },
+                        });
+                        const json = await res.json();
+                        console.log("[Autosave] Certificado generado", json);
+                        if (json.download_url) {
+                                addDownloadLink(json.download_url);
+                        }
+                        hideGeneratingDocsSpinner();
+                        showSuccess(method, plate, amount, level, months);
+                } catch (err) {
+                        console.error("[Autosave] Error generando certificado", err);
+                        hideGeneratingDocsSpinner();
+                        showErrorMessage("No se pudo generar el certificado");
+                        showSuccess(method, plate, amount, level, months);
+                }
+        }
+
         async function loadDraft() {
                 if (!draftId) return;
                 try {
@@ -640,7 +686,8 @@ export default function initAutosave() {
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
                         if (finalize) {
-                                showSuccess(
+                                await finalizeGuarantee(
+                                        draftId,
                                         garantia.metodo_pago,
                                         datosVehiculo.matricula,
                                         garantia.precio,

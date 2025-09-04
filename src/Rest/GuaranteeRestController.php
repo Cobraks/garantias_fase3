@@ -6,6 +6,8 @@ use WP_REST_Server;
 use WP_Query;
 use WP_REST_Response;
 use WP_Error;
+use GarantiasOnline360VO\Documents\CertificateGenerator;
+use GarantiasOnline360VO\Documents\EncryptedStorage;
 
 class GuaranteeRestController
 {
@@ -94,6 +96,30 @@ class GuaranteeRestController
                     'args'                => [
                         'id' => ['validate_callback' => 'absint'],
                     ],
+                ],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/generate-certificado',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'generate_certificado'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
+                ],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/certificado/(?P<hash>[a-f0-9]+)',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'download_certificado'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
                 ],
             ]
         );
@@ -1092,6 +1118,40 @@ class GuaranteeRestController
         if ($post_type === \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
             self::clear_list_transients($post_id, null, false);
         }
+    }
+
+    public static function generate_certificado($request)
+    {
+        $id = (int) $request['id'];
+        error_log('[REST] Generando certificado para ' . $id);
+        $result = CertificateGenerator::generate($id);
+        if (empty($result)) {
+            return new WP_Error('cert_generation_failed', __('No se pudo generar el certificado', 'garantias-online-360vo'), ['status' => 500]);
+        }
+        update_post_meta($id, 'certificado_hash', $result['hash']);
+        update_post_meta($id, 'certificado_iv', $result['iv']);
+        $url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/certificado/' . $result['hash']);
+        return ['download_url' => $url];
+    }
+
+    public static function download_certificado($request)
+    {
+        $id = (int) $request['id'];
+        $hash = sanitize_text_field($request['hash']);
+        $stored_hash = get_post_meta($id, 'certificado_hash', true);
+        $iv = get_post_meta($id, 'certificado_iv', true);
+        if (!$stored_hash || $hash !== $stored_hash || !$iv) {
+            return new WP_Error('not_found', __('Documento no encontrado', 'garantias-online-360vo'), ['status' => 404]);
+        }
+        error_log('[REST] Descargando certificado ' . $hash . ' para ' . $id);
+        $binary = EncryptedStorage::read($hash, $iv);
+        if ($binary === '') {
+            return new WP_Error('not_found', __('Documento no encontrado', 'garantias-online-360vo'), ['status' => 404]);
+        }
+        $response = new WP_REST_Response($binary, 200);
+        $response->header('Content-Type', 'application/pdf');
+        $response->header('Content-Disposition', 'attachment; filename="certificado.pdf"');
+        return $response;
     }
 }
 

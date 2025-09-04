@@ -23,6 +23,14 @@ class Plugin
     /** Registra todos los hooks globales */
     private function init_hooks(): void
     {
+        $lib = dirname(__DIR__) . '/lib';
+        if (file_exists($lib . '/fpdf/fpdf.php')) {
+            require_once $lib . '/fpdf/fpdf.php';
+        }
+        if (file_exists($lib . '/fpdi/autoload.php')) {
+            require_once $lib . '/fpdi/autoload.php';
+        }
+
         // 1) Reglas y endpoints
         Rewrite::init();
         Router::init();
@@ -86,6 +94,17 @@ class Plugin
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
         GuaranteeLogger::create_table();
+
+        $dir = WP_CONTENT_DIR . '/private-docs';
+        if (!is_dir($dir)) {
+            wp_mkdir_p($dir);
+        }
+        if (!file_exists($dir . '/index.php')) {
+            file_put_contents($dir . '/index.php', "<?php\n// Silence is golden.\n");
+        }
+        if (!file_exists($dir . '/.htaccess')) {
+            file_put_contents($dir . '/.htaccess', "deny from all\n");
+        }
     }
 
     /**
