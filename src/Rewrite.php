@@ -27,6 +27,7 @@ class Rewrite
     public static function add_query_vars(array $vars): array
     {
         $vars[] = self::VAR_ENDPOINT;
+        $vars[] = 'go_doc';
         return $vars;
     }
 
@@ -52,6 +53,12 @@ class Rewrite
                 'top'
             );
         }
+
+        add_rewrite_rule(
+            $base . '/descargar/([^/]+)/?$',
+            'index.php?go_doc=$matches[1]',
+            'top'
+        );
 
         
     }

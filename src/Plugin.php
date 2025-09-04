@@ -40,6 +40,9 @@ class Plugin
         add_action('init', [GuaranteeLogger::class, 'ensure_table']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
 
+        // Directorio privado para PDFs
+        add_action('init', [\GarantiasOnline360VO\Pdf\Storage::class, 'ensure_dir']);
+
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\UserRestController::class, 'register_routes']);
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\OfertasRestController::class, 'register_routes']);
@@ -86,6 +89,13 @@ class Plugin
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
         GuaranteeLogger::create_table();
+
+        // Crear directorio privado para documentos
+        $dir = WP_CONTENT_DIR . '/private-docs';
+        if (! file_exists($dir)) {
+            wp_mkdir_p($dir);
+            @chmod($dir, 0750);
+        }
     }
 
     /**

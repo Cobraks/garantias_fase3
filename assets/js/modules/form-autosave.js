@@ -109,6 +109,10 @@ export default function initAutosave() {
                 draftUuid = urlUuid;
                 localStorage.setItem("go_draft_uuid", draftUuid);
         }
+        const idField = document.querySelector('input[name="garantia_id"]');
+        if (idField && draftId) {
+                idField.value = draftId;
+        }
         let saving = false;
 
         const navButtons = document.querySelector(".nav-buttons");
@@ -633,6 +637,9 @@ export default function initAutosave() {
                                 draftId = json.id;
                                 localStorage.setItem("go_draft_id", draftId);
                                 console.log("[AUTOSAVE] stored draftId", draftId);
+                                if (idField) {
+                                        idField.value = draftId;
+                                }
                         }
                         if (json.uuid) {
                                 draftUuid = json.uuid;

@@ -97,6 +97,20 @@ class GuaranteeRestController
                 ],
             ]
         );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\\d+)/docs',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'generate_docs'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
 
         // Limpieza de transients al guardar/borrar garantías
         add_action('save_post_' . \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE, [__CLASS__, 'clear_list_transients'], 10, 3);
@@ -1092,6 +1106,22 @@ class GuaranteeRestController
         if ($post_type === \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
             self::clear_list_transients($post_id, null, false);
         }
+    }
+
+    public static function generate_docs($request)
+    {
+        $post_id = (int) $request['id'];
+        error_log('[GO] generate_docs start for post ' . $post_id);
+        if (! self::can_view($request)) {
+            return new WP_Error('rest_forbidden', __('No tienes permisos para generar documentos.', 'garantias-online-360vo'), ['status' => 403]);
+        }
+        $hash = \GarantiasOnline360VO\Pdf\Generator::generate($post_id);
+        if (is_wp_error($hash)) {
+            error_log('[GO] generate_docs error: ' . $hash->get_error_message());
+            return $hash;
+        }
+        error_log('[GO] generate_docs success, hash: ' . $hash);
+        return new WP_REST_Response(['hash' => $hash], 200);
     }
 }
 

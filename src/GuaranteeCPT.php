@@ -26,6 +26,7 @@ class GuaranteeCPT
         add_filter('post_updated_messages', [__CLASS__, 'updated_messages']);
         add_action('save_post_' . self::POST_TYPE, [__CLASS__, 'handle_save'], 10, 3);
         add_action('transition_post_status', [__CLASS__, 'log_status_transition'], 10, 3);
+        add_action('init', [__CLASS__, 'register_meta']);
     }
 
     /**
@@ -116,5 +117,19 @@ class GuaranteeCPT
         $user = get_current_user_id();
         $details = sprintf('De %s a %s', $old_status, $new_status);
         GuaranteeLogger::log($user, $post->ID, 'status_changed', $details);
+    }
+
+    public static function register_meta(): void
+    {
+        register_post_meta(
+            self::POST_TYPE,
+            \GarantiasOnline360VO\Pdf\Storage::META_KEY,
+            [
+                'type'         => 'string',
+                'single'       => true,
+                'show_in_rest' => false,
+                'auth_callback'=> '__return_true',
+            ]
+        );
     }
 }
