@@ -7,6 +7,7 @@ use WP_Query;
 use WP_REST_Response;
 use WP_Error;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
+use GarantiasOnline360VO\Docs\CertificateGenerator;
 use GarantiasOnline360VO\GuaranteeLogger;
 
 class GuaranteeRestController
@@ -565,20 +566,15 @@ class GuaranteeRestController
                 wp_update_post(['ID' => $post_id, 'post_status' => 'publish']);
                 $hash = '';
                 if (!empty($data['certificate_pdf'])) {
-                    $binary = base64_decode($data['certificate_pdf']);
+                    $hash = CertificateGenerator::store_from_base64($data['certificate_pdf'], $post_id);
                     unset($data['certificate_pdf']);
-                    if ($binary === false) {
-                        error_log('[AUTOSAVE] invalid certificate_pdf for ' . $post_id);
-                        return new WP_Error('invalid_certificate', __('Certificado inválido', 'garantias-online-360vo'), ['status' => 400]);
-                    }
-                    $hash = PrivateDocsManager::store($binary, 'pdf');
-                    error_log('[AUTOSAVE] certificate hash ' . $hash);
                     if (!$hash) {
                         return new WP_Error('certificate_store_failed', __('No se pudo guardar el certificado', 'garantias-online-360vo'), ['status' => 500]);
                     }
                 }
                 if ($hash) {
                     update_post_meta($post_id, 'documentacion_certificado_hash', $hash);
+                    GuaranteeLogger::log(get_current_user_id(), $post_id, 'certificate_stored', $hash);
                     $certificate_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/document/certificado?_wpnonce=' . wp_create_nonce('wp_rest'));
                     $scheme = wp_parse_url(home_url(), PHP_URL_SCHEME);
                     $certificate_url = set_url_scheme($certificate_url, $scheme);

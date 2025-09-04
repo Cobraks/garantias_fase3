@@ -10,6 +10,7 @@ export async function generateCertificate({ templateUrl, combustible, cp, nombre
         const pdfDoc = await PDFDocument.load(existingPdfBytes);
         const form = pdfDoc.getForm();
         const available = listFields(form);
+        console.debug('[pdf-certificate] available fields', available);
 
         const setField = (name, value) => {
                 if (!value) return;

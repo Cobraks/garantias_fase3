@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.30 - 2025-09-04
+- Clase `CertificateGenerator` con logs detallados al guardar certificados.
+- Se registra en base de datos el evento `certificate_stored` y se listan los campos disponibles del PDF.
+
 ## 0.1.29 - 2025-09-04
 - Manejo de errores al generar el certificado y almacenamiento cifrado en `private-docs`.
 - Generación del PDF con `pdf-lib` usando base64 nativo y listado de campos para depuración.
