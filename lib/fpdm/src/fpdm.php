@@ -69,7 +69,8 @@ if (!call_user_func_array('class_exists', $__tmp)) {
 	define('FPDM_CACHE',dirname(__FILE__).'/export/cache/'); //cache directory for fdf temporary files needed by pdftk.
 	define('FPDM_PASSWORD_MAX_LEN',15); //Security to prevent shell overflow.
 	
-    class FPDM {
+#[\AllowDynamicProperties]
+class FPDM {
     //@@@@@@@@@
 		var $useCheckboxParser = false;      //boolean: allows activation of custom checkbox parser (not available in original FPDM source)
 
@@ -89,6 +90,8 @@ if (!call_user_func_array('class_exists', $__tmp)) {
 		
 		var $shifts = array();    	  //array, Shifts of objects in the order positions they appear in the pdf, starting at 0.
 		var $shift = 0;     	  //integer, Global shift file size due to object values size changes
+                var $n = 0;               //integer, last object number parsed
+
 		
 		var $streams = '';         //Holds streams configuration found during parsing
 		var $streams_filter = '';  //Regexp to decode filter streams
