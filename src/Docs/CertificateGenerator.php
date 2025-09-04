@@ -3,6 +3,7 @@ namespace GarantiasOnline360VO\Docs;
 
 use setasign\Fpdi\Fpdi;
 use GarantiasOnline360VO\GuaranteeLogger;
+use mikehaertl\pdftk\Pdf;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -37,16 +38,21 @@ class CertificateGenerator
                 $data['pdf_combustible'] = (string) $combustible;
             }
 
-            $pdf = new \FPDM($path);
+            $binary = defined('GO_PDFTK_PATH') ? GO_PDFTK_PATH : 'pdftk';
+            $pdf = new Pdf($path, ['command' => $binary]);
             if ($data) {
-                $pdf->Load($data);
+                $pdf->fillForm($data)->flatten();
             }
-            $pdf->Merge();
-            error_log('[CertificateGenerator] FPDM merge completed');
-            $content = $pdf->Output('S');
+            $content = $pdf->toString();
+            if ($content === false) {
+                error_log('[CertificateGenerator] pdftk error ' . $pdf->getError());
+                $content = self::generateWithFpdi($path, $combustible);
+            } else {
+                error_log('[CertificateGenerator] pdftk merge completed');
+            }
         } catch (\Throwable $e) {
-            error_log('[CertificateGenerator] FPDM merge failed ' . $e->getMessage());
-            $content = self::generateWithFpdi($path, $combustible);
+            error_log('[CertificateGenerator] pdftk exception ' . $e->getMessage());
+            $content = self::generateWithFpdi($path, isset($combustible) ? $combustible : '');
         }
 
         if (!$content) {
