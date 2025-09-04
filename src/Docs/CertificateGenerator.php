@@ -1,6 +1,7 @@
 <?php
 namespace GarantiasOnline360VO\Docs;
 
+use mikehaertl\pdftk\Pdf;
 use setasign\Fpdi\Fpdi;
 use GarantiasOnline360VO\GuaranteeLogger;
 
@@ -28,24 +29,40 @@ class CertificateGenerator
             error_log('[CertificateGenerator] template missing or unreadable: ' . $path);
             return null;
         }
+        $content = null;
         try {
-            $pdf = new Fpdi();
-            $pdf->AddPage();
-            $pdf->setSourceFile($path);
-            $tpl = $pdf->importPage(1);
-            $pdf->useTemplate($tpl, 0, 0);
-
+            $data = [];
             $combustible = get_post_meta($guarantee_id, 'datos_vehiculo_combustible', true);
             error_log('[CertificateGenerator] combustible ' . $combustible);
             if ($combustible) {
-                $pdf->SetFont('Helvetica', '', 12);
-                $pdf->SetXY(10, 10);
-                $pdf->Write(5, (string) $combustible);
+                $data['pdf_combustible'] = (string) $combustible;
             }
 
-            $content = $pdf->Output('S');
+            $pdf = new Pdf($path);
+            if ($data) {
+                $pdf->fillForm($data)->flatten();
+            }
+
+            $content = $pdf->toString();
+            if ($content === false) {
+                $cmd = $pdf->getCommand();
+                $error = $pdf->getError();
+                error_log('[CertificateGenerator] pdftk error ' . $error);
+                if ($cmd) {
+                    error_log('[CertificateGenerator] pdftk command ' . $cmd->getCommand());
+                    error_log('[CertificateGenerator] pdftk exit code ' . $cmd->getExitCode());
+                }
+                error_log('[CertificateGenerator] falling back to FPDI');
+                $content = self::generateWithFpdi($path, $combustible);
+            }
         } catch (\Throwable $e) {
-            error_log('[CertificateGenerator] error ' . $e->getMessage());
+            error_log('[CertificateGenerator] pdftk exception ' . $e->getMessage());
+            error_log('[CertificateGenerator] falling back to FPDI');
+            $content = self::generateWithFpdi($path, $combustible);
+        }
+
+        if (!$content) {
+            error_log('[CertificateGenerator] no content generated');
             return null;
         }
         $hash = PrivateDocsManager::store($content, 'pdf');
@@ -54,5 +71,25 @@ class CertificateGenerator
             GuaranteeLogger::log(get_current_user_id(), $guarantee_id, 'document_generated', 'certificado');
         }
         return $hash ?: null;
+    }
+
+    private static function generateWithFpdi(string $path, string $combustible = ''): ?string
+    {
+        error_log('[CertificateGenerator] FPDI fallback using template ' . $path);
+        try {
+            $pdf = new Fpdi();
+            $pdf->AddPage();
+            $pdf->setSourceFile($path);
+            $tpl = $pdf->importPage(1);
+            $pdf->useTemplate($tpl, 0, 0);
+            if ($combustible) {
+                $pdf->SetFont('Arial', '', 12);
+                $pdf->Text(10, 10, (string) $combustible);
+            }
+            return $pdf->Output('S');
+        } catch (\Throwable $e) {
+            error_log('[CertificateGenerator] FPDI fallback failed ' . $e->getMessage());
+            return null;
+        }
     }
 }
