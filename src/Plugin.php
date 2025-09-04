@@ -21,11 +21,17 @@ class Plugin
         $fpdf = $base . '/lib/fpdf/fpdf.php';
         if (file_exists($fpdf)) {
             require_once $fpdf;
+            error_log('[Plugin] loaded FPDF ' . $fpdf);
+        } else {
+            error_log('[Plugin] FPDF not found at ' . $fpdf);
         }
 
         $fpdi = $base . '/lib/fpdi/autoload.php';
         if (file_exists($fpdi)) {
             require_once $fpdi;
+            error_log('[Plugin] loaded FPDI ' . $fpdi);
+        } else {
+            error_log('[Plugin] FPDI not found at ' . $fpdi);
         }
 
         if (! self::$instance) {
