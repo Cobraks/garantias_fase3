@@ -104,7 +104,7 @@ class GuaranteeRestController
                 [
                     'methods'             => WP_REST_Server::CREATABLE,
                     'callback'            => [__CLASS__, 'generate_docs'],
-                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
                     'args'                => [
                         'id' => ['validate_callback' => 'absint'],
                     ],
@@ -1112,6 +1112,9 @@ class GuaranteeRestController
     {
         $post_id = (int) $request['id'];
         error_log('[GO] generate_docs start for post ' . $post_id);
+        if (! self::can_view($request)) {
+            return new WP_Error('rest_forbidden', __('No tienes permisos para generar documentos.', 'garantias-online-360vo'), ['status' => 403]);
+        }
         $hash = \GarantiasOnline360VO\Pdf\Generator::generate($post_id);
         if (is_wp_error($hash)) {
             error_log('[GO] generate_docs error: ' . $hash->get_error_message());

@@ -84,6 +84,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
     </div>
     <!-- Contenido del Formulario -->
     <form id="form-garantia" class="form">
+        <input type="hidden" name="garantia_id" />
         <fieldset id="datos-vehiculo" class="form__tab-content form__tab-content--active">
             <legend style="display:none" class="form__legend">Datos del Vehículo</legend>
             <fieldset class="form__sub-fieldset">
