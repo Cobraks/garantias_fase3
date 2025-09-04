@@ -285,7 +285,7 @@ export default function initAutosave() {
                                 "pdf"
                         )}<span>Descargar certificado</span>`;
                         downloadLink.hidden = false;
-                        if (loading) loading.hidden = true;
+                        if (loading) loading.remove();
                 }
                 if (method === "transferencia" || method === "domiciliacion") {
                         const pay = successBlock.querySelector(".form-success__payment");
