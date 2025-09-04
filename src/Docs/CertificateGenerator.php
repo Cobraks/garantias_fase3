@@ -38,10 +38,13 @@ class CertificateGenerator
                 $data['pdf_combustible'] = (string) $combustible;
             }
 
-            $options = ['useExec' => true, 'escapeArgs' => false];
-            if (defined('GO_PDFTK_PATH')) {
-                $options['command'] = GO_PDFTK_PATH;
-            }
+            $binary = defined('GO_PDFTK_PATH') ? GO_PDFTK_PATH : 'pdftk';
+            error_log('[CertificateGenerator] using pdftk binary ' . $binary);
+            $options = [
+                'useExec' => true,
+                'escapeArgs' => false,
+                'command' => $binary,
+            ];
             $pdf = new Pdf($path, $options);
             if ($data) {
                 $pdf->fillForm($data)->needAppearances()->flatten();
@@ -55,6 +58,9 @@ class CertificateGenerator
                 if ($cmd) {
                     error_log('[CertificateGenerator] pdftk command ' . $cmd->getCommand());
                     error_log('[CertificateGenerator] pdftk exit code ' . $cmd->getExitCode());
+                }
+                if (!$cmd || $cmd->getExitCode() === 127) {
+                    error_log('[CertificateGenerator] pdftk binary missing or not executable');
                 }
                 error_log('[CertificateGenerator] falling back to FPDI');
                 $content = self::generateWithFpdi($path, $combustible);

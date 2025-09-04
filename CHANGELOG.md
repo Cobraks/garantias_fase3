@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 0.1.25 - 2025-09-04
+- Registra en el log la ruta de pdftk y avisa cuando el binario falta; usa FPDI solo si pdftk falla.
+
 ## 0.1.24 - 2025-08-16
 - Rellena la referencia "Garantía [matrícula]" y la cantidad final en la tabla de transferencia.
 - Confeti renovado con caída superior y piezas en primer y segundo plano.
