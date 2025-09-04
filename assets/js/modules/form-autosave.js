@@ -256,6 +256,36 @@ export default function initAutosave() {
                 }
         }
 
+        function setCertificateUrl(certUrl) {
+                if (!successBlock) return;
+                const certLink = successBlock.querySelector(
+                        ".form-success__certificate"
+                );
+                if (!certLink) return;
+                const title = certLink.querySelector(".document-card__title");
+                const spinnerEl = certLink.querySelector(
+                        ".document-card__spinner"
+                );
+                if (certUrl) {
+                        certLink.href = certUrl;
+                        certLink.target = "_blank";
+                        certLink.classList.remove("is-loading");
+                        if (spinnerEl) spinnerEl.remove();
+                        if (title) title.textContent = "Certificado de garantía";
+                } else {
+                        certLink.href = "#";
+                        certLink.removeAttribute("target");
+                        certLink.classList.add("is-loading");
+                        if (!spinnerEl) {
+                                const sp = document.createElement("span");
+                                sp.className = "document-card__spinner spinner";
+                                sp.setAttribute("aria-hidden", "true");
+                                certLink.prepend(sp);
+                        }
+                        if (title) title.textContent = "Generando documentos…";
+                }
+        }
+
         function revealSuccess(method, plate, amount, level, months, certUrl) {
                 console.log("[AUTOSAVE] revealSuccess", { certUrl });
                 if (!successBlock) return;
@@ -270,29 +300,7 @@ export default function initAutosave() {
                                 .trim()
                                 .replace(/\b\w/g, (c) => c.toUpperCase());
                 }
-                const certLink = successBlock.querySelector(
-                        ".form-success__certificate"
-                );
-                if (certLink) {
-                        const title = certLink.querySelector(
-                                ".document-card__title"
-                        );
-                        const spinnerEl = certLink.querySelector(
-                                ".document-card__spinner"
-                        );
-                        if (certUrl) {
-                                certLink.href = certUrl;
-                                certLink.target = "_blank";
-                                certLink.classList.remove("is-loading");
-                                if (spinnerEl) spinnerEl.remove();
-                                if (title)
-                                        title.textContent = "Certificado de garantía";
-                        } else {
-                                certLink.classList.add("is-loading");
-                                if (title)
-                                        title.textContent = "Generando documentos…";
-                        }
-                }
+                setCertificateUrl(certUrl);
                 if (method === "transferencia" || method === "domiciliacion") {
                         const pay = successBlock.querySelector(".form-success__payment");
                         if (pay) {
@@ -675,14 +683,7 @@ export default function initAutosave() {
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
                         if (finalize) {
-                                revealSuccess(
-                                        garantia.metodo_pago,
-                                        datosVehiculo.matricula,
-                                        garantia.precio,
-                                        garantia.nivel_garantia,
-                                        garantia.meses_contratados,
-                                        json.certificate_url
-                                );
+                                setCertificateUrl(json.certificate_url);
                         }
                         spinner.style.display = "none";
                         icon.style.display = "inline-block";
