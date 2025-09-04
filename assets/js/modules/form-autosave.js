@@ -12,6 +12,7 @@ import {
 import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
 import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.js";
+import { generateCertificate } from "./pdf-certificate.js";
 
 export default function initAutosave() {
         const form = document.getElementById("form-garantia");
@@ -632,6 +633,39 @@ export default function initAutosave() {
                         } else {
                                 payload.estado_garantia.estado_contratacion = "pendiente_pago";
                         }
+                        const modalidad = getVisibleModalidades().find(
+                                (m) => String(m.ID) === String(modalidadId)
+                        );
+                        const templateUrl = modalidad?.acf?.detalles_modalidad_documentos_certificado_garantia?.url;
+                        try {
+                                const cert = await generateCertificate({
+                                        templateUrl,
+                                        combustible: datosVehiculo.combustible,
+                                        cp: datosCliente.codigo_postal,
+                                        nombre: datosCliente.nombre_y_apellidos,
+                                });
+                                if (!cert) {
+                                        alert("No se pudo generar el certificado");
+                                        status.classList.add("autosave-status--hidden");
+                                        if (nextBtn) {
+                                                nextBtn.classList.remove("is-loading");
+                                                nextBtn.disabled = false;
+                                        }
+                                        saving = false;
+                                        return;
+                                }
+                                payload.certificate_pdf = cert;
+                        } catch (e) {
+                                console.error("[AUTOSAVE] certificate generation", e);
+                                alert("No se pudo generar el certificado");
+                                status.classList.add("autosave-status--hidden");
+                                if (nextBtn) {
+                                        nextBtn.classList.remove("is-loading");
+                                        nextBtn.disabled = false;
+                                }
+                                saving = false;
+                                return;
+                        }
                 } else {
                         payload.estado_garantia.estado_contratacion = "sin_finalizar";
                 }
@@ -651,12 +685,18 @@ export default function initAutosave() {
                         const json = await res.json();
                         console.log("[AUTOSAVE] response json", json);
                         if (!res.ok) {
-                                if (res.status === 409 && json?.message) {
+                                if (json?.message) {
                                         alert(json.message);
-                                        const plateInput = document.getElementById("matricula");
-                                        if (plateInput) setError(plateInput, json.message);
+                                        if (res.status === 409) {
+                                                const plateInput = document.getElementById("matricula");
+                                                if (plateInput) setError(plateInput, json.message);
+                                        }
                                 }
                                 status.classList.add("autosave-status--hidden");
+                                if (finalize && nextBtn) {
+                                        nextBtn.classList.remove("is-loading");
+                                        nextBtn.disabled = false;
+                                }
                                 return;
                         }
                         if (json.id) {

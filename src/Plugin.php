@@ -16,32 +16,6 @@ class Plugin
     /** Singleton */
     public static function run(): void
     {
-        $base = dirname(__DIR__);
-
-        $fpdf = $base . '/lib/fpdf/fpdf.php';
-        if (file_exists($fpdf)) {
-            require_once $fpdf;
-            error_log('[Plugin] loaded FPDF ' . $fpdf);
-        } else {
-            error_log('[Plugin] FPDF not found at ' . $fpdf);
-        }
-
-        $fpdi = $base . '/lib/fpdi/autoload.php';
-        if (file_exists($fpdi)) {
-            require_once $fpdi;
-            error_log('[Plugin] loaded FPDI ' . $fpdi);
-        } else {
-            error_log('[Plugin] FPDI not found at ' . $fpdi);
-        }
-
-        $fpdm = $base . '/lib/fpdm/autoload.php';
-        if (file_exists($fpdm)) {
-            require_once $fpdm;
-            error_log('[Plugin] loaded FPDM ' . $fpdm);
-        } else {
-            error_log('[Plugin] FPDM not found at ' . $fpdm);
-        }
-
         if (! self::$instance) {
             self::$instance = new self();
             self::$instance->init_hooks();
