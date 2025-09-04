@@ -731,6 +731,10 @@ class GuaranteeRestController
         $condicionado_url = get_post_meta($id, 'docs_url_condicionado', true) ?: '#';
         $cobertura_url = get_post_meta($id, 'docs_url_cobertura', true) ?: '#';
         $factura_url = get_post_meta($id, 'docs_url_factura', true) ?: '#';
+        $cert_hash = get_post_meta($id, 'documentacion_certificado_hash', true);
+        $certificate_url = $cert_hash
+            ? rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/document/certificado')
+            : '';
 
         $cobro_realizado = get_post_meta($id, 'garantia_contratada_estado_cobro_cobro_realizado', true);
         $iban_vendedor = $vendor_id
@@ -790,6 +794,7 @@ class GuaranteeRestController
             'condicionado_url' => $condicionado_url,
             'cobertura_url' => $cobertura_url,
             'factura_url' => $factura_url,
+            'certificate_url' => $certificate_url,
             'cobro_realizado' => $cobro_realizado ? true : false,
             'iban_vendedor' => $iban_vendedor ?: '',
             'nombre_comprador' => $nombre_comprador ?: '-',
