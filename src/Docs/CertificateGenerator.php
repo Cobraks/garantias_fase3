@@ -40,6 +40,11 @@ class CertificateGenerator
 
             $binary = defined('GO_PDFTK_PATH') ? GO_PDFTK_PATH : 'pdftk';
             error_log('[CertificateGenerator] using pdftk binary ' . $binary);
+            // Try to log version information to help debugging missing binaries
+            $versionOutput = @shell_exec(escapeshellcmd($binary) . ' --version 2>&1');
+            if ($versionOutput !== null) {
+                error_log('[CertificateGenerator] pdftk version output ' . trim($versionOutput));
+            }
             $options = [
                 'useExec' => true,
                 'escapeArgs' => false,
@@ -58,6 +63,7 @@ class CertificateGenerator
                 if ($cmd) {
                     error_log('[CertificateGenerator] pdftk command ' . $cmd->getCommand());
                     error_log('[CertificateGenerator] pdftk exit code ' . $cmd->getExitCode());
+                    error_log('[CertificateGenerator] pdftk stderr ' . $cmd->getStdErr());
                 }
                 if (!$cmd || $cmd->getExitCode() === 127) {
                     error_log('[CertificateGenerator] pdftk binary missing or not executable');

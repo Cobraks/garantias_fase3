@@ -570,7 +570,7 @@ class GuaranteeRestController
                 if ($hash) {
                     update_post_meta($post_id, 'documentacion_certificado_hash', $hash);
                     $certificate_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/document/certificado?_wpnonce=' . wp_create_nonce('wp_rest'));
-                    $certificate_url = set_url_scheme($certificate_url);
+                    $certificate_url = set_url_scheme($certificate_url, is_ssl() ? 'https' : 'http');
                 } else {
                     error_log('[AUTOSAVE] certificate generation failed');
                 }
@@ -748,7 +748,7 @@ class GuaranteeRestController
             ? rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/document/certificado')
             : '';
         if ($certificate_url) {
-            $certificate_url = set_url_scheme($certificate_url);
+            $certificate_url = set_url_scheme($certificate_url, is_ssl() ? 'https' : 'http');
         }
 
         $cobro_realizado = get_post_meta($id, 'garantia_contratada_estado_cobro_cobro_realizado', true);
