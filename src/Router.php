@@ -23,17 +23,22 @@ class Router
     {
         $hash = get_query_var('go_doc');
         if ($hash) {
+            error_log('[GO] Solicitud de descarga para hash ' . $hash);
             $post_id = Storage::post_id_from_hash($hash);
+            error_log('[GO] Hash corresponde al post ' . $post_id);
             if (! $post_id) {
+                error_log('[GO] Hash no encontrado');
                 status_header(404);
                 exit;
             }
             $request = new \WP_REST_Request('GET', '');
             $request->set_param('id', $post_id);
             if (! GuaranteeRestController::can_view($request)) {
+                error_log('[GO] Acceso denegado al archivo ' . $hash);
                 status_header(403);
                 exit;
             }
+            error_log('[GO] Sirviendo archivo para hash ' . $hash);
             Storage::serve($hash);
             exit;
         }

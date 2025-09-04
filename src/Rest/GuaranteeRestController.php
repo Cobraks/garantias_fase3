@@ -1111,10 +1111,13 @@ class GuaranteeRestController
     public static function generate_docs($request)
     {
         $post_id = (int) $request['id'];
+        error_log('[GO] generate_docs start for post ' . $post_id);
         $hash = \GarantiasOnline360VO\Pdf\Generator::generate($post_id);
         if (is_wp_error($hash)) {
+            error_log('[GO] generate_docs error: ' . $hash->get_error_message());
             return $hash;
         }
+        error_log('[GO] generate_docs success, hash: ' . $hash);
         return new WP_REST_Response(['hash' => $hash], 200);
     }
 }

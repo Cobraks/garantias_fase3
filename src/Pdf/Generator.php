@@ -16,8 +16,11 @@ class Generator
 
         $pdf = new \setasign\Fpdi\Fpdi();
 
+        error_log('[GO] Generator start for post ' . $post_id);
+
         $modalidad = get_field('garantia_contratada_garantia', $post_id);
         $modalidad_id = is_object($modalidad) ? $modalidad->ID : (int) $modalidad;
+        error_log('[GO] Modalidad ID: ' . $modalidad_id);
 
         $template = get_field('detalles_modalidad_documentos_certificado_garantia', $modalidad_id);
         $path     = '';
@@ -29,8 +32,10 @@ class Generator
                 $path = str_replace($upload_dir['baseurl'], $upload_dir['basedir'], $template['url']);
             }
         }
+        error_log('[GO] Template path: ' . $path);
 
         if (! $path || ! file_exists($path)) {
+            error_log('[GO] Plantilla no encontrada');
             return new WP_Error('no_template', __('Plantilla PDF no encontrada', 'garantias-online-360vo'));
         }
 
@@ -41,6 +46,7 @@ class Generator
 
         // Datos básicos de ejemplo
         $matricula = get_field('datos_vehiculo_matricula', $post_id);
+        error_log('[GO] Matrícula: ' . $matricula);
         if ($matricula) {
             $pdf->SetFont('Helvetica', '', 12);
             $pdf->SetXY(20, 20);
@@ -48,6 +54,7 @@ class Generator
         }
 
         $hash = Storage::save($post_id, $pdf);
+        error_log('[GO] Documento guardado con hash: ' . $hash);
         return $hash;
     }
 }

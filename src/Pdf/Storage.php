@@ -21,6 +21,7 @@ class Storage
     {
         $dir = self::dir();
         if (! file_exists($dir)) {
+            error_log('[GO] Creando directorio de documentos: ' . $dir);
             wp_mkdir_p($dir);
             @chmod($dir, 0750);
         }
@@ -31,6 +32,7 @@ class Storage
         self::ensure_dir();
         $hash = wp_hash($post_id . '|' . time() . '|' . wp_rand());
         $path = self::dir() . '/' . $hash . '.pdf';
+        error_log('[GO] Guardando PDF en ' . $path);
         $pdf->Output('F', $path);
         update_post_meta($post_id, self::META_KEY, $hash);
         return $hash;
@@ -45,9 +47,11 @@ class Storage
     {
         $path = self::path($hash);
         if (! file_exists($path)) {
+            error_log('[GO] Archivo no encontrado para hash ' . $hash);
             status_header(404);
             exit;
         }
+        error_log('[GO] Sirviendo archivo ' . $path);
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="certificado.pdf"');
         readfile($path);
@@ -55,6 +59,7 @@ class Storage
 
     public static function post_id_from_hash(string $hash): int
     {
+        error_log('[GO] Buscando post por hash ' . $hash);
         $q = new WP_Query([
             'post_type'      => GuaranteeCPT::POST_TYPE,
             'meta_key'       => self::META_KEY,
@@ -62,6 +67,8 @@ class Storage
             'posts_per_page' => 1,
             'fields'         => 'ids',
         ]);
-        return $q->have_posts() ? (int) $q->posts[0] : 0;
+        $post_id = $q->have_posts() ? (int) $q->posts[0] : 0;
+        error_log('[GO] post_id_from_hash resultado: ' . $post_id);
+        return $post_id;
     }
 }
