@@ -393,13 +393,21 @@ export function validateField(input, showError = false, isHardCheck = false) {
 }
 
 // === Exports auxiliares ===
-export function forceDynamicFieldsValidation() {
+export function forceDynamicFieldsValidation(showError = false) {
         const cil = document.getElementById("cilindrada");
         const pot = document.getElementById("potencia");
         const km = document.getElementById("kilometros");
-        if (cil) validateWithDynamicLimit(cil, true);
-        if (pot) validateWithDynamicLimit(pot, true);
-        if (km) validateWithDynamicLimit(km, true);
+        [cil, pot, km].forEach((input) => {
+                if (!input) return;
+                const value = input.value.trim();
+                if (value === "") {
+                        clearError(input);
+                        clearInfoMessage(input);
+                }
+                if (value !== "" || showError) {
+                        validateWithDynamicLimit(input, showError);
+                }
+        });
         updateNextButtonState();
 }
 
