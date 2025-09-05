@@ -200,7 +200,7 @@ class SampleData
 
             // Vehículo
             $veh = $vehiculos[array_rand($vehiculos)];
-            $mat = sprintf('%04d%s', rand(0, 9999), substr(str_shuffle('BCDFGHJKLMNPQRSTVWXYZ'), 0, 3));
+            $mat = sprintf('%04d%s', rand(0, 9999), substr(str_shuffle('BCDFGHJKLMNPRSTVWXYZ'), 0, 3));
             $matricula = strtoupper($mat);
 
             $datos_vehiculo = [
