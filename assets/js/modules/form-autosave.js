@@ -674,15 +674,57 @@ export default function initAutosave() {
                                 try {
                                         const pdfBytes = await fetch(json.template_url).then((r) => r.arrayBuffer());
                                         const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                                        await import("../fontkit.umd.min.js");
+                                        pdfDoc.registerFontkit(globalThis.fontkit);
                                         const form = pdfDoc.getForm();
-                                        if (datosVehiculo.combustible)
-                                                form.getTextField("pdf_combustible").setText(datosVehiculo.combustible);
-                                        if (datosCliente.codigo_postal)
-                                                form.getTextField("pdf_cp").setText(datosCliente.codigo_postal);
-                                        if (datosCliente.nombre_y_apellidos)
-                                                form
-                                                        .getTextField("pdf_nombre_apellidos")
-                                                        .setText(datosCliente.nombre_y_apellidos);
+
+                                        const fontUrl = new URL(
+                                                "../../fonts/RobotoMono-Regular.ttf",
+                                                import.meta.url
+                                        );
+                                        const robotoBytes = await fetch(fontUrl).then((r) =>
+                                                r.arrayBuffer()
+                                        );
+                                        const robotoMono = await pdfDoc.embedFont(robotoBytes);
+                                        const robotoName = robotoMono.name;
+
+                                        if (datosVehiculo.combustible) {
+                                                const field = form.getTextField(
+                                                        "pdf_combustible"
+                                                );
+                                                field.setText(
+                                                        datosVehiculo.combustible
+                                                );
+                                               field.setFontSize(8.5);
+                                               field.acroField.setDefaultAppearance(
+                                                       `0.3 0.3 0.3 rg /${robotoName} 8.5 Tf`
+                                               );
+                                               field.updateAppearances(robotoMono);
+                                       }
+                                       if (datosCliente.codigo_postal) {
+                                               const field = form.getTextField("pdf_cp");
+                                               field.setText(
+                                                       datosCliente.codigo_postal
+                                               );
+                                               field.setFontSize(8.5);
+                                               field.acroField.setDefaultAppearance(
+                                                       `0.3 0.3 0.3 rg /${robotoName} 8.5 Tf`
+                                               );
+                                               field.updateAppearances(robotoMono);
+                                       }
+                                       if (datosCliente.nombre_y_apellidos) {
+                                               const field = form.getTextField(
+                                                       "pdf_nif"
+                                               );
+                                               field.setText(
+                                                       datosCliente.nombre_y_apellidos
+                                               );
+                                               field.setFontSize(8.5);
+                                               field.acroField.setDefaultAppearance(
+                                                       `0.3 0.3 0.3 rg /${robotoName} 8.5 Tf`
+                                               );
+                                               field.updateAppearances(robotoMono);
+                                       }
                                         form.flatten();
                                         const filled = await pdfDoc.save();
                                         const up = await fetch(
