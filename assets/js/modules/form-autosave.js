@@ -789,9 +789,14 @@ export default function initAutosave() {
 
                                        try {
                                                if (firmaSello.add_firma_sello) {
-                                                       const fsField = form.getButton(
-                                                               "pdf_firma_vendedor"
-                                                       );
+                                                       let fsField;
+                                                       try {
+                                                               fsField = form.getField(
+                                                                       "pdf_firma_vendedor"
+                                                               );
+                                                       } catch (e) {
+                                                               fsField = undefined;
+                                                       }
                                                        const widgets =
                                                                fsField?.acroField?.getWidgets?.() || [];
                                                        if (widgets.length) {
