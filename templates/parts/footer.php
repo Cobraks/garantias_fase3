@@ -118,6 +118,7 @@ use GarantiasOnline360VO\Svg;
         };
     </script>
     <script src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"></script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/fontkit.umd.js', GARANTIAS360VO__FILE__)); ?>"></script>
     <script src="<?php echo esc_url(plugins_url('assets/js/nueva_garantia.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 
 <?php endif; ?>
