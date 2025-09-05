@@ -8,10 +8,14 @@ import {
         getIcon,
         getUserRole,
         getCurrentUserId,
+        getPluginUrl,
 } from "./config.js";
 import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
 import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.js";
+
+const FONT_SIZE = 13;
+const FONT_COLOR = PDFLib.rgb(0.5, 0.5, 0.5);
 
 export default function initAutosave() {
         const form = document.getElementById("form-garantia");
@@ -674,15 +678,33 @@ export default function initAutosave() {
                                 try {
                                         const pdfBytes = await fetch(json.template_url).then((r) => r.arrayBuffer());
                                         const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                                        pdfDoc.registerFontkit(fontkit);
+                                        const fontBytes = await fetch(
+                                                `${getPluginUrl()}assets/fonts/RobotoMono-Regular.ttf`
+                                        ).then((r) => r.arrayBuffer());
+                                        const robotoMono = await pdfDoc.embedFont(fontBytes);
                                         const form = pdfDoc.getForm();
-                                        if (datosVehiculo.combustible)
-                                                form.getTextField("pdf_combustible").setText(datosVehiculo.combustible);
-                                        if (datosCliente.codigo_postal)
-                                                form.getTextField("pdf_cp").setText(datosCliente.codigo_postal);
-                                        if (datosCliente.nombre_y_apellidos)
-                                                form
-                                                        .getTextField("pdf_nombre_apellidos")
-                                                        .setText(datosCliente.nombre_y_apellidos);
+                                        if (datosVehiculo.combustible) {
+                                                const field = form.getTextField("pdf_combustible");
+                                                field.setText(datosVehiculo.combustible);
+                                                field.setFont(robotoMono);
+                                                field.setFontSize(FONT_SIZE);
+                                                field.setTextColor(FONT_COLOR);
+                                        }
+                                        if (datosCliente.codigo_postal) {
+                                                const field = form.getTextField("pdf_cp");
+                                                field.setText(datosCliente.codigo_postal);
+                                                field.setFont(robotoMono);
+                                                field.setFontSize(FONT_SIZE);
+                                                field.setTextColor(FONT_COLOR);
+                                        }
+                                        if (datosCliente.nombre_y_apellidos) {
+                                                const field = form.getTextField("pdf_nombre_apellidos");
+                                                field.setText(datosCliente.nombre_y_apellidos);
+                                                field.setFont(robotoMono);
+                                                field.setFontSize(FONT_SIZE);
+                                                field.setTextColor(FONT_COLOR);
+                                        }
                                         form.flatten();
                                         const filled = await pdfDoc.save();
                                         const up = await fetch(
