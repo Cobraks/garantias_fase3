@@ -694,36 +694,27 @@ export default function initAutosave() {
                                                 field.setText(
                                                         datosVehiculo.combustible
                                                 );
-                                                field.setFontSize(10);
-                                                field.setTextColor(
-                                                        PDFLib.rgb(0, 0, 0)
-                                                );
-                                                field.updateAppearances(robotoMono);
-                                        }
-                                        if (datosCliente.codigo_postal) {
-                                                const field = form.getTextField("pdf_cp");
-                                                field.setText(
-                                                        datosCliente.codigo_postal
-                                                );
-                                                field.setFontSize(10);
-                                                field.setTextColor(
-                                                        PDFLib.rgb(0, 0, 0)
-                                                );
-                                                field.updateAppearances(robotoMono);
-                                        }
-                                        if (datosCliente.nombre_y_apellidos) {
-                                                const field = form.getTextField(
-                                                        "pdf_nombre_apellidos"
-                                                );
-                                                field.setText(
-                                                        datosCliente.nombre_y_apellidos
-                                                );
-                                                field.setFontSize(10);
-                                                field.setTextColor(
-                                                        PDFLib.rgb(0, 0, 0)
-                                                );
-                                                field.updateAppearances(robotoMono);
-                                        }
+                                               field.setFontSize(10);
+                                               field.updateAppearances(robotoMono);
+                                       }
+                                       if (datosCliente.codigo_postal) {
+                                               const field = form.getTextField("pdf_cp");
+                                               field.setText(
+                                                       datosCliente.codigo_postal
+                                               );
+                                               field.setFontSize(10);
+                                               field.updateAppearances(robotoMono);
+                                       }
+                                       if (datosCliente.nombre_y_apellidos) {
+                                               const field = form.getTextField(
+                                                       "pdf_nombre_apellidos"
+                                               );
+                                               field.setText(
+                                                       datosCliente.nombre_y_apellidos
+                                               );
+                                               field.setFontSize(10);
+                                               field.updateAppearances(robotoMono);
+                                       }
                                         form.flatten();
                                         const filled = await pdfDoc.save();
                                         const up = await fetch(
