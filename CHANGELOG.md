@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.28 - 2025-09-05
+- Migración a SetaPDF-FormFiller para completar campos de formularios PDF.
+- Eliminadas las dependencias FPDF, FPDI y FPDM.
+
 ## 0.1.27 - 2025-09-04
 - Eliminada la librería pdftk y su wrapper; FPDM se utiliza ahora para rellenar los campos del certificado.
 

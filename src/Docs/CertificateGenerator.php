@@ -1,9 +1,10 @@
 <?php
 namespace GarantiasOnline360VO\Docs;
 
-use setasign\Fpdi\Fpdi;
 use GarantiasOnline360VO\GuaranteeLogger;
-use FPDM;
+use setasign\SetaPDF\Loader;
+use setasign\SetaPDF\FormFiller;
+use setasign\SetaPDF\Core\Writer\StringWriter;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -29,42 +30,45 @@ class CertificateGenerator
             error_log('[CertificateGenerator] template missing or unreadable: ' . $path);
             return null;
         }
-        $content = null;
         try {
-            $data = [];
             $combustible = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_vehiculo_combustible', true));
             error_log('[CertificateGenerator] combustible ' . $combustible);
-            if ($combustible !== '') {
-                $data['pdf_combustible'] = $combustible;
-            }
 
             $cp = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_cliente_codigo_postal', true));
             error_log('[CertificateGenerator] cp ' . $cp);
-            if ($cp !== '') {
-                $data['pdf_cp'] = $cp;
-            }
 
             $nombre = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_cliente_nombre_y_apellidos', true));
             error_log('[CertificateGenerator] nombre_apellidos ' . $nombre);
+
+            $data = [];
+            if ($combustible !== '') {
+                $data['pdf_combustible'] = $combustible;
+            }
+            if ($cp !== '') {
+                $data['pdf_cp'] = $cp;
+            }
             if ($nombre !== '') {
                 $data['pdf_nombre_apellidos'] = $nombre;
             }
-
             error_log('[CertificateGenerator] field data ' . wp_json_encode($data));
 
-            $pdf = new FPDM($path);
-            if ($data) {
-                $pdf->Load($data);
+            $document = Loader::loadFile($path);
+            $formFiller = new FormFiller($document);
+            $fields = $formFiller->getFields();
+            foreach ($data as $field => $value) {
+                $fields->get($field)->setValue($value);
             }
-            $pdf->Merge();
-            $content = $pdf->Output('S');
-            error_log('[CertificateGenerator] FPDM merge completed');
+            $writer = new StringWriter();
+            $document->setWriter($writer);
+            $document->save()->finish();
+            $content = $writer->getBuffer();
+            error_log('[CertificateGenerator] SetaPDF form filled');
         } catch (\Throwable $e) {
-            error_log('[CertificateGenerator] FPDM error ' . $e->getMessage());
-            $content = self::generateWithFpdi($path, isset($combustible) ? $combustible : '');
+            error_log('[CertificateGenerator] SetaPDF error ' . $e->getMessage());
+            return null;
         }
 
-        if (!$content) {
+        if ($content === null || $content === '') {
             error_log('[CertificateGenerator] no content generated');
             return null;
         }
@@ -76,23 +80,4 @@ class CertificateGenerator
         return $hash ?: null;
     }
 
-    private static function generateWithFpdi(string $path, string $combustible = ''): ?string
-    {
-        error_log('[CertificateGenerator] FPDI fallback using template ' . $path);
-        try {
-            $pdf = new Fpdi();
-            $pdf->AddPage();
-            $pdf->setSourceFile($path);
-            $tpl = $pdf->importPage(1);
-            $pdf->useTemplate($tpl, 0, 0);
-            if ($combustible) {
-                $pdf->SetFont('Arial', '', 12);
-                $pdf->Text(10, 10, (string) $combustible);
-            }
-            return $pdf->Output('S');
-        } catch (\Throwable $e) {
-            error_log('[CertificateGenerator] FPDI fallback failed ' . $e->getMessage());
-            return null;
-        }
-    }
 }
