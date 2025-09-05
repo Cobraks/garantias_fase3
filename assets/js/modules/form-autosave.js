@@ -695,7 +695,9 @@ export default function initAutosave() {
                                                         datosVehiculo.combustible
                                                 );
                                                field.setFontSize(10);
-                                               field.updateAppearances(robotoMono);
+                                               field.updateAppearances(robotoMono, {
+                                                       textColor: PDFLib.rgb(0.3, 0.3, 0.3),
+                                               });
                                        }
                                        if (datosCliente.codigo_postal) {
                                                const field = form.getTextField("pdf_cp");
@@ -703,7 +705,9 @@ export default function initAutosave() {
                                                        datosCliente.codigo_postal
                                                );
                                                field.setFontSize(10);
-                                               field.updateAppearances(robotoMono);
+                                               field.updateAppearances(robotoMono, {
+                                                       textColor: PDFLib.rgb(0.3, 0.3, 0.3),
+                                               });
                                        }
                                        if (datosCliente.nombre_y_apellidos) {
                                                const field = form.getTextField(
@@ -713,7 +717,9 @@ export default function initAutosave() {
                                                        datosCliente.nombre_y_apellidos
                                                );
                                                field.setFontSize(10);
-                                               field.updateAppearances(robotoMono);
+                                               field.updateAppearances(robotoMono, {
+                                                       textColor: PDFLib.rgb(0.3, 0.3, 0.3),
+                                               });
                                        }
                                         form.flatten();
                                         const filled = await pdfDoc.save();
