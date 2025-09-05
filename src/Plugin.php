@@ -132,6 +132,3 @@ class Plugin
 // --- Hooks de activación / desactivación ---
 register_activation_hook(GARANTIAS360VO__FILE__,   [Plugin::class, 'activate']);
 register_deactivation_hook(GARANTIAS360VO__FILE__, [Plugin::class, 'deactivate']);
-
-// Arrancamos el plugin
-Plugin::run();

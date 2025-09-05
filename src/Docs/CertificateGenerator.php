@@ -32,22 +32,22 @@ class CertificateGenerator
         $content = null;
         try {
             $data = [];
-            $combustible = get_post_meta($guarantee_id, 'datos_vehiculo_combustible', true);
+            $combustible = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_vehiculo_combustible', true));
             error_log('[CertificateGenerator] combustible ' . $combustible);
-            if ($combustible) {
-                $data['pdf_combustible'] = (string) $combustible;
+            if ($combustible !== '') {
+                $data['pdf_combustible'] = $combustible;
             }
 
-            $cp = get_post_meta($guarantee_id, 'datos_cliente_codigo_postal', true);
+            $cp = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_cliente_codigo_postal', true));
             error_log('[CertificateGenerator] cp ' . $cp);
-            if ($cp) {
-                $data['pdf_cp'] = (string) $cp;
+            if ($cp !== '') {
+                $data['pdf_cp'] = $cp;
             }
 
-            $nombre = get_post_meta($guarantee_id, 'datos_cliente_nombre_y_apellidos', true);
+            $nombre = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_cliente_nombre_y_apellidos', true));
             error_log('[CertificateGenerator] nombre_apellidos ' . $nombre);
-            if ($nombre) {
-                $data['pdf_nombre_apellidos'] = (string) $nombre;
+            if ($nombre !== '') {
+                $data['pdf_nombre_apellidos'] = $nombre;
             }
 
             error_log('[CertificateGenerator] field data ' . wp_json_encode($data));

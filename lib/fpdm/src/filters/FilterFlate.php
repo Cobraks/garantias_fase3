@@ -30,12 +30,17 @@ if (!call_user_func_array('class_exists', $__tmp)) {
             $this->data = $data;
             $this->dataLength = strlen($data);
     
-            // uncompress
-            $data=gzuncompress($data);
-            
-            if(!$data) $this->error("FilterFlateDecode: invalid stream data.");
-             
-            return $data;
+            // Intentamos descomprimir con gzuncompress; si falla probamos gzinflate
+            $uncompressed = @gzuncompress($data);
+            if ($uncompressed === false) {
+                $uncompressed = @gzinflate($data);
+            }
+
+            if ($uncompressed === false) {
+                $this->error("FilterFlateDecode: invalid stream data.");
+            }
+
+            return $uncompressed;
         }
         
         
