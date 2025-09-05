@@ -565,15 +565,15 @@ class GuaranteeRestController
             if ($ps === 'publish') {
                 wp_update_post(['ID' => $post_id, 'post_status' => 'publish']);
                 error_log('[AUTOSAVE] generating certificate for ' . $post_id);
-                $hash = CertificateGenerator::generate($post_id);
-                error_log('[AUTOSAVE] certificate hash ' . $hash);
-                if ($hash) {
-                    update_post_meta($post_id, 'documentacion_certificado_hash', $hash);
+                $result = CertificateGenerator::generate($post_id);
+                if (is_wp_error($result)) {
+                    error_log('[AUTOSAVE] certificate generation failed: ' . $result->get_error_message());
+                } else {
+                    error_log('[AUTOSAVE] certificate hash ' . $result);
+                    update_post_meta($post_id, 'documentacion_certificado_hash', $result);
                     $certificate_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/document/certificado?_wpnonce=' . wp_create_nonce('wp_rest'));
                     $scheme = wp_parse_url(home_url(), PHP_URL_SCHEME);
                     $certificate_url = set_url_scheme($certificate_url, $scheme);
-                } else {
-                    error_log('[AUTOSAVE] certificate generation failed');
                 }
             }
             unset($data['post_status']);

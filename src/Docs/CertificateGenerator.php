@@ -4,6 +4,7 @@ namespace GarantiasOnline360VO\Docs;
 use GarantiasOnline360VO\GuaranteeLogger;
 use Pdftk\Pdf as PdftkPdf;
 use setasign\Fpdi\Fpdi;
+use WP_Error;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -11,7 +12,12 @@ if (!defined('ABSPATH')) {
 
 class CertificateGenerator
 {
-    public static function generate(int $guarantee_id): ?string
+    /**
+     * Genera el certificado de una garantía rellenando el PDF base.
+     *
+     * @return string|WP_Error Hash del documento o error descriptivo.
+     */
+    public static function generate(int $guarantee_id)
     {
         error_log('[CertificateGenerator] start for guarantee ' . $guarantee_id);
 
@@ -19,7 +25,7 @@ class CertificateGenerator
         error_log('[CertificateGenerator] modalidad ' . $modalidad_id);
         if (!$modalidad_id) {
             error_log('[CertificateGenerator] missing modalidad');
-            return null;
+            return new WP_Error('missing_modalidad', 'Modalidad no especificada');
         }
         $file = function_exists('get_field') ? get_field('detalles_modalidad_documentos_certificado_garantia', $modalidad_id) : null;
         error_log('[CertificateGenerator] field value ' . print_r($file, true));
@@ -27,7 +33,13 @@ class CertificateGenerator
         error_log('[CertificateGenerator] template path ' . $path);
         if (!$path || !file_exists($path)) {
             error_log('[CertificateGenerator] template missing or unreadable: ' . $path);
-            return null;
+            return new WP_Error('missing_template', 'No se encontró la plantilla del certificado');
+        }
+
+        $header = file_get_contents($path, false, null, 0, 1024) ?: '';
+        if (strpos($header, '/Linearized') !== false) {
+            error_log('[CertificateGenerator] template linearized');
+            return new WP_Error('pdf_linearized', 'El PDF está optimizado para vista rápida web');
         }
         $combustible = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_vehiculo_combustible', true));
         error_log('[CertificateGenerator] combustible ' . $combustible);
@@ -87,20 +99,20 @@ class CertificateGenerator
                 error_log('[CertificateGenerator] fallback FPDI used');
             } catch (\Throwable $e) {
                 error_log('[CertificateGenerator] FPDI fallback error ' . $e->getMessage());
-                return null;
+                return new WP_Error('fpdi_error', $e->getMessage());
             }
         }
 
         if ($content === '') {
             error_log('[CertificateGenerator] no content generated');
-            return null;
+            return new WP_Error('no_content', 'No se generó el certificado');
         }
         $hash = PrivateDocsManager::store($content, 'pdf');
         error_log('[CertificateGenerator] stored hash ' . $hash);
         if ($hash) {
             GuaranteeLogger::log(get_current_user_id(), $guarantee_id, 'document_generated', 'certificado');
         }
-        return $hash ?: null;
+        return $hash ?: new WP_Error('store_error', 'No se pudo guardar el certificado');
     }
 
 }
