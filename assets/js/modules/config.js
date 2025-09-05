@@ -34,6 +34,11 @@ export function getCurrentUserId() {
         return null;
 }
 
+// Plugin URL
+export function getPluginUrl() {
+        return getRawConfig().pluginUrl || "";
+}
+
 // Íconos
 export function getIcon(name) {
         const icons = getRawConfig().icons || {};

@@ -8,6 +8,7 @@ import {
         getIcon,
         getUserRole,
         getCurrentUserId,
+        getPluginUrl,
 } from "./config.js";
 import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
@@ -679,7 +680,7 @@ export default function initAutosave() {
                                         const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
                                         pdfDoc.registerFontkit(fontkit);
                                         const fontBytes = await fetch(
-                                                "/wp-content/plugins/garantias_fase3/assets/fonts/RobotoMono-Regular.ttf"
+                                                `${getPluginUrl()}assets/fonts/RobotoMono-Regular.ttf`
                                         ).then((r) => r.arrayBuffer());
                                         const robotoMono = await pdfDoc.embedFont(fontBytes);
                                         const form = pdfDoc.getForm();
