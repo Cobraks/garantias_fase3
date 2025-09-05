@@ -397,9 +397,17 @@ export function forceDynamicFieldsValidation() {
         const cil = document.getElementById("cilindrada");
         const pot = document.getElementById("potencia");
         const km = document.getElementById("kilometros");
-        if (cil) validateWithDynamicLimit(cil, true);
-        if (pot) validateWithDynamicLimit(pot, true);
-        if (km) validateWithDynamicLimit(km, true);
+
+        [cil, pot, km].forEach((input) => {
+                if (!input) return;
+                if (input.value.trim() !== "") {
+                        validateWithDynamicLimit(input, true);
+                } else {
+                        clearError(input);
+                        clearInfoMessage(input);
+                }
+        });
+
         updateNextButtonState();
 }
 
