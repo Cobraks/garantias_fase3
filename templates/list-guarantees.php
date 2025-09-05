@@ -131,7 +131,7 @@ use GarantiasOnline360VO\Svg;
         <div class="pdf-modal__header">
             <div class="pdf-modal__title-container">
                 <h2 id="pdf-modal-title"><?php esc_html_e('Documentación', 'garantias-online-360vo'); ?></h2>
-                <h3 class="pdf-modal-subttitle">Garantía 2345CDD</h3>
+                <h3 class="pdf-modal-subttitle"></h3>
             </div>
             <ul class="pdf-modal__docs-list detail__docs-list">
                 <!-- Se rellenará por JS clonando los enlaces -->
@@ -142,6 +142,14 @@ use GarantiasOnline360VO\Svg;
         <a class="pdf-modal__download" href="#" download>
             <?php esc_html_e('Descargar PDF', 'garantias-online-360vo'); ?>
         </a>
+        <div class="pdf-modal__nav">
+            <button type="button" class="pdf-modal__nav-btn pdf-modal__nav-btn--prev" disabled>
+                <?php esc_html_e('Anterior', 'garantias-online-360vo'); ?>
+            </button>
+            <button type="button" class="pdf-modal__nav-btn pdf-modal__nav-btn--next" disabled>
+                <?php esc_html_e('Siguiente', 'garantias-online-360vo'); ?>
+            </button>
+        </div>
     </div>
 </div>
 

@@ -807,7 +807,6 @@ class GuaranteeRestController
         $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
         $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
 
-        $contrato_url = get_post_meta($id, 'docs_url_contrato', true) ?: '#';
         $condicionado_url = get_post_meta($id, 'docs_url_condicionado', true) ?: '#';
         $cobertura_url = get_post_meta($id, 'docs_url_cobertura', true) ?: '#';
         $factura_url = get_post_meta($id, 'docs_url_factura', true) ?: '#';
@@ -874,7 +873,6 @@ class GuaranteeRestController
             'email_vendedor' => $email_vendedor ?: '',
             'avatar_vendedor' => $avatar_vendedor ?: '',
             'vendedor_url' => $vendedor_url,
-            'contrato_url' => $contrato_url,
             'condicionado_url' => $condicionado_url,
             'cobertura_url' => $cobertura_url,
             'factura_url' => $factura_url,

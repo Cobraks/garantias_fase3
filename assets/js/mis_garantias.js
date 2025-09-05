@@ -277,6 +277,8 @@
                                                                 rowData,
                                                                 []
                                                         );
+                                                        panel.dataset.matricula = data.matricula || rowData.matricula || "";
+                                                        syncPdfModalDocs(panel);
                                                 });
                                 })
                                 .catch((err) => {
@@ -682,8 +684,10 @@
 			) {
 				return;
 			}
-			nextPanel.innerHTML = renderEmptyDetail();
-			nextPanel.dataset.loadedId = "";
+                        nextPanel.innerHTML = renderEmptyDetail();
+                        nextPanel.dataset.loadedId = "";
+                        nextPanel.dataset.matricula = "";
+                        syncPdfModalDocs(nextPanel);
 			activePanel = nextPanel;
 			inactivePanel = currentActive;
 			currentActive.classList.add(
@@ -826,6 +830,8 @@
                                                                         rowData,
                                                                         []
                                                                 );
+                                                                nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
+                                                                syncPdfModalDocs(nextPanel);
                                                         } else {
                                                                 nextPanel.classList.add("loading");
                                                                 nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
@@ -837,6 +843,8 @@
                                                                                                 rowData,
                                                                                                 []
                                                                                         );
+                                                                                        nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
+                                                                                        syncPdfModalDocs(nextPanel);
                                                                                 }
                                                                         })
                                                                         .catch(() => {})
@@ -918,6 +926,8 @@
                                         .then((detailData) => {
                                                 if (nextPanel.dataset.loadedId === String(id)) {
                                                         nextPanel.innerHTML = renderFullDetail(detailData, rowData, []);
+                                                        nextPanel.dataset.matricula = detailData.matricula || rowData.matricula || "";
+                                                        syncPdfModalDocs(nextPanel);
                                                 }
                                         })
                                         .catch(() => {})
@@ -994,7 +1004,7 @@
                                 email_vendedor: "-",
                                 avatar_vendedor: "",
                                 vendedor_url: "#",
-                                contrato_url: "#",
+                                certificate_url: "#",
                                 condicionado_url: "#",
                                 cobertura_url: "#",
                                 factura_url: "#",
@@ -1079,7 +1089,7 @@
         return str !== "" && str !== "-" && str !== "#";
     };
     const docFields = [
-        "contrato_url",
+        "certificate_url",
         "condicionado_url",
         "cobertura_url",
         "factura_url",
@@ -1163,28 +1173,28 @@
                                 <li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")} CC</li>
                         </ul>
                 </section>
-                ${data.certificate_url ? `<a class="detail__cert-link" href="${data.certificate_url}" target="_blank">${pdfIcon}<span>Certificado de garantía</span></a>` : ""}
                 <section class="detail__section detail__section--docs">
                         <h3 class="detail__section-title">Documentación</h3>
                         ${hasDocs
                             ? `<ul class="detail__docs-list">
                                 <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("contrato_url", "#")}" aria-label="Ver documento Contrato">
-                                                <span class="detail__docs-label">Contrato</span>
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("certificate_url", "#")}" data-doc-index="0" aria-label="Ver documento Certificado Garantía">
+                                                <span class="detail__docs-icon">${pdfIcon}</span>
+                                                <span class="detail__docs-label">Certificado Garantía</span>
                                         </button>
                                 </li>
                                 <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" aria-label="Ver documento Condicionado">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" data-doc-index="1" aria-label="Ver documento Condicionado">
                                                 <span class="detail__docs-label">Condicionado</span>
                                         </button>
                                 </li>
                                 <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" aria-label="Ver documento Cobertura">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" data-doc-index="2" aria-label="Ver documento Cobertura">
                                                 <span class="detail__docs-label">Cobertura</span>
                                         </button>
                                 </li>
                                 <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" aria-label="Ver documento Factura">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" data-doc-index="3" aria-label="Ver documento Factura">
                                                 <span class="detail__docs-label">Factura</span>
                                         </button>
                                 </li>
@@ -1346,22 +1356,23 @@
                         <h3 class="detail__section-title">Documentación</h3>
                         <ul class="detail__docs-list">
                                 <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("contrato_url", "#")}" aria-label="Ver documento Contrato">
-                                                <span class="detail__docs-label">Contrato</span>
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("certificate_url", "#")}" data-doc-index="0" aria-label="Ver documento Certificado Garantía">
+                                                <span class="detail__docs-icon">${pdfIcon}</span>
+                                                <span class="detail__docs-label">Certificado Garantía</span>
                                         </button>
                                 </li>
                                 <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" aria-label="Ver documento Condicionado">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" data-doc-index="1" aria-label="Ver documento Condicionado">
                                                 <span class="detail__docs-label">Condicionado</span>
                                         </button>
                                 </li>
                                 <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" aria-label="Ver documento Cobertura">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" data-doc-index="2" aria-label="Ver documento Cobertura">
                                                 <span class="detail__docs-label">Cobertura</span>
                                         </button>
                                 </li>
                                 <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" aria-label="Ver documento Factura">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" data-doc-index="3" aria-label="Ver documento Factura">
                                                 <span class="detail__docs-label">Factura</span>
                                         </button>
                                 </li>
@@ -1391,8 +1402,26 @@
     `;
 }
 
+function syncPdfModalDocs(panel) {
+        const modal = document.querySelector(".pdf-modal");
+        if (!modal) return;
+        const modalList = modal.querySelector(".pdf-modal__docs-list");
+        const panelList = panel.querySelector(".detail__docs-list");
+        if (modalList && panelList) {
+                modalList.innerHTML = "";
+                panelList.querySelectorAll(".detail__docs-item").forEach((item) => {
+                        modalList.appendChild(item.cloneNode(true));
+                });
+        }
+        const subtitle = modal.querySelector(".pdf-modal-subttitle");
+        if (subtitle) {
+                const mat = panel.dataset.matricula || "";
+                subtitle.textContent = mat ? `Garantía ${mat}` : "";
+        }
+}
+
 function initRowSelection() {
-			tbody.addEventListener("click", async function (e) {
+                        tbody.addEventListener("click", async function (e) {
 				const row = e.target.closest(".guarantees-table__row");
 				if (!row) return;
 				const rows = Array.from(
@@ -1428,6 +1457,8 @@ function initRowSelection() {
                                 if (detailCache.has(id)) {
                                         const data = detailCache.get(id);
                                         nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                        nextPanel.dataset.matricula = data.matricula || rowData.matricula || "";
+                                        syncPdfModalDocs(nextPanel);
                                 } else {
                                         nextPanel.classList.add("loading");
                                         nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
@@ -1458,6 +1489,8 @@ function initRowSelection() {
                                                 const data = await fetchDetail(id);
                                                 if (nextPanel.dataset.loadedId === String(id)) {
                                                         nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                                        nextPanel.dataset.matricula = data.matricula || rowData.matricula || "";
+                                                        syncPdfModalDocs(nextPanel);
                                                 }
                                         } catch (e) {
                                                 console.error("❌ Error fetch detalle:", e);
@@ -1475,37 +1508,80 @@ function initRowSelection() {
                 }
 		initRowSelection();
 
-		(() => {
-			const modal = document.querySelector(".pdf-modal");
-			if (!modal) return;
-			const iframe = modal.querySelector(".pdf-modal__iframe");
-			const dl = modal.querySelector(".pdf-modal__download");
+                (() => {
+                        const modal = document.querySelector(".pdf-modal");
+                        if (!modal) return;
+                        const iframe = modal.querySelector(".pdf-modal__iframe");
+                        const dl = modal.querySelector(".pdf-modal__download");
+                        const prevBtn = modal.querySelector(".pdf-modal__nav-btn--prev");
+                        const nextBtn = modal.querySelector(".pdf-modal__nav-btn--next");
+                        let currentIdx = -1;
 
-			document.addEventListener("click", (e) => {
-				if (e.target.closest(".detail__docs-btn")) {
-					const btn = e.target.closest(".detail__docs-btn");
-					iframe.src = btn.dataset.docUrl;
-					dl.href = btn.dataset.docUrl;
-					modal.classList.add("visible");
-				}
-			});
+                        function getButtons() {
+                                return Array.from(
+                                        modal.querySelectorAll(".pdf-modal__docs-list .detail__docs-btn")
+                                );
+                        }
 
-			modal.querySelector(".pdf-modal__close").addEventListener("click", () => {
-				modal.classList.remove("visible");
-				iframe.src = "";
-			});
-			modal.addEventListener(
-				"click",
-				(e) => e.target === modal && modal.classList.remove("visible")
-			);
-			document.addEventListener(
-				"keydown",
-				(e) =>
-					e.key === "Escape" &&
-					modal.classList.contains("visible") &&
-					modal.classList.remove("visible")
-			);
-		})();
+                        function openDocByIndex(idx) {
+                                const buttons = getButtons();
+                                if (idx < 0 || idx >= buttons.length) return;
+                                const prevIdx = currentIdx;
+                                currentIdx = idx;
+                                const btn = buttons[idx];
+                                iframe.src = btn.dataset.docUrl;
+                                dl.href = btn.dataset.docUrl;
+                                buttons.forEach((b, i) => b.classList.toggle("active", i === idx));
+                                prevBtn.disabled = idx === 0;
+                                nextBtn.disabled = idx === buttons.length - 1;
+                                const direction = prevIdx === -1 || idx > prevIdx ? "right" : "left";
+                                iframe.classList.add(
+                                        direction === "right" ? "slide-in-right" : "slide-in-left"
+                                );
+                                iframe.addEventListener(
+                                        "animationend",
+                                        () =>
+                                                iframe.classList.remove(
+                                                        "slide-in-right",
+                                                        "slide-in-left"
+                                                ),
+                                        { once: true }
+                                );
+                        }
+
+                        document.addEventListener("click", (e) => {
+                                const btn = e.target.closest(".detail__docs-btn");
+                                if (btn) {
+                                        const idx = parseInt(btn.dataset.docIndex || "0", 10);
+                                        openDocByIndex(idx);
+                                        modal.classList.add("visible");
+                                }
+                        });
+
+                        prevBtn.addEventListener("click", () => openDocByIndex(currentIdx - 1));
+                        nextBtn.addEventListener("click", () => openDocByIndex(currentIdx + 1));
+
+                        function closeModal() {
+                                modal.classList.remove("visible");
+                                iframe.src = "";
+                                dl.href = "#";
+                                currentIdx = -1;
+                                prevBtn.disabled = true;
+                                nextBtn.disabled = true;
+                                getButtons().forEach((b) => b.classList.remove("active"));
+                        }
+
+                        modal.querySelector(".pdf-modal__close").addEventListener("click", closeModal);
+                        modal.addEventListener(
+                                "click",
+                                (e) => e.target === modal && closeModal()
+                        );
+                        document.addEventListener("keydown", (e) => {
+                                if (e.key === "Escape" && modal.classList.contains("visible")) {
+                                        closeModal();
+                                }
+                        });
+                })();
 
                 (() => {
                         const filters = document.querySelector(".guarantees-list__filters"),
