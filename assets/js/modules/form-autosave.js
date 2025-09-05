@@ -778,7 +778,7 @@ export default function initAutosave() {
                                                        field.setText(String(val));
                                                        field.setFontSize(9);
                                                        field.acroField.setDefaultAppearance(
-                                                               `0.7 0.7 0.7 rg /${robotoName} 9 Tf`
+                                                               `0.5 0.5 0.5 rg /${robotoName} 9 Tf`
                                                        );
                                                        field.updateAppearances(robotoMono);
                                                } catch (e) {
