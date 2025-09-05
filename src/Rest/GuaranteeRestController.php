@@ -239,6 +239,11 @@ class GuaranteeRestController
         }
 
         $post_id = (int) $request['id'];
+        $post = get_post($post_id);
+
+        if ($post && (int) $post->post_author === (int) $uid) {
+            return true;
+        }
 
         // Obtener el usuario propietario profesional
         $profesional = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
@@ -815,6 +820,7 @@ class GuaranteeRestController
             ? rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/document/certificado')
             : '';
         if ($certificate_url) {
+            $certificate_url = add_query_arg('_wpnonce', wp_create_nonce('wp_rest'), $certificate_url);
             $scheme = wp_parse_url(home_url(), PHP_URL_SCHEME);
             $certificate_url = set_url_scheme($certificate_url, $scheme);
         }

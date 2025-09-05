@@ -47,6 +47,7 @@ use GarantiasOnline360VO\Svg;
     } else {
         $js_user_role = 'user';
     }
+    $icon_pdf_html = Svg::icon('pdf');
     ?>
     <script>
         window.__GO_CONFIG__ = {
@@ -56,6 +57,9 @@ use GarantiasOnline360VO\Svg;
             },
             user: {
                 role: "<?php echo esc_js($js_user_role); ?>"
+            },
+            icons: {
+                pdf: `<?php echo addslashes($icon_pdf_html); ?>`
             }
         };
     </script>
