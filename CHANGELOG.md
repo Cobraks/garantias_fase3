@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.1.30 - 2025-09-05
+- Migrado el rellenado de formularios PDF a **pdftk** con wrapper PHP y binario embebido.
+- Reintroducidas las librerías FPDF y FPDI para futuros fallbacks y ampliaciones.
+- Eliminado SetaPDF del repositorio.
+
 ## 0.1.29 - 2025-09-05
 - Evita cargas múltiples de SetaPDF ejecutando el plugin tras `plugins_loaded`.
 - Preparado el entorno para integrar la librería completa de SetaPDF.

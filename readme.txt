@@ -25,7 +25,8 @@ Consulta `CHANGELOG.md` para la cronología de mejoras.
 ## Preparación del PDF de la modalidad
 1. Diseña en InDesign el formulario con los campos de texto `pdf_combustible`, `pdf_cp` y `pdf_nombre_apellidos`.
 2. Exporta mediante **Archivo → Exportar → Adobe PDF (Interactivo)** e incluye "Formularios y medios".
-3. Sube el PDF a la biblioteca de WordPress y selecciónalo en la modalidad; SetaPDF se encargará de rellenar los campos.
+3. Sube el PDF a la biblioteca de WordPress y selecciónalo en la modalidad; pdftk se encargará de rellenar los campos.
+4. Asegúrate de colocar el binario de **pdftk** adecuado en `lib/pdftk-php/bin/`.
 
 ##Estructura de archivos
 garantias-online-360vo/

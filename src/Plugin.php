@@ -18,12 +18,19 @@ class Plugin
     {
         if (! self::$instance) {
             $base = dirname(__DIR__);
-            $seta = $base . '/lib/SetaPDF/autoload.php';
-            if (file_exists($seta)) {
-                require_once $seta;
-                error_log('[Plugin] loaded SetaPDF ' . $seta);
-            } else {
-                error_log('[Plugin] SetaPDF not found at ' . $seta);
+            $libs = [
+                'fpdf/fpdf.php'        => 'FPDF',
+                'fpdi/autoload.php'    => 'FPDI',
+                'pdftk-php/autoload.php' => 'pdftk-php',
+            ];
+            foreach ($libs as $rel => $name) {
+                $path = $base . '/lib/' . $rel;
+                if (file_exists($path)) {
+                    require_once $path;
+                    error_log('[Plugin] loaded ' . $name . ' ' . $path);
+                } else {
+                    error_log('[Plugin] ' . $name . ' not found at ' . $path);
+                }
             }
 
             self::$instance = new self();

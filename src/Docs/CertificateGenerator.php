@@ -2,9 +2,8 @@
 namespace GarantiasOnline360VO\Docs;
 
 use GarantiasOnline360VO\GuaranteeLogger;
-use setasign\SetaPDF\Loader;
-use setasign\SetaPDF\FormFiller;
-use setasign\SetaPDF\Core\Writer\StringWriter;
+use Pdftk\Pdf as PdftkPdf;
+use setasign\Fpdi\Fpdi;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -30,45 +29,69 @@ class CertificateGenerator
             error_log('[CertificateGenerator] template missing or unreadable: ' . $path);
             return null;
         }
-        try {
-            $combustible = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_vehiculo_combustible', true));
-            error_log('[CertificateGenerator] combustible ' . $combustible);
+        $combustible = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_vehiculo_combustible', true));
+        error_log('[CertificateGenerator] combustible ' . $combustible);
 
-            $cp = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_cliente_codigo_postal', true));
-            error_log('[CertificateGenerator] cp ' . $cp);
+        $cp = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_cliente_codigo_postal', true));
+        error_log('[CertificateGenerator] cp ' . $cp);
 
-            $nombre = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_cliente_nombre_y_apellidos', true));
-            error_log('[CertificateGenerator] nombre_apellidos ' . $nombre);
+        $nombre = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_cliente_nombre_y_apellidos', true));
+        error_log('[CertificateGenerator] nombre_apellidos ' . $nombre);
 
-            $data = [];
-            if ($combustible !== '') {
-                $data['pdf_combustible'] = $combustible;
-            }
-            if ($cp !== '') {
-                $data['pdf_cp'] = $cp;
-            }
-            if ($nombre !== '') {
-                $data['pdf_nombre_apellidos'] = $nombre;
-            }
-            error_log('[CertificateGenerator] field data ' . wp_json_encode($data));
+        $data = [];
+        if ($combustible !== '') {
+            $data['pdf_combustible'] = $combustible;
+        }
+        if ($cp !== '') {
+            $data['pdf_cp'] = $cp;
+        }
+        if ($nombre !== '') {
+            $data['pdf_nombre_apellidos'] = $nombre;
+        }
+        error_log('[CertificateGenerator] field data ' . wp_json_encode($data));
 
-            $document = Loader::loadFile($path);
-            $formFiller = new FormFiller($document);
-            $fields = $formFiller->getFields();
-            foreach ($data as $field => $value) {
-                $fields->get($field)->setValue($value);
+        $content = '';
+        $binary = dirname(__DIR__, 2) . '/lib/pdftk-php/bin/' . (strncasecmp(PHP_OS, 'WIN', 3) === 0 ? 'pdftk.exe' : 'pdftk');
+        if (is_file($binary) && is_executable($binary)) {
+            try {
+                $pdftk = new PdftkPdf($binary);
+                $tmpOut = tempnam(sys_get_temp_dir(), 'pdf');
+                $pdftk->fillForm($path, $data, $tmpOut);
+                $content = file_get_contents($tmpOut) ?: '';
+                @unlink($tmpOut);
+                error_log('[CertificateGenerator] pdftk form filled');
+            } catch (\Throwable $e) {
+                error_log('[CertificateGenerator] pdftk error ' . $e->getMessage());
             }
-            $writer = new StringWriter();
-            $document->setWriter($writer);
-            $document->save()->finish();
-            $content = $writer->getBuffer();
-            error_log('[CertificateGenerator] SetaPDF form filled');
-        } catch (\Throwable $e) {
-            error_log('[CertificateGenerator] SetaPDF error ' . $e->getMessage());
-            return null;
+        } else {
+            error_log('[CertificateGenerator] pdftk binary missing or not executable');
         }
 
-        if ($content === null || $content === '') {
+        if ($content === '') {
+            // Fallback: write text using FPDI
+            try {
+                $pdf = new Fpdi();
+                $pdf->setSourceFile($path);
+                $tpl = $pdf->importPage(1);
+                $size = $pdf->getTemplateSize($tpl);
+                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $pdf->useTemplate($tpl);
+                $pdf->SetFont('Helvetica', '', 12);
+                $y = 10;
+                foreach ($data as $value) {
+                    $pdf->SetXY(10, $y);
+                    $pdf->Write(5, $value);
+                    $y += 6;
+                }
+                $content = $pdf->Output('S');
+                error_log('[CertificateGenerator] fallback FPDI used');
+            } catch (\Throwable $e) {
+                error_log('[CertificateGenerator] FPDI fallback error ' . $e->getMessage());
+                return null;
+            }
+        }
+
+        if ($content === '') {
             error_log('[CertificateGenerator] no content generated');
             return null;
         }
