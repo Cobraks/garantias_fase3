@@ -42,3 +42,7 @@ export function getIcon(name) {
         }
         return "";
 }
+
+export function getAssetsUrl() {
+        return getRawConfig().assets?.base || "";
+}

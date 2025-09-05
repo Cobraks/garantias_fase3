@@ -6,7 +6,6 @@ use WP_REST_Server;
 use WP_Query;
 use WP_REST_Response;
 use WP_Error;
-use GarantiasOnline360VO\Docs\CertificateGenerator;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\GuaranteeLogger;
 
@@ -115,6 +114,20 @@ class GuaranteeRestController
                 ],
             ]
         );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/certificate',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'upload_certificate'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
         add_filter('rest_pre_serve_request', [__CLASS__, 'serve_document'], 10, 4);
 
         // Limpieza de transients al guardar/borrar garantías
@@ -175,6 +188,31 @@ class GuaranteeRestController
             }
         }
         return $served;
+    }
+
+    public static function upload_certificate($request)
+    {
+        $id = (int) $request['id'];
+        if (!$id || get_post_type($id) !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error('invalid_id', __('ID de garantía no válido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+        $binary = $request->get_body();
+        if ($binary === '') {
+            $binary = file_get_contents('php://input');
+        }
+        if ($binary === '' || $binary === false) {
+            return new WP_Error('empty_pdf', __('PDF no recibido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+        $hash = PrivateDocsManager::store($binary, 'pdf');
+        if (!$hash) {
+            return new WP_Error('store_error', __('No se pudo guardar el certificado', 'garantias-online-360vo'), ['status' => 500]);
+        }
+        update_post_meta($id, 'documentacion_certificado_hash', $hash);
+        $url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/document/certificado?_wpnonce=' . wp_create_nonce('wp_rest'));
+        $scheme = wp_parse_url(home_url(), PHP_URL_SCHEME);
+        $url = set_url_scheme($url, $scheme);
+        GuaranteeLogger::log(get_current_user_id(), $id, 'document_uploaded', 'certificado');
+        return new WP_REST_Response(['certificate_url' => $url], 201);
     }
 
     public static function can_list($request)
@@ -265,7 +303,7 @@ class GuaranteeRestController
         $post_id = isset($request['id']) ? absint($request['id']) : 0;
         $uuid    = isset($request['uuid']) ? sanitize_text_field($request['uuid']) : '';
         $data    = isset($request['data']) && is_array($request['data']) ? $request['data'] : [];
-        $certificate_url = '';
+        $template_url = '';
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
@@ -522,6 +560,12 @@ class GuaranteeRestController
                 }
             }
             error_log('[AUTOSAVE] Saved garantia_contratada for ID ' . $post_id . ': ' . wp_json_encode($gc));
+            if (isset($gc['garantia'])) {
+                $file = function_exists('get_field') ? get_field('detalles_modalidad_documentos_certificado_garantia', $gc['garantia']) : null;
+                if (is_array($file) && isset($file['url'])) {
+                    $template_url = $file['url'];
+                }
+            }
             unset($data['garantia_contratada']);
         }
 
@@ -564,17 +608,6 @@ class GuaranteeRestController
             $ps = sanitize_text_field($data['post_status']);
             if ($ps === 'publish') {
                 wp_update_post(['ID' => $post_id, 'post_status' => 'publish']);
-                error_log('[AUTOSAVE] generating certificate for ' . $post_id);
-                $hash = CertificateGenerator::generate($post_id);
-                error_log('[AUTOSAVE] certificate hash ' . $hash);
-                if ($hash) {
-                    update_post_meta($post_id, 'documentacion_certificado_hash', $hash);
-                    $certificate_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/document/certificado?_wpnonce=' . wp_create_nonce('wp_rest'));
-                    $scheme = wp_parse_url(home_url(), PHP_URL_SCHEME);
-                    $certificate_url = set_url_scheme($certificate_url, $scheme);
-                } else {
-                    error_log('[AUTOSAVE] certificate generation failed');
-                }
             }
             unset($data['post_status']);
         }
@@ -593,7 +626,7 @@ class GuaranteeRestController
         return new WP_REST_Response([
             'id' => $post_id,
             'uuid' => $uuid,
-            'certificate_url' => $certificate_url,
+            'template_url' => $template_url,
         ]);
     }
 

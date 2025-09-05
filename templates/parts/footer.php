@@ -56,6 +56,9 @@ use GarantiasOnline360VO\Svg;
             },
             user: {
                 role: "<?php echo esc_js($js_user_role); ?>"
+            },
+            assets: {
+                base: "<?php echo esc_url(plugins_url('assets/', GARANTIAS360VO__FILE__)); ?>"
             }
         };
     </script>
@@ -108,6 +111,9 @@ use GarantiasOnline360VO\Svg;
                         ?>",
                 currentUserId: <?php echo (int) get_current_user_id(); ?>
             },
+            assets: {
+                base: "<?php echo esc_url(plugins_url('assets/', GARANTIAS360VO__FILE__)); ?>"
+            },
             icons: {
                 percent: `<?php echo addslashes($icon_percent_html); ?>`,
                 check: `<?php echo addslashes($icon_check_html); ?>`,
@@ -117,6 +123,7 @@ use GarantiasOnline360VO\Svg;
             }
         };
     </script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"></script>
     <script src="<?php echo esc_url(plugins_url('assets/js/nueva_garantia.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 
 <?php endif; ?>
