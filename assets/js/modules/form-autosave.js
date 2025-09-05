@@ -674,6 +674,8 @@ export default function initAutosave() {
                                 try {
                                         const pdfBytes = await fetch(json.template_url).then((r) => r.arrayBuffer());
                                         const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                                        await import("../fontkit.umd.min.js");
+                                        pdfDoc.registerFontkit(globalThis.fontkit);
                                         const form = pdfDoc.getForm();
 
                                         const fontUrl = new URL(
