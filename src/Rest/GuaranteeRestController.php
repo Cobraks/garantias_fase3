@@ -170,7 +170,14 @@ class GuaranteeRestController
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_downloaded', $type);
         $response = new WP_REST_Response($binary, 200);
         $response->header('Content-Type', 'application/pdf');
-        $disposition = sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s", $filename, rawurlencode($filename));
+        $force_download = $request->get_param('download');
+        $type_header = $force_download ? 'attachment' : 'inline';
+        $disposition = sprintf(
+            "%s; filename=\"%s\"; filename*=UTF-8''%s",
+            $type_header,
+            $filename,
+            rawurlencode($filename)
+        );
         $response->header('Content-Disposition', $disposition);
         return $response;
     }
@@ -239,6 +246,11 @@ class GuaranteeRestController
         }
 
         $post_id = (int) $request['id'];
+        $post = get_post($post_id);
+
+        if ($post && (int) $post->post_author === (int) $uid) {
+            return true;
+        }
 
         // Obtener el usuario propietario profesional
         $profesional = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
@@ -807,7 +819,6 @@ class GuaranteeRestController
         $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
         $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
 
-        $contrato_url = get_post_meta($id, 'docs_url_contrato', true) ?: '#';
         $condicionado_url = get_post_meta($id, 'docs_url_condicionado', true) ?: '#';
         $cobertura_url = get_post_meta($id, 'docs_url_cobertura', true) ?: '#';
         $factura_url = get_post_meta($id, 'docs_url_factura', true) ?: '#';
@@ -816,6 +827,7 @@ class GuaranteeRestController
             ? rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/document/certificado')
             : '';
         if ($certificate_url) {
+            $certificate_url = add_query_arg('_wpnonce', wp_create_nonce('wp_rest'), $certificate_url);
             $scheme = wp_parse_url(home_url(), PHP_URL_SCHEME);
             $certificate_url = set_url_scheme($certificate_url, $scheme);
         }
@@ -874,7 +886,6 @@ class GuaranteeRestController
             'email_vendedor' => $email_vendedor ?: '',
             'avatar_vendedor' => $avatar_vendedor ?: '',
             'vendedor_url' => $vendedor_url,
-            'contrato_url' => $contrato_url,
             'condicionado_url' => $condicionado_url,
             'cobertura_url' => $cobertura_url,
             'factura_url' => $factura_url,

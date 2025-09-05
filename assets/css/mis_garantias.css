@@ -632,10 +632,59 @@ section.guarantees-list.sticky-active {
 .pdf-modal__docs-list.detail__docs-list {
     padding: var(--spacing-2);
     padding-top: 0;
+    justify-content: center;
 }
 
 .pdf-modal .detail__docs-btn {
     width: fit-content;
+}
+
+.pdf-modal .detail__docs-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+
+.pdf-modal__spinner {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 10;
+}
+
+.pdf-modal__spinner.active {
+    display: flex;
+}
+
+.pdf-modal__nav {
+    position: absolute;
+    bottom: var(--spacing-2);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+.pdf-modal__nav-btn {
+    padding: var(--spacing-1) var(--spacing-2);
+    background: var(--neutral95);
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background var(--transition-speed), border-color var(--transition-speed);
+}
+
+.pdf-modal__nav-btn:hover:not(:disabled) {
+    background: var(--neutral90);
+    border-color: var(--primary-color);
+}
+
+.pdf-modal__nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* --------------------------------------------------
