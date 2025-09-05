@@ -695,9 +695,9 @@ export default function initAutosave() {
                                                 field.setText(
                                                         datosVehiculo.combustible
                                                 );
-                                               field.setFontSize(9);
+                                               field.setFontSize(8);
                                                field.acroField.setDefaultAppearance(
-                                                       `0.3 0.3 0.3 rg /${robotoName} 9 Tf`
+                                                       `0.3 0.3 0.3 rg /${robotoName} 8 Tf`
                                                );
                                                field.updateAppearances(robotoMono);
                                        }
@@ -706,9 +706,9 @@ export default function initAutosave() {
                                                field.setText(
                                                        datosCliente.codigo_postal
                                                );
-                                               field.setFontSize(9);
+                                               field.setFontSize(8);
                                                field.acroField.setDefaultAppearance(
-                                                       `0.3 0.3 0.3 rg /${robotoName} 9 Tf`
+                                                       `0.3 0.3 0.3 rg /${robotoName} 8 Tf`
                                                );
                                                field.updateAppearances(robotoMono);
                                        }
@@ -719,9 +719,9 @@ export default function initAutosave() {
                                                field.setText(
                                                        datosCliente.nombre_y_apellidos
                                                );
-                                               field.setFontSize(9);
+                                               field.setFontSize(8);
                                                field.acroField.setDefaultAppearance(
-                                                       `0.3 0.3 0.3 rg /${robotoName} 9 Tf`
+                                                       `0.3 0.3 0.3 rg /${robotoName} 8 Tf`
                                                );
                                                field.updateAppearances(robotoMono);
                                        }
