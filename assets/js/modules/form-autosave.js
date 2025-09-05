@@ -674,17 +674,91 @@ export default function initAutosave() {
                                 try {
                                         const pdfBytes = await fetch(json.template_url).then((r) => r.arrayBuffer());
                                         const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                                        await import("../fontkit.umd.min.js");
+                                        pdfDoc.registerFontkit(globalThis.fontkit);
                                         const form = pdfDoc.getForm();
-                                        if (datosVehiculo.combustible)
-                                                form.getTextField("pdf_combustible").setText(datosVehiculo.combustible);
-                                        if (datosCliente.codigo_postal)
-                                                form.getTextField("pdf_cp").setText(datosCliente.codigo_postal);
-                                        if (datosCliente.nombre_y_apellidos)
-                                                form
-                                                        .getTextField("pdf_nombre_apellidos")
-                                                        .setText(datosCliente.nombre_y_apellidos);
-                                        form.flatten();
-                                        const filled = await pdfDoc.save();
+
+                                        const fontUrl = new URL(
+                                                "../../fonts/RobotoMono-Regular.ttf",
+                                                import.meta.url
+                                        );
+                                        const robotoBytes = await fetch(fontUrl).then((r) =>
+                                                r.arrayBuffer()
+                                        );
+                                        const robotoMono = await pdfDoc.embedFont(robotoBytes);
+                                        const robotoName = robotoMono.name;
+
+                                       const getSelectText = (id) => {
+                                               const el = document.getElementById(id);
+                                               if (el && el.tagName === "SELECT") {
+                                                       return (
+                                                               el.options[el.selectedIndex]?.text || ""
+                                                       );
+                                               }
+                                               return "";
+                                       };
+
+                                       const pdfFieldMap = {
+                                               pdf_id_matricula: datosVehiculo.matricula,
+                                               pdf_nombre_apellidos: datosCliente.nombre_y_apellidos,
+                                               pdf_nif: datosCliente.dni,
+                                               pdf_direccion: datosCliente.direccion,
+                                               pdf_cp: datosCliente.codigo_postal,
+                                               pdf_localidad: datosCliente.localidad,
+                                               pdf_provincia:
+                                                       getSelectText("provincia") ||
+                                                       datosCliente.provincia,
+                                               pdf_telefono: datosCliente.telefono,
+                                               pdf_email: datosCliente.email,
+                                               pdf_matricula: datosVehiculo.matricula,
+                                               pdf_fecha_primera_mat:
+                                                       datosVehiculo.primera_matriculacion,
+                                               pdf_marca:
+                                                       getSelectText("marca") ||
+                                                       datosVehiculo.marca,
+                                               pdf_modelo:
+                                                       getSelectText("modelo") ||
+                                                       datosVehiculo.modelo,
+                                               pdf_cc: datosVehiculo.cilindrada,
+                                               pdf_bastidor: datosVehiculo.numero_bastidor,
+                                               pdf_km: datosVehiculo.kilometros,
+                                               pdf_cv: datosVehiculo.potencia,
+                                               pdf_traccion:
+                                                       getSelectText("traccion") ||
+                                                       getSelectText("traccion_camion") ||
+                                                       datosVehiculo.traccion ||
+                                                       datosVehiculo.traccion_camion,
+                                               pdf_combustible:
+                                                       getSelectText("combustible") ||
+                                                       datosVehiculo.combustible,
+                                               pdf_tipo_vehiculo:
+                                                       getSelectText("tipo_vehiculo") ||
+                                                       datosVehiculo.tipo_vehiculo,
+                                               pdf_periodo_cobertura:
+                                                       getSelectText("duracion"),
+                                               pdf_fecha_inicio:
+                                                       payload.estado_garantia?.inicio,
+                                               pdf_fecha_finalizacion:
+                                                       payload.estado_garantia?.finalizacion,
+                                       };
+
+                                       Object.entries(pdfFieldMap).forEach(([name, val]) => {
+                                               if (!val) return;
+                                               try {
+                                                       const field = form.getTextField(name);
+                                                       field.setText(String(val));
+                                                       field.setFontSize(10);
+                                                       field.acroField.setDefaultAppearance(
+                                                               `0.3 0.3 0.3 rg /${robotoName} 10 Tf`
+                                                       );
+                                                       field.updateAppearances(robotoMono);
+                                               } catch (e) {
+                                                       // el campo no existe en el PDF
+                                               }
+                                       });
+
+                                       form.flatten();
+                                       const filled = await pdfDoc.save();
                                         const up = await fetch(
                                                 `${getRestRoot()}go/v1/guarantees/${draftId}/certificate`,
                                                 {
