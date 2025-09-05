@@ -803,7 +803,7 @@ export default function initAutosave() {
                                                                const widget = widgets[0];
                                                                const { x, y, width, height } =
                                                                        widget.getRectangle();
-                                                               const page = widget.getPage();
+                                                               const page = pdfDoc.getPages()[0];
                                                                if (firmaSello.sello) {
                                                                        const selloBytes = await fetch(
                                                                                firmaSello.sello
