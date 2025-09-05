@@ -16,33 +16,23 @@ class Plugin
     /** Singleton */
     public static function run(): void
     {
-        $base = dirname(__DIR__);
-
-        $fpdf = $base . '/lib/fpdf/fpdf.php';
-        if (file_exists($fpdf)) {
-            require_once $fpdf;
-            error_log('[Plugin] loaded FPDF ' . $fpdf);
-        } else {
-            error_log('[Plugin] FPDF not found at ' . $fpdf);
-        }
-
-        $fpdi = $base . '/lib/fpdi/autoload.php';
-        if (file_exists($fpdi)) {
-            require_once $fpdi;
-            error_log('[Plugin] loaded FPDI ' . $fpdi);
-        } else {
-            error_log('[Plugin] FPDI not found at ' . $fpdi);
-        }
-
-        $fpdm = $base . '/lib/fpdm/autoload.php';
-        if (file_exists($fpdm)) {
-            require_once $fpdm;
-            error_log('[Plugin] loaded FPDM ' . $fpdm);
-        } else {
-            error_log('[Plugin] FPDM not found at ' . $fpdm);
-        }
-
         if (! self::$instance) {
+            $base = dirname(__DIR__);
+            $libs = [
+                'fpdf/fpdf.php'        => 'FPDF',
+                'fpdi/autoload.php'    => 'FPDI',
+                'pdftk-php/autoload.php' => 'pdftk-php',
+            ];
+            foreach ($libs as $rel => $name) {
+                $path = $base . '/lib/' . $rel;
+                if (file_exists($path)) {
+                    require_once $path;
+                    error_log('[Plugin] loaded ' . $name . ' ' . $path);
+                } else {
+                    error_log('[Plugin] ' . $name . ' not found at ' . $path);
+                }
+            }
+
             self::$instance = new self();
             self::$instance->init_hooks();
         }
@@ -132,6 +122,3 @@ class Plugin
 // --- Hooks de activación / desactivación ---
 register_activation_hook(GARANTIAS360VO__FILE__,   [Plugin::class, 'activate']);
 register_deactivation_hook(GARANTIAS360VO__FILE__, [Plugin::class, 'deactivate']);
-
-// Arrancamos el plugin
-Plugin::run();
