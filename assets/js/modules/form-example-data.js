@@ -6,7 +6,7 @@ import { debouncedUpdateSummary } from "./form-summary.js";
 import { filtrarModalidades } from "./form-calculations.js";
 
 function generarMatriculaAleatoria() {
-        const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const letras = "BCDFGHJKLMNPRSTVWXYZ";
         const numeros = Math.floor(1000 + Math.random() * 9000);
         let sufijo = "";
         for (let i = 0; i < 3; i++) {

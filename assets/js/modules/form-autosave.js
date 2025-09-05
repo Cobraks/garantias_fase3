@@ -650,6 +650,7 @@ export default function initAutosave() {
                         console.log("[AUTOSAVE] response status", res.status);
                         const json = await res.json();
                         console.log("[AUTOSAVE] response json", json);
+                        const firmaSello = json.firma_sello || {};
                         if (!res.ok) {
                                 if (res.status === 409 && json?.message) {
                                         alert(json.message);
@@ -785,6 +786,101 @@ export default function initAutosave() {
                                                        // el campo no existe en el PDF
                                                }
                                        });
+
+                                       try {
+                                               if (firmaSello.add_firma_sello) {
+                                                       let fsField;
+                                                       try {
+                                                               fsField = form.getField(
+                                                                       "pdf_firma_vendedor"
+                                                               );
+                                                       } catch (e) {
+                                                               fsField = undefined;
+                                                       }
+                                                       const widgets =
+                                                               fsField?.acroField?.getWidgets?.() || [];
+                                                       if (widgets.length) {
+                                                               const widget = widgets[0];
+                                                               const { x, y, width, height } =
+                                                                       widget.getRectangle();
+                                                               const page = pdfDoc.getPages()[0];
+                                                               if (firmaSello.sello) {
+                                                                       const selloBytes = await fetch(
+                                                                               firmaSello.sello
+                                                                       ).then((r) => r.arrayBuffer());
+                                                                       const selloImg = firmaSello.sello.match(
+                                                                               /\.png$/i
+                                                                       )
+                                                                               ? await pdfDoc.embedPng(
+                                                                                       selloBytes
+                                                                                 )
+                                                                               : await pdfDoc.embedJpg(
+                                                                                       selloBytes
+                                                                                 );
+                                                                       let selloWidth = width * 0.6;
+                                                                       let selloHeight =
+                                                                               (selloImg.height /
+                                                                                       selloImg.width) *
+                                                                               selloWidth;
+                                                                       const selloX =
+                                                                               x + (width - selloWidth) / 2;
+                                                                       const selloY =
+                                                                               y +
+                                                                               height -
+                                                                               selloHeight * 0.7;
+                                                                       const angle =
+                                                                               Math.random() * 10 - 5;
+                                                                       page.drawImage(selloImg, {
+                                                                               x: selloX,
+                                                                               y: selloY,
+                                                                               width: selloWidth,
+                                                                               height: selloHeight,
+                                                                               rotate: PDFLib.degrees(angle),
+                                                                       });
+                                                               }
+                                                               if (firmaSello.firma) {
+                                                                       const firmaBytes = await fetch(
+                                                                               firmaSello.firma
+                                                                       ).then((r) => r.arrayBuffer());
+                                                                       const firmaImg = firmaSello.firma.match(
+                                                                               /\.png$/i
+                                                                       )
+                                                                               ? await pdfDoc.embedPng(
+                                                                                       firmaBytes
+                                                                                 )
+                                                                               : await pdfDoc.embedJpg(
+                                                                                       firmaBytes
+                                                                                 );
+                                                                       let firmaWidth = width * 0.8;
+                                                                       let firmaHeight =
+                                                                               (firmaImg.height /
+                                                                                       firmaImg.width) *
+                                                                               firmaWidth;
+                                                                       if (firmaHeight > height) {
+                                                                               firmaHeight = height;
+                                                                               firmaWidth =
+                                                                                       (firmaImg.width /
+                                                                                               firmaImg.height) *
+                                                                                       firmaHeight;
+                                                                       }
+                                                                       const firmaX =
+                                                                               x + (width - firmaWidth) / 2;
+                                                                       const firmaY = y;
+                                                                       page.drawImage(firmaImg, {
+                                                                               x: firmaX,
+                                                                               y: firmaY,
+                                                                               width: firmaWidth,
+                                                                               height: firmaHeight,
+                                                                       });
+                                                               }
+                                                       }
+                                               }
+                                       } catch (e) {
+                                               console.error(
+                                                       "[AUTOSAVE] firma/sello error",
+                                                       e
+                                               );
+                                       }
 
                                        form.flatten();
                                        const filled = await pdfDoc.save();
