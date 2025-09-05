@@ -16,17 +16,16 @@ class Plugin
     /** Singleton */
     public static function run(): void
     {
-        $base = dirname(__DIR__);
-
-        $seta = $base . '/lib/SetaPDF/autoload.php';
-        if (file_exists($seta)) {
-            require_once $seta;
-            error_log('[Plugin] loaded SetaPDF ' . $seta);
-        } else {
-            error_log('[Plugin] SetaPDF not found at ' . $seta);
-        }
-
         if (! self::$instance) {
+            $base = dirname(__DIR__);
+            $seta = $base . '/lib/SetaPDF/autoload.php';
+            if (file_exists($seta)) {
+                require_once $seta;
+                error_log('[Plugin] loaded SetaPDF ' . $seta);
+            } else {
+                error_log('[Plugin] SetaPDF not found at ' . $seta);
+            }
+
             self::$instance = new self();
             self::$instance->init_hooks();
         }

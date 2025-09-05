@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.29 - 2025-09-05
+- Evita cargas múltiples de SetaPDF ejecutando el plugin tras `plugins_loaded`.
+- Preparado el entorno para integrar la librería completa de SetaPDF.
+
 ## 0.1.28 - 2025-09-05
 - Migración a SetaPDF-FormFiller para completar campos de formularios PDF.
 - Eliminadas las dependencias FPDF, FPDI y FPDM.
