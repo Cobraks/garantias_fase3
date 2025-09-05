@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 0.1.32 - 2025-09-05
+- Permitida la letra R en validaciones de matrícula y datos de ejemplo.
+- Inserción de firma y sello del vendedor en el certificado PDF.
+
 ## 0.1.31 - 2025-09-05
 - Relleno de certificados trasladado al navegador usando **pdf-lib**.
 - Añadido endpoint REST para subir el PDF generado desde el cliente.

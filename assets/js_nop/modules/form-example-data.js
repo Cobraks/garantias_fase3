@@ -4,6 +4,16 @@
 import { updateNextButtonState } from "./form-navigation.js";
 import { debouncedUpdateSummary } from "./form-summary.js";
 
+function generarMatriculaAleatoria() {
+        const letras = "BCDFGHJKLMNPRSTVWXYZ";
+        const numeros = Math.floor(1000 + Math.random() * 9000);
+        let sufijo = "";
+        for (let i = 0; i < 3; i++) {
+                sufijo += letras.charAt(Math.floor(Math.random() * letras.length));
+        }
+        return `${numeros}${sufijo}`;
+}
+
 /*
     - Rellena todos los campos del formulario con datos de ejemplo realistas.
     - Solo se ejecuta si existe el botón #rellenar_ejemplo.
@@ -20,7 +30,7 @@ function rellenarDatosEjemplo() {
 		cambio: "manual", // value exacto del option
 		kilometros: "50000",
 		fecha_primera_matriculacion: "2018-05-10",
-		matricula: "1234JKL",
+                matricula: generarMatriculaAleatoria(),
 		numero_bastidor: "WBA8D61070A123456",
 		precio_venta: "17500",
 		potencia: "150",
