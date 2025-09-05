@@ -721,7 +721,7 @@ export default function initAutosave() {
                                                );
                                                field.setFontSize(10);
                                                field.acroField.setDefaultAppearance(
-                                                       `0.3 0.3 0.3 rg /${robotoName} 10 Tf`
+                                                       `0.3 0.3 0.3 rg /${robotoName} 7 Tf`
                                                );
                                                field.updateAppearances(robotoMono);
                                        }
