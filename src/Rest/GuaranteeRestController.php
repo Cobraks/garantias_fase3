@@ -170,7 +170,14 @@ class GuaranteeRestController
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_downloaded', $type);
         $response = new WP_REST_Response($binary, 200);
         $response->header('Content-Type', 'application/pdf');
-        $disposition = sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s", $filename, rawurlencode($filename));
+        $force_download = $request->get_param('download');
+        $type_header = $force_download ? 'attachment' : 'inline';
+        $disposition = sprintf(
+            "%s; filename=\"%s\"; filename*=UTF-8''%s",
+            $type_header,
+            $filename,
+            rawurlencode($filename)
+        );
         $response->header('Content-Disposition', $disposition);
         return $response;
     }

@@ -1529,8 +1529,10 @@ function initRowSelection() {
                                 const prevIdx = currentIdx;
                                 currentIdx = idx;
                                 const btn = buttons[idx];
-                                iframe.src = btn.dataset.docUrl;
-                                dl.href = btn.dataset.docUrl;
+                                const url = btn.dataset.docUrl;
+                                iframe.src = url;
+                                const dlUrl = url.includes("?") ? `${url}&download=1` : `${url}?download=1`;
+                                dl.href = dlUrl;
                                 buttons.forEach((b, i) => b.classList.toggle("active", i === idx));
                                 prevBtn.disabled = idx === 0;
                                 nextBtn.disabled = idx === buttons.length - 1;
