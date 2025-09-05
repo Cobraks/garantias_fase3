@@ -776,9 +776,9 @@ export default function initAutosave() {
                                                try {
                                                        const field = form.getTextField(name);
                                                        field.setText(String(val));
-                                                       field.setFontSize(8);
+                                                       field.setFontSize(9);
                                                        field.acroField.setDefaultAppearance(
-                                                               `0.3 0.3 0.3 rg /${robotoName} 8 Tf`
+                                                               `0.7 0.7 0.7 rg /${robotoName} 9 Tf`
                                                        );
                                                        field.updateAppearances(robotoMono);
                                                } catch (e) {
