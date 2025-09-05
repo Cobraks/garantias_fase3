@@ -451,7 +451,7 @@ export function isPotentiallyValidMatricula(value) {
 	if (/^\d{0,4}$/.test(value)) {
 		return true;
 	}
-	if (/^\d{4}[BCDFGHJKLMNPSTVWXYZ]{0,3}$/i.test(value)) {
+        if (/^\d{4}[BCDFGHJKLMNPRSTVWXYZ]{0,3}$/i.test(value)) {
 		return true;
 	}
 	// Clásica
@@ -474,7 +474,7 @@ export function isPotentiallyValidMatricula(value) {
 		if (/^\d{1,4}$/.test(rest)) return true;
 		if (!/^\d{4}/.test(rest.slice(0, 4))) continue;
 		const tail = rest.slice(4);
-		if (/^[BCDFGHJKLMNPSTVWXYZ]{1,2}$/i.test(tail)) return true;
+                if (/^[BCDFGHJKLMNPRSTVWXYZ]{1,2}$/i.test(tail)) return true;
 	}
 	return false;
 }
@@ -486,7 +486,7 @@ export function validateMatriculaField(input, showError, isHardCheck = false) {
 	input.value = value;
 
 	// Moderna completa: 4 dígitos + 3 letras válidas
-	const modernFullRegex = /^\d{4}[BCDFGHJKLMNPSTVWXYZ]{3}$/i;
+        const modernFullRegex = /^\d{4}[BCDFGHJKLMNPRSTVWXYZ]{3}$/i;
 
 	if (!isHardCheck) {
 		// Caracteres no permitidos
@@ -591,12 +591,12 @@ export function validateMatriculaField(input, showError, isHardCheck = false) {
 				);
 			return false;
 		}
-		if (!(/[AEIOU]/.test(letter1) || /[BCDFGHJKLMNPSTVWXYZ]/.test(letter1))) {
+                if (!(/[AEIOU]/.test(letter1) || /[BCDFGHJKLMNPRSTVWXYZ]/.test(letter1))) {
 			if (showError)
 				setError(input, `Error en la parte numérica de la matrícula clásica.`);
 			return false;
 		}
-		if (!(letter2 === "U" || /[BCDFGHJKLMNPSTVWXYZ]/.test(letter2))) {
+                if (!(letter2 === "U" || /[BCDFGHJKLMNPRSTVWXYZ]/.test(letter2))) {
 			if (showError)
 				setError(input, `La última letra no puede ser A, E, I, O ni un número`);
 			return false;
