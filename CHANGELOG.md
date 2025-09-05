@@ -1,5 +1,23 @@
 # Historial de cambios
 
+## 0.1.31 - 2025-09-05
+- Relleno de certificados trasladado al navegador usando **pdf-lib**.
+- Añadido endpoint REST para subir el PDF generado desde el cliente.
+- Eliminadas dependencias FPDF, FPDI, FPDM y pdftk del plugin.
+
+## 0.1.30 - 2025-09-05
+- Migrado el rellenado de formularios PDF a **pdftk** con wrapper PHP y binario embebido.
+- Reintroducidas las librerías FPDF y FPDI para futuros fallbacks y ampliaciones.
+- Eliminado SetaPDF del repositorio.
+
+## 0.1.29 - 2025-09-05
+- Evita cargas múltiples de SetaPDF ejecutando el plugin tras `plugins_loaded`.
+- Preparado el entorno para integrar la librería completa de SetaPDF.
+
+## 0.1.28 - 2025-09-05
+- Migración a SetaPDF-FormFiller para completar campos de formularios PDF.
+- Eliminadas las dependencias FPDF, FPDI y FPDM.
+
 ## 0.1.27 - 2025-09-04
 - Eliminada la librería pdftk y su wrapper; FPDM se utiliza ahora para rellenar los campos del certificado.
 

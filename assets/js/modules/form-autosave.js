@@ -6,6 +6,7 @@ import {
         getRestRoot,
         getRestNonce,
         getIcon,
+        getAssetsUrl,
         getUserRole,
         getCurrentUserId,
 } from "./config.js";
@@ -669,6 +670,46 @@ export default function initAutosave() {
                                 localStorage.setItem("go_draft_uuid", draftUuid);
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
+                        let certificateUrl = "";
+                        if (finalize && json.template_url) {
+                                try {
+                                        const pdfBytes = await fetch(json.template_url).then((r) => r.arrayBuffer());
+                                        const fontBytes = await fetch(
+                                                getAssetsUrl() + "fonts/RobotoMono-Regular.ttf"
+                                        ).then((r) => r.arrayBuffer());
+                                        const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                                        const font = await pdfDoc.embedFont(fontBytes);
+                                        const lightGray = PDFLib.rgb(0.5, 0.5, 0.5);
+                                        const form = pdfDoc.getForm();
+                                        [
+                                                ["pdf_combustible", datosVehiculo.combustible],
+                                                ["pdf_cp", datosCliente.codigo_postal],
+                                                ["pdf_nombre_apellidos", datosCliente.nombre_y_apellidos],
+                                        ].forEach(([name, value]) => {
+                                                if (value) {
+                                                        const field = form.getTextField(name);
+                                                        field.setText(value);
+                                                        field.setFontSize(13);
+                                                        field.setFontColor(lightGray);
+                                                        field.updateAppearances(font);
+                                                }
+                                        });
+                                        form.flatten();
+                                        const filled = await pdfDoc.save();
+                                        const up = await fetch(
+                                                `${getRestRoot()}go/v1/guarantees/${draftId}/certificate`,
+                                                {
+                                                        method: "POST",
+                                                        headers: { "X-WP-Nonce": getRestNonce() },
+                                                        body: filled,
+                                                }
+                                        );
+                                        const upJson = await up.json();
+                                        certificateUrl = upJson.certificate_url || "";
+                                } catch (err) {
+                                        console.error("[AUTOSAVE] certificate upload error", err);
+                                }
+                        }
                         if (finalize) {
                                 showSuccess(
                                         garantia.metodo_pago,
@@ -676,7 +717,7 @@ export default function initAutosave() {
                                         garantia.precio,
                                         garantia.nivel_garantia,
                                         garantia.meses_contratados,
-                                        json.certificate_url
+                                        certificateUrl
                                 );
                         }
                         spinner.style.display = "none";
