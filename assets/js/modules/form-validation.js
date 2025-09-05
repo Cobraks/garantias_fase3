@@ -251,6 +251,8 @@ const specialValidators = {
 // === Función principal de validación ===
 export function validateField(input, showError = false, isHardCheck = false) {
         const id = input.id;
+        const touched = input.dataset.touched === "true";
+        showError = showError && (isHardCheck || touched);
 
 	// Vendedor / profesional (usuario-rol) visible
 	if (id === "usuario-rol") {
@@ -426,6 +428,7 @@ function setupInputValidationBehavior(input) {
         const id = input.id;
 
         const handler = debounce(() => {
+                input.dataset.touched = "true";
                 if (id === "matricula") {
                         lastCheckedPlate = "";
                         input.dataset.duplicate = "pending";
@@ -453,6 +456,7 @@ function setupInputValidationBehavior(input) {
         input.addEventListener("input", handler);
 
         input.addEventListener("blur", () => {
+                input.dataset.touched = "true";
                 if (inputLimitsApplier[id]) {
                         inputLimitsApplier[id](input);
                 }
@@ -468,12 +472,13 @@ function setupInputValidationBehavior(input) {
                 }
         });
 
-	if (input.tagName === "SELECT") {
-		input.addEventListener("change", () => {
-			validateField(input, true, true);
-			updateNextButtonState();
-		});
-	}
+        if (input.tagName === "SELECT") {
+                input.addEventListener("change", () => {
+                        input.dataset.touched = "true";
+                        validateField(input, true, true);
+                        updateNextButtonState();
+                });
+        }
 }
 
 // Inicializador
