@@ -645,6 +645,20 @@ section.guarantees-list.sticky-active {
     color: #fff;
 }
 
+.pdf-modal__spinner {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 10;
+}
+
+.pdf-modal__spinner.active {
+    display: flex;
+}
+
 .pdf-modal__nav {
     position: absolute;
     bottom: var(--spacing-2);

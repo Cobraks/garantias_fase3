@@ -139,6 +139,9 @@ use GarantiasOnline360VO\Svg;
         </div>
 
         <iframe class="pdf-modal__iframe" src="" title="<?php esc_attr_e('Vista previa de documento', 'garantias-online-360vo'); ?>"></iframe>
+        <div class="pdf-modal__spinner" aria-hidden="true">
+            <div class="spinner"></div>
+        </div>
         <a class="pdf-modal__download" href="#" download>
             <?php esc_html_e('Descargar PDF', 'garantias-online-360vo'); ?>
         </a>

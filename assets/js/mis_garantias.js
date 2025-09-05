@@ -1515,7 +1515,10 @@ function initRowSelection() {
                         const dl = modal.querySelector(".pdf-modal__download");
                         const prevBtn = modal.querySelector(".pdf-modal__nav-btn--prev");
                         const nextBtn = modal.querySelector(".pdf-modal__nav-btn--next");
+                        const spinner = modal.querySelector(".pdf-modal__spinner");
                         let currentIdx = -1;
+
+                        iframe.addEventListener("load", () => spinner && spinner.classList.remove("active"));
 
                         function getButtons() {
                                 return Array.from(
@@ -1530,6 +1533,7 @@ function initRowSelection() {
                                 currentIdx = idx;
                                 const btn = buttons[idx];
                                 const url = btn.dataset.docUrl;
+                                if (spinner) spinner.classList.add("active");
                                 iframe.src = url;
                                 const dlUrl = url.includes("?") ? `${url}&download=1` : `${url}?download=1`;
                                 dl.href = dlUrl;
@@ -1570,6 +1574,7 @@ function initRowSelection() {
                                 currentIdx = -1;
                                 prevBtn.disabled = true;
                                 nextBtn.disabled = true;
+                                if (spinner) spinner.classList.remove("active");
                                 getButtons().forEach((b) => b.classList.remove("active"));
                         }
 
