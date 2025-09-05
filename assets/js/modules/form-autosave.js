@@ -683,6 +683,43 @@ export default function initAutosave() {
                                                 form
                                                         .getTextField("pdf_nombre_apellidos")
                                                         .setText(datosCliente.nombre_y_apellidos);
+                                        if (json.sello && json.firma) {
+                                                const field = form.getTextField("pdf_firma_vendedor");
+                                                const widgets = field?.acroField?.getWidgets() || [];
+                                                if (widgets.length) {
+                                                        const widget = widgets[0];
+                                                        const page = widget.getPage();
+                                                        const { x, y, width, height } = widget.getRectangle();
+                                                        const [selloBytes, firmaBytes] = await Promise.all([
+                                                                fetch(json.sello).then((r) => r.arrayBuffer()),
+                                                                fetch(json.firma).then((r) => r.arrayBuffer()),
+                                                        ]);
+                                                        const selloImg = /\.jpe?g$/i.test(json.sello)
+                                                                ? await pdfDoc.embedJpg(selloBytes)
+                                                                : await pdfDoc.embedPng(selloBytes);
+                                                        const firmaImg = /\.jpe?g$/i.test(json.firma)
+                                                                ? await pdfDoc.embedJpg(firmaBytes)
+                                                                : await pdfDoc.embedPng(firmaBytes);
+                                                        const selloW = width * 1.1;
+                                                        const selloH = height * 0.6;
+                                                        const firmaW = width * 1.05;
+                                                        const firmaH = height * 0.5;
+                                                        page.drawImage(selloImg, {
+                                                                x: x - (selloW - width) / 2,
+                                                                y: y + height - selloH * 0.9,
+                                                                width: selloW,
+                                                                height: selloH,
+                                                                rotate: PDFLib.degrees(Math.random() * 6 - 3),
+                                                        });
+                                                        page.drawImage(firmaImg, {
+                                                                x: x - (firmaW - width) / 2,
+                                                                y: y - firmaH * 0.2,
+                                                                width: firmaW,
+                                                                height: firmaH,
+                                                        });
+                                                        form.removeField("pdf_firma_vendedor");
+                                                }
+                                        }
                                         form.flatten();
                                         const filled = await pdfDoc.save();
                                         const up = await fetch(
