@@ -39,7 +39,7 @@ function setupClearButtons() {
 			clearInfoMessage(input);
 			input.dispatchEvent(new Event("input"));
 
-                        updateNextButtonState();
+                        updateNextButtonState({ showErrors: false });
                         debouncedUpdateSummary();
 		}
 	});
@@ -68,7 +68,7 @@ function handleDateInputs() {
         document.querySelectorAll('input[type="date"]').forEach((input) => {
                 input.addEventListener("click", () => input.showPicker?.());
                 input.addEventListener("change", () => {
-                        updateNextButtonState();
+                        updateNextButtonState({ showErrors: false });
                         debouncedUpdateSummary();
                 });
         });
@@ -97,7 +97,7 @@ function init() {
 	if (usuarioSelect) {
 		usuarioSelect.addEventListener("change", () => {
                         clearError(usuarioSelect);
-                        updateNextButtonState();
+                          updateNextButtonState({ showErrors: false });
                         debouncedUpdateSummary();
                 });
         }
@@ -105,7 +105,7 @@ function init() {
 	if (canalSelect) {
 		canalSelect.addEventListener("change", () => {
                         clearError(canalSelect);
-                        updateNextButtonState();
+                          updateNextButtonState({ showErrors: false });
                         debouncedUpdateSummary();
                 });
         }

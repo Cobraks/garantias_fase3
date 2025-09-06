@@ -130,8 +130,8 @@ function showTab(index) {
 		}
 	}
 
-	// Actualiza UI dependientes
-        updateNextButtonState();
+        // Actualiza UI dependientes sin mostrar errores en campos no tocados
+        updateNextButtonState({ showErrors: false });
         if (typeof debouncedUpdateSummary === "function") {
                 debouncedUpdateSummary();
         }

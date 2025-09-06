@@ -62,7 +62,7 @@ function rellenarDatosEjemplo() {
 	});
 
         // --- Refresca botón Siguiente y resumen ---
-        updateNextButtonState();
+        updateNextButtonState({ showErrors: false });
         debouncedUpdateSummary();
         filtrarModalidades();
 }

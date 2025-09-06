@@ -85,7 +85,7 @@ function togglePlan(planCard) {
   }
 
   // Refresca estado siguiente/resumen
-  updateNextButtonState();
+  updateNextButtonState({ showErrors: false });
   debouncedUpdateSummary();
 }
 

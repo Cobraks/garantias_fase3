@@ -33,7 +33,7 @@ async function checkDuplicateMatricula(input) {
         const value = input.value.trim().toUpperCase();
         if (!validateMatriculaField(input, false, false)) {
                 input.dataset.duplicate = "pending";
-                updateNextButtonState();
+                updateNextButtonState({ showErrors: false });
                 return;
         }
         if (value === lastCheckedPlate) return;
@@ -42,7 +42,7 @@ async function checkDuplicateMatricula(input) {
         const controller = new AbortController();
         plateCheckAbort = controller;
         input.dataset.duplicate = "pending";
-        updateNextButtonState();
+        updateNextButtonState({ showErrors: false });
         const current = value;
         try {
                 const params = new URLSearchParams({ matricula: value });
@@ -70,7 +70,7 @@ async function checkDuplicateMatricula(input) {
                         input.dataset.duplicate = "pending";
                 }
         }
-        updateNextButtonState();
+        updateNextButtonState({ showErrors: false });
 }
 
 // === Helpers ===
@@ -461,7 +461,7 @@ function setupInputValidationBehavior(input) {
                 validateField(input, true, false);
                 // UI updates
                 FormUI.toggleClearButton(input);
-                updateNextButtonState();
+                updateNextButtonState({ showErrors: false });
                 if (id === "matricula") {
                         checkDuplicateMatricula(input);
                 }
@@ -480,7 +480,7 @@ function setupInputValidationBehavior(input) {
                 }
                 validateField(input, true, true);
                 FormUI.toggleClearButton(input);
-                updateNextButtonState();
+                updateNextButtonState({ showErrors: false });
                 if (id === "matricula") {
                         checkDuplicateMatricula(input);
                 }
@@ -490,7 +490,7 @@ function setupInputValidationBehavior(input) {
                 input.addEventListener("change", () => {
                         input.dataset.touched = "true";
                         validateField(input, true, true);
-                        updateNextButtonState();
+                        updateNextButtonState({ showErrors: false });
                 });
         }
 }
