@@ -106,15 +106,18 @@ function validateWithDynamicLimit(input, showError) {
 
         if (raw === "") {
                 if (showError) setError(input, "Este campo es obligatorio.");
+                else clearError(input);
                 return false;
         }
         if (isNaN(value)) {
                 if (showError) setError(input, "Introduce un valor válido.");
+                else clearError(input);
                 return false;
         }
         if (field === "potencia" && isTipoCamion()) {
                 if (value <= 0) {
                         if (showError) setError(input, "Introduce un valor válido.");
+                        else clearError(input);
                         return false;
                 }
                 clearError(input);
@@ -131,6 +134,7 @@ function validateWithDynamicLimit(input, showError) {
                         else msg = `Kilometraje mínimo ${limits.min}`;
                         setError(input, msg);
                 }
+                if (!showError) clearError(input);
                 return false;
         }
         if (value > limits.max) {
@@ -143,6 +147,7 @@ function validateWithDynamicLimit(input, showError) {
                         else msg = `Kilometraje máximo ${limits.max}`;
                         setError(input, msg);
                 }
+                if (!showError) clearError(input);
                 return false;
         }
         clearError(input);
