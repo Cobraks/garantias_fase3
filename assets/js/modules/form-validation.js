@@ -414,15 +414,17 @@ export function forceDynamicFieldsValidation() {
                         if (value !== "") {
                                 validateWithDynamicLimit(input, true);
                         } else {
+                                input.dataset.touched = "false";
                                 clearError(input);
                                 clearInfoMessage(input);
                         }
                 } else if (value === "") {
+                        input.dataset.touched = "false";
                         clearError(input);
                 }
         });
 
-        updateNextButtonState();
+        updateNextButtonState({ showErrors: false });
 }
 
 export function removeAllDynamicErrors() {

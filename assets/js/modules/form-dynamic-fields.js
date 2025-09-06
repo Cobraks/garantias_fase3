@@ -39,7 +39,7 @@ function toggleVehiculoFields() {
 
 	const isCamion = tipoVehiculo.value === "camion";
 
-	// Tracción normal
+        // Tracción normal
         if (traccionContainer) {
                 traccionContainer.style.display = isCamion ? "none" : "";
                 if (isCamion) {
@@ -64,11 +64,21 @@ function toggleVehiculoFields() {
                         }
                 }
         }
+
+        // Al cambiar el tipo de vehículo, limpiar otros campos dependientes
+        ["combustible", "potencia", "cilindrada", "kilometros"].forEach((id) => {
+                const input = document.getElementById(id);
+                if (input && input.value === "") {
+                        input.dataset.touched = "false";
+                        clearError(input);
+                }
+        });
+
         // Actualiza el estado de validación y resumen
-        updateNextButtonState();
+        updateNextButtonState({ showErrors: false });
         debouncedUpdateSummary();
-	// <- AQUÍ ESTÁ LA CLAVE: actualiza labels flotantes tras cambios
-	updateSelectFloatingLabels();
+        // <- AQUÍ ESTÁ LA CLAVE: actualiza labels flotantes tras cambios
+        updateSelectFloatingLabels();
 }
 
 function updatePotenciaUnits() {
@@ -113,7 +123,15 @@ function toggleCombustibleDependientes() {
 	updateSelectFloatingLabels();
 
         // Refresca validación/resumen
-        updateNextButtonState();
+        ["potencia", "cilindrada", "kilometros"].forEach((id) => {
+                const input = document.getElementById(id);
+                if (input && input.value === "") {
+                        input.dataset.touched = "false";
+                        clearError(input);
+                }
+        });
+
+        updateNextButtonState({ showErrors: false });
         updatePotenciaUnits();
         debouncedUpdateSummary();
 }
