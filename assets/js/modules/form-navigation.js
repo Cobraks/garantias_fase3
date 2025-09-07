@@ -234,14 +234,15 @@ function setupTabNavigation() {
 				clearPlanSelectionError();
 			}
 
-			if (!isCurrentTabValid()) {
-				const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
-				if (currentFieldset && currentFieldset.id === "seleccionar-garantia") {
-					if (!document.querySelector(".form__plan.selected")) {
-						showPlanSelectionError();
-					}
-					// canal-venta / usuario-rol se limpian vía validateField dentro de isCurrentTabValid
-				}
+                        if (!isCurrentTabValid()) {
+                                updateNextButtonState({ showErrors: true });
+                                const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
+                                if (currentFieldset && currentFieldset.id === "seleccionar-garantia") {
+                                        if (!document.querySelector(".form__plan.selected")) {
+                                                showPlanSelectionError();
+                                        }
+                                        // canal-venta / usuario-rol se limpian vía validateField dentro de isCurrentTabValid
+                                }
 				alert("Completa todos los campos antes de continuar.");
 				return;
 			}
