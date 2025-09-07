@@ -371,13 +371,14 @@ export function validateEmailField(input, showError, isHardCheck = false) {
 
 // -- CAMPO OBLIGATORIO
 export function validateRequiredField(input, showError) {
-	if (!input) return false;
-	if (input.value.trim() === "") {
-		if (showError) setError(input, "Este campo es obligatorio.");
-		return false;
-	}
-	clearError(input);
-	return true;
+        if (!input) return false;
+        if (input.value.trim() === "") {
+                if (showError) setError(input, "Este campo es obligatorio.");
+                else clearError(input);
+                return false;
+        }
+        clearError(input);
+        return true;
 }
 
 // -- BASTIDOR

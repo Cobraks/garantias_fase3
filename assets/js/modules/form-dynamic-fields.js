@@ -9,6 +9,7 @@
 
 import { updateNextButtonState } from "./form-navigation.js";
 import { debouncedUpdateSummary } from "./form-summary.js";
+import { clearError } from "./form-utils.js";
 
 // Flota los labels de los selects si tienen valor (también en dinámicos)
 function updateSelectFloatingLabels() {
@@ -38,28 +39,43 @@ function toggleVehiculoFields() {
 
 	const isCamion = tipoVehiculo.value === "camion";
 
-	// Tracción normal
-	if (traccionContainer) {
-		traccionContainer.style.display = isCamion ? "none" : "";
-		if (isCamion) {
-			const traccion = traccionContainer.querySelector("#traccion");
-			if (traccion) traccion.value = "";
-		}
-	}
-	// Tracción camión y MMA
-	if (traccionCamionContainer) {
-		traccionCamionContainer.style.display = isCamion ? "" : "none";
-		if (!isCamion) {
-			const traccionCamion =
-				traccionCamionContainer.querySelector("#traccion_camion");
-			if (traccionCamion) traccionCamion.value = "";
-		}
-	}
+        // Tracción normal
+        if (traccionContainer) {
+                traccionContainer.style.display = isCamion ? "none" : "";
+                if (isCamion) {
+                        const traccion = traccionContainer.querySelector("#traccion");
+                        if (traccion) {
+                                traccion.value = "";
+                                clearError(traccion);
+                        }
+                }
+        }
+        // Tracción camión y MMA
+        if (traccionCamionContainer) {
+                traccionCamionContainer.style.display = isCamion ? "" : "none";
+                if (!isCamion) {
+                        const traccionCamion =
+                                traccionCamionContainer.querySelector("#traccion_camion");
+                        if (traccionCamion) {
+                                traccionCamion.value = "";
+                                clearError(traccionCamion);
+                        }
+                }
+        }
+
+        // Al cambiar el tipo de vehículo, limpiar otros campos dependientes
+        ["combustible", "potencia", "cilindrada", "kilometros"].forEach((id) => {
+                const input = document.getElementById(id);
+                if (input && input.value === "") {
+                        clearError(input);
+                }
+        });
+
         // Actualiza el estado de validación y resumen
-        updateNextButtonState();
+        updateNextButtonState({ showErrors: false });
         debouncedUpdateSummary();
-	// <- AQUÍ ESTÁ LA CLAVE: actualiza labels flotantes tras cambios
-	updateSelectFloatingLabels();
+        // <- AQUÍ ESTÁ LA CLAVE: actualiza labels flotantes tras cambios
+        updateSelectFloatingLabels();
 }
 
 function updatePotenciaUnits() {
@@ -91,16 +107,26 @@ function toggleCombustibleDependientes() {
 	const val = combustible.value;
 	const debeMostrar = ["electrico", "hibrido", "gpl_gnc"].includes(val);
 	dobleMotorContainer.style.display = debeMostrar ? "" : "none";
-	if (!debeMostrar) {
-		const dobleMotor = dobleMotorContainer.querySelector("#doble_motor");
-		if (dobleMotor) dobleMotor.value = "";
-	}
+        if (!debeMostrar) {
+                const dobleMotor = dobleMotorContainer.querySelector("#doble_motor");
+                if (dobleMotor) {
+                        dobleMotor.value = "";
+                        clearError(dobleMotor);
+                }
+        }
 
 	// Actualiza floating label tras cambio
 	updateSelectFloatingLabels();
 
         // Refresca validación/resumen
-        updateNextButtonState();
+        ["potencia", "cilindrada", "kilometros"].forEach((id) => {
+                const input = document.getElementById(id);
+                if (input && input.value === "") {
+                        clearError(input);
+                }
+        });
+
+        updateNextButtonState({ showErrors: false });
         updatePotenciaUnits();
         debouncedUpdateSummary();
 }

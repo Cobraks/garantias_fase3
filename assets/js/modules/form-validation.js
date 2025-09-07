@@ -33,7 +33,7 @@ async function checkDuplicateMatricula(input) {
         const value = input.value.trim().toUpperCase();
         if (!validateMatriculaField(input, false, false)) {
                 input.dataset.duplicate = "pending";
-                updateNextButtonState();
+                updateNextButtonState({ showErrors: false });
                 return;
         }
         if (value === lastCheckedPlate) return;
@@ -42,7 +42,7 @@ async function checkDuplicateMatricula(input) {
         const controller = new AbortController();
         plateCheckAbort = controller;
         input.dataset.duplicate = "pending";
-        updateNextButtonState();
+        updateNextButtonState({ showErrors: false });
         const current = value;
         try {
                 const params = new URLSearchParams({ matricula: value });
@@ -70,7 +70,7 @@ async function checkDuplicateMatricula(input) {
                         input.dataset.duplicate = "pending";
                 }
         }
-        updateNextButtonState();
+        updateNextButtonState({ showErrors: false });
 }
 
 // === Helpers ===
@@ -106,15 +106,18 @@ function validateWithDynamicLimit(input, showError) {
 
         if (raw === "") {
                 if (showError) setError(input, "Este campo es obligatorio.");
+                else clearError(input);
                 return false;
         }
         if (isNaN(value)) {
                 if (showError) setError(input, "Introduce un valor válido.");
+                else clearError(input);
                 return false;
         }
         if (field === "potencia" && isTipoCamion()) {
                 if (value <= 0) {
                         if (showError) setError(input, "Introduce un valor válido.");
+                        else clearError(input);
                         return false;
                 }
                 clearError(input);
@@ -131,6 +134,7 @@ function validateWithDynamicLimit(input, showError) {
                         else msg = `Kilometraje mínimo ${limits.min}`;
                         setError(input, msg);
                 }
+                if (!showError) clearError(input);
                 return false;
         }
         if (value > limits.max) {
@@ -143,6 +147,7 @@ function validateWithDynamicLimit(input, showError) {
                         else msg = `Kilometraje máximo ${limits.max}`;
                         setError(input, msg);
                 }
+                if (!showError) clearError(input);
                 return false;
         }
         clearError(input);
@@ -394,13 +399,33 @@ export function validateField(input, showError = false, isHardCheck = false) {
 
 // === Exports auxiliares ===
 export function forceDynamicFieldsValidation() {
-        const cil = document.getElementById("cilindrada");
-        const pot = document.getElementById("potencia");
-        const km = document.getElementById("kilometros");
-        if (cil) validateWithDynamicLimit(cil, true);
-        if (pot) validateWithDynamicLimit(pot, true);
-        if (km) validateWithDynamicLimit(km, true);
-        updateNextButtonState();
+        const fields = [
+                "cilindrada",
+                "potencia",
+                "kilometros",
+                "combustible",
+                "traccion",
+                "traccion_camion",
+                "doble_motor",
+        ];
+
+        fields.forEach((id) => {
+                const input = document.getElementById(id);
+                if (!input) return;
+                const value = input.value.trim();
+                if (["cilindrada", "potencia", "kilometros"].includes(id)) {
+                        if (value !== "") {
+                                validateWithDynamicLimit(input, true);
+                        } else {
+                                clearError(input);
+                                clearInfoMessage(input);
+                        }
+                } else if (value === "") {
+                        clearError(input);
+                }
+        });
+
+        updateNextButtonState({ showErrors: false });
 }
 
 export function removeAllDynamicErrors() {
@@ -436,7 +461,7 @@ function setupInputValidationBehavior(input) {
                 validateField(input, true, false);
                 // UI updates
                 FormUI.toggleClearButton(input);
-                updateNextButtonState();
+                updateNextButtonState({ showErrors: false });
                 if (id === "matricula") {
                         checkDuplicateMatricula(input);
                 }
@@ -454,18 +479,18 @@ function setupInputValidationBehavior(input) {
                 }
                 validateField(input, true, true);
                 FormUI.toggleClearButton(input);
-                updateNextButtonState();
+                updateNextButtonState({ showErrors: false });
                 if (id === "matricula") {
                         checkDuplicateMatricula(input);
                 }
         });
 
-	if (input.tagName === "SELECT") {
-		input.addEventListener("change", () => {
-			validateField(input, true, true);
-			updateNextButtonState();
-		});
-	}
+        if (input.tagName === "SELECT") {
+                input.addEventListener("change", () => {
+                        validateField(input, true, true);
+                        updateNextButtonState({ showErrors: false });
+                });
+        }
 }
 
 // Inicializador

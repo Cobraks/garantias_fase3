@@ -146,8 +146,8 @@ async function refreshMetodoPagoPorUsuario(targetUserId) {
 		else container.classList.remove("has-value");
 	}
 
-	// Revalidar estado siguiente si procede
-        updateNextButtonState();
+        // Revalidar estado siguiente sin mostrar errores en otros campos
+        updateNextButtonState({ showErrors: false });
 }
 
 /**

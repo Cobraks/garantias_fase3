@@ -130,8 +130,8 @@ function showTab(index) {
 		}
 	}
 
-	// Actualiza UI dependientes
-        updateNextButtonState();
+        // Actualiza UI dependientes sin mostrar errores en campos no tocados
+        updateNextButtonState({ showErrors: false });
         if (typeof debouncedUpdateSummary === "function") {
                 debouncedUpdateSummary();
         }
@@ -167,16 +167,16 @@ function isCurrentTabValid() {
 }
 
 // === Activa/desactiva botón "Siguiente" y gestiona estado de pestañas completadas ===
-function updateNextButtonState() {
-	const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
-	if (!currentFieldset) return;
-	const requiredInputs = currentFieldset.querySelectorAll(
-		".form__input[required], .form__select[required], .form__checkbox[required]"
-	);
-	let allValid = true;
-	requiredInputs.forEach((input) => {
-		if (!validateField(input, false, true)) allValid = false;
-	});
+function updateNextButtonState({ showErrors = true } = {}) {
+        const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
+        if (!currentFieldset) return;
+        const requiredInputs = currentFieldset.querySelectorAll(
+                ".form__input[required], .form__select[required], .form__checkbox[required]"
+        );
+        let allValid = true;
+        requiredInputs.forEach((input) => {
+                if (!validateField(input, showErrors, true)) allValid = false;
+        });
 
 	if (currentFieldset.id === "seleccionar-garantia") {
 		if (!document.querySelector(".form__plan.selected")) allValid = false;
@@ -234,14 +234,15 @@ function setupTabNavigation() {
 				clearPlanSelectionError();
 			}
 
-			if (!isCurrentTabValid()) {
-				const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
-				if (currentFieldset && currentFieldset.id === "seleccionar-garantia") {
-					if (!document.querySelector(".form__plan.selected")) {
-						showPlanSelectionError();
-					}
-					// canal-venta / usuario-rol se limpian vía validateField dentro de isCurrentTabValid
-				}
+                        if (!isCurrentTabValid()) {
+                                updateNextButtonState({ showErrors: true });
+                                const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
+                                if (currentFieldset && currentFieldset.id === "seleccionar-garantia") {
+                                        if (!document.querySelector(".form__plan.selected")) {
+                                                showPlanSelectionError();
+                                        }
+                                        // canal-venta / usuario-rol se limpian vía validateField dentro de isCurrentTabValid
+                                }
 				alert("Completa todos los campos antes de continuar.");
 				return;
 			}
