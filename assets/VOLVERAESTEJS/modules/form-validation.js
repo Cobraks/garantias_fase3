@@ -271,11 +271,17 @@ export function validateField(input, showError = false, isHardCheck = false) {
 
 // === Exports auxiliares ===
 export function forceDynamicFieldsValidation() {
-	const cil = document.getElementById("cilindrada");
-	const pot = document.getElementById("potencia");
-	if (cil) validateWithDynamicLimit(cil, true);
-	if (pot) validateWithDynamicLimit(pot, true);
-	updateNextButtonState();
+        ["cilindrada", "potencia", "kilometros"].forEach((id) => {
+                const input = document.getElementById(id);
+                if (input) {
+                        if (input.value.trim() !== "") {
+                                validateWithDynamicLimit(input, true);
+                        } else {
+                                clearError(input);
+                        }
+                }
+        });
+        updateNextButtonState();
 }
 
 export function removeAllDynamicErrors() {
