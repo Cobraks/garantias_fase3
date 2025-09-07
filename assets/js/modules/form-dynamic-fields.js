@@ -46,7 +46,6 @@ function toggleVehiculoFields() {
                         const traccion = traccionContainer.querySelector("#traccion");
                         if (traccion) {
                                 traccion.value = "";
-                                traccion.dataset.touched = "false";
                                 clearError(traccion);
                         }
                 }
@@ -59,7 +58,6 @@ function toggleVehiculoFields() {
                                 traccionCamionContainer.querySelector("#traccion_camion");
                         if (traccionCamion) {
                                 traccionCamion.value = "";
-                                traccionCamion.dataset.touched = "false";
                                 clearError(traccionCamion);
                         }
                 }
@@ -69,7 +67,6 @@ function toggleVehiculoFields() {
         ["combustible", "potencia", "cilindrada", "kilometros"].forEach((id) => {
                 const input = document.getElementById(id);
                 if (input && input.value === "") {
-                        input.dataset.touched = "false";
                         clearError(input);
                 }
         });
@@ -114,7 +111,6 @@ function toggleCombustibleDependientes() {
                 const dobleMotor = dobleMotorContainer.querySelector("#doble_motor");
                 if (dobleMotor) {
                         dobleMotor.value = "";
-                        dobleMotor.dataset.touched = "false";
                         clearError(dobleMotor);
                 }
         }
@@ -126,7 +122,6 @@ function toggleCombustibleDependientes() {
         ["potencia", "cilindrada", "kilometros"].forEach((id) => {
                 const input = document.getElementById(id);
                 if (input && input.value === "") {
-                        input.dataset.touched = "false";
                         clearError(input);
                 }
         });
