@@ -394,13 +394,24 @@ export function validateField(input, showError = false, isHardCheck = false) {
 
 // === Exports auxiliares ===
 export function forceDynamicFieldsValidation() {
-        const cil = document.getElementById("cilindrada");
-        const pot = document.getElementById("potencia");
-        const km = document.getElementById("kilometros");
-        if (cil) validateWithDynamicLimit(cil, true);
-        if (pot) validateWithDynamicLimit(pot, true);
-        if (km) validateWithDynamicLimit(km, true);
-        updateNextButtonState();
+        ["cilindrada", "potencia", "kilometros"].forEach((id) => {
+                const input = document.getElementById(id);
+                if (input) {
+                        const raw = input.value.replace(/\./g, "").trim();
+                        if (raw !== "") {
+                                validateWithDynamicLimit(input, true);
+                        } else {
+                                clearError(input);
+                        }
+                }
+        });
+        ["combustible", "traccion", "traccion_camion"].forEach((id) => {
+                const select = document.getElementById(id);
+                if (select && select.value === "") {
+                        clearError(select);
+                }
+        });
+        updateNextButtonState(false);
 }
 
 export function removeAllDynamicErrors() {
@@ -417,7 +428,7 @@ export function removeAllDynamicErrors() {
 function setupInputValidationBehavior(input) {
         const id = input.id;
 
-        const handler = debounce(() => {
+        const handler = debounce((e) => {
                 if (id === "matricula") {
                         lastCheckedPlate = "";
                         input.dataset.duplicate = "pending";
@@ -433,7 +444,8 @@ function setupInputValidationBehavior(input) {
                         else formatNumber(input);
                 }
                 // Validación ligera (sin hard check)
-                validateField(input, true, false);
+                const showErr = e?.isTrusted ?? true;
+                validateField(input, showErr, false);
                 // UI updates
                 FormUI.toggleClearButton(input);
                 updateNextButtonState();
@@ -444,7 +456,7 @@ function setupInputValidationBehavior(input) {
 
         input.addEventListener("input", handler);
 
-        input.addEventListener("blur", () => {
+        input.addEventListener("blur", (e) => {
                 if (inputLimitsApplier[id]) {
                         inputLimitsApplier[id](input);
                 }
@@ -452,7 +464,7 @@ function setupInputValidationBehavior(input) {
                         if (id === "precio_venta") formatCurrency(input);
                         else formatNumber(input);
                 }
-                validateField(input, true, true);
+                validateField(input, e.isTrusted, true);
                 FormUI.toggleClearButton(input);
                 updateNextButtonState();
                 if (id === "matricula") {
@@ -460,12 +472,12 @@ function setupInputValidationBehavior(input) {
                 }
         });
 
-	if (input.tagName === "SELECT") {
-		input.addEventListener("change", () => {
-			validateField(input, true, true);
-			updateNextButtonState();
-		});
-	}
+        if (input.tagName === "SELECT") {
+                input.addEventListener("change", (e) => {
+                        validateField(input, e.isTrusted, true);
+                        updateNextButtonState();
+                });
+        }
 }
 
 // Inicializador

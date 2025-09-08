@@ -279,11 +279,24 @@ export function validateField(input, showError = false, isHardCheck = false) {
 
 // === Exports auxiliares ===
 export function forceDynamicFieldsValidation() {
-	const cil = document.getElementById("cilindrada");
-	const pot = document.getElementById("potencia");
-	if (cil) validateWithDynamicLimit(cil, true);
-	if (pot) validateWithDynamicLimit(pot, true);
-	updateNextButtonState();
+        ["cilindrada", "potencia", "kilometros"].forEach((id) => {
+                const input = document.getElementById(id);
+                if (input) {
+                        const raw = input.value.replace(/\./g, "").trim();
+                        if (raw !== "") {
+                                validateWithDynamicLimit(input, true);
+                        } else {
+                                clearError(input);
+                        }
+                }
+        });
+        ["combustible", "traccion", "traccion_camion"].forEach((id) => {
+                const select = document.getElementById(id);
+                if (select && select.value === "") {
+                        clearError(select);
+                }
+        });
+        updateNextButtonState(false);
 }
 
 export function removeAllDynamicErrors() {
@@ -298,44 +311,45 @@ export function removeAllDynamicErrors() {
 
 // === Inicialización del comportamiento de inputs ===
 function setupInputValidationBehavior(input) {
-	const id = input.id;
+        const id = input.id;
 
-	const handler = debounce(() => {
-		// Aplicar sanitización si toca
-		if (inputLimitsApplier[id]) {
-			inputLimitsApplier[id](input);
-		}
-		// Formatear número cuando toca
-		if (numericLimits[id]) {
-			formatNumber(input);
-		}
-		// Validación ligera (sin hard check)
-		validateField(input, true, false);
-		// UI updates
-		FormUI.toggleClearButton(input);
-		updateNextButtonState();
-	}, 200);
+        const handler = debounce((e) => {
+                // Aplicar sanitización si toca
+                if (inputLimitsApplier[id]) {
+                        inputLimitsApplier[id](input);
+                }
+                // Formatear número cuando toca
+                if (numericLimits[id]) {
+                        formatNumber(input);
+                }
+                // Validación ligera (sin hard check)
+                const showErr = e?.isTrusted ?? true;
+                validateField(input, showErr, false);
+                // UI updates
+                FormUI.toggleClearButton(input);
+                updateNextButtonState();
+        }, 200);
 
-	input.addEventListener("input", handler);
+        input.addEventListener("input", handler);
 
-	input.addEventListener("blur", () => {
-		if (inputLimitsApplier[id]) {
-			inputLimitsApplier[id](input);
-		}
-		if (numericLimits[id]) {
-			formatNumber(input);
-		}
-		validateField(input, true, true);
-		FormUI.toggleClearButton(input);
-		updateNextButtonState();
-	});
+        input.addEventListener("blur", (e) => {
+                if (inputLimitsApplier[id]) {
+                        inputLimitsApplier[id](input);
+                }
+                if (numericLimits[id]) {
+                        formatNumber(input);
+                }
+                validateField(input, e.isTrusted, true);
+                FormUI.toggleClearButton(input);
+                updateNextButtonState();
+        });
 
-	if (input.tagName === "SELECT") {
-		input.addEventListener("change", () => {
-			validateField(input, true, true);
-			updateNextButtonState();
-		});
-	}
+        if (input.tagName === "SELECT") {
+                input.addEventListener("change", (e) => {
+                        validateField(input, e.isTrusted, true);
+                        updateNextButtonState();
+                });
+        }
 }
 
 // Inicializador
