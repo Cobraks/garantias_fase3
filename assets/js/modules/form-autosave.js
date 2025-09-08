@@ -758,6 +758,9 @@ export default function initAutosave() {
                                                pdf_combustible:
                                                        getSelectText("combustible") ||
                                                        datosVehiculo.combustible,
+                                               pdf_cambio:
+                                                       getSelectText("cambio") ||
+                                                       datosVehiculo.cambio,
                                                pdf_tipo_vehiculo:
                                                        getSelectText("tipo_vehiculo") ||
                                                        datosVehiculo.tipo_vehiculo,
@@ -786,6 +789,20 @@ export default function initAutosave() {
                                                        // el campo no existe en el PDF
                                                }
                                        });
+
+                                       try {
+                                               const dobleMotorFieldValue = datosVehiculo.doble_motor;
+                                               const dobleMotorField = form.getCheckBox(
+                                                       "pdf_doble_motor"
+                                               );
+                                               if (dobleMotorFieldValue === "doble_motor_si") {
+                                                       dobleMotorField.check();
+                                               } else {
+                                                       dobleMotorField.uncheck();
+                                               }
+                                       } catch (e) {
+                                               // el campo no existe en el PDF
+                                       }
 
                                        try {
                                                if (firmaSello.add_firma_sello) {
