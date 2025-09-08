@@ -428,7 +428,7 @@ export function removeAllDynamicErrors() {
 function setupInputValidationBehavior(input) {
         const id = input.id;
 
-        const handler = debounce(() => {
+        const handler = debounce((e) => {
                 if (id === "matricula") {
                         lastCheckedPlate = "";
                         input.dataset.duplicate = "pending";
@@ -444,7 +444,8 @@ function setupInputValidationBehavior(input) {
                         else formatNumber(input);
                 }
                 // Validación ligera (sin hard check)
-                validateField(input, true, false);
+                const showErr = e?.isTrusted ?? true;
+                validateField(input, showErr, false);
                 // UI updates
                 FormUI.toggleClearButton(input);
                 updateNextButtonState();
@@ -455,7 +456,7 @@ function setupInputValidationBehavior(input) {
 
         input.addEventListener("input", handler);
 
-        input.addEventListener("blur", () => {
+        input.addEventListener("blur", (e) => {
                 if (inputLimitsApplier[id]) {
                         inputLimitsApplier[id](input);
                 }
@@ -463,7 +464,7 @@ function setupInputValidationBehavior(input) {
                         if (id === "precio_venta") formatCurrency(input);
                         else formatNumber(input);
                 }
-                validateField(input, true, true);
+                validateField(input, e.isTrusted, true);
                 FormUI.toggleClearButton(input);
                 updateNextButtonState();
                 if (id === "matricula") {
@@ -471,12 +472,12 @@ function setupInputValidationBehavior(input) {
                 }
         });
 
-	if (input.tagName === "SELECT") {
-		input.addEventListener("change", () => {
-			validateField(input, true, true);
-			updateNextButtonState();
-		});
-	}
+        if (input.tagName === "SELECT") {
+                input.addEventListener("change", (e) => {
+                        validateField(input, e.isTrusted, true);
+                        updateNextButtonState();
+                });
+        }
 }
 
 // Inicializador
