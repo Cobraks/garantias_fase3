@@ -161,16 +161,16 @@ function isCurrentTabValid() {
 }
 
 // === Activa/desactiva botón "Siguiente" y gestiona estado de pestañas completadas ===
-function updateNextButtonState() {
-	const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
-	if (!currentFieldset) return;
-	const requiredInputs = currentFieldset.querySelectorAll(
-		".form__input[required], .form__select[required], .form__checkbox[required]"
-	);
-	let allValid = true;
-	requiredInputs.forEach((input) => {
-		if (!validateField(input, false, true)) allValid = false;
-	});
+function updateNextButtonState(showErrors = false) {
+        const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
+        if (!currentFieldset) return;
+        const requiredInputs = currentFieldset.querySelectorAll(
+                ".form__input[required], .form__select[required], .form__checkbox[required]"
+        );
+        let allValid = true;
+        requiredInputs.forEach((input) => {
+                if (!validateField(input, showErrors, true)) allValid = false;
+        });
 
 	if (currentFieldset.id === "seleccionar-garantia") {
 		if (!document.querySelector(".form__plan.selected")) allValid = false;

@@ -289,7 +289,7 @@ export function forceDynamicFieldsValidation() {
                         }
                 }
         });
-        updateNextButtonState();
+        updateNextButtonState(false);
 }
 
 export function removeAllDynamicErrors() {
