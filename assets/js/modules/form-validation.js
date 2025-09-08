@@ -397,11 +397,18 @@ export function forceDynamicFieldsValidation() {
         ["cilindrada", "potencia", "kilometros"].forEach((id) => {
                 const input = document.getElementById(id);
                 if (input) {
-                        if (input.value.trim() !== "") {
+                        const raw = input.value.replace(/\./g, "").trim();
+                        if (raw !== "") {
                                 validateWithDynamicLimit(input, true);
                         } else {
                                 clearError(input);
                         }
+                }
+        });
+        ["combustible", "traccion", "traccion_camion"].forEach((id) => {
+                const select = document.getElementById(id);
+                if (select && select.value === "") {
+                        clearError(select);
                 }
         });
         updateNextButtonState(false);
