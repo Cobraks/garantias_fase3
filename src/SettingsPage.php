@@ -17,8 +17,8 @@ class SettingsPage
     {
         // Register page under Garantías menu
         add_action('admin_menu', [__CLASS__, 'register_page'], 1000);
-        // Register page for ACF options (if available)
-        add_action('acf/init', [__CLASS__, 'register_acf_page']);
+        // Expose page to ACF location rules
+        add_action('acf/init', [__CLASS__, 'register_acf_location']);
     }
 
     /** Registers submenu page */
@@ -35,21 +35,13 @@ class SettingsPage
         );
     }
 
-    /** Register page in ACF so fields can be attached */
-    public static function register_acf_page(): void
+    /** Make page selectable in ACF location rules */
+    public static function register_acf_location(): void
     {
-        if (! function_exists('acf_add_options_sub_page')) {
-            return;
-        }
-
-        acf_add_options_sub_page([
-            'page_title'  => __('Personalización garantías', 'garantias-online-360vo'),
-            'menu_title'  => __('Personalización garantías', 'garantias-online-360vo'),
-            'parent_slug' => 'edit.php?post_type=' . GuaranteeCPT::POST_TYPE,
-            'menu_slug'   => self::SUBMENU_SLUG,
-            'capability'  => self::CAPABILITY,
-            'redirect'    => false,
-        ]);
+        add_filter('acf/location/rule_values/options_page', function ($choices) {
+            $choices[self::SUBMENU_SLUG] = __('Personalización garantías', 'garantias-online-360vo');
+            return $choices;
+        });
     }
 
     /** Render page content */
