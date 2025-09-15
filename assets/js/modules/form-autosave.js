@@ -13,6 +13,23 @@ import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
 import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.js";
 
+let cachedProcedimientoPdf = { url: "", bytes: null };
+
+async function loadProcedimientoPdf(url) {
+        if (!url) return null;
+        if (cachedProcedimientoPdf.url === url && cachedProcedimientoPdf.bytes) {
+                return cachedProcedimientoPdf.bytes;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+        }
+        const bytes = await response.arrayBuffer();
+        cachedProcedimientoPdf = { url, bytes };
+        return bytes;
+}
+
 export default function initAutosave() {
         const form = document.getElementById("form-garantia");
         if (!form) return;
@@ -900,6 +917,29 @@ export default function initAutosave() {
                                        }
 
                                        form.flatten();
+                                       if (json.reclamacion_url) {
+                                               try {
+                                                       const procedimientoBytes = await loadProcedimientoPdf(
+                                                               json.reclamacion_url
+                                                       );
+                                                       if (procedimientoBytes) {
+                                                               const procedimientoDoc =
+                                                                       await PDFLib.PDFDocument.load(
+                                                                               procedimientoBytes
+                                                                       );
+                                                               const pages = await pdfDoc.copyPages(
+                                                                       procedimientoDoc,
+                                                                       procedimientoDoc.getPageIndices()
+                                                               );
+                                                               pages.forEach((page) => pdfDoc.addPage(page));
+                                                       }
+                                               } catch (appendErr) {
+                                                       console.error(
+                                                               "[AUTOSAVE] append reclamacion pdf error",
+                                                               appendErr
+                                                       );
+                                               }
+                                       }
                                        const filled = await pdfDoc.save();
                                         const up = await fetch(
                                                 `${getRestRoot()}go/v1/guarantees/${draftId}/certificate`,

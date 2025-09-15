@@ -8,6 +8,7 @@ use WP_REST_Response;
 use WP_Error;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\GuaranteeLogger;
+use GarantiasOnline360VO\SettingsPage;
 
 class GuaranteeRestController
 {
@@ -315,7 +316,8 @@ class GuaranteeRestController
         $post_id = isset($request['id']) ? absint($request['id']) : 0;
         $uuid    = isset($request['uuid']) ? sanitize_text_field($request['uuid']) : '';
         $data    = isset($request['data']) && is_array($request['data']) ? $request['data'] : [];
-        $template_url = '';
+        $template_url     = '';
+        $reclamacion_url  = self::get_reclamacion_document_url();
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
@@ -669,11 +671,43 @@ class GuaranteeRestController
         }
 
         return new WP_REST_Response([
-            'id'           => $post_id,
-            'uuid'         => $uuid,
-            'template_url' => $template_url,
-            'firma_sello'  => $firma_sello,
+            'id'              => $post_id,
+            'uuid'            => $uuid,
+            'template_url'    => $template_url,
+            'reclamacion_url' => $reclamacion_url,
+            'firma_sello'     => $firma_sello,
         ]);
+    }
+
+    private static function get_reclamacion_document_url()
+    {
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $cached = '';
+
+        if (! function_exists('get_field')) {
+            return $cached;
+        }
+
+        $file = get_field('documentacion_procedimiento_de_reclamacion', SettingsPage::SUBMENU_SLUG);
+        if (is_array($file)) {
+            if (! empty($file['url'])) {
+                $cached = esc_url_raw($file['url']);
+            } elseif (! empty($file['ID'])) {
+                $url = wp_get_attachment_url((int) $file['ID']);
+                if ($url) {
+                    $cached = esc_url_raw($url);
+                }
+            }
+        } elseif (is_string($file)) {
+            $cached = esc_url_raw($file);
+        }
+
+        return $cached;
     }
 
     public static function check_plate($request)
