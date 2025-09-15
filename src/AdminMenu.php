@@ -22,7 +22,7 @@ class AdminMenu
         add_action('load-post.php',      [__CLASS__, 'maybe_paint_hz_menu'], 0);
         add_action('load-post-new.php',  [__CLASS__, 'maybe_paint_hz_menu'], 0);
         add_action('load-edit-tags.php', [__CLASS__, 'maybe_paint_hz_menu'], 0);
-        add_action('load-admin.php',     [__CLASS__, 'maybe_paint_hz_menu'], 0);
+        add_action('load-' . GuaranteeCPT::POST_TYPE . '_page_' . SettingsPage::SUBMENU_SLUG, [__CLASS__, 'maybe_paint_hz_menu'], 0);
     }
 
     public static function add_modalidades_submenu(): void
