@@ -66,7 +66,7 @@ class Plugin
             Admin\GuaranteeColumns::init();
         }
         ProfileAvatar::init();
-        SampleData::init();
+        SettingsPage::init();
 
         // 5) Cargar los grupos de campos ACF (solo si ACF está activo)
         add_action('acf/init', function () {

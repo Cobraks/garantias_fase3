@@ -22,6 +22,7 @@ class AdminMenu
         add_action('load-post.php',      [__CLASS__, 'maybe_paint_hz_menu'], 0);
         add_action('load-post-new.php',  [__CLASS__, 'maybe_paint_hz_menu'], 0);
         add_action('load-edit-tags.php', [__CLASS__, 'maybe_paint_hz_menu'], 0);
+        add_action('load-admin.php',     [__CLASS__, 'maybe_paint_hz_menu'], 0);
     }
 
     public static function add_modalidades_submenu(): void
@@ -72,8 +73,10 @@ class AdminMenu
         $is_tax     = $screen->base === 'edit-tags'
             && in_array($screen->taxonomy, $taxes, true)
             && $screen->post_type === $pt;
+        $is_settings = $screen->base === GuaranteeCPT::POST_TYPE . '_page_' . SettingsPage::SUBMENU_SLUG
+            || (isset($_GET['page']) && $_GET['page'] === SettingsPage::SUBMENU_SLUG);
 
-        if (! ($is_cpt || $is_tax)) {
+        if (! ($is_cpt || $is_tax || $is_settings)) {
             return;
         }
 
@@ -89,6 +92,7 @@ class AdminMenu
             'Tipos de garantía'     => admin_url('edit-tags.php?taxonomy=tipo_garantia&post_type=' . ModalidadesGarantiasCPT::POST_TYPE),
             'Niveles de garantía'   => admin_url('edit-tags.php?taxonomy=nivel_garantia&post_type=' . ModalidadesGarantiasCPT::POST_TYPE),
             'Tipos de vehículo'     => admin_url('edit-tags.php?taxonomy=tipo_vehiculo&post_type=' . ModalidadesGarantiasCPT::POST_TYPE),
+            'Personalización garantías' => admin_url('admin.php?page=' . SettingsPage::SUBMENU_SLUG),
         ];
 
         echo '<div class="notice inline go360-hz-menu" style="margin:0;padding-bottom:8px;border:none;">';
