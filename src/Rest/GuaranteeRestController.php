@@ -140,34 +140,56 @@ class GuaranteeRestController
     {
         $id   = (int) $request['id'];
         $type = sanitize_key($request['type']);
+        $binary = '';
+        $filename = '';
+
         switch ($type) {
             case 'certificado':
                 $hash = get_post_meta($id, 'documentacion_certificado_hash', true);
-                $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
-                if ($plan_id) {
-                    $custom_plan = function_exists('get_field')
-                        ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
-                        : '';
-                    $plan = $custom_plan ?: get_the_title($plan_id);
-                } else {
-                    $plan = '';
+                if (!$hash) {
+                    error_log('[download_document] no hash for ' . $id . ' type ' . $type);
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
                 }
-                $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
-                $filename = trim(sprintf('Certificado Garantía %s %s.pdf', $plan, $matricula));
+                error_log('[download_document] retrieving ' . $hash);
+                $binary = PrivateDocsManager::retrieve($hash, 'pdf');
+                if (!$binary) {
+                    error_log('[download_document] retrieval failed ' . $hash);
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $info = self::get_plan_info($id);
+                $filename = self::normalize_document_filename(sprintf(
+                    'Certificado Garantía %s %s.pdf',
+                    $info['plan'],
+                    $info['matricula']
+                ));
+                break;
+            case 'condicionado':
+            case 'cobertura':
+                $source = self::get_public_document_source($id, $type);
+                if (!$source) {
+                    error_log('[download_document] no source for ' . $id . ' type ' . $type);
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $binary = self::fetch_remote_pdf($source);
+                if (!$binary) {
+                    error_log('[download_document] fetch failed for ' . $source);
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $info = self::get_plan_info($id);
+                $label = $type === 'condicionado'
+                    ? __('Condicionado Garantía', 'garantias-online-360vo')
+                    : __('Cobertura Garantía', 'garantias-online-360vo');
+                $filename = self::normalize_document_filename(sprintf(
+                    '%s %s %s.pdf',
+                    $label,
+                    $info['plan'],
+                    $info['matricula']
+                ));
                 break;
             default:
                 return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
         }
-        if (!$hash) {
-            error_log('[download_document] no hash for ' . $id . ' type ' . $type);
-            return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
-        }
-        error_log('[download_document] retrieving ' . $hash);
-        $binary = PrivateDocsManager::retrieve($hash, 'pdf');
-        if (!$binary) {
-            error_log('[download_document] retrieval failed ' . $hash);
-            return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
-        }
+
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_downloaded', $type);
         $response = new WP_REST_Response($binary, 200);
         $response->header('Content-Type', 'application/pdf');
@@ -181,6 +203,101 @@ class GuaranteeRestController
         );
         $response->header('Content-Disposition', $disposition);
         return $response;
+    }
+
+    private static function get_plan_info($id)
+    {
+        $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
+        if ($plan_id) {
+            $custom_plan = function_exists('get_field')
+                ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
+                : '';
+            $plan = $custom_plan ?: get_the_title($plan_id);
+        } else {
+            $plan = '';
+        }
+        $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
+
+        return [
+            'plan'      => is_string($plan) ? $plan : '',
+            'matricula' => is_string($matricula) ? $matricula : '',
+        ];
+    }
+
+    private static function normalize_document_filename($filename)
+    {
+        $clean = preg_replace('/\s+/', ' ', trim((string) $filename));
+        return $clean !== '' ? $clean : 'documento.pdf';
+    }
+
+    private static function get_public_document_source($id, $type)
+    {
+        $meta_key = $type === 'condicionado' ? 'docs_url_condicionado' : 'docs_url_cobertura';
+        $url = get_post_meta($id, $meta_key, true);
+
+        if (!$url) {
+            $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
+            if ($plan_id) {
+                $field_key = $type === 'condicionado'
+                    ? 'detalles_modalidad_documentos_condicionado_garantia'
+                    : 'detalles_modalidad_documentos_coberturas';
+                $url = self::get_modalidad_document_url($plan_id, $field_key);
+                if ($url) {
+                    update_post_meta($id, $meta_key, $url);
+                }
+            }
+        }
+
+        return $url ? esc_url_raw($url) : '';
+    }
+
+    private static function fetch_remote_pdf($url)
+    {
+        if (!$url) {
+            return false;
+        }
+        $response = wp_remote_get($url, ['timeout' => 20]);
+        if (is_wp_error($response)) {
+            return false;
+        }
+        $code = (int) wp_remote_retrieve_response_code($response);
+        if ($code !== 200) {
+            return false;
+        }
+        $body = wp_remote_retrieve_body($response);
+        return is_string($body) && $body !== '' ? $body : false;
+    }
+
+    private static function build_document_download_url($id, $type)
+    {
+        $id = (int) $id;
+        if ($id <= 0) {
+            return '';
+        }
+
+        $type = sanitize_key($type);
+        switch ($type) {
+            case 'certificado':
+                $hash = get_post_meta($id, 'documentacion_certificado_hash', true);
+                if (!$hash) {
+                    return '';
+                }
+                break;
+            case 'condicionado':
+            case 'cobertura':
+                $source = self::get_public_document_source($id, $type);
+                if (!$source) {
+                    return '';
+                }
+                break;
+            default:
+                return '';
+        }
+
+        $url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/document/' . $type);
+        $url = add_query_arg('_wpnonce', wp_create_nonce('wp_rest'), $url);
+        $scheme = wp_parse_url(home_url(), PHP_URL_SCHEME);
+        return set_url_scheme($url, $scheme);
     }
 
     public static function serve_document($served, $result, $request, $server)
@@ -316,9 +433,9 @@ class GuaranteeRestController
         $post_id = isset($request['id']) ? absint($request['id']) : 0;
         $uuid    = isset($request['uuid']) ? sanitize_text_field($request['uuid']) : '';
         $data    = isset($request['data']) && is_array($request['data']) ? $request['data'] : [];
-        $template_url     = '';
-        $coberturas_url   = '';
-        $condicionado_url = '';
+        $template_url        = '';
+        $cobertura_source    = '';
+        $condicionado_source = '';
         $reclamacion_url  = self::get_reclamacion_document_url();
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
@@ -577,10 +694,17 @@ class GuaranteeRestController
             }
             error_log('[AUTOSAVE] Saved garantia_contratada for ID ' . $post_id . ': ' . wp_json_encode($gc));
             if (isset($gc['garantia'])) {
-                $plan_id        = (int) $gc['garantia'];
-                $template_url   = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_certificado_garantia');
-                $coberturas_url = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_coberturas');
-                $condicionado_url = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_condicionado_garantia');
+                $plan_id      = (int) $gc['garantia'];
+                $template_url = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_certificado_garantia');
+                $cobertura_source = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_coberturas');
+                $condicionado_source = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_condicionado_garantia');
+
+                if ($cobertura_source && !get_post_meta($post_id, 'docs_url_cobertura', true)) {
+                    update_post_meta($post_id, 'docs_url_cobertura', $cobertura_source);
+                }
+                if ($condicionado_source && !get_post_meta($post_id, 'docs_url_condicionado', true)) {
+                    update_post_meta($post_id, 'docs_url_condicionado', $condicionado_source);
+                }
             }
             unset($data['garantia_contratada']);
         }
@@ -672,11 +796,27 @@ class GuaranteeRestController
             }
         }
 
+        if (!$cobertura_source) {
+            $stored_cobertura = get_post_meta($post_id, 'docs_url_cobertura', true);
+            if ($stored_cobertura) {
+                $cobertura_source = $stored_cobertura;
+            }
+        }
+        if (!$condicionado_source) {
+            $stored_condicionado = get_post_meta($post_id, 'docs_url_condicionado', true);
+            if ($stored_condicionado) {
+                $condicionado_source = $stored_condicionado;
+            }
+        }
+
+        $cobertura_url = self::build_document_download_url($post_id, 'cobertura');
+        $condicionado_url = self::build_document_download_url($post_id, 'condicionado');
+
         return new WP_REST_Response([
             'id'              => $post_id,
             'uuid'            => $uuid,
             'template_url'    => $template_url,
-            'coberturas_url'  => $coberturas_url,
+            'cobertura_url'   => $cobertura_url,
             'condicionado_url' => $condicionado_url,
             'reclamacion_url' => $reclamacion_url,
             'firma_sello'     => $firma_sello,
@@ -899,9 +1039,8 @@ class GuaranteeRestController
         $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
         $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
 
-        $condicionado_url = get_post_meta($id, 'docs_url_condicionado', true) ?: '#';
-        $cobertura_url = get_post_meta($id, 'docs_url_cobertura', true) ?: '#';
-        $factura_url = get_post_meta($id, 'docs_url_factura', true) ?: '#';
+        $condicionado_url = self::build_document_download_url($id, 'condicionado');
+        $cobertura_url = self::build_document_download_url($id, 'cobertura');
         $cert_hash = get_post_meta($id, 'documentacion_certificado_hash', true);
         $certificate_url = $cert_hash
             ? rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/document/certificado')
@@ -968,7 +1107,6 @@ class GuaranteeRestController
             'vendedor_url' => $vendedor_url,
             'condicionado_url' => $condicionado_url,
             'cobertura_url' => $cobertura_url,
-            'factura_url' => $factura_url,
             'certificate_url' => $certificate_url,
             'cobro_realizado' => $cobro_realizado ? true : false,
             'iban_vendedor' => $iban_vendedor ?: '',

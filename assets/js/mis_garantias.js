@@ -1,5 +1,8 @@
+import { AVAILABLE_DOCS } from "./modules/docs-config.js";
+
 (() => {
-	document.addEventListener("DOMContentLoaded", () => {
+        "use strict";
+        document.addEventListener("DOMContentLoaded", () => {
 		console.log("DOM loaded — inicializando mis_garantias.js");
 
                 const tbody = document.querySelector("tbody[data-current-page]");
@@ -1007,7 +1010,6 @@
                                 certificate_url: "#",
                                 condicionado_url: "#",
                                 cobertura_url: "#",
-                                factura_url: "#",
                                 nombre_comprador: "-",
                                 dni_comprador: "-",
                                 telefono_comprador: "-",
@@ -1043,6 +1045,12 @@
         val && typeof val === "object" && "label" in val
             ? val.label
             : val;
+    const escapeAttr = (value) =>
+        String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
     const skeleton = (field, fallback = "-") =>
         skeletons.includes(field)
             ? `<span class="skeleton skeleton--${field}"></span>`
@@ -1088,12 +1096,16 @@
         const str = String(val).trim();
         return str !== "" && str !== "-" && str !== "#";
     };
-    const docFields = [
-        "certificate_url",
-        "condicionado_url",
-        "cobertura_url",
-        "factura_url",
-    ];
+    const docsData = AVAILABLE_DOCS.map((doc) => {
+        const value = data?.[doc.field] ?? rowData?.[doc.field] ?? "";
+        const url = typeof value === "string" ? value : String(value ?? "");
+        return {
+            ...doc,
+            url,
+            available: isFilled(value),
+        };
+    });
+    const availableDocs = docsData.filter((doc) => doc.available);
     const buyerFields = [
         "nombre_comprador",
         "dni_comprador",
@@ -1106,7 +1118,20 @@
     ];
     const hasGuaranteeInfo =
         isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
-    const hasDocs = docFields.every((field) => isFilled(data[field]));
+    const hasDocs = availableDocs.length > 0;
+    const docsListHtml = hasDocs
+        ? `<ul class="detail__docs-list">${availableDocs
+              .map(
+                  (doc, idx) =>
+                      `<li class="detail__docs-item">` +
+                      `<button type="button" class="detail__docs-btn" data-doc-url="${escapeAttr(doc.url)}" data-doc-index="${idx}" aria-label="Ver documento ${escapeAttr(doc.listLabel)}">` +
+                      `<span class="detail__docs-icon">${pdfIcon}</span>` +
+                      `<span class="detail__docs-label">${doc.listLabel}</span>` +
+                      `</button>` +
+                      `</li>`
+              )
+              .join("")}</ul>`
+        : `<p class="detail__alert-section">Documentación no disponible</p>`;
     const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
     const showChannelSection = isAdmin;
     const showActions = isAdmin;
@@ -1175,31 +1200,7 @@
                 </section>
                 <section class="detail__section detail__section--docs">
                         <h3 class="detail__section-title">Documentación</h3>
-                        ${hasDocs
-                            ? `<ul class="detail__docs-list">
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("certificate_url", "#")}" data-doc-index="0" aria-label="Ver documento Certificado Garantía">
-                                                <span class="detail__docs-icon">${pdfIcon}</span>
-                                                <span class="detail__docs-label">Certificado Garantía</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" data-doc-index="1" aria-label="Ver documento Condicionado">
-                                                <span class="detail__docs-label">Condicionado</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" data-doc-index="2" aria-label="Ver documento Cobertura">
-                                                <span class="detail__docs-label">Cobertura</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" data-doc-index="3" aria-label="Ver documento Factura">
-                                                <span class="detail__docs-label">Factura</span>
-                                        </button>
-                                </li>
-                        </ul>`
-                            : `<p class="detail__alert-section">Documentación no disponible</p>`}
+                        ${docsListHtml}
                 </section>
                 <section class="detail__section">
                         <h3>Datos del cliente</h3>
@@ -1354,29 +1355,7 @@
                 </section>
                 <section class="detail__section detail__section--docs">
                         <h3 class="detail__section-title">Documentación</h3>
-                        <ul class="detail__docs-list">
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("certificate_url", "#")}" data-doc-index="0" aria-label="Ver documento Certificado Garantía">
-                                                <span class="detail__docs-icon">${pdfIcon}</span>
-                                                <span class="detail__docs-label">Certificado Garantía</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" data-doc-index="1" aria-label="Ver documento Condicionado">
-                                                <span class="detail__docs-label">Condicionado</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" data-doc-index="2" aria-label="Ver documento Cobertura">
-                                                <span class="detail__docs-label">Cobertura</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" data-doc-index="3" aria-label="Ver documento Factura">
-                                                <span class="detail__docs-label">Factura</span>
-                                        </button>
-                                </li>
-                        </ul>
+                        ${docsListHtml}
                 </section>
                 <section class="detail__section">
                         <h3>Datos del cliente</h3>
