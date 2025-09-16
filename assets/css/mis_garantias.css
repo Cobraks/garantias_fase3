@@ -1014,8 +1014,8 @@ section.guarantees-list.sticky-active {
     content: attr(data-tooltip);
     position: absolute;
     left: 2.75rem;
-    bottom: calc(100% + .45rem);
-    transform: translateY(8px);
+    top: -1.5rem;
+    transform: translateY(-8px);
     background: rgba(17, 24, 39, .92);
     color: #f9fafb;
     font-size: .75rem;
@@ -1034,9 +1034,9 @@ section.guarantees-list.sticky-active {
 .detail__transfer-table [data-copy-cell]::before {
     content: "";
     position: absolute;
-    left: 3.1rem;
-    bottom: 100%;
-    transform: translateY(6px);
+    left: 4rem;
+    top: .19rem;
+    transform: translateY(-6px);
     border-width: 6px;
     border-style: solid;
     border-color: rgba(17, 24, 39, .92) transparent transparent transparent;

@@ -44,7 +44,14 @@
     --text-secondary: #64748b;
       }
 
-        
+
+@supports (scrollbar-color: red blue) {
+    * {
+        scrollbar-color: #e2001b #fff;
+        scrollbar-width: thin;
+    }
+}
+
       /* Reset básico */
       *,
       *::after,

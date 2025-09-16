@@ -12,29 +12,6 @@ use GarantiasOnline360VO\Svg;
     <p class="form-success__subtitle" data-plan></p>
     <p class="form-success__message" hidden></p>
 
-    <div class="form-success__loading">
-        <span class="form-success__loading-text">Generando documentos…</span>
-        <span class="form-success__loading-spinner" aria-hidden="true"></span>
-    </div>
-    <div class="form-success__docs" hidden>
-        <a href="#" class="document-card" data-doc="certificate" hidden>
-            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-            <span class="document-card__title"></span>
-        </a>
-        <a href="#" class="document-card" data-doc="cobertura" hidden>
-            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-            <span class="document-card__title"></span>
-        </a>
-        <a href="#" class="document-card" data-doc="condicionado" hidden>
-            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-            <span class="document-card__title"></span>
-        </a>
-    </div>
-    <div class="form-success__actions">
-        <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>" class="form-success__details-link" hidden>Ver garantía <span data-ref-text></span></a>
-        <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" class="form-success__new" data-reset-draft>Añadir nueva garantía</a>
-    </div>
-
     <div class="form-success__payment" hidden>
         <div class="form-success__transfer" hidden>
             <h3 class="form-success__transfer-title">
@@ -62,6 +39,29 @@ use GarantiasOnline360VO\Svg;
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <div class="form-success__loading">
+        <span class="form-success__loading-text">Generando documentos…</span>
+        <span class="form-success__loading-spinner" aria-hidden="true"></span>
+    </div>
+    <div class="form-success__docs" hidden>
+        <a href="#" class="document-card" data-doc="certificate" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+        <a href="#" class="document-card" data-doc="cobertura" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+        <a href="#" class="document-card" data-doc="condicionado" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+    </div>
+    <div class="form-success__actions">
+        <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>" class="form-success__details-link" hidden>Ver garantía <span data-ref-text></span></a>
+        <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" class="form-success__new" data-reset-draft>Añadir nueva garantía</a>
     </div>
     <div class="form-success__toast" aria-hidden="true"></div>
     <audio id="form-success__sound" src="<?php echo esc_url(plugins_url('assets/sounds/success.mp3', GARANTIAS360VO__FILE__)); ?>" preload="auto"></audio>
