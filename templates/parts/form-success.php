@@ -10,13 +10,30 @@ use GarantiasOnline360VO\Svg;
 
     <h2 class="form-success__title">¡Garantía registrada!</h2>
     <p class="form-success__subtitle" data-plan></p>
+    <p class="form-success__message" hidden></p>
 
     <div class="form-success__loading">
         <span class="form-success__loading-text">Generando documentos…</span>
         <span class="form-success__loading-spinner" aria-hidden="true"></span>
     </div>
-    <a href="#" class="form-success__download" hidden></a>
-    <a href="#" class="form-success__details-link">Ver garantía <span data-ref-text></span></a>
+    <div class="form-success__docs" hidden>
+        <a href="#" class="document-card" data-doc="certificate" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+        <a href="#" class="document-card" data-doc="cobertura" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+        <a href="#" class="document-card" data-doc="condicionado" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+    </div>
+    <div class="form-success__actions">
+        <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>" class="form-success__details-link" hidden>Ver garantía <span data-ref-text></span></a>
+        <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" class="form-success__new" data-reset-draft>Añadir nueva garantía</a>
+    </div>
 
     <div class="form-success__payment" hidden>
         <div class="form-success__transfer" hidden>
@@ -30,17 +47,17 @@ use GarantiasOnline360VO\Svg;
             </p>
             <table class="form-success__transfer-table">
                 <tbody>
-                    <tr>
+                    <tr data-copy-row>
                         <th scope="row">Referencia</th>
-                        <td><span class="form-success__copy-target" data-ref data-toast="Referencia copiada al portapapeles."></span><button class="form-success__copy" data-copy="[data-ref]" data-label="Copiar referencia" data-done="Referencia copiada" data-toast="Referencia copiada al portapapeles." aria-label="Copiar referencia"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
+                        <td data-copy-cell data-tooltip="Copiar referencia"><span class="form-success__copy-target" data-ref data-toast="Referencia copiada al portapapeles."></span><button class="form-success__copy" data-copy="[data-ref]" data-label="Copiar referencia" data-done="Referencia copiada" data-toast="Referencia copiada al portapapeles." aria-label="Copiar referencia"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
                     </tr>
-                    <tr>
+                    <tr data-copy-row>
                         <th scope="row">IBAN</th>
-                        <td><span class="form-success__copy-target" data-iban data-toast="IBAN copiado al portapapeles.">ES00 0000 0000 0000 0000 0000</span><button class="form-success__copy" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
+                        <td data-copy-cell data-tooltip="Copiar IBAN"><span class="form-success__copy-target" data-iban data-toast="IBAN copiado al portapapeles."></span><button class="form-success__copy" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
                     </tr>
-                    <tr>
+                    <tr data-copy-row>
                         <th scope="row">Cantidad</th>
-                        <td><span class="form-success__copy-target" data-amount data-toast="Cantidad copiada al portapapeles."></span><button class="form-success__copy" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
+                        <td data-copy-cell data-tooltip="Copiar cantidad"><span class="form-success__copy-target" data-amount data-toast="Cantidad copiada al portapapeles."></span><button class="form-success__copy" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
                     </tr>
                 </tbody>
             </table>

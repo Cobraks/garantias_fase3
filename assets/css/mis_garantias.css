@@ -972,13 +972,96 @@ section.guarantees-list.sticky-active {
     display: flex;
     align-items: center;
     gap: .5rem;
+    position: relative;
+}
+
+.detail__transfer-table tr {
+    transition: background-color .2s ease, color .2s ease;
+}
+
+.detail__transfer-table tr[data-copy-row] th,
+.detail__transfer-table tr[data-copy-row] td {
+    cursor: pointer;
+}
+
+.detail__transfer-table tr[data-copy-row]:hover th,
+.detail__transfer-table tr[data-copy-row]:hover td,
+.detail__transfer-table tr[data-copy-row]:focus-within th,
+.detail__transfer-table tr[data-copy-row]:focus-within td {
+    background-color: #f3f4f6;
+    color: #1f2937;
+}
+
+.detail__transfer-table tr[data-copy-row]:hover th,
+.detail__transfer-table tr[data-copy-row]:focus-within th {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.detail__transfer-table tr[data-copy-row]:hover td,
+.detail__transfer-table tr[data-copy-row]:focus-within td {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.detail__transfer-table [data-copy-cell] {
+    position: relative;
+    cursor: pointer;
+    overflow: visible;
+}
+
+.detail__transfer-table [data-copy-cell]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 2.75rem;
+    bottom: calc(100% + .45rem);
+    transform: translateY(8px);
+    background: rgba(17, 24, 39, .92);
+    color: #f9fafb;
+    font-size: .75rem;
+    line-height: 1.3;
+    padding: .35rem .75rem;
+    border-radius: .5rem;
+    white-space: nowrap;
+    font-weight: 500;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, .18);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 20;
+}
+
+.detail__transfer-table [data-copy-cell]::before {
+    content: "";
+    position: absolute;
+    left: 3.1rem;
+    bottom: 100%;
+    transform: translateY(6px);
+    border-width: 6px;
+    border-style: solid;
+    border-color: rgba(17, 24, 39, .92) transparent transparent transparent;
+    opacity: 0;
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 20;
+}
+
+.detail__transfer-table [data-copy-cell]:hover::after,
+.detail__transfer-table [data-copy-cell]:hover::before,
+.detail__transfer-table [data-copy-cell]:focus-within::after,
+.detail__transfer-table [data-copy-cell]:focus-within::before,
+.detail__transfer-table tr[data-copy-row]:hover [data-copy-cell]::after,
+.detail__transfer-table tr[data-copy-row]:hover [data-copy-cell]::before,
+.detail__transfer-table tr[data-copy-row]:focus-within [data-copy-cell]::after,
+.detail__transfer-table tr[data-copy-row]:focus-within [data-copy-cell]::before {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .detail__copy-btn {
     background: none;
     border: none;
     padding: 0;
-    color: var(--primary-color);
+    color: #6b7280;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -986,11 +1069,46 @@ section.guarantees-list.sticky-active {
     height: 1.5rem;
     border-radius: 4px;
     cursor: pointer;
-    transition: background .2s ease;
+    transition: background .2s ease, color .2s ease, transform .2s ease;
 }
 
-.detail__copy-btn:hover {
-    background: #e6f0ff;
+.detail__copy-btn:hover,
+.detail__copy-btn:focus-visible {
+    background: none;
+    color: var(--primary-color);
+}
+
+.detail__transfer-table tr:hover .detail__copy-btn,
+.detail__transfer-table tr:focus-within .detail__copy-btn {
+    background: none;
+    color: var(--primary-color);
+}
+
+.detail__docs-actions {
+    margin-top: .75rem;
+}
+
+.detail__docs-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: .55rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid var(--primary-color);
+    background: rgba(37, 99, 235, .08);
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: .9375rem;
+    cursor: pointer;
+    transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+}
+
+.detail__docs-add:hover,
+.detail__docs-add:focus-visible {
+    background: var(--primary-color);
+    color: #fff;
+    box-shadow: 0 8px 16px rgba(37, 99, 235, .25);
 }
 
 .detail__copy-toast {
@@ -998,15 +1116,20 @@ section.guarantees-list.sticky-active {
     bottom: 1.25rem;
     left: 50%;
     transform: translateX(-50%);
-    background: #28a745;
-    color: #fff;
-    padding: .75rem 1.5rem;
-    border-radius: 999px;
-    box-shadow: 0 4px 12px rgba(0,0,0,.1);
+    background: rgba(17, 24, 39, .9);
+    color: #f9fafb;
+    padding: .65rem 1.25rem;
+    border-radius: .75rem;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .25);
     opacity: 0;
     transition: opacity .3s ease;
     z-index: 1000;
     width: fit-content;
+    font-size: .9rem;
+    line-height: 1.3;
+    font-weight: 500;
+    letter-spacing: .01em;
+    white-space: nowrap;
 }
 
 .detail__copy-toast.show {

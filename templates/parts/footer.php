@@ -60,10 +60,14 @@ use GarantiasOnline360VO\Svg;
             },
             icons: {
                 pdf: `<?php echo addslashes($icon_pdf_html); ?>`
+            },
+            pages: {
+                misGarantias: "<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>",
+                nuevaGarantia: "<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>"
             }
         };
     </script>
-    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" defer></script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 <?php endif; ?>
 
 <?php if (($is_add_guarantee ?? false)) : ?>
@@ -118,6 +122,10 @@ use GarantiasOnline360VO\Svg;
                 warning: `<?php echo addslashes($icon_warning_html); ?>`,
                 pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
                 save: `<?php echo addslashes($icon_save_html); ?>`
+            },
+            pages: {
+                misGarantias: "<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>",
+                nuevaGarantia: "<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>"
             }
         };
     </script>
