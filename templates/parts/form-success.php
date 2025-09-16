@@ -53,7 +53,7 @@ use GarantiasOnline360VO\Svg;
                     </tr>
                     <tr>
                         <th scope="row">IBAN</th>
-                        <td><span class="form-success__copy-target" data-iban data-toast="IBAN copiado al portapapeles.">ES00 0000 0000 0000 0000 0000</span><button class="form-success__copy" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
+                        <td><span class="form-success__copy-target" data-iban data-toast="IBAN copiado al portapapeles."></span><button class="form-success__copy" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
                     </tr>
                     <tr>
                         <th scope="row">Cantidad</th>

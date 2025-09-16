@@ -251,7 +251,7 @@ export default function initAutosave() {
                 }
         }
 
-        function showSuccess(method, plate, amount, planName, months, docLinks) {
+        function showSuccess(method, plate, amount, planName, months, docLinks, extras = {}) {
                 console.log("[AUTOSAVE] showSuccess", { docLinks });
                 fadeOut(form, false);
                 fadeOut(navButtons);
@@ -264,19 +264,19 @@ export default function initAutosave() {
                                 () => {
                                         summaryContainer.style.display = "none";
                                         form.style.display = "none";
-                                        revealSuccess(method, plate, amount, planName, months, docLinks);
+                                        revealSuccess(method, plate, amount, planName, months, docLinks, extras);
                                 },
                                 { once: true }
                         );
                 } else {
                         setTimeout(() => {
                                 form.style.display = "none";
-                                revealSuccess(method, plate, amount, planName, months, docLinks);
+                                revealSuccess(method, plate, amount, planName, months, docLinks, extras);
                         }, 300);
                 }
         }
 
-        function revealSuccess(method, plate, amount, planName, months, docLinks = {}) {
+        function revealSuccess(method, plate, amount, planName, months, docLinks = {}, extras = {}) {
                 console.log("[AUTOSAVE] revealSuccess", { docLinks });
                 if (!successBlock) return;
                 successBlock.style.display = "block";
@@ -435,6 +435,33 @@ export default function initAutosave() {
                                 transfer
                                         .querySelectorAll("[data-amount],[data-amount-text]")
                                         .forEach((el) => (el.textContent = amountText));
+
+                                const ibanValue =
+                                        typeof extras.transferIban === "string"
+                                                ? extras.transferIban.trim()
+                                                : "";
+                                const ibanTargets = transfer.querySelectorAll(
+                                        "[data-iban],[data-iban-text]"
+                                );
+                                ibanTargets.forEach((el) => {
+                                        el.textContent = ibanValue;
+                                });
+                                const ibanRow = transfer.querySelector("[data-iban]")?.closest("tr");
+                                if (ibanRow) {
+                                        ibanRow.hidden = !ibanValue;
+                                }
+                                const ibanCopyBtn = transfer.querySelector(
+                                        'button[data-copy="[data-iban]"]'
+                                );
+                                if (ibanCopyBtn) {
+                                        if (ibanValue) {
+                                                ibanCopyBtn.removeAttribute("disabled");
+                                                ibanCopyBtn.removeAttribute("aria-disabled");
+                                        } else {
+                                                ibanCopyBtn.setAttribute("disabled", "true");
+                                                ibanCopyBtn.setAttribute("aria-disabled", "true");
+                                        }
+                                }
                         }
                 }
                 function copyText(text) {
@@ -1059,6 +1086,12 @@ export default function initAutosave() {
                                         condicionado: json.condicionado_url || "",
                                         cobertura: json.cobertura_url || "",
                                 };
+                                const extras = {
+                                        transferIban:
+                                                typeof json.transfer_iban === "string"
+                                                        ? json.transfer_iban.trim()
+                                                        : "",
+                                };
                                 showSuccess(
                                         garantia.metodo_pago,
                                         datosVehiculo.matricula,
@@ -1067,7 +1100,8 @@ export default function initAutosave() {
                                                 garantia.nivel_garantia ||
                                                 "",
                                         garantia.meses_contratados,
-                                        docLinks
+                                        docLinks,
+                                        extras
                                 );
                         }
                         spinner.style.display = "none";

@@ -841,6 +841,7 @@ class GuaranteeRestController
 
         $cobertura_url = self::build_document_download_url($post_id, 'cobertura');
         $condicionado_url = self::build_document_download_url($post_id, 'condicionado');
+        $transfer_iban = self::get_transfer_iban();
 
         return new WP_REST_Response([
             'id'              => $post_id,
@@ -849,6 +850,7 @@ class GuaranteeRestController
             'cobertura_url'   => $cobertura_url,
             'condicionado_url' => $condicionado_url,
             'reclamacion_url' => $reclamacion_url,
+            'transfer_iban'   => $transfer_iban['formatted'],
             'firma_sello'     => $firma_sello,
         ]);
     }
@@ -1044,6 +1046,49 @@ class GuaranteeRestController
         return $cached;
     }
 
+    private static function get_transfer_iban()
+    {
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $cached = [
+            'raw'       => '',
+            'formatted' => '',
+        ];
+
+        $iban = '';
+
+        if (function_exists('get_field')) {
+            $group = get_field('datos_bancarios', SettingsPage::SUBMENU_SLUG);
+            if (is_array($group) && !empty($group['iban_360vo'])) {
+                $iban = (string) $group['iban_360vo'];
+            } else {
+                $single = get_field('datos_bancarios_iban_360vo', SettingsPage::SUBMENU_SLUG);
+                if (is_string($single) && $single !== '') {
+                    $iban = $single;
+                }
+            }
+        } else {
+            $option = get_option('options_datos_bancarios_iban_360vo');
+            if (is_string($option) && $option !== '') {
+                $iban = $option;
+            }
+        }
+
+        if (is_string($iban)) {
+            $normalized = preg_replace('/[^A-Z0-9]/i', '', strtoupper($iban));
+            if (is_string($normalized) && $normalized !== '') {
+                $cached['raw'] = $normalized;
+                $cached['formatted'] = trim(chunk_split($normalized, 4, ' '));
+            }
+        }
+
+        return $cached;
+    }
+
     public static function check_plate($request)
     {
         $matricula = isset($request['matricula']) ? sanitize_text_field($request['matricula']) : '';
@@ -1203,6 +1248,7 @@ class GuaranteeRestController
         $iban_vendedor = $vendor_id
             ? get_user_meta($vendor_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', true)
             : '';
+        $transfer_iban = self::get_transfer_iban();
 
         $nombre_comprador = get_post_meta($id, 'datos_cliente_nombre_y_apellidos', true);
         $dni_comprador = get_post_meta($id, 'datos_cliente_dni', true);
@@ -1258,6 +1304,7 @@ class GuaranteeRestController
             'certificate_url' => $certificate_url,
             'cobro_realizado' => $cobro_realizado ? true : false,
             'iban_vendedor' => $iban_vendedor ?: '',
+            'transfer_iban' => $transfer_iban['formatted'],
             'nombre_comprador' => $nombre_comprador ?: '-',
             'dni_comprador' => $dni_comprador ?: '-',
             'telefono_comprador' => $telefono_comprador ?: '-',

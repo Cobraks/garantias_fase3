@@ -549,6 +549,9 @@ import { AVAILABLE_DOCS } from "./modules/docs-config.js";
                         if (data.tipo && typeof data.tipo === "object") {
                                 data.tipo = data.tipo.label || data.tipo.name || data.tipo.value || data.tipo;
                         }
+                        if (typeof data.transfer_iban === "string") {
+                                data.transfer_iban = data.transfer_iban.trim();
+                        }
                         return data;
                 }
 
@@ -620,6 +623,7 @@ import { AVAILABLE_DOCS } from "./modules/docs-config.js";
                         tr.dataset.metodoPago = item.detail.metodo_pago || "";
                         tr.dataset.cobroRealizado = item.detail.cobro_realizado ? "1" : "";
                         tr.dataset.ibanVendedor = item.detail.iban_vendedor || "";
+                        tr.dataset.transferIban = item.detail.transfer_iban || "";
 
                         const cobroBadgeHtml =
                                 isAdmin &&
@@ -994,6 +998,7 @@ import { AVAILABLE_DOCS } from "./modules/docs-config.js";
                                 metodo_pago: row.dataset.metodoPago ?? "",
                                 cobro_realizado: row.dataset.cobroRealizado === "1",
                                 iban_vendedor: row.dataset.ibanVendedor ?? "",
+                                transfer_iban: row.dataset.transferIban ?? "",
                                 tipo: "-",
                                 kilometros: "-",
                                 primera_matriculacion: "-",
@@ -1077,6 +1082,10 @@ import { AVAILABLE_DOCS } from "./modules/docs-config.js";
         data.cobro_realizado,
         rowData.cobro_realizado,
     ].some((v) => v === true || v === 1 || v === "1");
+
+    const transferIban = [data.transfer_iban, rowData.transfer_iban]
+        .map((val) => (typeof val === "string" ? val.trim() : ""))
+        .find((val) => val) || "";
 
     const planTitle = `${data.plan ?? "-"}${
         mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
@@ -1280,14 +1289,16 @@ import { AVAILABLE_DOCS } from "./modules/docs-config.js";
             if (metodoPago === "transferencia") {
                 const concepto = `Garantía ${skeleton("matricula")}`;
                 const cantidad = `${skeleton("precio", "0")} €`;
-                const iban = "ES00 0000 0000 0000 0000 0000";
+                const ibanRow = transferIban
+                    ? `<tr><th>IBAN</th><td><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
+                    : "";
                 return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note">Recuerda realizar la transferencia para activar tu garantía.</p>
                                 <table class="detail__transfer-table">
                                         <tbody>
                                                 <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
                                                 <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
-                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                                ${ibanRow}
                                         </tbody>
                                 </table>
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
