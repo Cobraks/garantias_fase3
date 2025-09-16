@@ -74,8 +74,41 @@ class AssetCompiler
 
     private static function compile_js(string $src, string $dest): void
     {
-        $js  = file_get_contents($src);
-        $min = preg_replace(['!/\*.*?\*/!s', '/\/\/.*?\n/', '/\s+/'], ['', '', ' '], $js);
-        file_put_contents($dest, trim($min));
+        $js = file_get_contents($src);
+
+        // Protegemos los literales de cadena para no eliminar contenido válido
+        // (por ejemplo los "http://" presentes en los SVG) cuando quitamos
+        // comentarios o colapsamos espacios.
+        $placeholders = [];
+        $escaped = preg_replace_callback(
+            '/([\'"`])(?:\\\\.|(?!\\1).)*\\1/s',
+            static function (array $match) use (&$placeholders): string {
+                $key = '__GO_STRING_' . count($placeholders) . '__';
+                $placeholders[$key] = $match[0];
+                return $key;
+            },
+            $js
+        );
+
+        if ($escaped === null) {
+            file_put_contents($dest, trim($js));
+            return;
+        }
+
+        $minified = preg_replace(
+            ['!/\*.*?\*/!s', '/\/\/.*?(?=\n|$)/', '/\s+/'],
+            ['', '', ' '],
+            $escaped
+        );
+
+        if ($minified === null) {
+            // preg_replace falló, guardamos el original para no romper la ejecución.
+            file_put_contents($dest, trim($js));
+            return;
+        }
+
+        $minified = str_replace(array_keys($placeholders), array_values($placeholders), $minified);
+
+        file_put_contents($dest, trim($minified));
     }
 }

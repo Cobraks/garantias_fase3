@@ -1007,7 +1007,6 @@
                                 certificate_url: "#",
                                 condicionado_url: "#",
                                 cobertura_url: "#",
-                                factura_url: "#",
                                 nombre_comprador: "-",
                                 dni_comprador: "-",
                                 telefono_comprador: "-",
@@ -1092,7 +1091,6 @@
         "certificate_url",
         "condicionado_url",
         "cobertura_url",
-        "factura_url",
     ];
     const buyerFields = [
         "nombre_comprador",
@@ -1185,17 +1183,14 @@
                                 </li>
                                 <li class="detail__docs-item">
                                         <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" data-doc-index="1" aria-label="Ver documento Condicionado">
+                                                <span class="detail__docs-icon">${pdfIcon}</span>
                                                 <span class="detail__docs-label">Condicionado</span>
                                         </button>
                                 </li>
                                 <li class="detail__docs-item">
                                         <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" data-doc-index="2" aria-label="Ver documento Cobertura">
+                                                <span class="detail__docs-icon">${pdfIcon}</span>
                                                 <span class="detail__docs-label">Cobertura</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" data-doc-index="3" aria-label="Ver documento Factura">
-                                                <span class="detail__docs-label">Factura</span>
                                         </button>
                                 </li>
                         </ul>`
@@ -1363,17 +1358,14 @@
                                 </li>
                                 <li class="detail__docs-item">
                                         <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" data-doc-index="1" aria-label="Ver documento Condicionado">
+                                                <span class="detail__docs-icon">${pdfIcon}</span>
                                                 <span class="detail__docs-label">Condicionado</span>
                                         </button>
                                 </li>
                                 <li class="detail__docs-item">
                                         <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" data-doc-index="2" aria-label="Ver documento Cobertura">
+                                                <span class="detail__docs-icon">${pdfIcon}</span>
                                                 <span class="detail__docs-label">Cobertura</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" data-doc-index="3" aria-label="Ver documento Factura">
-                                                <span class="detail__docs-label">Factura</span>
                                         </button>
                                 </li>
                         </ul>

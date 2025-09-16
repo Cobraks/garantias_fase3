@@ -42,31 +42,21 @@ class Plugin
         add_action('init', [GuaranteeLogger::class, 'ensure_table']);
         add_action('init', [PrivateDocsManager::class, 'ensure_directory']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
-
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\UserRestController::class, 'register_routes']);
-
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\OfertasRestController::class, 'register_routes']);
-
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeLogRestController::class, 'register_routes']);
-
-
-
         add_action('rest_api_init', function () {
             $controller = new \GarantiasOnline360VO\Rest\ModalidadesRestController();
             $controller->register_routes();
         });
 
-
-    
-
-
         AdminBar::init();
         if (is_admin()) {
             AdminMenu::init();
             Admin\GuaranteeColumns::init();
+            SettingsPage::init();
         }
         ProfileAvatar::init();
-        SampleData::init();
 
         // 5) Cargar los grupos de campos ACF (solo si ACF está activo)
         add_action('acf/init', function () {

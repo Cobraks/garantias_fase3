@@ -13,6 +13,23 @@ import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
 import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.js";
 
+const pdfCache = new Map();
+
+async function loadStaticPdf(url) {
+        if (!url) return null;
+        if (pdfCache.has(url)) {
+                return pdfCache.get(url);
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+        }
+        const bytes = await response.arrayBuffer();
+        pdfCache.set(url, bytes);
+        return bytes;
+}
+
 export default function initAutosave() {
         const form = document.getElementById("form-garantia");
         if (!form) return;
@@ -231,8 +248,8 @@ export default function initAutosave() {
                 }
         }
 
-        function showSuccess(method, plate, amount, level, months, certUrl) {
-                console.log("[AUTOSAVE] showSuccess", { certUrl });
+        function showSuccess(method, plate, amount, level, months, docs) {
+                console.log("[AUTOSAVE] showSuccess", { docs });
                 fadeOut(form, false);
                 fadeOut(navButtons);
                 fadeOut(tabs);
@@ -244,20 +261,20 @@ export default function initAutosave() {
                                 () => {
                                         summaryContainer.style.display = "none";
                                         form.style.display = "none";
-                                        revealSuccess(method, plate, amount, level, months, certUrl);
+                                        revealSuccess(method, plate, amount, level, months, docs);
                                 },
                                 { once: true }
                         );
                 } else {
                         setTimeout(() => {
                                 form.style.display = "none";
-                                revealSuccess(method, plate, amount, level, months, certUrl);
+                                revealSuccess(method, plate, amount, level, months, docs);
                         }, 300);
                 }
         }
 
-        function revealSuccess(method, plate, amount, level, months, certUrl) {
-                console.log("[AUTOSAVE] revealSuccess", { certUrl });
+        function revealSuccess(method, plate, amount, level, months, docs = {}) {
+                console.log("[AUTOSAVE] revealSuccess", { docs });
                 if (!successBlock) return;
                 successBlock.style.display = "block";
                 requestAnimationFrame(() => successBlock.classList.add("is-visible"));
@@ -273,29 +290,72 @@ export default function initAutosave() {
                 const loading = successBlock.querySelector(
                         ".form-success__loading"
                 );
-                const downloadLink = successBlock.querySelector(
-                        ".form-success__download"
+                const docsContainer = successBlock.querySelector(
+                        ".form-success__docs"
                 );
+                const downloadLinks = {
+                        certificado: successBlock.querySelector(
+                                ".form-success__download--certificado"
+                        ),
+                        condicionado: successBlock.querySelector(
+                                ".form-success__download--condicionado"
+                        ),
+                        cobertura: successBlock.querySelector(
+                                ".form-success__download--cobertura"
+                        ),
+                };
                 if (loading) loading.hidden = false;
-                if (downloadLink) downloadLink.hidden = true;
-                if (downloadLink && certUrl) {
-                        downloadLink.href = certUrl;
-                        downloadLink.target = "_blank";
-                        downloadLink.innerHTML = `${getIcon(
-                                "pdf"
-                        )}<span>Descargar certificado</span>`;
-                        downloadLink.hidden = false;
-                        if (loading) loading.remove();
-                } else if (loading) {
-                        const spin = loading.querySelector(
-                                ".form-success__loading-spinner"
-                        );
-                        if (spin) spin.remove();
-                        const text = loading.querySelector(
-                                ".form-success__loading-text"
-                        );
-                        if (text) {
-                                text.textContent = "No se pudo generar el certificado";
+                if (docsContainer) docsContainer.hidden = true;
+
+                const setDocLink = (key, label) => {
+                        const link = downloadLinks[key];
+                        const url = docs[key];
+                        if (!link) return false;
+                        if (!url) {
+                                link.hidden = true;
+                                link.removeAttribute("href");
+                                return false;
+                        }
+                        link.href = url;
+                        link.target = "_blank";
+                        link.rel = "noopener";
+                        link.innerHTML = `${getIcon("pdf")}<span>${label}</span>`;
+                        link.hidden = false;
+                        return true;
+                };
+
+                const hasCert = setDocLink(
+                        "certificado",
+                        "Descargar certificado"
+                );
+                const hasCondicionado = setDocLink(
+                        "condicionado",
+                        "Descargar condicionado"
+                );
+                const hasCobertura = setDocLink(
+                        "cobertura",
+                        "Descargar cobertura"
+                );
+
+                const anyDoc = hasCert || hasCondicionado || hasCobertura;
+                if (docsContainer) {
+                        docsContainer.hidden = !anyDoc;
+                }
+
+                if (loading) {
+                        if (hasCert) {
+                                loading.remove();
+                        } else {
+                                const spin = loading.querySelector(
+                                        ".form-success__loading-spinner"
+                                );
+                                if (spin) spin.remove();
+                                const text = loading.querySelector(
+                                        ".form-success__loading-text"
+                                );
+                                if (text) {
+                                        text.textContent = "No se pudo generar el certificado";
+                                }
                         }
                 }
                 if (method === "transferencia" || method === "domiciliacion") {
@@ -900,6 +960,34 @@ export default function initAutosave() {
                                        }
 
                                        form.flatten();
+
+                                       const appendUrls = [
+                                               json.coberturas_url,
+                                               json.condicionado_url,
+                                               json.reclamacion_url,
+                                       ].filter(Boolean);
+
+                                       for (const url of appendUrls) {
+                                               try {
+                                                       const pdfBytes = await loadStaticPdf(url);
+                                                       if (!pdfBytes) continue;
+
+                                                       const staticDoc = await PDFLib.PDFDocument.load(
+                                                               pdfBytes
+                                                       );
+                                                       const pages = await pdfDoc.copyPages(
+                                                               staticDoc,
+                                                               staticDoc.getPageIndices()
+                                                       );
+                                                       pages.forEach((page) => pdfDoc.addPage(page));
+                                               } catch (appendErr) {
+                                                       console.error(
+                                                               "[AUTOSAVE] append static pdf error",
+                                                               url,
+                                                               appendErr
+                                                       );
+                                               }
+                                       }
                                        const filled = await pdfDoc.save();
                                         const up = await fetch(
                                                 `${getRestRoot()}go/v1/guarantees/${draftId}/certificate`,
@@ -916,13 +1004,29 @@ export default function initAutosave() {
                                 }
                         }
                         if (finalize) {
+                                const restNonce = getRestNonce();
+                                const baseDocUrl =
+                                        draftId
+                                                ? `${getRestRoot()}go/v1/guarantees/${draftId}/document/`
+                                                : "";
+                                const docs = {
+                                        certificado: certificateUrl || "",
+                                        condicionado:
+                                                baseDocUrl && json.condicionado_url
+                                                        ? `${baseDocUrl}condicionado?_wpnonce=${restNonce}`
+                                                        : "",
+                                        cobertura:
+                                                baseDocUrl && json.coberturas_url
+                                                        ? `${baseDocUrl}cobertura?_wpnonce=${restNonce}`
+                                                        : "",
+                                };
                                 showSuccess(
                                         garantia.metodo_pago,
                                         datosVehiculo.matricula,
                                         garantia.precio,
                                         garantia.nivel_garantia,
                                         garantia.meses_contratados,
-                                        certificateUrl
+                                        docs
                                 );
                         }
                         spinner.style.display = "none";
