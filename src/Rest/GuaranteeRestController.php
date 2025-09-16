@@ -317,6 +317,7 @@ class GuaranteeRestController
         $uuid    = isset($request['uuid']) ? sanitize_text_field($request['uuid']) : '';
         $data    = isset($request['data']) && is_array($request['data']) ? $request['data'] : [];
         $template_url     = '';
+        $condicionado_url = '';
         $reclamacion_url  = self::get_reclamacion_document_url();
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
@@ -575,10 +576,9 @@ class GuaranteeRestController
             }
             error_log('[AUTOSAVE] Saved garantia_contratada for ID ' . $post_id . ': ' . wp_json_encode($gc));
             if (isset($gc['garantia'])) {
-                $file = function_exists('get_field') ? get_field('detalles_modalidad_documentos_certificado_garantia', $gc['garantia']) : null;
-                if (is_array($file) && isset($file['url'])) {
-                    $template_url = $file['url'];
-                }
+                $plan_id        = (int) $gc['garantia'];
+                $template_url   = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_certificado_garantia');
+                $condicionado_url = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_condicionado_garantia');
             }
             unset($data['garantia_contratada']);
         }
@@ -674,9 +674,52 @@ class GuaranteeRestController
             'id'              => $post_id,
             'uuid'            => $uuid,
             'template_url'    => $template_url,
+            'condicionado_url' => $condicionado_url,
             'reclamacion_url' => $reclamacion_url,
             'firma_sello'     => $firma_sello,
         ]);
+    }
+
+    private static function get_modalidad_document_url($plan_id, $field_key)
+    {
+        static $cache = [];
+
+        $plan_id   = (int) $plan_id;
+        $field_key = (string) $field_key;
+
+        if ($plan_id <= 0 || $field_key === '') {
+            return '';
+        }
+
+        if (isset($cache[$plan_id][$field_key])) {
+            return $cache[$plan_id][$field_key];
+        }
+
+        $url = '';
+
+        if (function_exists('get_field')) {
+            $file = get_field($field_key, $plan_id);
+            if (is_array($file)) {
+                if (!empty($file['url'])) {
+                    $url = esc_url_raw($file['url']);
+                } elseif (!empty($file['ID'])) {
+                    $tmp = wp_get_attachment_url((int) $file['ID']);
+                    if ($tmp) {
+                        $url = esc_url_raw($tmp);
+                    }
+                }
+            } elseif (is_string($file)) {
+                $url = esc_url_raw($file);
+            }
+        }
+
+        if (!isset($cache[$plan_id])) {
+            $cache[$plan_id] = [];
+        }
+
+        $cache[$plan_id][$field_key] = $url;
+
+        return $url;
     }
 
     private static function get_reclamacion_document_url()

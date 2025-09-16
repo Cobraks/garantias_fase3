@@ -13,12 +13,12 @@ import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
 import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.js";
 
-let cachedProcedimientoPdf = { url: "", bytes: null };
+const pdfCache = new Map();
 
-async function loadProcedimientoPdf(url) {
+async function loadStaticPdf(url) {
         if (!url) return null;
-        if (cachedProcedimientoPdf.url === url && cachedProcedimientoPdf.bytes) {
-                return cachedProcedimientoPdf.bytes;
+        if (pdfCache.has(url)) {
+                return pdfCache.get(url);
         }
 
         const response = await fetch(url);
@@ -26,7 +26,7 @@ async function loadProcedimientoPdf(url) {
                 throw new Error(`HTTP ${response.status}`);
         }
         const bytes = await response.arrayBuffer();
-        cachedProcedimientoPdf = { url, bytes };
+        pdfCache.set(url, bytes);
         return bytes;
 }
 
@@ -917,25 +917,29 @@ export default function initAutosave() {
                                        }
 
                                        form.flatten();
-                                       if (json.reclamacion_url) {
+
+                                       const appendUrls = [
+                                               json.condicionado_url,
+                                               json.reclamacion_url,
+                                       ].filter(Boolean);
+
+                                       for (const url of appendUrls) {
                                                try {
-                                                       const procedimientoBytes = await loadProcedimientoPdf(
-                                                               json.reclamacion_url
+                                                       const pdfBytes = await loadStaticPdf(url);
+                                                       if (!pdfBytes) continue;
+
+                                                       const staticDoc = await PDFLib.PDFDocument.load(
+                                                               pdfBytes
                                                        );
-                                                       if (procedimientoBytes) {
-                                                               const procedimientoDoc =
-                                                                       await PDFLib.PDFDocument.load(
-                                                                               procedimientoBytes
-                                                                       );
-                                                               const pages = await pdfDoc.copyPages(
-                                                                       procedimientoDoc,
-                                                                       procedimientoDoc.getPageIndices()
-                                                               );
-                                                               pages.forEach((page) => pdfDoc.addPage(page));
-                                                       }
+                                                       const pages = await pdfDoc.copyPages(
+                                                               staticDoc,
+                                                               staticDoc.getPageIndices()
+                                                       );
+                                                       pages.forEach((page) => pdfDoc.addPage(page));
                                                } catch (appendErr) {
                                                        console.error(
-                                                               "[AUTOSAVE] append reclamacion pdf error",
+                                                               "[AUTOSAVE] append static pdf error",
+                                                               url,
                                                                appendErr
                                                        );
                                                }
