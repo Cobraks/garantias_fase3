@@ -1,5 +1,10 @@
+import { AVAILABLE_DOCS } from "./modules/docs-config.js";
+
+const ADD_DOC_KEY = "add-document";
+
 (() => {
-	document.addEventListener("DOMContentLoaded", () => {
+        "use strict";
+        document.addEventListener("DOMContentLoaded", () => {
 		console.log("DOM loaded — inicializando mis_garantias.js");
 
                 const tbody = document.querySelector("tbody[data-current-page]");
@@ -10,18 +15,17 @@
 
                initResizableColumns(table);
 
+               const goConfig = window.__GO_CONFIG__ || {};
                const restRoot =
-                        (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.root) ||
+                        (goConfig.rest && goConfig.rest.root) ||
                         (window.GO_REST && window.GO_REST.root) ||
                         "/wp-json/";
                 const restNonce =
-                        (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.nonce) ||
+                        (goConfig.rest && goConfig.rest.nonce) ||
                         (window.GO_REST && window.GO_REST.nonce) ||
                         "";
                 const userRole =
-                        (window.__GO_CONFIG__ &&
-                                window.__GO_CONFIG__.user &&
-                                window.__GO_CONFIG__.user.role) ||
+                        (goConfig.user && goConfig.user.role) ||
                         "user";
                 const isAdmin =
                         ["administrator", "admin", "go_garantias", "go_comercial"].includes(userRole);
@@ -35,7 +39,12 @@
                 const shareIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M680-80q-50 0-85-35t-35-85q0-6 3-28L282-392q-16 15-37 23.5t-45 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q24 0 45 8.5t37 23.5l281-164q-2-7-2.5-13.5T560-760q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-24 0-45-8.5T598-672L317-508q2 7 2.5 13.5t.5 14.5q0 8-.5 14.5T317-452l281 164q16-15 37-23.5t45-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-200q0-17-11.5-28.5T680-240q-17 0-28.5 11.5T640-200q0 17 11.5 28.5T680-160ZM200-440q17 0 28.5-11.5T240-480q0-17-11.5-28.5T200-520q-17 0-28.5 11.5T160-480q0 17 11.5 28.5T200-440Zm480-280q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0 520ZM200-480Zm480-280Z"/></svg>';
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
                 const continueIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
-                const pdfIcon = (window.__GO_CONFIG__ && window.__GO_CONFIG__.icons && window.__GO_CONFIG__.icons.pdf) || "";
+                const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
+                const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
+                const misGarantiasBase =
+                        (goConfig.pages && goConfig.pages.misGarantias) ||
+                        "/garantias-online/mis-garantias/";
+                const SHARE_COPY_MESSAGE = "Enlace copiado para compartir.";
                 const saveStatus = document.createElement("div");
                 saveStatus.className = "autosave-status autosave-status--hidden";
                 saveStatus.innerHTML =
@@ -278,6 +287,7 @@
                                                                 []
                                                         );
                                                         panel.dataset.matricula = data.matricula || rowData.matricula || "";
+                                                        panel.dataset.plan = data.plan || rowData.plan || "";
                                                         syncPdfModalDocs(panel);
                                                 });
                                 })
@@ -300,43 +310,161 @@
                                 });
                 }
                 document.addEventListener("click", handleConfirmClick);
+                document.addEventListener("click", handleShareClick);
 
-                document.addEventListener("click", (e) => {
-                        const btn = e.target.closest("[data-copy]");
-                        if (!btn) return;
+                function buildShareUrl(matricula) {
+                        if (!matricula) {
+                                return "";
+                        }
+                        const normalized = matricula.replace(/\s+/g, "");
+                        const base = misGarantiasBase || "/garantias-online/mis-garantias/";
+                        const separator = base.indexOf("?") !== -1 ? "&" : "?";
+                        return `${base}${separator}matricula=${encodeURIComponent(normalized)}`;
+                }
+
+                function handleShareClick(event) {
+                        const btn = event.target.closest(
+                                ".guarantee-detail__btn--share"
+                        );
+                        if (!btn) {
+                                return;
+                        }
                         const panel = btn.closest(".guarantee-detail__panel");
-                        const target = panel.querySelector(btn.dataset.copy);
+                        if (!panel) {
+                                return;
+                        }
+                        const matricula = panel.dataset.matricula || "";
+                        const shareUrl = buildShareUrl(matricula);
+                        if (!shareUrl) {
+                                return;
+                        }
+                        const plan = panel.dataset.plan || "";
+                        const title = plan
+                                ? `Garantía ${matricula} · ${plan}`
+                                : `Garantía ${matricula}`;
+                        const text = plan
+                                ? `Consulta la documentación de la garantía ${matricula} (${plan}).`
+                                : `Consulta la documentación de la garantía ${matricula}.`;
+
+                        if (navigator.share) {
+                                navigator
+                                        .share({ title, text, url: shareUrl })
+                                        .catch((err) => {
+                                                if (err && err.name === "AbortError") {
+                                                        return;
+                                                }
+                                                detailCopyText(shareUrl).then(() =>
+                                                        showDetailToast(panel, SHARE_COPY_MESSAGE)
+                                                );
+                                        });
+                                return;
+                        }
+
+                        detailCopyText(shareUrl).then(() =>
+                                showDetailToast(panel, SHARE_COPY_MESSAGE)
+                        );
+                }
+
+                function detailCopyText(text) {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                return navigator.clipboard.writeText(text);
+                        }
+                        const textarea = document.createElement("textarea");
+                        textarea.value = text;
+                        textarea.setAttribute("readonly", "true");
+                        textarea.style.position = "absolute";
+                        textarea.style.left = "-9999px";
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        try {
+                                document.execCommand("copy");
+                        } catch (err) {
+                                console.error("Fallback copy failed", err);
+                        }
+                        document.body.removeChild(textarea);
+                        return Promise.resolve();
+                }
+
+                function showDetailToast(panel, message) {
+                        const toast = panel.querySelector(".detail__copy-toast");
+                        if (!toast) return;
+                        toast.textContent = message || "Copiado al portapapeles.";
+                        toast.classList.add("show");
+                        setTimeout(() => toast.classList.remove("show"), 2000);
+                }
+
+                function handleDetailCopy(btn, panel) {
+                        if (!btn || !panel) return;
+                        const selector = btn.dataset.copy;
+                        if (!selector) return;
+                        const target = panel.querySelector(selector);
                         if (!target) return;
                         const text = target.textContent.trim();
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                                navigator.clipboard.writeText(text).then(() => {
-                                        const toast = panel.querySelector(
-                                                ".detail__copy-toast"
-                                        );
-                                        if (toast) {
-                                                toast.textContent =
-                                                        btn.dataset.toast || "Copiado";
-                                                toast.classList.add("show");
-                                                setTimeout(
-                                                        () => toast.classList.remove("show"),
-                                                        2000
-                                                );
-                                        }
-                                        const original = btn.getAttribute(
-                                                "aria-label"
-                                        );
-                                        const done = btn.dataset.done || "Copiado";
-                                        btn.setAttribute("aria-label", done);
+                        if (!text) return;
+                        const originalLabel = btn.getAttribute("aria-label") || "";
+                        const doneLabel = btn.dataset.done || "Copiado";
+                        const toastMessage = btn.dataset.toast || doneLabel;
+                        detailCopyText(text).then(() => {
+                                showDetailToast(panel, toastMessage);
+                                if (doneLabel) {
+                                        btn.setAttribute("aria-label", doneLabel);
                                         setTimeout(() => {
-                                                if (original) {
+                                                if (originalLabel) {
                                                         btn.setAttribute(
                                                                 "aria-label",
-                                                                original
+                                                                originalLabel
                                                         );
                                                 }
                                         }, 2000);
-                                });
+                                }
+                        });
+                }
+
+                document.addEventListener("click", (e) => {
+                        const button = e.target.closest(".detail__copy-btn");
+                        if (button) {
+                                const panel = button.closest(
+                                        ".guarantee-detail__panel"
+                                );
+                                if (panel) {
+                                        handleDetailCopy(button, panel);
+                                }
+                                return;
                         }
+
+                        const row = e.target.closest("tr[data-copy-row]");
+                        if (row) {
+                                const panel = row.closest(
+                                        ".guarantee-detail__panel"
+                                );
+                                if (!panel) {
+                                        return;
+                                }
+                                const proxyButton = row.querySelector(
+                                        ".detail__copy-btn"
+                                );
+                                if (!proxyButton) {
+                                        return;
+                                }
+                                handleDetailCopy(proxyButton, panel);
+                                return;
+                        }
+
+                        const cell = e.target.closest("[data-copy-cell]");
+                        if (!cell) {
+                                return;
+                        }
+                        const panel = cell.closest(".guarantee-detail__panel");
+                        if (!panel) {
+                                return;
+                        }
+                        const proxyButton = cell.querySelector(
+                                ".detail__copy-btn"
+                        );
+                        if (!proxyButton) {
+                                return;
+                        }
+                        handleDetailCopy(proxyButton, panel);
                 });
 
                function normalizeEstadoClase(estado) {
@@ -546,6 +674,9 @@
                         if (data.tipo && typeof data.tipo === "object") {
                                 data.tipo = data.tipo.label || data.tipo.name || data.tipo.value || data.tipo;
                         }
+                        if (typeof data.transfer_iban === "string") {
+                                data.transfer_iban = data.transfer_iban.trim();
+                        }
                         return data;
                 }
 
@@ -617,6 +748,7 @@
                         tr.dataset.metodoPago = item.detail.metodo_pago || "";
                         tr.dataset.cobroRealizado = item.detail.cobro_realizado ? "1" : "";
                         tr.dataset.ibanVendedor = item.detail.iban_vendedor || "";
+                        tr.dataset.transferIban = item.detail.transfer_iban || "";
 
                         const cobroBadgeHtml =
                                 isAdmin &&
@@ -991,6 +1123,7 @@
                                 metodo_pago: row.dataset.metodoPago ?? "",
                                 cobro_realizado: row.dataset.cobroRealizado === "1",
                                 iban_vendedor: row.dataset.ibanVendedor ?? "",
+                                transfer_iban: row.dataset.transferIban ?? "",
                                 tipo: "-",
                                 kilometros: "-",
                                 primera_matriculacion: "-",
@@ -1007,7 +1140,6 @@
                                 certificate_url: "#",
                                 condicionado_url: "#",
                                 cobertura_url: "#",
-                                factura_url: "#",
                                 nombre_comprador: "-",
                                 dni_comprador: "-",
                                 telefono_comprador: "-",
@@ -1043,6 +1175,12 @@
         val && typeof val === "object" && "label" in val
             ? val.label
             : val;
+    const escapeAttr = (value) =>
+        String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
     const skeleton = (field, fallback = "-") =>
         skeletons.includes(field)
             ? `<span class="skeleton skeleton--${field}"></span>`
@@ -1070,6 +1208,10 @@
         rowData.cobro_realizado,
     ].some((v) => v === true || v === 1 || v === "1");
 
+    const transferIban = [data.transfer_iban, rowData.transfer_iban]
+        .map((val) => (typeof val === "string" ? val.trim() : ""))
+        .find((val) => val) || "";
+
     const planTitle = `${data.plan ?? "-"}${
         mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
     }`;
@@ -1088,12 +1230,16 @@
         const str = String(val).trim();
         return str !== "" && str !== "-" && str !== "#";
     };
-    const docFields = [
-        "certificate_url",
-        "condicionado_url",
-        "cobertura_url",
-        "factura_url",
-    ];
+    const docsData = AVAILABLE_DOCS.map((doc) => {
+        const value = data?.[doc.field] ?? rowData?.[doc.field] ?? "";
+        const url = typeof value === "string" ? value : String(value ?? "");
+        return {
+            ...doc,
+            url,
+            available: isFilled(value),
+        };
+    });
+    const availableDocs = docsData.filter((doc) => doc.available);
     const buyerFields = [
         "nombre_comprador",
         "dni_comprador",
@@ -1106,7 +1252,37 @@
     ];
     const hasGuaranteeInfo =
         isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
-    const hasDocs = docFields.every((field) => isFilled(data[field]));
+    const hasDocs = availableDocs.length > 0;
+    const docsButtonsHtml = availableDocs
+        .map(
+            (doc, idx) =>
+                `<li class="detail__docs-item">` +
+                `<button type="button" class="detail__docs-btn" data-doc-url="${escapeAttr(doc.url)}" data-doc-index="${idx}" data-doc-key="${doc.key}" aria-label="Ver documento ${escapeAttr(doc.listLabel)}">` +
+                `<span class="detail__docs-icon detail__docs-icon--pdf">${pdfIcon}</span>` +
+                `<span class="detail__docs-label">${doc.listLabel}</span>` +
+                `</button>` +
+                `</li>`
+        )
+        .join("");
+
+    const addDocButtonHtml = isAdmin
+        ? `<li class="detail__docs-item detail__docs-item--add">` +
+          `<button type="button" class="detail__docs-btn detail__docs-btn--add detail__docs-add" data-doc-key="${ADD_DOC_KEY}" data-doc-action="add" aria-label="Añadir documento">` +
+          `<span class="detail__docs-icon detail__docs-icon--add">${plusIcon || "+"}</span>` +
+          `<span class="detail__docs-label">Añadir documento</span>` +
+          `</button>` +
+          `</li>`
+        : "";
+
+    let docsListHtml = "";
+    if (hasDocs || isAdmin) {
+        docsListHtml = `<ul class="detail__docs-list">${docsButtonsHtml}${addDocButtonHtml}</ul>`;
+        if (!hasDocs) {
+            docsListHtml = `<p class="detail__alert-section">Documentación no disponible</p>${docsListHtml}`;
+        }
+    } else {
+        docsListHtml = `<p class="detail__alert-section">Documentación no disponible</p>`;
+    }
     const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
     const showChannelSection = isAdmin;
     const showActions = isAdmin;
@@ -1175,31 +1351,7 @@
                 </section>
                 <section class="detail__section detail__section--docs">
                         <h3 class="detail__section-title">Documentación</h3>
-                        ${hasDocs
-                            ? `<ul class="detail__docs-list">
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("certificate_url", "#")}" data-doc-index="0" aria-label="Ver documento Certificado Garantía">
-                                                <span class="detail__docs-icon">${pdfIcon}</span>
-                                                <span class="detail__docs-label">Certificado Garantía</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" data-doc-index="1" aria-label="Ver documento Condicionado">
-                                                <span class="detail__docs-label">Condicionado</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" data-doc-index="2" aria-label="Ver documento Cobertura">
-                                                <span class="detail__docs-label">Cobertura</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" data-doc-index="3" aria-label="Ver documento Factura">
-                                                <span class="detail__docs-label">Factura</span>
-                                        </button>
-                                </li>
-                        </ul>`
-                            : `<p class="detail__alert-section">Documentación no disponible</p>`}
+                        ${docsListHtml}
                 </section>
                 <section class="detail__section">
                         <h3>Datos del cliente</h3>
@@ -1267,9 +1419,9 @@
                                 </button>
                                 <table class="detail__transfer-table">
                                         <tbody>
-                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
-                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
-                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                                <tr data-copy-row><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr data-copy-row><th>Cantidad</th><td data-copy-cell data-tooltip="Copiar cantidad"><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                <tr data-copy-row><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
                                         </tbody>
                                 </table>
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
@@ -1279,14 +1431,16 @@
             if (metodoPago === "transferencia") {
                 const concepto = `Garantía ${skeleton("matricula")}`;
                 const cantidad = `${skeleton("precio", "0")} €`;
-                const iban = "ES00 0000 0000 0000 0000 0000";
+                const ibanRow = transferIban
+                    ? `<tr data-copy-row><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
+                    : "";
                 return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note">Recuerda realizar la transferencia para activar tu garantía.</p>
                                 <table class="detail__transfer-table">
                                         <tbody>
-                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
-                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
-                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                                <tr data-copy-row><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr data-copy-row><th>Cantidad</th><td data-copy-cell data-tooltip="Copiar cantidad"><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                ${ibanRow}
                                         </tbody>
                                 </table>
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
@@ -1354,29 +1508,7 @@
                 </section>
                 <section class="detail__section detail__section--docs">
                         <h3 class="detail__section-title">Documentación</h3>
-                        <ul class="detail__docs-list">
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("certificate_url", "#")}" data-doc-index="0" aria-label="Ver documento Certificado Garantía">
-                                                <span class="detail__docs-icon">${pdfIcon}</span>
-                                                <span class="detail__docs-label">Certificado Garantía</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" data-doc-index="1" aria-label="Ver documento Condicionado">
-                                                <span class="detail__docs-label">Condicionado</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" data-doc-index="2" aria-label="Ver documento Cobertura">
-                                                <span class="detail__docs-label">Cobertura</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" data-doc-index="3" aria-label="Ver documento Factura">
-                                                <span class="detail__docs-label">Factura</span>
-                                        </button>
-                                </li>
-                        </ul>
+                        ${docsListHtml}
                 </section>
                 <section class="detail__section">
                         <h3>Datos del cliente</h3>
@@ -1407,16 +1539,53 @@ function syncPdfModalDocs(panel) {
         if (!modal) return;
         const modalList = modal.querySelector(".pdf-modal__docs-list");
         const panelList = panel.querySelector(".detail__docs-list");
-        if (modalList && panelList) {
+        if (modalList) {
                 modalList.innerHTML = "";
-                panelList.querySelectorAll(".detail__docs-item").forEach((item) => {
-                        modalList.appendChild(item.cloneNode(true));
-                });
         }
-        const subtitle = modal.querySelector(".pdf-modal-subttitle");
+        if (modalList && panelList) {
+                const panelButtons = Array.from(
+                        panelList.querySelectorAll(".detail__docs-btn")
+                );
+                panelButtons.forEach((btn, idx) => {
+                        btn.dataset.docIndex = String(idx);
+                });
+        panelButtons.forEach((btn, idx) => {
+                const item = btn.closest(".detail__docs-item");
+                if (!item) return;
+                const clone = item.cloneNode(true);
+                const cloneBtn = clone.querySelector(
+                        ".detail__docs-btn"
+                );
+                if (cloneBtn) {
+                        cloneBtn.dataset.docIndex = String(idx);
+                }
+                modalList.appendChild(clone);
+        });
+        updateModalControls(modal);
+    } else if (modalList) {
+        modalList.innerHTML = "";
+        updateModalControls(modal);
+    }
+    const subtitle = modal.querySelector(".pdf-modal-subttitle");
         if (subtitle) {
                 const mat = panel.dataset.matricula || "";
                 subtitle.textContent = mat ? `Garantía ${mat}` : "";
+        }
+}
+
+function updateModalControls(modal) {
+        if (!modal) return;
+        const buttons = Array.from(
+                modal.querySelectorAll(".pdf-modal__docs-list .detail__docs-btn")
+        );
+        const docButtons = buttons.filter((btn) => btn.dataset.docKey !== ADD_DOC_KEY);
+        const download = modal.querySelector(".pdf-modal__download");
+        const nav = modal.querySelector(".pdf-modal__nav");
+        if (download) {
+                download.hidden = docButtons.length === 0;
+        }
+        if (nav) {
+                nav.hidden = docButtons.length <= 1;
         }
 }
 
@@ -1458,6 +1627,7 @@ function initRowSelection() {
                                         const data = detailCache.get(id);
                                         nextPanel.innerHTML = renderFullDetail(data, rowData, []);
                                         nextPanel.dataset.matricula = data.matricula || rowData.matricula || "";
+                                        nextPanel.dataset.plan = data.plan || rowData.plan || "";
                                         syncPdfModalDocs(nextPanel);
                                 } else {
                                         nextPanel.classList.add("loading");
@@ -1490,6 +1660,7 @@ function initRowSelection() {
                                                 if (nextPanel.dataset.loadedId === String(id)) {
                                                         nextPanel.innerHTML = renderFullDetail(data, rowData, []);
                                                         nextPanel.dataset.matricula = data.matricula || rowData.matricula || "";
+                                                        nextPanel.dataset.plan = data.plan || rowData.plan || "";
                                                         syncPdfModalDocs(nextPanel);
                                                 }
                                         } catch (e) {
@@ -1515,7 +1686,9 @@ function initRowSelection() {
                         const dl = modal.querySelector(".pdf-modal__download");
                         const prevBtn = modal.querySelector(".pdf-modal__nav-btn--prev");
                         const nextBtn = modal.querySelector(".pdf-modal__nav-btn--next");
+                        const navContainer = modal.querySelector(".pdf-modal__nav");
                         const spinner = modal.querySelector(".pdf-modal__spinner");
+                        const uploadView = modal.querySelector(".pdf-modal__upload");
                         let currentIdx = -1;
 
                         iframe.addEventListener("load", () => spinner && spinner.classList.remove("active"));
@@ -1526,6 +1699,43 @@ function initRowSelection() {
                                 );
                         }
 
+                        function showUploadView() {
+                                if (spinner) spinner.classList.remove("active");
+                                if (uploadView) uploadView.hidden = false;
+                                if (iframe) {
+                                        iframe.hidden = true;
+                                        iframe.src = "";
+                                }
+                                if (dl) {
+                                        dl.hidden = true;
+                                        dl.removeAttribute("href");
+                                }
+                                if (navContainer) {
+                                        navContainer.hidden = true;
+                                }
+                                if (prevBtn) {
+                                        prevBtn.hidden = true;
+                                        prevBtn.disabled = true;
+                                }
+                                if (nextBtn) {
+                                        nextBtn.hidden = true;
+                                        nextBtn.disabled = true;
+                                }
+                        }
+
+                        function showPdfView(buttons) {
+                                if (uploadView) uploadView.hidden = true;
+                                if (iframe) iframe.hidden = false;
+                                if (dl) dl.hidden = false;
+                                const docButtons = buttons.filter(
+                                        (btn) => btn.dataset.docKey !== ADD_DOC_KEY
+                                );
+                                const hideNav = docButtons.length <= 1;
+                                if (navContainer) navContainer.hidden = hideNav;
+                                if (prevBtn) prevBtn.hidden = hideNav;
+                                if (nextBtn) nextBtn.hidden = hideNav;
+                        }
+
                         function openDocByIndex(idx) {
                                 const buttons = getButtons();
                                 if (idx < 0 || idx >= buttons.length) return;
@@ -1533,13 +1743,36 @@ function initRowSelection() {
                                 currentIdx = idx;
                                 const btn = buttons[idx];
                                 const url = btn.dataset.docUrl;
-                                if (spinner) spinner.classList.add("active");
-                                iframe.src = url;
-                                const dlUrl = url.includes("?") ? `${url}&download=1` : `${url}?download=1`;
-                                dl.href = dlUrl;
+                                const isAddDoc = btn.dataset.docKey === ADD_DOC_KEY;
                                 buttons.forEach((b, i) => b.classList.toggle("active", i === idx));
-                                prevBtn.disabled = idx === 0;
-                                nextBtn.disabled = idx === buttons.length - 1;
+                                if (prevBtn) {
+                                        prevBtn.disabled = idx === 0;
+                                }
+                                if (nextBtn) {
+                                        nextBtn.disabled = idx === buttons.length - 1;
+                                }
+
+                                if (isAddDoc) {
+                                        showUploadView();
+                                        return;
+                                }
+
+                                if (!url) {
+                                        if (spinner) spinner.classList.remove("active");
+                                        return;
+                                }
+
+                                showPdfView(buttons);
+                                if (spinner) spinner.classList.add("active");
+                                iframe.hidden = false;
+                                iframe.src = url;
+                                if (dl) {
+                                        const dlUrl = url.includes("?")
+                                                ? `${url}&download=1`
+                                                : `${url}?download=1`;
+                                        dl.href = dlUrl;
+                                        dl.hidden = false;
+                                }
                                 const direction = prevIdx === -1 || idx > prevIdx ? "right" : "left";
                                 iframe.classList.add(
                                         direction === "right" ? "slide-in-right" : "slide-in-left"
@@ -1555,11 +1788,27 @@ function initRowSelection() {
                                 );
                         }
 
+                        function openDocByKey(key) {
+                                if (!key) return;
+                                const buttons = getButtons();
+                                const idx = buttons.findIndex(
+                                        (button) => button.dataset.docKey === key
+                                );
+                                if (idx !== -1) {
+                                        openDocByIndex(idx);
+                                }
+                        }
+
                         document.addEventListener("click", (e) => {
                                 const btn = e.target.closest(".detail__docs-btn");
                                 if (btn) {
-                                        const idx = parseInt(btn.dataset.docIndex || "0", 10);
-                                        openDocByIndex(idx);
+                                        const key = btn.dataset.docKey || "";
+                                        if (key) {
+                                                openDocByKey(key);
+                                        } else {
+                                                const idx = parseInt(btn.dataset.docIndex || "0", 10);
+                                                openDocByIndex(idx);
+                                        }
                                         modal.classList.add("visible");
                                 }
                         });
@@ -1570,12 +1819,33 @@ function initRowSelection() {
                         function closeModal() {
                                 modal.classList.remove("visible");
                                 iframe.src = "";
-                                dl.href = "#";
+                                if (dl) {
+                                        dl.href = "#";
+                                }
                                 currentIdx = -1;
-                                prevBtn.disabled = true;
-                                nextBtn.disabled = true;
+                                if (prevBtn) {
+                                        prevBtn.disabled = true;
+                                        prevBtn.hidden = false;
+                                }
+                                if (nextBtn) {
+                                        nextBtn.disabled = true;
+                                        nextBtn.hidden = false;
+                                }
+                                if (uploadView) {
+                                        uploadView.hidden = true;
+                                }
+                                if (iframe) {
+                                        iframe.hidden = false;
+                                }
+                                if (navContainer) {
+                                        navContainer.hidden = false;
+                                }
+                                if (dl) {
+                                        dl.hidden = false;
+                                }
                                 if (spinner) spinner.classList.remove("active");
                                 getButtons().forEach((b) => b.classList.remove("active"));
+                                updateModalControls(modal);
                         }
 
                         modal.querySelector(".pdf-modal__close").addEventListener("click", closeModal);
