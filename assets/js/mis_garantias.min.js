@@ -44,7 +44,8 @@ const ADD_DOC_KEY = "add-document";
                 const misGarantiasBase =
                         (goConfig.pages && goConfig.pages.misGarantias) ||
                         "/garantias-online/mis-garantias/";
-                const SHARE_COPY_MESSAGE = "Enlace copiado para compartir.";
+                const SHARE_UNAVAILABLE_MESSAGE =
+                        "La función de compartir no está disponible en este navegador.";
                 const saveStatus = document.createElement("div");
                 saveStatus.className = "autosave-status autosave-status--hidden";
                 saveStatus.innerHTML =
@@ -353,16 +354,15 @@ const ADD_DOC_KEY = "add-document";
                                                 if (err && err.name === "AbortError") {
                                                         return;
                                                 }
-                                                detailCopyText(shareUrl).then(() =>
-                                                        showDetailToast(panel, SHARE_COPY_MESSAGE)
+                                                showDetailToast(
+                                                        panel,
+                                                        SHARE_UNAVAILABLE_MESSAGE
                                                 );
                                         });
                                 return;
                         }
 
-                        detailCopyText(shareUrl).then(() =>
-                                showDetailToast(panel, SHARE_COPY_MESSAGE)
-                        );
+                        showDetailToast(panel, SHARE_UNAVAILABLE_MESSAGE);
                 }
 
                 function detailCopyText(text) {
