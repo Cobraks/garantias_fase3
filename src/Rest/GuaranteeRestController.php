@@ -317,6 +317,7 @@ class GuaranteeRestController
         $uuid    = isset($request['uuid']) ? sanitize_text_field($request['uuid']) : '';
         $data    = isset($request['data']) && is_array($request['data']) ? $request['data'] : [];
         $template_url     = '';
+        $coberturas_url   = '';
         $condicionado_url = '';
         $reclamacion_url  = self::get_reclamacion_document_url();
 
@@ -578,6 +579,7 @@ class GuaranteeRestController
             if (isset($gc['garantia'])) {
                 $plan_id        = (int) $gc['garantia'];
                 $template_url   = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_certificado_garantia');
+                $coberturas_url = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_coberturas');
                 $condicionado_url = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_condicionado_garantia');
             }
             unset($data['garantia_contratada']);
@@ -674,6 +676,7 @@ class GuaranteeRestController
             'id'              => $post_id,
             'uuid'            => $uuid,
             'template_url'    => $template_url,
+            'coberturas_url'  => $coberturas_url,
             'condicionado_url' => $condicionado_url,
             'reclamacion_url' => $reclamacion_url,
             'firma_sello'     => $firma_sello,

@@ -919,6 +919,7 @@ export default function initAutosave() {
                                        form.flatten();
 
                                        const appendUrls = [
+                                               json.coberturas_url,
                                                json.condicionado_url,
                                                json.reclamacion_url,
                                        ].filter(Boolean);
