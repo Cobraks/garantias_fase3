@@ -63,7 +63,7 @@ use GarantiasOnline360VO\Svg;
             }
         };
     </script>
-    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" defer></script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 <?php endif; ?>
 
 <?php if (($is_add_guarantee ?? false)) : ?>
