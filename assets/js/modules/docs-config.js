@@ -6,7 +6,7 @@ export const AVAILABLE_DOCS = [
                 key: "certificate",
                 field: "certificate_url",
                 routeType: "certificado",
-                listLabel: "Certificado Garantía",
+                listLabel: "certificado",
                 successLabel: "Descargar certificado",
         },
         {

@@ -304,42 +304,91 @@ import { AVAILABLE_DOCS } from "./modules/docs-config.js";
                 }
                 document.addEventListener("click", handleConfirmClick);
 
-                document.addEventListener("click", (e) => {
-                        const btn = e.target.closest("[data-copy]");
-                        if (!btn) return;
-                        const panel = btn.closest(".guarantee-detail__panel");
-                        const target = panel.querySelector(btn.dataset.copy);
+                function detailCopyText(text) {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                return navigator.clipboard.writeText(text);
+                        }
+                        const textarea = document.createElement("textarea");
+                        textarea.value = text;
+                        textarea.setAttribute("readonly", "true");
+                        textarea.style.position = "absolute";
+                        textarea.style.left = "-9999px";
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        try {
+                                document.execCommand("copy");
+                        } catch (err) {
+                                console.error("Fallback copy failed", err);
+                        }
+                        document.body.removeChild(textarea);
+                        return Promise.resolve();
+                }
+
+                function showDetailToast(panel, message) {
+                        const toast = panel.querySelector(".detail__copy-toast");
+                        if (!toast) return;
+                        toast.textContent = message || "Copiado al portapapeles.";
+                        toast.classList.add("show");
+                        setTimeout(() => toast.classList.remove("show"), 2000);
+                }
+
+                function handleDetailCopy(btn, panel) {
+                        if (!btn || !panel) return;
+                        const selector = btn.dataset.copy;
+                        if (!selector) return;
+                        const target = panel.querySelector(selector);
                         if (!target) return;
                         const text = target.textContent.trim();
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                                navigator.clipboard.writeText(text).then(() => {
-                                        const toast = panel.querySelector(
-                                                ".detail__copy-toast"
-                                        );
-                                        if (toast) {
-                                                toast.textContent =
-                                                        btn.dataset.toast || "Copiado";
-                                                toast.classList.add("show");
-                                                setTimeout(
-                                                        () => toast.classList.remove("show"),
-                                                        2000
-                                                );
-                                        }
-                                        const original = btn.getAttribute(
-                                                "aria-label"
-                                        );
-                                        const done = btn.dataset.done || "Copiado";
-                                        btn.setAttribute("aria-label", done);
+                        if (!text) return;
+                        const originalLabel = btn.getAttribute("aria-label") || "";
+                        const doneLabel = btn.dataset.done || "Copiado";
+                        const toastMessage = btn.dataset.toast || doneLabel;
+                        detailCopyText(text).then(() => {
+                                showDetailToast(panel, toastMessage);
+                                if (doneLabel) {
+                                        btn.setAttribute("aria-label", doneLabel);
                                         setTimeout(() => {
-                                                if (original) {
+                                                if (originalLabel) {
                                                         btn.setAttribute(
                                                                 "aria-label",
-                                                                original
+                                                                originalLabel
                                                         );
                                                 }
                                         }, 2000);
-                                });
+                                }
+                        });
+                }
+
+                document.addEventListener("click", (e) => {
+                        const button = e.target.closest(".detail__copy-btn");
+                        if (button) {
+                                const panel = button.closest(
+                                        ".guarantee-detail__panel"
+                                );
+                                if (panel) {
+                                        handleDetailCopy(button, panel);
+                                }
+                                return;
                         }
+
+                        const cell = e.target.closest("[data-copy-cell]");
+                        if (!cell) {
+                                return;
+                        }
+                        if (e.target.closest(".detail__copy-btn")) {
+                                return;
+                        }
+                        const panel = cell.closest(".guarantee-detail__panel");
+                        if (!panel) {
+                                return;
+                        }
+                        const proxyButton = cell.querySelector(
+                                ".detail__copy-btn"
+                        );
+                        if (!proxyButton) {
+                                return;
+                        }
+                        handleDetailCopy(proxyButton, panel);
                 });
 
                function normalizeEstadoClase(estado) {
@@ -1128,6 +1177,9 @@ import { AVAILABLE_DOCS } from "./modules/docs-config.js";
     const hasGuaranteeInfo =
         isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
     const hasDocs = availableDocs.length > 0;
+    const docsActionsHtml = isAdmin
+        ? '<div class="detail__docs-actions"><button type="button" class="detail__docs-add">Añadir documentación</button></div>'
+        : "";
     const docsListHtml = hasDocs
         ? `<ul class="detail__docs-list">${availableDocs
               .map(
@@ -1139,8 +1191,8 @@ import { AVAILABLE_DOCS } from "./modules/docs-config.js";
                       `</button>` +
                       `</li>`
               )
-              .join("")}</ul>`
-        : `<p class="detail__alert-section">Documentación no disponible</p>`;
+              .join("")}</ul>${docsActionsHtml}`
+        : `<p class="detail__alert-section">Documentación no disponible</p>${docsActionsHtml}`;
     const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
     const showChannelSection = isAdmin;
     const showActions = isAdmin;
@@ -1277,9 +1329,9 @@ import { AVAILABLE_DOCS } from "./modules/docs-config.js";
                                 </button>
                                 <table class="detail__transfer-table">
                                         <tbody>
-                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
-                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
-                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                                <tr><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr><th>Cantidad</th><td data-copy-cell data-tooltip="Copiar cantidad"><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                <tr><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
                                         </tbody>
                                 </table>
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
@@ -1290,14 +1342,14 @@ import { AVAILABLE_DOCS } from "./modules/docs-config.js";
                 const concepto = `Garantía ${skeleton("matricula")}`;
                 const cantidad = `${skeleton("precio", "0")} €`;
                 const ibanRow = transferIban
-                    ? `<tr><th>IBAN</th><td><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
+                    ? `<tr><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
                     : "";
                 return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note">Recuerda realizar la transferencia para activar tu garantía.</p>
                                 <table class="detail__transfer-table">
                                         <tbody>
-                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
-                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                <tr><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr><th>Cantidad</th><td data-copy-cell data-tooltip="Copiar cantidad"><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
                                                 ${ibanRow}
                                         </tbody>
                                 </table>

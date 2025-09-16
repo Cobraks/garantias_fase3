@@ -491,52 +491,61 @@ export default function initAutosave() {
                         }
                 }
 
-                successBlock.querySelectorAll("[data-copy]").forEach((btn) => {
-                        btn.addEventListener("click", () => {
-                                const target = successBlock.querySelector(
-                                        btn.getAttribute("data-copy")
+                function handleSuccessCopy(btn) {
+                        if (!btn) return;
+                        const selector = btn.getAttribute("data-copy");
+                        if (!selector) return;
+                        const target = successBlock.querySelector(selector);
+                        if (!target) return;
+                        const text = target.textContent.trim();
+                        if (!text) return;
+                        copyText(text).then(() => {
+                                const label = btn.querySelector(
+                                        ".form-success__copy-text"
                                 );
-                                if (target) {
-                                        copyText(target.textContent.trim()).then(() => {
-                                                const label = btn.querySelector(
-                                                        ".form-success__copy-text"
-                                                );
-                                                if (label) {
-                                                        const original = btn.dataset.label || label.textContent;
-                                                        label.textContent = btn.dataset.done || "Copiado";
-                                                        setTimeout(
-                                                                () => (label.textContent = original),
-                                                                2000
-                                                        );
-                                                } else {
-                                                        const original =
-                                                                btn.dataset.label ||
-                                                                btn.getAttribute("aria-label") ||
-                                                                "";
-                                                        const done = btn.dataset.done || "Copiado";
-                                                        btn.setAttribute("aria-label", done);
-                                                        setTimeout(() => {
-                                                                if (original)
-                                                                        btn.setAttribute(
-                                                                                "aria-label",
-                                                                                original
-                                                                        );
-                                                        }, 2000);
-                                                }
-                                                showToast(btn.dataset.toast);
-                                        });
+                                if (label) {
+                                        const original = btn.dataset.label || label.textContent;
+                                        label.textContent = btn.dataset.done || "Copiado";
+                                        setTimeout(
+                                                () => (label.textContent = original),
+                                                2000
+                                        );
+                                } else {
+                                        const original =
+                                                btn.dataset.label ||
+                                                btn.getAttribute("aria-label") ||
+                                                "";
+                                        const done = btn.dataset.done || "Copiado";
+                                        if (done) {
+                                                btn.setAttribute("aria-label", done);
+                                                setTimeout(() => {
+                                                        if (original) {
+                                                                btn.setAttribute(
+                                                                        "aria-label",
+                                                                        original
+                                                                );
+                                                        }
+                                                }, 2000);
+                                        }
                                 }
+                                showToast(btn.dataset.toast);
                         });
+                }
+
+                successBlock.querySelectorAll("[data-copy]").forEach((btn) => {
+                        btn.addEventListener("click", () => handleSuccessCopy(btn));
                 });
-                successBlock
-                        .querySelectorAll("[data-ref],[data-iban],[data-amount]")
-                        .forEach((el) => {
-                                el.addEventListener("click", () => {
-                                        copyText(el.textContent.trim()).then(() => {
-                                                showToast(el.dataset.toast);
-                                        });
-                                });
-                        });
+
+                successBlock.addEventListener("click", (event) => {
+                        const cell = event.target.closest("[data-copy-cell]");
+                        if (!cell || !successBlock.contains(cell)) return;
+                        if (event.target.closest("[data-copy]")) {
+                                return;
+                        }
+                        const btn = cell.querySelector("[data-copy]");
+                        if (!btn) return;
+                        handleSuccessCopy(btn);
+                });
                 const sound = successBlock.querySelector("#form-success__sound");
                 if (sound) {
                         sound.currentTime = 0;
