@@ -140,34 +140,64 @@ class GuaranteeRestController
     {
         $id   = (int) $request['id'];
         $type = sanitize_key($request['type']);
+
+        $plan     = self::get_plan_title($id);
+        $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
+        $binary   = '';
+        $filename = '';
+
         switch ($type) {
             case 'certificado':
                 $hash = get_post_meta($id, 'documentacion_certificado_hash', true);
-                $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
-                if ($plan_id) {
-                    $custom_plan = function_exists('get_field')
-                        ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
-                        : '';
-                    $plan = $custom_plan ?: get_the_title($plan_id);
-                } else {
-                    $plan = '';
+                if (!$hash) {
+                    error_log('[download_document] no hash for ' . $id . ' type ' . $type);
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
                 }
-                $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
-                $filename = trim(sprintf('Certificado Garantía %s %s.pdf', $plan, $matricula));
+                error_log('[download_document] retrieving ' . $hash);
+                $binary = PrivateDocsManager::retrieve($hash, 'pdf');
+                if (!$binary) {
+                    error_log('[download_document] retrieval failed ' . $hash);
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $filename = self::build_pdf_filename(
+                    __('Certificado Garantía', 'garantias-online-360vo'),
+                    $plan,
+                    $matricula
+                );
+                break;
+            case 'cobertura':
+            case 'condicionado':
+                $meta_key = $type === 'cobertura' ? 'docs_url_cobertura' : 'docs_url_condicionado';
+                $source   = get_post_meta($id, $meta_key, true);
+                $source   = is_string($source) ? trim($source) : '';
+                if ($source === '' || $source === '#') {
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                if (!wp_http_validate_url($source)) {
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $remote = wp_remote_get($source, ['timeout' => 20]);
+                if (is_wp_error($remote)) {
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $code = (int) wp_remote_retrieve_response_code($remote);
+                if ($code !== 200) {
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $body = wp_remote_retrieve_body($remote);
+                if ($body === '' || $body === null) {
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $binary = $body;
+                $label = $type === 'cobertura'
+                    ? __('Cobertura Garantía', 'garantias-online-360vo')
+                    : __('Condicionado Garantía', 'garantias-online-360vo');
+                $filename = self::build_pdf_filename($label, $plan);
                 break;
             default:
                 return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
         }
-        if (!$hash) {
-            error_log('[download_document] no hash for ' . $id . ' type ' . $type);
-            return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
-        }
-        error_log('[download_document] retrieving ' . $hash);
-        $binary = PrivateDocsManager::retrieve($hash, 'pdf');
-        if (!$binary) {
-            error_log('[download_document] retrieval failed ' . $hash);
-            return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
-        }
+
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_downloaded', $type);
         $response = new WP_REST_Response($binary, 200);
         $response->header('Content-Type', 'application/pdf');
@@ -181,6 +211,59 @@ class GuaranteeRestController
         );
         $response->header('Content-Disposition', $disposition);
         return $response;
+    }
+
+    private static function get_plan_title($guarantee_id)
+    {
+        $plan_id = get_post_meta($guarantee_id, 'garantia_contratada_garantia', true);
+        $plan_id = (int) $plan_id;
+        if (!$plan_id) {
+            return '';
+        }
+
+        $custom_plan = function_exists('get_field')
+            ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
+            : '';
+
+        $plan = $custom_plan ?: get_the_title($plan_id);
+        return is_string($plan) ? $plan : '';
+    }
+
+    private static function build_pdf_filename($prefix, $plan = '', $suffix = '')
+    {
+        $parts = array_filter(array_map('trim', [
+            wp_strip_all_tags((string) $prefix),
+            wp_strip_all_tags((string) $plan),
+            wp_strip_all_tags((string) $suffix),
+        ]));
+
+        $name = implode(' ', $parts);
+        if ($name === '') {
+            $name = __('Documento', 'garantias-online-360vo');
+        }
+
+        $name = preg_replace('/[\r\n]+/', ' ', $name);
+        $name = str_replace(['"', '\\'], '', $name);
+
+        return trim($name) . '.pdf';
+    }
+
+    private static function build_document_url($id, $type, $source)
+    {
+        $source = is_string($source) ? trim($source) : '';
+        if ($source === '' || $source === '#') {
+            return '';
+        }
+
+        if (!wp_http_validate_url($source)) {
+            return '';
+        }
+
+        $endpoint = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/document/' . $type);
+        $endpoint = add_query_arg('_wpnonce', wp_create_nonce('wp_rest'), $endpoint);
+        $scheme   = wp_parse_url(home_url(), PHP_URL_SCHEME);
+
+        return set_url_scheme($endpoint, $scheme);
     }
 
     public static function serve_document($served, $result, $request, $server)
@@ -581,6 +664,18 @@ class GuaranteeRestController
                 $template_url   = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_certificado_garantia');
                 $coberturas_url = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_coberturas');
                 $condicionado_url = self::get_modalidad_document_url($plan_id, 'detalles_modalidad_documentos_condicionado_garantia');
+
+                if ($coberturas_url) {
+                    update_post_meta($post_id, 'docs_url_cobertura', $coberturas_url);
+                } else {
+                    delete_post_meta($post_id, 'docs_url_cobertura');
+                }
+
+                if ($condicionado_url) {
+                    update_post_meta($post_id, 'docs_url_condicionado', $condicionado_url);
+                } else {
+                    delete_post_meta($post_id, 'docs_url_condicionado');
+                }
             }
             unset($data['garantia_contratada']);
         }
@@ -899,9 +994,10 @@ class GuaranteeRestController
         $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
         $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
 
-        $condicionado_url = get_post_meta($id, 'docs_url_condicionado', true) ?: '#';
-        $cobertura_url = get_post_meta($id, 'docs_url_cobertura', true) ?: '#';
-        $factura_url = get_post_meta($id, 'docs_url_factura', true) ?: '#';
+        $condicionado_meta = get_post_meta($id, 'docs_url_condicionado', true);
+        $cobertura_meta    = get_post_meta($id, 'docs_url_cobertura', true);
+        $condicionado_url  = self::build_document_url($id, 'condicionado', $condicionado_meta);
+        $cobertura_url     = self::build_document_url($id, 'cobertura', $cobertura_meta);
         $cert_hash = get_post_meta($id, 'documentacion_certificado_hash', true);
         $certificate_url = $cert_hash
             ? rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $id . '/document/certificado')
@@ -968,7 +1064,6 @@ class GuaranteeRestController
             'vendedor_url' => $vendedor_url,
             'condicionado_url' => $condicionado_url,
             'cobertura_url' => $cobertura_url,
-            'factura_url' => $factura_url,
             'certificate_url' => $certificate_url,
             'cobro_realizado' => $cobro_realizado ? true : false,
             'iban_vendedor' => $iban_vendedor ?: '',

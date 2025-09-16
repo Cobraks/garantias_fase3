@@ -15,7 +15,11 @@ use GarantiasOnline360VO\Svg;
         <span class="form-success__loading-text">Generando documentos…</span>
         <span class="form-success__loading-spinner" aria-hidden="true"></span>
     </div>
-    <a href="#" class="form-success__download" hidden></a>
+    <div class="form-success__docs" hidden>
+        <a href="#" class="form-success__download form-success__download--certificado" hidden></a>
+        <a href="#" class="form-success__download form-success__download--condicionado" hidden></a>
+        <a href="#" class="form-success__download form-success__download--cobertura" hidden></a>
+    </div>
     <a href="#" class="form-success__details-link">Ver garantía <span data-ref-text></span></a>
 
     <div class="form-success__payment" hidden>
