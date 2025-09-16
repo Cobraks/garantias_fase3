@@ -74,8 +74,24 @@ class AssetCompiler
 
     private static function compile_js(string $src, string $dest): void
     {
-        $js  = file_get_contents($src);
-        $min = preg_replace(['!/\*.*?\*/!s', '/\/\/.*?\n/', '/\s+/'], ['', '', ' '], $js);
-        file_put_contents($dest, trim($min));
+        $js = file_get_contents($src);
+        if ($js === false) {
+            return;
+        }
+
+        $min = preg_replace('!/\*.*?\*/!s', '', $js);
+        if ($min === null) {
+            $min = $js;
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $min);
+        if (is_array($lines)) {
+            $lines = array_map('rtrim', $lines);
+            $min   = implode("\n", $lines);
+        }
+
+        $min = trim($min) . "\n";
+
+        file_put_contents($dest, $min);
     }
 }
