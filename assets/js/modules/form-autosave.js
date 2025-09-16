@@ -9,6 +9,7 @@ import {
         getUserRole,
         getCurrentUserId,
 } from "./config.js";
+import { AVAILABLE_DOCS } from "./docs-config.js";
 import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
 import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.js";
@@ -248,8 +249,8 @@ export default function initAutosave() {
                 }
         }
 
-        function showSuccess(method, plate, amount, level, months, certUrl) {
-                console.log("[AUTOSAVE] showSuccess", { certUrl });
+        function showSuccess(method, plate, amount, level, months, docLinks) {
+                console.log("[AUTOSAVE] showSuccess", { docLinks });
                 fadeOut(form, false);
                 fadeOut(navButtons);
                 fadeOut(tabs);
@@ -261,20 +262,20 @@ export default function initAutosave() {
                                 () => {
                                         summaryContainer.style.display = "none";
                                         form.style.display = "none";
-                                        revealSuccess(method, plate, amount, level, months, certUrl);
+                                        revealSuccess(method, plate, amount, level, months, docLinks);
                                 },
                                 { once: true }
                         );
                 } else {
                         setTimeout(() => {
                                 form.style.display = "none";
-                                revealSuccess(method, plate, amount, level, months, certUrl);
+                                revealSuccess(method, plate, amount, level, months, docLinks);
                         }, 300);
                 }
         }
 
-        function revealSuccess(method, plate, amount, level, months, certUrl) {
-                console.log("[AUTOSAVE] revealSuccess", { certUrl });
+        function revealSuccess(method, plate, amount, level, months, docLinks = {}) {
+                console.log("[AUTOSAVE] revealSuccess", { docLinks });
                 if (!successBlock) return;
                 successBlock.style.display = "block";
                 requestAnimationFrame(() => successBlock.classList.add("is-visible"));
@@ -290,19 +291,52 @@ export default function initAutosave() {
                 const loading = successBlock.querySelector(
                         ".form-success__loading"
                 );
-                const downloadLink = successBlock.querySelector(
-                        ".form-success__download"
+                const docsContainer = successBlock.querySelector(
+                        ".form-success__docs"
                 );
                 if (loading) loading.hidden = false;
-                if (downloadLink) downloadLink.hidden = true;
-                if (downloadLink && certUrl) {
-                        downloadLink.href = certUrl;
-                        downloadLink.target = "_blank";
-                        downloadLink.innerHTML = `${getIcon(
-                                "pdf"
-                        )}<span>Descargar certificado</span>`;
-                        downloadLink.hidden = false;
-                        if (loading) loading.remove();
+                if (docsContainer) {
+                        docsContainer.hidden = true;
+                        docsContainer.querySelectorAll("[data-doc]").forEach((link) => {
+                                link.hidden = true;
+                                link.removeAttribute("href");
+                                link.removeAttribute("target");
+                                link.removeAttribute("rel");
+                        });
+                        const availableDocs = [];
+                        for (const doc of AVAILABLE_DOCS) {
+                                const url = docLinks?.[doc.key];
+                                if (!url) continue;
+                                const link = docsContainer.querySelector(
+                                        `[data-doc="${doc.key}"]`
+                                );
+                                if (!link) continue;
+                                const iconHtml = `<span class="document-card__icon" aria-hidden="true">${getIcon(
+                                        "pdf"
+                                )}</span>`;
+                                const titleHtml = `<span class="document-card__title">${doc.successLabel}</span>`;
+                                link.href = url;
+                                link.target = "_blank";
+                                link.rel = "noopener";
+                                link.innerHTML = `${iconHtml}${titleHtml}`;
+                                link.hidden = false;
+                                availableDocs.push(link);
+                        }
+                        if (availableDocs.length > 0) {
+                                docsContainer.hidden = false;
+                                if (loading) loading.remove();
+                        } else if (loading) {
+                                const spin = loading.querySelector(
+                                        ".form-success__loading-spinner"
+                                );
+                                if (spin) spin.remove();
+                                const text = loading.querySelector(
+                                        ".form-success__loading-text"
+                                );
+                                if (text) {
+                                        text.textContent = "No se pudieron generar los documentos";
+                                }
+                        }
                 } else if (loading) {
                         const spin = loading.querySelector(
                                 ".form-success__loading-spinner"
@@ -312,7 +346,7 @@ export default function initAutosave() {
                                 ".form-success__loading-text"
                         );
                         if (text) {
-                                text.textContent = "No se pudo generar el certificado";
+                                text.textContent = "No se pudieron generar los documentos";
                         }
                 }
                 if (method === "transferencia" || method === "domiciliacion") {
@@ -919,7 +953,7 @@ export default function initAutosave() {
                                        form.flatten();
 
                                        const appendUrls = [
-                                               json.coberturas_url,
+                                               json.cobertura_url,
                                                json.condicionado_url,
                                                json.reclamacion_url,
                                        ].filter(Boolean);
@@ -961,13 +995,18 @@ export default function initAutosave() {
                                 }
                         }
                         if (finalize) {
+                                const docLinks = {
+                                        certificate: certificateUrl,
+                                        condicionado: json.condicionado_url || "",
+                                        cobertura: json.cobertura_url || "",
+                                };
                                 showSuccess(
                                         garantia.metodo_pago,
                                         datosVehiculo.matricula,
                                         garantia.precio,
                                         garantia.nivel_garantia,
                                         garantia.meses_contratados,
-                                        certificateUrl
+                                        docLinks
                                 );
                         }
                         spinner.style.display = "none";
