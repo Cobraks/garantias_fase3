@@ -1804,7 +1804,16 @@ function initRowSelection() {
                         const uploadView = modal.querySelector(".pdf-modal__upload");
                         let currentIdx = -1;
 
-                        iframe.addEventListener("load", () => spinner && spinner.classList.remove("active"));
+                        iframe.addEventListener("load", () => {
+                                if (!spinner) {
+                                        return;
+                                }
+                                const currentSrc = iframe.getAttribute("src") || "";
+                                if (!currentSrc || currentSrc === "about:blank") {
+                                        return;
+                                }
+                                spinner.classList.remove("active");
+                        });
 
                         function getButtons() {
                                 return Array.from(
