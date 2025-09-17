@@ -10,6 +10,8 @@ if (! defined('ABSPATH')) {
 
 class EmailNotificationService
 {
+    private const ADMIN_EMAIL = 'cobra.moratalaz@gmail.com';
+
     /** @var Mailer */
     private $mailer;
 
@@ -38,69 +40,58 @@ class EmailNotificationService
 
     private function register_hooks(): void
     {
-        add_action('go360/guarantee/created', [$this, 'handle_created'], 10, 2);
         add_action('go360/guarantee/contracted', [$this, 'handle_contracted'], 10, 2);
     }
 
     public function handle_created(int $guarantee_id, array $context = []): void
     {
-        if ($this->has_been_notified($guarantee_id, 'created_admin')) {
-            return;
-        }
-
-        $data = $this->data_factory->build($guarantee_id);
-        if (empty($data)) {
-            return;
-        }
-
-        if (! $this->should_notify('created_admin', $data, $context)) {
-            return;
-        }
-
-        $recipients = $this->get_admin_recipients($guarantee_id, $context);
-        $initiator_id = $this->resolve_initiator_id($context);
-        $message = $this->builder->composeCreatedAdmin(
-            $data,
-            $recipients,
-            $this->build_template_context('created_admin', $context, $initiator_id)
-        );
-
-        $this->dispatch($message, $guarantee_id, 'created_admin', $initiator_id);
+        // Reserved for future use.
     }
 
     public function handle_contracted(int $guarantee_id, array $context = []): void
     {
         $data = $this->data_factory->build($guarantee_id);
+        $initiator_id = $this->resolve_initiator_id($context);
+
         if (empty($data)) {
+            $this->log_skip($guarantee_id, 'contracted_admin', 'empty_data', $initiator_id);
+            $this->log_skip($guarantee_id, 'contracted_professional', 'empty_data', $initiator_id);
             return;
         }
 
-        $initiator_id = $this->resolve_initiator_id($context);
-
         if (! $this->has_been_notified($guarantee_id, 'contracted_admin') && $this->should_notify('contracted_admin', $data, $context)) {
             $admin_recipients = $this->get_admin_recipients($guarantee_id, $context);
-            $admin_message = $this->builder->composeContractedAdmin(
-                $data,
-                $admin_recipients,
-                $this->build_template_context('contracted_admin', $context, $initiator_id)
-            );
-            $this->dispatch($admin_message, $guarantee_id, 'contracted_admin', $initiator_id);
+            if (empty($admin_recipients)) {
+                $this->log_skip($guarantee_id, 'contracted_admin', 'no_recipients', $initiator_id);
+            } else {
+                $admin_message = $this->builder->composeContractedAdmin(
+                    $data,
+                    $admin_recipients,
+                    $this->build_template_context('contracted_admin', $context, $initiator_id)
+                );
+                $this->dispatch($admin_message, $guarantee_id, 'contracted_admin', $initiator_id);
+            }
         }
 
         if (! $this->has_been_notified($guarantee_id, 'contracted_professional') && $this->should_notify('contracted_professional', $data, $context)) {
             $vendor_recipients = $this->get_professional_recipients($data, $context);
-            $vendor_message = $this->builder->composeContractedProfessional(
-                $data,
-                $vendor_recipients,
-                $this->build_template_context('contracted_professional', $context, $initiator_id)
-            );
-            $this->dispatch($vendor_message, $guarantee_id, 'contracted_professional', $initiator_id);
+            if (empty($vendor_recipients)) {
+                $this->log_skip($guarantee_id, 'contracted_professional', 'no_recipients', $initiator_id);
+            } else {
+                $vendor_message = $this->builder->composeContractedProfessional(
+                    $data,
+                    $vendor_recipients,
+                    $this->build_template_context('contracted_professional', $context, $initiator_id)
+                );
+                $this->dispatch($vendor_message, $guarantee_id, 'contracted_professional', $initiator_id);
+            }
         }
     }
 
     private function dispatch(?EmailMessage $message, int $guarantee_id, string $event_slug, int $initiator_id): void
     {
         if (! $message instanceof EmailMessage) {
+            $this->log_skip($guarantee_id, $event_slug, 'invalid_message', $initiator_id);
             return;
         }
 
@@ -125,11 +116,7 @@ class EmailNotificationService
 
     private function get_admin_recipients(int $guarantee_id, array $context = []): array
     {
-        $recipients = [];
-        $admin_email = get_option('admin_email');
-        if ($admin_email) {
-            $recipients[] = $admin_email;
-        }
+        $recipients = [self::ADMIN_EMAIL];
 
         $recipients = apply_filters('go360/email/admin_recipients', $recipients, $guarantee_id, $context);
         return $this->normalize_recipients($recipients);
@@ -137,8 +124,27 @@ class EmailNotificationService
 
     private function get_professional_recipients(array $data, array $context = []): array
     {
+        $recipients = [];
         $email = $data['vendor']['email'] ?? '';
-        $recipients = $email ? [$email] : [];
+        if ($email) {
+            $recipients[] = $email;
+        } elseif (! empty($data['vendor']['id'])) {
+            $vendor = get_user_by('id', (int) $data['vendor']['id']);
+            if ($vendor && $vendor->user_email) {
+                $recipients[] = $vendor->user_email;
+            }
+        }
+
+        if (empty($recipients)) {
+            $initiator_id = $this->resolve_initiator_id($context);
+            if ($initiator_id) {
+                $initiator = get_user_by('id', $initiator_id);
+                if ($initiator && in_array('go_profesional', (array) $initiator->roles, true) && $initiator->user_email) {
+                    $recipients[] = $initiator->user_email;
+                }
+            }
+        }
+
         $recipients = apply_filters('go360/email/professional_recipients', $recipients, $data, $context);
         return $this->normalize_recipients($recipients);
     }
@@ -210,6 +216,16 @@ class EmailNotificationService
                 'event'     => $event,
                 'initiator' => $initiator,
             ]
+        );
+    }
+
+    private function log_skip(int $guarantee_id, string $slug, string $reason, int $initiator_id): void
+    {
+        GuaranteeLogger::log(
+            $initiator_id,
+            $guarantee_id,
+            'email_skipped',
+            sprintf('%s|%s', $slug, $reason)
         );
     }
 }

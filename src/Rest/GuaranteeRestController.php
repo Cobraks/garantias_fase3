@@ -1217,6 +1217,7 @@ class GuaranteeRestController
         $estado_label = $estado_labels[$estado] ?? $estado;
 
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
+        $vendor_id = is_array($vendor_id) && isset($vendor_id['ID']) ? (int) $vendor_id['ID'] : (int) $vendor_id;
         $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
         $concesionario = $user ? $user->display_name : '';
 
@@ -1239,9 +1240,13 @@ class GuaranteeRestController
         $telefono_vendedor = $vendor_id
             ? get_user_meta($vendor_id, 'datos_usuario_telefono', true)
             : '';
-        $email_vendedor = $vendor_id
-            ? get_user_meta($vendor_id, 'datos_usuario_correo_electronico', true)
-            : '';
+        $email_vendedor = '';
+        if ($vendor_id) {
+            $email_vendedor = (string) get_user_meta($vendor_id, 'datos_usuario_correo_electronico', true);
+            if ($email_vendedor === '' && $user) {
+                $email_vendedor = (string) $user->user_email;
+            }
+        }
         $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
         $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
 
@@ -1294,10 +1299,11 @@ class GuaranteeRestController
                 'label' => $estado_label,
             ],
             'concesionario' => $concesionario ?: '-',
+            'vendor_id' => $vendor_id,
             'canal_venta' => $canal_venta ?: '-',
             'canal_venta_value' => $canal_venta_value,
             'telefono_vendedor' => $telefono_vendedor ?: '',
-            'email_vendedor' => $email_vendedor ?: '',
+            'email_vendedor' => sanitize_email($email_vendedor) ?: '',
             'avatar_vendedor' => $avatar_vendedor ?: '',
             'vendedor_url' => $vendedor_url,
             'condicionado_url' => '',
