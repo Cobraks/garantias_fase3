@@ -1,0 +1,3 @@
+# Ignore accidental legacy build directories inside assets
+assets/__*/
+assets/js_*/
