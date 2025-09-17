@@ -8,7 +8,11 @@ import {
         getIcon,
         getUserRole,
         getCurrentUserId,
+        getMisGarantiasUrl,
+        getNuevaGarantiaUrl,
+        getDocumentUrl,
 } from "./config.js";
+import { AVAILABLE_DOCS } from "./docs-config.js";
 import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
 import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.js";
@@ -248,8 +252,8 @@ export default function initAutosave() {
                 }
         }
 
-        function showSuccess(method, plate, amount, level, months, certUrl) {
-                console.log("[AUTOSAVE] showSuccess", { certUrl });
+        function showSuccess(method, plate, amount, planName, months, docLinks, extras = {}) {
+                console.log("[AUTOSAVE] showSuccess", { docLinks });
                 fadeOut(form, false);
                 fadeOut(navButtons);
                 fadeOut(tabs);
@@ -261,48 +265,104 @@ export default function initAutosave() {
                                 () => {
                                         summaryContainer.style.display = "none";
                                         form.style.display = "none";
-                                        revealSuccess(method, plate, amount, level, months, certUrl);
+                                        revealSuccess(method, plate, amount, planName, months, docLinks, extras);
                                 },
                                 { once: true }
                         );
                 } else {
                         setTimeout(() => {
                                 form.style.display = "none";
-                                revealSuccess(method, plate, amount, level, months, certUrl);
+                                revealSuccess(method, plate, amount, planName, months, docLinks, extras);
                         }, 300);
                 }
         }
 
-        function revealSuccess(method, plate, amount, level, months, certUrl) {
-                console.log("[AUTOSAVE] revealSuccess", { certUrl });
+        function revealSuccess(method, plate, amount, planName, months, docLinks = {}, extras = {}) {
+                console.log("[AUTOSAVE] revealSuccess", { docLinks });
                 if (!successBlock) return;
                 successBlock.style.display = "block";
                 requestAnimationFrame(() => successBlock.classList.add("is-visible"));
                 const plan = successBlock.querySelector("[data-plan]");
                 if (plan) {
-                        const lvl = level ? level.replace(/[-_]/g, " ") : "";
-                        const monthsText = months ? `${months} meses` : "";
-                        const text = [lvl, monthsText].filter(Boolean).join(" ");
-                        plan.textContent = text
-                                .trim()
-                                .replace(/\b\w/g, (c) => c.toUpperCase());
+                        const parts = [];
+                        if (typeof planName === "string" && planName.trim()) {
+                                parts.push(planName.trim());
+                        }
+                        if (months) {
+                                const monthsNumber = Number(months);
+                                if (!Number.isNaN(monthsNumber) && monthsNumber > 0) {
+                                        parts.push(`${monthsNumber} meses`);
+                                } else if (typeof months === "string" && months.trim()) {
+                                        parts.push(months.trim());
+                                }
+                        }
+                        plan.textContent = parts.join(" · ");
+                }
+                const message = successBlock.querySelector(
+                        ".form-success__message"
+                );
+                if (message) {
+                        const cleanPlan =
+                                typeof planName === "string" && planName.trim()
+                                        ? planName.trim()
+                                        : "";
+                        const intro = cleanPlan
+                                ? `Gracias por contratar la garantía ${cleanPlan}.`
+                                : "Gracias por contratar tu garantía.";
+                        message.textContent =
+                                `${intro} Te hemos enviado un correo con la documentación. ` +
+                                "Puedes descargarla ahora o acceder cuando quieras desde Mis Garantías.";
+                        message.hidden = false;
                 }
                 const loading = successBlock.querySelector(
                         ".form-success__loading"
                 );
-                const downloadLink = successBlock.querySelector(
-                        ".form-success__download"
+                const docsContainer = successBlock.querySelector(
+                        ".form-success__docs"
                 );
                 if (loading) loading.hidden = false;
-                if (downloadLink) downloadLink.hidden = true;
-                if (downloadLink && certUrl) {
-                        downloadLink.href = certUrl;
-                        downloadLink.target = "_blank";
-                        downloadLink.innerHTML = `${getIcon(
-                                "pdf"
-                        )}<span>Descargar certificado</span>`;
-                        downloadLink.hidden = false;
-                        if (loading) loading.remove();
+                if (docsContainer) {
+                        docsContainer.hidden = true;
+                        docsContainer.querySelectorAll("[data-doc]").forEach((link) => {
+                                link.hidden = true;
+                                link.removeAttribute("href");
+                                link.removeAttribute("target");
+                                link.removeAttribute("rel");
+                        });
+                        const availableDocs = [];
+                        for (const doc of AVAILABLE_DOCS) {
+                                const url = docLinks?.[doc.key];
+                                if (!url) continue;
+                                const link = docsContainer.querySelector(
+                                        `[data-doc="${doc.key}"]`
+                                );
+                                if (!link) continue;
+                                const iconHtml = `<span class="document-card__icon" aria-hidden="true">${getIcon(
+                                        "pdf"
+                                )}</span>`;
+                                const titleHtml = `<span class="document-card__title">${doc.successLabel}</span>`;
+                                link.href = url;
+                                link.target = "_blank";
+                                link.rel = "noopener";
+                                link.innerHTML = `${iconHtml}${titleHtml}`;
+                                link.hidden = false;
+                                availableDocs.push(link);
+                        }
+                        if (availableDocs.length > 0) {
+                                docsContainer.hidden = false;
+                                if (loading) loading.remove();
+                        } else if (loading) {
+                                const spin = loading.querySelector(
+                                        ".form-success__loading-spinner"
+                                );
+                                if (spin) spin.remove();
+                                const text = loading.querySelector(
+                                        ".form-success__loading-text"
+                                );
+                                if (text) {
+                                        text.textContent = "No se pudieron generar los documentos";
+                                }
+                        }
                 } else if (loading) {
                         const spin = loading.querySelector(
                                 ".form-success__loading-spinner"
@@ -312,46 +372,95 @@ export default function initAutosave() {
                                 ".form-success__loading-text"
                         );
                         if (text) {
-                                text.textContent = "No se pudo generar el certificado";
+                                text.textContent = "No se pudieron generar los documentos";
                         }
                 }
-                if (method === "transferencia" || method === "domiciliacion") {
-                        const pay = successBlock.querySelector(".form-success__payment");
-                        if (pay) {
-                                pay.hidden = false;
-                                if (method === "transferencia") {
-                                        const transfer = pay.querySelector(
-                                                ".form-success__transfer"
-                                        );
-                                        if (transfer) {
-                                                transfer.hidden = false;
-                                                const reference = plate
-                                                        ? `Garantía ${plate.toUpperCase()}`
-                                                        : "";
-                                                transfer
-                                                        .querySelectorAll("[data-ref],[data-ref-text]")
-                                                        .forEach(
-                                                                (el) =>
-                                                                        (el.textContent = reference)
-                                                        );
-                                                const amountText =
-                                                        amount !== undefined && amount !== null
-                                                                ? `${Number(amount).toLocaleString(
-                                                                          "es-ES",
-                                                                          {
-                                                                                  minimumFractionDigits: 2,
-                                                                                  maximumFractionDigits: 2,
-                                                                          }
-                                                                  )} €`
-                                                                : "";
-                                                transfer
-                                                        .querySelectorAll(
-                                                                "[data-amount],[data-amount-text]"
-                                                        )
-                                                        .forEach(
-                                                                (el) =>
-                                                                        (el.textContent = amountText)
-                                                        );
+                const detailsLink = successBlock.querySelector(
+                        ".form-success__details-link"
+                );
+                if (detailsLink) {
+                        const baseUrl = getMisGarantiasUrl();
+                        const plateValue =
+                                typeof plate === "string" ? plate.trim().toUpperCase() : "";
+                        if (baseUrl && plateValue) {
+                                let href = baseUrl;
+                                try {
+                                        const detailUrl = new URL(baseUrl, window.location.origin);
+                                        detailUrl.searchParams.set("matricula", plateValue);
+                                        href = detailUrl.toString();
+                                } catch (err) {
+                                        const separator = baseUrl.includes("?") ? "&" : "?";
+                                        href = `${baseUrl}${separator}matricula=${encodeURIComponent(
+                                                plateValue
+                                        )}`;
+                                }
+                                detailsLink.href = href;
+                                const refSpan = detailsLink.querySelector("[data-ref-text]");
+                                if (refSpan) {
+                                        refSpan.textContent = plateValue;
+                                }
+                                detailsLink.hidden = false;
+                        } else {
+                                detailsLink.hidden = true;
+                        }
+                }
+                const newLink = successBlock.querySelector(".form-success__new");
+                if (newLink) {
+                        const nuevaUrl = getNuevaGarantiaUrl();
+                        if (nuevaUrl) {
+                                newLink.href = nuevaUrl;
+                        }
+                }
+                const pay = successBlock.querySelector(".form-success__payment");
+                if (pay) {
+                        const transfer = pay.querySelector(".form-success__transfer");
+                        const showTransfer = method === "transferencia";
+                        pay.hidden = !showTransfer;
+                        if (transfer) {
+                                transfer.hidden = !showTransfer;
+                        }
+                        if (showTransfer && transfer) {
+                                const reference = plate
+                                        ? `Garantía ${plate.toUpperCase()}`
+                                        : "";
+                                transfer
+                                        .querySelectorAll("[data-ref],[data-ref-text]")
+                                        .forEach((el) => (el.textContent = reference));
+                                const amountText =
+                                        amount !== undefined && amount !== null
+                                                ? `${Number(amount).toLocaleString("es-ES", {
+                                                          minimumFractionDigits: 2,
+                                                          maximumFractionDigits: 2,
+                                                  })} €`
+                                                : "";
+                                transfer
+                                        .querySelectorAll("[data-amount],[data-amount-text]")
+                                        .forEach((el) => (el.textContent = amountText));
+
+                                const ibanValue =
+                                        typeof extras.transferIban === "string"
+                                                ? extras.transferIban.trim()
+                                                : "";
+                                const ibanTargets = transfer.querySelectorAll(
+                                        "[data-iban],[data-iban-text]"
+                                );
+                                ibanTargets.forEach((el) => {
+                                        el.textContent = ibanValue;
+                                });
+                                const ibanRow = transfer.querySelector("[data-iban]")?.closest("tr");
+                                if (ibanRow) {
+                                        ibanRow.hidden = !ibanValue;
+                                }
+                                const ibanCopyBtn = transfer.querySelector(
+                                        'button[data-copy="[data-iban]"]'
+                                );
+                                if (ibanCopyBtn) {
+                                        if (ibanValue) {
+                                                ibanCopyBtn.removeAttribute("disabled");
+                                                ibanCopyBtn.removeAttribute("aria-disabled");
+                                        } else {
+                                                ibanCopyBtn.setAttribute("disabled", "true");
+                                                ibanCopyBtn.setAttribute("aria-disabled", "true");
                                         }
                                 }
                         }
@@ -383,52 +492,72 @@ export default function initAutosave() {
                         }
                 }
 
-                successBlock.querySelectorAll("[data-copy]").forEach((btn) => {
-                        btn.addEventListener("click", () => {
-                                const target = successBlock.querySelector(
-                                        btn.getAttribute("data-copy")
+                function handleSuccessCopy(btn) {
+                        if (!btn) return;
+                        const selector = btn.getAttribute("data-copy");
+                        if (!selector) return;
+                        const target = successBlock.querySelector(selector);
+                        if (!target) return;
+                        const text = target.textContent.trim();
+                        if (!text) return;
+                        copyText(text).then(() => {
+                                const label = btn.querySelector(
+                                        ".form-success__copy-text"
                                 );
-                                if (target) {
-                                        copyText(target.textContent.trim()).then(() => {
-                                                const label = btn.querySelector(
-                                                        ".form-success__copy-text"
-                                                );
-                                                if (label) {
-                                                        const original = btn.dataset.label || label.textContent;
-                                                        label.textContent = btn.dataset.done || "Copiado";
-                                                        setTimeout(
-                                                                () => (label.textContent = original),
-                                                                2000
-                                                        );
-                                                } else {
-                                                        const original =
-                                                                btn.dataset.label ||
-                                                                btn.getAttribute("aria-label") ||
-                                                                "";
-                                                        const done = btn.dataset.done || "Copiado";
-                                                        btn.setAttribute("aria-label", done);
-                                                        setTimeout(() => {
-                                                                if (original)
-                                                                        btn.setAttribute(
-                                                                                "aria-label",
-                                                                                original
-                                                                        );
-                                                        }, 2000);
-                                                }
-                                                showToast(btn.dataset.toast);
-                                        });
+                                if (label) {
+                                        const original = btn.dataset.label || label.textContent;
+                                        label.textContent = btn.dataset.done || "Copiado";
+                                        setTimeout(
+                                                () => (label.textContent = original),
+                                                2000
+                                        );
+                                } else {
+                                        const original =
+                                                btn.dataset.label ||
+                                                btn.getAttribute("aria-label") ||
+                                                "";
+                                        const done = btn.dataset.done || "Copiado";
+                                        if (done) {
+                                                btn.setAttribute("aria-label", done);
+                                                setTimeout(() => {
+                                                        if (original) {
+                                                                btn.setAttribute(
+                                                                        "aria-label",
+                                                                        original
+                                                                );
+                                                        }
+                                                }, 2000);
+                                        }
                                 }
+                                showToast(btn.dataset.toast);
                         });
+                }
+
+                successBlock.querySelectorAll("[data-copy]").forEach((btn) => {
+                        btn.addEventListener("click", () => handleSuccessCopy(btn));
                 });
-                successBlock
-                        .querySelectorAll("[data-ref],[data-iban],[data-amount]")
-                        .forEach((el) => {
-                                el.addEventListener("click", () => {
-                                        copyText(el.textContent.trim()).then(() => {
-                                                showToast(el.dataset.toast);
-                                        });
-                                });
-                        });
+
+                successBlock.addEventListener("click", (event) => {
+                        const copyButton = event.target.closest("[data-copy]");
+                        if (copyButton && successBlock.contains(copyButton)) {
+                                return;
+                        }
+
+                        const row = event.target.closest("tr[data-copy-row]");
+                        if (row && successBlock.contains(row)) {
+                                const btn = row.querySelector("[data-copy]");
+                                if (btn) {
+                                        handleSuccessCopy(btn);
+                                }
+                                return;
+                        }
+
+                        const cell = event.target.closest("[data-copy-cell]");
+                        if (!cell || !successBlock.contains(cell)) return;
+                        const btn = cell.querySelector("[data-copy]");
+                        if (!btn) return;
+                        handleSuccessCopy(btn);
+                });
                 const sound = successBlock.querySelector("#form-success__sound");
                 if (sound) {
                         sound.currentTime = 0;
@@ -515,6 +644,18 @@ export default function initAutosave() {
                                 (m) => String(m.ID) === String(modalidadId)
                         );
                         if (modalidad) {
+                                const detalles = modalidad.acf?.detalles_modalidad || {};
+                                const rawPlanName =
+                                        detalles.nombre_mostrar ||
+                                        modalidad.title ||
+                                        "";
+                                const planDisplayName =
+                                        typeof rawPlanName === "string"
+                                                ? rawPlanName.trim()
+                                                : "";
+                                if (planDisplayName) {
+                                        garantia.plan_display_name = planDisplayName;
+                                }
                                 const tipo = Array.isArray(modalidad.tipo_garantia)
                                         ? modalidad.tipo_garantia[0]
                                         : modalidad.tipo_garantia;
@@ -919,9 +1060,9 @@ export default function initAutosave() {
                                        form.flatten();
 
                                        const appendUrls = [
-                                               json.coberturas_url,
+                                               json.cobertura_url,
                                                json.condicionado_url,
-                                               json.reclamacion_url,
+                                               getDocumentUrl("reclamacion"),
                                        ].filter(Boolean);
 
                                        for (const url of appendUrls) {
@@ -961,13 +1102,27 @@ export default function initAutosave() {
                                 }
                         }
                         if (finalize) {
+                                const docLinks = {
+                                        certificate: certificateUrl,
+                                        condicionado: json.condicionado_url || "",
+                                        cobertura: json.cobertura_url || "",
+                                };
+                                const extras = {
+                                        transferIban:
+                                                typeof json.transfer_iban === "string"
+                                                        ? json.transfer_iban.trim()
+                                                        : "",
+                                };
                                 showSuccess(
                                         garantia.metodo_pago,
                                         datosVehiculo.matricula,
                                         garantia.precio,
-                                        garantia.nivel_garantia,
+                                        garantia.plan_display_name ||
+                                                garantia.nivel_garantia ||
+                                                "",
                                         garantia.meses_contratados,
-                                        certificateUrl
+                                        docLinks,
+                                        extras
                                 );
                         }
                         spinner.style.display = "none";

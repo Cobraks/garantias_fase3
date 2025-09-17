@@ -4,6 +4,7 @@
 namespace GarantiasOnline360VO;
 
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
+use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -67,6 +68,7 @@ class Plugin
         }
         ProfileAvatar::init();
         SettingsPage::init();
+        EmailNotificationService::init();
 
         // 5) Cargar los grupos de campos ACF (solo si ACF está activo)
         add_action('acf/init', function () {
