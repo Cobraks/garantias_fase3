@@ -67,11 +67,6 @@ class GuaranteeEmailDataFactory
                 'name'  => $vendor_name,
                 'email' => $vendor_email,
             ],
-            'documents'   => [
-                'certificate'  => esc_url_raw($detail['certificate_url'] ?? ''),
-                'cobertura'    => esc_url_raw($detail['cobertura_url'] ?? ''),
-                'condicionado' => esc_url_raw($detail['condicionado_url'] ?? ''),
-            ],
             'permalink'   => esc_url_raw($permalink),
         ];
     }

@@ -6,6 +6,9 @@ if (! defined('ABSPATH')) {
 $initiator = $context['initiator'] ?? [];
 $initiator_name = $initiator['name'] ?? '';
 $plate_label = $guarantee['plate'] ?? '#' . ($guarantee['id'] ?? '');
+$copy = $context['email_copy'] ?? [];
+$admin_intro = $copy['admin_intro'] ?? '';
+$signature = $copy['signature'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -15,6 +18,11 @@ $plate_label = $guarantee['plate'] ?? '#' . ($guarantee['id'] ?? '');
 </head>
 <body style="margin:0; padding:0; background:#f7f7f7; font-family:Arial, Helvetica, sans-serif; color:#111;">
     <div style="max-width:640px; margin:0 auto; padding:32px 24px; background:#ffffff;">
+        <?php if ($admin_intro !== '') : ?>
+            <div style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
+                <?php echo wpautop($admin_intro); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+            </div>
+        <?php endif; ?>
         <h1 style="font-size:22px; margin:0 0 12px; color:#111;">
             <?php
             printf(
@@ -39,8 +47,13 @@ $plate_label = $guarantee['plate'] ?? '#' . ($guarantee['id'] ?? '');
         </p>
         <?php include __DIR__ . '/partials/summary.php'; ?>
         <p style="margin-top:24px; font-size:13px; color:#777; line-height:1.4;">
-            <?php esc_html_e('Puedes revisar los documentos adjuntos o acceder al expediente desde Mis Garantías.', 'garantias-online-360vo'); ?>
+            <?php esc_html_e('Puedes acceder al expediente completo desde Mis Garantías.', 'garantias-online-360vo'); ?>
         </p>
+        <?php if ($signature !== '') : ?>
+            <div style="margin-top:24px; font-size:13px; color:#444; line-height:1.5;">
+                <?php echo wpautop($signature); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+            </div>
+        <?php endif; ?>
     </div>
     <p style="text-align:center; margin:16px 0 0; font-size:12px; color:#999;">
         <?php esc_html_e('Este mensaje ha sido generado automáticamente por 360VO Garantías Online.', 'garantias-online-360vo'); ?>
