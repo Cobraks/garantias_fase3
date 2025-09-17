@@ -1,0 +1,107 @@
+<?php
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+$plate = $guarantee['plate'] ?? '';
+$plan = $guarantee['plan'] ?? '';
+$price = $guarantee['price'] ?? '';
+$payment = $guarantee['payment'] ?? '';
+$dates = $guarantee['dates'] ?? [];
+$customer = $guarantee['customer'] ?? [];
+$vendor = $guarantee['vendor'] ?? [];
+$documents = $guarantee['documents'] ?? [];
+$permalink = $guarantee['permalink'] ?? '';
+?>
+<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-top:16px;">
+    <tbody>
+        <tr>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Matrícula', 'garantias-online-360vo'); ?></th>
+            <td style="padding:4px 0; font-size:14px; color:#111; font-weight:600;">
+                <?php echo esc_html($plate ?: '#' . ($guarantee['id'] ?? '')); ?>
+            </td>
+        </tr>
+        <tr>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Modalidad', 'garantias-online-360vo'); ?></th>
+            <td style="padding:4px 0; font-size:14px; color:#111;">
+                <?php echo esc_html($plan ?: '-'); ?>
+            </td>
+        </tr>
+        <tr>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Importe', 'garantias-online-360vo'); ?></th>
+            <td style="padding:4px 0; font-size:14px; color:#111;">
+                <?php echo esc_html($price ?: '-'); ?>
+            </td>
+        </tr>
+        <tr>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Método de pago', 'garantias-online-360vo'); ?></th>
+            <td style="padding:4px 0; font-size:14px; color:#111;">
+                <?php echo esc_html($payment ?: '-'); ?>
+            </td>
+        </tr>
+        <tr>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Cobertura', 'garantias-online-360vo'); ?></th>
+            <td style="padding:4px 0; font-size:14px; color:#111;">
+                <?php echo esc_html(($dates['from'] ?? '') . ($dates['to'] ? ' → ' . $dates['to'] : '')); ?>
+            </td>
+        </tr>
+        <tr>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Cliente', 'garantias-online-360vo'); ?></th>
+            <td style="padding:4px 0; font-size:14px; color:#111;">
+                <?php echo esc_html(($customer['name'] ?? '') ?: '-'); ?>
+                <?php if (! empty($customer['email'])) : ?>
+                    <span style="color:#888;">(<?php echo esc_html($customer['email']); ?>)</span>
+                <?php endif; ?>
+            </td>
+        </tr>
+        <tr>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></th>
+            <td style="padding:4px 0; font-size:14px; color:#111;">
+                <?php echo esc_html(($vendor['name'] ?? '') ?: '-'); ?>
+                <?php if (! empty($vendor['email'])) : ?>
+                    <span style="color:#888;">(<?php echo esc_html($vendor['email']); ?>)</span>
+                <?php endif; ?>
+            </td>
+        </tr>
+        <?php if (! empty($permalink)) : ?>
+        <tr>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Enlace', 'garantias-online-360vo'); ?></th>
+            <td style="padding:4px 0; font-size:14px; color:#111;">
+                <a href="<?php echo esc_url($permalink); ?>" style="color:#e2001b; text-decoration:none;">
+                    <?php esc_html_e('Abrir en Mis Garantías', 'garantias-online-360vo'); ?>
+                </a>
+            </td>
+        </tr>
+        <?php endif; ?>
+    </tbody>
+</table>
+
+<?php if (! empty(array_filter($documents))) : ?>
+    <p style="margin-top:20px; font-size:14px; color:#111; font-weight:600;">
+        <?php esc_html_e('Documentación disponible', 'garantias-online-360vo'); ?>
+    </p>
+    <ul style="padding-left:18px; margin:8px 0 0; font-size:14px; color:#111;">
+        <?php foreach ($documents as $label => $url) :
+            if (! $url) {
+                continue;
+            }
+            switch ($label) {
+                case 'cobertura':
+                    $doc_label = __('Cobertura', 'garantias-online-360vo');
+                    break;
+                case 'condicionado':
+                    $doc_label = __('Condicionado', 'garantias-online-360vo');
+                    break;
+                default:
+                    $doc_label = __('Certificado', 'garantias-online-360vo');
+                    break;
+            }
+            ?>
+            <li style="margin:4px 0;">
+                <a href="<?php echo esc_url($url); ?>" style="color:#e2001b; text-decoration:none;">
+                    <?php echo esc_html($doc_label); ?>
+                </a>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+<?php endif; ?>

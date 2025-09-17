@@ -3,6 +3,7 @@
 }
 
 use GarantiasOnline360VO\Svg;
+use GarantiasOnline360VO\Docs\ReclamationDocument;
 ?>
 </div> <!-- /.main-grid -->
 </div> <!-- /.container -->
@@ -48,6 +49,8 @@ use GarantiasOnline360VO\Svg;
         $js_user_role = 'user';
     }
     $icon_pdf_html = Svg::icon('pdf');
+    $icon_plus_html = Svg::icon('plus');
+    $reclamation_url = ReclamationDocument::get_url();
     ?>
     <script>
         window.__GO_CONFIG__ = {
@@ -59,11 +62,19 @@ use GarantiasOnline360VO\Svg;
                 role: "<?php echo esc_js($js_user_role); ?>"
             },
             icons: {
-                pdf: `<?php echo addslashes($icon_pdf_html); ?>`
+                pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
+                plus: `<?php echo addslashes($icon_plus_html); ?>`
+            },
+            pages: {
+                misGarantias: "<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>",
+                nuevaGarantia: "<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>"
+            },
+            documents: {
+                reclamacion: "<?php echo esc_url($reclamation_url); ?>"
             }
         };
     </script>
-    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" defer></script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 <?php endif; ?>
 
 <?php if (($is_add_guarantee ?? false)) : ?>
@@ -79,6 +90,7 @@ use GarantiasOnline360VO\Svg;
     $icon_check_html = Svg::icon('check');
     $icon_pdf_html = Svg::icon('pdf');
     $icon_save_html = Svg::icon('save');
+    $reclamation_url = ReclamationDocument::get_url();
 
     if ($is_admin) {
         $js_user_role = 'admin';
@@ -118,6 +130,13 @@ use GarantiasOnline360VO\Svg;
                 warning: `<?php echo addslashes($icon_warning_html); ?>`,
                 pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
                 save: `<?php echo addslashes($icon_save_html); ?>`
+            },
+            pages: {
+                misGarantias: "<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>",
+                nuevaGarantia: "<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>"
+            },
+            documents: {
+                reclamacion: "<?php echo esc_url($reclamation_url); ?>"
             }
         };
     </script>

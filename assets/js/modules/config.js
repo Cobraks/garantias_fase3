@@ -42,3 +42,25 @@ export function getIcon(name) {
         }
         return "";
 }
+
+export function getPageUrl(key) {
+        if (!key) return "";
+        const pages = getRawConfig().pages || {};
+        const value = pages[key];
+        return typeof value === "string" ? value : "";
+}
+
+export function getMisGarantiasUrl() {
+        return getPageUrl("misGarantias");
+}
+
+export function getNuevaGarantiaUrl() {
+        return getPageUrl("nuevaGarantia");
+}
+
+export function getDocumentUrl(key) {
+        if (!key) return "";
+        const docs = getRawConfig().documents || {};
+        const value = docs[key];
+        return typeof value === "string" ? value : "";
+}
