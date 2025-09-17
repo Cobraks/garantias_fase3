@@ -1900,8 +1900,6 @@ function initRowSelection() {
                                         dl.hidden = false;
                                 }
 
-                                const direction = prevIdx === -1 || idx > prevIdx ? "right" : "left";
-
                                 const applyIframeSrc = (srcUrl) => {
                                         if (!iframe || currentIdx !== idx) {
                                                 return;
@@ -1909,17 +1907,12 @@ function initRowSelection() {
                                         iframe.hidden = false;
                                         iframe.src = srcUrl;
                                         if (spinner) spinner.classList.remove("active");
-                                        iframe.classList.add(
-                                                direction === "right"
-                                                        ? "slide-in-right"
-                                                        : "slide-in-left"
-                                        );
+                                        iframe.classList.add("pdf-modal__iframe--fade-in");
                                         iframe.addEventListener(
                                                 "animationend",
                                                 () =>
                                                         iframe.classList.remove(
-                                                                "slide-in-right",
-                                                                "slide-in-left"
+                                                                "pdf-modal__iframe--fade-in"
                                                         ),
                                                 { once: true }
                                         );
