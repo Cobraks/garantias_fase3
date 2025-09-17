@@ -48,6 +48,7 @@ use GarantiasOnline360VO\Svg;
         $js_user_role = 'user';
     }
     $icon_pdf_html = Svg::icon('pdf');
+    $icon_plus_html = Svg::icon('plus');
     ?>
     <script>
         window.__GO_CONFIG__ = {
@@ -59,11 +60,16 @@ use GarantiasOnline360VO\Svg;
                 role: "<?php echo esc_js($js_user_role); ?>"
             },
             icons: {
-                pdf: `<?php echo addslashes($icon_pdf_html); ?>`
+                pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
+                plus: `<?php echo addslashes($icon_plus_html); ?>`
+            },
+            pages: {
+                misGarantias: "<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>",
+                nuevaGarantia: "<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>"
             }
         };
     </script>
-    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" defer></script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 <?php endif; ?>
 
 <?php if (($is_add_guarantee ?? false)) : ?>
@@ -118,6 +124,10 @@ use GarantiasOnline360VO\Svg;
                 warning: `<?php echo addslashes($icon_warning_html); ?>`,
                 pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
                 save: `<?php echo addslashes($icon_save_html); ?>`
+            },
+            pages: {
+                misGarantias: "<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>",
+                nuevaGarantia: "<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>"
             }
         };
     </script>
