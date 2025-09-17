@@ -41,6 +41,118 @@ const ADD_DOC_KEY = "add-document";
                 const continueIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
                 const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
                 const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
+
+                const PDF_CACHE_LIMIT = 12;
+                const pdfBlobCache = new Map();
+                const pdfBlobOrder = [];
+                const pdfBlobPromises = new Map();
+
+                function normalizeDocUrl(url) {
+                        return typeof url === "string" ? url.trim() : "";
+                }
+
+                function touchPdfCache(key) {
+                        const index = pdfBlobOrder.indexOf(key);
+                        if (index !== -1) {
+                                pdfBlobOrder.splice(index, 1);
+                        }
+                        pdfBlobOrder.push(key);
+                }
+
+                function evictPdfCache() {
+                        while (pdfBlobOrder.length > PDF_CACHE_LIMIT) {
+                                const oldest = pdfBlobOrder.shift();
+                                if (!oldest) {
+                                        break;
+                                }
+                                const cached = pdfBlobCache.get(oldest);
+                                if (cached && cached.objectUrl) {
+                                        URL.revokeObjectURL(cached.objectUrl);
+                                }
+                                pdfBlobCache.delete(oldest);
+                        }
+                }
+
+                function storePdfBlob(key, blob) {
+                        const objectUrl = URL.createObjectURL(blob);
+                        pdfBlobCache.set(key, { objectUrl, timestamp: Date.now() });
+                        touchPdfCache(key);
+                        evictPdfCache();
+                        return objectUrl;
+                }
+
+                function getCachedDocumentObjectUrl(url) {
+                        const normalized = normalizeDocUrl(url);
+                        if (!normalized) {
+                                return "";
+                        }
+                        const cached = pdfBlobCache.get(normalized);
+                        if (!cached) {
+                                return "";
+                        }
+                        touchPdfCache(normalized);
+                        return cached.objectUrl;
+                }
+
+                function ensureDocumentPreloaded(url) {
+                        const normalized = normalizeDocUrl(url);
+                        if (!normalized) {
+                                return Promise.resolve("");
+                        }
+                        if (pdfBlobCache.has(normalized)) {
+                                touchPdfCache(normalized);
+                                return Promise.resolve(
+                                        pdfBlobCache.get(normalized).objectUrl
+                                );
+                        }
+                        if (pdfBlobPromises.has(normalized)) {
+                                return pdfBlobPromises.get(normalized);
+                        }
+                        const fetchPromise = fetch(normalized, {
+                                credentials: "same-origin",
+                        })
+                                .then((res) => {
+                                        if (!res.ok) {
+                                                throw new Error(
+                                                        `Error HTTP ${res.status}`
+                                                );
+                                        }
+                                        return res.blob();
+                                })
+                                .then((blob) => {
+                                        if (!blob || blob.size === 0) {
+                                                throw new Error("Documento vacío");
+                                        }
+                                        const type = (blob.type || "").toLowerCase();
+                                        if (type && !type.includes("pdf")) {
+                                                console.warn(
+                                                        "Contenido no es PDF, se intentará mostrar igualmente",
+                                                        type
+                                                );
+                                        }
+                                        pdfBlobPromises.delete(normalized);
+                                        return storePdfBlob(normalized, blob);
+                                })
+                                .catch((error) => {
+                                        pdfBlobPromises.delete(normalized);
+                                        throw error;
+                                });
+                        pdfBlobPromises.set(normalized, fetchPromise);
+                        return fetchPromise;
+                }
+
+                function scheduleDocumentPreload(url) {
+                        const normalized = normalizeDocUrl(url);
+                        if (!normalized) {
+                                return;
+                        }
+                        ensureDocumentPreloaded(normalized).catch((error) => {
+                                console.warn(
+                                        "No se pudo precargar el documento",
+                                        error
+                                );
+                        });
+                }
                 const misGarantiasBase =
                         (goConfig.pages && goConfig.pages.misGarantias) ||
                         "/garantias-online/mis-garantias/";
@@ -1240,6 +1352,7 @@ const ADD_DOC_KEY = "add-document";
         };
     });
     const availableDocs = docsData.filter((doc) => doc.available);
+    availableDocs.forEach((doc) => scheduleDocumentPreload(doc.url));
     const buyerFields = [
         "nombre_comprador",
         "dni_comprador",
@@ -1742,8 +1855,9 @@ function initRowSelection() {
                                 const prevIdx = currentIdx;
                                 currentIdx = idx;
                                 const btn = buttons[idx];
-                                const url = btn.dataset.docUrl;
-                                const isAddDoc = btn.dataset.docKey === ADD_DOC_KEY;
+                                const rawUrl = btn.dataset.docUrl || "";
+                                const docKey = btn.dataset.docKey || "";
+                                const isAddDoc = docKey === ADD_DOC_KEY;
                                 buttons.forEach((b, i) => b.classList.toggle("active", i === idx));
                                 if (prevBtn) {
                                         prevBtn.disabled = idx === 0;
@@ -1757,15 +1871,18 @@ function initRowSelection() {
                                         return;
                                 }
 
+                                const url = normalizeDocUrl(rawUrl);
                                 if (!url) {
                                         if (spinner) spinner.classList.remove("active");
+                                        if (iframe) {
+                                                iframe.hidden = false;
+                                                iframe.src = "about:blank";
+                                        }
                                         return;
                                 }
 
                                 showPdfView(buttons);
-                                if (spinner) spinner.classList.add("active");
-                                iframe.hidden = false;
-                                iframe.src = url;
+
                                 if (dl) {
                                         const dlUrl = url.includes("?")
                                                 ? `${url}&download=1`
@@ -1773,19 +1890,62 @@ function initRowSelection() {
                                         dl.href = dlUrl;
                                         dl.hidden = false;
                                 }
+
                                 const direction = prevIdx === -1 || idx > prevIdx ? "right" : "left";
-                                iframe.classList.add(
-                                        direction === "right" ? "slide-in-right" : "slide-in-left"
-                                );
-                                iframe.addEventListener(
-                                        "animationend",
-                                        () =>
-                                                iframe.classList.remove(
-                                                        "slide-in-right",
-                                                        "slide-in-left"
-                                                ),
-                                        { once: true }
-                                );
+
+                                const applyIframeSrc = (srcUrl) => {
+                                        if (!iframe || currentIdx !== idx) {
+                                                return;
+                                        }
+                                        iframe.hidden = false;
+                                        iframe.src = srcUrl;
+                                        if (spinner) spinner.classList.remove("active");
+                                        iframe.classList.add(
+                                                direction === "right"
+                                                        ? "slide-in-right"
+                                                        : "slide-in-left"
+                                        );
+                                        iframe.addEventListener(
+                                                "animationend",
+                                                () =>
+                                                        iframe.classList.remove(
+                                                                "slide-in-right",
+                                                                "slide-in-left"
+                                                        ),
+                                                { once: true }
+                                        );
+                                };
+
+                                const cachedObjectUrl = getCachedDocumentObjectUrl(url);
+                                if (cachedObjectUrl) {
+                                        if (spinner) spinner.classList.remove("active");
+                                        applyIframeSrc(cachedObjectUrl);
+                                        return;
+                                }
+
+                                if (spinner) spinner.classList.add("active");
+                                if (iframe) {
+                                        iframe.hidden = false;
+                                        iframe.src = "about:blank";
+                                }
+
+                                ensureDocumentPreloaded(url)
+                                        .then((objectUrl) => {
+                                                if (!objectUrl) {
+                                                        throw new Error("Documento no disponible");
+                                                }
+                                                applyIframeSrc(objectUrl);
+                                        })
+                                        .catch((error) => {
+                                                if (currentIdx !== idx) {
+                                                        return;
+                                                }
+                                                console.error(
+                                                        "No se pudo cargar el documento",
+                                                        error
+                                                );
+                                                if (spinner) spinner.classList.remove("active");
+                                        });
                         }
 
                         function openDocByKey(key) {

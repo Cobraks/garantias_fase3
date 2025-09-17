@@ -345,10 +345,29 @@ use GarantiasOnline360VO\Svg;
             </ul>
         </div>
 
-        <iframe class="pdf-modal__iframe" src="" title="<?php esc_attr_e('Vista previa de documento', 'garantias-online-360vo'); ?>"></iframe>
-        <a class="pdf-modal__download" href="#" download>
-            <?php esc_html_e('Descargar PDF', 'garantias-online-360vo'); ?>
-        </a>
+        <div class="pdf-modal__body">
+            <iframe class="pdf-modal__iframe" src="" title="<?php esc_attr_e('Vista previa de documento', 'garantias-online-360vo'); ?>"></iframe>
+            <div class="pdf-modal__spinner" aria-hidden="true">
+                <div class="spinner"></div>
+            </div>
+            <div class="pdf-modal__upload" hidden>
+                <div class="pdf-modal__upload-inner">
+                    <h3><?php esc_html_e('Añadir documento', 'garantias-online-360vo'); ?></h3>
+                    <p><?php esc_html_e('Aquí el sistema para subir documentación.', 'garantias-online-360vo'); ?></p>
+                </div>
+            </div>
+            <a class="pdf-modal__download" href="#" download>
+                <?php esc_html_e('Descargar PDF', 'garantias-online-360vo'); ?>
+            </a>
+            <div class="pdf-modal__nav">
+                <button type="button" class="pdf-modal__nav-btn pdf-modal__nav-btn--prev" disabled>
+                    <?php esc_html_e('Anterior', 'garantias-online-360vo'); ?>
+                </button>
+                <button type="button" class="pdf-modal__nav-btn pdf-modal__nav-btn--next" disabled>
+                    <?php esc_html_e('Siguiente', 'garantias-online-360vo'); ?>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
