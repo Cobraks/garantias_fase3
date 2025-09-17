@@ -36,6 +36,18 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
             exit;
         }
 
+        $is_admin_user = current_user_can('manage_options');
+
+        if (is_user_logged_in() && ! $is_admin_user && in_array($endpoint, ['dashboard', 'home'], true)) {
+            wp_safe_redirect(home_url('/garantias-online/mis-garantias/'));
+            exit;
+        }
+
+        if ($endpoint === 'averias' && ! $is_admin_user) {
+            wp_safe_redirect(home_url('/garantias-online/mis-garantias/'));
+            exit;
+        }
+
         status_header(200);
 
         switch ($endpoint) {
