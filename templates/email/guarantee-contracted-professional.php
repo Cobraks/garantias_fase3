@@ -12,6 +12,7 @@ $client_intro = $copy['client_intro'] ?? '';
 $signature = $copy['signature'] ?? '';
 $plan_name = $guarantee['plan'] ?? '';
 $vehicle_sentence = $guarantee['vehicle']['sentence'] ?? '';
+$vehicle_summary = $guarantee['vehicle']['summary'] ?? '';
 $vendor_name = $guarantee['vendor']['name'] ?? '';
 $vendor_display = $vendor_name !== '' ? $vendor_name : __('Tu equipo', 'garantias-online-360vo');
 $is_domiciliation = in_array($payment_slug, ['domiciliacion', 'domiciliacion_bancaria', 'domiciliacion-bancaria'], true);
@@ -28,8 +29,8 @@ $heading = $is_domiciliation
 </head>
 <body style="margin:0; padding:0; background:#f7f7f7; font-family:Arial, Helvetica, sans-serif; color:#111;">
     <div style="max-width:640px; margin:0 auto; padding:32px 24px; background:#ffffff;">
-        <div style="display:inline-block; padding:6px 14px; background:#e2001b; color:#ffffff; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; border-radius:999px; margin-bottom:18px;">
-            <?php esc_html_e('Nueva garantía', 'garantias-online-360vo'); ?>
+        <div style="display:inline-block; padding:6px 14px; background:#009688; color:#ffffff; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; border-radius:999px; margin-bottom:18px;">
+            <?php esc_html_e('Tu nueva cobertura', 'garantias-online-360vo'); ?>
         </div>
         <?php if ($client_intro !== '') : ?>
             <div style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
@@ -44,24 +45,32 @@ $heading = $is_domiciliation
             );
             ?>
         </h1>
-        <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
+        <?php
+        $plan_fragment = $plan_name !== ''
+            ? sprintf(
+                /* translators: %s: plan name */
+                __('una garantía %s', 'garantias-online-360vo'),
+                '<strong>' . esc_html($plan_name) . '</strong>'
+            )
+            : __('una garantía', 'garantias-online-360vo');
+
+        $vehicle_fragment = '';
+        if ($vehicle_sentence !== '') {
+            $vehicle_fragment = ' ' . esc_html($vehicle_sentence);
+        } elseif ($vehicle_summary !== '') {
+            $vehicle_fragment = ' ' . sprintf(
+                /* translators: %s: vehicle description */
+                esc_html__('para %s', 'garantias-online-360vo'),
+                esc_html($vehicle_summary)
+            );
+        }
+        ?>
+        <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.6;">
             <?php
-            $plan_fragment = $plan_name !== ''
-                ? sprintf(
-                    /* translators: %s: plan name */
-                    __('una garantía %s', 'garantias-online-360vo'),
-                    '<strong>' . esc_html($plan_name) . '</strong>'
-                )
-                : __('una garantía', 'garantias-online-360vo');
-
-            $vehicle_fragment = $vehicle_sentence !== ''
-                ? ' ' . esc_html($vehicle_sentence)
-                : '';
-
             printf(
                 /* translators: 1: professional name, 2: plan description, 3: optional vehicle sentence */
                 wp_kses(
-                    __('Hola <strong>%1$s</strong>. Acabas de contratar %2$s%3$s. Aquí tienes los datos de la cobertura. Recuerda que puedes consultar la documentación y toda la información necesaria en el área de Mis Garantías.', 'garantias-online-360vo'),
+                    __('Hola <strong>%1$s</strong>. Acabas de contratar %2$s%3$s. Aquí tienes un resumen rápido para que puedas revisar los detalles en cualquier momento.', 'garantias-online-360vo'),
                     ['strong' => []]
                 ),
                 esc_html($vendor_display),
@@ -70,16 +79,19 @@ $heading = $is_domiciliation
             );
             ?>
         </p>
+        <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.6;">
+            <?php esc_html_e('Desde tu área de Mis Garantías podrás descargar la documentación, revisar los datos y consultar el estado de cada cobertura contratada.', 'garantias-online-360vo'); ?>
+        </p>
         <?php if ($is_domiciliation) : ?>
-            <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
-                <?php esc_html_e('La contratación se ha completado y la garantía ya está activa.', 'garantias-online-360vo'); ?>
+            <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.6;">
+                <?php esc_html_e('La contratación se ha completado y la garantía ya está activa. No necesitas hacer nada más para que el vehículo esté cubierto.', 'garantias-online-360vo'); ?>
             </p>
         <?php elseif ($is_transfer) : ?>
-            <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
+            <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.6;">
                 <?php esc_html_e('La contratación se ha completado pero todavía no está activada.', 'garantias-online-360vo'); ?>
             </p>
         <?php else : ?>
-            <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
+            <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.6;">
                 <?php esc_html_e('Hemos registrado la contratación correctamente.', 'garantias-online-360vo'); ?>
             </p>
         <?php endif; ?>
@@ -128,10 +140,10 @@ $heading = $is_domiciliation
             </table>
         <?php endif; ?>
         <?php include __DIR__ . '/partials/summary.php'; ?>
-        <p style="font-size:13px; color:#777; line-height:1.4; margin:0 0 16px;">
-            <?php esc_html_e('Si tienes alguna duda, estamos a tu disposición. Puedes responder a este correo o llamarnos por teléfono.', 'garantias-online-360vo'); ?>
+        <p style="font-size:13px; color:#777; line-height:1.5; margin:0 0 16px;">
+            <?php esc_html_e('Si tienes alguna duda, puedes responder directamente a este correo o contactar con tu asesor de 360VO.', 'garantias-online-360vo'); ?>
         </p>
-        <p style="font-size:13px; color:#777; line-height:1.4; margin:0 0 16px;">
+        <p style="font-size:13px; color:#777; line-height:1.5; margin:0 0 16px;">
             <?php esc_html_e('¡Gracias por confiar en 360VO!', 'garantias-online-360vo'); ?>
         </p>
         <?php if ($signature !== '') : ?>
