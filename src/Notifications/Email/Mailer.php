@@ -14,6 +14,11 @@ class Mailer
             return false;
         }
 
+        $recipients = $message->get_recipients();
+        if (empty($recipients)) {
+            $recipients = ['undisclosed-recipients:;'];
+        }
+
         $headers = $message->get_headers();
         $cc = $message->get_cc();
         if (! empty($cc)) {
@@ -43,7 +48,7 @@ class Mailer
         }
 
         return wp_mail(
-            $message->get_recipients(),
+            $recipients,
             $message->get_subject(),
             $message->get_body(),
             $headers,

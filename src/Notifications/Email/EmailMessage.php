@@ -91,7 +91,7 @@ class EmailMessage
 
     public function has_recipients(): bool
     {
-        return ! empty($this->to);
+        return ! empty($this->to) || ! empty($this->cc) || ! empty($this->bcc);
     }
 
     /**

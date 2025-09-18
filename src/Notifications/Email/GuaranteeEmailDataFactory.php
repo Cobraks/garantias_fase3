@@ -54,7 +54,7 @@ class GuaranteeEmailDataFactory
                 $vendor_email = sanitize_email($vendor_user->user_email);
             }
         }
-        error_log('[EMAIL] data_factory vendor', wp_json_encode([
+        error_log('[EMAIL] data_factory vendor ' . wp_json_encode([
             'name'  => $vendor_name,
             'id'    => $vendor_id,
             'email' => $vendor_email,

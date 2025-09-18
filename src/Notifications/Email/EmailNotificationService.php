@@ -159,6 +159,11 @@ class EmailNotificationService
             $rows = $settings['direcciones_correo'];
         } elseif (isset($settings['notificaciones_email']['direcciones_correo']) && is_array($settings['notificaciones_email']['direcciones_correo'])) {
             $rows = $settings['notificaciones_email']['direcciones_correo'];
+        } elseif (function_exists('get_field')) {
+            $direct = get_field('direcciones_correo', SettingsPage::SUBMENU_SLUG);
+            if (is_array($direct)) {
+                $rows = $direct;
+            }
         }
 
         $to = [];
@@ -389,12 +394,39 @@ class EmailNotificationService
             return $this->notification_settings;
         }
 
-        $settings = get_field('notificaciones', SettingsPage::SUBMENU_SLUG);
-        if (is_array($settings)) {
-            $this->notification_settings = $settings;
-        } else {
-            $this->notification_settings = [];
+        $root_settings = get_field('notificaciones', SettingsPage::SUBMENU_SLUG);
+        if (! is_array($root_settings)) {
+            $root_settings = [];
         }
+
+        $notifications_group = $root_settings['notificaciones_email'] ?? get_field('notificaciones_email', SettingsPage::SUBMENU_SLUG);
+        if (! is_array($notifications_group)) {
+            $notifications_group = [];
+        }
+
+        $content_group = $root_settings['contenido_correos_electronicos'] ?? get_field('contenido_correos_electronicos', SettingsPage::SUBMENU_SLUG);
+        if (! is_array($content_group)) {
+            $content_group = [];
+        }
+
+        if (empty($root_settings['direcciones_correo']) && isset($notifications_group['direcciones_correo'])) {
+            $root_settings['direcciones_correo'] = $notifications_group['direcciones_correo'];
+        }
+        if (empty($root_settings['direccion_respuesta']) && isset($notifications_group['direccion_respuesta'])) {
+            $root_settings['direccion_respuesta'] = $notifications_group['direccion_respuesta'];
+        }
+
+        if (empty($root_settings['firma']) && isset($content_group['firma'])) {
+            $root_settings['firma'] = $content_group['firma'];
+        }
+
+        $this->notification_settings = array_merge(
+            $root_settings,
+            [
+                'notificaciones_email' => $notifications_group,
+                'contenido_correos_electronicos' => $content_group,
+            ]
+        );
 
         error_log('[EMAIL] notification settings loaded ' . wp_json_encode($this->notification_settings));
 

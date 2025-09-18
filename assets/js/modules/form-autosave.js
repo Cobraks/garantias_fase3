@@ -19,18 +19,30 @@ import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.j
 
 const pdfCache = new Map();
 
-async function loadStaticPdf(url) {
+async function loadStaticPdf(url, options = {}) {
         if (!url) return null;
-        if (pdfCache.has(url)) {
-                return pdfCache.get(url);
+
+        const isDynamicEndpoint = /\/wp-json\/go\/v1\/guarantees\//.test(url);
+        const shouldCache = options.cache !== undefined ? !!options.cache : !isDynamicEndpoint;
+        const cacheKey = options.cacheKey || url;
+
+        if (shouldCache && pdfCache.has(cacheKey)) {
+                return pdfCache.get(cacheKey);
         }
 
-        const response = await fetch(url);
+        const fetchOptions = {};
+        if (isDynamicEndpoint) {
+                fetchOptions.cache = "no-store";
+        }
+
+        const response = await fetch(url, fetchOptions);
         if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
         }
         const bytes = await response.arrayBuffer();
-        pdfCache.set(url, bytes);
+        if (shouldCache) {
+                pdfCache.set(cacheKey, bytes);
+        }
         return bytes;
 }
 
@@ -687,7 +699,10 @@ export default function initAutosave() {
 
                 for (const url of appendUrls) {
                         try {
-                                const bytes = await loadStaticPdf(url);
+                                const isDynamicDoc = /\/wp-json\/go\/v1\/guarantees\//.test(url);
+                                const bytes = await loadStaticPdf(url, {
+                                        cache: !isDynamicDoc,
+                                });
                                 if (!bytes) continue;
                                 const staticDoc = await PDFLib.PDFDocument.load(bytes);
                                 const pages = await pdfDoc.copyPages(
