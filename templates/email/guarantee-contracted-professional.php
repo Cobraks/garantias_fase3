@@ -18,9 +18,7 @@ $is_domiciliation = in_array($payment_slug, ['domiciliacion', 'domiciliacion_ban
 $is_transfer = in_array($payment_slug, ['transferencia', 'transferencia_bancaria'], true);
 $heading = $is_domiciliation
     ? __('Garantía activada para %s', 'garantias-online-360vo')
-    : ($is_transfer
-        ? __('Garantía creada para %s', 'garantias-online-360vo')
-        : __('Garantía contratada para %s', 'garantias-online-360vo'));
+    : __('Garantía contratada para %s', 'garantias-online-360vo');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -63,7 +61,7 @@ $heading = $is_domiciliation
             printf(
                 /* translators: 1: professional name, 2: plan description, 3: optional vehicle sentence */
                 wp_kses(
-                    __('Hola <strong>%1$s</strong>. Acabas de contratar %2$s%3$s. Aquí tienes los datos de la cobertura.', 'garantias-online-360vo'),
+                    __('Hola <strong>%1$s</strong>. Acabas de contratar %2$s%3$s. Aquí tienes los datos de la cobertura. Recuerda que puedes consultar la documentación y toda la información necesaria en el área de Mis Garantías.', 'garantias-online-360vo'),
                     ['strong' => []]
                 ),
                 esc_html($vendor_display),
@@ -74,11 +72,11 @@ $heading = $is_domiciliation
         </p>
         <?php if ($is_domiciliation) : ?>
             <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
-                <?php esc_html_e('La contratación se ha completado y la cobertura ya está disponible para tu cliente.', 'garantias-online-360vo'); ?>
+                <?php esc_html_e('La contratación se ha completado y la garantía ya está activa.', 'garantias-online-360vo'); ?>
             </p>
         <?php elseif ($is_transfer) : ?>
             <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
-                <?php esc_html_e('La contratación se ha completado pero la garantía se activará en cuanto confirmemos el pago.', 'garantias-online-360vo'); ?>
+                <?php esc_html_e('La contratación se ha completado pero todavía no está activada.', 'garantias-online-360vo'); ?>
             </p>
         <?php else : ?>
             <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
@@ -92,7 +90,7 @@ $heading = $is_domiciliation
                 if ($deadline !== '') {
                     printf(
                         /* translators: %s: deadline date */
-                        esc_html__('Recuerda que para activar la garantía debes realizar la transferencia antes del %s.', 'garantias-online-360vo'),
+                        esc_html__('Recuerda realizar la transferencia antes del %s para activar la garantía.', 'garantias-online-360vo'),
                         esc_html($deadline)
                     );
                 } else {
@@ -130,9 +128,6 @@ $heading = $is_domiciliation
             </table>
         <?php endif; ?>
         <?php include __DIR__ . '/partials/summary.php'; ?>
-        <p style="margin-top:24px; font-size:13px; color:#777; line-height:1.4;">
-            <?php esc_html_e('Recuerda que puedes consultar la documentación y toda la información necesaria en el área de Mis Garantías.', 'garantias-online-360vo'); ?>
-        </p>
         <p style="font-size:13px; color:#777; line-height:1.4; margin:0 0 16px;">
             <?php esc_html_e('Si tienes alguna duda, estamos a tu disposición. Puedes responder a este correo o llamarnos por teléfono.', 'garantias-online-360vo'); ?>
         </p>

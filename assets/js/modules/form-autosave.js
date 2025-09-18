@@ -210,15 +210,18 @@ export default function initAutosave() {
                         latestDocLinks = Object.assign({}, latestDocLinks, docLinks);
                 }
 
+                const certificateLink = docsContainer.querySelector('[data-doc="certificate"]');
                 docsContainer.querySelectorAll("[data-doc]").forEach((link) => {
                         link.hidden = true;
                         link.removeAttribute("href");
                         link.removeAttribute("target");
                         link.removeAttribute("rel");
                         link.textContent = "";
+                        link.removeAttribute("aria-disabled");
                 });
 
                 const availableDocs = [];
+                let certificateReady = false;
                 for (const doc of AVAILABLE_DOCS) {
                         const url = latestDocLinks?.[doc.key];
                         if (!url) continue;
@@ -235,7 +238,19 @@ export default function initAutosave() {
                         link.rel = "noopener";
                         link.innerHTML = `${iconHtml}${titleHtml}`;
                         link.hidden = false;
+                        if (doc.key === "certificate") {
+                                certificateReady = true;
+                        }
                         availableDocs.push(link);
+                }
+
+                if (!certificateReady && certificateLink) {
+                        const spinnerHtml =
+                                '<span class="document-card__icon" aria-hidden="true"><span class="form-success__loading-spinner" style="width:1.5rem;height:1.5rem;"></span></span>' +
+                                '<span class="document-card__title">Espera por favor...</span>';
+                        certificateLink.innerHTML = spinnerHtml;
+                        certificateLink.hidden = false;
+                        certificateLink.setAttribute("aria-disabled", "true");
                 }
 
                 if (availableDocs.length > 0) {
@@ -250,7 +265,8 @@ export default function initAutosave() {
                                 }
                         }
                 } else {
-                        docsContainer.hidden = true;
+                        const hasPendingCertificate = Boolean(certificateLink) && !certificateReady;
+                        docsContainer.hidden = !hasPendingCertificate;
                         if (loading) {
                                 loading.hidden = false;
                                 loading.style.display = "";
@@ -1218,18 +1234,6 @@ export default function initAutosave() {
                 icon.style.display = "none";
                 text.textContent = finalize ? "Generando documentos..." : "Guardando";
                 if (finalize && nextBtn) {
-                        const textNode = nextBtn.querySelector(".btn__text");
-                        if (!nextBtn.dataset.originalLabel) {
-                                nextBtn.dataset.originalLabel = textNode
-                                        ? textNode.textContent
-                                        : nextBtn.textContent;
-                        }
-                        const loadingLabel = nextBtn.dataset.loadingLabel || "Espera por favor...";
-                        if (textNode) {
-                                textNode.textContent = loadingLabel;
-                        } else {
-                                nextBtn.textContent = loadingLabel;
-                        }
                         nextBtn.classList.add("is-loading");
                         nextBtn.disabled = true;
                 }
@@ -1557,13 +1561,6 @@ export default function initAutosave() {
                         status.classList.add("autosave-status--hidden");
                 } finally {
                         if (finalize && nextBtn) {
-                                const textNode = nextBtn.querySelector(".btn__text");
-                                const originalLabel = nextBtn.dataset.originalLabel || "Siguiente";
-                                if (textNode) {
-                                        textNode.textContent = originalLabel;
-                                } else {
-                                        nextBtn.textContent = originalLabel;
-                                }
                                 nextBtn.classList.remove("is-loading");
                                 nextBtn.disabled = false;
                         }
