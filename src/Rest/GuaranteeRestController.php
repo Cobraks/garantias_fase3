@@ -9,6 +9,7 @@ use WP_Error;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\GuaranteeLogger;
 use GarantiasOnline360VO\SettingsPage;
+use GarantiasOnline360VO\Support\NotificationEmailResolver;
 
 class GuaranteeRestController
 {
@@ -1395,13 +1396,9 @@ class GuaranteeRestController
         $telefono_vendedor = $vendor_id
             ? get_user_meta($vendor_id, 'datos_usuario_telefono', true)
             : '';
-        $email_vendedor = '';
-        if ($vendor_id) {
-            $email_vendedor = (string) get_user_meta($vendor_id, 'datos_usuario_correo_electronico', true);
-            if ($email_vendedor === '' && $user) {
-                $email_vendedor = (string) $user->user_email;
-            }
-        }
+        $email_vendedor = $vendor_id
+            ? NotificationEmailResolver::resolve($vendor_id)
+            : '';
         $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
         $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
 

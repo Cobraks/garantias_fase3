@@ -4,6 +4,7 @@ namespace GarantiasOnline360VO\Notifications\Email;
 
 use GarantiasOnline360VO\GuaranteeLogger;
 use GarantiasOnline360VO\SettingsPage;
+use GarantiasOnline360VO\Support\NotificationEmailResolver;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -220,14 +221,10 @@ class EmailNotificationService
         $vendor_id = $this->resolve_vendor_user_id($data, $context);
         error_log('[EMAIL] resolved vendor id for professional recipients => ' . $vendor_id);
         if ($vendor_id > 0) {
-            $vendor_email_meta = sanitize_email(get_user_meta($vendor_id, 'datos_usuario_correo_electronico', true));
-            if ($vendor_email_meta !== '') {
-                $recipients[] = $vendor_email_meta;
-            }
-
-            $vendor = get_user_by('id', $vendor_id);
-            if ($vendor && $vendor->user_email) {
-                $recipients[] = $vendor->user_email;
+            $resolved = NotificationEmailResolver::resolve($vendor_id);
+            error_log('[EMAIL] resolved vendor notification email => ' . $resolved);
+            if ($resolved !== '') {
+                $recipients[] = $resolved;
             }
         }
 
