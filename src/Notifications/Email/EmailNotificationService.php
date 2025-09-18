@@ -211,11 +211,21 @@ class EmailNotificationService
     private function get_professional_recipients(array $data, array $context = []): array
     {
         $recipients = [];
-        $email = $data['vendor']['email'] ?? '';
-        if ($email) {
+
+        $email = sanitize_email($data['vendor']['email'] ?? '');
+        if ($email !== '') {
             $recipients[] = $email;
-        } elseif (! empty($data['vendor']['id'])) {
-            $vendor = get_user_by('id', (int) $data['vendor']['id']);
+        }
+
+        $vendor_id = $this->resolve_vendor_user_id($data, $context);
+        error_log('[EMAIL] resolved vendor id for professional recipients => ' . $vendor_id);
+        if ($vendor_id > 0) {
+            $vendor_email_meta = sanitize_email(get_user_meta($vendor_id, 'datos_usuario_correo_electronico', true));
+            if ($vendor_email_meta !== '') {
+                $recipients[] = $vendor_email_meta;
+            }
+
+            $vendor = get_user_by('id', $vendor_id);
             if ($vendor && $vendor->user_email) {
                 $recipients[] = $vendor->user_email;
             }
@@ -236,6 +246,33 @@ class EmailNotificationService
         error_log('[EMAIL] normalized professional recipients => ' . wp_json_encode($normalized));
 
         return $normalized;
+    }
+
+    private function resolve_vendor_user_id(array $data, array $context = []): int
+    {
+        if (! empty($data['vendor']['id'])) {
+            return (int) $data['vendor']['id'];
+        }
+
+        if (! empty($context['vendor_id'])) {
+            return (int) $context['vendor_id'];
+        }
+
+        $guarantee_id = isset($data['id']) ? (int) $data['id'] : 0;
+        if ($guarantee_id > 0) {
+            $meta = get_post_meta($guarantee_id, 'garantia_contratada_concesionario_empresa_profesional', true);
+            if (is_array($meta) && isset($meta['ID'])) {
+                $meta = $meta['ID'];
+            } elseif (is_array($meta) && isset($meta['id'])) {
+                $meta = $meta['id'];
+            }
+
+            if (is_numeric($meta)) {
+                return (int) $meta;
+            }
+        }
+
+        return 0;
     }
 
     private function normalize_recipients($recipients): array
