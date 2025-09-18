@@ -34,6 +34,30 @@ async function loadStaticPdf(url) {
         return bytes;
 }
 
+function stableSerialize(value) {
+        if (value === null || value === undefined) return null;
+        if (typeof value !== "object") return value;
+        if (Array.isArray(value)) {
+                return value.map((item) => stableSerialize(item));
+        }
+        return Object.keys(value)
+                .sort()
+                .reduce((acc, key) => {
+                        acc[key] = stableSerialize(value[key]);
+                        return acc;
+                }, {});
+}
+
+function encodeSignaturePayload(payload) {
+        const normalized = JSON.stringify(stableSerialize(payload));
+        try {
+                return window.btoa(unescape(encodeURIComponent(normalized)));
+        } catch (err) {
+                console.warn("[AUTOSAVE] signature encode fallback", err);
+                return normalized;
+        }
+}
+
 export default function initAutosave() {
         const form = document.getElementById("form-garantia");
         if (!form) return;
@@ -137,6 +161,550 @@ export default function initAutosave() {
         const summaryContainer = document.querySelector(".summary-container");
         const tabs = document.querySelector(".tabs");
         const nextBtn = document.getElementById("form_next_btn");
+        let latestDocLinks = {};
+        let latestCertificateUrl = "";
+        let postFinalizePromise = null;
+
+        const certificateState = {
+                currentSignature: null,
+                currentPromise: null,
+                pendingArgs: null,
+        };
+
+        function refreshDocumentLinks(docLinks = {}, { reset = false, error = false } = {}) {
+                if (!successBlock) return;
+                const docsContainer = successBlock.querySelector(
+                        ".form-success__docs"
+                );
+                const loading = successBlock.querySelector(
+                        ".form-success__loading"
+                );
+                if (!docsContainer) return;
+
+                if (reset) {
+                        latestDocLinks = {};
+                }
+
+                if (docLinks && typeof docLinks === "object") {
+                        latestDocLinks = Object.assign({}, latestDocLinks, docLinks);
+                }
+
+                docsContainer.querySelectorAll("[data-doc]").forEach((link) => {
+                        link.hidden = true;
+                        link.removeAttribute("href");
+                        link.removeAttribute("target");
+                        link.removeAttribute("rel");
+                        link.textContent = "";
+                });
+
+                const availableDocs = [];
+                for (const doc of AVAILABLE_DOCS) {
+                        const url = latestDocLinks?.[doc.key];
+                        if (!url) continue;
+                        const link = docsContainer.querySelector(
+                                `[data-doc="${doc.key}"]`
+                        );
+                        if (!link) continue;
+                        const iconHtml = `<span class="document-card__icon" aria-hidden="true">${getIcon(
+                                "pdf"
+                        )}</span>`;
+                        const titleHtml = `<span class="document-card__title">${doc.successLabel}</span>`;
+                        link.href = url;
+                        link.target = "_blank";
+                        link.rel = "noopener";
+                        link.innerHTML = `${iconHtml}${titleHtml}`;
+                        link.hidden = false;
+                        availableDocs.push(link);
+                }
+
+                if (availableDocs.length > 0) {
+                        docsContainer.hidden = false;
+                        if (loading) {
+                                loading.hidden = true;
+                        }
+                } else {
+                        docsContainer.hidden = true;
+                        if (loading) {
+                                loading.hidden = false;
+                                const text = loading.querySelector(
+                                        ".form-success__loading-text"
+                                );
+                                if (text) {
+                                        text.textContent = error
+                                                ? "No se pudieron generar los documentos"
+                                                : "Generando documentos...";
+                                }
+                        }
+                }
+        }
+
+        function updateSuccessDocuments(docLinks = {}) {
+                if (docLinks.certificate) {
+                        latestCertificateUrl = docLinks.certificate;
+                }
+                refreshDocumentLinks(docLinks, { reset: false });
+        }
+
+        function markDocumentError() {
+                if (!latestDocLinks || Object.keys(latestDocLinks).length === 0) {
+                        refreshDocumentLinks({}, { reset: false, error: true });
+                }
+        }
+
+        function triggerContractNotice(notifyUrl, uuid) {
+                if (!notifyUrl || !uuid) return;
+
+                const payload = JSON.stringify({ uuid });
+                const sendFallback = () =>
+                        fetch(notifyUrl, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": getRestNonce(),
+                                },
+                                body: payload,
+                        }).catch((err) => {
+                                console.error("[AUTOSAVE] notify fetch failed", err);
+                        });
+
+                if (navigator.sendBeacon) {
+                        try {
+                                const blob = new Blob([payload], {
+                                        type: "application/json",
+                                });
+                                const sent = navigator.sendBeacon(notifyUrl, blob);
+                                if (sent) {
+                                        console.log("[AUTOSAVE] notify beacon dispatched");
+                                        return;
+                                }
+                        } catch (beaconErr) {
+                                console.warn("[AUTOSAVE] notify beacon error", beaconErr);
+                        }
+                }
+
+                sendFallback();
+        }
+
+        function computeCertificateSignature({
+                templateUrl,
+                coberturaUrl,
+                condicionadoUrl,
+                datosVehiculo,
+                datosCliente,
+                garantia,
+                estadoGarantia,
+                firmaSello,
+        }) {
+                if (!templateUrl || !datosVehiculo || Object.keys(datosVehiculo).length === 0) {
+                        return "";
+                }
+
+                const payload = {
+                        templateUrl,
+                        coberturaUrl,
+                        condicionadoUrl,
+                        datosVehiculo,
+                        datosCliente,
+                        garantia,
+                        estadoGarantia,
+                        firmaSello,
+                };
+
+                return encodeSignaturePayload(payload);
+        }
+
+        function startCertificateGeneration(argsWithSignature) {
+                certificateState.currentSignature = argsWithSignature.signature;
+                console.log("[AUTOSAVE] certificate generation start", {
+                        draftId: argsWithSignature.draftId,
+                        signature: argsWithSignature.signature,
+                });
+
+                certificateState.currentPromise = generateCertificateAndUpload(argsWithSignature)
+                        .then((result) => {
+                                const nextArgs = certificateState.pendingArgs;
+                                certificateState.pendingArgs = null;
+                                if (result?.url) {
+                                        latestCertificateUrl = result.url;
+                                        updateSuccessDocuments({ certificate: result.url });
+                                }
+                                if (nextArgs && nextArgs.signature !== result?.signature) {
+                                        console.log("[AUTOSAVE] certificate regeneration queued", {
+                                                draftId: nextArgs.draftId,
+                                        });
+                                        return startCertificateGeneration(nextArgs);
+                                }
+                                return result;
+                        })
+                        .catch((err) => {
+                                console.error("[AUTOSAVE] certificate generation error", err);
+                                const nextArgs = certificateState.pendingArgs;
+                                certificateState.pendingArgs = null;
+                                if (nextArgs) {
+                                        console.log("[AUTOSAVE] retrying certificate generation", {
+                                                draftId: nextArgs.draftId,
+                                        });
+                                        return startCertificateGeneration(nextArgs);
+                                }
+                                markDocumentError();
+                                throw err;
+                        })
+                        .finally(() => {
+                                if (!certificateState.pendingArgs) {
+                                        certificateState.currentPromise = null;
+                                        certificateState.currentSignature = null;
+                                }
+                        });
+
+                return certificateState.currentPromise;
+        }
+
+        function queueCertificateGeneration(rawArgs) {
+                const signature = computeCertificateSignature(rawArgs);
+                if (!signature) {
+                    return Promise.resolve({ url: latestCertificateUrl || "", signature: "" });
+                }
+
+                const argsWithSignature = { ...rawArgs, signature };
+
+                if (!certificateState.currentPromise) {
+                        certificateState.pendingArgs = null;
+                        return startCertificateGeneration(argsWithSignature);
+                }
+
+                if (certificateState.currentSignature === signature) {
+                        return certificateState.currentPromise;
+                }
+
+                certificateState.pendingArgs = argsWithSignature;
+                return certificateState.currentPromise;
+        }
+
+        function scheduleCertificateGeneration(rawArgs, { immediate = false } = {}) {
+                const task = () => queueCertificateGeneration(rawArgs);
+                if (immediate) {
+                        return task();
+                }
+
+                return new Promise((resolve, reject) => {
+                        const runner = () => {
+                                task().then(resolve).catch(reject);
+                        };
+
+                        if (typeof window.requestIdleCallback === "function") {
+                                window.requestIdleCallback(
+                                        () => {
+                                                runner();
+                                        },
+                                        { timeout: 1000 }
+                                );
+                        } else {
+                                window.setTimeout(runner, 0);
+                        }
+                });
+        }
+
+        async function generateCertificateAndUpload({
+                draftId,
+                templateUrl,
+                coberturaUrl,
+                condicionadoUrl,
+                datosVehiculo,
+                datosCliente,
+                garantia,
+                estadoGarantia,
+                firmaSello,
+                signature,
+        }) {
+                if (!draftId || !templateUrl) {
+                        return { url: latestCertificateUrl || "", signature: signature || "" };
+                }
+
+                const pdfBytes = await fetch(templateUrl).then((r) => r.arrayBuffer());
+                const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                await import("../fontkit.umd.min.js");
+                pdfDoc.registerFontkit(globalThis.fontkit);
+                const form = pdfDoc.getForm();
+
+                const fontUrl = new URL("../../fonts/RobotoMono-Regular.ttf", import.meta.url);
+                const robotoBytes = await fetch(fontUrl).then((r) => r.arrayBuffer());
+                const robotoMono = await pdfDoc.embedFont(robotoBytes);
+                const robotoName = robotoMono.name;
+
+                const formatDate = (iso) => {
+                        if (!iso) return "";
+                        const date = new Date(iso);
+                        if (Number.isNaN(date.getTime())) return "";
+                        return date.toLocaleDateString("es-ES", {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                        });
+                };
+
+                const numberFormatter = new Intl.NumberFormat("es-ES", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                });
+
+                const formatNumber = (num) => {
+                        if (num === undefined || num === null || num === "") return "";
+                        const n = Number(num);
+                        return Number.isNaN(n) ? "" : numberFormatter.format(n);
+                };
+
+                const getSelectText = (id) => {
+                        const el = document.getElementById(id);
+                        if (el && el.tagName === "SELECT") {
+                                return el.options[el.selectedIndex]?.text || "";
+                        }
+                        return "";
+                };
+
+                const pdfFieldMap = {
+                        pdf_id_matricula: datosVehiculo.matricula,
+                        pdf_nombre_apellidos: datosCliente.nombre_y_apellidos,
+                        pdf_nif: datosCliente.dni,
+                        pdf_direccion: datosCliente.direccion,
+                        pdf_cp: datosCliente.codigo_postal,
+                        pdf_localidad: datosCliente.localidad,
+                        pdf_provincia:
+                                getSelectText("provincia") || datosCliente.provincia,
+                        pdf_telefono: datosCliente.telefono,
+                        pdf_email: datosCliente.email,
+                        pdf_matricula: datosVehiculo.matricula,
+                        pdf_fecha_primera_mat: formatDate(
+                                datosVehiculo.primera_matriculacion
+                        ),
+                        pdf_marca: getSelectText("marca") || datosVehiculo.marca,
+                        pdf_modelo: getSelectText("modelo") || datosVehiculo.modelo,
+                        pdf_cc: formatNumber(datosVehiculo.cilindrada),
+                        pdf_bastidor: datosVehiculo.numero_bastidor,
+                        pdf_km: formatNumber(datosVehiculo.kilometros),
+                        pdf_cv: formatNumber(datosVehiculo.potencia),
+                        pdf_traccion:
+                                getSelectText("traccion") ||
+                                getSelectText("traccion_camion") ||
+                                datosVehiculo.traccion ||
+                                datosVehiculo.traccion_camion,
+                        pdf_combustible:
+                                getSelectText("combustible") ||
+                                datosVehiculo.combustible,
+                        pdf_cambio: getSelectText("cambio") || datosVehiculo.cambio,
+                        pdf_tipo_vehiculo:
+                                getSelectText("tipo_vehiculo") ||
+                                datosVehiculo.tipo_vehiculo,
+                        pdf_periodo_cobertura: getSelectText("duracion"),
+                        pdf_fecha_inicio: formatDate(estadoGarantia?.inicio),
+                        pdf_fecha_finalizacion: formatDate(
+                                estadoGarantia?.finalizacion
+                        ),
+                };
+
+                Object.entries(pdfFieldMap).forEach(([name, val]) => {
+                        if (val === undefined || val === null || val === "") return;
+                        try {
+                                const field = form.getTextField(name);
+                                field.setText(String(val));
+                                field.setFontSize(9);
+                                field.acroField.setDefaultAppearance(
+                                        `0.5 0.5 0.5 rg /${robotoName} 9 Tf`
+                                );
+                                field.updateAppearances(robotoMono);
+                        } catch (e) {
+                                // campo inexistente
+                        }
+                });
+
+                try {
+                        const dobleMotorFieldValue = datosVehiculo.doble_motor;
+                        const dobleMotorField = form.getCheckBox("pdf_doble_motor");
+                        if (dobleMotorFieldValue === "doble_motor_si") {
+                                dobleMotorField.check();
+                        } else {
+                                dobleMotorField.uncheck();
+                        }
+                } catch (e) {
+                        // campo inexistente
+                }
+
+                try {
+                        if (firmaSello.add_firma_sello) {
+                                let fsField;
+                                try {
+                                        fsField = form.getField("pdf_firma_vendedor");
+                                } catch (e) {
+                                        fsField = undefined;
+                                }
+                                const widgets = fsField?.acroField?.getWidgets?.() || [];
+                                if (widgets.length) {
+                                        const widget = widgets[0];
+                                        const { x, y, width, height } = widget.getRectangle();
+                                        const page = pdfDoc.getPages()[0];
+                                        if (firmaSello.sello) {
+                                                const selloBytes = await fetch(
+                                                        firmaSello.sello
+                                                ).then((r) => r.arrayBuffer());
+                                                const selloImg = firmaSello.sello.match(/\.png$/i)
+                                                        ? await pdfDoc.embedPng(selloBytes)
+                                                        : await pdfDoc.embedJpg(selloBytes);
+                                                let selloWidth = width * 0.6;
+                                                let selloHeight =
+                                                        (selloImg.height / selloImg.width) *
+                                                        selloWidth;
+                                                const selloX = x + (width - selloWidth) / 2;
+                                                const selloY =
+                                                        y + height - selloHeight * 0.7;
+                                                const angle = Math.random() * 10 - 5;
+                                                page.drawImage(selloImg, {
+                                                        x: selloX,
+                                                        y: selloY,
+                                                        width: selloWidth,
+                                                        height: selloHeight,
+                                                        rotate: PDFLib.degrees(angle),
+                                                });
+                                        }
+                                        if (firmaSello.firma) {
+                                                const firmaBytes = await fetch(
+                                                        firmaSello.firma
+                                                ).then((r) => r.arrayBuffer());
+                                                const firmaImg = firmaSello.firma.match(/\.png$/i)
+                                                        ? await pdfDoc.embedPng(firmaBytes)
+                                                        : await pdfDoc.embedJpg(firmaBytes);
+                                                let firmaWidth = width;
+                                                let firmaHeight =
+                                                        (firmaImg.height / firmaImg.width) *
+                                                        firmaWidth;
+                                                if (firmaHeight > height) {
+                                                        firmaHeight = height;
+                                                        firmaWidth =
+                                                                (firmaImg.width /
+                                                                        firmaImg.height) *
+                                                                firmaHeight;
+                                                }
+                                                const firmaX = x + (width - firmaWidth) / 2;
+                                                const firmaY = y;
+                                                page.drawImage(firmaImg, {
+                                                        x: firmaX,
+                                                        y: firmaY,
+                                                        width: firmaWidth,
+                                                        height: firmaHeight,
+                                                });
+                                        }
+                                }
+                        }
+                } catch (e) {
+                        console.error("[AUTOSAVE] firma/sello error", e);
+                }
+
+                form.flatten();
+
+                const appendUrls = [
+                        coberturaUrl,
+                        condicionadoUrl,
+                        getDocumentUrl("reclamacion"),
+                ].filter(Boolean);
+
+                for (const url of appendUrls) {
+                        try {
+                                const bytes = await loadStaticPdf(url);
+                                if (!bytes) continue;
+                                const staticDoc = await PDFLib.PDFDocument.load(bytes);
+                                const pages = await pdfDoc.copyPages(
+                                        staticDoc,
+                                        staticDoc.getPageIndices()
+                                );
+                                pages.forEach((page) => pdfDoc.addPage(page));
+                        } catch (appendErr) {
+                                console.error(
+                                        "[AUTOSAVE] append static pdf error",
+                                        url,
+                                        appendErr
+                                );
+                        }
+                }
+
+                const filled = await pdfDoc.save();
+                const uploadRes = await fetch(
+                        `${getRestRoot()}go/v1/guarantees/${draftId}/certificate`,
+                        {
+                                method: "POST",
+                                headers: {
+                                        "X-WP-Nonce": getRestNonce(),
+                                        "X-Go360-Cert-Signature": signature || "",
+                                },
+                                body: filled,
+                        }
+                );
+                const uploadJson = await uploadRes.json();
+                if (!uploadRes.ok) {
+                        throw new Error(
+                                uploadJson?.message || "certificate_upload_failed"
+                        );
+                }
+
+                const url = uploadJson.certificate_url || "";
+                if (url) {
+                        console.log("[AUTOSAVE] certificate uploaded", {
+                                draftId,
+                                url,
+                        });
+                }
+                return { url, signature: signature || "" };
+        }
+
+        async function triggerPostFinalizeTasks({
+                draftId,
+                draftUuid,
+                responseJson,
+                datosVehiculo,
+                datosCliente,
+                garantia,
+                estadoGarantia,
+                firmaSello,
+        }) {
+                const docLinks = {
+                        condicionado: responseJson.condicionado_url || "",
+                        cobertura: responseJson.cobertura_url || "",
+                };
+
+                if (docLinks.condicionado || docLinks.cobertura) {
+                        updateSuccessDocuments(docLinks);
+                }
+
+                if (responseJson.template_url) {
+                        scheduleCertificateGeneration(
+                                {
+                                        draftId,
+                                        templateUrl: responseJson.template_url,
+                                        coberturaUrl: responseJson.cobertura_url,
+                                        condicionadoUrl: responseJson.condicionado_url,
+                                        datosVehiculo,
+                                        datosCliente,
+                                        garantia,
+                                        estadoGarantia,
+                                        firmaSello,
+                                },
+                                { immediate: false }
+                        )
+                                .then((result) => {
+                                        if (result?.url) {
+                                                updateSuccessDocuments({ certificate: result.url });
+                                        }
+                                })
+                                .catch((err) => {
+                                        console.error("[AUTOSAVE] certificate finalize error", err);
+                                        markDocumentError();
+                                });
+                }
+        }
+
+        function queuePostFinalizeTasks(args) {
+                if (postFinalizePromise) return;
+                postFinalizePromise = triggerPostFinalizeTasks(args).finally(() => {
+                        postFinalizePromise = null;
+                });
+        }
 
         function fadeOut(el, hide = true) {
                 if (!el) return;
@@ -310,71 +878,23 @@ export default function initAutosave() {
                                 ? `Gracias por contratar la garantía ${cleanPlan}.`
                                 : "Gracias por contratar tu garantía.";
                         message.textContent =
-                                `${intro} Te hemos enviado un correo con la documentación. ` +
+                                `${intro} Estamos preparando la documentación y recibirás un correo de confirmación en unos instantes. ` +
                                 "Puedes descargarla ahora o acceder cuando quieras desde Mis Garantías.";
                         message.hidden = false;
                 }
                 const loading = successBlock.querySelector(
                         ".form-success__loading"
                 );
-                const docsContainer = successBlock.querySelector(
-                        ".form-success__docs"
-                );
-                if (loading) loading.hidden = false;
-                if (docsContainer) {
-                        docsContainer.hidden = true;
-                        docsContainer.querySelectorAll("[data-doc]").forEach((link) => {
-                                link.hidden = true;
-                                link.removeAttribute("href");
-                                link.removeAttribute("target");
-                                link.removeAttribute("rel");
-                        });
-                        const availableDocs = [];
-                        for (const doc of AVAILABLE_DOCS) {
-                                const url = docLinks?.[doc.key];
-                                if (!url) continue;
-                                const link = docsContainer.querySelector(
-                                        `[data-doc="${doc.key}"]`
-                                );
-                                if (!link) continue;
-                                const iconHtml = `<span class="document-card__icon" aria-hidden="true">${getIcon(
-                                        "pdf"
-                                )}</span>`;
-                                const titleHtml = `<span class="document-card__title">${doc.successLabel}</span>`;
-                                link.href = url;
-                                link.target = "_blank";
-                                link.rel = "noopener";
-                                link.innerHTML = `${iconHtml}${titleHtml}`;
-                                link.hidden = false;
-                                availableDocs.push(link);
-                        }
-                        if (availableDocs.length > 0) {
-                                docsContainer.hidden = false;
-                                if (loading) loading.remove();
-                        } else if (loading) {
-                                const spin = loading.querySelector(
-                                        ".form-success__loading-spinner"
-                                );
-                                if (spin) spin.remove();
-                                const text = loading.querySelector(
-                                        ".form-success__loading-text"
-                                );
-                                if (text) {
-                                        text.textContent = "No se pudieron generar los documentos";
-                                }
-                        }
-                } else if (loading) {
-                        const spin = loading.querySelector(
-                                ".form-success__loading-spinner"
-                        );
-                        if (spin) spin.remove();
+                if (loading) {
+                        loading.hidden = false;
                         const text = loading.querySelector(
                                 ".form-success__loading-text"
                         );
                         if (text) {
-                                text.textContent = "No se pudieron generar los documentos";
+                                text.textContent = "Generando documentos...";
                         }
                 }
+                refreshDocumentLinks(docLinks || {}, { reset: true });
                 const detailsLink = successBlock.querySelector(
                         ".form-success__details-link"
                 );
@@ -828,282 +1348,37 @@ export default function initAutosave() {
                                 localStorage.setItem("go_draft_uuid", draftUuid);
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
-                        let certificateUrl = "";
-                        if (finalize && json.template_url) {
-                                try {
-                                        const pdfBytes = await fetch(json.template_url).then((r) => r.arrayBuffer());
-                                        const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
-                                        await import("../fontkit.umd.min.js");
-                                        pdfDoc.registerFontkit(globalThis.fontkit);
-                                        const form = pdfDoc.getForm();
-
-                                        const fontUrl = new URL(
-                                                "../../fonts/RobotoMono-Regular.ttf",
-                                                import.meta.url
-                                        );
-                                        const robotoBytes = await fetch(fontUrl).then((r) =>
-                                                r.arrayBuffer()
-                                        );
-                                        const robotoMono = await pdfDoc.embedFont(robotoBytes);
-                                        const robotoName = robotoMono.name;
-
-                                        const formatDate = (iso) => {
-                                                if (!iso) return "";
-                                                const date = new Date(iso);
-                                                if (isNaN(date)) return "";
-                                                return date.toLocaleDateString("es-ES", {
-                                                        day: "numeric",
-                                                        month: "long",
-                                                        year: "numeric",
-                                                });
-                                        };
-
-                                        const numberFormatter = new Intl.NumberFormat("es-ES", {
-                                                minimumFractionDigits: 0,
-                                                maximumFractionDigits: 2,
-                                        });
-
-                                        const formatNumber = (num) => {
-                                                if (num === undefined || num === null || num === "")
-                                                        return "";
-                                                const n = Number(num);
-                                                return Number.isNaN(n)
-                                                        ? ""
-                                                        : numberFormatter.format(n);
-                                        };
-
-                                       const getSelectText = (id) => {
-                                               const el = document.getElementById(id);
-                                               if (el && el.tagName === "SELECT") {
-                                                       return (
-                                                               el.options[el.selectedIndex]?.text || ""
-                                                       );
-                                               }
-                                               return "";
-                                       };
-
-                                       const pdfFieldMap = {
-                                               pdf_id_matricula: datosVehiculo.matricula,
-                                               pdf_nombre_apellidos: datosCliente.nombre_y_apellidos,
-                                               pdf_nif: datosCliente.dni,
-                                               pdf_direccion: datosCliente.direccion,
-                                               pdf_cp: datosCliente.codigo_postal,
-                                               pdf_localidad: datosCliente.localidad,
-                                               pdf_provincia:
-                                                       getSelectText("provincia") ||
-                                                       datosCliente.provincia,
-                                               pdf_telefono: datosCliente.telefono,
-                                               pdf_email: datosCliente.email,
-                                               pdf_matricula: datosVehiculo.matricula,
-                                               pdf_fecha_primera_mat: formatDate(
-                                                       datosVehiculo.primera_matriculacion
-                                               ),
-                                               pdf_marca:
-                                                       getSelectText("marca") ||
-                                                       datosVehiculo.marca,
-                                               pdf_modelo:
-                                                       getSelectText("modelo") ||
-                                                       datosVehiculo.modelo,
-                                               pdf_cc: formatNumber(datosVehiculo.cilindrada),
-                                               pdf_bastidor: datosVehiculo.numero_bastidor,
-                                               pdf_km: formatNumber(datosVehiculo.kilometros),
-                                               pdf_cv: formatNumber(datosVehiculo.potencia),
-                                               pdf_traccion:
-                                                       getSelectText("traccion") ||
-                                                       getSelectText("traccion_camion") ||
-                                                       datosVehiculo.traccion ||
-                                                       datosVehiculo.traccion_camion,
-                                               pdf_combustible:
-                                                       getSelectText("combustible") ||
-                                                       datosVehiculo.combustible,
-                                               pdf_cambio:
-                                                       getSelectText("cambio") ||
-                                                       datosVehiculo.cambio,
-                                               pdf_tipo_vehiculo:
-                                                       getSelectText("tipo_vehiculo") ||
-                                                       datosVehiculo.tipo_vehiculo,
-                                               pdf_periodo_cobertura:
-                                                       getSelectText("duracion"),
-                                               pdf_fecha_inicio: formatDate(
-                                                       payload.estado_garantia?.inicio
-                                               ),
-                                               pdf_fecha_finalizacion: formatDate(
-                                                       payload.estado_garantia?.finalizacion
-                                               ),
-                                       };
-
-                                       Object.entries(pdfFieldMap).forEach(([name, val]) => {
-                                               if (val === undefined || val === null || val === "")
-                                                       return;
-                                               try {
-                                                       const field = form.getTextField(name);
-                                                       field.setText(String(val));
-                                                       field.setFontSize(9);
-                                                       field.acroField.setDefaultAppearance(
-                                                               `0.5 0.5 0.5 rg /${robotoName} 9 Tf`
-                                                       );
-                                                       field.updateAppearances(robotoMono);
-                                               } catch (e) {
-                                                       // el campo no existe en el PDF
-                                               }
-                                       });
-
-                                       try {
-                                               const dobleMotorFieldValue = datosVehiculo.doble_motor;
-                                               const dobleMotorField = form.getCheckBox(
-                                                       "pdf_doble_motor"
-                                               );
-                                               if (dobleMotorFieldValue === "doble_motor_si") {
-                                                       dobleMotorField.check();
-                                               } else {
-                                                       dobleMotorField.uncheck();
-                                               }
-                                       } catch (e) {
-                                               // el campo no existe en el PDF
-                                       }
-
-                                       try {
-                                               if (firmaSello.add_firma_sello) {
-                                                       let fsField;
-                                                       try {
-                                                               fsField = form.getField(
-                                                                       "pdf_firma_vendedor"
-                                                               );
-                                                       } catch (e) {
-                                                               fsField = undefined;
-                                                       }
-                                                       const widgets =
-                                                               fsField?.acroField?.getWidgets?.() || [];
-                                                       if (widgets.length) {
-                                                               const widget = widgets[0];
-                                                               const { x, y, width, height } =
-                                                                       widget.getRectangle();
-                                                               const page = pdfDoc.getPages()[0];
-                                                               if (firmaSello.sello) {
-                                                                       const selloBytes = await fetch(
-                                                                               firmaSello.sello
-                                                                       ).then((r) => r.arrayBuffer());
-                                                                       const selloImg = firmaSello.sello.match(
-                                                                               /\.png$/i
-                                                                       )
-                                                                               ? await pdfDoc.embedPng(
-                                                                                       selloBytes
-                                                                                 )
-                                                                               : await pdfDoc.embedJpg(
-                                                                                       selloBytes
-                                                                                 );
-                                                                       let selloWidth = width * 0.6;
-                                                                       let selloHeight =
-                                                                               (selloImg.height /
-                                                                                       selloImg.width) *
-                                                                               selloWidth;
-                                                                       const selloX =
-                                                                               x + (width - selloWidth) / 2;
-                                                                       const selloY =
-                                                                               y +
-                                                                               height -
-                                                                               selloHeight * 0.7;
-                                                                       const angle =
-                                                                               Math.random() * 10 - 5;
-                                                                       page.drawImage(selloImg, {
-                                                                               x: selloX,
-                                                                               y: selloY,
-                                                                               width: selloWidth,
-                                                                               height: selloHeight,
-                                                                               rotate: PDFLib.degrees(angle),
-                                                                       });
-                                                               }
-                                                               if (firmaSello.firma) {
-                                                                       const firmaBytes = await fetch(
-                                                                               firmaSello.firma
-                                                                       ).then((r) => r.arrayBuffer());
-                                                                       const firmaImg = firmaSello.firma.match(
-                                                                               /\.png$/i
-                                                                       )
-                                                                               ? await pdfDoc.embedPng(
-                                                                                       firmaBytes
-                                                                                 )
-                                                                               : await pdfDoc.embedJpg(
-                                                                                       firmaBytes
-                                                                                 );
-                                                                       let firmaWidth = width * 0.8;
-                                                                       let firmaHeight =
-                                                                               (firmaImg.height /
-                                                                                       firmaImg.width) *
-                                                                               firmaWidth;
-                                                                       if (firmaHeight > height) {
-                                                                               firmaHeight = height;
-                                                                               firmaWidth =
-                                                                                       (firmaImg.width /
-                                                                                               firmaImg.height) *
-                                                                                       firmaHeight;
-                                                                       }
-                                                                       const firmaX =
-                                                                               x + (width - firmaWidth) / 2;
-                                                                       const firmaY = y;
-                                                                       page.drawImage(firmaImg, {
-                                                                               x: firmaX,
-                                                                               y: firmaY,
-                                                                               width: firmaWidth,
-                                                                               height: firmaHeight,
-                                                                       });
-                                                               }
-                                                       }
-                                               }
-                                       } catch (e) {
-                                               console.error(
-                                                       "[AUTOSAVE] firma/sello error",
-                                                       e
-                                               );
-                                       }
-
-                                       form.flatten();
-
-                                       const appendUrls = [
-                                               json.cobertura_url,
-                                               json.condicionado_url,
-                                               getDocumentUrl("reclamacion"),
-                                       ].filter(Boolean);
-
-                                       for (const url of appendUrls) {
-                                               try {
-                                                       const pdfBytes = await loadStaticPdf(url);
-                                                       if (!pdfBytes) continue;
-
-                                                       const staticDoc = await PDFLib.PDFDocument.load(
-                                                               pdfBytes
-                                                       );
-                                                       const pages = await pdfDoc.copyPages(
-                                                               staticDoc,
-                                                               staticDoc.getPageIndices()
-                                                       );
-                                                       pages.forEach((page) => pdfDoc.addPage(page));
-                                               } catch (appendErr) {
-                                                       console.error(
-                                                               "[AUTOSAVE] append static pdf error",
-                                                               url,
-                                                               appendErr
-                                                       );
-                                               }
-                                       }
-                                       const filled = await pdfDoc.save();
-                                        const up = await fetch(
-                                                `${getRestRoot()}go/v1/guarantees/${draftId}/certificate`,
-                                                {
-                                                        method: "POST",
-                                                        headers: { "X-WP-Nonce": getRestNonce() },
-                                                        body: filled,
-                                                }
-                                        );
-                                        const upJson = await up.json();
-                                        certificateUrl = upJson.certificate_url || "";
-                                } catch (err) {
-                                        console.error("[AUTOSAVE] certificate upload error", err);
-                                }
+                        if (!finalize && json.template_url) {
+                                loadStaticPdf(json.template_url).catch((err) => {
+                                        console.debug("[AUTOSAVE] template preload error", err);
+                                });
                         }
+
+                        const certificateArgs = json.template_url
+                                ? {
+                                          draftId,
+                                          templateUrl: json.template_url,
+                                          coberturaUrl: json.cobertura_url,
+                                          condicionadoUrl: json.condicionado_url,
+                                          datosVehiculo,
+                                          datosCliente,
+                                          garantia,
+                                          estadoGarantia: payload.estado_garantia || {},
+                                          firmaSello,
+                                  }
+                                : null;
+
+                        if (!finalize && certificateArgs) {
+                                scheduleCertificateGeneration(certificateArgs, {
+                                        immediate: false,
+                                }).catch((err) => {
+                                        console.error("[AUTOSAVE] certificate queue error", err);
+                                });
+                        }
+
                         if (finalize) {
                                 const docLinks = {
-                                        certificate: certificateUrl,
+                                        certificate: latestCertificateUrl || "",
                                         condicionado: json.condicionado_url || "",
                                         cobertura: json.cobertura_url || "",
                                 };
@@ -1124,6 +1399,19 @@ export default function initAutosave() {
                                         docLinks,
                                         extras
                                 );
+                                queuePostFinalizeTasks({
+                                        draftId,
+                                        draftUuid,
+                                        responseJson: json,
+                                        datosVehiculo,
+                                        datosCliente,
+                                        garantia,
+                                        estadoGarantia: payload.estado_garantia || {},
+                                        firmaSello,
+                                });
+                                if (json.notify_url && draftUuid) {
+                                        triggerContractNotice(json.notify_url, draftUuid);
+                                }
                         }
                         spinner.style.display = "none";
                         icon.style.display = "inline-block";
