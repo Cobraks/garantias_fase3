@@ -43,49 +43,7 @@ class EmailNotificationService
 
     private function register_hooks(): void
     {
-        add_action('go360/guarantee/created', [$this, 'handle_created'], 10, 2);
         add_action('go360/guarantee/contracted', [$this, 'handle_contracted'], 10, 2);
-    }
-
-    public function handle_created(int $guarantee_id, array $context = []): void
-    {
-        $data = $this->data_factory->build($guarantee_id);
-        $initiator_id = $this->resolve_initiator_id($context);
-
-        if (empty($data)) {
-            $this->log_skip($guarantee_id, 'created_admin', 'empty_data', $initiator_id);
-            return;
-        }
-
-        if ($this->has_been_notified($guarantee_id, 'created_admin')) {
-            $this->log_skip($guarantee_id, 'created_admin', 'already_notified', $initiator_id);
-            return;
-        }
-
-        if (! $this->should_notify('created_admin', $data, $context)) {
-            $this->log_skip($guarantee_id, 'created_admin', 'disabled', $initiator_id);
-            return;
-        }
-
-        $delivery = $this->get_admin_delivery($guarantee_id, $context);
-        if (empty($delivery['to'])) {
-            $this->log_skip($guarantee_id, 'created_admin', 'no_recipients', $initiator_id);
-            return;
-        }
-
-        $options = [];
-        if (! empty($delivery['bcc'])) {
-            $options['bcc'] = $delivery['bcc'];
-        }
-
-        $message = $this->builder->composeCreatedAdmin(
-            $data,
-            $delivery['to'],
-            $this->build_template_context('created_admin', $context, $initiator_id),
-            $options
-        );
-
-        $this->dispatch($message, $guarantee_id, 'created_admin', $initiator_id);
     }
 
     public function handle_contracted(int $guarantee_id, array $context = []): void

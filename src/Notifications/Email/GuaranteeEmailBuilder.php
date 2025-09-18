@@ -16,22 +16,6 @@ class GuaranteeEmailBuilder
         $this->renderer = $renderer;
     }
 
-    public function composeCreatedAdmin(array $data, array $recipients, array $context = [], array $options = []): ?EmailMessage
-    {
-        return $this->create_message(
-            $recipients,
-            sprintf(
-                /* translators: %s: vehicle plate */
-                __('Nueva garantía creada: %s', 'garantias-online-360vo'),
-                $this->resolve_plate_label($data)
-            ),
-            'guarantee-created-admin',
-            $data,
-            $context,
-            $options
-        );
-    }
-
     public function composeContractedAdmin(array $data, array $recipients, array $context = [], array $options = []): ?EmailMessage
     {
         return $this->create_message(

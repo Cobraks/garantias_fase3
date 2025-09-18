@@ -18,6 +18,9 @@ $signature = $copy['signature'] ?? '';
 </head>
 <body style="margin:0; padding:0; background:#f7f7f7; font-family:Arial, Helvetica, sans-serif; color:#111;">
     <div style="max-width:640px; margin:0 auto; padding:32px 24px; background:#ffffff;">
+        <div style="display:inline-block; padding:6px 14px; background:#e2001b; color:#ffffff; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; border-radius:999px; margin-bottom:18px;">
+            <?php esc_html_e('Nueva garantía', 'garantias-online-360vo'); ?>
+        </div>
         <?php if ($admin_intro !== '') : ?>
             <div style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
                 <?php echo wpautop($admin_intro); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
