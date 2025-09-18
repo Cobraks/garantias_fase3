@@ -48,6 +48,7 @@ class EmailNotificationService
 
     public function handle_contracted(int $guarantee_id, array $context = []): void
     {
+        error_log('[EMAIL] handle_contracted start ID ' . $guarantee_id . ' context ' . wp_json_encode($context));
         $data = $this->data_factory->build($guarantee_id);
         $initiator_id = $this->resolve_initiator_id($context);
 
@@ -59,6 +60,7 @@ class EmailNotificationService
 
         if (! $this->has_been_notified($guarantee_id, 'contracted_admin') && $this->should_notify('contracted_admin', $data, $context)) {
             $delivery = $this->get_admin_delivery($guarantee_id, $context);
+            error_log('[EMAIL] admin delivery ' . $guarantee_id . ' => ' . wp_json_encode($delivery));
             if (empty($delivery['to'])) {
                 $this->log_skip($guarantee_id, 'contracted_admin', 'no_recipients', $initiator_id);
             } else {
@@ -84,6 +86,7 @@ class EmailNotificationService
 
         if (! $this->has_been_notified($guarantee_id, 'contracted_professional') && $this->should_notify('contracted_professional', $data, $context)) {
             $vendor_recipients = $this->get_professional_recipients($data, $context);
+            error_log('[EMAIL] professional recipients ' . $guarantee_id . ' => ' . wp_json_encode($vendor_recipients));
             if (empty($vendor_recipients)) {
                 $this->log_skip($guarantee_id, 'contracted_professional', 'no_recipients', $initiator_id);
             } else {
@@ -116,7 +119,9 @@ class EmailNotificationService
             return;
         }
 
+        error_log('[EMAIL] dispatch ' . $event_slug . ' for ' . $guarantee_id . ' recipients ' . wp_json_encode($message->get_recipients()));
         $sent = $this->mailer->send($message);
+        error_log('[EMAIL] dispatch result ' . $event_slug . ' => ' . ($sent ? 'sent' : 'failed'));
         $details = sprintf(
             '%s|to:%s',
             $event_slug,
@@ -189,10 +194,13 @@ class EmailNotificationService
         $filtered_to = apply_filters('go360/email/admin_recipients', array_values($to), $guarantee_id, $context);
         $filtered_bcc = apply_filters('go360/email/admin_bcc_recipients', array_values($bcc), $guarantee_id, $context);
 
-        return [
+        $delivery = [
             'to'  => $this->normalize_recipients($filtered_to),
             'bcc' => $this->normalize_recipients($filtered_bcc),
         ];
+        error_log('[EMAIL] get_admin_delivery normalized ' . $guarantee_id . ' => ' . wp_json_encode($delivery));
+
+        return $delivery;
     }
 
     private function get_professional_recipients(array $data, array $context = []): array
@@ -219,7 +227,10 @@ class EmailNotificationService
         }
 
         $recipients = apply_filters('go360/email/professional_recipients', $recipients, $data, $context);
-        return $this->normalize_recipients($recipients);
+        $normalized = $this->normalize_recipients($recipients);
+        error_log('[EMAIL] normalized professional recipients => ' . wp_json_encode($normalized));
+
+        return $normalized;
     }
 
     private function normalize_recipients($recipients): array
@@ -254,7 +265,10 @@ class EmailNotificationService
 
         $reply_to = apply_filters('go360/email/reply_to', $reply_to, $settings);
 
-        return sanitize_email($reply_to);
+        $normalized = sanitize_email($reply_to);
+        error_log('[EMAIL] resolved reply-to => ' . $normalized);
+
+        return $normalized;
     }
 
     private function get_admin_from_header(): string
@@ -264,7 +278,7 @@ class EmailNotificationService
             return '';
         }
 
-        return $this->build_from_header(__('Garantías Online', 'garantias-online-360vo'), $email);
+        return $this->build_from_header(__('Garantías 360VO', 'garantias-online-360vo'), $email);
     }
 
     private function get_professional_from_header(string $reply_to = ''): string
@@ -381,6 +395,8 @@ class EmailNotificationService
         } else {
             $this->notification_settings = [];
         }
+
+        error_log('[EMAIL] notification settings loaded ' . wp_json_encode($this->notification_settings));
 
         return $this->notification_settings;
     }

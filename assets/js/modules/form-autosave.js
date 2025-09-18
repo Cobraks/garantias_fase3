@@ -164,6 +164,7 @@ export default function initAutosave() {
         let latestDocLinks = {};
         let latestCertificateUrl = "";
         let postFinalizePromise = null;
+        let loadingTimeoutId = null;
 
         const certificateState = {
                 currentSignature: null,
@@ -181,6 +182,12 @@ export default function initAutosave() {
                 const loading = successBlock.querySelector(
                         ".form-success__loading"
                 );
+                console.log("[AUTOSAVE] refreshDocumentLinks", {
+                        docLinks,
+                        reset,
+                        error,
+                        latestDocKeys: Object.keys(latestDocLinks || {}),
+                });
                 if (!docsContainer) return;
 
                 if (reset) {
@@ -223,11 +230,18 @@ export default function initAutosave() {
                         docsContainer.hidden = false;
                         if (loading) {
                                 loading.hidden = true;
+                                loading.style.display = "none";
+                                console.log("[AUTOSAVE] loading hidden (docs ready)");
+                                if (loadingTimeoutId) {
+                                        clearTimeout(loadingTimeoutId);
+                                        loadingTimeoutId = null;
+                                }
                         }
                 } else {
                         docsContainer.hidden = true;
                         if (loading) {
                                 loading.hidden = false;
+                                loading.style.display = "";
                                 const text = loading.querySelector(
                                         ".form-success__loading-text"
                                 );
@@ -251,13 +265,24 @@ export default function initAutosave() {
                         );
                         if (loading && docLinks.certificate) {
                                 loading.hidden = true;
+                                loading.style.display = "none";
+                                console.log("[AUTOSAVE] loading hidden (certificate)", docLinks.certificate);
+                                if (loadingTimeoutId) {
+                                        clearTimeout(loadingTimeoutId);
+                                        loadingTimeoutId = null;
+                                }
                         }
                 }
         }
 
         function markDocumentError() {
+                console.warn("[AUTOSAVE] markDocumentError", latestDocLinks);
                 if (!latestDocLinks || Object.keys(latestDocLinks).length === 0) {
                         refreshDocumentLinks({}, { reset: false, error: true });
+                        if (loadingTimeoutId) {
+                                clearTimeout(loadingTimeoutId);
+                                loadingTimeoutId = null;
+                        }
                 }
         }
 
@@ -457,16 +482,27 @@ export default function initAutosave() {
                         return { url: latestCertificateUrl || "", signature: signature || "" };
                 }
 
+                console.log("[AUTOSAVE] generateCertificateAndUpload:start", {
+                        draftId,
+                        templateUrl,
+                        signature,
+                });
+                console.time("certificate_fetch_template");
                 const pdfBytes = await fetch(templateUrl).then((r) => r.arrayBuffer());
+                console.timeEnd("certificate_fetch_template");
                 const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                console.log("[AUTOSAVE] PDF template loaded", { draftId });
                 await import("../fontkit.umd.min.js");
                 pdfDoc.registerFontkit(globalThis.fontkit);
                 const form = pdfDoc.getForm();
 
                 const fontUrl = new URL("../../fonts/RobotoMono-Regular.ttf", import.meta.url);
+                console.time("certificate_fetch_font");
                 const robotoBytes = await fetch(fontUrl).then((r) => r.arrayBuffer());
+                console.timeEnd("certificate_fetch_font");
                 const robotoMono = await pdfDoc.embedFont(robotoBytes);
                 const robotoName = robotoMono.name;
+                console.log("[AUTOSAVE] Font embedded", { robotoName });
 
                 const formatDate = (iso) => {
                         if (!iso) return "";
@@ -538,6 +574,7 @@ export default function initAutosave() {
                         ),
                 };
 
+                console.time("certificate_fill_fields");
                 Object.entries(pdfFieldMap).forEach(([name, val]) => {
                         if (val === undefined || val === null || val === "") return;
                         try {
@@ -550,8 +587,10 @@ export default function initAutosave() {
                                 field.updateAppearances(robotoMono);
                         } catch (e) {
                                 // campo inexistente
+                                console.warn("[AUTOSAVE] Missing PDF field", name, e);
                         }
                 });
+                console.timeEnd("certificate_fill_fields");
 
                 try {
                         const dobleMotorFieldValue = datosVehiculo.doble_motor;
@@ -579,9 +618,11 @@ export default function initAutosave() {
                                         const { x, y, width, height } = widget.getRectangle();
                                         const page = pdfDoc.getPages()[0];
                                         if (firmaSello.sello) {
+                                                console.time("certificate_fetch_sello");
                                                 const selloBytes = await fetch(
                                                         firmaSello.sello
                                                 ).then((r) => r.arrayBuffer());
+                                                console.timeEnd("certificate_fetch_sello");
                                                 const selloImg = firmaSello.sello.match(/\.png$/i)
                                                         ? await pdfDoc.embedPng(selloBytes)
                                                         : await pdfDoc.embedJpg(selloBytes);
@@ -602,9 +643,11 @@ export default function initAutosave() {
                                                 });
                                         }
                                         if (firmaSello.firma) {
+                                                console.time("certificate_fetch_firma");
                                                 const firmaBytes = await fetch(
                                                         firmaSello.firma
                                                 ).then((r) => r.arrayBuffer());
+                                                console.timeEnd("certificate_fetch_firma");
                                                 const firmaImg = firmaSello.firma.match(/\.png$/i)
                                                         ? await pdfDoc.embedPng(firmaBytes)
                                                         : await pdfDoc.embedJpg(firmaBytes);
@@ -661,7 +704,10 @@ export default function initAutosave() {
                         }
                 }
 
+                console.time("certificate_save_pdf");
                 const filled = await pdfDoc.save();
+                console.timeEnd("certificate_save_pdf");
+                console.log("[AUTOSAVE] PDF saved", { size: filled?.byteLength || 0 });
                 const uploadRes = await fetch(
                         `${getRestRoot()}go/v1/guarantees/${draftId}/certificate`,
                         {
@@ -674,6 +720,11 @@ export default function initAutosave() {
                         }
                 );
                 const uploadJson = await uploadRes.json();
+                console.log("[AUTOSAVE] Certificate upload response", {
+                        status: uploadRes.status,
+                        ok: uploadRes.ok,
+                        body: uploadJson,
+                });
                 if (!uploadRes.ok) {
                         throw new Error(
                                 uploadJson?.message || "certificate_upload_failed"
@@ -686,6 +737,8 @@ export default function initAutosave() {
                                 draftId,
                                 url,
                         });
+                } else {
+                        console.warn("[AUTOSAVE] certificate upload missing URL", uploadJson);
                 }
                 return { url, signature: signature || "" };
         }
@@ -924,12 +977,28 @@ export default function initAutosave() {
                 );
                 if (loading) {
                         loading.hidden = false;
+                        loading.style.display = "";
                         const text = loading.querySelector(
                                 ".form-success__loading-text"
                         );
                         if (text) {
                                 text.textContent = "Generando documentos...";
                         }
+                        if (loadingTimeoutId) {
+                                clearTimeout(loadingTimeoutId);
+                        }
+                        loadingTimeoutId = window.setTimeout(() => {
+                                console.warn("[AUTOSAVE] success spinner forced hide after timeout");
+                                loading.hidden = true;
+                                loading.style.display = "none";
+                                const timeoutText = loading.querySelector(
+                                        ".form-success__loading-text"
+                                );
+                                if (timeoutText) {
+                                        timeoutText.textContent =
+                                                "Los documentos estarán disponibles en Mis Garantías";
+                                }
+                        }, 15000);
                 }
                 refreshDocumentLinks(docLinks || {}, { reset: true });
                 const detailsLink = successBlock.querySelector(
