@@ -204,10 +204,11 @@ class EmailNotificationService
             }
         }
 
-        if (empty($to)) {
+        if (empty($to) && empty($bcc)) {
             $fallback = sanitize_email(get_option('admin_email'));
             if ($fallback !== '') {
                 $to[$fallback] = $fallback;
+                error_log('[EMAIL] Fallback admin recipient applied for guarantee ' . $guarantee_id);
             }
         }
 

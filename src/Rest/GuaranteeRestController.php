@@ -542,7 +542,9 @@ class GuaranteeRestController
             $uuid = wp_generate_uuid4();
             update_post_meta($post_id, 'estado_garantia_uuid', $uuid);
             update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'sin_finalizar');
+            $just_created = true;
             error_log('[AUTOSAVE] Created draft guarantee ID ' . $post_id);
+            error_log('[AUTOSAVE] guarantee created ' . $post_id);
         } elseif ($matricula) {
             wp_update_post([
                 'ID'         => $post_id,
