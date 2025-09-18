@@ -9,9 +9,12 @@ use WP_Error;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\GuaranteeLogger;
 use GarantiasOnline360VO\SettingsPage;
+use GarantiasOnline360VO\Support\NotificationEmailResolver;
 
 class GuaranteeRestController
 {
+    const CONTRACT_NOTICE_META = '_go360_pending_contract_notice';
+    const CONTRACT_NOTICE_EVENT = 'go360/guarantee/dispatch_contract_notice';
     const NAMESPACE = 'go/v1';
     const BASE      = 'guarantees';
 
@@ -129,7 +132,27 @@ class GuaranteeRestController
                 ],
             ]
         );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/notify',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'dispatch_notifications'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id'   => ['validate_callback' => 'absint'],
+                        'uuid' => [
+                            'required'          => true,
+                            'sanitize_callback' => 'sanitize_text_field',
+                        ],
+                    ],
+                ],
+            ]
+        );
         add_filter('rest_pre_serve_request', [__CLASS__, 'serve_document'], 10, 4);
+
+        add_action(self::CONTRACT_NOTICE_EVENT, [__CLASS__, 'handle_scheduled_contract_notice']);
 
         // Limpieza de transients al guardar/borrar garantías
         add_action('save_post_' . \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE, [__CLASS__, 'clear_list_transients'], 10, 3);
@@ -358,11 +381,19 @@ class GuaranteeRestController
         if ($binary === '' || $binary === false) {
             return new WP_Error('empty_pdf', __('PDF no recibido', 'garantias-online-360vo'), ['status' => 400]);
         }
+        $signature = '';
+        if (isset($_SERVER['HTTP_X_GO360_CERT_SIGNATURE'])) {
+            $signature = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_GO360_CERT_SIGNATURE']));
+        }
         $hash = PrivateDocsManager::store($binary, 'pdf');
         if (!$hash) {
             return new WP_Error('store_error', __('No se pudo guardar el certificado', 'garantias-online-360vo'), ['status' => 500]);
         }
         update_post_meta($id, 'documentacion_certificado_hash', $hash);
+        if ($signature !== '') {
+            update_post_meta($id, '_go360_certificate_signature', $signature);
+            error_log('[CERTIFICATE] Stored signature for ID ' . $id . ' hash ' . $hash);
+        }
         $url = self::build_document_download_url($id, 'certificado');
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_uploaded', 'certificado');
         return new WP_REST_Response(['certificate_url' => $url], 201);
@@ -466,8 +497,8 @@ class GuaranteeRestController
         $condicionado_source = '';
         $previous_contract_state = '';
         $new_contract_state      = '';
-        $just_created            = false;
-        $just_activated          = false;
+        $queued_contract_notice  = false;
+        $contract_notice_context = [];
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
@@ -543,6 +574,7 @@ class GuaranteeRestController
             update_post_meta($post_id, 'estado_garantia_uuid', $uuid);
             update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'sin_finalizar');
             error_log('[AUTOSAVE] Created draft guarantee ID ' . $post_id);
+            error_log('[AUTOSAVE] guarantee created ' . $post_id);
         } elseif ($matricula) {
             wp_update_post([
                 'ID'         => $post_id,
@@ -802,8 +834,22 @@ class GuaranteeRestController
             }
         }
 
-        if ($new_contract_state === 'activada' && $previous_contract_state !== 'activada') {
-            $just_activated = true;
+        if (
+            in_array($new_contract_state, ['activada', 'pendiente_pago'], true)
+            && $new_contract_state !== $previous_contract_state
+        ) {
+            $queued_contract_notice  = true;
+            $contract_notice_context = [
+                'initiator'      => get_current_user_id(),
+                'previous_state' => $previous_contract_state,
+                'current_state'  => $new_contract_state,
+            ];
+            error_log(sprintf(
+                '[AUTOSAVE] Contract state changed from %s to %s for ID %d',
+                $previous_contract_state !== '' ? $previous_contract_state : '(none)',
+                $new_contract_state,
+                $post_id
+            ));
         }
 
         if (isset($data['post_status'])) {
@@ -871,6 +917,10 @@ class GuaranteeRestController
         $condicionado_url = self::build_document_download_url($post_id, 'condicionado');
         $transfer_iban = self::get_transfer_iban();
 
+        $notify_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/notify');
+        $notify_url = add_query_arg('_wpnonce', wp_create_nonce('wp_rest'), $notify_url);
+        $scheme     = wp_parse_url(home_url(), PHP_URL_SCHEME);
+
         $response = [
             'id'               => $post_id,
             'uuid'             => $uuid,
@@ -879,24 +929,62 @@ class GuaranteeRestController
             'condicionado_url' => $condicionado_url,
             'transfer_iban'    => $transfer_iban['formatted'],
             'firma_sello'      => $firma_sello,
+            'notify_url'       => set_url_scheme($notify_url, $scheme),
         ];
 
-        if ($just_created) {
-            do_action('go360/guarantee/created', $post_id, [
-                'initiator' => get_current_user_id(),
-                'uuid'      => $uuid,
-            ]);
-        }
-
-        if ($just_activated) {
-            do_action('go360/guarantee/contracted', $post_id, [
-                'initiator'      => get_current_user_id(),
-                'previous_state' => $previous_contract_state,
-                'current_state'  => $new_contract_state,
-            ]);
+        if ($queued_contract_notice && ! empty($contract_notice_context)) {
+            $contract_notice_context['queued_at'] = current_time('mysql');
+            update_post_meta($post_id, self::CONTRACT_NOTICE_META, $contract_notice_context);
+            GuaranteeLogger::log(
+                get_current_user_id(),
+                $post_id,
+                'contract_notice_queued',
+                wp_json_encode($contract_notice_context)
+            );
+            self::schedule_contract_notice_dispatch($post_id);
         }
 
         return new WP_REST_Response($response);
+    }
+
+    public static function dispatch_notifications($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+        $uuid    = isset($request['uuid']) ? sanitize_text_field($request['uuid']) : '';
+        if ($uuid === '') {
+            $body = $request->get_json_params();
+            if (is_array($body) && isset($body['uuid'])) {
+                $uuid = sanitize_text_field($body['uuid']);
+            }
+        }
+
+        if ($post_id <= 0 || get_post_type($post_id) !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error('invalid_id', __('ID de garantía no válido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $stored_uuid = get_post_meta($post_id, 'estado_garantia_uuid', true);
+        if (! $uuid || $stored_uuid !== $uuid) {
+            return new WP_Error('invalid_uuid', __('Identificador de sesión no válido', 'garantias-online-360vo'), ['status' => 403]);
+        }
+        $dispatched = self::dispatch_contract_notice_internal($post_id, get_current_user_id());
+        if (! $dispatched) {
+            self::schedule_contract_notice_dispatch($post_id);
+        }
+
+        return rest_ensure_response([
+            'dispatched' => $dispatched,
+        ]);
+    }
+
+    public static function handle_scheduled_contract_notice($post_id)
+    {
+        $post_id = (int) $post_id;
+        if ($post_id <= 0) {
+            return;
+        }
+
+        error_log('[AUTOSAVE] Scheduled contract notice execution for ID ' . $post_id);
+        self::dispatch_contract_notice_internal($post_id, 0);
     }
 
     private static function get_modalidad_document_url($plan_id, $field_key, array $context = [])
@@ -938,6 +1026,74 @@ class GuaranteeRestController
         $cache[$plan_id][$field_key][$context_key] = $url;
 
         return $url;
+    }
+
+    private static function schedule_contract_notice_dispatch($post_id)
+    {
+        $post_id = (int) $post_id;
+        if ($post_id <= 0) {
+            return;
+        }
+
+        if (wp_next_scheduled(self::CONTRACT_NOTICE_EVENT, [$post_id])) {
+            error_log('[AUTOSAVE] Contract notice dispatch already scheduled for ID ' . $post_id);
+            return;
+        }
+
+        $timestamp = time() + 5;
+        wp_schedule_single_event($timestamp, self::CONTRACT_NOTICE_EVENT, [$post_id]);
+        error_log('[AUTOSAVE] Scheduled contract notice dispatch via cron for ID ' . $post_id);
+        self::spawn_contract_cron();
+    }
+
+    private static function spawn_contract_cron()
+    {
+        if ((defined('DOING_CRON') && DOING_CRON) || (function_exists('wp_doing_cron') && wp_doing_cron())) {
+            return;
+        }
+
+        if (function_exists('spawn_cron')) {
+            spawn_cron();
+        }
+    }
+
+    private static function dispatch_contract_notice_internal($post_id, $actor_id = 0)
+    {
+        $post_id = (int) $post_id;
+        if ($post_id <= 0) {
+            return false;
+        }
+
+        $context = get_post_meta($post_id, self::CONTRACT_NOTICE_META, true);
+        if (! is_array($context) || empty($context)) {
+            error_log('[AUTOSAVE] No pending contract notice for ID ' . $post_id);
+            return false;
+        }
+
+        delete_post_meta($post_id, self::CONTRACT_NOTICE_META);
+
+        $initiator = (int) ($context['initiator'] ?? $actor_id);
+        if ($initiator <= 0) {
+            $initiator = get_current_user_id();
+        }
+
+        $prepared_context = [
+            'initiator'      => $initiator,
+            'previous_state' => sanitize_text_field($context['previous_state'] ?? ''),
+            'current_state'  => sanitize_text_field($context['current_state'] ?? ''),
+        ];
+
+        error_log('[AUTOSAVE] Dispatching contract notice for ID ' . $post_id . ' (state ' . $prepared_context['current_state'] . ')');
+        do_action('go360/guarantee/contracted', $post_id, $prepared_context);
+
+        GuaranteeLogger::log(
+            $initiator,
+            $post_id,
+            'contract_notice_dispatched',
+            wp_json_encode($prepared_context)
+        );
+
+        return true;
     }
 
     private static function normalize_acf_file_url($value)
@@ -1240,13 +1396,9 @@ class GuaranteeRestController
         $telefono_vendedor = $vendor_id
             ? get_user_meta($vendor_id, 'datos_usuario_telefono', true)
             : '';
-        $email_vendedor = '';
-        if ($vendor_id) {
-            $email_vendedor = (string) get_user_meta($vendor_id, 'datos_usuario_correo_electronico', true);
-            if ($email_vendedor === '' && $user) {
-                $email_vendedor = (string) $user->user_email;
-            }
-        }
+        $email_vendedor = $vendor_id
+            ? NotificationEmailResolver::resolve($vendor_id)
+            : '';
         $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
         $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
 
