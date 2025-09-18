@@ -180,7 +180,13 @@ class EmailNotificationService
     private function get_admin_delivery(int $guarantee_id, array $context = []): array
     {
         $settings = $this->get_notification_settings();
-        $rows = $settings['direcciones_correo'] ?? [];
+        $rows = [];
+
+        if (isset($settings['direcciones_correo']) && is_array($settings['direcciones_correo'])) {
+            $rows = $settings['direcciones_correo'];
+        } elseif (isset($settings['notificaciones_email']['direcciones_correo']) && is_array($settings['notificaciones_email']['direcciones_correo'])) {
+            $rows = $settings['notificaciones_email']['direcciones_correo'];
+        }
 
         $to = [];
         $bcc = [];

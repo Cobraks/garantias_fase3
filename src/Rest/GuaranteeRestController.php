@@ -804,8 +804,17 @@ class GuaranteeRestController
             }
         }
 
-        if ($new_contract_state === 'activada' && $previous_contract_state !== 'activada') {
+        if (
+            in_array($new_contract_state, ['activada', 'pendiente_pago'], true)
+            && $new_contract_state !== $previous_contract_state
+        ) {
             $just_activated = true;
+            error_log(sprintf(
+                '[AUTOSAVE] Contract state changed from %s to %s for ID %d',
+                $previous_contract_state !== '' ? $previous_contract_state : '(none)',
+                $new_contract_state,
+                $post_id
+            ));
         }
 
         if (isset($data['post_status'])) {
