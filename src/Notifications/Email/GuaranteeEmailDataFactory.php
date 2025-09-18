@@ -24,6 +24,15 @@ class GuaranteeEmailDataFactory
         $plate = sanitize_text_field($detail['matricula'] ?? '');
         $plan = sanitize_text_field($detail['plan'] ?? '');
 
+        $vehicle_summary = $this->build_vehicle_summary($detail);
+        $vehicle = [
+            'type'     => sanitize_text_field($detail['tipo'] ?? ''),
+            'brand'    => sanitize_text_field($detail['marca'] ?? ''),
+            'model'    => sanitize_text_field($detail['modelo'] ?? ''),
+            'summary'  => $vehicle_summary,
+            'sentence' => $this->build_vehicle_sentence($detail, $vehicle_summary),
+        ];
+
         $price_value = $this->parse_number($detail['precio'] ?? '');
         $price_formatted = $price_value === null
             ? ''
@@ -71,6 +80,7 @@ class GuaranteeEmailDataFactory
             'id'          => $guarantee_id,
             'plate'       => $plate,
             'plan'        => $plan,
+            'vehicle'     => $vehicle,
             'price'       => $price_formatted,
             'price_raw'   => $price_value,
             'payment'     => $payment_label,
@@ -201,6 +211,69 @@ class GuaranteeEmailDataFactory
         }
 
         return trim($value);
+    }
+
+    private function build_vehicle_summary(array $detail): string
+    {
+        $parts = [];
+
+        $type = sanitize_text_field($detail['tipo'] ?? '');
+        if ($type !== '') {
+            $parts[] = trim($type);
+        }
+
+        $brand = sanitize_text_field($detail['marca'] ?? '');
+        if ($brand !== '') {
+            $parts[] = trim($brand);
+        }
+
+        $model = sanitize_text_field($detail['modelo'] ?? '');
+        if ($model !== '') {
+            $parts[] = trim($model);
+        }
+
+        if (! empty($parts)) {
+            return preg_replace('/\s+/', ' ', trim(implode(' ', $parts)));
+        }
+
+        $fallback = sanitize_text_field($detail['marca_modelo'] ?? '');
+
+        return $fallback !== '' ? $fallback : '';
+    }
+
+    private function build_vehicle_sentence(array $detail, string $summary): string
+    {
+        if ($summary === '') {
+            return '';
+        }
+
+        $type = sanitize_text_field($detail['tipo'] ?? '');
+        if ($type !== '') {
+            $lower = function_exists('mb_strtolower')
+                ? mb_strtolower($type, 'UTF-8')
+                : strtolower($type);
+
+            $brand = sanitize_text_field($detail['marca'] ?? '');
+            $model = sanitize_text_field($detail['modelo'] ?? '');
+
+            $pieces = array_filter([
+                $lower,
+                $brand,
+                $model,
+            ], static function ($value) {
+                return $value !== '';
+            });
+
+            if (! empty($pieces)) {
+                $summary = preg_replace('/\s+/', ' ', implode(' ', $pieces));
+            }
+        }
+
+        return sprintf(
+            /* translators: %s: vehicle description */
+            __('para un %s', 'garantias-online-360vo'),
+            $summary
+        );
     }
 
     private function build_transfer_concept(string $plate, int $guarantee_id): string

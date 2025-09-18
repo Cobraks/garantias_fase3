@@ -1218,6 +1218,18 @@ export default function initAutosave() {
                 icon.style.display = "none";
                 text.textContent = finalize ? "Generando documentos..." : "Guardando";
                 if (finalize && nextBtn) {
+                        const textNode = nextBtn.querySelector(".btn__text");
+                        if (!nextBtn.dataset.originalLabel) {
+                                nextBtn.dataset.originalLabel = textNode
+                                        ? textNode.textContent
+                                        : nextBtn.textContent;
+                        }
+                        const loadingLabel = nextBtn.dataset.loadingLabel || "Espera por favor...";
+                        if (textNode) {
+                                textNode.textContent = loadingLabel;
+                        } else {
+                                nextBtn.textContent = loadingLabel;
+                        }
                         nextBtn.classList.add("is-loading");
                         nextBtn.disabled = true;
                 }
@@ -1545,6 +1557,13 @@ export default function initAutosave() {
                         status.classList.add("autosave-status--hidden");
                 } finally {
                         if (finalize && nextBtn) {
+                                const textNode = nextBtn.querySelector(".btn__text");
+                                const originalLabel = nextBtn.dataset.originalLabel || "Siguiente";
+                                if (textNode) {
+                                        textNode.textContent = originalLabel;
+                                } else {
+                                        nextBtn.textContent = originalLabel;
+                                }
                                 nextBtn.classList.remove("is-loading");
                                 nextBtn.disabled = false;
                         }
