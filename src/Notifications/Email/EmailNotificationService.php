@@ -3,6 +3,7 @@
 namespace GarantiasOnline360VO\Notifications\Email;
 
 use GarantiasOnline360VO\GuaranteeLogger;
+use GarantiasOnline360VO\SettingsPage;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -10,7 +11,6 @@ if (! defined('ABSPATH')) {
 
 class EmailNotificationService
 {
-    private const ADMIN_EMAIL = 'cobra.moratalaz@gmail.com';
 
     /** @var Mailer */
     private $mailer;
@@ -20,6 +20,9 @@ class EmailNotificationService
 
     /** @var GuaranteeEmailBuilder */
     private $builder;
+
+    /** @var array|null */
+    private $notification_settings;
 
     public static function init(): void
     {
@@ -43,11 +46,6 @@ class EmailNotificationService
         add_action('go360/guarantee/contracted', [$this, 'handle_contracted'], 10, 2);
     }
 
-    public function handle_created(int $guarantee_id, array $context = []): void
-    {
-        // Reserved for future use.
-    }
-
     public function handle_contracted(int $guarantee_id, array $context = []): void
     {
         $data = $this->data_factory->build($guarantee_id);
@@ -60,14 +58,25 @@ class EmailNotificationService
         }
 
         if (! $this->has_been_notified($guarantee_id, 'contracted_admin') && $this->should_notify('contracted_admin', $data, $context)) {
-            $admin_recipients = $this->get_admin_recipients($guarantee_id, $context);
-            if (empty($admin_recipients)) {
+            $delivery = $this->get_admin_delivery($guarantee_id, $context);
+            if (empty($delivery['to'])) {
                 $this->log_skip($guarantee_id, 'contracted_admin', 'no_recipients', $initiator_id);
             } else {
+                $options = [];
+                if (! empty($delivery['bcc'])) {
+                    $options['bcc'] = $delivery['bcc'];
+                }
+
+                $from_header = $this->get_admin_from_header();
+                if ($from_header !== '') {
+                    $options['headers'][] = $from_header;
+                }
+
                 $admin_message = $this->builder->composeContractedAdmin(
                     $data,
-                    $admin_recipients,
-                    $this->build_template_context('contracted_admin', $context, $initiator_id)
+                    $delivery['to'],
+                    $this->build_template_context('contracted_admin', $context, $initiator_id),
+                    $options
                 );
                 $this->dispatch($admin_message, $guarantee_id, 'contracted_admin', $initiator_id);
             }
@@ -78,10 +87,22 @@ class EmailNotificationService
             if (empty($vendor_recipients)) {
                 $this->log_skip($guarantee_id, 'contracted_professional', 'no_recipients', $initiator_id);
             } else {
+                $reply_to = $this->get_reply_to_address();
+                $options = [];
+                if ($reply_to !== '') {
+                    $options['reply_to'] = $reply_to;
+                }
+
+                $from_header = $this->get_professional_from_header($reply_to);
+                if ($from_header !== '') {
+                    $options['headers'][] = $from_header;
+                }
+
                 $vendor_message = $this->builder->composeContractedProfessional(
                     $data,
                     $vendor_recipients,
-                    $this->build_template_context('contracted_professional', $context, $initiator_id)
+                    $this->build_template_context('contracted_professional', $context, $initiator_id),
+                    $options
                 );
                 $this->dispatch($vendor_message, $guarantee_id, 'contracted_professional', $initiator_id);
             }
@@ -97,10 +118,20 @@ class EmailNotificationService
 
         $sent = $this->mailer->send($message);
         $details = sprintf(
-            '%s|%s',
+            '%s|to:%s',
             $event_slug,
             implode(',', $message->get_recipients())
         );
+
+        $bcc = $message->get_bcc();
+        if (! empty($bcc)) {
+            $details .= '|bcc:' . implode(',', $bcc);
+        }
+
+        $reply_to = $message->get_reply_to();
+        if ($reply_to !== '') {
+            $details .= '|reply-to:' . $reply_to;
+        }
 
         GuaranteeLogger::log(
             $initiator_id,
@@ -114,12 +145,54 @@ class EmailNotificationService
         }
     }
 
-    private function get_admin_recipients(int $guarantee_id, array $context = []): array
+    private function get_admin_delivery(int $guarantee_id, array $context = []): array
     {
-        $recipients = [self::ADMIN_EMAIL];
+        $settings = $this->get_notification_settings();
+        $rows = [];
 
-        $recipients = apply_filters('go360/email/admin_recipients', $recipients, $guarantee_id, $context);
-        return $this->normalize_recipients($recipients);
+        if (isset($settings['direcciones_correo']) && is_array($settings['direcciones_correo'])) {
+            $rows = $settings['direcciones_correo'];
+        } elseif (isset($settings['notificaciones_email']['direcciones_correo']) && is_array($settings['notificaciones_email']['direcciones_correo'])) {
+            $rows = $settings['notificaciones_email']['direcciones_correo'];
+        }
+
+        $to = [];
+        $bcc = [];
+
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+
+                $email = sanitize_email($row['admin_recipients'] ?? '');
+                if ($email === '') {
+                    continue;
+                }
+
+                if (! empty($row['copia_oculta'])) {
+                    $bcc[$email] = $email;
+                } else {
+                    $to[$email] = $email;
+                }
+            }
+        }
+
+        if (empty($to) && empty($bcc)) {
+            $fallback = sanitize_email(get_option('admin_email'));
+            if ($fallback !== '') {
+                $to[$fallback] = $fallback;
+                error_log('[EMAIL] Fallback admin recipient applied for guarantee ' . $guarantee_id);
+            }
+        }
+
+        $filtered_to = apply_filters('go360/email/admin_recipients', array_values($to), $guarantee_id, $context);
+        $filtered_bcc = apply_filters('go360/email/admin_bcc_recipients', array_values($bcc), $guarantee_id, $context);
+
+        return [
+            'to'  => $this->normalize_recipients($filtered_to),
+            'bcc' => $this->normalize_recipients($filtered_bcc),
+        ];
     }
 
     private function get_professional_recipients(array $data, array $context = []): array
@@ -164,6 +237,67 @@ class EmailNotificationService
         }
 
         return array_values($normalized);
+    }
+
+    private function get_reply_to_address(): string
+    {
+        $settings = $this->get_notification_settings();
+        $reply_to = '';
+
+        if (isset($settings['direccion_respuesta'])) {
+            $reply_to = (string) $settings['direccion_respuesta'];
+        }
+
+        if ($reply_to === '' && isset($settings['notificaciones_email']['direccion_respuesta'])) {
+            $reply_to = (string) $settings['notificaciones_email']['direccion_respuesta'];
+        }
+
+        $reply_to = apply_filters('go360/email/reply_to', $reply_to, $settings);
+
+        return sanitize_email($reply_to);
+    }
+
+    private function get_admin_from_header(): string
+    {
+        $email = $this->resolve_sender_email('admin');
+        if ($email === '') {
+            return '';
+        }
+
+        return $this->build_from_header(__('Garantías Online', 'garantias-online-360vo'), $email);
+    }
+
+    private function get_professional_from_header(string $reply_to = ''): string
+    {
+        $email = $this->resolve_sender_email('professional', $reply_to);
+        if ($email === '') {
+            return '';
+        }
+
+        return $this->build_from_header(__('Garantías 360VO', 'garantias-online-360vo'), $email);
+    }
+
+    private function resolve_sender_email(string $context, string $fallback = ''): string
+    {
+        $email = $fallback !== '' ? $fallback : sanitize_email(get_option('admin_email'));
+
+        $settings = $this->get_notification_settings();
+
+        return sanitize_email(
+            apply_filters('go360/email/sender_email', $email, $context, $settings)
+        );
+    }
+
+    private function build_from_header(string $name, string $email): string
+    {
+        $name = wp_strip_all_tags($name);
+        $email = sanitize_email($email);
+
+        if ($email === '') {
+            return '';
+        }
+
+        return sprintf('From: %s <%s>', $name !== '' ? $name : 'Garantías Online', $email);
     }
 
     private function has_been_notified(int $guarantee_id, string $slug): bool
@@ -215,6 +349,7 @@ class EmailNotificationService
             [
                 'event'     => $event,
                 'initiator' => $initiator,
+                'email_copy' => $this->get_email_copy(),
             ]
         );
     }
@@ -227,5 +362,61 @@ class EmailNotificationService
             'email_skipped',
             sprintf('%s|%s', $slug, $reason)
         );
+    }
+
+    private function get_notification_settings(): array
+    {
+        if ($this->notification_settings !== null) {
+            return $this->notification_settings;
+        }
+
+        if (! function_exists('get_field')) {
+            $this->notification_settings = [];
+            return $this->notification_settings;
+        }
+
+        $settings = get_field('notificaciones', SettingsPage::SUBMENU_SLUG);
+        if (is_array($settings)) {
+            $this->notification_settings = $settings;
+        } else {
+            $this->notification_settings = [];
+        }
+
+        return $this->notification_settings;
+    }
+
+    private function get_email_copy(): array
+    {
+        $settings = $this->get_notification_settings();
+        $content = $settings['contenido_correos_electronicos'] ?? [];
+        if (! is_array($content)) {
+            $content = [];
+        }
+
+        $admin_group = $content['administracion'] ?? [];
+        $client_group = $content['cliente'] ?? [];
+
+        if (! is_array($admin_group)) {
+            $admin_group = [];
+        }
+
+        if (! is_array($client_group)) {
+            $client_group = [];
+        }
+
+        return [
+            'admin_intro'  => $this->sanitize_copy($admin_group['mensaje_inicial'] ?? ''),
+            'client_intro' => $this->sanitize_copy($client_group['mensaje_inicial'] ?? ''),
+            'signature'    => $this->sanitize_copy($content['firma'] ?? ''),
+        ];
+    }
+
+    private function sanitize_copy($value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        return trim(wp_kses_post($value));
     }
 }

@@ -16,60 +16,54 @@ class GuaranteeEmailBuilder
         $this->renderer = $renderer;
     }
 
-    public function composeCreatedAdmin(array $data, array $recipients, array $context = []): ?EmailMessage
+    public function composeContractedAdmin(array $data, array $recipients, array $context = [], array $options = []): ?EmailMessage
     {
-        return $this->create_message(
-            $recipients,
-            sprintf(
-                /* translators: %s: vehicle plate */
-                __('Nueva garantía creada: %s', 'garantias-online-360vo'),
-                $this->resolve_plate_label($data)
-            ),
-            'guarantee-created-admin',
-            $data,
-            $context
-        );
-    }
+        $subject = $this->build_admin_subject($data);
 
-    public function composeContractedAdmin(array $data, array $recipients, array $context = []): ?EmailMessage
-    {
         return $this->create_message(
             $recipients,
-            sprintf(
-                /* translators: %s: vehicle plate */
-                __('Garantía activada: %s', 'garantias-online-360vo'),
-                $this->resolve_plate_label($data)
-            ),
+            $subject,
             'guarantee-contracted-admin',
             $data,
-            $context
+            $context,
+            $options
         );
     }
 
-    public function composeContractedProfessional(array $data, array $recipients, array $context = []): ?EmailMessage
+    public function composeContractedProfessional(array $data, array $recipients, array $context = [], array $options = []): ?EmailMessage
     {
+        $subject = $this->build_professional_subject($data);
+
         return $this->create_message(
             $recipients,
-            sprintf(
-                /* translators: %s: vehicle plate */
-                __('Detalles de la garantía activada: %s', 'garantias-online-360vo'),
-                $this->resolve_plate_label($data)
-            ),
+            $subject,
             'guarantee-contracted-professional',
             $data,
-            $context
+            $context,
+            $options
         );
     }
 
-    private function create_message(array $recipients, string $subject, string $template, array $data, array $context = []): ?EmailMessage
+    private function create_message(array $recipients, string $subject, string $template, array $data, array $context = [], array $options = []): ?EmailMessage
     {
+        $headers = $options['headers'] ?? [];
+        $attachments = $options['attachments'] ?? [];
+        $metadata = [
+            'cc'       => $options['cc'] ?? [],
+            'bcc'      => $options['bcc'] ?? [],
+            'reply_to' => $options['reply_to'] ?? '',
+        ];
+
         $message = new EmailMessage(
             $recipients,
             $subject,
             $this->renderer->render($template, [
                 'guarantee' => $data,
                 'context'   => $context,
-            ])
+            ]),
+            $headers,
+            $attachments,
+            $metadata
         );
 
         if (! $message->has_recipients() || $message->get_body() === '') {
@@ -87,5 +81,34 @@ class GuaranteeEmailBuilder
         }
 
         return $plate;
+    }
+
+    private function build_admin_subject(array $data): string
+    {
+        $plate = $this->resolve_plate_label($data);
+        $slug  = isset($data['payment_slug']) ? (string) $data['payment_slug'] : '';
+
+        if (in_array($slug, ['domiciliacion', 'domiciliacion_bancaria', 'domiciliacion-bancaria'], true)) {
+            return sprintf(
+                /* translators: %s: vehicle plate */
+                __('Nueva garantía %s pendiente de cobro', 'garantias-online-360vo'),
+                $plate
+            );
+        }
+
+        return sprintf(
+            /* translators: %s: vehicle plate */
+            __('Nueva garantía %s pendiente de pago', 'garantias-online-360vo'),
+            $plate
+        );
+    }
+
+    private function build_professional_subject(array $data): string
+    {
+        return sprintf(
+            /* translators: %s: vehicle plate */
+            __('Garantía %s contratada', 'garantias-online-360vo'),
+            $this->resolve_plate_label($data)
+        );
     }
 }
