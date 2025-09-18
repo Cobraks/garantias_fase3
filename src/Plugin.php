@@ -3,6 +3,8 @@
 
 namespace GarantiasOnline360VO;
 
+use GarantiasOnline360VO\ActivityLog\ActivityLogger;
+use GarantiasOnline360VO\ActivityLog\ActivitySubscribers;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
 
@@ -40,7 +42,8 @@ class Plugin
 
         // 4) Assets (minificado), REST, Admin, etc.
         add_action('init', [AssetCompiler::class, 'ensure_minified'], 1);
-        add_action('init', [GuaranteeLogger::class, 'ensure_table']);
+        add_action('init', [ActivityLogger::class, 'ensure_table']);
+        add_action('init', [ActivitySubscribers::class, 'init']);
         add_action('init', [PrivateDocsManager::class, 'ensure_directory']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
 
@@ -48,7 +51,7 @@ class Plugin
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\OfertasRestController::class, 'register_routes']);
 
-        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeLogRestController::class, 'register_routes']);
+        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\ActivityLogRestController::class, 'register_routes']);
 
 
 
@@ -90,7 +93,7 @@ class Plugin
         AssetCompiler::ensure_minified();
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
-        GuaranteeLogger::create_table();
+        ActivityLogger::create_table();
         PrivateDocsManager::ensure_directory();
     }
 
