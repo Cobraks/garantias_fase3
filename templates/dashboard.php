@@ -394,12 +394,95 @@ $current_month_spanish = $spanish_months[$current_month] ?? $current_month;
             </div>
 
             <!-- Actividad Reciente -->
-            <div class="dashboard__module dashboard__activity">
+            <div class="dashboard__module dashboard__activity" data-activity-module>
                 <div class="dashboard__module-header">
-                    <h3 class="dashboard__module-title">Actividad Reciente</h3>
+                    <h3 class="dashboard__module-title"><?php esc_html_e('Actividad Reciente', 'garantias-online-360vo'); ?></h3>
+                    <div class="activity__header-actions">
+                        <button type="button" class="dashboard__action-button" data-activity-refresh>
+                            <?php esc_html_e('Actualizar', 'garantias-online-360vo'); ?>
+                        </button>
+                    </div>
                 </div>
-                <div class="dashboard__activity-feed"></div>
-                <button class="dashboard__action-button" id="logs-load-more" style="display:none;">Cargar más</button>
+
+                <form class="activity__filters" data-activity-filters novalidate>
+                    <div class="activity__filters-row">
+                        <label class="activity__field">
+                            <span class="activity__label"><?php esc_html_e('Buscar', 'garantias-online-360vo'); ?></span>
+                            <input type="search" id="activity-search" class="activity__input" placeholder="<?php esc_attr_e('Buscar por usuario, evento o texto…', 'garantias-online-360vo'); ?>" data-activity-search>
+                        </label>
+                        <label class="activity__field">
+                            <span class="activity__label"><?php esc_html_e('Evento', 'garantias-online-360vo'); ?></span>
+                            <select id="activity-event" class="activity__select" data-activity-event data-placeholder="<?php esc_attr_e('Todos los eventos', 'garantias-online-360vo'); ?>">
+                                <option value=""><?php esc_html_e('Todos', 'garantias-online-360vo'); ?></option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="activity__filters-row activity__filters-row--pills">
+                        <div class="activity__field activity__field--pills">
+                            <span class="activity__label"><?php esc_html_e('Tipo de evento', 'garantias-online-360vo'); ?></span>
+                            <div class="activity__pill-group" data-activity-category-pills></div>
+                        </div>
+                    </div>
+                    <div class="activity__filters-row">
+                        <label class="activity__field">
+                            <span class="activity__label"><?php esc_html_e('Desde', 'garantias-online-360vo'); ?></span>
+                            <input type="date" class="activity__input" data-activity-date-from>
+                        </label>
+                        <label class="activity__field">
+                            <span class="activity__label"><?php esc_html_e('Hasta', 'garantias-online-360vo'); ?></span>
+                            <input type="date" class="activity__input" data-activity-date-to>
+                        </label>
+                    </div>
+                </form>
+
+                <div class="activity__table-wrapper">
+                    <div class="activity__loading" data-activity-loading hidden>
+                        <span class="activity__spinner" aria-hidden="true"></span>
+                        <span><?php esc_html_e('Cargando actividad…', 'garantias-online-360vo'); ?></span>
+                    </div>
+                    <div class="activity__empty" data-activity-empty hidden>
+                        <p><?php esc_html_e('No hay eventos que coincidan con los filtros seleccionados.', 'garantias-online-360vo'); ?></p>
+                    </div>
+                    <table class="activity-table" data-activity-table>
+                        <colgroup>
+                            <col data-col="date" data-min-width="150" data-max-width="240" data-default-width="180" style="width: 180px;">
+                            <col data-col="category" data-min-width="150" data-max-width="240" data-default-width="180" style="width: 180px;">
+                            <col data-col="event" data-min-width="320" data-max-width="640" data-default-width="440" style="width: 440px;">
+                            <col data-col="actor" data-min-width="180" data-max-width="320" data-default-width="220" style="width: 220px;">
+                            <col data-col="actions" data-min-width="160" data-max-width="320" data-default-width="200" style="width: 200px;">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th scope="col"><?php esc_html_e('Fecha', 'garantias-online-360vo'); ?></th>
+                                <th scope="col"><?php esc_html_e('Tipo de evento', 'garantias-online-360vo'); ?></th>
+                                <th scope="col"><?php esc_html_e('Evento', 'garantias-online-360vo'); ?></th>
+                                <th scope="col"><?php esc_html_e('Usuario', 'garantias-online-360vo'); ?></th>
+                                <th scope="col"><?php esc_html_e('Acciones', 'garantias-online-360vo'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody data-activity-body></tbody>
+                    </table>
+                </div>
+
+                <div class="activity__footer">
+                    <div class="activity__pagination" data-activity-pagination>
+                        <button type="button" class="dashboard__action-button" data-activity-prev disabled>
+                            <?php esc_html_e('Anterior', 'garantias-online-360vo'); ?>
+                        </button>
+                        <span class="activity__page-indicator" data-activity-pageinfo></span>
+                        <button type="button" class="dashboard__action-button" data-activity-next disabled>
+                            <?php esc_html_e('Siguiente', 'garantias-online-360vo'); ?>
+                        </button>
+                    </div>
+                    <div class="activity__per-page">
+                        <label for="activity-per-page" class="activity__label"><?php esc_html_e('Resultados por página', 'garantias-online-360vo'); ?></label>
+                        <select id="activity-per-page" class="activity__select" data-activity-per-page>
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <!-- Módulo Extra: Últimas Renovaciones -->

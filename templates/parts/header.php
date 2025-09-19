@@ -40,11 +40,21 @@ $home_destination = $is_admin_user
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/dashboard.min.css', GARANTIAS360VO__FILE__)); ?>">
+        <?php
+        $activity_catalog = \GarantiasOnline360VO\ActivityLog\EventCatalog::to_public_catalog();
+        $activity_data = [
+            'endpoint'            => esc_url_raw(rest_url('go/v1/activity')),
+            'nonce'               => wp_create_nonce('wp_rest'),
+            'catalog'             => $activity_catalog,
+            'guaranteeEditBase'   => esc_url_raw(admin_url('post.php')),
+            'currentUser'         => [
+                'id'         => get_current_user_id(),
+                'canManage'  => current_user_can('manage_options'),
+            ],
+        ];
+        ?>
         <script>
-            var go360Logs = {
-                endpoint: '<?php echo esc_url_raw(rest_url('go/v1/logs')); ?>',
-                nonce: '<?php echo esc_js(wp_create_nonce('wp_rest')); ?>'
-            };
+            var go360Activity = <?php echo wp_json_encode($activity_data); ?>;
         </script>
         <script src="<?php echo esc_url(plugins_url('assets/js/dashboard.min.js', GARANTIAS360VO__FILE__)); ?>" defer></script>
     <?php endif; ?>
@@ -60,6 +70,24 @@ $home_destination = $is_admin_user
             href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>">
 
 
+    <?php endif; ?>
+    <?php if (! empty($is_register_page)) : ?>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link
+            rel="stylesheet"
+            href="<?php echo esc_url(plugins_url('assets/css/register.min.css', GARANTIAS360VO__FILE__)); ?>">
+        <?php
+        $register_data = [
+            'rest' => [
+                'root'  => esc_url_raw(rest_url()),
+                'nonce' => wp_create_nonce('wp_rest'),
+            ],
+        ];
+        ?>
+        <script>
+            window.go360Register = <?php echo wp_json_encode($register_data); ?>;
+        </script>
     <?php endif; ?>
     <?php if (! empty($is_auth_page)) : ?>
         <link
