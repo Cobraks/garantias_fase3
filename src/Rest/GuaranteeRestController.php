@@ -499,6 +499,9 @@ class GuaranteeRestController
         $new_contract_state      = '';
         $queued_contract_notice  = false;
         $contract_notice_context = [];
+        $pending_payment_event   = null;
+        $payment_method          = '';
+        $previous_cobro          = 0;
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
@@ -584,6 +587,11 @@ class GuaranteeRestController
             if (!$uuid) {
                 $uuid = get_post_meta($post_id, 'estado_garantia_uuid', true);
             }
+        }
+
+        if ($post_id) {
+            $previous_cobro = (int) get_post_meta($post_id, 'garantia_contratada_estado_cobro_cobro_realizado', true);
+            $payment_method = (string) get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
         }
 
         if (isset($data['datos_vehiculo']) && is_array($data['datos_vehiculo'])) {
@@ -688,12 +696,25 @@ class GuaranteeRestController
                     case 'metodo_pago':
                     case 'canal_venta':
                         $gc[$k] = sanitize_text_field($v);
+                        if ($k === 'metodo_pago') {
+                            $payment_method = $gc[$k];
+                        }
                         break;
                     case 'estado_cobro':
                         if (is_array($v)) {
                             $ec = [];
                             if (isset($v['cobro_realizado'])) {
                                 $ec['cobro_realizado'] = $v['cobro_realizado'] ? 1 : 0;
+                                if ($post_id) {
+                                    $new_cobro_value = (int) $ec['cobro_realizado'];
+                                    if ($previous_cobro !== $new_cobro_value && $new_cobro_value === 1) {
+                                        $pending_payment_event = [
+                                            'method'     => $payment_method,
+                                            'actor_type' => current_user_can('manage_options') ? 'platform' : 'actor',
+                                        ];
+                                    }
+                                    $previous_cobro = $new_cobro_value;
+                                }
                             }
                             if (isset($v['fecha_cobro'])) {
                                 $ec['fecha_cobro'] = sanitize_text_field($v['fecha_cobro']);
@@ -850,6 +871,43 @@ class GuaranteeRestController
                 $new_contract_state,
                 $post_id
             ));
+        }
+
+        if (
+            $queued_contract_notice
+            && $new_contract_state === 'activada'
+            && $post_id
+            && ! $pending_payment_event
+        ) {
+            $method_for_payment = $payment_method !== ''
+                ? $payment_method
+                : (string) get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
+            $method_key = sanitize_key($method_for_payment);
+            if ($method_key !== '' && strpos($method_key, 'domiciliacion') !== 0) {
+                $pending_payment_event = [
+                    'method'     => $method_for_payment,
+                    'actor_type' => current_user_can('manage_options') ? 'vendor' : 'actor',
+                ];
+            }
+        }
+
+        if ($pending_payment_event && $post_id) {
+            $method_for_payment = $pending_payment_event['method'] !== ''
+                ? $pending_payment_event['method']
+                : (string) get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
+            $method_for_payment = sanitize_text_field($method_for_payment);
+            if ($method_for_payment !== '') {
+                $state_for_payment = $new_contract_state !== ''
+                    ? $new_contract_state
+                    : (string) get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+                self::log_payment_event(
+                    $post_id,
+                    $method_for_payment,
+                    $state_for_payment,
+                    $pending_payment_event['actor_type'] ?? ''
+                );
+            }
+            $pending_payment_event = null;
         }
 
         if (isset($data['post_status'])) {
@@ -1832,6 +1890,33 @@ class GuaranteeRestController
         set_transient($cache_key, $response, 300);
 
         return $response;
+    }
+
+    private static function log_payment_event(int $post_id, string $method, string $state, string $actor_type): void
+    {
+        $method = sanitize_text_field($method);
+        if ($post_id <= 0 || $method === '') {
+            return;
+        }
+
+        $payload = ['method' => $method];
+
+        $state = sanitize_text_field($state);
+        if ($state !== '') {
+            $payload['state'] = $state;
+        }
+
+        $actor_type = sanitize_key($actor_type);
+        if ($actor_type !== '') {
+            $payload['actor_type'] = $actor_type;
+        }
+
+        GuaranteeLogger::log(
+            get_current_user_id(),
+            $post_id,
+            'payment_recorded',
+            wp_json_encode($payload)
+        );
     }
 
     /**
