@@ -7,6 +7,7 @@ export default class ChannelFields {
     this.stepIntro = form.querySelector('[data-channel-empty]');
     this.sections = Array.from(form.querySelectorAll('[data-channel-section]'));
     this.toggleControls = Array.from(form.querySelectorAll('[data-toggle-control]'));
+    this.channelElements = Array.from(form.querySelectorAll('[data-channel-visible]'));
 
     if (this.channelSelect) {
       this.channelSelect.addEventListener('change', () => this.handleChannelChange());
@@ -34,7 +35,35 @@ export default class ChannelFields {
     this.sections.forEach((section) => {
       const allowedChannels = parseChannels(section.dataset.channelSection);
       const shouldDisplay = allowedChannels.length === 0 || allowedChannels.includes(channel);
-      section.classList.toggle('is-active', shouldDisplay && hasChannel);
+      const isVisible = shouldDisplay && hasChannel;
+      section.classList.toggle('is-active', isVisible);
+      section.toggleAttribute('hidden', !isVisible);
+    });
+
+    this.channelElements.forEach((element) => {
+      const allowedChannels = parseChannels(element.dataset.channelVisible);
+      const shouldDisplay = allowedChannels.length === 0 || allowedChannels.includes(channel);
+      const isVisible = shouldDisplay && hasChannel;
+
+      element.classList.toggle('is-active', isVisible);
+      element.toggleAttribute('hidden', !isVisible);
+
+      const inputs = Array.from(element.querySelectorAll('input, select, textarea'));
+      inputs.forEach((input) => {
+        if (!isVisible) {
+          if (input.type === 'checkbox' || input.type === 'radio') {
+            input.checked = false;
+          } else if (input.tagName === 'SELECT') {
+            input.selectedIndex = 0;
+          } else if (input.type !== 'file') {
+            input.value = '';
+          }
+        }
+
+        if (input.dataset.preserveDisabled !== 'true') {
+          input.disabled = !isVisible;
+        }
+      });
     });
 
     this.toggleControls.forEach((control) => {
@@ -76,7 +105,17 @@ export default class ChannelFields {
     const inputs = Array.from(group.querySelectorAll('input, select, textarea'));
     inputs.forEach((input) => {
       if (control.dataset.toggleRequired === 'true') {
-        input.required = isActive;
+        input.required = isActive && !control.disabled;
+      }
+
+      if (!isActive || control.disabled) {
+        if (input.type === 'checkbox' || input.type === 'radio') {
+          input.checked = false;
+        } else if (input.tagName === 'SELECT') {
+          input.selectedIndex = 0;
+        } else if (input.type !== 'file') {
+          input.value = '';
+        }
       }
     });
   }

@@ -76,6 +76,13 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 <option value="agency"><?php esc_html_e('Gestoría', 'garantias-online-360vo'); ?></option>
                             </select>
                         </div>
+                        <div class="register-field" data-channel-visible="professional">
+                            <label for="register_company" class="register-field__label"><?php esc_html_e('Empresa o concesionario', 'garantias-online-360vo'); ?></label>
+                            <select id="register_company" class="register-field__select">
+                                <option value="" disabled selected><?php esc_html_e('Selecciona una empresa', 'garantias-online-360vo'); ?></option>
+                            </select>
+                            <p class="register-field__description"><?php esc_html_e('Podrás completar o actualizar esta información más adelante desde tu perfil.', 'garantias-online-360vo'); ?></p>
+                        </div>
                         <div class="register-field">
                             <label for="register_first_name" class="register-field__label"><?php esc_html_e('Nombre', 'garantias-online-360vo'); ?></label>
                             <input id="register_first_name" class="register-field__input" type="text" required autocomplete="given-name">
@@ -293,6 +300,10 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             <div>
                                 <dt><?php esc_html_e('Teléfono', 'garantias-online-360vo'); ?></dt>
                                 <dd data-summary-field="register_phone"></dd>
+                            </div>
+                            <div data-channel-visible="professional">
+                                <dt><?php esc_html_e('Empresa', 'garantias-online-360vo'); ?></dt>
+                                <dd data-summary-field="register_company"></dd>
                             </div>
                             <div>
                                 <dt><?php esc_html_e('Canal', 'garantias-online-360vo'); ?></dt>
