@@ -69,7 +69,7 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                     <div class="tabs__connector">
                         <div class="connector connector-1"></div>
                     </div>
-                    <button type="button" class="tabs__link is-active" data-step-trigger="0">
+                    <button type="button" class="tabs__link is-active active" data-step-trigger="0">
                         <div class="tabs__circle">1</div>
                         <div class="tabs__title"><?php esc_html_e('Datos de acceso', 'garantias-online-360vo'); ?></div>
                     </button>

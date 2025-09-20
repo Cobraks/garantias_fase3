@@ -66,6 +66,7 @@
       this.steps.forEach((step, position) => {
         const isActive = position === this.currentIndex;
         step.classList.toggle('is-active', isActive);
+        step.classList.toggle('active', isActive);
         step.toggleAttribute('hidden', !isActive);
         step.dataset.stepCurrent = String(isActive);
         step.setAttribute('aria-hidden', String(!isActive));
@@ -74,12 +75,16 @@
       this.triggers.forEach((trigger, position) => {
         const isActive = position === this.currentIndex;
         trigger.classList.toggle('is-active', isActive);
+        trigger.classList.toggle('active', isActive);
         trigger.classList.toggle('is-completed', position < this.currentIndex);
+        trigger.classList.toggle('completed', position < this.currentIndex);
         trigger.setAttribute('aria-current', isActive ? 'step' : 'false');
       });
 
       this.connectors.forEach((connector, position) => {
-        connector.classList.toggle('is-active', position < this.currentIndex);
+        const isCompleted = position < this.currentIndex;
+        connector.classList.toggle('is-active', isCompleted);
+        connector.classList.toggle('active', isCompleted);
       });
     }
 
@@ -174,78 +179,6 @@
     }
   }
 
-  const isFieldVisible = (field) => {
-    if (!field || field.type === 'hidden' || field.disabled) {
-      return false;
-    }
-
-    if (field.closest('[hidden]')) {
-      return false;
-    }
-
-    return true;
-  };
-
-  const setupMatchingFields = (form, pairs) => {
-    const validators = pairs
-      .map(({ primary, confirm, message }) => {
-        const primaryField = form.querySelector(`#${primary}`);
-        const confirmField = form.querySelector(`#${confirm}`);
-
-        if (!primaryField || !confirmField) {
-          return null;
-        }
-
-        const validate = () => {
-          if (!isFieldVisible(confirmField)) {
-            confirmField.setCustomValidity('');
-            return;
-          }
-
-          const primaryValue = primaryField.value.trim();
-          const confirmValue = confirmField.value.trim();
-
-          if (confirmValue && primaryValue && primaryValue !== confirmValue) {
-            confirmField.setCustomValidity(message);
-          } else {
-            confirmField.setCustomValidity('');
-          }
-        };
-
-        primaryField.addEventListener('input', validate);
-        confirmField.addEventListener('input', validate);
-        form.addEventListener('change', (event) => {
-          if (event.target === primaryField || event.target === confirmField) {
-            validate();
-          }
-        });
-
-        return validate;
-      })
-      .filter(Boolean);
-
-    return () => {
-      validators.forEach((validate) => validate());
-    };
-  };
-
-  const validateStep = (step) => {
-    if (!step) {
-      return true;
-    }
-
-    const fields = Array.from(step.querySelectorAll('input, select, textarea')).filter(isFieldVisible);
-    for (const field of fields) {
-      if (!field.checkValidity()) {
-        field.reportValidity();
-        field.focus();
-        return false;
-      }
-    }
-
-    return true;
-  };
-
   const setupRegisterForm = () => {
     const container = document.querySelector('.register-page__card');
     const form = document.querySelector('#register-form');
@@ -262,21 +195,6 @@
     const stepper = new Stepper(container);
     const channelFields = new ChannelFields(form);
     new PasswordToggle(form);
-
-    const runMatchingChecks = setupMatchingFields(form, [
-      {
-        primary: 'register_email',
-        confirm: 'register_email_confirm',
-        message: 'Los correos electrónicos no coinciden.',
-      },
-      {
-        primary: 'register_password',
-        confirm: 'register_password_confirm',
-        message: 'Las contraseñas no coinciden.',
-      },
-    ]);
-
-    runMatchingChecks();
 
     const defaultNextLabel = nextLabel ? nextLabel.textContent.trim() : '';
     const finalLabel = nextLabel?.dataset.finalLabel || 'Crear cuenta';
@@ -299,12 +217,6 @@
 
     if (nextButton) {
       nextButton.addEventListener('click', () => {
-        const currentStep = stepper.getCurrentStep();
-        runMatchingChecks();
-        if (!validateStep(currentStep)) {
-          return;
-        }
-
         if (stepper.isLast()) {
           form.requestSubmit();
           return;
@@ -317,12 +229,6 @@
 
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      const currentStep = stepper.getCurrentStep();
-      runMatchingChecks();
-      if (!validateStep(currentStep)) {
-        return;
-      }
-
       setStatus(
         'Recibimos tu solicitud de registro. En breve conectaremos este flujo con el servicio de alta definitivo.',
         'success',

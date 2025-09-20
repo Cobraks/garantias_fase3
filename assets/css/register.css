@@ -1,4 +1,6 @@
 .register-page {
+  width: 100%;
+  grid-column: 1 / -1;
   padding: clamp(3rem, 5vw, 5rem) 0;
   background: #f5f7fb;
 }
@@ -162,6 +164,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  gap: 0;
 }
 
 .register-tabs {
@@ -169,44 +172,46 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1.25rem;
-  padding: clamp(2rem, 4vw, 2.75rem) clamp(2rem, 5vw, 3.25rem) clamp(1.25rem, 4vw, 1.75rem);
+  gap: clamp(1rem, 4vw, 1.75rem);
+  padding: clamp(1.5rem, 4vw, 2.25rem) clamp(2rem, 5vw, 3.25rem) clamp(1rem, 4vw, 1.5rem);
+  background: #fff;
 }
 
 .register-tabs .tabs__connector {
   position: absolute;
+  top: 50%;
   left: clamp(2rem, 5vw, 3.25rem);
   right: clamp(2rem, 5vw, 3.25rem);
-  top: clamp(2.75rem, 4vw, 3.25rem);
+  transform: translateY(-50%);
   height: 0.25rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 999px;
-  overflow: hidden;
+  pointer-events: none;
 }
 
 .register-tabs .connector {
-  flex: 1;
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background: transparent;
   transition: background-color 0.2s ease;
 }
 
-.register-tabs .connector.is-active {
-  background: linear-gradient(135deg, #ef4444, #f97316);
+.register-tabs .connector.active {
+  background: linear-gradient(90deg, var(--primary-color), #1d4ed8);
 }
 
 .register-tabs .tabs__link {
   position: relative;
   z-index: 1;
-  background: transparent;
+  flex: 1;
   border: 0;
   padding: 0;
-  display: grid;
-  gap: 0.65rem;
-  justify-items: center;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
   cursor: pointer;
   color: #64748b;
   font-weight: 600;
@@ -219,10 +224,11 @@
 }
 
 .register-tabs .tabs__circle {
-  width: 2.9rem;
-  height: 2.9rem;
-  display: grid;
-  place-items: center;
+  width: 2.85rem;
+  height: 2.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
   border: 2px solid rgba(148, 163, 184, 0.45);
   background: #fff;
@@ -231,34 +237,35 @@
   transition: all 0.2s ease;
 }
 
-.register-tabs .tabs__link.is-active .tabs__circle {
-  border-color: #ef4444;
+.register-tabs .tabs__link.active .tabs__circle {
   color: #fff;
-  background: #ef4444;
-  box-shadow: 0 12px 24px -16px rgba(239, 68, 68, 0.7);
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+  box-shadow: 0 12px 24px -18px rgba(37, 99, 235, 0.55);
 }
 
-.register-tabs .tabs__link.is-completed .tabs__circle {
-  border-color: #ef4444;
-  color: #ef4444;
+.register-tabs .tabs__link.completed .tabs__circle {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
 }
 
 .register-tabs .tabs__title {
   margin: 0;
   font-size: 0.95rem;
+  line-height: 1.4;
   text-align: center;
   color: #64748b;
 }
 
-.register-tabs .tabs__link.is-active .tabs__title {
-  color: #0f172a;
+.register-tabs .tabs__link.active .tabs__title {
+  color: var(--primary-color);
 }
 
 .register-form {
   display: flex;
   flex-direction: column;
-  gap: clamp(2rem, 4vw, 2.75rem);
-  padding: 0 clamp(2rem, 5vw, 3.25rem) clamp(2.5rem, 6vw, 3.25rem);
+  gap: clamp(1.5rem, 4vw, 2.25rem);
+  padding: 0 clamp(2rem, 5vw, 3.25rem) clamp(2.25rem, 5vw, 3rem);
 }
 
 .form__tab-content {
@@ -397,7 +404,8 @@
   .register-tabs .tabs__connector {
     left: clamp(1.5rem, 6vw, 2rem);
     right: clamp(1.5rem, 6vw, 2rem);
-    top: clamp(2.5rem, 5vw, 3rem);
+    top: 50%;
+    transform: translateY(-50%);
   }
 
   .register-form {
