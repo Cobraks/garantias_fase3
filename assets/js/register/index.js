@@ -4,10 +4,10 @@
       this.container = container;
       this.steps = Array.from(container.querySelectorAll('[data-step]'));
       this.triggers = Array.from(container.querySelectorAll('[data-step-trigger]'));
+      this.connectors = Array.from(container.querySelectorAll('.tabs__connector .connector'));
       this.currentIndex = 0;
       this.maxVisitedIndex = 0;
       this.changeCallback = null;
-      this.connectors = Array.from(container.querySelectorAll('.tabs__connector .connector'));
 
       this.triggers.forEach((trigger) => {
         trigger.addEventListener('click', (event) => {
@@ -98,60 +98,35 @@
   class ChannelFields {
     constructor(form) {
       this.form = form;
-      this.channelSelect = form.querySelector('[data-channel-select]');
-      this.stepIntro = form.querySelector('[data-channel-empty]');
-      this.sections = Array.from(form.querySelectorAll('[data-channel-section]'));
-      this.toggleControls = Array.from(form.querySelectorAll('[data-toggle-control]'));
-      this.channelElements = Array.from(form.querySelectorAll('[data-channel-visible]'));
+      this.select = form.querySelector('[data-channel-select]');
+      this.groups = Array.from(form.querySelectorAll('[data-channel-field]'));
 
-      if (this.channelSelect) {
-        this.channelSelect.addEventListener('change', () => this.handleChannelChange());
+      if (this.select) {
+        this.select.addEventListener('change', () => this.update());
       }
-
-      this.toggleControls.forEach((control) => {
-        control.addEventListener('change', () => this.handleToggle(control));
-      });
-
-      this.handleChannelChange();
     }
 
-    getSelectedChannel() {
-      return this.channelSelect?.value ?? '';
-    }
+    update() {
+      const channel = this.select?.value ?? '';
 
-    handleChannelChange() {
-      const channel = this.getSelectedChannel();
-      const hasChannel = Boolean(channel);
-
-      if (this.stepIntro) {
-        this.stepIntro.classList.toggle('is-hidden', hasChannel);
-      }
-
-      this.sections.forEach((section) => {
-        const allowedChannels = (section.dataset.channelSection || '')
+      this.groups.forEach((group) => {
+        const allowed = (group.dataset.channelField || '')
           .split(',')
           .map((item) => item.trim())
           .filter(Boolean);
-        const shouldDisplay = allowedChannels.length === 0 || allowedChannels.includes(channel);
-        const isVisible = shouldDisplay && hasChannel;
-        section.classList.toggle('is-active', isVisible);
-        section.toggleAttribute('hidden', !isVisible);
-      });
 
-      this.channelElements.forEach((element) => {
-        const allowedChannels = (element.dataset.channelVisible || '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean);
-        const shouldDisplay = allowedChannels.length === 0 || allowedChannels.includes(channel);
-        const isVisible = shouldDisplay && hasChannel;
+        const shouldDisplay = allowed.length === 0 || allowed.includes(channel);
+        group.classList.toggle('is-visible', shouldDisplay);
+        group.toggleAttribute('hidden', !shouldDisplay);
 
-        element.classList.toggle('is-active', isVisible);
-        element.toggleAttribute('hidden', !isVisible);
-
-        const inputs = Array.from(element.querySelectorAll('input, select, textarea'));
+        const inputs = Array.from(group.querySelectorAll('input, select, textarea'));
         inputs.forEach((input) => {
-          if (!isVisible) {
+          if (shouldDisplay) {
+            input.disabled = false;
+            if (group.dataset.channelRequired === 'true') {
+              input.required = true;
+            }
+          } else {
             if (input.type === 'checkbox' || input.type === 'radio') {
               input.checked = false;
             } else if (input.tagName === 'SELECT') {
@@ -159,139 +134,9 @@
             } else if (input.type !== 'file') {
               input.value = '';
             }
-          }
-
-          if (input.dataset.preserveDisabled !== 'true') {
-            input.disabled = !isVisible;
+            input.disabled = true;
           }
         });
-      });
-
-      this.toggleControls.forEach((control) => {
-        const allowedChannel = control.dataset.channelOnly;
-        const restrictsChannel = Boolean(allowedChannel);
-        const isAllowed = !restrictsChannel || allowedChannel === channel;
-
-        control.disabled = !isAllowed;
-
-        if (!isAllowed) {
-          if (control.type === 'checkbox') {
-            control.checked = false;
-          } else {
-            control.value = '';
-          }
-        }
-
-        this.handleToggle(control);
-      });
-    }
-
-    handleToggle(control) {
-      const targetGroup = control.dataset.toggleControl;
-      if (!targetGroup) {
-        return;
-      }
-
-      const group = this.form.querySelector(`[data-toggle-group="${targetGroup}"]`);
-      if (!group) {
-        return;
-      }
-
-      const isActive = control.type === 'checkbox'
-        ? control.checked
-        : control.value.trim().length > 0;
-
-      group.classList.toggle('is-active', isActive && !control.disabled);
-      group.toggleAttribute('hidden', !(isActive && !control.disabled));
-
-      const inputs = Array.from(group.querySelectorAll('input, select, textarea'));
-      inputs.forEach((input) => {
-        if (control.dataset.toggleRequired === 'true') {
-          input.required = isActive && !control.disabled;
-        }
-
-        if (!isActive || control.disabled) {
-          if (input.type === 'checkbox' || input.type === 'radio') {
-            input.checked = false;
-          } else if (input.tagName === 'SELECT') {
-            input.selectedIndex = 0;
-          } else if (input.type !== 'file') {
-            input.value = '';
-          }
-        }
-      });
-    }
-  }
-
-  class Summary {
-    constructor(form) {
-      this.form = form;
-      this.summaryMap = new Map();
-      this.channelGroups = Array.from(form.querySelectorAll('[data-summary-channel]'));
-
-      form.querySelectorAll('[data-summary-field]').forEach((node) => {
-        this.summaryMap.set(node.dataset.summaryField, node);
-      });
-
-      this.handleInput = this.handleInput.bind(this);
-      form.addEventListener('input', this.handleInput);
-      form.addEventListener('change', this.handleInput);
-
-      this.refresh();
-    }
-
-    handleInput(event) {
-      const field = event.target;
-      this.updateField(field.id, field);
-    }
-
-    refresh() {
-      this.summaryMap.forEach((_, fieldId) => {
-        const field = this.form.querySelector(`#${fieldId}`);
-        this.updateField(fieldId, field);
-      });
-    }
-
-    updateField(fieldId, field) {
-      const target = this.summaryMap.get(fieldId);
-      if (!target) {
-        return;
-      }
-
-      let value = '';
-      if (field) {
-        if (field.tagName === 'SELECT') {
-          const option = field.options[field.selectedIndex];
-          value = option ? option.textContent.trim() : '';
-        } else if (field.type === 'checkbox') {
-          value = field.checked ? (field.dataset.summaryOn || field.value || '✔') : '';
-        } else if (field.type === 'file') {
-          value = field.files && field.files.length > 0 ? field.files[0].name : '';
-        } else {
-          value = field.value.trim();
-        }
-      }
-
-      target.textContent = value;
-      target.dataset.summaryEmpty = value ? 'false' : 'true';
-
-      if (fieldId === 'register_channel') {
-        this.updateChannelGroups(field);
-      }
-    }
-
-    updateChannelGroups(field) {
-      const channel = field?.value ?? '';
-
-      this.channelGroups.forEach((group) => {
-        const allowed = (group.dataset.summaryChannel || '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean);
-
-        const isVisible = channel && (allowed.length === 0 || allowed.includes(channel));
-        group.dataset.summaryVisible = isVisible ? 'true' : 'false';
-        group.hidden = !isVisible;
       });
     }
   }
@@ -331,11 +176,6 @@
 
   const isFieldVisible = (field) => {
     if (!field || field.type === 'hidden' || field.disabled) {
-      return false;
-    }
-
-    const conditional = field.closest('.register-conditional');
-    if (conditional && !conditional.classList.contains('is-active')) {
       return false;
     }
 
@@ -421,7 +261,6 @@
 
     const stepper = new Stepper(container);
     const channelFields = new ChannelFields(form);
-    const summary = new Summary(form);
     new PasswordToggle(form);
 
     const runMatchingChecks = setupMatchingFields(form, [
@@ -484,9 +323,8 @@
         return;
       }
 
-      summary.refresh();
       setStatus(
-        'Recibimos tu solicitud de registro. Próximamente conectaremos este flujo con el servicio de alta.',
+        'Recibimos tu solicitud de registro. En breve conectaremos este flujo con el servicio de alta definitivo.',
         'success',
       );
     });
@@ -503,13 +341,9 @@
       if (nextLabel) {
         nextLabel.textContent = state.isLast ? finalLabel : defaultNextLabel;
       }
-
-      if (state.isLast) {
-        summary.refresh();
-      }
     });
 
-    channelFields.handleChannelChange();
+    channelFields.update();
   };
 
   document.addEventListener('DOMContentLoaded', setupRegisterForm);
