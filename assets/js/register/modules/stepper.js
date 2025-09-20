@@ -6,6 +6,7 @@ export default class Stepper {
     this.currentIndex = 0;
     this.maxVisitedIndex = 0;
     this.changeCallback = null;
+    this.connectors = Array.from(container.querySelectorAll('.tabs__connector .connector'));
 
     this.triggers.forEach((trigger) => {
       trigger.addEventListener('click', (event) => {
@@ -67,16 +68,21 @@ export default class Stepper {
   update() {
     this.steps.forEach((step, position) => {
       const isActive = position === this.currentIndex;
-      step.classList.toggle('form__tab-content--active', isActive);
+      step.classList.toggle('is-active', isActive);
       step.toggleAttribute('hidden', !isActive);
       step.setAttribute('aria-hidden', String(!isActive));
       step.dataset.stepCurrent = String(isActive);
     });
 
     this.triggers.forEach((trigger, position) => {
-      trigger.classList.toggle('active', position === this.currentIndex);
-      trigger.classList.toggle('completed', position < this.currentIndex);
-      trigger.setAttribute('aria-current', position === this.currentIndex ? 'step' : 'false');
+      const isActive = position === this.currentIndex;
+      trigger.classList.toggle('is-active', isActive);
+      trigger.classList.toggle('is-completed', position < this.currentIndex);
+      trigger.setAttribute('aria-current', isActive ? 'step' : 'false');
+    });
+
+    this.connectors.forEach((connector, position) => {
+      connector.classList.toggle('is-active', position < this.currentIndex);
     });
   }
 
