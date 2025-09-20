@@ -76,6 +76,9 @@ $home_destination = $is_admin_user
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link
             rel="stylesheet"
+            href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>">
+        <link
+            rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/register.min.css', GARANTIAS360VO__FILE__)); ?>">
         <?php
         $register_data = [
