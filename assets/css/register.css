@@ -1,0 +1,387 @@
+@import url('./nueva_garantia.css');
+
+.register-layout {
+  display: grid;
+  gap: var(--spacing-4, 2.5rem);
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  padding: var(--spacing-4, 2.5rem) 0;
+}
+
+.register-layout__aside {
+  background: linear-gradient(135deg, rgba(239, 54, 81, 0.08), rgba(239, 54, 81, 0));
+  border-radius: var(--spacing-2, 1rem);
+  box-shadow: 0 18px 45px -25px rgba(15, 23, 42, 0.25);
+  color: var(--text-primary, #1f2937);
+  padding: var(--spacing-4, 2.5rem);
+  position: sticky;
+  top: var(--spacing-4, 2.5rem);
+  height: fit-content;
+}
+
+.register-layout__title {
+  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  font-weight: 700;
+  margin: 0 0 var(--spacing-2, 1rem);
+}
+
+.register-layout__subtitle {
+  color: var(--text-muted, #4b5563);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0 0 var(--spacing-3, 1.5rem);
+}
+
+.register-layout__highlights {
+  list-style: none;
+  margin: 0 0 var(--spacing-4, 2.5rem);
+  padding: 0;
+  display: grid;
+  gap: var(--spacing-2, 1rem);
+}
+
+.register-layout__highlights li {
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  line-height: 1.5;
+  padding: 0.9rem 1.1rem;
+}
+
+.register-layout__highlights li::before {
+  background: var(--primary-color, #ef3651);
+  border-radius: 50%;
+  content: '';
+  flex-shrink: 0;
+  height: 0.55rem;
+  margin-top: 0.5rem;
+  width: 0.55rem;
+}
+
+.register-layout__switch {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.register-layout__switch a {
+  color: var(--primary-color, #ef3651);
+  font-weight: 600;
+}
+
+.register-layout__content {
+  display: flex;
+  justify-content: center;
+}
+
+.register-form__container {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  border-radius: var(--spacing-2, 1rem);
+  overflow: hidden;
+  background: #fff;
+}
+
+.register-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.register-form {
+  padding: 0 var(--spacing-4, 2.5rem) var(--spacing-4, 2.5rem);
+}
+
+.register-form__actions {
+  align-items: center;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding: 1.5rem var(--spacing-4, 2.5rem);
+}
+
+.register-form__actions .btn {
+  min-width: 160px;
+}
+
+.form__tab-content {
+  border: none;
+  margin: 0;
+  padding: var(--spacing-4, 2.5rem) 0 0;
+}
+
+.form__tab-content[hidden] {
+  display: none !important;
+}
+
+.form__wrapper-inputs {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.form__input-container--password {
+  position: relative;
+}
+
+.register-form__toggle-password {
+  background: none;
+  border: none;
+  color: var(--primary-color, #ef3651);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0;
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.form__input-container--password .form__input {
+  padding-right: 6.5rem;
+}
+
+
+.register-channel-section {
+  display: none;
+  gap: var(--spacing-3, 1.5rem);
+  margin-top: var(--spacing-3, 1.5rem);
+}
+
+.register-channel-section.is-active {
+  display: block;
+}
+
+.register-section-header {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: var(--spacing-3, 1.5rem);
+}
+
+.register-section-badge {
+  background: rgba(239, 54, 81, 0.12);
+  border-radius: 999px;
+  color: var(--primary-color, #ef3651);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.8rem;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+.register-section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.register-section-description {
+  color: var(--text-muted, #4b5563);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.register-step-intro {
+  background: rgba(239, 54, 81, 0.05);
+  border-radius: 0.75rem;
+  color: var(--text-muted, #4b5563);
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 var(--spacing-3, 1.5rem);
+  padding: 1.2rem 1.4rem;
+}
+
+.register-step-intro h3 {
+  color: var(--text-primary, #1f2937);
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.register-step-intro p {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.register-step-intro.is-hidden {
+  display: none;
+}
+
+.register-conditional {
+  display: none;
+  margin-top: var(--spacing-3, 1.5rem);
+}
+
+.register-conditional.is-active {
+  display: grid;
+}
+
+.register-section-block {
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0.9rem;
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.register-section-block + .register-section-block {
+  margin-top: var(--spacing-3, 1.5rem);
+}
+
+.register-section-block .form__wrapper-inputs {
+  margin-top: 0;
+}
+
+.register-subtitle {
+  color: var(--text-primary, #1f2937);
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.register-section-helper {
+  color: var(--text-muted, #4b5563);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.register-section-helper + .form__wrapper-inputs {
+  margin-top: var(--spacing-2, 1rem);
+}
+
+.register-sepa {
+  display: grid;
+  gap: var(--spacing-2, 1rem);
+}
+
+.register-sepa__title {
+  color: var(--text-primary, #1f2937);
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.register-channel-section--note .register-section-block {
+  background: rgba(15, 23, 42, 0.015);
+  border-style: dashed;
+}
+
+.form__input-container--file {
+  align-items: flex-start;
+  background: rgba(15, 23, 42, 0.02);
+  border: 1px dashed rgba(15, 23, 42, 0.1);
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+
+.form__file-label {
+  font-weight: 600;
+}
+
+.form__file-input {
+  width: 100%;
+}
+
+.register-sepa-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.register-summary {
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 1rem;
+  padding: var(--spacing-4, 2.5rem);
+}
+
+.register-summary__list {
+  display: grid;
+  gap: 1rem;
+  margin: var(--spacing-3, 1.5rem) 0 0;
+  padding: 0;
+}
+
+.register-summary__list dt {
+  color: var(--text-muted, #4b5563);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.register-summary__list dd {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.25rem 0 0;
+}
+
+.register-summary__cta {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  margin-top: var(--spacing-3, 1.5rem);
+  padding-top: var(--spacing-3, 1.5rem);
+}
+
+.register-status {
+  color: var(--text-muted, #4b5563);
+  font-size: 0.9rem;
+  padding: 0 var(--spacing-4, 2.5rem) 1rem;
+}
+
+.register-status[data-status-type="success"] {
+  color: var(--success-color, #16a34a);
+}
+
+.register-status[data-status-type="error"] {
+  color: #dc2626;
+}
+
+@media (max-width: 1080px) {
+  .register-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .register-layout__aside {
+    position: relative;
+  }
+}
+
+@media (max-width: 768px) {
+  .register-form {
+    padding: 0 var(--spacing-3, 1.5rem) var(--spacing-4, 2.5rem);
+  }
+
+  .register-form__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .register-form__actions .btn {
+    width: 100%;
+  }
+
+  .form__input-container--password .form__input {
+    padding-right: 5.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .register-layout__aside {
+    padding: var(--spacing-3, 1.5rem);
+  }
+
+  .register-layout__content {
+    margin-inline: -1rem;
+  }
+
+  .register-form__container {
+    border-radius: 0;
+  }
+}

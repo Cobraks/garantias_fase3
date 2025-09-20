@@ -145,6 +145,13 @@ use GarantiasOnline360VO\Docs\ReclamationDocument;
 
 <?php endif; ?>
 
+<?php if (! empty($is_register_page)) : ?>
+    <script
+        src="<?php echo esc_url(plugins_url('assets/js/register.min.js', GARANTIAS360VO__FILE__)); ?>"
+        type="module"
+        defer></script>
+<?php endif; ?>
+
 
 
 
