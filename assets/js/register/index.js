@@ -179,6 +179,93 @@
     }
   }
 
+  class ConditionalGroups {
+    constructor(form) {
+      this.form = form;
+      this.controls = Array.from(form.querySelectorAll('[data-conditional-toggle]'));
+      this.groups = Array.from(form.querySelectorAll('[data-conditional-group]'));
+
+      this.controls.forEach((control) => {
+        control.addEventListener('change', () => this.update(control));
+      });
+
+      this.controls.forEach((control) => this.update(control));
+    }
+
+    update(control) {
+      if (!control) {
+        return;
+      }
+
+      const key = control.dataset.conditionalToggle || '';
+      if (!key) {
+        return;
+      }
+
+      const active = this.isActive(control);
+
+      this.groups.forEach((group) => {
+        const targets = (group.dataset.conditionalGroup || '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+
+        if (!targets.includes(key)) {
+          return;
+        }
+
+        this.toggleGroup(group, active);
+      });
+    }
+
+    isActive(control) {
+      if (control.type === 'checkbox' || control.type === 'radio') {
+        return control.checked;
+      }
+
+      if (control.tagName === 'SELECT') {
+        const expected = control.dataset.conditionalValue || '';
+        return expected ? control.value === expected : Boolean(control.value);
+      }
+
+      return Boolean(control.value);
+    }
+
+    toggleGroup(group, shouldShow) {
+      group.classList.toggle('is-visible', shouldShow);
+      group.toggleAttribute('hidden', !shouldShow);
+
+      const requireFields = group.dataset.conditionalRequired === 'true';
+      const fields = Array.from(group.querySelectorAll('input, select, textarea'));
+
+      fields.forEach((field) => {
+        if (shouldShow) {
+          field.disabled = false;
+          if (requireFields) {
+            field.required = true;
+          }
+          return;
+        }
+
+        if (field.type === 'checkbox' || field.type === 'radio') {
+          field.checked = false;
+        } else if (field.tagName === 'SELECT') {
+          field.selectedIndex = 0;
+        } else if (field.type === 'file') {
+          field.value = '';
+        } else {
+          field.value = '';
+        }
+
+        field.disabled = true;
+
+        if (requireFields) {
+          field.required = false;
+        }
+      });
+    }
+  }
+
   const setupRegisterForm = () => {
     const container = document.querySelector('.register-page__card');
     const form = document.querySelector('#register-form');
@@ -194,10 +281,11 @@
 
     const stepper = new Stepper(container);
     const channelFields = new ChannelFields(form);
+    new ConditionalGroups(form);
     new PasswordToggle(form);
 
     const defaultNextLabel = nextLabel ? nextLabel.textContent.trim() : '';
-    const finalLabel = nextLabel?.dataset.finalLabel || 'Crear cuenta';
+    const finalLabel = nextLabel?.dataset.finalLabel || 'Registrar';
 
     const setStatus = (message = '', type = 'info') => {
       if (!statusBox) {
@@ -230,7 +318,7 @@
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       setStatus(
-        'Recibimos tu solicitud de registro. En breve conectaremos este flujo con el servicio de alta definitivo.',
+        'Hemos recibido tu solicitud. Nuestro equipo revisará los datos y activará tu cuenta en cuanto sea posible.',
         'success',
       );
     });

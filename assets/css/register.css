@@ -1,16 +1,16 @@
 .register-page {
   width: 100%;
   grid-column: 1 / -1;
-  padding: clamp(3rem, 5vw, 5rem) 0;
+  padding: 0;
   background: #f5f7fb;
 }
 
 .register-page__layout {
-  width: min(1220px, 100% - clamp(2rem, 6vw, 6rem));
+  width: min(1200px, 100% - clamp(2rem, 6vw, 6rem));
   margin-inline: auto;
   display: grid;
-  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
-  gap: clamp(2rem, 5vw, 5rem);
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: var(--gap);
   align-items: flex-start;
 }
 
@@ -55,7 +55,7 @@
 
 .register-card__title {
   margin: 0;
-  font-size: clamp(2rem, 2.6vw, 2.8rem);
+  font-size: 2rem;
   line-height: 1.2;
   color: #0f172a;
 }
@@ -157,7 +157,8 @@
 }
 
 .register-page__card {
-  width: min(720px, 100%);
+  width: 100%;
+  max-width: 860px;
   background: #fff;
   border-radius: 1.5rem;
   box-shadow: 0 25px 60px -35px rgba(15, 23, 42, 0.25);
@@ -167,105 +168,121 @@
   gap: 0;
 }
 
-.register-tabs {
+.register-page__card .tabs {
   position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: clamp(1rem, 4vw, 1.75rem);
-  padding: clamp(1.5rem, 4vw, 2.25rem) clamp(2rem, 5vw, 3.25rem) clamp(1rem, 4vw, 1.5rem);
-  background: #fff;
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: #fff;
+  gap: var(--spacing-2);
 }
 
-.register-tabs .tabs__connector {
+.register-page__card .tabs__connector {
   position: absolute;
   top: 50%;
-  left: clamp(2rem, 5vw, 3.25rem);
-  right: clamp(2rem, 5vw, 3.25rem);
-  transform: translateY(-50%);
+  left: var(--spacing-4);
+  right: var(--spacing-4);
   height: 0.25rem;
-  background: rgba(148, 163, 184, 0.25);
-  border-radius: 999px;
+  transform: translateY(-50%);
   pointer-events: none;
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
 }
 
-.register-tabs .connector {
+.register-page__card .tabs__connector .connector {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(148, 163, 184, 0.55);
   border-radius: inherit;
-  background: transparent;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--transition-speed);
 }
 
-.register-tabs .connector.active {
-  background: linear-gradient(90deg, var(--primary-color), #1d4ed8);
+.register-page__card .tabs__connector .connector.active {
+  background: var(--primary);
 }
 
-.register-tabs .tabs__link {
+.register-page__card .connector-1 {
+  left: 16.6667%;
+  width: 33.3333%;
+}
+
+.register-page__card .connector-2 {
+  left: 50%;
+  width: 33.3333%;
+}
+
+.register-page__card .tabs__link {
+  flex: 1;
   position: relative;
   z-index: 1;
-  flex: 1;
   border: 0;
-  padding: 0;
   background: transparent;
+  padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
   cursor: pointer;
-  color: #64748b;
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
-.register-tabs .tabs__link:focus-visible {
-  outline: 3px solid rgba(15, 23, 42, 0.3);
+.register-page__card .tabs__link:focus-visible {
+  outline: 3px solid rgba(15, 23, 42, 0.25);
   border-radius: 999px;
-  outline-offset: 4px;
+  outline-offset: 6px;
 }
 
-.register-tabs .tabs__circle {
-  width: 2.85rem;
-  height: 2.85rem;
+.register-page__card .tabs__circle {
+  width: 2.75rem;
+  height: 2.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  border: 2px solid rgba(148, 163, 184, 0.45);
+  border-radius: 50%;
+  border: 2px solid rgba(148, 163, 184, 0.6);
   background: #fff;
-  color: #475569;
+  color: #64748b;
   font-size: 1rem;
-  transition: all 0.2s ease;
+  transition: background-color var(--transition-speed), border-color var(--transition-speed), color var(--transition-speed), box-shadow var(--transition-speed);
 }
 
-.register-tabs .tabs__link.active .tabs__circle {
+.register-page__card .tabs__link:hover .tabs__circle {
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.register-page__card .tabs__link.completed .tabs__circle {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.register-page__card .tabs__link.active .tabs__circle {
+  background: var(--primary);
+  border-color: var(--primary);
   color: #fff;
-  border-color: var(--primary-color);
-  background: var(--primary-color);
-  box-shadow: 0 12px 24px -18px rgba(37, 99, 235, 0.55);
+  box-shadow: 0 15px 30px -25px rgba(15, 23, 42, 0.75);
 }
 
-.register-tabs .tabs__link.completed .tabs__circle {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.register-tabs .tabs__title {
+.register-page__card .tabs__title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.4;
   text-align: center;
-  color: #64748b;
+  color: var(--text-secondary);
 }
 
-.register-tabs .tabs__link.active .tabs__title {
-  color: var(--primary-color);
+.register-page__card .tabs__link.active .tabs__title,
+.register-page__card .tabs__link.completed .tabs__title {
+  color: var(--primary);
 }
 
 .register-form {
   display: flex;
   flex-direction: column;
-  gap: clamp(1.5rem, 4vw, 2.25rem);
-  padding: 0 clamp(2rem, 5vw, 3.25rem) clamp(2.25rem, 5vw, 3rem);
+  gap: var(--spacing-5);
+  padding: 0 var(--spacing-4) var(--spacing-5);
 }
 
 .form__tab-content {
@@ -278,31 +295,24 @@
   display: none;
 }
 
-.register-section {
-  display: grid;
-  gap: 1.75rem;
-}
-
-.register-section__header {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.register-section__title {
+.form__sub-fieldset {
+  border: 0;
   margin: 0;
-  font-size: clamp(1.4rem, 2vw, 1.8rem);
+  padding: 0;
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.form__sub-legend {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
   color: #0f172a;
 }
 
-.register-section__description {
-  margin: 0;
-  color: #64748b;
-  line-height: 1.6;
-}
-
-.register-section__grid {
+.form__wrapper-inputs {
   display: grid;
-  gap: 1.5rem;
+  gap: var(--gap);
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
@@ -322,15 +332,46 @@
   cursor: pointer;
 }
 
+.form__input-container--acceptance {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-1);
+}
+
+.form__input-container--acceptance .form__checkbox {
+  margin-top: 0.3rem;
+}
+
+.form__input-container--acceptance .form__checkbox-label {
+  margin: 0;
+  color: #111827;
+  line-height: 1.5;
+}
+
+.form__sub-fieldset--legal {
+  border-top: 1px solid #e2e8f0;
+  padding-top: var(--spacing-2);
+}
+
+.form__conditional-group {
+  display: none;
+  padding-top: var(--spacing-2);
+  border-top: 1px solid rgba(226, 232, 240, 0.8);
+  margin-top: var(--spacing-2);
+}
+
+.form__conditional-group.is-visible {
+  display: block;
+}
+
+.form__conditional-group .form__wrapper-inputs {
+  margin-top: var(--spacing-2);
+}
+
 .form__input-container--password .register-form__toggle-password:focus-visible {
   outline: 2px solid rgba(239, 68, 68, 0.4);
   border-radius: 0.5rem;
   outline-offset: 2px;
-}
-
-.register-form__legal {
-  display: grid;
-  gap: 1rem;
 }
 
 .register-form__hint {
@@ -339,12 +380,22 @@
   color: #64748b;
 }
 
+.register-form__hint--muted {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.register-form__hint--muted p {
+  margin: 0;
+}
+
 .register-form__footer {
   border-top: 1px solid #e2e8f0;
-  padding: clamp(1.75rem, 4vw, 2.5rem) clamp(2rem, 5vw, 3.25rem);
+  padding: var(--spacing-4);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--spacing-2);
 }
 
 .register-form__status {
@@ -362,20 +413,84 @@
   color: #dc2626;
 }
 
+.register-review {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: var(--spacing-3);
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.register-review__title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #0f172a;
+}
+
+.register-review__description {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.register-review__list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.5rem;
+  color: #334155;
+  line-height: 1.6;
+}
+
 .nav-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: flex-end;
+  justify-content: center;
+  gap: var(--spacing-2);
 }
 
-.nav-buttons .btn {
-  min-width: 160px;
+.form__button--prev,
+.form__button--next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-1);
+  padding: 0 var(--spacing-4);
+  height: 56px;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  background-color: var(--primary);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-speed), color var(--transition-speed), border-color var(--transition-speed);
 }
 
-.nav-buttons .btn[disabled] {
-  opacity: 0.5;
+.form__button--prev {
+  background: #fff;
+  color: #111827;
+  border-color: #d1d5db;
+}
+
+.form__button--prev:hover {
+  background: #f8fafc;
+}
+
+.form__button--next:hover {
+  background-color: #111827;
+}
+
+.form__button--prev[disabled],
+.form__button--next[disabled] {
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+.form__button--prev[disabled]:hover,
+.form__button--next[disabled]:hover {
+  background: inherit;
 }
 
 @media (max-width: 1024px) {
@@ -395,17 +510,6 @@
 @media (max-width: 720px) {
   .register-page__layout {
     width: min(100%, 100% - clamp(1.5rem, 8vw, 2.5rem));
-  }
-
-  .register-tabs {
-    padding: clamp(1.75rem, 6vw, 2rem) clamp(1.5rem, 6vw, 2rem) clamp(1rem, 5vw, 1.5rem);
-  }
-
-  .register-tabs .tabs__connector {
-    left: clamp(1.5rem, 6vw, 2rem);
-    right: clamp(1.5rem, 6vw, 2rem);
-    top: 50%;
-    transform: translateY(-50%);
   }
 
   .register-form {
@@ -428,24 +532,34 @@
     border-radius: 1.25rem;
   }
 
-  .register-tabs .tabs__link {
+  .register-page__card .tabs {
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+
+  .register-page__card .tabs__connector {
+    left: var(--spacing-3);
+    right: var(--spacing-3);
+  }
+
+  .register-page__card .tabs__link {
     gap: 0.5rem;
   }
 
-  .register-tabs .tabs__title {
+  .register-page__card .tabs__title {
     font-size: 0.85rem;
   }
 
-  .register-tabs .tabs__circle {
+  .register-page__card .tabs__circle {
     width: 2.5rem;
     height: 2.5rem;
   }
 
-  .register-section__grid {
+  .form__wrapper-inputs {
     grid-template-columns: 1fr;
   }
 
-  .nav-buttons .btn {
+  .nav-buttons .form__button--prev,
+  .nav-buttons .form__button--next {
     width: 100%;
   }
 }
