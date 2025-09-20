@@ -222,6 +222,7 @@
     constructor(form) {
       this.form = form;
       this.summaryMap = new Map();
+      this.channelGroups = Array.from(form.querySelectorAll('[data-summary-channel]'));
 
       form.querySelectorAll('[data-summary-field]').forEach((node) => {
         this.summaryMap.set(node.dataset.summaryField, node);
@@ -268,6 +269,25 @@
 
       target.textContent = value;
       target.dataset.summaryEmpty = value ? 'false' : 'true';
+
+      if (fieldId === 'register_channel') {
+        this.updateChannelGroups(field);
+      }
+    }
+
+    updateChannelGroups(field) {
+      const channel = field?.value ?? '';
+
+      this.channelGroups.forEach((group) => {
+        const allowed = (group.dataset.summaryChannel || '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+
+        const isVisible = channel && (allowed.length === 0 || allowed.includes(channel));
+        group.dataset.summaryVisible = isVisible ? 'true' : 'false';
+        group.hidden = !isVisible;
+      });
     }
   }
 
