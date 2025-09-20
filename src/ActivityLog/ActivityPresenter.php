@@ -42,9 +42,12 @@ class ActivityPresenter
             default:
                 $message = isset($item['message']) ? (string) $item['message'] : '';
                 if ($message !== '') {
-                    $lines[] = $message;
+                    $attribution = self::vendorAttribution($context, $actor);
+                    if ($attribution !== '') {
+                        $message .= ' ' . $attribution;
+                    }
+                    $lines[] = rtrim($message, '.') . '.';
                 }
-                self::pushVendorLine($lines, $context, $actor);
                 break;
         }
 
@@ -100,14 +103,21 @@ class ActivityPresenter
             $initiator = __('Usuario sin identificar', 'garantias-online-360vo');
         }
 
+        $channel = (string) ($context['channel_label'] ?? '');
+        if ($channel !== '') {
+            $initiator = sprintf(
+                __('%1$s (%2$s)', 'garantias-online-360vo'),
+                $initiator,
+                $channel
+            );
+        }
+
         $lines = [
             sprintf(
                 __('%s ha iniciado una nueva garantía.', 'garantias-online-360vo'),
                 $initiator
             ),
         ];
-
-        self::pushVendorLine($lines, $context, $actor);
 
         $vehicle = self::vehicleLine($context);
         if ($vehicle !== '') {
@@ -136,17 +146,18 @@ class ActivityPresenter
             );
         }
 
-        $lines = [
-            sprintf(
-                __('Correo enviado a %1$s (%2$s).', 'garantias-online-360vo'),
-                $recipient,
-                $subject
-            ),
-        ];
+        $line = sprintf(
+            __('Correo enviado a %1$s (%2$s)', 'garantias-online-360vo'),
+            $recipient,
+            $subject
+        );
 
-        self::pushVendorLine($lines, $context, $actor);
+        $attribution = self::vendorAttribution($context, $actor);
+        if ($attribution !== '') {
+            $line .= ' ' . $attribution;
+        }
 
-        return $lines;
+        return [rtrim($line, '.') . '.'];
     }
 
     /**
@@ -161,18 +172,22 @@ class ActivityPresenter
 
         $lines = [];
         if ($method !== '') {
+            $line = $method;
             if ($paymentActor !== '') {
-                $lines[] = sprintf(
-                    __('%1$s por %2$s.', 'garantias-online-360vo'),
+                $line = sprintf(
+                    __('%1$s por %2$s', 'garantias-online-360vo'),
                     $method,
                     $paymentActor
                 );
-            } else {
-                $lines[] = $method;
             }
-        }
 
-        self::pushVendorLine($lines, $context, $actorData);
+            $attribution = self::vendorAttribution($context, $actorData);
+            if ($attribution !== '') {
+                $line .= ' ' . $attribution;
+            }
+
+            $lines[] = rtrim($line, '.') . '.';
+        }
 
         if ($guarantee !== '') {
             $lines[] = sprintf(
@@ -252,49 +267,6 @@ class ActivityPresenter
             $vendor,
             $channelPart
         );
-    }
-
-    /**
-     * @param array<string, mixed> $context
-     * @param array<string, mixed> $actor
-     */
-    private static function vendorLine(array $context, array $actor): string
-    {
-        $vendor = self::vendorDisplay($context, $actor);
-        if ($vendor === '') {
-            return '';
-        }
-
-        $channel = (string) ($context['channel_label'] ?? '');
-        if ($channel !== '') {
-            $vendor .= ' (' . $channel . ')';
-        }
-
-        return sprintf(
-            __('Profesional: %s.', 'garantias-online-360vo'),
-            $vendor
-        );
-    }
-
-    /**
-     * @param array<int, string> $lines
-     * @param array<string, mixed> $context
-     * @param array<string, mixed> $actor
-     */
-    private static function pushVendorLine(array &$lines, array $context, array $actor): void
-    {
-        $vendorLine = self::vendorLine($context, $actor);
-        if ($vendorLine === '') {
-            return;
-        }
-
-        foreach ($lines as $line) {
-            if (strtolower(trim($line)) === strtolower(trim($vendorLine))) {
-                return;
-            }
-        }
-
-        $lines[] = $vendorLine;
     }
 
     private static function cleanLine($line): string

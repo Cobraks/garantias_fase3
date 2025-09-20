@@ -410,12 +410,6 @@ $current_month_spanish = $spanish_months[$current_month] ?? $current_month;
                             <span class="activity__label"><?php esc_html_e('Buscar', 'garantias-online-360vo'); ?></span>
                             <input type="search" id="activity-search" class="activity__input" placeholder="<?php esc_attr_e('Buscar por usuario, evento o texto…', 'garantias-online-360vo'); ?>" data-activity-search>
                         </label>
-                        <label class="activity__field">
-                            <span class="activity__label"><?php esc_html_e('Evento', 'garantias-online-360vo'); ?></span>
-                            <select id="activity-event" class="activity__select" data-activity-event data-placeholder="<?php esc_attr_e('Todos los eventos', 'garantias-online-360vo'); ?>">
-                                <option value=""><?php esc_html_e('Todos', 'garantias-online-360vo'); ?></option>
-                            </select>
-                        </label>
                     </div>
                     <div class="activity__filters-row activity__filters-row--pills">
                         <div class="activity__field activity__field--pills">
