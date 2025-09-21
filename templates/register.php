@@ -121,6 +121,7 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                             >
                                 <span class="password-toggle__icon password-toggle__icon--show"><?php echo Svg::icon('visibility'); ?></span>
                                 <span class="password-toggle__icon password-toggle__icon--hide"><?php echo Svg::icon('visibility_off'); ?></span>
+                                <span class="screen-reader-text">Alternar visibilidad de la contraseña</span>
                             </button>
                             <p class="form-hint">Mínimo 8 caracteres con números y símbolos</p>
                         </div>
@@ -137,6 +138,7 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                             >
                                 <span class="password-toggle__icon password-toggle__icon--show"><?php echo Svg::icon('visibility'); ?></span>
                                 <span class="password-toggle__icon password-toggle__icon--hide"><?php echo Svg::icon('visibility_off'); ?></span>
+                                <span class="screen-reader-text">Alternar visibilidad de la contraseña</span>
                             </button>
                         </div>
                     </div>
@@ -156,10 +158,15 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                         <div>
                             <h3 class="subsection-title">Imagen de perfil</h3>
                             <div class="input-container">
-                                <div class="file-upload" id="avatar-upload">
-                                    <div class="file-label">+ Añadir imagen de perfil</div>
-                                    <p class="file-hint">Haz clic para subir una imagen (opcional)</p>
-                                    <input type="file" id="avatar" class="file-input" accept="image/*">
+                                <div class="profile-media">
+                                    <div class="avatar-preview" id="avatar-preview" hidden aria-hidden="true">
+                                        <img src="" alt="Previsualización de la imagen de perfil">
+                                    </div>
+                                    <div class="file-upload" id="avatar-upload">
+                                        <div class="file-label">+ Añadir imagen de perfil</div>
+                                        <p class="file-hint">Haz clic para subir una imagen (opcional)</p>
+                                        <input type="file" id="avatar" class="file-input" accept="image/*">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -361,90 +368,89 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                 </div>
 
                 <div class="form-step" id="step-3">
-                    <p class="form-hint" style="margin-bottom: 2rem;">Revisa que toda la información sea correcta antes de completar el registro</p>
+                    <p class="info-text info-text--notice">
+                        <span class="info-text__icon"><?php echo Svg::icon('info'); ?></span>
+                        <span>Revisa que toda la información sea correcta antes de completar el registro</span>
+                    </p>
 
                     <div class="summary-container">
-                        <div class="summary-column">
-                            <div class="summary-group">
-                                <div class="summary-title">Datos de cuenta</div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Tipo:</span>
-                                    <span class="summary-value" id="summary-channel">Profesional</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Empresa:</span>
-                                    <span class="summary-value" id="summary-company">Auto Solutions SL</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Nombre:</span>
-                                    <span class="summary-value" id="summary-name">Juan Pérez</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Email:</span>
-                                    <span class="summary-value" id="summary-email">juan@autosolutions.es</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Teléfono:</span>
-                                    <span class="summary-value" id="summary-phone">+34 612 345 678</span>
-                                </div>
+                        <div class="summary-group">
+                            <div class="summary-title">Datos de cuenta</div>
+                            <div class="summary-item">
+                                <span class="summary-label">Tipo:</span>
+                                <span class="summary-value" id="summary-channel">Profesional</span>
                             </div>
-
-                            <div class="summary-group" id="summary-workshop">
-                                <div class="summary-title">Datos del taller</div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Nombre:</span>
-                                    <span class="summary-value" id="summary-workshop-name">Talleres Pérez</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Contacto:</span>
-                                    <span class="summary-value" id="summary-workshop-contact">María González</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Teléfono:</span>
-                                    <span class="summary-value" id="summary-workshop-phone">+34 912 345 678</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Email:</span>
-                                    <span class="summary-value" id="summary-workshop-email">taller@autosolutions.es</span>
-                                </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Empresa:</span>
+                                <span class="summary-value" id="summary-company">Auto Solutions SL</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Nombre:</span>
+                                <span class="summary-value" id="summary-name">Juan Pérez</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Email:</span>
+                                <span class="summary-value" id="summary-email">juan@autosolutions.es</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Teléfono:</span>
+                                <span class="summary-value" id="summary-phone">+34 612 345 678</span>
                             </div>
                         </div>
 
-                        <div class="summary-column">
-                            <div class="summary-group">
-                                <div class="summary-title">Preferencias</div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Web 360VO:</span>
-                                    <span class="summary-value" id="summary-web">https://autosolutions.es</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Firma automática:</span>
-                                    <span class="summary-value" id="summary-signature">Activada</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Domiciliación:</span>
-                                    <span class="summary-value" id="summary-sepa-status">Activada</span>
-                                </div>
+                        <div class="summary-group" id="summary-workshop">
+                            <div class="summary-title">Datos del taller</div>
+                            <div class="summary-item">
+                                <span class="summary-label">Nombre:</span>
+                                <span class="summary-value" id="summary-workshop-name">Talleres Pérez</span>
                             </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Contacto:</span>
+                                <span class="summary-value" id="summary-workshop-contact">María González</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Teléfono:</span>
+                                <span class="summary-value" id="summary-workshop-phone">+34 912 345 678</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Email:</span>
+                                <span class="summary-value" id="summary-workshop-email">taller@autosolutions.es</span>
+                            </div>
+                        </div>
 
-                            <div class="summary-group" id="summary-sepa">
-                                <div class="summary-title">Datos bancarios</div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Titular:</span>
-                                    <span class="summary-value" id="summary-sepa-name">Juan Pérez García</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Dirección:</span>
-                                    <span class="summary-value" id="summary-sepa-address">Calle Principal 123, 28001 Madrid</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Provincia:</span>
-                                    <span class="summary-value" id="summary-sepa-state">Madrid</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">IBAN:</span>
-                                    <span class="summary-value" id="summary-sepa-iban">ES12 3456 7890 1234 5678 9012</span>
-                                </div>
+                        <div class="summary-group">
+                            <div class="summary-title">Preferencias</div>
+                            <div class="summary-item">
+                                <span class="summary-label">Web 360VO:</span>
+                                <span class="summary-value" id="summary-web">https://autosolutions.es</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Firma automática:</span>
+                                <span class="summary-value" id="summary-signature">Activada</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Domiciliación:</span>
+                                <span class="summary-value" id="summary-sepa-status">Activada</span>
+                            </div>
+                        </div>
+
+                        <div class="summary-group" id="summary-sepa">
+                            <div class="summary-title">Datos bancarios</div>
+                            <div class="summary-item">
+                                <span class="summary-label">Titular:</span>
+                                <span class="summary-value" id="summary-sepa-name">Juan Pérez García</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Dirección:</span>
+                                <span class="summary-value" id="summary-sepa-address">Calle Principal 123, 28001 Madrid</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Provincia:</span>
+                                <span class="summary-value" id="summary-sepa-state">Madrid</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">IBAN:</span>
+                                <span class="summary-value" id="summary-sepa-iban">ES12 3456 7890 1234 5678 9012</span>
                             </div>
                         </div>
                     </div>

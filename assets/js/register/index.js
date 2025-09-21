@@ -155,6 +155,19 @@
 
     const avatarUpload = document.getElementById('avatar-upload');
     const avatarInput = document.getElementById('avatar');
+    const avatarPreview = document.getElementById('avatar-preview');
+    const avatarPreviewImage = avatarPreview ? avatarPreview.querySelector('img') : null;
+
+    const resetAvatarPreview = () => {
+      if (avatarPreview) {
+        avatarPreview.hidden = true;
+        avatarPreview.setAttribute('aria-hidden', 'true');
+      }
+      if (avatarPreviewImage) {
+        avatarPreviewImage.removeAttribute('src');
+      }
+    };
+
     if (avatarUpload && avatarInput) {
       avatarUpload.addEventListener('click', () => {
         avatarInput.click();
@@ -166,6 +179,29 @@
           label.textContent = avatarInput.files && avatarInput.files.length
             ? 'Imagen seleccionada'
             : '+ Añadir imagen de perfil';
+        }
+
+        if (!avatarPreview || !avatarPreviewImage) {
+          return;
+        }
+
+        if (avatarInput.files && avatarInput.files.length) {
+          const [file] = avatarInput.files;
+          if (file && file.type && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+              if (typeof reader.result === 'string') {
+                avatarPreviewImage.src = reader.result;
+                avatarPreview.hidden = false;
+                avatarPreview.setAttribute('aria-hidden', 'false');
+              }
+            });
+            reader.readAsDataURL(file);
+          } else {
+            resetAvatarPreview();
+          }
+        } else {
+          resetAvatarPreview();
         }
       });
     }
