@@ -207,6 +207,13 @@ $home_destination = $is_admin_user
                         </a>
                     </div>
                 </div>
+            <?php elseif (! empty($is_register_page)) : ?>
+                <nav class="top-bar__menu top-bar__menu--register">
+                    <a class="top-bar__login-link" href="<?php echo esc_url(home_url('/garantias-online/acceder/')); ?>">
+                        <?php echo Svg::icon('login', 'top-bar__icon'); ?>
+                        <span><?php esc_html_e('Inicia sesión', 'garantias-online-360vo'); ?></span>
+                    </a>
+                </nav>
             <?php endif; ?>
         </div>
         <nav class="mobile-menu">
