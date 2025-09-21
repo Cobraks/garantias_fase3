@@ -1,175 +1,258 @@
-document.addEventListener('DOMContentLoaded', () => {
+(() => {
   const form = document.getElementById('register-form');
   if (!form) {
     return;
   }
 
-  const steps = Array.from(document.querySelectorAll('.form-step'));
-  const tabs = Array.from(document.querySelectorAll('.tabs__link'));
-  const progressBar = document.querySelector('.tabs__progress');
-  const prevButtons = Array.from(form.querySelectorAll('[data-step-prev]'));
-  const nextButtons = Array.from(form.querySelectorAll('[data-step-next]'));
+  const tabs = Array.from(document.querySelectorAll('.register-tabs .tabs__link'));
+  const connectors = Array.from(document.querySelectorAll('.register-tabs .connector'));
+  const steps = Array.from(form.querySelectorAll('[data-step]'));
+  const prevButton = document.querySelector('[data-step-prev]');
+  const nextButton = document.querySelector('[data-step-next]');
+  const nextLabel = nextButton?.querySelector('[data-step-next-label]') ?? null;
+  const statusMessage = document.querySelector('[data-register-status]');
+  const channelSelect = form.querySelector('[data-channel-select]');
+  const channelTargets = Array.from(form.querySelectorAll('[data-channel-only]'));
+  const toggleControls = Array.from(form.querySelectorAll('[data-toggle-control]'));
+  const summaryTargets = Array.from(document.querySelectorAll('[data-summary-value]'));
+  const summaryChannelElements = Array.from(document.querySelectorAll('[data-summary-channel]'));
+  const summarySections = Array.from(document.querySelectorAll('[data-summary-section]'));
+  const toggleInputs = new Map();
+  let currentIndex = 0;
+  let maxVisitedIndex = 0;
 
-  let currentStep = 0;
+  form.querySelectorAll('[data-summary-toggle]').forEach((input) => {
+    if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+      toggleInputs.set(input.dataset.summaryToggle ?? '', input);
+    }
+  });
 
-  const updateNavState = () => {
-    prevButtons.forEach((button) => {
-      const isDisabled = currentStep === 0;
-      button.toggleAttribute('disabled', isDisabled);
-      button.setAttribute('aria-disabled', String(isDisabled));
-    });
+  const stepLabels = {
+    default: nextButton?.dataset.stepDefaultLabel ?? 'Siguiente',
+    review: nextButton?.dataset.stepReviewLabel ?? 'Revisar',
+    final: nextButton?.dataset.stepFinalLabel ?? 'Finalizar',
   };
 
-  const goToStep = (stepIndex) => {
-    const maxIndex = steps.length - 1;
-    currentStep = Math.max(0, Math.min(stepIndex, maxIndex));
+  const messages = {
+    terms: nextButton?.dataset.stepTermsMessage ?? '',
+    success: nextButton?.dataset.stepSuccessMessage ?? '',
+  };
 
+  function setStatus(message = '') {
+    if (statusMessage) {
+      statusMessage.textContent = message;
+    }
+  }
+
+  function readFieldValue(field) {
+    if (!field) {
+      return '';
+    }
+
+    if (field instanceof HTMLInputElement) {
+      if (field.type === 'checkbox') {
+        if (field.dataset.summaryChecked && field.dataset.summaryUnchecked) {
+          return field.checked ? field.dataset.summaryChecked : field.dataset.summaryUnchecked;
+        }
+        return field.checked ? 'Sí' : 'No';
+      }
+
+      if (field.type === 'file') {
+        if (field.files && field.files.length > 0) {
+          return field.files[0].name;
+        }
+        return '';
+      }
+
+      return field.value.trim();
+    }
+
+    if (field instanceof HTMLSelectElement) {
+      const option = field.options[field.selectedIndex];
+      return option ? option.text.trim() : '';
+    }
+
+    return field.value?.trim?.() ?? '';
+  }
+
+  function updateSummary() {
+    summaryTargets.forEach((target) => {
+      const key = target.dataset.summaryValue ?? '';
+      const field = form.querySelector(`[data-summary-field="${key}"]`);
+      const value = readFieldValue(field);
+      const fallback = target.dataset.summaryEmpty ?? '—';
+      target.textContent = value || fallback;
+    });
+
+    const channelValue = channelSelect?.value ?? '';
+    summaryChannelElements.forEach((element) => {
+      const allowed = (element.dataset.summaryChannel || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const shouldShow = allowed.length === 0 || allowed.includes(channelValue);
+      element.classList.toggle('is-hidden', !shouldShow);
+      element.toggleAttribute('hidden', !shouldShow);
+    });
+
+    summarySections.forEach((section) => {
+      const toggleKey = section.dataset.summarySection ?? '';
+      const control = toggleInputs.get(toggleKey);
+      const shouldShow = control ? control.checked : true;
+      section.classList.toggle('is-hidden', !shouldShow);
+      section.toggleAttribute('hidden', !shouldShow);
+    });
+  }
+
+  function updateChannelVisibility() {
+    const value = channelSelect?.value ?? '';
+    channelTargets.forEach((element) => {
+      const allowed = (element.dataset.channelOnly || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const visible = allowed.length === 0 || allowed.includes(value);
+      element.classList.toggle('is-hidden', !visible);
+      element.toggleAttribute('hidden', !visible);
+      if (!visible) {
+        const inputs = element.querySelectorAll('input, select, textarea');
+        inputs.forEach((input) => {
+          if (input instanceof HTMLInputElement) {
+            if (input.type === 'checkbox' || input.type === 'radio') {
+              input.checked = false;
+            } else if (input.type === 'file') {
+              input.value = '';
+            } else {
+              input.value = '';
+            }
+          } else if (input instanceof HTMLSelectElement) {
+            input.selectedIndex = 0;
+          } else if (input instanceof HTMLTextAreaElement) {
+            input.value = '';
+          }
+        });
+      }
+    });
+    updateSummary();
+  }
+
+  function updateToggle(control) {
+    const key = control.dataset.toggleControl ?? '';
+    const targets = form.querySelectorAll(`[data-toggle-target="${key}"]`);
+    targets.forEach((target) => {
+      target.toggleAttribute('hidden', !control.checked);
+    });
+    updateSummary();
+  }
+
+  function updateTabs() {
     steps.forEach((step, index) => {
-      step.classList.toggle('form-step--active', index === currentStep);
+      const isActive = index === currentIndex;
+      step.classList.toggle('form__tab-content--active', isActive);
+      step.toggleAttribute('hidden', !isActive);
     });
 
     tabs.forEach((tab, index) => {
-      tab.classList.toggle('active', index === currentStep);
-      tab.classList.toggle('completed', index < currentStep);
-      tab.setAttribute('aria-pressed', index === currentStep ? 'true' : 'false');
+      const isActive = index === currentIndex;
+      tab.classList.toggle('active', isActive);
+      tab.classList.toggle('completed', index < currentIndex);
+      tab.setAttribute('aria-current', isActive ? 'step' : 'false');
     });
 
-    if (progressBar && maxIndex > 0) {
-      const progress = (currentStep / maxIndex) * 100;
-      progressBar.style.width = `${progress}%`;
+    connectors.forEach((connector, index) => {
+      connector.classList.toggle('is-active', index < currentIndex);
+    });
+
+    if (prevButton) {
+      prevButton.disabled = currentIndex === 0;
     }
 
-    updateNavState();
-  };
-
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      const targetStep = Number(tab.dataset.step || 0);
-      goToStep(targetStep);
-    });
-  });
-
-  nextButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      goToStep(currentStep + 1);
-    });
-  });
-
-  prevButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      goToStep(currentStep - 1);
-    });
-  });
-
-  const accountType = document.getElementById('register_account_type');
-  const companyBlock = document.getElementById('register_company');
-  const updateCompanyVisibility = () => {
-    if (!companyBlock) {
-      return;
+    if (nextLabel) {
+      let label = stepLabels.default;
+      if (currentIndex === steps.length - 1) {
+        label = stepLabels.final;
+      } else if (currentIndex === steps.length - 2) {
+        label = stepLabels.review;
+      }
+      nextLabel.textContent = label;
     }
-    const isProfessional = accountType && accountType.value === 'professional';
-    companyBlock.classList.toggle('is-visible', Boolean(isProfessional));
-  };
-  if (accountType) {
-    accountType.addEventListener('change', updateCompanyVisibility);
+
+    setStatus('');
+    updateSummary();
   }
-  updateCompanyVisibility();
 
-  const toggleCollapsible = (checkboxId, targetId) => {
-    const checkbox = document.getElementById(checkboxId);
-    const target = document.getElementById(targetId);
-    if (!checkbox || !target) {
+  function goTo(index) {
+    if (index < 0 || index >= steps.length || index === currentIndex) {
       return;
     }
-    const update = () => {
-      target.classList.toggle('is-visible', checkbox.checked);
-    };
-    checkbox.addEventListener('change', update);
-    update();
-  };
+    currentIndex = index;
+    maxVisitedIndex = Math.max(maxVisitedIndex, index);
+    updateTabs();
+  }
 
-  toggleCollapsible('has_workshop', 'workshop-fields');
-  toggleCollapsible('auto_signature', 'signature-fields');
-  toggleCollapsible('enable_sepa', 'sepa-fields');
-
-  const uploadBlocks = document.querySelectorAll('.register-upload');
-  uploadBlocks.forEach((block) => {
-    const input = block.querySelector('.register-upload__input');
-    const label = block.querySelector('.register-upload__label');
-    if (!input || !label) {
+  function nextStep() {
+    if (!nextButton) {
       return;
     }
-    if (!label.dataset.defaultLabel) {
-      label.dataset.defaultLabel = label.textContent || '';
-    }
-    block.addEventListener('click', () => {
-      input.click();
-    });
-    input.addEventListener('change', () => {
-      const files = input.files;
-      if (files && files.length > 0) {
-        block.classList.add('is-filled');
-        label.textContent = files[0].name;
-      } else {
-        block.classList.remove('is-filled');
-        label.textContent = label.dataset.defaultLabel || '';
+
+    if (currentIndex === steps.length - 1) {
+      const terms = form.querySelector('#register_terms');
+      if (terms instanceof HTMLInputElement && !terms.checked) {
+        setStatus(messages.terms);
+        terms.focus();
+        return;
       }
+
+      setStatus(messages.success);
+      return;
+    }
+
+    goTo(currentIndex + 1);
+  }
+
+  function prevStep() {
+    if (currentIndex === 0) {
+      return;
+    }
+    goTo(currentIndex - 1);
+  }
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => {
+      maxVisitedIndex = Math.max(maxVisitedIndex, index);
+      goTo(index);
     });
   });
 
-  const passwordToggles = document.querySelectorAll('.password-toggle');
-  passwordToggles.forEach((toggle) => {
-    const targetId = toggle.getAttribute('data-toggle-target');
-    if (!targetId) {
-      return;
+  if (prevButton) {
+    prevButton.addEventListener('click', prevStep);
+  }
+
+  if (nextButton) {
+    nextButton.addEventListener('click', nextStep);
+  }
+
+  if (channelSelect) {
+    channelSelect.addEventListener('change', updateChannelVisibility);
+  }
+
+  toggleControls.forEach((control) => {
+    if (control instanceof HTMLInputElement) {
+      control.addEventListener('change', () => updateToggle(control));
+      updateToggle(control);
     }
-    const input = document.getElementById(targetId);
-    if (!input) {
-      return;
-    }
-    toggle.addEventListener('click', () => {
-      const shouldShow = input.type === 'password';
-      input.type = shouldShow ? 'text' : 'password';
-      toggle.classList.toggle('is-visible', shouldShow);
+  });
+
+  const summaryFields = Array.from(form.querySelectorAll('[data-summary-field]'));
+  summaryFields.forEach((field) => {
+    const events = field instanceof HTMLInputElement && (field.type === 'checkbox' || field.type === 'file')
+      ? ['change']
+      : ['input', 'change'];
+    events.forEach((eventName) => {
+      field.addEventListener(eventName, updateSummary);
     });
   });
 
-  const helpToggles = document.querySelectorAll('.help-toggle');
-  helpToggles.forEach((toggle) => {
-    const targetId = toggle.getAttribute('data-help-target');
-    if (!targetId) {
-      return;
-    }
-    const panel = document.getElementById(targetId);
-    if (!panel) {
-      return;
-    }
-    const closeButton = panel.querySelector('[data-help-close]');
-    const togglePanel = () => {
-      const isHidden = panel.hasAttribute('hidden');
-      if (isHidden) {
-        panel.removeAttribute('hidden');
-        toggle.classList.add('is-active');
-        toggle.setAttribute('aria-expanded', 'true');
-      } else {
-        panel.setAttribute('hidden', '');
-        toggle.classList.remove('is-active');
-        toggle.setAttribute('aria-expanded', 'false');
-      }
-    };
-    toggle.addEventListener('click', togglePanel);
-    if (closeButton) {
-      closeButton.addEventListener('click', togglePanel);
-    }
-  });
-
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
-      return;
-    }
-    window.alert('Tu solicitud de registro se ha enviado correctamente. Nos pondremos en contacto contigo muy pronto.');
-  });
-
-  goToStep(0);
-});
+  updateChannelVisibility();
+  updateTabs();
+})();
