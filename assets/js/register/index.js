@@ -1,516 +1,258 @@
 (() => {
-  class Stepper {
-    constructor(container) {
-      this.container = container;
-      this.steps = Array.from(container.querySelectorAll('[data-step]'));
-      this.triggers = Array.from(container.querySelectorAll('[data-step-trigger]'));
-      this.currentIndex = 0;
-      this.maxVisitedIndex = 0;
-      this.changeCallback = null;
-      this.connectors = Array.from(container.querySelectorAll('.tabs__connector .connector'));
+  const form = document.getElementById('register-form');
+  if (!form) {
+    return;
+  }
 
-      this.triggers.forEach((trigger) => {
-        trigger.addEventListener('click', (event) => {
-          event.preventDefault();
-          const index = Number(trigger.dataset.stepTrigger);
-          if (!Number.isNaN(index) && index <= this.maxVisitedIndex + 1) {
-            this.goTo(index);
-          }
-        });
-      });
+  const tabs = Array.from(document.querySelectorAll('.register-tabs .tabs__link'));
+  const connectors = Array.from(document.querySelectorAll('.register-tabs .connector'));
+  const steps = Array.from(form.querySelectorAll('[data-step]'));
+  const prevButton = document.querySelector('[data-step-prev]');
+  const nextButton = document.querySelector('[data-step-next]');
+  const nextLabel = nextButton?.querySelector('[data-step-next-label]') ?? null;
+  const statusMessage = document.querySelector('[data-register-status]');
+  const channelSelect = form.querySelector('[data-channel-select]');
+  const channelTargets = Array.from(form.querySelectorAll('[data-channel-only]'));
+  const toggleControls = Array.from(form.querySelectorAll('[data-toggle-control]'));
+  const summaryTargets = Array.from(document.querySelectorAll('[data-summary-value]'));
+  const summaryChannelElements = Array.from(document.querySelectorAll('[data-summary-channel]'));
+  const summarySections = Array.from(document.querySelectorAll('[data-summary-section]'));
+  const toggleInputs = new Map();
+  let currentIndex = 0;
+  let maxVisitedIndex = 0;
 
-      this.update();
+  form.querySelectorAll('[data-summary-toggle]').forEach((input) => {
+    if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+      toggleInputs.set(input.dataset.summaryToggle ?? '', input);
     }
+  });
 
-    onChange(callback) {
-      this.changeCallback = callback;
-      this.emit();
-    }
+  const stepLabels = {
+    default: nextButton?.dataset.stepDefaultLabel ?? 'Siguiente',
+    review: nextButton?.dataset.stepReviewLabel ?? 'Revisar',
+    final: nextButton?.dataset.stepFinalLabel ?? 'Finalizar',
+  };
 
-    getCurrentStep() {
-      return this.steps[this.currentIndex] ?? null;
-    }
+  const messages = {
+    terms: nextButton?.dataset.stepTermsMessage ?? '',
+    success: nextButton?.dataset.stepSuccessMessage ?? '',
+  };
 
-    isFirst() {
-      return this.currentIndex === 0;
-    }
-
-    isLast() {
-      return this.currentIndex === this.steps.length - 1;
-    }
-
-    next() {
-      if (!this.isLast()) {
-        this.goTo(this.currentIndex + 1);
-      }
-    }
-
-    prev() {
-      if (!this.isFirst()) {
-        this.goTo(this.currentIndex - 1);
-      }
-    }
-
-    goTo(index) {
-      if (index < 0 || index >= this.steps.length || index === this.currentIndex) {
-        return;
-      }
-
-      this.currentIndex = index;
-      this.maxVisitedIndex = Math.max(this.maxVisitedIndex, index);
-      this.update();
-      this.emit();
-    }
-
-    update() {
-      this.steps.forEach((step, position) => {
-        const isActive = position === this.currentIndex;
-        step.classList.toggle('is-active', isActive);
-        step.toggleAttribute('hidden', !isActive);
-        step.dataset.stepCurrent = String(isActive);
-        step.setAttribute('aria-hidden', String(!isActive));
-      });
-
-      this.triggers.forEach((trigger, position) => {
-        const isActive = position === this.currentIndex;
-        trigger.classList.toggle('is-active', isActive);
-        trigger.classList.toggle('is-completed', position < this.currentIndex);
-        trigger.setAttribute('aria-current', isActive ? 'step' : 'false');
-      });
-
-      this.connectors.forEach((connector, position) => {
-        connector.classList.toggle('is-active', position < this.currentIndex);
-      });
-    }
-
-    emit() {
-      if (typeof this.changeCallback === 'function') {
-        this.changeCallback({
-          index: this.currentIndex,
-          isFirst: this.isFirst(),
-          isLast: this.isLast(),
-          total: this.steps.length,
-        });
-      }
+  function setStatus(message = '') {
+    if (statusMessage) {
+      statusMessage.textContent = message;
     }
   }
 
-  class ChannelFields {
-    constructor(form) {
-      this.form = form;
-      this.channelSelect = form.querySelector('[data-channel-select]');
-      this.stepIntro = form.querySelector('[data-channel-empty]');
-      this.sections = Array.from(form.querySelectorAll('[data-channel-section]'));
-      this.toggleControls = Array.from(form.querySelectorAll('[data-toggle-control]'));
-      this.channelElements = Array.from(form.querySelectorAll('[data-channel-visible]'));
-
-      if (this.channelSelect) {
-        this.channelSelect.addEventListener('change', () => this.handleChannelChange());
-      }
-
-      this.toggleControls.forEach((control) => {
-        control.addEventListener('change', () => this.handleToggle(control));
-      });
-
-      this.handleChannelChange();
+  function readFieldValue(field) {
+    if (!field) {
+      return '';
     }
 
-    getSelectedChannel() {
-      return this.channelSelect?.value ?? '';
-    }
-
-    handleChannelChange() {
-      const channel = this.getSelectedChannel();
-      const hasChannel = Boolean(channel);
-
-      if (this.stepIntro) {
-        this.stepIntro.classList.toggle('is-hidden', hasChannel);
+    if (field instanceof HTMLInputElement) {
+      if (field.type === 'checkbox') {
+        if (field.dataset.summaryChecked && field.dataset.summaryUnchecked) {
+          return field.checked ? field.dataset.summaryChecked : field.dataset.summaryUnchecked;
+        }
+        return field.checked ? 'Sí' : 'No';
       }
 
-      this.sections.forEach((section) => {
-        const allowedChannels = (section.dataset.channelSection || '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean);
-        const shouldDisplay = allowedChannels.length === 0 || allowedChannels.includes(channel);
-        const isVisible = shouldDisplay && hasChannel;
-        section.classList.toggle('is-active', isVisible);
-        section.toggleAttribute('hidden', !isVisible);
-      });
+      if (field.type === 'file') {
+        if (field.files && field.files.length > 0) {
+          return field.files[0].name;
+        }
+        return '';
+      }
 
-      this.channelElements.forEach((element) => {
-        const allowedChannels = (element.dataset.channelVisible || '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean);
-        const shouldDisplay = allowedChannels.length === 0 || allowedChannels.includes(channel);
-        const isVisible = shouldDisplay && hasChannel;
+      return field.value.trim();
+    }
 
-        element.classList.toggle('is-active', isVisible);
-        element.toggleAttribute('hidden', !isVisible);
+    if (field instanceof HTMLSelectElement) {
+      const option = field.options[field.selectedIndex];
+      return option ? option.text.trim() : '';
+    }
 
-        const inputs = Array.from(element.querySelectorAll('input, select, textarea'));
+    return field.value?.trim?.() ?? '';
+  }
+
+  function updateSummary() {
+    summaryTargets.forEach((target) => {
+      const key = target.dataset.summaryValue ?? '';
+      const field = form.querySelector(`[data-summary-field="${key}"]`);
+      const value = readFieldValue(field);
+      const fallback = target.dataset.summaryEmpty ?? '—';
+      target.textContent = value || fallback;
+    });
+
+    const channelValue = channelSelect?.value ?? '';
+    summaryChannelElements.forEach((element) => {
+      const allowed = (element.dataset.summaryChannel || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const shouldShow = allowed.length === 0 || allowed.includes(channelValue);
+      element.classList.toggle('is-hidden', !shouldShow);
+      element.toggleAttribute('hidden', !shouldShow);
+    });
+
+    summarySections.forEach((section) => {
+      const toggleKey = section.dataset.summarySection ?? '';
+      const control = toggleInputs.get(toggleKey);
+      const shouldShow = control ? control.checked : true;
+      section.classList.toggle('is-hidden', !shouldShow);
+      section.toggleAttribute('hidden', !shouldShow);
+    });
+  }
+
+  function updateChannelVisibility() {
+    const value = channelSelect?.value ?? '';
+    channelTargets.forEach((element) => {
+      const allowed = (element.dataset.channelOnly || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const visible = allowed.length === 0 || allowed.includes(value);
+      element.classList.toggle('is-hidden', !visible);
+      element.toggleAttribute('hidden', !visible);
+      if (!visible) {
+        const inputs = element.querySelectorAll('input, select, textarea');
         inputs.forEach((input) => {
-          if (!isVisible) {
+          if (input instanceof HTMLInputElement) {
             if (input.type === 'checkbox' || input.type === 'radio') {
               input.checked = false;
-            } else if (input.tagName === 'SELECT') {
-              input.selectedIndex = 0;
-            } else if (input.type !== 'file') {
+            } else if (input.type === 'file') {
+              input.value = '';
+            } else {
               input.value = '';
             }
-          }
-
-          if (input.dataset.preserveDisabled !== 'true') {
-            input.disabled = !isVisible;
-          }
-        });
-      });
-
-      this.toggleControls.forEach((control) => {
-        const allowedChannel = control.dataset.channelOnly;
-        const restrictsChannel = Boolean(allowedChannel);
-        const isAllowed = !restrictsChannel || allowedChannel === channel;
-
-        control.disabled = !isAllowed;
-
-        if (!isAllowed) {
-          if (control.type === 'checkbox') {
-            control.checked = false;
-          } else {
-            control.value = '';
-          }
-        }
-
-        this.handleToggle(control);
-      });
-    }
-
-    handleToggle(control) {
-      const targetGroup = control.dataset.toggleControl;
-      if (!targetGroup) {
-        return;
-      }
-
-      const group = this.form.querySelector(`[data-toggle-group="${targetGroup}"]`);
-      if (!group) {
-        return;
-      }
-
-      const isActive = control.type === 'checkbox'
-        ? control.checked
-        : control.value.trim().length > 0;
-
-      group.classList.toggle('is-active', isActive && !control.disabled);
-      group.toggleAttribute('hidden', !(isActive && !control.disabled));
-
-      const inputs = Array.from(group.querySelectorAll('input, select, textarea'));
-      inputs.forEach((input) => {
-        if (control.dataset.toggleRequired === 'true') {
-          input.required = isActive && !control.disabled;
-        }
-
-        if (!isActive || control.disabled) {
-          if (input.type === 'checkbox' || input.type === 'radio') {
-            input.checked = false;
-          } else if (input.tagName === 'SELECT') {
+          } else if (input instanceof HTMLSelectElement) {
             input.selectedIndex = 0;
-          } else if (input.type !== 'file') {
+          } else if (input instanceof HTMLTextAreaElement) {
             input.value = '';
           }
-        }
-      });
-    }
-  }
-
-  class Summary {
-    constructor(form) {
-      this.form = form;
-      this.summaryMap = new Map();
-      this.channelGroups = Array.from(form.querySelectorAll('[data-summary-channel]'));
-
-      form.querySelectorAll('[data-summary-field]').forEach((node) => {
-        this.summaryMap.set(node.dataset.summaryField, node);
-      });
-
-      this.handleInput = this.handleInput.bind(this);
-      form.addEventListener('input', this.handleInput);
-      form.addEventListener('change', this.handleInput);
-
-      this.refresh();
-    }
-
-    handleInput(event) {
-      const field = event.target;
-      this.updateField(field.id, field);
-    }
-
-    refresh() {
-      this.summaryMap.forEach((_, fieldId) => {
-        const field = this.form.querySelector(`#${fieldId}`);
-        this.updateField(fieldId, field);
-      });
-    }
-
-    updateField(fieldId, field) {
-      const target = this.summaryMap.get(fieldId);
-      if (!target) {
-        return;
-      }
-
-      let value = '';
-      if (field) {
-        if (field.tagName === 'SELECT') {
-          const option = field.options[field.selectedIndex];
-          value = option ? option.textContent.trim() : '';
-        } else if (field.type === 'checkbox') {
-          value = field.checked ? (field.dataset.summaryOn || field.value || '✔') : '';
-        } else if (field.type === 'file') {
-          value = field.files && field.files.length > 0 ? field.files[0].name : '';
-        } else {
-          value = field.value.trim();
-        }
-      }
-
-      target.textContent = value;
-      target.dataset.summaryEmpty = value ? 'false' : 'true';
-
-      if (fieldId === 'register_channel') {
-        this.updateChannelGroups(field);
-      }
-    }
-
-    updateChannelGroups(field) {
-      const channel = field?.value ?? '';
-
-      this.channelGroups.forEach((group) => {
-        const allowed = (group.dataset.summaryChannel || '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean);
-
-        const isVisible = channel && (allowed.length === 0 || allowed.includes(channel));
-        group.dataset.summaryVisible = isVisible ? 'true' : 'false';
-        group.hidden = !isVisible;
-      });
-    }
-  }
-
-  class PasswordToggle {
-    constructor(form) {
-      this.form = form;
-      this.buttons = Array.from(form.querySelectorAll('[data-password-toggle]'));
-      this.buttons.forEach((button) => {
-        button.addEventListener('click', () => this.toggle(button));
-      });
-    }
-
-    toggle(button) {
-      const fieldId = button.dataset.passwordToggle;
-      if (!fieldId) {
-        return;
-      }
-
-      const input = this.form.querySelector(`#${fieldId}`);
-      if (!input) {
-        return;
-      }
-
-      const label = button.querySelector('[data-password-toggle-label]');
-      const isPassword = input.type === 'password';
-      input.type = isPassword ? 'text' : 'password';
-
-      const showText = button.dataset.showText || 'Mostrar';
-      const hideText = button.dataset.hideText || 'Ocultar';
-
-      if (label) {
-        label.textContent = isPassword ? hideText : showText;
-      }
-    }
-  }
-
-  const isFieldVisible = (field) => {
-    if (!field || field.type === 'hidden' || field.disabled) {
-      return false;
-    }
-
-    const conditional = field.closest('.register-conditional');
-    if (conditional && !conditional.classList.contains('is-active')) {
-      return false;
-    }
-
-    if (field.closest('[hidden]')) {
-      return false;
-    }
-
-    return true;
-  };
-
-  const setupMatchingFields = (form, pairs) => {
-    const validators = pairs
-      .map(({ primary, confirm, message }) => {
-        const primaryField = form.querySelector(`#${primary}`);
-        const confirmField = form.querySelector(`#${confirm}`);
-
-        if (!primaryField || !confirmField) {
-          return null;
-        }
-
-        const validate = () => {
-          if (!isFieldVisible(confirmField)) {
-            confirmField.setCustomValidity('');
-            return;
-          }
-
-          const primaryValue = primaryField.value.trim();
-          const confirmValue = confirmField.value.trim();
-
-          if (confirmValue && primaryValue && primaryValue !== confirmValue) {
-            confirmField.setCustomValidity(message);
-          } else {
-            confirmField.setCustomValidity('');
-          }
-        };
-
-        primaryField.addEventListener('input', validate);
-        confirmField.addEventListener('input', validate);
-        form.addEventListener('change', (event) => {
-          if (event.target === primaryField || event.target === confirmField) {
-            validate();
-          }
         });
-
-        return validate;
-      })
-      .filter(Boolean);
-
-    return () => {
-      validators.forEach((validate) => validate());
-    };
-  };
-
-  const validateStep = (step) => {
-    if (!step) {
-      return true;
-    }
-
-    const fields = Array.from(step.querySelectorAll('input, select, textarea')).filter(isFieldVisible);
-    for (const field of fields) {
-      if (!field.checkValidity()) {
-        field.reportValidity();
-        field.focus();
-        return false;
       }
+    });
+    updateSummary();
+  }
+
+  function updateToggle(control) {
+    const key = control.dataset.toggleControl ?? '';
+    const targets = form.querySelectorAll(`[data-toggle-target="${key}"]`);
+    targets.forEach((target) => {
+      target.toggleAttribute('hidden', !control.checked);
+    });
+    updateSummary();
+  }
+
+  function updateTabs() {
+    steps.forEach((step, index) => {
+      const isActive = index === currentIndex;
+      step.classList.toggle('form__tab-content--active', isActive);
+      step.toggleAttribute('hidden', !isActive);
+    });
+
+    tabs.forEach((tab, index) => {
+      const isActive = index === currentIndex;
+      tab.classList.toggle('active', isActive);
+      tab.classList.toggle('completed', index < currentIndex);
+      tab.setAttribute('aria-current', isActive ? 'step' : 'false');
+    });
+
+    connectors.forEach((connector, index) => {
+      connector.classList.toggle('is-active', index < currentIndex);
+    });
+
+    if (prevButton) {
+      prevButton.disabled = currentIndex === 0;
     }
 
-    return true;
-  };
+    if (nextLabel) {
+      let label = stepLabels.default;
+      if (currentIndex === steps.length - 1) {
+        label = stepLabels.final;
+      } else if (currentIndex === steps.length - 2) {
+        label = stepLabels.review;
+      }
+      nextLabel.textContent = label;
+    }
 
-  const setupRegisterForm = () => {
-    const container = document.querySelector('.register-page__card');
-    const form = document.querySelector('#register-form');
+    setStatus('');
+    updateSummary();
+  }
 
-    if (!container || !form) {
+  function goTo(index) {
+    if (index < 0 || index >= steps.length || index === currentIndex) {
+      return;
+    }
+    currentIndex = index;
+    maxVisitedIndex = Math.max(maxVisitedIndex, index);
+    updateTabs();
+  }
+
+  function nextStep() {
+    if (!nextButton) {
       return;
     }
 
-    const statusBox = container.querySelector('[data-register-status]');
-    const prevButton = container.querySelector('[data-step-prev]');
-    const nextButton = container.querySelector('[data-step-next]');
-    const nextLabel = container.querySelector('[data-step-next-label]');
-
-    const stepper = new Stepper(container);
-    const channelFields = new ChannelFields(form);
-    const summary = new Summary(form);
-    new PasswordToggle(form);
-
-    const runMatchingChecks = setupMatchingFields(form, [
-      {
-        primary: 'register_email',
-        confirm: 'register_email_confirm',
-        message: 'Los correos electrónicos no coinciden.',
-      },
-      {
-        primary: 'register_password',
-        confirm: 'register_password_confirm',
-        message: 'Las contraseñas no coinciden.',
-      },
-    ]);
-
-    runMatchingChecks();
-
-    const defaultNextLabel = nextLabel ? nextLabel.textContent.trim() : '';
-    const finalLabel = nextLabel?.dataset.finalLabel || 'Crear cuenta';
-
-    const setStatus = (message = '', type = 'info') => {
-      if (!statusBox) {
+    if (currentIndex === steps.length - 1) {
+      const terms = form.querySelector('#register_terms');
+      if (terms instanceof HTMLInputElement && !terms.checked) {
+        setStatus(messages.terms);
+        terms.focus();
         return;
       }
 
-      statusBox.textContent = message;
-      statusBox.dataset.statusType = message ? type : '';
-    };
-
-    if (prevButton) {
-      prevButton.addEventListener('click', () => {
-        stepper.prev();
-        setStatus('');
-      });
+      setStatus(messages.success);
+      return;
     }
 
-    if (nextButton) {
-      nextButton.addEventListener('click', () => {
-        const currentStep = stepper.getCurrentStep();
-        runMatchingChecks();
-        if (!validateStep(currentStep)) {
-          return;
-        }
+    goTo(currentIndex + 1);
+  }
 
-        if (stepper.isLast()) {
-          form.requestSubmit();
-          return;
-        }
-
-        stepper.next();
-        setStatus('');
-      });
+  function prevStep() {
+    if (currentIndex === 0) {
+      return;
     }
+    goTo(currentIndex - 1);
+  }
 
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const currentStep = stepper.getCurrentStep();
-      runMatchingChecks();
-      if (!validateStep(currentStep)) {
-        return;
-      }
-
-      summary.refresh();
-      setStatus(
-        'Recibimos tu solicitud de registro. Próximamente conectaremos este flujo con el servicio de alta.',
-        'success',
-      );
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => {
+      maxVisitedIndex = Math.max(maxVisitedIndex, index);
+      goTo(index);
     });
+  });
 
-    stepper.onChange((state) => {
-      if (prevButton) {
-        prevButton.disabled = state.isFirst;
-      }
+  if (prevButton) {
+    prevButton.addEventListener('click', prevStep);
+  }
 
-      if (nextButton) {
-        nextButton.dataset.stepLast = state.isLast ? 'true' : 'false';
-      }
+  if (nextButton) {
+    nextButton.addEventListener('click', nextStep);
+  }
 
-      if (nextLabel) {
-        nextLabel.textContent = state.isLast ? finalLabel : defaultNextLabel;
-      }
+  if (channelSelect) {
+    channelSelect.addEventListener('change', updateChannelVisibility);
+  }
 
-      if (state.isLast) {
-        summary.refresh();
-      }
+  toggleControls.forEach((control) => {
+    if (control instanceof HTMLInputElement) {
+      control.addEventListener('change', () => updateToggle(control));
+      updateToggle(control);
+    }
+  });
+
+  const summaryFields = Array.from(form.querySelectorAll('[data-summary-field]'));
+  summaryFields.forEach((field) => {
+    const events = field instanceof HTMLInputElement && (field.type === 'checkbox' || field.type === 'file')
+      ? ['change']
+      : ['input', 'change'];
+    events.forEach((eventName) => {
+      field.addEventListener(eventName, updateSummary);
     });
+  });
 
-    channelFields.handleChannelChange();
-  };
-
-  document.addEventListener('DOMContentLoaded', setupRegisterForm);
+  updateChannelVisibility();
+  updateTabs();
 })();
