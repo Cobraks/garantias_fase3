@@ -25,7 +25,7 @@ $is_admin_user = current_user_can('manage_options');
 $home_destination = $is_admin_user
     ? home_url('/garantias-online')
     : home_url('/garantias-online/mis-garantias/');
-$is_simple_layout = ! empty($is_auth_page);
+
 $additional_body_classes = [];
 
 if (! empty($is_register_page)) {
@@ -35,6 +35,8 @@ if (! empty($is_register_page)) {
 if (! empty($is_auth_page)) {
     $additional_body_classes[] = 'auth-body';
 }
+
+$is_simple_layout = ! empty($is_register_page) || ! empty($is_auth_page);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -81,21 +83,15 @@ if (! empty($is_auth_page)) {
 
 
     <?php endif; ?>
-    <?php if (! empty($is_register_page) || ! empty($is_auth_page)) : ?>
+    <?php if (! empty($is_register_page)) : ?>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <?php endif; ?>
-    <?php if (! empty($is_register_page)) : ?>
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>">
-    <?php endif; ?>
-    <?php if (! empty($is_register_page) || ! empty($is_auth_page)) : ?>
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/register.min.css', GARANTIAS360VO__FILE__)); ?>">
-    <?php endif; ?>
-    <?php if (! empty($is_register_page)) : ?>
         <?php
         $register_data = [
             'rest' => [
@@ -224,47 +220,25 @@ if (! empty($is_auth_page)) {
                         </a>
                     </div>
                 </div>
-            <?php elseif (! empty($is_register_page)) : ?>
-                <nav class="top-bar__menu top-bar__menu--auth">
-                    <ul>
-                        <li class="menu-item button-item">
-                            <a class="top-bar__cta" href="<?php echo esc_url('http://garantas-fase-iii.local/garantias-online/'); ?>">
-                                <?php echo Svg::icon('login', 'top-bar__icon'); ?>
-                                <?php esc_html_e('Inicia sesión', 'garantias-online-360vo'); ?>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
             <?php endif; ?>
         </div>
-        <?php if (is_user_logged_in()) : ?>
-            <nav class="mobile-menu">
-                <ul>
-                    <li class="mobile-menu__item">
-                        <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>">
-                            <?php esc_html_e('Mis Garantías', 'garantias-online-360vo'); ?>
-                        </a>
-                    </li>
-                    <li class="mobile-menu__item">
-                        <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" data-reset-draft>
-                            <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        <?php elseif (! empty($is_register_page)) : ?>
-            <nav class="mobile-menu mobile-menu--auth">
-                <ul>
-                    <li class="mobile-menu__item">
-                        <a class="top-bar__cta" href="<?php echo esc_url('http://garantas-fase-iii.local/garantias-online/'); ?>">
-                            <?php echo Svg::icon('login', 'top-bar__icon'); ?>
-                            <?php esc_html_e('Inicia sesión', 'garantias-online-360vo'); ?>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        <?php endif; ?>
+        <nav class="mobile-menu">
+            <ul>
+                <li class="mobile-menu__item">
+                    <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>">
+
+                        <?php esc_html_e('Mis Garantías', 'garantias-online-360vo'); ?>
+                    </a>
+                </li>
+                <li class="mobile-menu__item">
+                    <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" data-reset-draft>
+
+                        <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
+                    </a>
+                </li>
+            </ul>
+        </nav>
     </header>
+<?php endif; ?>
     <div class="container">
         <div class="main-grid">
-<?php endif; ?>
