@@ -25,7 +25,7 @@ $is_admin_user = current_user_can('manage_options');
 $home_destination = $is_admin_user
     ? home_url('/garantias-online')
     : home_url('/garantias-online/mis-garantias/');
-$is_simple_layout = ! empty($is_register_page) || ! empty($is_auth_page);
+$is_simple_layout = ! empty($is_auth_page);
 $additional_body_classes = [];
 
 if (! empty($is_register_page)) {
@@ -224,24 +224,46 @@ if (! empty($is_auth_page)) {
                         </a>
                     </div>
                 </div>
+            <?php elseif (! empty($is_register_page)) : ?>
+                <nav class="top-bar__menu top-bar__menu--auth">
+                    <ul>
+                        <li class="menu-item button-item">
+                            <a class="top-bar__cta" href="<?php echo esc_url('http://garantas-fase-iii.local/garantias-online/'); ?>">
+                                <?php echo Svg::icon('login', 'top-bar__icon'); ?>
+                                <?php esc_html_e('Inicia sesión', 'garantias-online-360vo'); ?>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
             <?php endif; ?>
         </div>
-        <nav class="mobile-menu">
-            <ul>
-                <li class="mobile-menu__item">
-                    <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>">
-
-                        <?php esc_html_e('Mis Garantías', 'garantias-online-360vo'); ?>
-                    </a>
-                </li>
-                <li class="mobile-menu__item">
-                    <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" data-reset-draft>
-
-                        <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
-                    </a>
-                </li>
-            </ul>
-        </nav>
+        <?php if (is_user_logged_in()) : ?>
+            <nav class="mobile-menu">
+                <ul>
+                    <li class="mobile-menu__item">
+                        <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>">
+                            <?php esc_html_e('Mis Garantías', 'garantias-online-360vo'); ?>
+                        </a>
+                    </li>
+                    <li class="mobile-menu__item">
+                        <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" data-reset-draft>
+                            <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        <?php elseif (! empty($is_register_page)) : ?>
+            <nav class="mobile-menu mobile-menu--auth">
+                <ul>
+                    <li class="mobile-menu__item">
+                        <a class="top-bar__cta" href="<?php echo esc_url('http://garantas-fase-iii.local/garantias-online/'); ?>">
+                            <?php echo Svg::icon('login', 'top-bar__icon'); ?>
+                            <?php esc_html_e('Inicia sesión', 'garantias-online-360vo'); ?>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        <?php endif; ?>
     </header>
     <div class="container">
         <div class="main-grid">
