@@ -4,7 +4,7 @@
       this.container = container;
       this.steps = Array.from(container.querySelectorAll('[data-step]'));
       this.triggers = Array.from(container.querySelectorAll('[data-step-trigger]'));
-      this.connectors = Array.from(container.querySelectorAll('.tabs__connector .connector'));
+      this.progress = container.querySelector('[data-tabs-progress]');
       this.currentIndex = 0;
       this.maxVisitedIndex = 0;
       this.changeCallback = null;
@@ -81,11 +81,17 @@
         trigger.setAttribute('aria-current', isActive ? 'step' : 'false');
       });
 
-      this.connectors.forEach((connector, position) => {
-        const isCompleted = position < this.currentIndex;
-        connector.classList.toggle('is-active', isCompleted);
-        connector.classList.toggle('active', isCompleted);
-      });
+      this.updateProgress();
+    }
+
+    updateProgress() {
+      if (!this.progress) {
+        return;
+      }
+
+      const total = this.steps.length;
+      const ratio = total > 1 ? this.currentIndex / (total - 1) : 0;
+      this.progress.style.setProperty('--progress-ratio', String(ratio));
     }
 
     emit() {
@@ -102,7 +108,6 @@
 
   class ChannelFields {
     constructor(form) {
-      this.form = form;
       this.select = form.querySelector('[data-channel-select]');
       this.groups = Array.from(form.querySelectorAll('[data-channel-field]'));
 
@@ -112,7 +117,7 @@
     }
 
     update() {
-      const channel = this.select?.value ?? '';
+      const selected = this.select?.value ?? '';
 
       this.groups.forEach((group) => {
         const allowed = (group.dataset.channelField || '')
@@ -120,26 +125,36 @@
           .map((item) => item.trim())
           .filter(Boolean);
 
-        const shouldDisplay = allowed.length === 0 || allowed.includes(channel);
-        group.classList.toggle('is-visible', shouldDisplay);
-        group.toggleAttribute('hidden', !shouldDisplay);
+        const shouldShow = allowed.length === 0 || allowed.includes(selected);
+        group.classList.toggle('is-visible', shouldShow);
+        group.toggleAttribute('hidden', !shouldShow);
 
-        const inputs = Array.from(group.querySelectorAll('input, select, textarea'));
-        inputs.forEach((input) => {
-          if (shouldDisplay) {
-            input.disabled = false;
-            if (group.dataset.channelRequired === 'true') {
-              input.required = true;
+        const required = group.dataset.channelRequired === 'true';
+        const fields = Array.from(group.querySelectorAll('input, select, textarea'));
+
+        fields.forEach((field) => {
+          if (shouldShow) {
+            field.disabled = false;
+            if (required) {
+              field.required = true;
             }
+            return;
+          }
+
+          if (field.type === 'checkbox' || field.type === 'radio') {
+            field.checked = false;
+          } else if (field.tagName === 'SELECT') {
+            field.selectedIndex = 0;
+          } else if (field.type === 'file') {
+            field.value = '';
           } else {
-            if (input.type === 'checkbox' || input.type === 'radio') {
-              input.checked = false;
-            } else if (input.tagName === 'SELECT') {
-              input.selectedIndex = 0;
-            } else if (input.type !== 'file') {
-              input.value = '';
-            }
-            input.disabled = true;
+            field.value = '';
+          }
+
+          field.disabled = true;
+
+          if (required) {
+            field.required = false;
           }
         });
       });
@@ -179,93 +194,6 @@
     }
   }
 
-  class ConditionalGroups {
-    constructor(form) {
-      this.form = form;
-      this.controls = Array.from(form.querySelectorAll('[data-conditional-toggle]'));
-      this.groups = Array.from(form.querySelectorAll('[data-conditional-group]'));
-
-      this.controls.forEach((control) => {
-        control.addEventListener('change', () => this.update(control));
-      });
-
-      this.controls.forEach((control) => this.update(control));
-    }
-
-    update(control) {
-      if (!control) {
-        return;
-      }
-
-      const key = control.dataset.conditionalToggle || '';
-      if (!key) {
-        return;
-      }
-
-      const active = this.isActive(control);
-
-      this.groups.forEach((group) => {
-        const targets = (group.dataset.conditionalGroup || '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean);
-
-        if (!targets.includes(key)) {
-          return;
-        }
-
-        this.toggleGroup(group, active);
-      });
-    }
-
-    isActive(control) {
-      if (control.type === 'checkbox' || control.type === 'radio') {
-        return control.checked;
-      }
-
-      if (control.tagName === 'SELECT') {
-        const expected = control.dataset.conditionalValue || '';
-        return expected ? control.value === expected : Boolean(control.value);
-      }
-
-      return Boolean(control.value);
-    }
-
-    toggleGroup(group, shouldShow) {
-      group.classList.toggle('is-visible', shouldShow);
-      group.toggleAttribute('hidden', !shouldShow);
-
-      const requireFields = group.dataset.conditionalRequired === 'true';
-      const fields = Array.from(group.querySelectorAll('input, select, textarea'));
-
-      fields.forEach((field) => {
-        if (shouldShow) {
-          field.disabled = false;
-          if (requireFields) {
-            field.required = true;
-          }
-          return;
-        }
-
-        if (field.type === 'checkbox' || field.type === 'radio') {
-          field.checked = false;
-        } else if (field.tagName === 'SELECT') {
-          field.selectedIndex = 0;
-        } else if (field.type === 'file') {
-          field.value = '';
-        } else {
-          field.value = '';
-        }
-
-        field.disabled = true;
-
-        if (requireFields) {
-          field.required = false;
-        }
-      });
-    }
-  }
-
   const setupRegisterForm = () => {
     const container = document.querySelector('.register-page__card');
     const form = document.querySelector('#register-form');
@@ -281,7 +209,6 @@
 
     const stepper = new Stepper(container);
     const channelFields = new ChannelFields(form);
-    new ConditionalGroups(form);
     new PasswordToggle(form);
 
     const defaultNextLabel = nextLabel ? nextLabel.textContent.trim() : '';
