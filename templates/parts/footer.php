@@ -4,9 +4,13 @@
 
 use GarantiasOnline360VO\Svg;
 use GarantiasOnline360VO\Docs\ReclamationDocument;
+
+$is_simple_layout = ! empty($is_register_page) || ! empty($is_auth_page);
 ?>
+<?php if (! $is_simple_layout) : ?>
 </div> <!-- /.main-grid -->
 </div> <!-- /.container -->
+<?php endif; ?>
 <footer class="footer" style="view-transition-name: footer">
     <div class="footer__wrapper">
         <p class="footer__text"><?php echo '©'  . esc_html(date('Y')) . ' ' . '<span class="text--red">360</span>VO '; ?></p>

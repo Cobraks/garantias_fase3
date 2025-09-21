@@ -25,6 +25,16 @@ $is_admin_user = current_user_can('manage_options');
 $home_destination = $is_admin_user
     ? home_url('/garantias-online')
     : home_url('/garantias-online/mis-garantias/');
+$is_simple_layout = ! empty($is_register_page) || ! empty($is_auth_page);
+$additional_body_classes = [];
+
+if (! empty($is_register_page)) {
+    $additional_body_classes[] = 'register-body';
+}
+
+if (! empty($is_auth_page)) {
+    $additional_body_classes[] = 'auth-body';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -71,15 +81,21 @@ $home_destination = $is_admin_user
 
 
     <?php endif; ?>
-    <?php if (! empty($is_register_page)) : ?>
+    <?php if (! empty($is_register_page) || ! empty($is_auth_page)) : ?>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <?php endif; ?>
+    <?php if (! empty($is_register_page)) : ?>
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>">
+    <?php endif; ?>
+    <?php if (! empty($is_register_page) || ! empty($is_auth_page)) : ?>
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/register.min.css', GARANTIAS360VO__FILE__)); ?>">
+    <?php endif; ?>
+    <?php if (! empty($is_register_page)) : ?>
         <?php
         $register_data = [
             'rest' => [
@@ -110,7 +126,8 @@ $home_destination = $is_admin_user
                     )); ?>" defer></script>
 </head>
 
-<body <?php body_class(! empty($is_register_page) ? 'register-layout' : ''); ?>>
+<body <?php body_class($additional_body_classes); ?>>
+<?php if (! $is_simple_layout) : ?>
     <header class="top-bar" style="view-transition-name: header">
         <div class="top-bar__wrapper">
             <button class="top-bar__hamburger" aria-label="Menú">
@@ -207,17 +224,6 @@ $home_destination = $is_admin_user
                         </a>
                     </div>
                 </div>
-            <?php elseif (! empty($is_register_page)) : ?>
-                <nav class="top-bar__menu top-bar__menu--register">
-                    <ul>
-                        <li class="menu-item menu-item--login">
-                            <a href="<?php echo esc_url('http://garantas-fase-iii.local/garantias-online/'); ?>" class="top-bar__login-link">
-                                <?php echo Svg::icon('login', 'top-bar__icon'); ?>
-                                <?php esc_html_e('Inicia sesión', 'garantias-online-360vo'); ?>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
             <?php endif; ?>
         </div>
         <nav class="mobile-menu">
@@ -239,3 +245,4 @@ $home_destination = $is_admin_user
     </header>
     <div class="container">
         <div class="main-grid">
+<?php endif; ?>
