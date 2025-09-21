@@ -155,6 +155,19 @@
 
     const avatarUpload = document.getElementById('avatar-upload');
     const avatarInput = document.getElementById('avatar');
+    const avatarPreview = document.getElementById('avatar-preview');
+    const avatarPreviewImage = avatarPreview ? avatarPreview.querySelector('img') : null;
+
+    const resetAvatarPreview = () => {
+      if (avatarPreview) {
+        avatarPreview.hidden = true;
+        avatarPreview.setAttribute('aria-hidden', 'true');
+      }
+      if (avatarPreviewImage) {
+        avatarPreviewImage.removeAttribute('src');
+      }
+    };
+
     if (avatarUpload && avatarInput) {
       avatarUpload.addEventListener('click', () => {
         avatarInput.click();
@@ -167,21 +180,75 @@
             ? 'Imagen seleccionada'
             : '+ Añadir imagen de perfil';
         }
+
+        if (!avatarPreview || !avatarPreviewImage) {
+          return;
+        }
+
+        if (avatarInput.files && avatarInput.files.length) {
+          const [file] = avatarInput.files;
+          if (file && file.type && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+              if (typeof reader.result === 'string') {
+                avatarPreviewImage.src = reader.result;
+                avatarPreview.hidden = false;
+                avatarPreview.setAttribute('aria-hidden', 'false');
+              }
+            });
+            reader.readAsDataURL(file);
+          } else {
+            resetAvatarPreview();
+          }
+        } else {
+          resetAvatarPreview();
+        }
       });
     }
 
     document.querySelectorAll('.password-toggle').forEach((toggle) => {
-      toggle.addEventListener('click', () => {
-        const targetId = toggle.getAttribute('id') === 'toggle-password' ? 'password' : 'confirm_password';
-        const input = document.getElementById(targetId);
-        if (!input) {
-          return;
-        }
+      const targetId = toggle.getAttribute('data-target');
+      const input = targetId ? document.getElementById(targetId) : null;
+      if (!input) {
+        return;
+      }
 
-        const isPassword = input.type === 'password';
-        input.type = isPassword ? 'text' : 'password';
-        toggle.textContent = isPassword ? '🔒' : '👁️';
+      toggle.addEventListener('click', () => {
+        const revealPassword = input.type === 'password';
+        input.type = revealPassword ? 'text' : 'password';
+        toggle.classList.toggle('is-active', revealPassword);
+        toggle.setAttribute('aria-label', revealPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
       });
+    });
+
+    document.querySelectorAll('.help-trigger').forEach((trigger) => {
+      const targetId = trigger.getAttribute('data-help-target');
+      const panel = targetId ? document.getElementById(targetId) : null;
+      if (!panel) {
+        return;
+      }
+
+      const closeBtn = panel.querySelector('[data-help-dismiss]');
+
+      const setExpanded = (expanded) => {
+        trigger.classList.toggle('is-active', expanded);
+        trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        panel.hidden = !expanded;
+        panel.classList.toggle('is-active', expanded);
+      };
+
+      trigger.addEventListener('click', () => {
+        const willExpand = !trigger.classList.contains('is-active');
+        setExpanded(willExpand);
+      });
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          setExpanded(false);
+        });
+      }
+
+      setExpanded(false);
     });
 
     showCurrentStep();
