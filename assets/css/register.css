@@ -14,7 +14,7 @@
   --transition: all 0.3s ease;
   width: 100%;
   padding: 0;
-  background-color: var(--bg-light);
+  background-color: transparent;
   color: var(--text-primary);
 }
 
@@ -30,18 +30,22 @@
 
 .register-page .container {
   max-width: 1400px;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  margin: 0 auto;
+  padding: 0;
   display: grid;
   grid-template-columns: 1fr 1.5fr;
-  gap: 3rem;
+  gap: var(--spacing-2, 2rem);
 }
 
 .register-page .info-panel {
   background: #fff;
-  border-radius: var(--radius);
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+  -ms-border-radius: 0;
+  -o-border-radius: 0;
   padding: 2.5rem;
-  box-shadow: var(--shadow);
+  box-shadow: none;
   height: fit-content;
 }
 
@@ -86,22 +90,15 @@
   margin-top: 0.25rem;
 }
 
-.register-page .login-redirect {
-  margin-top: 2rem;
-  color: var(--text-secondary);
-}
-
-.register-page .login-redirect a {
-  color: var(--primary);
-  text-decoration: none;
-  font-weight: 600;
-}
-
 .register-page .form-panel {
   background: #fff;
-  border-radius: var(--radius);
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+  -ms-border-radius: 0;
+  -o-border-radius: 0;
   padding: 2.5rem;
-  box-shadow: var(--shadow);
+  box-shadow: none;
 }
 
 .register-page .progress-container {
@@ -313,6 +310,10 @@
   display: block;
 }
 
+.register-page #web-field {
+  margin-top: 3rem;
+}
+
 .register-page .checkbox-row {
   display: flex;
   gap: 2rem;
@@ -322,10 +323,7 @@
 .register-page .checkbox-container {
   display: flex;
   align-items: center;
-}
-
-.register-page .checkbox-container input {
-  margin-right: 0.75rem;
+  gap: 0.75rem;
 }
 
 .register-page .checkbox-label {
@@ -338,21 +336,116 @@
   text-decoration: none;
 }
 
+@supports (-webkit-appearance: none) or (-moz-appearance: none) {
+  .register-page .checkbox-wrapper-14 input[type=checkbox] {
+    --active: var(--primary);
+    --active-inner: #fff;
+    --focus: 2px rgba(37, 99, 235, 0.25);
+    --border: #bbc1e1;
+    --border-hover: var(--primary);
+    --background: #fff;
+    --disabled: #f6f8ff;
+    --disabled-inner: #e1e6f9;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    height: 21px;
+    width: 21px;
+    border-radius: 7px;
+    border: 1px solid var(--bc, var(--border));
+    background: var(--b, var(--background));
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.2s;
+    margin: 0;
+  }
+
+  .register-page .checkbox-wrapper-14 input[type=checkbox]:after {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 4px;
+    width: 5px;
+    height: 9px;
+    border: 2px solid var(--active-inner);
+    border-top: 0;
+    border-left: 0;
+    opacity: var(--o, 0);
+    transform: rotate(var(--r, 20deg));
+    transition: transform 0.3s ease, opacity 0.2s ease;
+  }
+
+  .register-page .checkbox-wrapper-14 input[type=checkbox]:checked {
+    --b: var(--active);
+    --bc: var(--active);
+    --o: 1;
+    --r: 43deg;
+  }
+
+  .register-page .checkbox-wrapper-14 input[type=checkbox]:hover:not(:checked):not(:disabled) {
+    --bc: var(--border-hover);
+  }
+
+  .register-page .checkbox-wrapper-14 input[type=checkbox]:focus {
+    outline: none;
+    box-shadow: 0 0 0 var(--focus);
+  }
+
+  .register-page .checkbox-wrapper-14 input[type=checkbox]:disabled {
+    --b: var(--disabled);
+    cursor: not-allowed;
+    opacity: 0.9;
+  }
+
+  .register-page .checkbox-wrapper-14 input[type=checkbox]:disabled:checked {
+    --b: var(--disabled-inner);
+    --bc: var(--border);
+  }
+
+  .register-page .checkbox-wrapper-14 input[type=checkbox]:disabled + label {
+    cursor: not-allowed;
+  }
+
+  .register-page .checkbox-wrapper-14 input[type=checkbox] + label {
+    display: inline-block;
+    margin-left: 0.5rem;
+  }
+}
+
+.register-page .checkbox-wrapper-14 * {
+  box-sizing: inherit;
+}
+
+.register-page .checkbox-wrapper-14 *::before,
+.register-page .checkbox-wrapper-14 *::after {
+  box-sizing: inherit;
+}
+
+.register-page .checkbox-container--terms {
+  margin-top: 2rem;
+}
+
 .register-page .form-navigation {
   display: flex;
-  justify-content: space-between;
-  margin-top: 2rem;
-  gap: 1rem;
+  justify-content: center;
+  margin-top: var(--spacing-6, 3rem);
+  gap: var(--spacing-2, 1rem);
+  padding: var(--spacing-3, 1.5rem) var(--spacing-2, 1rem);
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  background-color: #fff;
 }
 
 .register-page .btn {
-  padding: 0.75rem 1.5rem;
+  letter-spacing: 0.5px;
+  height: 42px;
+  padding-inline: 1rem;
+  padding-block: 0.5rem;
   border-radius: var(--radius);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
   border: none;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 .register-page .btn-primary {
@@ -498,6 +591,88 @@
   margin: 2rem 0;
 }
 
+.register-page .subsection-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.register-page .subsection-heading .subsection-title {
+  margin: 0;
+  flex: 1;
+}
+
+.register-page .help-trigger {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.register-page .help-trigger:hover,
+.register-page .help-trigger.is-active {
+  color: var(--primary);
+  background-color: rgba(37, 99, 235, 0.08);
+}
+
+.register-page .help-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+}
+
+.register-page .help-trigger svg {
+  width: 20px;
+  height: 20px;
+}
+
+.register-page .help-panel {
+  position: relative;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: #f8fafc;
+  color: var(--text-secondary);
+  animation: fadeIn 0.3s ease;
+}
+
+.register-page .help-panel__close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.register-page .help-panel__close:hover {
+  color: var(--primary);
+}
+
+.register-page .help-panel__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+  border-radius: 50%;
+}
+
+.register-page .help-panel__close svg {
+  width: 16px;
+  height: 16px;
+}
+
 .register-page .documents-payments-row {
   display: flex;
   gap: 2rem;
@@ -528,6 +703,47 @@
   border: none;
   cursor: pointer;
   color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border-radius: 50%;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.register-page .password-toggle:hover,
+.register-page .password-toggle.is-active {
+  color: var(--primary);
+}
+
+.register-page .password-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+}
+
+.register-page .password-toggle__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.register-page .password-toggle__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.register-page .password-toggle .password-toggle__icon--hide {
+  display: none;
+}
+
+.register-page .password-toggle.is-active .password-toggle__icon--show {
+  display: none;
+}
+
+.register-page .password-toggle.is-active .password-toggle__icon--hide {
+  display: inline-flex;
 }
 
 .register-page .iban-icon {
@@ -536,6 +752,13 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+}
+
+.register-page .iban-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .register-page .input-with-icon {
@@ -548,6 +771,35 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@media (min-width: 720px) {
+  .register-page .info-panel,
+  .register-page .form-panel {
+    border-radius: var(--spacing-2);
+    -webkit-border-radius: var(--spacing-2);
+    -moz-border-radius: var(--spacing-2);
+    -ms-border-radius: var(--spacing-2);
+    -o-border-radius: var(--spacing-2);
+  }
+}
+
+@media (min-width: 1024px) {
+  .register-page .container {
+    gap: var(--spacing-3);
+  }
+}
+
+@media (min-width: 1280px) {
+  .register-page .container {
+    gap: var(--spacing-4);
+  }
+}
+
+@media (min-width: 1440px) {
+  .register-page .container {
+    gap: var(--spacing-5);
   }
 }
 
