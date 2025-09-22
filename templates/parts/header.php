@@ -74,7 +74,7 @@ $home_destination = $is_admin_user
 
 
     <?php endif; ?>
-    <?php if (! empty($is_register_page)) : ?>
+    <?php if (! empty($is_auth_page)) : ?>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link
@@ -83,6 +83,8 @@ $home_destination = $is_admin_user
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/auth.min.css', GARANTIAS360VO__FILE__)); ?>">
+    <?php endif; ?>
+    <?php if (! empty($is_register_page)) : ?>
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>">
