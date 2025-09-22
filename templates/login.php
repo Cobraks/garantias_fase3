@@ -14,64 +14,248 @@ if ($is_login_page) {
 }
 ?>
 
-<main class="register-page login-page" style="view-transition-name: login">
+<main class="login-page" style="view-transition-name: login">
     <style>
-        .login-page .container {
+        body.body--auth {
+            margin: 0;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
-            padding: clamp(2.5rem, 8vh, 5.5rem) clamp(1.5rem, 5vw, 3.5rem);
+            align-items: center;
+            background: radial-gradient(circle at 20% 20%, rgba(148, 163, 184, 0.18), transparent 55%),
+                radial-gradient(circle at 80% 10%, rgba(148, 163, 184, 0.12), transparent 45%),
+                #f1f5f9;
         }
 
-        .login-page .form-panel {
-            width: min(100%, 520px);
-            margin-inline: auto;
+        body.body--auth .login-page {
+            width: 100%;
+        }
+
+        .login-page {
+            padding: clamp(2rem, 8vh, 4.5rem) clamp(1.5rem, 6vw, 4rem);
+        }
+
+        .login-page__wrapper {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .login-card {
+            width: min(100%, 440px);
+            display: flex;
+            flex-direction: column;
+            gap: 1.75rem;
+            padding: clamp(2.5rem, 5vw, 3.25rem);
+            border-radius: 20px;
+            background: #fff;
+            box-shadow: 0 18px 45px -25px rgba(15, 23, 42, 0.35);
+        }
+
+        .login-card__logo {
             display: flex;
             justify-content: center;
         }
 
-        .login-page .form-panel__inner {
-            width: min(100%, 420px);
-            gap: 2rem;
-        }
-
-        .login-page .form-panel__logo {
-            display: flex;
-            justify-content: center;
-        }
-
-        .login-page .form-panel__logo svg {
-            width: min(140px, 45vw);
+        .login-card__logo svg {
+            width: min(170px, 52vw);
             height: auto;
         }
 
-        .login-page .form-header {
+        .login-card__header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .login-card__title {
+            margin: 0;
+            font-size: clamp(1.5rem, 2.4vw, 2rem);
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .login-card__subtitle {
+            margin: 0;
+            color: #475569;
+            font-size: 0.95rem;
+        }
+
+        .form-alert {
+            border-radius: 12px;
+            padding: 0.875rem 1rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #b91c1c;
+            background: rgba(248, 113, 113, 0.12);
             text-align: center;
         }
 
-        .login-page .form-description {
-            color: var(--text-secondary, #64748b);
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
         }
 
-        .login-page .form-alert {
+        .auth-form .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .input-container {
+            position: relative;
+        }
+
+        .form-input {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid #cbd5f5;
+            padding: 0.875rem 1rem 0.875rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #0f172a;
+            background: #f8fafc;
+            transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #0f172a;
+            background: #fff;
+            box-shadow: none;
+        }
+
+        .form-label {
+            position: absolute;
+            top: 50%;
+            left: 1rem;
+            transform: translateY(-50%);
+            margin: 0;
+            font-size: 0.95rem;
+            color: #475569;
+            pointer-events: none;
+            transition: transform 0.2s ease, color 0.2s ease, font-size 0.2s ease, top 0.2s ease;
+        }
+
+        .form-input:focus + .form-label,
+        .form-input:not(:placeholder-shown) + .form-label {
+            top: 0.55rem;
+            font-size: 0.75rem;
+            transform: translateY(0);
+        }
+
+        .form-input:focus + .form-label {
+            color: #0f172a;
+        }
+
+        .auth-form__meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            color: #0f172a;
+        }
+
+        .remember-me input {
+            width: 1rem;
+            height: 1rem;
+            accent-color: #0f172a;
+        }
+
+        .form-link {
+            margin-left: auto;
+            font-size: 0.9rem;
+            color: #0f172a;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .form-link:hover,
+        .form-link:focus {
+            color: #111827;
+            text-decoration: underline;
+            outline: none;
+        }
+
+        .auth-form__footer {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            border: none;
+            border-radius: 12px;
+            padding: 0.95rem 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, #0f172a, #1f2937);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn-primary:hover,
+        .btn-primary:focus {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px -16px rgba(15, 23, 42, 0.65);
+            outline: none;
+        }
+
+        .info-cta {
+            margin: 0;
             text-align: center;
+            font-size: 0.95rem;
+            color: #475569;
         }
 
-        @media (max-width: 768px) {
-            .login-page .container {
-                padding-block: clamp(2rem, 10vh, 4rem);
+        .info-cta a {
+            color: #0f172a;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .info-cta a:hover,
+        .info-cta a:focus {
+            text-decoration: underline;
+            outline: none;
+        }
+
+        @media (max-width: 640px) {
+            .login-card {
+                padding: 2.25rem;
+                gap: 1.5rem;
             }
 
-            .login-page .form-panel__inner {
-                gap: 1.5rem;
+            .auth-form__meta {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .form-link {
+                margin-left: 0;
             }
         }
     </style>
 
-    <div class="container">
-        <div class="form-panel" style="view-transition-name: header">
-            <div class="form-panel__inner">
-                <div class="form-panel__logo">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
+    <div class="login-page__wrapper">
+        <div class="login-card" style="view-transition-name: header">
+            <div class="login-card__logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
                         <style>
                             .st0 {
                                 fill: #ffffff;
@@ -104,13 +288,13 @@ if ($is_login_page) {
                     <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
                 </div>
 
-                <div class="form-header">
-                    <h2><?php esc_html_e('Iniciar sesión', 'garantias-online-360vo'); ?></h2>
-                    <p class="form-description"><?php esc_html_e('Introduce tu correo electrónico y tu contraseña para acceder al panel.', 'garantias-online-360vo'); ?></p>
+                <div class="login-card__header">
+                    <h2 class="login-card__title"><?php esc_html_e('Iniciar sesión', 'garantias-online-360vo'); ?></h2>
+                    <p class="login-card__subtitle"><?php esc_html_e('Introduce tu correo electrónico y tu contraseña para acceder al panel.', 'garantias-online-360vo'); ?></p>
                 </div>
 
                 <?php if (isset($_GET['login']) && $_GET['login'] === 'failed') : ?>
-                    <div class="form-alert form-alert--error">
+                    <div class="form-alert">
                         <?php esc_html_e('Correo electrónico o contraseña incorrectos. Inténtalo de nuevo.', 'garantias-online-360vo'); ?>
                     </div>
                 <?php endif; ?>
@@ -121,7 +305,7 @@ if ($is_login_page) {
                     action="<?php echo esc_url(wp_login_url(home_url('/garantias-online/'))); ?>"
                     method="post"
                     class="auth-form">
-                    <div class="form-row single">
+                    <div class="form-row">
                         <div class="input-container">
                             <input
                                 name="log"
@@ -137,7 +321,7 @@ if ($is_login_page) {
                         </div>
                     </div>
 
-                    <div class="form-row single">
+                    <div class="form-row">
                         <div class="input-container">
                             <input
                                 name="pwd"
@@ -152,21 +336,33 @@ if ($is_login_page) {
                             </label>
 
                         </div>
+                    </div>
+
+                    <div class="auth-form__meta">
+                        <label class="remember-me" for="rememberme">
+                            <input
+                                name="rememberme"
+                                id="rememberme"
+                                type="checkbox"
+                                value="forever"
+                                <?php checked(isset($_POST['rememberme']) ? $_POST['rememberme'] : 0, 'forever'); ?>>
+                            <span><?php esc_html_e('Recordarme', 'garantias-online-360vo'); ?></span>
+                        </label>
                         <a class="form-link" href="<?php echo esc_url(wp_lostpassword_url()); ?>">
                             <?php esc_html_e('He olvidado mi contraseña', 'garantias-online-360vo'); ?>
                         </a>
                     </div>
 
-                    <div class="form-footer">
+                    <div class="auth-form__footer">
+                        <button type="submit" class="btn btn-primary">
+                            <?php esc_html_e('Entrar', 'garantias-online-360vo'); ?>
+                        </button>
                         <p class="info-cta">
                             <?php esc_html_e('¿No tienes cuenta?', 'garantias-online-360vo'); ?>
                             <a href="<?php echo esc_url(home_url('/garantias-online/registro/')); ?>">
                                 <?php esc_html_e('Regístrate', 'garantias-online-360vo'); ?>
                             </a>
                         </p>
-                        <button type="submit" class="btn btn-primary">
-                            <?php esc_html_e('Entrar', 'garantias-online-360vo'); ?>
-                        </button>
                         <input type="hidden" name="redirect_to" value="<?php echo esc_url(home_url('/garantias-online/')); ?>">
                     </div>
                 </form>
@@ -180,3 +376,4 @@ if ($is_login_page) {
 if ($is_login_page) {
     TemplateLoader::load_part('footer', compact('is_auth_page', 'is_login_page'));
 }
+?>
