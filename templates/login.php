@@ -16,11 +16,11 @@ if ($is_login_page) {
 
 <main class="register-page login-page" style="view-transition-name: login">
     <div class="container">
-        <div class="info-panel">
-            <div class="brand-lockup" aria-hidden="true">
-                <div class="brand-logo">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
-                    <style>.st0{fill:#ffffff;}.st1{fill:#c5444e;}</style>
+        <div class="info-panel" style="view-transition-name: header">
+            <span class="badge"><?php esc_html_e('Acceso', 'garantias-online-360vo'); ?></span>
+            <div class="brand-logo" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
+                <style>.st0{fill:#ffffff;}.st1{fill:#c5444e;}</style>
                     <g id="Capa_2">
                         <polygon class="st0" points="191.4,51.6 151.7,15.6 103.6,1 59.8,16.8 16.5,49.6 7.1,97.4 11.7,144.3 46,183.6 96.5,199.3 141.9,184.2 188.7,150.4 193.3,97.9" />
                         <path d="M185.5,54.4L148.7,21L103.8,7.3l-41,14.8L22,53l-8.8,44.7l4.3,44.1l31.9,36.6L96.5,193l42.6-14.2l43.9-31.7l4.3-49.3  L185.5,54.4z M160.7,49.1l-40.9-25.5l27.7-0.7L160.7,49.1z M46.8,98.4h53l-24.7,41.7L46.8,98.4z M101,99.2l23.2,49.5l-47.9-7.8  L101,99.2z M154.7,97.1h-52.4l24.1-40.7L154.7,97.1z M127.6,55.6l34.1-3.8l-6.1,44.1L127.6,55.6z M125.2,55.6l-24.1,40.7l-23.3-46  L125.2,55.6z M78.6,49l38.5-24.9l8.3,30.2L78.6,49z M99.9,97.1H46.8l29.8-46.2L99.9,97.1z M45.7,96.1L34.4,57.8l40.8-7.4L45.7,96.1  z M44.6,97.1H15.7l17.7-37.9L44.6,97.1z M44.7,98.4l-8.6,45.7L15.6,98.4H44.7z M45.9,99.5L74,140.9l-36.7,4.8L45.9,99.5z  M74.7,142.2l9.4,33.6l-45.7-28.9L74.7,142.2z M76.1,142.3l47.4,7.7l-37.9,26.2L76.1,142.3z M102.1,98.4h52.7l-29.4,49.7  L102.1,98.4z M155.8,99.5l12,40.5l-41.1,8.7L155.8,99.5z M168.8,138.4l-11.9-39.9h28L168.8,138.4z M156.8,97.1l6.1-43.7l22,43.7  H156.8z M126.8,54.3l-8.2-29.8l41.8,26.1L126.8,54.3z M145.9,21.6l-28.1,0.7L105.2,9.2L145.9,21.6z M103.1,9l12.8,13.3l-50.5,0.3  L103.1,9z M115.1,23.7L76.9,48.4L64.5,24L115.1,23.7z M63.2,24.6l12.3,24.4l-40.2,7.3L63.2,24.6z M60.6,25.4l-27.3,31l-9.4-3.1  L60.6,25.4z M23.1,54.5l9.5,3.2L15.1,94.9L23.1,54.5z M14.8,99.9l20.4,45.5l-16.4-5L14.8,99.9z M19.7,142.2l16.2,4.9l12.7,28.3  L19.7,142.2z M38,148.3l44.8,28.3l-32.2-0.1L38,148.3z M52.5,177.9l32.4,0.1l10.4,13.1L52.5,177.9z M97.2,191.3L86.6,178l49.7,0.2  L97.2,191.3z M87.4,176.7l37.7-26l12.3,26.2L87.4,176.7z M138.6,176.3l-12.2-26.1l40.5-8.6L138.6,176.3z M181.7,146.4l-41,29.6  l28.6-35.1l16.5-40.8L181.7,146.4z M149.4,23.5L184.1,55l1.8,41L149.4,23.5z" />
@@ -41,12 +41,9 @@ if ($is_login_page) {
                         </g>
                     </g>
                     </svg>
-                </div>
-                <span class="badge"><?php esc_html_e('Acceso', 'garantias-online-360vo'); ?></span>
-            </div>
             <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
             <h1><?php esc_html_e('Tu panel de garantías siempre disponible', 'garantias-online-360vo'); ?></h1>
-            <p><?php esc_html_e('Inicia sesión para crear nuevas garantías, seguir su evolución y descargar la documentación actualizada en cuestión de segundos.', 'garantias-online-360vo'); ?></p>
+            <p><?php esc_html_e('Inicia sesión para crear nuevas garantías, revisar su estado y descargar la documentación actualizada en cuestión de segundos.', 'garantias-online-360vo'); ?></p>
 
             <ul class="features-list">
                 <li>
@@ -55,11 +52,11 @@ if ($is_login_page) {
                 </li>
                 <li>
                     <span class="feature-icon">✓</span>
-                    <span><?php esc_html_e('Filtra el histórico por plan, canal o concesionario y descarga certificados y contratos cuando los necesites.', 'garantias-online-360vo'); ?></span>
+                    <span><?php esc_html_e('Consulta el histórico de garantías y descarga certificados y contratos cuando los necesites.', 'garantias-online-360vo'); ?></span>
                 </li>
                 <li>
                     <span class="feature-icon">✓</span>
-                    <span><?php esc_html_e('Recibe alertas de caducidad y seguimiento de averías para anticiparte a las incidencias.', 'garantias-online-360vo'); ?></span>
+                    <span><?php esc_html_e('Recibe avisos de caducidad y mantén la documentación al día para tus clientes.', 'garantias-online-360vo'); ?></span>
                 </li>
             </ul>
 
@@ -126,12 +123,12 @@ if ($is_login_page) {
                     </div>
 
                     <div class="form-footer">
-                        <button type="submit" class="btn btn-primary">
-                            <?php esc_html_e('Entrar', 'garantias-online-360vo'); ?>
-                        </button>
                         <a class="form-link" href="<?php echo esc_url(wp_lostpassword_url()); ?>">
                             <?php esc_html_e('¿Has olvidado la contraseña?', 'garantias-online-360vo'); ?>
                         </a>
+                        <button type="submit" class="btn btn-primary">
+                            <?php esc_html_e('Entrar', 'garantias-online-360vo'); ?>
+                        </button>
                         <input type="hidden" name="redirect_to" value="<?php echo esc_url(home_url('/garantias-online/')); ?>">
                     </div>
                 </form>

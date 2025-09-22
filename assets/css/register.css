@@ -89,11 +89,12 @@ footer.footer .footer__wrapper {
 .register-page .container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: clamp(2rem, 5vh, 4rem) clamp(1.5rem, 5vw, 4rem);
+  padding: clamp(2rem, 5vh, 4rem) 0;
   padding-top: 0;
+  padding-inline: 0;
   display: grid;
   grid-template-columns: 1fr 2fr;
-  gap: clamp(1.5rem, 4vw, 2.5rem);
+  gap: clamp(1.25rem, 3vw, 2rem);
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -109,6 +110,7 @@ footer.footer .footer__wrapper {
   background: #fff;
   border-radius: 24px;
   padding: clamp(2rem, 5vh, 3.5rem);
+  padding-top: clamp(3rem, 6vh, 4rem);
   box-shadow: none;
   border: 1px solid var(--border);
   height: 100%;
@@ -117,21 +119,14 @@ footer.footer .footer__wrapper {
   justify-content: center;
   gap: 1.5rem;
   overflow: hidden;
-}
-
-.register-page .brand-lockup {
   position: relative;
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
 }
 
 .register-page .brand-logo {
-  width: clamp(5rem, 8vw, 6.5rem);
+  width: 200px;
+  max-width: 100%;
   display: inline-flex;
-  margin: 0;
+  margin: 0 0 2rem;
 }
 
 .register-page .brand-logo svg {
@@ -140,14 +135,15 @@ footer.footer .footer__wrapper {
   height: auto;
 }
 
-.register-page .badge {
+.register-page .badge,
+.login-page .badge {
   position: absolute;
-  left: clamp(0.75rem, 2vw, 1.5rem);
-  bottom: 0;
+  top: 1rem;
+  left: 1rem;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.35rem 0.85rem;
+  padding: 0.4rem 0.9rem;
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 700;
@@ -215,6 +211,7 @@ footer.footer .footer__wrapper {
   display: flex;
   flex-direction: column;
   gap: 0;
+  position: relative;
 }
 
 .register-page .form-panel::-webkit-scrollbar {
@@ -274,7 +271,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .progress-container {
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .register-page .progress-steps {
@@ -601,7 +598,7 @@ footer.footer .footer__wrapper {
 .register-page .form-navigation {
   display: flex;
   justify-content: center;
-  margin-top: var(--spacing-6, 3rem);
+  margin-top: 1rem;
   gap: var(--spacing-2, 1rem);
   padding: var(--spacing-3, 1.5rem) var(--spacing-2, 1rem);
   border-top: 1px solid var(--border-color, #e2e8f0);
@@ -1016,15 +1013,9 @@ footer.footer .footer__wrapper {
   }
 }
 
-@media (min-width: 1280px) {
-  .register-page .container {
-    gap: var(--spacing-4);
-  }
-}
-
 @media (min-width: 1440px) {
   .register-page .container {
-    gap: var(--spacing-5);
+    gap: var(--spacing-3);
   }
 }
 
