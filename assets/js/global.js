@@ -5,7 +5,10 @@ console.log("GO360 script cargado");
 (function () {
         const LOGO_INTRO_KEY = "go360-logo-intro";
         const LOGO_DURATION = 1200;
-        const NAVIGATION_DELAY = 40;
+        const NAVIGATION_DELAY = 48;
+        const LOGO_TARGET_WIDTH_RATIO = 0.66;
+        const LOGO_GAP_RATIO = 0.05;
+        const LOGO_BASELINE_RATIO = 0.51;
         const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         let isLogoAnimating = false;
 
@@ -219,33 +222,34 @@ console.log("GO360 script cargado");
 
                 isLogoAnimating = true;
 
-                const finish = () => {
+                const finalize = () => {
                         isLogoAnimating = false;
                 };
 
-                const afterAnimation = () => {
-                        window.setTimeout(() => {
-                                navigate();
-                                finish();
-                        }, NAVIGATION_DELAY);
+                const proceedNavigation = () => {
+                        const startTransition = document.startViewTransition
+                                ? document.startViewTransition.bind(document)
+                                : null;
+
+                        if (startTransition) {
+                                startTransition(() => {
+                                        navigate();
+                                }).finished.finally(finalize);
+                                return;
+                        }
+
+                        navigate();
+                        finalize();
                 };
 
-                const startTransition = document.startViewTransition
-                        ? document.startViewTransition.bind(document)
-                        : null;
-
-                if (startTransition) {
-                        startTransition(() => new Promise((resolve) => {
-                                animateLogoForward(wrapper).then(() => {
-                                        resolve();
-                                        afterAnimation();
-                                });
-                        })).finished.catch(() => {
-                                finish();
+                animateLogoForward(wrapper)
+                        .then(() => {
+                                window.setTimeout(proceedNavigation, NAVIGATION_DELAY);
+                        })
+                        .catch(() => {
+                                finalize();
+                                proceedNavigation();
                         });
-                } else {
-                        animateLogoForward(wrapper).then(afterAnimation);
-                }
         }
 
         function toAbsoluteURL(href) {
@@ -262,57 +266,49 @@ console.log("GO360 script cargado");
 
         function updateLogoVariables(svg) {
                 try {
-                        const clone = svg.cloneNode(true);
-                        clone.style.position = "absolute";
-                        clone.style.opacity = "0";
-                        clone.style.pointerEvents = "none";
-                        clone.style.left = "-9999px";
-                        clone.style.top = "-9999px";
-                        document.body.appendChild(clone);
+                        const text360 = svg.querySelector("#texto-360");
+                        const textVO = svg.querySelector("#texto-VO");
+                        const viewBox = svg.viewBox && svg.viewBox.baseVal;
 
-                        const text360 = clone.querySelector("#texto-360");
-                        const textVO = clone.querySelector("#texto-VO");
-
-                        if (!text360 || !textVO) {
-                                clone.remove();
+                        if (!text360 || !textVO || !viewBox) {
                                 return;
                         }
 
+                        const styles = getComputedStyle(document.documentElement);
+                        const targetWidthRatio = parseFloat(styles.getPropertyValue("--logo-target-width-ratio")) || LOGO_TARGET_WIDTH_RATIO;
+                        const gapRatio = parseFloat(styles.getPropertyValue("--logo-gap-ratio")) || LOGO_GAP_RATIO;
+                        const baselineRatio = parseFloat(styles.getPropertyValue("--logo-baseline-ratio")) || LOGO_BASELINE_RATIO;
+
                         const box360 = text360.getBBox();
                         const boxVO = textVO.getBBox();
-                        const viewBox = svg.viewBox.baseVal;
-                        const defaultScale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--logo-scale")) || 0.88;
-                        const baseWidth = box360.width + boxVO.width;
-                        const availableWidth = viewBox.width - 40;
-                        const scale = Math.min(defaultScale, availableWidth / baseWidth);
-                        const remainingSpace = Math.max(0, viewBox.width - baseWidth * scale);
-                        const gap = Math.max(14, Math.min(48, remainingSpace * 0.5));
-                        const combinedWidth = baseWidth * scale + gap;
-                        const startX = viewBox.x + (viewBox.width - combinedWidth) / 2;
-                        const centerY = (box360.y + box360.height / 2 + boxVO.y + boxVO.height / 2) / 2 - Math.max(box360.height, boxVO.height) * 0.08;
 
-                        const center360 = {
-                                x: box360.x + box360.width / 2,
-                                y: box360.y + box360.height / 2,
-                        };
-                        const centerVO = {
-                                x: boxVO.x + boxVO.width / 2,
-                                y: boxVO.y + boxVO.height / 2,
-                        };
+                        const width360 = box360.width;
+                        const widthVO = boxVO.width;
+                        const height360 = box360.height;
+                        const heightVO = boxVO.height;
 
-                        const dx360 = startX + (box360.width * scale) / 2 - center360.x;
-                        const dy360 = centerY - center360.y;
-                        const dxVO = startX + box360.width * scale + gap + (boxVO.width * scale) / 2 - centerVO.x;
-                        const dyVO = centerY - centerVO.y;
+                        const gap = viewBox.width * gapRatio;
+                        const combinedWidth = width360 + widthVO;
+                        const desiredWidth = Math.max(gap, viewBox.width * targetWidthRatio - gap);
+                        const scale = Math.max(0.5, Math.min(1.2, desiredWidth / combinedWidth));
+                        const totalWidth = combinedWidth * scale + gap;
+                        const startX = viewBox.x + (viewBox.width - totalWidth) / 2;
+                        const targetCenterY = viewBox.y + viewBox.height * baselineRatio;
+
+                        const targetCenter360X = startX + (width360 * scale) / 2;
+                        const targetCenterVOX = startX + width360 * scale + gap + (widthVO * scale) / 2;
+
+                        const originCenter360X = box360.x + width360 / 2;
+                        const originCenter360Y = box360.y + height360 / 2;
+                        const originCenterVOX = boxVO.x + widthVO / 2;
+                        const originCenterVOY = boxVO.y + heightVO / 2;
 
                         const rootStyle = document.documentElement.style;
                         rootStyle.setProperty("--logo-scale", scale.toFixed(3));
-                        rootStyle.setProperty("--logo-dx-360", `${dx360.toFixed(2)}px`);
-                        rootStyle.setProperty("--logo-dy-360", `${dy360.toFixed(2)}px`);
-                        rootStyle.setProperty("--logo-dx-vo", `${dxVO.toFixed(2)}px`);
-                        rootStyle.setProperty("--logo-dy-vo", `${dyVO.toFixed(2)}px`);
-
-                        clone.remove();
+                        rootStyle.setProperty("--logo-dx-360", `${(targetCenter360X - originCenter360X).toFixed(2)}px`);
+                        rootStyle.setProperty("--logo-dy-360", `${(targetCenterY - originCenter360Y).toFixed(2)}px`);
+                        rootStyle.setProperty("--logo-dx-vo", `${(targetCenterVOX - originCenterVOX).toFixed(2)}px`);
+                        rootStyle.setProperty("--logo-dy-vo", `${(targetCenterY - originCenterVOY).toFixed(2)}px`);
                 } catch (error) {
                         console.error("GO360 logo metrics", error);
                 }

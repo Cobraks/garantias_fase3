@@ -42,13 +42,16 @@
     --black : black;
     --card-border: #e2e8f0;
     --text-secondary: #64748b;
-    --logo-transition-duration: 1200ms;
-    --logo-transition-easing: cubic-bezier(0.68, -0.55, 0.27, 1.55);
-    --logo-scale: 0.88;
-    --logo-dx-360: -72px;
-    --logo-dy-360: 16px;
-    --logo-dx-vo: 68px;
-    --logo-dy-vo: -26px;
+        --logo-transition-duration: 1200ms;
+        --logo-transition-easing: cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        --logo-scale: 1.02;
+        --logo-dx-360: -75px;
+        --logo-dy-360: 27px;
+        --logo-dx-vo: 36px;
+        --logo-dy-vo: -27px;
+        --logo-target-width-ratio: 0.66;
+        --logo-gap-ratio: 0.05;
+        --logo-baseline-ratio: 0.51;
       }
 
 
