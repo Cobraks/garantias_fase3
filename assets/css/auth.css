@@ -47,6 +47,20 @@
   gap: 1.25rem;
 }
 
+.auth-logo {
+  width: 100%;
+}
+
+.site-logo-wrapper--auth {
+  width: min(320px, clamp(240px, 60vw, 360px));
+  margin-inline: auto;
+  margin-bottom: clamp(1.75rem, 5vh, 2.75rem);
+}
+
+.site-logo-wrapper--auth .site-logo__svg {
+  max-height: 240px;
+}
+
 
 .login-page .auth-form {
   width: 100%;

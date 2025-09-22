@@ -111,20 +111,18 @@ $home_destination = $is_admin_user
 
 <body class="<?php echo $is_auth_template ? 'body--auth' : ''; ?>">
     <?php if (! $is_auth_template) : ?>
-    <header class="top-bar" style="view-transition-name: header">
+    <header class="top-bar">
         <div class="top-bar__wrapper">
             <button class="top-bar__hamburger" aria-label="Menú">
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
             </button>
-            <div class="top-bar__logo-container">
-                <a href="<?php echo esc_url($home_destination); ?>">
-                    <img src="<?php echo esc_url(
-                                    plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FILE__)
-                                ); ?>"
-                        alt="360Vo Garantías Online"
-                        class="top-bar__logo">
+            <div class="top-bar__logo-container" style="view-transition-name: site-logo">
+                <a href="<?php echo esc_url($home_destination); ?>" class="top-bar__logo-link">
+                    <div class="site-logo-wrapper site-logo-wrapper--header is-horizontal is-static">
+                        <?php TemplateLoader::load_part('logo', ['variant' => 'header']); ?>
+                    </div>
                 </a>
             </div>
             <?php if (! empty($is_dashboard_page)) : ?>
