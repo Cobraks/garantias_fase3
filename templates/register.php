@@ -15,7 +15,6 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
     <div class="container">
         <div class="info-panel" style="view-transition-name: header">
             <span class="badge"><?php esc_html_e('Registro', 'garantias-online-360vo'); ?></span>
-            <div class="brand-logo" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
                 <style>.st0{fill:#ffffff;}.st1{fill:#c5444e;}</style>
                     <g id="Capa_2">
