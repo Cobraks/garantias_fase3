@@ -18,8 +18,56 @@
   color: var(--text-primary);
 }
 
+body {
+  --register-footer-height: 64px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.top-bar {
+  display: none !important;
+}
+
+body > .container {
+  flex: 1;
+  height: calc(100vh - var(--register-footer-height));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body > .container > .main-grid {
+  flex: 1;
+  display: grid;
+  overflow: hidden;
+  min-height: 0;
+}
+
+footer.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+}
+
+footer.footer .footer__wrapper {
+  height: var(--register-footer-height);
+  margin-top: 0;
+  padding-block: calc(var(--spacing-1) * 0.75);
+  border-radius: 1rem 1rem 0 0;
+  align-items: center;
+}
+
 .main-grid > .register-page {
   grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .register-page *,
@@ -47,6 +95,9 @@
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: var(--spacing-2, 2rem);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .register-page .info-panel {
@@ -58,7 +109,11 @@
   -o-border-radius: 0;
   padding: 2.5rem;
   box-shadow: none;
-  height: fit-content;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .register-page .badge {
@@ -111,6 +166,9 @@
   -o-border-radius: 0;
   padding: 2.5rem;
   box-shadow: none;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .register-page .progress-container {
@@ -421,7 +479,7 @@
 
   .register-page .checkbox-wrapper-14 input[type=checkbox] + label {
     display: inline-block;
-    margin-left: 0.5rem;
+    margin-left: 0;
   }
 }
 
@@ -513,7 +571,7 @@
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   column-gap: 2rem;
   row-gap: 1.5rem;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
 }
 
 .register-page .summary-group {
@@ -528,7 +586,7 @@
 
 .register-page .summary-title {
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   color: var(--text-primary);
   font-size: 0.9rem;
   padding-bottom: 0.5rem;
@@ -539,7 +597,7 @@
 
 .register-page .summary-item {
   display: flex;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
   font-size: 0.875rem;
 }
 
@@ -908,6 +966,11 @@
   .register-page .documents-payments-row {
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .register-page .info-panel {
+    height: auto;
+    justify-content: flex-start;
   }
 }
 

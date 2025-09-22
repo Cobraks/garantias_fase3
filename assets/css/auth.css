@@ -11,10 +11,33 @@
   }
   
 body {
-    height: 100dvh;
-    border: solid green;
+    --auth-footer-height: 64px;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-neutral);
+    color: var(--text-neutral);
+}
+
+.top-bar {
+    display: none !important;
+}
+
+footer.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10;
+}
+
+footer.footer .footer__wrapper {
+    height: var(--auth-footer-height);
+    margin-top: 0;
+    padding-block: calc(var(--spacing) * 0.75);
+    border-radius: 1rem 1rem 0 0;
+    align-items: center;
 }
 
   /* === Reset mínimo === */
@@ -41,6 +64,10 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    flex: 1;
+    height: calc(100vh - var(--auth-footer-height));
+    max-height: calc(100vh - var(--auth-footer-height));
+    min-height: 0;
 }
 
   /* === Panel lateral === */
@@ -49,6 +76,10 @@ body {
     color: #fff;
     padding: calc(var(--spacing)*2);
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
   }
   .auth-logo {
     max-width: 140px;
@@ -67,6 +98,8 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    overflow-y: auto;
+    min-height: 0;
   }
   
   /* Título */
