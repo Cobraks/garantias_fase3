@@ -4,6 +4,9 @@ if (! defined('ABSPATH')) {
 }
 
 use GarantiasOnline360VO\Svg;
+
+$is_auth_template = ! empty($is_auth_page);
+
 // Calculamos botón de perfil y avatar
 $current_user_id = get_current_user_id();
 $avatar_id = function_exists('get_field')
@@ -71,15 +74,20 @@ $home_destination = $is_admin_user
 
 
     <?php endif; ?>
-    <?php if (! empty($is_register_page)) : ?>
+    <?php if (! empty($is_auth_page)) : ?>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link
             rel="stylesheet"
-            href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>">
+            href="<?php echo esc_url(plugins_url('assets/css/register.min.css', GARANTIAS360VO__FILE__)); ?>">
         <link
             rel="stylesheet"
-            href="<?php echo esc_url(plugins_url('assets/css/register.min.css', GARANTIAS360VO__FILE__)); ?>">
+            href="<?php echo esc_url(plugins_url('assets/css/auth.min.css', GARANTIAS360VO__FILE__)); ?>">
+    <?php endif; ?>
+    <?php if (! empty($is_register_page)) : ?>
+        <link
+            rel="stylesheet"
+            href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>">
         <?php
         $register_data = [
             'rest' => [
@@ -92,25 +100,17 @@ $home_destination = $is_admin_user
             window.go360Register = <?php echo wp_json_encode($register_data); ?>;
         </script>
     <?php endif; ?>
-    <?php if (! empty($is_auth_page)) : ?>
-        <link
-            rel="stylesheet"
-            href="<?php echo esc_url(plugins_url('assets/css/auth.min.css', GARANTIAS360VO__FILE__)); ?>">
-    <?php endif; ?>
     <?php if (! empty($is_list_page)) : ?>
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
-
-
-
-
     <script src="<?php echo esc_url(plugins_url(
                         'assets/js/global.min.js',
                         GARANTIAS360VO__FILE__
                     )); ?>" defer></script>
 </head>
 
-<body>
+<body class="<?php echo $is_auth_template ? 'body--auth' : ''; ?>">
+    <?php if (! $is_auth_template) : ?>
     <header class="top-bar" style="view-transition-name: header">
         <div class="top-bar__wrapper">
             <button class="top-bar__hamburger" aria-label="Menú">
@@ -237,5 +237,6 @@ $home_destination = $is_admin_user
             </ul>
         </nav>
     </header>
-    <div class="container">
-        <div class="main-grid">
+    <?php endif; ?>
+    <div class="container <?php echo $is_auth_template ? 'container--auth' : ''; ?>">
+        <div class="main-grid <?php echo $is_auth_template ? 'main-grid--auth' : ''; ?>">

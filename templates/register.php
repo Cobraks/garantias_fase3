@@ -7,7 +7,8 @@ use GarantiasOnline360VO\TemplateLoader;
 use GarantiasOnline360VO\Svg;
 
 $is_register_page = true;
-TemplateLoader::load_part('header', compact('is_register_page'));
+$is_auth_page     = true;
+TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'));
 ?>
 
 <main class="register-page" style="view-transition-name: register">
@@ -31,6 +32,13 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                     <span>Automatiza certificados con firma y sello y mantén informados a tus clientes.</span>
                 </li>
             </ul>
+
+            <p class="info-cta">
+                <?php esc_html_e('¿Ya tienes una cuenta?', 'garantias-online-360vo'); ?>
+                <a href="<?php echo esc_url(home_url('/garantias-online/')); ?>">
+                    <?php esc_html_e('Inicia sesión', 'garantias-online-360vo'); ?>
+                </a>
+            </p>
 
         </div>
 
@@ -488,3 +496,4 @@ TemplateLoader::load_part('header', compact('is_register_page'));
 </main>
 
 <?php TemplateLoader::load_part('footer', compact('is_register_page')); ?>
+
