@@ -78,13 +78,31 @@ if ($is_login_page) {
         }
 
         .login-card {
+            position: relative;
             background: #ffffff;
             border-radius: 22px;
-            padding: clamp(2.5rem, 5vw, 3.25rem);
+            padding: clamp(2.75rem, 6vw, 3.5rem);
             box-shadow: 0 22px 45px -24px rgba(15, 23, 42, 0.4);
             display: flex;
             flex-direction: column;
             gap: clamp(1.5rem, 4vh, 2rem);
+        }
+
+        .login-card__badge {
+            position: absolute;
+            top: clamp(1.25rem, 3vw, 1.75rem);
+            right: clamp(1.25rem, 3vw, 1.75rem);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.45rem 0.9rem;
+            border-radius: 999px;
+            background: rgba(197, 68, 78, 0.12);
+            color: #c5444e;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
         }
 
         .login-card__logo {
@@ -150,12 +168,13 @@ if ($is_login_page) {
             width: 100%;
             border-radius: 14px;
             border: 1px solid #d4ddeb;
-            padding: 1.1rem 1rem 0.7rem;
+            padding: 0.95rem 1rem;
             font-size: 1rem;
             font-weight: 500;
             color: #0f172a;
             background: #ffffff;
             transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+            text-align: center;
         }
 
         .form-input:focus {
@@ -167,21 +186,23 @@ if ($is_login_page) {
 
         .form-label {
             position: absolute;
-            top: 1rem;
+            top: 50%;
             left: 1rem;
             background: #ffffff;
             padding: 0 4px;
             font-size: 0.95rem;
             color: #64748b;
             pointer-events: none;
+            transform: translateY(-50%);
             transition: transform 0.2s ease, top 0.2s ease, left 0.2s ease, font-size 0.2s ease, color 0.2s ease;
         }
 
         .form-input:focus ~ .form-label,
         .form-input:not(:placeholder-shown) ~ .form-label {
-            top: -0.55rem;
+            top: -0.6rem;
             left: 0.85rem;
             font-size: 0.75rem;
+            transform: none;
         }
 
         .form-input:focus ~ .form-label {
@@ -214,19 +235,59 @@ if ($is_login_page) {
             accent-color: #0f172a;
         }
 
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 0.75rem;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            padding: 0.35rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #64748b;
+            transition: color 0.2s ease;
+        }
+
+        .toggle-password:hover,
+        .toggle-password:focus-visible {
+            color: #111827;
+            outline: none;
+        }
+
+        .toggle-password svg {
+            width: 1.15rem;
+            height: 1.15rem;
+        }
+
+        .toggle-password .icon-eye-off {
+            display: none;
+        }
+
+        .toggle-password[aria-pressed="true"] .icon-eye {
+            display: none;
+        }
+
+        .toggle-password[aria-pressed="true"] .icon-eye-off {
+            display: block;
+        }
+
         .form-link {
             margin-left: auto;
             font-size: 0.9rem;
-            color: #0f172a;
+            color: #c5444e;
             font-weight: 600;
-            text-decoration: none;
+            text-decoration: underline;
+            text-decoration-thickness: 1.5px;
+            text-underline-offset: 3px;
             transition: color 0.2s ease;
         }
 
         .form-link:hover,
         .form-link:focus-visible {
-            color: #111827;
-            text-decoration: underline;
+            color: #a6343d;
             outline: none;
         }
 
@@ -270,16 +331,17 @@ if ($is_login_page) {
         }
 
         .info-cta a {
-            color: #0f172a;
+            color: #c5444e;
             font-weight: 600;
-            text-decoration: none;
+            text-decoration: underline;
+            text-decoration-thickness: 1.5px;
+            text-underline-offset: 3px;
             transition: color 0.2s ease;
         }
 
         .info-cta a:hover,
         .info-cta a:focus-visible {
-            color: #111827;
-            text-decoration: underline;
+            color: #a6343d;
             outline: none;
         }
 
@@ -318,6 +380,9 @@ if ($is_login_page) {
 
     <div class="container">
         <div class="login-card" style="view-transition-name: header">
+            <span class="login-card__badge">
+                <?php esc_html_e('Garantías Online', 'garantias-online-360vo'); ?>
+            </span>
             <div class="login-card__logo">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
                     <style>
@@ -398,6 +463,19 @@ if ($is_login_page) {
                         <label for="user_pass" class="form-label">
                             <?php esc_html_e('Contraseña', 'garantias-online-360vo'); ?>
                         </label>
+                        <button
+                            type="button"
+                            class="toggle-password"
+                            data-toggle-target="user_pass"
+                            aria-pressed="false">
+                            <span class="screen-reader-text"><?php esc_html_e('Mostrar contraseña', 'garantias-online-360vo'); ?></span>
+                            <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="currentColor" d="M12 5c-5 0-9.27 3.11-11 7.5C2.73 16.89 7 20 12 20s9.27-3.11 11-7.5C21.27 8.11 17 5 12 5Zm0 13c-3.87 0-7.23-2.39-8.92-5.5C4.77 9.39 8.13 7 12 7s7.23 2.39 8.92 5.5C19.23 15.61 15.87 18 12 18Zm0-9a3.5 3.5 0 0 0-3.5 3.5c0 1.93 1.57 3.5 3.5 3.5s3.5-1.57 3.5-3.5S13.93 9 12 9Zm0 5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" />
+                            </svg>
+                            <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="currentColor" d="m3.53 2.47 18 18-1.06 1.06-2.6-2.6C16.1 20.09 14.1 20.97 12 21c-5 0-9.27-3.11-11-7.5a13.88 13.88 0 0 1 4.24-5.5L2.47 3.53 3.53 2.47zM6.62 9.3A11.62 11.62 0 0 0 3.08 13.5C4.77 16.61 8.13 19 12 19c1.61 0 3.13-.36 4.49-1.01l-2.18-2.18A3.5 3.5 0 0 1 8.2 11.7l-1.58-1.58zM12 7c1.11 0 2.17.23 3.13.66l-1.5 1.5A3.5 3.5 0 0 0 9.16 13l-1.48 1.48A3.5 3.5 0 0 1 12 7zm9.96 6.5a13.65 13.65 0 0 1-2.63 3.61l-1.06-1.06a11.65 11.65 0 0 0 2.16-2.55c-1.69-3.11-5.05-5.5-8.92-5.5-.51 0-1.01.03-1.5.1l-1.75-1.75c.98-.2 1.99-.35 3.25-.35 5 0 9.27 3.11 11 7.5z" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
@@ -432,6 +510,31 @@ if ($is_login_page) {
         </div>
     </div>
 </main>
+
+<script>
+    (function () {
+        const toggles = document.querySelectorAll('.toggle-password');
+        toggles.forEach((toggle) => {
+            const targetId = toggle.getAttribute('data-toggle-target');
+            const input = document.getElementById(targetId);
+            if (!input) {
+                return;
+            }
+
+            toggle.addEventListener('click', () => {
+                const isVisible = input.getAttribute('type') === 'text';
+                input.setAttribute('type', isVisible ? 'password' : 'text');
+                toggle.setAttribute('aria-pressed', String(!isVisible));
+                const label = toggle.querySelector('.screen-reader-text');
+                if (label) {
+                    label.textContent = isVisible
+                        ? <?php echo wp_json_encode(esc_html__('Mostrar contraseña', 'garantias-online-360vo')); ?>
+                        : <?php echo wp_json_encode(esc_html__('Ocultar contraseña', 'garantias-online-360vo')); ?>;
+                }
+            });
+        });
+    })();
+</script>
 
 <?php
 if ($is_login_page) {
