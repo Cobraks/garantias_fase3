@@ -45,21 +45,21 @@ if ($is_login_page) {
                 <span class="badge"><?php esc_html_e('Acceso', 'garantias-online-360vo'); ?></span>
             </div>
             <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
-            <h1><?php esc_html_e('Conecta con tu operativa diaria', 'garantias-online-360vo'); ?></h1>
-            <p><?php esc_html_e('Accede a tu panel para revisar incidencias, validar documentos pendientes y coordinar a tu equipo sin perder contexto.', 'garantias-online-360vo'); ?></p>
+            <h1><?php esc_html_e('Tu panel de garantías siempre disponible', 'garantias-online-360vo'); ?></h1>
+            <p><?php esc_html_e('Inicia sesión para crear nuevas garantías, seguir su evolución y descargar la documentación actualizada en cuestión de segundos.', 'garantias-online-360vo'); ?></p>
 
             <ul class="features-list">
                 <li>
                     <span class="feature-icon">✓</span>
-                    <span><?php esc_html_e('Consulta el estado de cada garantía y actúa con la información actualizada.', 'garantias-online-360vo'); ?></span>
+                    <span><?php esc_html_e('Crea garantías con el asistente paso a paso, validación de matrículas y guardado automático.', 'garantias-online-360vo'); ?></span>
                 </li>
                 <li>
                     <span class="feature-icon">✓</span>
-                    <span><?php esc_html_e('Responde alertas críticas desde una sola vista y mantén el flujo bajo control.', 'garantias-online-360vo'); ?></span>
+                    <span><?php esc_html_e('Filtra el histórico por plan, canal o concesionario y descarga certificados y contratos cuando los necesites.', 'garantias-online-360vo'); ?></span>
                 </li>
                 <li>
                     <span class="feature-icon">✓</span>
-                    <span><?php esc_html_e('Centraliza comunicación, documentación y vencimientos en un único espacio.', 'garantias-online-360vo'); ?></span>
+                    <span><?php esc_html_e('Recibe alertas de caducidad y seguimiento de averías para anticiparte a las incidencias.', 'garantias-online-360vo'); ?></span>
                 </li>
             </ul>
 
