@@ -155,32 +155,70 @@
 
     const avatarUpload = document.getElementById('avatar-upload');
     const avatarInput = document.getElementById('avatar');
+    const avatarPreview = document.getElementById('avatar-preview');
+    const avatarPreviewImage = document.getElementById('avatar-preview-image');
+
     if (avatarUpload && avatarInput) {
       avatarUpload.addEventListener('click', () => {
         avatarInput.click();
       });
 
-      avatarInput.addEventListener('change', () => {
+      const updateAvatarLabel = () => {
         const label = avatarUpload.querySelector('.file-label');
-        if (label) {
-          label.textContent = avatarInput.files && avatarInput.files.length
-            ? 'Imagen seleccionada'
-            : '+ Añadir imagen de perfil';
+        if (!label) {
+          return;
         }
+
+        const hasFile = avatarInput.files && avatarInput.files.length > 0;
+        label.textContent = hasFile ? 'Imagen seleccionada' : '+ Añadir imagen de perfil';
+      };
+
+      const updateAvatarPreview = () => {
+        if (!avatarPreview || !avatarPreviewImage) {
+          return;
+        }
+
+        const file = avatarInput.files && avatarInput.files[0];
+        if (!file) {
+          avatarPreviewImage.src = '';
+          avatarPreviewImage.hidden = true;
+          avatarPreview.dataset.hasImage = 'false';
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          avatarPreviewImage.src = typeof reader.result === 'string' ? reader.result : '';
+          avatarPreviewImage.hidden = false;
+          avatarPreview.dataset.hasImage = 'true';
+        };
+        reader.readAsDataURL(file);
+      };
+
+      avatarInput.addEventListener('change', () => {
+        updateAvatarLabel();
+        updateAvatarPreview();
       });
+
+      updateAvatarLabel();
+      updateAvatarPreview();
     }
 
     document.querySelectorAll('.password-toggle').forEach((toggle) => {
       toggle.addEventListener('click', () => {
-        const targetId = toggle.getAttribute('id') === 'toggle-password' ? 'password' : 'confirm_password';
-        const input = document.getElementById(targetId);
+        const targetId = toggle.getAttribute('data-target');
+        const input = targetId ? document.getElementById(targetId) : null;
         if (!input) {
           return;
         }
 
+        const icon = toggle.querySelector('.password-toggle__icon');
         const isPassword = input.type === 'password';
         input.type = isPassword ? 'text' : 'password';
-        toggle.textContent = isPassword ? '🔒' : '👁️';
+        toggle.setAttribute('aria-pressed', String(isPassword));
+        if (icon) {
+          icon.textContent = isPassword ? '🔒' : '👁️';
+        }
       });
     });
 

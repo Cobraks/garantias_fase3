@@ -25,6 +25,18 @@ $is_admin_user = current_user_can('manage_options');
 $home_destination = $is_admin_user
     ? home_url('/garantias-online')
     : home_url('/garantias-online/mis-garantias/');
+
+$additional_body_classes = [];
+
+if (! empty($is_register_page)) {
+    $additional_body_classes[] = 'register-body';
+}
+
+if (! empty($is_auth_page)) {
+    $additional_body_classes[] = 'auth-body';
+}
+
+$is_simple_layout = ! empty($is_register_page) || ! empty($is_auth_page);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -110,7 +122,8 @@ $home_destination = $is_admin_user
                     )); ?>" defer></script>
 </head>
 
-<body>
+<body <?php body_class($additional_body_classes); ?>>
+<?php if (! $is_simple_layout) : ?>
     <header class="top-bar" style="view-transition-name: header">
         <div class="top-bar__wrapper">
             <button class="top-bar__hamburger" aria-label="Menú">
@@ -226,5 +239,6 @@ $home_destination = $is_admin_user
             </ul>
         </nav>
     </header>
+<?php endif; ?>
     <div class="container">
         <div class="main-grid">
