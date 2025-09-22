@@ -6,6 +6,11 @@
   --auth-muted: #64748b;
 }
 
+.login-page {
+  --auth-accent: #c5444e;
+  --auth-accent-dark: #a8323c;
+}
+
 .body--auth {
   background: var(--auth-surface);
   color: var(--text-primary, #1f2937);
@@ -28,6 +33,7 @@
 
 .login-page .form-panel__inner {
   width: min(100%, 420px);
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -40,6 +46,7 @@
 .login-page .info-panel {
   gap: 1.25rem;
 }
+
 
 .login-page .auth-form {
   width: 100%;
@@ -70,14 +77,28 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
+
 .login-page .form-footer {
   margin-top: 1.25rem;
   justify-content: flex-start;
+  align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .login-page .form-footer .btn {
   min-width: 160px;
+}
+
+.login-page .form-footer .form-link {
+  font-weight: 600;
+  color: var(--auth-accent);
+  text-decoration: none;
+}
+
+.login-page .form-footer .form-link:hover,
+.login-page .form-footer .form-link:focus-visible {
+  text-decoration: underline;
 }
 
 .login-page .btn-primary {
@@ -89,6 +110,24 @@
 .login-page .btn-primary:hover,
 .login-page .btn-primary:focus-visible {
   background: var(--auth-accent-dark);
+}
+
+.login-page .badge {
+  background: rgba(197, 68, 78, 0.12);
+  color: #c5444e;
+}
+
+.login-page .features-list li .feature-icon {
+  color: #c5444e;
+}
+
+.login-page a {
+  color: #c5444e;
+}
+
+.login-page a:hover,
+.login-page a:focus-visible {
+  color: #a8323c;
 }
 
 @media (max-width: 1024px) {

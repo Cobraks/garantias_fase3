@@ -14,8 +14,9 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
 <main class="register-page" style="view-transition-name: register">
     <div class="container">
         <div class="info-panel">
-            <div class="brand-logo" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
+            <div class="brand-lockup" aria-hidden="true">
+                <div class="brand-logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
                     <style>.st0{fill:#ffffff;}.st1{fill:#c5444e;}</style>
                     <g id="Capa_2">
                         <polygon class="st0" points="191.4,51.6 151.7,15.6 103.6,1 59.8,16.8 16.5,49.6 7.1,97.4 11.7,144.3 46,183.6 96.5,199.3 141.9,184.2 188.7,150.4 193.3,97.9" />
@@ -36,10 +37,11 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             <path d="M183.8,132.2c-0.3-6.4,1.1-14.1-2.7-19.6l-0.1-0.1c-4.8-6.8-14.1-5.3-21.4-5.4c-5.1,0-11,0.2-14.7,4.1    c-3.6,3.6-3.8,9.3-3.8,14.2c0.1,4.8-0.2,9.5,0.3,14.2c0.9,10,7.9,12.6,17,12.4c3.4,0,6.8,0.1,10.2-0.1c2.4-0.1,4.8-0.3,7.1-1.2    c1.7-0.6,3-1.5,4.1-2.6l0.4,0.2l2.4-1.5l-0.5-1.9C183.8,141.2,183.9,136.5,183.8,132.2z M174.1,137.3c-0.3,4.5-3.2,5.4-7.2,5.4    c-2.9,0.1-5.8,0-8.7,0c-0.5,0-0.9,0-1.4,0v0l-6.1,5.7v-15.1l0,0c0-2.6,0-5.3,0-7.8c0.1-2.8-0.3-6.6,2.4-8.1c1.5-0.8,3.3-0.9,5-0.9    h8.4c5-0.1,7.7,1.2,7.6,6.5C174.2,127.9,174.2,132.6,174.1,137.3z" />
                         </g>
                     </g>
-                </svg>
+                    </svg>
+                </div>
+                <span class="badge"><?php esc_html_e('Registro', 'garantias-online-360vo'); ?></span>
             </div>
             <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
-            <span class="badge">Registro</span>
             <h1>Crea tu cuenta en Garantías Online</h1>
             <p>Activa tu panel para contratar, seguir y gestionar todas tus garantías desde un único lugar, con soporte experto y trazabilidad completa.</p>
 

@@ -17,8 +17,9 @@ if ($is_login_page) {
 <main class="register-page login-page" style="view-transition-name: login">
     <div class="container">
         <div class="info-panel">
-            <div class="brand-logo" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
+            <div class="brand-lockup" aria-hidden="true">
+                <div class="brand-logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
                     <style>.st0{fill:#ffffff;}.st1{fill:#c5444e;}</style>
                     <g id="Capa_2">
                         <polygon class="st0" points="191.4,51.6 151.7,15.6 103.6,1 59.8,16.8 16.5,49.6 7.1,97.4 11.7,144.3 46,183.6 96.5,199.3 141.9,184.2 188.7,150.4 193.3,97.9" />
@@ -39,25 +40,26 @@ if ($is_login_page) {
                             <path d="M183.8,132.2c-0.3-6.4,1.1-14.1-2.7-19.6l-0.1-0.1c-4.8-6.8-14.1-5.3-21.4-5.4c-5.1,0-11,0.2-14.7,4.1    c-3.6,3.6-3.8,9.3-3.8,14.2c0.1,4.8-0.2,9.5,0.3,14.2c0.9,10,7.9,12.6,17,12.4c3.4,0,6.8,0.1,10.2-0.1c2.4-0.1,4.8-0.3,7.1-1.2    c1.7-0.6,3-1.5,4.1-2.6l0.4,0.2l2.4-1.5l-0.5-1.9C183.8,141.2,183.9,136.5,183.8,132.2z M174.1,137.3c-0.3,4.5-3.2,5.4-7.2,5.4    c-2.9,0.1-5.8,0-8.7,0c-0.5,0-0.9,0-1.4,0v0l-6.1,5.7v-15.1l0,0c0-2.6,0-5.3,0-7.8c0.1-2.8-0.3-6.6,2.4-8.1c1.5-0.8,3.3-0.9,5-0.9    h8.4c5-0.1,7.7,1.2,7.6,6.5C174.2,127.9,174.2,132.6,174.1,137.3z" />
                         </g>
                     </g>
-                </svg>
+                    </svg>
+                </div>
+                <span class="badge"><?php esc_html_e('Acceso', 'garantias-online-360vo'); ?></span>
             </div>
             <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
-            <span class="badge"><?php esc_html_e('Acceso', 'garantias-online-360vo'); ?></span>
-            <h1><?php esc_html_e('Bienvenido de nuevo a Garantías Online', 'garantias-online-360vo'); ?></h1>
-            <p><?php esc_html_e('Inicia sesión para retomar tu trabajo, revisar alertas pendientes y seguir el estado de tus garantías en tiempo real.', 'garantias-online-360vo'); ?></p>
+            <h1><?php esc_html_e('Conecta con tu operativa diaria', 'garantias-online-360vo'); ?></h1>
+            <p><?php esc_html_e('Accede a tu panel para revisar incidencias, validar documentos pendientes y coordinar a tu equipo sin perder contexto.', 'garantias-online-360vo'); ?></p>
 
             <ul class="features-list">
                 <li>
                     <span class="feature-icon">✓</span>
-                    <span><?php esc_html_e('Accede a tus expedientes y documentos sin perder el contexto.', 'garantias-online-360vo'); ?></span>
+                    <span><?php esc_html_e('Consulta el estado de cada garantía y actúa con la información actualizada.', 'garantias-online-360vo'); ?></span>
                 </li>
                 <li>
                     <span class="feature-icon">✓</span>
-                    <span><?php esc_html_e('Responde incidencias y coordina a tu equipo desde una sola vista.', 'garantias-online-360vo'); ?></span>
+                    <span><?php esc_html_e('Responde alertas críticas desde una sola vista y mantén el flujo bajo control.', 'garantias-online-360vo'); ?></span>
                 </li>
                 <li>
                     <span class="feature-icon">✓</span>
-                    <span><?php esc_html_e('Recibe avisos críticos para no perder plazos importantes.', 'garantias-online-360vo'); ?></span>
+                    <span><?php esc_html_e('Centraliza comunicación, documentación y vencimientos en un único espacio.', 'garantias-online-360vo'); ?></span>
                 </li>
             </ul>
 
@@ -127,6 +129,9 @@ if ($is_login_page) {
                         <button type="submit" class="btn btn-primary">
                             <?php esc_html_e('Entrar', 'garantias-online-360vo'); ?>
                         </button>
+                        <a class="form-link" href="<?php echo esc_url(wp_lostpassword_url()); ?>">
+                            <?php esc_html_e('¿Has olvidado la contraseña?', 'garantias-online-360vo'); ?>
+                        </a>
                         <input type="hidden" name="redirect_to" value="<?php echo esc_url(home_url('/garantias-online/')); ?>">
                     </div>
                 </form>

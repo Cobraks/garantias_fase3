@@ -19,9 +19,7 @@
 }
 
 .body--auth {
-  --auth-footer-height: 36px;
-  height: calc(100dvh - var(--auth-footer-height));
-  min-height: 0;
+  height: calc(100dvh - 36px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -29,10 +27,9 @@
 
 .container.container--auth {
   flex: 1;
-  height: calc(100dvh - var(--auth-footer-height));
+  height: calc(100dvh - 36px);
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
 .main-grid.main-grid--auth {
@@ -51,7 +48,7 @@ footer.footer {
 }
 
 footer.footer .footer__wrapper {
-  height: var(--auth-footer-height);
+  height: 36px;
   margin-top: 0;
   padding-block: calc(var(--spacing-1) * 0.75);
   border-radius: 1rem 1rem 0 0;
@@ -101,7 +98,8 @@ footer.footer .footer__wrapper {
   background: #fff;
   border-radius: 24px;
   padding: clamp(2rem, 5vh, 3.5rem);
-  box-shadow: var(--shadow);
+  box-shadow: none;
+  border: 1px solid var(--border);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -110,10 +108,17 @@ footer.footer .footer__wrapper {
   overflow: hidden;
 }
 
+.register-page .brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
 .register-page .brand-logo {
   width: clamp(3.5rem, 5vw, 4.5rem);
-  margin-bottom: 1.5rem;
   display: inline-flex;
+  margin: 0;
 }
 
 .register-page .brand-logo svg {
@@ -123,14 +128,17 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .badge {
-  display: inline-block;
-  background: #f0f4ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(37, 99, 235, 0.1);
   color: var(--primary);
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
 }
 
 .register-page .info-panel h1 {
@@ -183,7 +191,8 @@ footer.footer .footer__wrapper {
   background: #fff;
   border-radius: 24px;
   padding: clamp(2rem, 5vh, 3.5rem);
-  box-shadow: var(--shadow);
+  box-shadow: none;
+  border: 1px solid var(--border);
   height: 100%;
   min-height: 0;
   overflow-y: auto;
