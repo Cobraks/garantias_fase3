@@ -102,10 +102,10 @@ if ($is_login_page) {
             gap: 0.5rem;
             padding: 0.5rem 1.25rem;
             border-radius: 999px;
-            background: linear-gradient(135deg, rgba(219, 234, 254, 0.95), rgba(191, 219, 254, 0.95));
-            border: 1px solid rgba(30, 64, 175, 0.25);
-            box-shadow: 0 18px 34px -22px rgba(30, 64, 175, 0.45);
-            color: #1e3a8a;
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            box-shadow: 0 18px 34px -22px rgba(15, 23, 42, 0.35);
+            color: #000000;
             font-size: 0.78rem;
             font-weight: 600;
             text-transform: uppercase;
@@ -114,32 +114,31 @@ if ($is_login_page) {
         }
 
         .login-card__badge-icon {
-            width: 1rem;
-            height: 1rem;
+            width: 1.5rem;
+            height: 1.5rem;
         }
 
         .login-card__badge-status {
-            position: absolute;
-            top: 4px;
-            right: 4px;
+            display: inline-block;
             width: 0.55rem;
             height: 0.55rem;
             border-radius: 50%;
-            background: radial-gradient(circle at center, #4ade80 0%, #22c55e 60%, rgba(34, 197, 94, 0.6) 100%);
-            box-shadow: 0 0 0 rgba(34, 197, 94, 0.4);
+            background: radial-gradient(circle at center, #f87171 0%, #dc2626 60%, rgba(220, 38, 38, 0.6) 100%);
+            box-shadow: 0 0 0 rgba(220, 38, 38, 0.4);
             animation: badge-pulse 1.6s ease-in-out infinite;
+            margin-left: 0.35rem;
         }
 
         @keyframes badge-pulse {
             0%,
             100% {
                 opacity: 1;
-                box-shadow: 0 0 0 rgba(34, 197, 94, 0.4);
+                box-shadow: 0 0 0 rgba(220, 38, 38, 0.4);
             }
 
             50% {
                 opacity: 0.6;
-                box-shadow: 0 0 6px rgba(34, 197, 94, 0.8);
+                box-shadow: 0 0 6px rgba(220, 38, 38, 0.75);
             }
         }
 
@@ -420,9 +419,9 @@ if ($is_login_page) {
     <div class="container">
         <div class="login-card" style="view-transition-name: header">
             <span class="login-card__badge">
-                <span class="login-card__badge-status" aria-hidden="true"></span>
                 <?php echo Svg::icon('shield', 'login-card__badge-icon'); ?>
                 <span class="login-card__badge-text"><?php esc_html_e('Garantías Online', 'garantias-online-360vo'); ?></span>
+                <span class="login-card__badge-status" aria-hidden="true"></span>
             </span>
             <div class="login-card__logo">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
