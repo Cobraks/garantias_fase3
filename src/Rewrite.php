@@ -41,6 +41,7 @@ class Rewrite
             '/nueva-garantia/?$'      => 'add',
             '/mis-garantias/?$'       => 'list',
             '/login/?$'               => 'login',
+            '/restablecer-clave/?$'   => 'lostpassword',
             '/registro/?$'            => 'register',
             '/averias/?$'             => 'averias',
         ];
