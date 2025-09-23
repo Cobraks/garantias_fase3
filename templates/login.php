@@ -142,9 +142,9 @@ if ($is_login_page) {
             width: 0.55rem;
             height: 0.55rem;
             border-radius: 50%;
-            background: radial-gradient(circle at center, #fff7f7 0%, #ffe4e4 70%, rgba(255, 255, 255, 0.8) 100%);
-            box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.2);
-            animation: badge-status-breathe 2.6s ease-in-out infinite;
+            background: radial-gradient(circle at center, #fff7f7 0%, #ffe7e7 70%, rgba(255, 255, 255, 0.86) 100%);
+            box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.18);
+            animation: badge-status-breathe 2.8s cubic-bezier(0.68, 0, 0.32, 1) infinite;
             margin-left: 0.35rem;
             overflow: hidden;
         }
@@ -152,72 +152,71 @@ if ($is_login_page) {
         .login-card__badge-status::after {
             content: "";
             position: absolute;
-            inset: -45%;
+            inset: -50%;
             border-radius: inherit;
             background: radial-gradient(circle at center, rgba(248, 113, 113, 0.55) 0%, rgba(248, 113, 113, 0) 70%);
             opacity: 0;
-            transform: scale(0.7);
-            transition: opacity 0.3s ease;
-            animation: badge-status-glow 2.6s ease-in-out infinite;
+            transform: scale(0.65);
+            animation: badge-status-glow 2.8s cubic-bezier(0.68, 0, 0.32, 1) infinite;
             pointer-events: none;
         }
 
         @keyframes badge-status-breathe {
             0% {
-                transform: scale(0.82);
-                background: radial-gradient(circle at center, #fff7f7 0%, #ffe4e4 70%, rgba(255, 255, 255, 0.85) 100%);
-                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.15);
+                transform: scale(0.84);
+                background: radial-gradient(circle at center, #fff8f8 0%, #ffeaea 72%, rgba(255, 255, 255, 0.88) 100%);
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.16);
             }
 
-            18% {
-                transform: scale(1);
-                background: radial-gradient(circle at center, #ff6961 0%, #dc2626 68%, #7f1d1d 100%);
-                box-shadow: 0 0 12px 2px rgba(248, 113, 113, 0.4);
-            }
-
-            34% {
+            28% {
                 transform: scale(0.96);
-                background: radial-gradient(circle at center, #ff7b72 0%, #ef4444 70%, #991b1b 100%);
-                box-shadow: 0 0 10px 1px rgba(248, 113, 113, 0.32);
+                background: radial-gradient(circle at center, #ffc8c5 0%, #f87171 70%, #dc2626 100%);
+                box-shadow: 0 0 10px 1px rgba(248, 113, 113, 0.35);
             }
 
-            58% {
-                transform: scale(0.86);
-                background: radial-gradient(circle at center, #fff3f3 0%, #ffe2e2 68%, rgba(255, 255, 255, 0.8) 100%);
-                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.14);
+            45% {
+                transform: scale(1.04);
+                background: radial-gradient(circle at center, #ff9b95 0%, #ef4444 68%, #991b1b 100%);
+                box-shadow: 0 0 14px 3px rgba(248, 113, 113, 0.42);
+            }
+
+            70% {
+                transform: scale(0.92);
+                background: radial-gradient(circle at center, #ffd7d5 0%, #feb2b2 70%, rgba(255, 255, 255, 0.84) 100%);
+                box-shadow: 0 0 4px 0 rgba(248, 113, 113, 0.22);
             }
 
             100% {
-                transform: scale(0.82);
-                background: radial-gradient(circle at center, #fff7f7 0%, #ffe4e4 70%, rgba(255, 255, 255, 0.85) 100%);
-                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.15);
+                transform: scale(0.84);
+                background: radial-gradient(circle at center, #fff8f8 0%, #ffeaea 72%, rgba(255, 255, 255, 0.88) 100%);
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.16);
             }
         }
 
         @keyframes badge-status-glow {
             0% {
                 opacity: 0;
-                transform: scale(0.7);
+                transform: scale(0.65);
             }
 
-            20% {
-                opacity: 0.55;
-                transform: scale(1.6);
+            30% {
+                opacity: 0.5;
+                transform: scale(1.4);
             }
 
-            35% {
-                opacity: 0.28;
-                transform: scale(1.9);
+            48% {
+                opacity: 0.3;
+                transform: scale(1.75);
             }
 
-            65% {
+            72% {
                 opacity: 0.08;
-                transform: scale(1.2);
+                transform: scale(1.15);
             }
 
             100% {
                 opacity: 0;
-                transform: scale(0.7);
+                transform: scale(0.65);
             }
         }
 
