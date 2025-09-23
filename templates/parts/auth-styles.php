@@ -356,10 +356,7 @@
         }
 
         .form-field-error {
-            position: absolute;
-            left: 0;
-            bottom: -1.2rem;
-            margin: 0;
+            margin-top: 0.4rem;
             font-size: 0.875rem;
             color: #dc2626;
         }
