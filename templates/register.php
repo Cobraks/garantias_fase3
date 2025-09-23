@@ -378,26 +378,37 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 Rellena la siguiente información para cumplimentar la Orden de domiciliación de adeudo directo SEPA B2B
                             </div>
 
-                            <div class="input-container">
-                                <input type="text" id="sepa_name" class="form-input" placeholder=" ">
-                                <label for="sepa_name" class="form-label">Nombre completo*</label>
-                            </div>
-
-                            <div class="input-container">
-                                <input type="text" id="sepa_address" class="form-input" placeholder=" ">
-                                <label for="sepa_address" class="form-label">Dirección completa</label>
-                                <p class="form-hint">Incluye calle, número, código postal y población</p>
-                            </div>
-
-                            <div class="form-row">
+                            <div class="form-row form-row--two">
                                 <div class="input-container">
-                                    <input type="text" id="sepa_state" class="form-input" placeholder=" ">
-                                    <label for="sepa_state" class="form-label">Provincia</label>
+                                    <input type="text" id="sepa_name" class="form-input" placeholder=" ">
+                                    <label for="sepa_name" class="form-label">Nombre completo</label>
                                 </div>
 
                                 <div class="input-container">
-                                    <input type="text" id="sepa_country" class="form-input" placeholder=" ">
+                                    <input type="text" id="sepa_country" class="form-input" placeholder=" " value="España">
                                     <label for="sepa_country" class="form-label">País</label>
+                                </div>
+                            </div>
+
+                            <div class="form-row form-row--sepa-address">
+                                <div class="input-container">
+                                    <input type="text" id="sepa_address" class="form-input" placeholder=" ">
+                                    <label for="sepa_address" class="form-label">Dirección</label>
+                                </div>
+
+                                <div class="input-container">
+                                    <input type="text" id="sepa_postal_code" class="form-input" placeholder=" ">
+                                    <label for="sepa_postal_code" class="form-label">Código postal</label>
+                                </div>
+
+                                <div class="input-container">
+                                    <input type="text" id="sepa_city" class="form-input" placeholder=" ">
+                                    <label for="sepa_city" class="form-label">Población</label>
+                                </div>
+
+                                <div class="input-container">
+                                    <input type="text" id="sepa_state" class="form-input" placeholder=" ">
+                                    <label for="sepa_state" class="form-label">Provincia</label>
                                 </div>
                             </div>
 
@@ -414,10 +425,6 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 </div>
                             </div>
 
-                            <div class="input-container">
-                                <input type="text" id="sepa_date" class="form-input" placeholder=" " value="Madrid, <?php echo esc_attr(date_i18n('j \d\e F \d\e Y')); ?>" readonly>
-                                <label for="sepa_date" class="form-label">Fecha-Localidad</label>
-                            </div>
                         </div>
                     </div>
 
@@ -506,11 +513,23 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Dirección:</span>
-                                <span class="summary-value" id="summary-sepa-address">Calle Principal 123, 28001 Madrid</span>
+                                <span class="summary-value" id="summary-sepa-address">Calle Principal 123</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Código postal:</span>
+                                <span class="summary-value" id="summary-sepa-postal-code">28001</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Población:</span>
+                                <span class="summary-value" id="summary-sepa-city">Madrid</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Provincia:</span>
                                 <span class="summary-value" id="summary-sepa-state">Madrid</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">País:</span>
+                                <span class="summary-value" id="summary-sepa-country">España</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">IBAN:</span>
