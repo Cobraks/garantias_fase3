@@ -15,27 +15,56 @@ if ($is_login_page) {
 }
 
 $default_redirect = home_url('/garantias-online/');
-$raw_redirect_to  = isset($_GET['redirect_to']) ? wp_unslash($_GET['redirect_to']) : '';
+$raw_redirect_to  = get_query_var('redirect_to');
+if ($raw_redirect_to === '') {
+    $raw_redirect_to = isset($_GET['redirect_to']) ? wp_unslash($_GET['redirect_to']) : '';
+}
 $redirect_to      = $raw_redirect_to !== ''
     ? wp_validate_redirect($raw_redirect_to, $default_redirect)
     : $default_redirect;
 
-$email_prefill = '';
-if (isset($_GET['email'])) {
+$email_prefill    = '';
+$email_candidate = '';
+if (get_query_var('email') !== '') {
+    $email_candidate = get_query_var('email');
+} elseif (isset($_GET['email'])) {
     $email_candidate = wp_unslash($_GET['email']);
-    $email_prefill   = sanitize_email($email_candidate);
+}
 
-    if ($email_prefill === '') {
-        $email_prefill = sanitize_text_field($email_candidate);
+if ($email_candidate !== '') {
+    if (! is_scalar($email_candidate)) {
+        $email_candidate = '';
+    } else {
+        $email_candidate = (string) $email_candidate;
+    }
+
+    if ($email_candidate !== '') {
+        $email_prefill = sanitize_email($email_candidate);
+
+        if ($email_prefill === '') {
+            $email_prefill = sanitize_text_field($email_candidate);
+        }
     }
 }
 
-$remember_param   = isset($_GET['remember']) ? wp_unslash($_GET['remember']) : '';
+$remember_param = get_query_var('remember');
+if ($remember_param === '') {
+    $remember_param = isset($_GET['remember']) ? wp_unslash($_GET['remember']) : '';
+}
+$remember_param = is_scalar($remember_param) ? (string) $remember_param : '';
 $remember_checked = in_array(sanitize_text_field($remember_param), ['1', 'on'], true);
 
 $error_code = '';
-if (isset($_GET['error'])) {
-    $error_code = sanitize_key(wp_unslash($_GET['error']));
+if (get_query_var('error') !== '') {
+    $error_candidate = get_query_var('error');
+} elseif (isset($_GET['error'])) {
+    $error_candidate = wp_unslash($_GET['error']);
+} else {
+    $error_candidate = '';
+}
+
+if ($error_candidate !== '' && is_scalar($error_candidate)) {
+    $error_code = sanitize_key((string) $error_candidate);
 }
 
 $error_message = '';

@@ -17,27 +17,56 @@ if ($is_recovery_page) {
 }
 
 $default_login_url = home_url('/garantias-online/login/');
-$raw_redirect      = isset($_GET['redirect_to']) ? wp_unslash($_GET['redirect_to']) : '';
+$raw_redirect      = get_query_var('redirect_to');
+if ($raw_redirect === '') {
+    $raw_redirect = isset($_GET['redirect_to']) ? wp_unslash($_GET['redirect_to']) : '';
+}
 $redirect_to       = $raw_redirect !== ''
     ? wp_validate_redirect($raw_redirect, $default_login_url)
     : $default_login_url;
 
-$email_prefill = '';
-if (isset($_GET['email'])) {
+$email_prefill    = '';
+$email_candidate = '';
+if (get_query_var('email') !== '') {
+    $email_candidate = get_query_var('email');
+} elseif (isset($_GET['email'])) {
     $email_candidate = wp_unslash($_GET['email']);
-    $email_prefill   = sanitize_email($email_candidate);
+}
 
-    if ($email_prefill === '') {
-        $email_prefill = sanitize_text_field($email_candidate);
+if ($email_candidate !== '') {
+    if (! is_scalar($email_candidate)) {
+        $email_candidate = '';
+    } else {
+        $email_candidate = (string) $email_candidate;
+    }
+
+    if ($email_candidate !== '') {
+        $email_prefill = sanitize_email($email_candidate);
+
+        if ($email_prefill === '') {
+            $email_prefill = sanitize_text_field($email_candidate);
+        }
     }
 }
 
 $error_code = '';
-if (isset($_GET['error'])) {
-    $error_code = sanitize_key(wp_unslash($_GET['error']));
+if (get_query_var('error') !== '') {
+    $error_candidate = get_query_var('error');
+} elseif (isset($_GET['error'])) {
+    $error_candidate = wp_unslash($_GET['error']);
+} else {
+    $error_candidate = '';
 }
 
-$sent_param  = isset($_GET['sent']) ? wp_unslash($_GET['sent']) : '';
+if ($error_candidate !== '' && is_scalar($error_candidate)) {
+    $error_code = sanitize_key((string) $error_candidate);
+}
+
+$sent_param = get_query_var('sent');
+if ($sent_param === '') {
+    $sent_param = isset($_GET['sent']) ? wp_unslash($_GET['sent']) : '';
+}
+$sent_param  = is_scalar($sent_param) ? (string) $sent_param : '';
 $sent_status = sanitize_key($sent_param) === '1';
 
 $notice_message = '';

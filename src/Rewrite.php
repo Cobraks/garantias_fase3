@@ -27,6 +27,11 @@ class Rewrite
     public static function add_query_vars(array $vars): array
     {
         $vars[] = self::VAR_ENDPOINT;
+        $vars[] = 'error';
+        $vars[] = 'email';
+        $vars[] = 'remember';
+        $vars[] = 'redirect_to';
+        $vars[] = 'sent';
         return $vars;
     }
 
