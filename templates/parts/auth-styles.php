@@ -286,9 +286,7 @@
 
         .input-container {
             position: relative;
-            display: flex;
-            flex-direction: column;
-            padding-bottom: 1.75rem;
+            display: block;
         }
 
         .form-input {
