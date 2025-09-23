@@ -107,19 +107,17 @@
     }
 
     const channelButtons = document.querySelectorAll('.channel-btn');
-    const companyField = document.getElementById('company-field');
+    const companySection = document.getElementById('company-section');
 
     const updateChannel = (channel) => {
       channelButtons.forEach((button) => {
         button.classList.toggle('active', button.getAttribute('data-channel') === channel);
       });
 
-      if (companyField) {
-        if (channel === 'professional') {
-          companyField.classList.add('visible');
-        } else {
-          companyField.classList.remove('visible');
-        }
+      if (companySection) {
+        const showCompanyFields = channel === 'professional';
+        companySection.hidden = !showCompanyFields;
+        companySection.setAttribute('aria-hidden', showCompanyFields ? 'false' : 'true');
       }
     };
 
