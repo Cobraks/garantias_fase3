@@ -118,12 +118,20 @@ body.login.go-reset-screen #login h1 a {
 }
 
 body.login.go-reset-screen #resetpassform {
-    margin-top: 1.5rem;
+    margin: 0;
+    padding: 0;
+    border: none;
 }
 
 body.login.go-reset-screen #resetpassform p {
-    margin-bottom: 1.5rem;
+    margin: 0;
     font-size: 0.95rem;
+}
+
+body.login.go-reset-screen #resetpassform .wp-pwd {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
 }
 
 body.login.go-reset-screen #resetpassform label {
@@ -159,21 +167,50 @@ body.login.go-reset-screen #resetpassform .description {
     margin-top: 0.75rem;
 }
 
-body.login.go-reset-screen #resetpassform .submit .button-primary {
+body.login.go-reset-screen #resetpassform .pw-weak,
+body.login.go-reset-screen #resetpassform .pw-strong,
+body.login.go-reset-screen #resetpassform .pw-medium {
+    margin-top: 0.5rem;
+}
+
+body.login.go-reset-screen #resetpassform .button,
+body.login.go-reset-screen #resetpassform .button-primary,
+body.login.go-reset-screen #resetpassform .button-secondary {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
     width: 100%;
     border-radius: 14px;
     border: none;
     padding: 0.95rem 1rem;
     font-weight: 600;
     font-size: 1rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+body.login.go-reset-screen #resetpassform .button-primary {
     background: linear-gradient(135deg, #1f2937, #111827);
     color: #ffffff;
     box-shadow: 0 14px 32px -18px rgba(15, 23, 42, 0.65);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
-body.login.go-reset-screen #resetpassform .submit .button-primary:hover,
-body.login.go-reset-screen #resetpassform .submit .button-primary:focus {
+body.login.go-reset-screen #resetpassform .button-secondary {
+    background: linear-gradient(135deg, #1f2937, #111827);
+    color: #ffffff;
+    box-shadow: 0 14px 32px -18px rgba(15, 23, 42, 0.65);
+}
+
+body.login.go-reset-screen #resetpassform .button-secondary:hover,
+body.login.go-reset-screen #resetpassform .button-secondary:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 36px -18px rgba(15, 23, 42, 0.7);
+    background: linear-gradient(135deg, #111827, #0f172a);
+}
+
+body.login.go-reset-screen #resetpassform .button-primary:hover,
+body.login.go-reset-screen #resetpassform .button-primary:focus {
     transform: translateY(-1px);
     box-shadow: 0 18px 36px -18px rgba(15, 23, 42, 0.7);
     background: linear-gradient(135deg, #111827, #0f172a);
@@ -209,7 +246,7 @@ body.login.go-reset-screen #login .notice-error {
 }
 
 body.login.go-reset-screen #login form .submit {
-    margin-top: 2rem;
+    margin-top: 1.75rem;
 }
 
 body.login.go-reset-screen #nav,
