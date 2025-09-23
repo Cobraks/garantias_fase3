@@ -111,6 +111,24 @@ if ($is_login_page) {
             text-transform: uppercase;
             letter-spacing: 0.08em;
             white-space: nowrap;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .login-card__badge::after {
+            content: "";
+            position: absolute;
+            inset: -120% -40%;
+            background: linear-gradient(
+                115deg,
+                rgba(255, 255, 255, 0) 10%,
+                rgba(255, 255, 255, 0.6) 45%,
+                rgba(255, 255, 255, 0) 70%
+            );
+            transform: translateX(-120%) rotate(18deg);
+            animation: badge-sheen 4.5s ease-in-out infinite;
+            pointer-events: none;
+            mix-blend-mode: screen;
         }
 
         .login-card__badge-icon {
@@ -123,22 +141,69 @@ if ($is_login_page) {
             width: 0.55rem;
             height: 0.55rem;
             border-radius: 50%;
-            background: radial-gradient(circle at center, #f87171 0%, #dc2626 60%, rgba(220, 38, 38, 0.6) 100%);
-            box-shadow: 0 0 0 rgba(220, 38, 38, 0.4);
-            animation: badge-pulse 1.6s ease-in-out infinite;
+            background: radial-gradient(circle at center, #dc2626 0%, #7f1d1d 70%);
+            box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.3);
+            animation: badge-status-blink 2.4s ease-in-out infinite;
             margin-left: 0.35rem;
         }
 
-        @keyframes badge-pulse {
-            0%,
-            100% {
-                opacity: 1;
-                box-shadow: 0 0 0 rgba(220, 38, 38, 0.4);
+        @keyframes badge-status-blink {
+            0% {
+                opacity: 0.2;
+                transform: scale(0.7);
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.2);
             }
 
-            50% {
-                opacity: 0.6;
-                box-shadow: 0 0 6px rgba(220, 38, 38, 0.75);
+            12% {
+                opacity: 1;
+                transform: scale(1);
+                box-shadow: 0 0 12px 2px rgba(248, 113, 113, 0.55);
+            }
+
+            25% {
+                opacity: 0.85;
+                transform: scale(0.95);
+                box-shadow: 0 0 10px 1px rgba(248, 113, 113, 0.45);
+            }
+
+            45% {
+                opacity: 0.35;
+                transform: scale(0.75);
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.25);
+            }
+
+            65% {
+                opacity: 0.12;
+                transform: scale(0.65);
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.12);
+            }
+
+            100% {
+                opacity: 0.2;
+                transform: scale(0.7);
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.2);
+            }
+        }
+
+        @keyframes badge-sheen {
+            0%,
+            55% {
+                transform: translateX(-120%) rotate(18deg);
+                opacity: 0;
+            }
+
+            65% {
+                opacity: 0.2;
+            }
+
+            80% {
+                transform: translateX(120%) rotate(18deg);
+                opacity: 0.4;
+            }
+
+            100% {
+                transform: translateX(140%) rotate(18deg);
+                opacity: 0;
             }
         }
 
