@@ -3,6 +3,7 @@
 namespace GarantiasOnline360VO\Auth;
 
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
+use WP_User;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -12,18 +13,21 @@ class PasswordResetMailer
 {
     public static function init(): void
     {
-        add_filter('retrieve_password_notification_email', [__CLASS__, 'filter_notification_email'], 10, 2);
+        add_filter('retrieve_password_notification_email', [__CLASS__, 'filter_notification_email'], 10, 4);
     }
 
     /**
      * @param array<string,mixed> $email
-     * @param array<string,mixed> $user_data
+     * @param string $key
+     * @param string $user_login
+     * @param WP_User $user
      * @return array<string,mixed>
      */
-    public static function filter_notification_email(array $email, array $user_data): array
+    public static function filter_notification_email(array $email, string $key, string $user_login, WP_User $user): array
     {
-        $user_login = isset($user_data['user_login']) ? (string) $user_data['user_login'] : '';
-        $key        = isset($user_data['key']) ? (string) $user_data['key'] : '';
+        $user_login = $user->user_login ?? $user_login;
+        $user_login = is_string($user_login) ? $user_login : '';
+        $key        = trim($key);
 
         if ($user_login === '' || $key === '') {
             return $email;
