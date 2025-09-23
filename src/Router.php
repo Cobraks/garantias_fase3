@@ -31,12 +31,20 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
 */
 
         // si no está logueado y no viene a home o register, fuerza raíz:
-        if (! is_user_logged_in() && ! in_array($endpoint, ['home', 'register'], true)) {
+        if (! is_user_logged_in() && ! in_array($endpoint, ['home', 'register', 'login', 'lostpassword'], true)) {
             wp_safe_redirect(home_url('/garantias-online/'));
             exit;
         }
 
         $is_admin_user = current_user_can('manage_options');
+
+        if (is_user_logged_in() && in_array($endpoint, ['login', 'lostpassword'], true)) {
+            $destination = $is_admin_user
+                ? home_url('/garantias-online/')
+                : home_url('/garantias-online/mis-garantias/');
+            wp_safe_redirect($destination);
+            exit;
+        }
 
         if (is_user_logged_in() && ! $is_admin_user && in_array($endpoint, ['dashboard', 'home'], true)) {
             wp_safe_redirect(home_url('/garantias-online/mis-garantias/'));
@@ -62,6 +70,9 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
                 break;
             case 'login':
                 TemplateLoader::load('login');
+                break;
+            case 'lostpassword':
+                TemplateLoader::load('lost-password');
                 break;
             case 'register':
                 TemplateLoader::load('register');
