@@ -137,51 +137,87 @@ if ($is_login_page) {
         }
 
         .login-card__badge-status {
+            position: relative;
             display: inline-block;
             width: 0.55rem;
             height: 0.55rem;
             border-radius: 50%;
-            background: radial-gradient(circle at center, #dc2626 0%, #7f1d1d 70%);
-            box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.3);
-            animation: badge-status-blink 2.4s ease-in-out infinite;
+            background: radial-gradient(circle at center, #fff7f7 0%, #ffe4e4 70%, rgba(255, 255, 255, 0.8) 100%);
+            box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.2);
+            animation: badge-status-breathe 2.6s ease-in-out infinite;
             margin-left: 0.35rem;
+            overflow: hidden;
         }
 
-        @keyframes badge-status-blink {
+        .login-card__badge-status::after {
+            content: "";
+            position: absolute;
+            inset: -45%;
+            border-radius: inherit;
+            background: radial-gradient(circle at center, rgba(248, 113, 113, 0.55) 0%, rgba(248, 113, 113, 0) 70%);
+            opacity: 0;
+            transform: scale(0.7);
+            transition: opacity 0.3s ease;
+            animation: badge-status-glow 2.6s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes badge-status-breathe {
             0% {
-                opacity: 0.2;
-                transform: scale(0.7);
-                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.2);
+                transform: scale(0.82);
+                background: radial-gradient(circle at center, #fff7f7 0%, #ffe4e4 70%, rgba(255, 255, 255, 0.85) 100%);
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.15);
             }
 
-            12% {
-                opacity: 1;
+            18% {
                 transform: scale(1);
-                box-shadow: 0 0 12px 2px rgba(248, 113, 113, 0.55);
+                background: radial-gradient(circle at center, #ff6961 0%, #dc2626 68%, #7f1d1d 100%);
+                box-shadow: 0 0 12px 2px rgba(248, 113, 113, 0.4);
             }
 
-            25% {
-                opacity: 0.85;
-                transform: scale(0.95);
-                box-shadow: 0 0 10px 1px rgba(248, 113, 113, 0.45);
+            34% {
+                transform: scale(0.96);
+                background: radial-gradient(circle at center, #ff7b72 0%, #ef4444 70%, #991b1b 100%);
+                box-shadow: 0 0 10px 1px rgba(248, 113, 113, 0.32);
             }
 
-            45% {
-                opacity: 0.35;
-                transform: scale(0.75);
-                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.25);
-            }
-
-            65% {
-                opacity: 0.12;
-                transform: scale(0.65);
-                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.12);
+            58% {
+                transform: scale(0.86);
+                background: radial-gradient(circle at center, #fff3f3 0%, #ffe2e2 68%, rgba(255, 255, 255, 0.8) 100%);
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.14);
             }
 
             100% {
-                opacity: 0.2;
+                transform: scale(0.82);
+                background: radial-gradient(circle at center, #fff7f7 0%, #ffe4e4 70%, rgba(255, 255, 255, 0.85) 100%);
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.15);
+            }
+        }
+
+        @keyframes badge-status-glow {
+            0% {
+                opacity: 0;
                 transform: scale(0.7);
-                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.2);
+            }
+
+            20% {
+                opacity: 0.55;
+                transform: scale(1.6);
+            }
+
+            35% {
+                opacity: 0.28;
+                transform: scale(1.9);
+            }
+
+            65% {
+                opacity: 0.08;
+                transform: scale(1.2);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(0.7);
             }
         }
 
