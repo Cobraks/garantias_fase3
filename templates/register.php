@@ -527,30 +527,14 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                         </div>
 
                         <div class="summary-group" id="summary-sepa">
-                            <div class="summary-title">Datos bancarios</div>
+                            <div class="summary-title">Datos para el SEPA</div>
                             <div class="summary-item">
                                 <span class="summary-label">Titular:</span>
                                 <span class="summary-value" id="summary-sepa-name">Juan Pérez García</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Dirección:</span>
-                                <span class="summary-value" id="summary-sepa-address">Calle Principal 123</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">Código postal:</span>
-                                <span class="summary-value" id="summary-sepa-postal-code">28001</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">Población:</span>
-                                <span class="summary-value" id="summary-sepa-city">Madrid</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">Provincia:</span>
-                                <span class="summary-value" id="summary-sepa-state">Madrid</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">País:</span>
-                                <span class="summary-value" id="summary-sepa-country">España</span>
+                                <span class="summary-value" id="summary-sepa-address">Calle Principal 123 local A, 28001 Madrid, Madrid, España</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">IBAN:</span>

@@ -959,6 +959,19 @@ footer.footer .footer__wrapper {
   animation: fadeIn 0.3s ease;
 }
 
+.register-page .help-panel ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+  list-style: disc;
+}
+
+.register-page .help-panel li {
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
 .register-page .help-panel__close {
   position: absolute;
   top: 0.5rem;
