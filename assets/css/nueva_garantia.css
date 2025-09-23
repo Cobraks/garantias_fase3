@@ -1458,8 +1458,7 @@ border-color: #2bc3ff;
       display: inline-block;
       vertical-align: middle;
       cursor: pointer;
-      margin-left: 4px;
-      margin-left: .5rem;
+      margin-left: 0;
       font-size: .9rem;
     }
 
