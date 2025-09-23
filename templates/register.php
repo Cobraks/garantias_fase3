@@ -287,7 +287,12 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             </div>
                         </div>
 
-                        <div class="form-row">
+                        <div class="form-row form-row--three">
+                            <div class="input-container">
+                                <input type="text" id="workshop_address" class="form-input" placeholder=" ">
+                                <label for="workshop_address" class="form-label">Dirección del taller</label>
+                            </div>
+
                             <div class="input-container">
                                 <input type="tel" id="workshop_phone" class="form-input" placeholder=" ">
                                 <label for="workshop_phone" class="form-label">Teléfono del taller</label>
@@ -337,18 +342,24 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             </div>
                             <div class="form-row">
                                 <div class="input-container">
-                                    <div class="file-upload">
+                                    <div class="file-upload" id="signature-upload">
                                         <div class="file-label">+ Subir imagen de firma</div>
                                         <p class="file-hint">Formatos: JPG, PNG (máx. 5MB)</p>
                                         <input type="file" id="signature" class="file-input" accept="image/*">
+                                        <div class="file-preview" id="signature-preview" hidden aria-hidden="true">
+                                            <img src="" alt="Previsualización de la firma" loading="lazy">
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="input-container">
-                                    <div class="file-upload">
+                                    <div class="file-upload" id="stamp-upload">
                                         <div class="file-label">+ Subir imagen de sello</div>
                                         <p class="file-hint">Formatos: JPG, PNG (máx. 5MB)</p>
                                         <input type="file" id="stamp" class="file-input" accept="image/*">
+                                        <div class="file-preview" id="stamp-preview" hidden aria-hidden="true">
+                                            <img src="" alt="Previsualización del sello" loading="lazy">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -385,17 +396,12 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 </div>
 
                                 <div class="input-container">
-                                    <input type="text" id="sepa_country" class="form-input" placeholder=" " value="España">
-                                    <label for="sepa_country" class="form-label">País</label>
-                                </div>
-                            </div>
-
-                            <div class="form-row form-row--sepa-address">
-                                <div class="input-container">
                                     <input type="text" id="sepa_address" class="form-input" placeholder=" ">
                                     <label for="sepa_address" class="form-label">Dirección</label>
                                 </div>
+                            </div>
 
+                            <div class="form-row form-row--four">
                                 <div class="input-container">
                                     <input type="text" id="sepa_postal_code" class="form-input" placeholder=" ">
                                     <label for="sepa_postal_code" class="form-label">Código postal</label>
@@ -409,6 +415,11 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 <div class="input-container">
                                     <input type="text" id="sepa_state" class="form-input" placeholder=" ">
                                     <label for="sepa_state" class="form-label">Provincia</label>
+                                </div>
+
+                                <div class="input-container">
+                                    <input type="text" id="sepa_country" class="form-input" placeholder=" " value="España">
+                                    <label for="sepa_country" class="form-label">País</label>
                                 </div>
                             </div>
 
@@ -478,6 +489,10 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             <div class="summary-item">
                                 <span class="summary-label">Contacto:</span>
                                 <span class="summary-value" id="summary-workshop-contact">María González</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Dirección:</span>
+                                <span class="summary-value" id="summary-workshop-address">Calle Talleres 45</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Teléfono:</span>
