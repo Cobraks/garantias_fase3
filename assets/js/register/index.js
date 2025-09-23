@@ -107,24 +107,25 @@
     }
 
     const channelButtons = document.querySelectorAll('.channel-btn');
-    const companyField = document.getElementById('company-field');
+    const companySection = document.getElementById('company-section');
+
+    if (companySection) {
+      companySection.setAttribute('aria-hidden', 'true');
+    }
 
     const updateChannel = (channel) => {
       channelButtons.forEach((button) => {
         button.classList.toggle('active', button.getAttribute('data-channel') === channel);
       });
 
-      if (companyField) {
-        if (channel === 'professional') {
-          companyField.classList.add('visible');
-        } else {
-          companyField.classList.remove('visible');
-        }
+      if (companySection) {
+        const showCompanyFields = channel === 'professional';
+        companySection.hidden = !showCompanyFields;
+        companySection.setAttribute('aria-hidden', showCompanyFields ? 'false' : 'true');
       }
     };
 
     if (channelButtons.length) {
-      updateChannel(channelButtons[0].getAttribute('data-channel'));
       channelButtons.forEach((button) => {
         button.addEventListener('click', () => {
           const channel = button.getAttribute('data-channel');
@@ -205,6 +206,73 @@
         }
       });
     }
+
+    const setupImageUpload = (containerId, inputId, previewId) => {
+      const container = document.getElementById(containerId);
+      const input = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      const previewImage = preview ? preview.querySelector('img') : null;
+
+      if (!container || !input) {
+        return;
+      }
+
+      const label = container.querySelector('.file-label');
+      const defaultLabel = label ? label.textContent : '';
+
+      const resetPreview = () => {
+        if (preview) {
+          preview.hidden = true;
+          preview.setAttribute('aria-hidden', 'true');
+        }
+        if (previewImage) {
+          previewImage.removeAttribute('src');
+        }
+        if (label) {
+          label.textContent = defaultLabel;
+        }
+      };
+
+      container.addEventListener('click', (event) => {
+        if (event.target !== input) {
+          input.click();
+        }
+      });
+
+      input.addEventListener('change', () => {
+        if (!preview || !previewImage) {
+          if (label) {
+            label.textContent = input.files && input.files.length ? input.files[0].name : defaultLabel;
+          }
+          return;
+        }
+
+        if (input.files && input.files.length) {
+          const [file] = input.files;
+          if (file && file.type && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+              if (typeof reader.result === 'string') {
+                previewImage.src = reader.result;
+                preview.hidden = false;
+                preview.setAttribute('aria-hidden', 'false');
+                if (label) {
+                  label.textContent = file.name;
+                }
+              }
+            });
+            reader.readAsDataURL(file);
+          } else {
+            resetPreview();
+          }
+        } else {
+          resetPreview();
+        }
+      });
+    };
+
+    setupImageUpload('signature-upload', 'signature', 'signature-preview');
+    setupImageUpload('stamp-upload', 'stamp', 'stamp-preview');
 
     document.querySelectorAll('.password-toggle').forEach((toggle) => {
       const targetId = toggle.getAttribute('data-target');
