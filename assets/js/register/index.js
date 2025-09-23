@@ -109,6 +109,10 @@
     const channelButtons = document.querySelectorAll('.channel-btn');
     const companySection = document.getElementById('company-section');
 
+    if (companySection) {
+      companySection.setAttribute('aria-hidden', 'true');
+    }
+
     const updateChannel = (channel) => {
       channelButtons.forEach((button) => {
         button.classList.toggle('active', button.getAttribute('data-channel') === channel);
@@ -122,7 +126,6 @@
     };
 
     if (channelButtons.length) {
-      updateChannel(channelButtons[0].getAttribute('data-channel'));
       channelButtons.forEach((button) => {
         button.addEventListener('click', () => {
           const channel = button.getAttribute('data-channel');

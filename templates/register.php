@@ -134,7 +134,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 <label for="email" class="form-label">Correo electrónico</label>
                             </div>
 
-                            <div class="input-container">
+                            <div class="input-container input-container--with-toggle">
                                 <input type="password" id="password" class="form-input input-with-icon" placeholder=" " required>
                                 <label for="password" class="form-label">Contraseña</label>
                                 <button
@@ -151,7 +151,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 <p class="form-hint">Mínimo 8 caracteres con números y símbolos</p>
                             </div>
 
-                            <div class="input-container">
+                            <div class="input-container input-container--with-toggle">
                                 <input type="password" id="confirm_password" class="form-input input-with-icon" placeholder=" " required>
                                 <label for="confirm_password" class="form-label">Confirmar contraseña</label>
                                 <button
@@ -169,7 +169,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                         </div>
                     </section>
 
-                    <section class="form-section" id="company-section" hidden>
+                    <section class="form-section" id="company-section" hidden aria-hidden="true">
                         <div class="subsection-heading">
                             <h3 class="subsection-title">Datos de la empresa</h3>
                             <button

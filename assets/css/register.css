@@ -371,7 +371,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .form-section {
-  margin-bottom: 2.5rem;
+  margin-bottom: 0;
 }
 
 .register-page .form-section:last-of-type {
@@ -400,11 +400,38 @@ footer.footer .footer__wrapper {
 
 .register-page .form-grid--three {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  row-gap: 0;
 }
 
 .register-page .input-container {
   position: relative;
   margin-bottom: 1.5rem;
+}
+
+.register-page .input-container--with-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.register-page .input-container--with-toggle .form-input {
+  grid-column: 1 / -1;
+  padding-right: 3.5rem;
+}
+
+.register-page .input-container--with-toggle .password-toggle {
+  position: static;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: end;
+  align-self: center;
+  transform: none;
+  margin-right: 0.75rem;
+  z-index: 1;
+}
+
+.register-page .input-container--with-toggle .form-hint {
+  grid-column: 1 / -1;
+  margin-top: 0.5rem;
 }
 
 .register-page .form-input,
@@ -475,7 +502,7 @@ footer.footer .footer__wrapper {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  gap: 0;
   padding: 1.5rem 1rem;
   border: 2px solid var(--border);
   border-radius: var(--radius);
@@ -483,15 +510,28 @@ footer.footer .footer__wrapper {
   cursor: pointer;
   transition: var(--transition);
   text-align: center;
+  color: var(--text-primary);
 }
 
 .register-page .channel-btn:hover {
-  border-color: var(--primary);
+  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--primary);
 }
 
 .register-page .channel-btn.active {
   border-color: var(--primary);
-  background-color: #f0f4ff;
+  background-color: transparent;
+  color: var(--primary);
+}
+
+.register-page .channel-btn:hover .channel-desc,
+.register-page .channel-btn.active .channel-desc {
+  color: var(--primary);
+}
+
+.register-page .channel-btn:hover .channel-name,
+.register-page .channel-btn.active .channel-name {
+  color: inherit;
 }
 
 .register-page .channel-icon {
@@ -508,11 +548,13 @@ footer.footer .footer__wrapper {
 .register-page .channel-name {
   font-weight: 600;
   margin-bottom: 0.25rem;
+  transition: color 0.2s ease;
 }
 
 .register-page .channel-desc {
   font-size: 0.75rem;
   color: var(--text-secondary);
+  transition: color 0.2s ease;
 }
 
 .register-page .conditional-field {
@@ -795,7 +837,7 @@ footer.footer .footer__wrapper {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
 }
 
 .register-page .profile-media {
