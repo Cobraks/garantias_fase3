@@ -408,29 +408,16 @@ footer.footer .footer__wrapper {
   margin-bottom: 1.5rem;
 }
 
-.register-page .input-container--with-toggle {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .register-page .input-container--with-toggle .form-input {
-  grid-column: 1 / -1;
   padding-right: 3.5rem;
 }
 
 .register-page .input-container--with-toggle .password-toggle {
-  position: static;
-  grid-column: 1 / -1;
-  grid-row: 1;
-  justify-self: end;
-  align-self: center;
-  transform: none;
-  margin-right: 0.75rem;
-  z-index: 1;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .register-page .input-container--with-toggle .form-hint {
-  grid-column: 1 / -1;
   margin-top: 0.5rem;
 }
 
