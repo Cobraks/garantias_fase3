@@ -241,7 +241,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
 
                                 <div class="checkbox-container checkbox-wrapper-14">
                                     <input type="checkbox" id="has_web">
-                                    <label for="has_web" class="checkbox-label">Tiene web con 360VO</label>
+                                    <label for="has_web" class="checkbox-label">Tengo web con 360VO</label>
                                 </div>
                             </div>
 

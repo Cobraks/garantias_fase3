@@ -413,7 +413,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .input-container--with-toggle .password-toggle {
-  top: 50%;
+  top: 33%;
   transform: translateY(-50%);
 }
 
@@ -603,6 +603,7 @@ footer.footer .footer__wrapper {
     cursor: pointer;
     transition: background 0.3s, border-color 0.3s, box-shadow 0.2s;
     margin: 0;
+    margin-left: 0;
   }
 
   .register-page .checkbox-wrapper-14 input[type=checkbox]:after {
@@ -861,7 +862,7 @@ footer.footer .footer__wrapper {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-secondary);
-  margin: 1.5rem 0 0.75rem;
+  margin: 1.5rem 0 1rem;
   padding-bottom: 0.25rem;
   border-bottom: 1px solid var(--border);
 }
@@ -1031,8 +1032,8 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .password-toggle__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 100%;
+  height: 100%;
 }
 
 .register-page .password-toggle .password-toggle__icon--hide {
