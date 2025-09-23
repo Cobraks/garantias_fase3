@@ -273,7 +273,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             <button type="button" class="help-panel__close" aria-label="Cerrar ayuda" data-help-dismiss>
                                 <?php echo Svg::icon('close'); ?>
                             </button>
-                            <p>Completa esta información si cuentas con taller propio para atender a tus clientes de garantías.</p>
+                            <p>Completa esta información si cuentas con taller propio o uno habitual de confianza para atender a tus clientes de garantías.</p>
                         </div>
                         <div class="form-row">
                             <div class="input-container">
@@ -282,15 +282,15 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             </div>
 
                             <div class="input-container">
-                                <input type="text" id="workshop_contact" class="form-input" placeholder=" ">
-                                <label for="workshop_contact" class="form-label">Persona de contacto</label>
+                                <input type="text" id="workshop_address" class="form-input" placeholder=" ">
+                                <label for="workshop_address" class="form-label">Dirección del taller</label>
                             </div>
                         </div>
 
                         <div class="form-row form-row--three">
                             <div class="input-container">
-                                <input type="text" id="workshop_address" class="form-input" placeholder=" ">
-                                <label for="workshop_address" class="form-label">Dirección del taller</label>
+                                <input type="text" id="workshop_contact" class="form-input" placeholder=" ">
+                                <label for="workshop_contact" class="form-label">Persona de contacto</label>
                             </div>
 
                             <div class="input-container">
@@ -383,7 +383,13 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 <button type="button" class="help-panel__close" aria-label="Cerrar ayuda" data-help-dismiss>
                                     <?php echo Svg::icon('close'); ?>
                                 </button>
-                                <p>Introduce los datos del titular bancario tal como aparecen en el contrato de domiciliación.</p>
+                                <p>Completa los siguientes campos para gestionar el pago mediante domiciliación bancaria.</p>
+                                <p><strong>Ventajas:</strong></p>
+                                <ul>
+                                    <li>Las garantías se activan automáticamente.</li>
+                                    <li>No necesitas realizar una transferencia en las 48&nbsp;horas siguientes.</li>
+                                    <li>No tendrás que contactar con 360VO para justificar el pago.</li>
+                                </ul>
                             </div>
                             <div class="info-text info-text--sepa">
                                 Rellena la siguiente información para cumplimentar la Orden de domiciliación de adeudo directo SEPA B2B
