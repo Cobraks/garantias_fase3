@@ -54,9 +54,10 @@ footer.footer .footer__wrapper {
   max-width: 1400px;
   width: 100%;
   padding-block: calc(var(--spacing-1) * 0.75);
-  padding-inline: clamp(1.5rem, 5vw, 3rem);
+  padding-inline: 0;
   border-radius: 1rem 1rem 0 0;
   align-items: center;
+  background: transparent;
 }
 
 .main-grid > .register-page {
@@ -92,11 +93,13 @@ footer.footer .footer__wrapper {
   padding: clamp(2rem, 5vh, 4rem) 0;
   padding-top: 0;
   padding-inline: 0;
+  padding-bottom: 0;
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: clamp(1.25rem, 3vw, 2rem);
-  height: 100%;
-  min-height: 0;
+  height: calc(100dvh - 4rem);
+  max-height: calc(100dvh - 4rem);
+  min-height: calc(100dvh - 4rem);
   overflow: hidden;
 }
 
@@ -117,16 +120,18 @@ footer.footer .footer__wrapper {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1.5rem;
+  align-items: center;
   overflow: hidden;
   position: relative;
+  text-align: center;
 }
 
 .register-page .brand-logo {
-  width: 200px;
+  width: min(200px, 60vw);
   max-width: 100%;
   display: inline-flex;
-  margin: 0 0 2rem;
+  justify-content: center;
+  margin: 0;
 }
 
 .register-page .brand-logo svg {
@@ -138,37 +143,48 @@ footer.footer .footer__wrapper {
 .register-page .badge,
 .login-page .badge {
   position: absolute;
-  top: 1rem;
-  left: 1rem;
+  top: 1.5rem;
+  right: 1.5rem;
+  left: auto;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.4rem 0.9rem;
+  padding: 0.45rem 1.1rem;
   border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 18px 34px -22px rgba(15, 23, 42, 0.35);
+  color: #000000;
+  font-size: 0.78rem;
+  font-weight: 600;
   text-transform: uppercase;
-  background: rgba(37, 99, 235, 0.1);
-  color: var(--primary);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .register-page .info-panel h1 {
   font-size: 1.875rem;
-  margin-bottom: 1rem;
+  margin: 2rem 0 1rem;
   color: var(--text-primary);
+  text-align: center;
 }
 
 .register-page .info-panel p {
   color: var(--text-secondary);
+  max-width: 42ch;
+  margin: 1rem auto 0;
 }
 
 .register-page .features-list {
   list-style: none;
-  margin: 0;
+  margin: 3rem 0 0;
   padding: 0;
   display: grid;
   gap: 1rem;
+  width: min(100%, 420px);
+  text-align: left;
 }
 
 .register-page .features-list li {
@@ -178,7 +194,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .feature-icon {
-  color: var(--primary);
+  color: #c5444e;
   flex-shrink: 0;
   margin-top: 0.25rem;
 }
@@ -187,10 +203,11 @@ footer.footer .footer__wrapper {
   margin-top: auto;
   font-size: 0.95rem;
   color: var(--text-secondary);
+  text-align: center;
 }
 
 .register-page .info-panel .info-cta a {
-  color: var(--primary);
+  color: #c5444e;
   font-weight: 600;
   text-decoration: none;
 }
@@ -300,7 +317,7 @@ footer.footer .footer__wrapper {
   transform: translateY(-50%);
   height: 2px;
   width: 0%;
-  background-color: var(--primary);
+  background-color: #000;
   z-index: 2;
   transition: var(--transition);
 }
@@ -320,10 +337,11 @@ footer.footer .footer__wrapper {
   transition: var(--transition);
 }
 
+
 .register-page .step.active,
 .register-page .step.completed {
-  border-color: var(--primary);
-  background-color: var(--primary);
+  border-color: #000;
+  background-color: #000;
   color: #fff;
 }
 
@@ -338,8 +356,9 @@ footer.footer .footer__wrapper {
   white-space: nowrap;
 }
 
-.register-page .step.active .step-label {
-  color: var(--primary);
+.register-page .step.active .step-label,
+.register-page .step.completed .step-label {
+  color: #000;
   font-weight: 600;
 }
 
@@ -349,6 +368,14 @@ footer.footer .footer__wrapper {
 
 .register-page .form-step.active {
   display: block;
+}
+
+.register-page .form-section {
+  margin-bottom: 0;
+}
+
+.register-page .form-section:last-of-type {
+  margin-bottom: 0;
 }
 
 .register-page .form-group {
@@ -362,9 +389,48 @@ footer.footer .footer__wrapper {
   gap: 1.5rem;
 }
 
+.register-page .form-row--two {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.register-page .form-row--three {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.register-page .form-row--four {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.register-page .form-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.register-page .form-grid--two {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.register-page .form-grid--three {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  row-gap: 0;
+}
+
 .register-page .input-container {
   position: relative;
   margin-bottom: 1.5rem;
+}
+
+.register-page .input-container--with-toggle .form-input {
+  padding-right: 3.5rem;
+}
+
+.register-page .input-container--with-toggle .password-toggle {
+  top: 33%;
+  transform: translateY(-50%);
+}
+
+.register-page .input-container--with-toggle .form-hint {
+  margin-top: 0.5rem;
 }
 
 .register-page .form-input,
@@ -372,26 +438,26 @@ footer.footer .footer__wrapper {
 .register-page .form-textarea {
   width: 100%;
   padding: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid #d4ddeb;
+  border-radius: 12px;
   font-size: 1rem;
-  background-color: transparent;
-  transition: border-color 0.2s;
+  background-color: #fff;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
 }
 
 .register-page .form-input:focus,
 .register-page .form-select:focus,
 .register-page .form-textarea:focus {
   outline: none;
-  border-color: var(--primary);
-  border-width: 2px;
+  border-color: #000;
+  box-shadow: none;
 }
 
 .register-page .form-label {
   position: absolute;
   top: 1rem;
   left: 1rem;
-  color: #999;
+  color: #64748b;
   pointer-events: none;
   transition: 0.2s ease all;
   background: #fff;
@@ -407,7 +473,13 @@ footer.footer .footer__wrapper {
   top: -0.5rem;
   left: 0.8rem;
   font-size: 0.8rem;
-  color: var(--primary);
+  color: #1f2937;
+}
+
+.register-page .form-input:focus ~ .form-label,
+.register-page .form-select:focus ~ .form-label,
+.register-page .form-textarea:focus ~ .form-label {
+  color: #000;
 }
 
 .register-page .form-hint {
@@ -429,6 +501,7 @@ footer.footer .footer__wrapper {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0;
   padding: 1.5rem 1rem;
   border: 2px solid var(--border);
   border-radius: var(--radius);
@@ -436,22 +509,34 @@ footer.footer .footer__wrapper {
   cursor: pointer;
   transition: var(--transition);
   text-align: center;
+  color: var(--text-primary);
 }
 
 .register-page .channel-btn:hover {
-  border-color: var(--primary);
+  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--primary);
 }
 
 .register-page .channel-btn.active {
   border-color: var(--primary);
-  background-color: #f0f4ff;
+  background-color: transparent;
+  color: var(--primary);
+}
+
+.register-page .channel-btn:hover .channel-desc,
+.register-page .channel-btn.active .channel-desc {
+  color: var(--primary);
+}
+
+.register-page .channel-btn:hover .channel-name,
+.register-page .channel-btn.active .channel-name {
+  color: inherit;
 }
 
 .register-page .channel-icon {
-  width: 4rem;
+  width: 2.5rem;
   display: flex;
   justify-content: center;
-  margin-bottom: 0.75rem;
 }
 
 .register-page .channel-icon svg {
@@ -462,11 +547,13 @@ footer.footer .footer__wrapper {
 .register-page .channel-name {
   font-weight: 600;
   margin-bottom: 0.25rem;
+  transition: color 0.2s ease;
 }
 
 .register-page .channel-desc {
   font-size: 0.75rem;
   color: var(--text-secondary);
+  transition: color 0.2s ease;
 }
 
 .register-page .conditional-field {
@@ -528,6 +615,7 @@ footer.footer .footer__wrapper {
     cursor: pointer;
     transition: background 0.3s, border-color 0.3s, box-shadow 0.2s;
     margin: 0;
+    margin-left: 0;
   }
 
   .register-page .checkbox-wrapper-14 input[type=checkbox]:after {
@@ -644,6 +732,10 @@ footer.footer .footer__wrapper {
   text-align: center;
   cursor: pointer;
   transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .register-page .file-upload:hover {
@@ -657,12 +749,30 @@ footer.footer .footer__wrapper {
 .register-page .file-label {
   display: block;
   color: var(--text-secondary);
-  margin-bottom: 0.5rem;
 }
 
 .register-page .file-hint {
   font-size: 0.75rem;
   color: var(--text-secondary);
+}
+
+.register-page .file-preview {
+  width: 100%;
+  border-radius: calc(var(--radius) - 2px);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background-color: var(--bg-light);
+}
+
+.register-page .file-preview[hidden] {
+  display: none;
+}
+
+.register-page .file-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
 }
 
 .register-page .summary-container {
@@ -749,7 +859,7 @@ footer.footer .footer__wrapper {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
 }
 
 .register-page .profile-media {
@@ -786,7 +896,7 @@ footer.footer .footer__wrapper {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-secondary);
-  margin: 1.5rem 0 0.75rem;
+  margin: 1.5rem 0 1rem;
   padding-bottom: 0.25rem;
   border-bottom: 1px solid var(--border);
 }
@@ -847,6 +957,19 @@ footer.footer .footer__wrapper {
   background-color: #f8fafc;
   color: var(--text-secondary);
   animation: fadeIn 0.3s ease;
+}
+
+.register-page .help-panel ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+  list-style: disc;
+}
+
+.register-page .help-panel li {
+  color: var(--text-secondary);
+  line-height: 1.45;
 }
 
 .register-page .help-panel__close {
@@ -941,7 +1064,7 @@ footer.footer .footer__wrapper {
 
 .register-page .password-toggle:hover,
 .register-page .password-toggle.is-active {
-  color: var(--primary);
+  color: #c5444e;
 }
 
 .register-page .password-toggle:focus-visible {
@@ -956,8 +1079,8 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .password-toggle__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 100%;
+  height: 100%;
 }
 
 .register-page .password-toggle .password-toggle__icon--hide {
@@ -1004,6 +1127,12 @@ footer.footer .footer__wrapper {
   .register-page .info-panel,
   .register-page .form-panel {
     border-radius: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .register-page .form-grid--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
