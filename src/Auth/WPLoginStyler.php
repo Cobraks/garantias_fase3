@@ -15,6 +15,7 @@ class WPLoginStyler
         add_filter('login_headertext', [__CLASS__, 'filter_header_text']);
         add_filter('login_body_class', [__CLASS__, 'filter_body_class']);
         add_filter('login_display_language_dropdown', [__CLASS__, 'maybe_hide_language_dropdown']);
+        add_filter('gettext', [__CLASS__, 'filter_gettext'], 10, 3);
     }
 
     public static function enqueue_styles(): void
@@ -70,6 +71,29 @@ class WPLoginStyler
         }
 
         return false;
+    }
+
+    public static function filter_gettext(string $translation, string $text, string $domain): string
+    {
+        if (! self::is_reset_flow()) {
+            return $translation;
+        }
+
+        $targets = [
+            'Generate Password',
+            __('Generate Password', 'default'),
+            __('Generar contraseña', 'default'),
+        ];
+
+        if (in_array($text, $targets, true)) {
+            return __('Generar contraseña segura', 'garantias-online-360vo');
+        }
+
+        if (in_array($translation, $targets, true)) {
+            return __('Generar contraseña segura', 'garantias-online-360vo');
+        }
+
+        return $translation;
     }
 
     private static function is_reset_flow(): bool
@@ -165,6 +189,7 @@ body.login.go-reset-screen #resetpassform .description {
     font-size: 0.85rem;
     color: #64748b;
     margin-top: 0.75rem;
+    text-wrap: pretty;
 }
 
 body.login.go-reset-screen #resetpassform .pw-weak,
@@ -173,7 +198,7 @@ body.login.go-reset-screen #resetpassform .pw-medium {
     margin-top: 0.5rem;
 }
 
-body.login.go-reset-screen #resetpassform .button,
+body.login.go-reset-screen #resetpassform .button:not(.wp-hide-pw),
 body.login.go-reset-screen #resetpassform .button-primary,
 body.login.go-reset-screen #resetpassform .button-secondary {
     display: inline-flex;
@@ -183,7 +208,8 @@ body.login.go-reset-screen #resetpassform .button-secondary {
     width: 100%;
     border-radius: 14px;
     border: none;
-    padding: 0.95rem 1rem;
+    padding-inline: 1rem;
+    padding-block: 0;
     font-weight: 600;
     font-size: 1rem;
     cursor: pointer;
@@ -224,6 +250,7 @@ body.login.go-reset-screen #login .notice {
     font-size: 0.95rem;
     font-weight: 500;
     margin-bottom: 1.5rem;
+    text-wrap: pretty;
 }
 
 body.login.go-reset-screen #login .message:not(.error),
@@ -243,6 +270,11 @@ body.login.go-reset-screen #login .notice-error {
     font-size: 0.95rem;
     font-weight: 500;
     margin-bottom: 1.5rem;
+    text-wrap: pretty;
+}
+
+body.login.go-reset-screen #login form {
+    box-shadow: none;
 }
 
 body.login.go-reset-screen #login form .submit {
