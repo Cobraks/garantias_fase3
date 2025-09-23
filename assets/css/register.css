@@ -54,9 +54,10 @@ footer.footer .footer__wrapper {
   max-width: 1400px;
   width: 100%;
   padding-block: calc(var(--spacing-1) * 0.75);
-  padding-inline: clamp(1.5rem, 5vw, 3rem);
+  padding-inline: 0;
   border-radius: 1rem 1rem 0 0;
   align-items: center;
+  background: transparent;
 }
 
 .main-grid > .register-page {
@@ -92,6 +93,7 @@ footer.footer .footer__wrapper {
   padding: clamp(2rem, 5vh, 4rem) 0;
   padding-top: 0;
   padding-inline: 0;
+  padding-bottom: 1rem;
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: clamp(1.25rem, 3vw, 2rem);
@@ -117,15 +119,18 @@ footer.footer .footer__wrapper {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   gap: 1.5rem;
   overflow: hidden;
   position: relative;
+  text-align: center;
 }
 
 .register-page .brand-logo {
-  width: 200px;
+  width: min(200px, 60vw);
   max-width: 100%;
   display: inline-flex;
+  justify-content: center;
   margin: 0 0 2rem;
 }
 
@@ -157,10 +162,13 @@ footer.footer .footer__wrapper {
   font-size: 1.875rem;
   margin-bottom: 1rem;
   color: var(--text-primary);
+  text-align: center;
 }
 
 .register-page .info-panel p {
   color: var(--text-secondary);
+  max-width: 42ch;
+  margin: 0 auto;
 }
 
 .register-page .features-list {
@@ -169,6 +177,8 @@ footer.footer .footer__wrapper {
   padding: 0;
   display: grid;
   gap: 1rem;
+  width: min(100%, 420px);
+  text-align: left;
 }
 
 .register-page .features-list li {
@@ -178,7 +188,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .feature-icon {
-  color: var(--primary);
+  color: #c5444e;
   flex-shrink: 0;
   margin-top: 0.25rem;
 }
@@ -187,10 +197,11 @@ footer.footer .footer__wrapper {
   margin-top: auto;
   font-size: 0.95rem;
   color: var(--text-secondary);
+  text-align: center;
 }
 
 .register-page .info-panel .info-cta a {
-  color: var(--primary);
+  color: #c5444e;
   font-weight: 600;
   text-decoration: none;
 }
@@ -372,26 +383,26 @@ footer.footer .footer__wrapper {
 .register-page .form-textarea {
   width: 100%;
   padding: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid #d4ddeb;
+  border-radius: 12px;
   font-size: 1rem;
-  background-color: transparent;
-  transition: border-color 0.2s;
+  background-color: #fff;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
 }
 
 .register-page .form-input:focus,
 .register-page .form-select:focus,
 .register-page .form-textarea:focus {
   outline: none;
-  border-color: var(--primary);
-  border-width: 2px;
+  border-color: #000;
+  box-shadow: none;
 }
 
 .register-page .form-label {
   position: absolute;
   top: 1rem;
   left: 1rem;
-  color: #999;
+  color: #64748b;
   pointer-events: none;
   transition: 0.2s ease all;
   background: #fff;
@@ -407,7 +418,13 @@ footer.footer .footer__wrapper {
   top: -0.5rem;
   left: 0.8rem;
   font-size: 0.8rem;
-  color: var(--primary);
+  color: #1f2937;
+}
+
+.register-page .form-input:focus ~ .form-label,
+.register-page .form-select:focus ~ .form-label,
+.register-page .form-textarea:focus ~ .form-label {
+  color: #000;
 }
 
 .register-page .form-hint {
@@ -923,8 +940,10 @@ footer.footer .footer__wrapper {
 .register-page .password-toggle {
   position: absolute;
   right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
+  transform: none;
+  margin-block: auto;
   background: none;
   border: none;
   cursor: pointer;
@@ -941,7 +960,7 @@ footer.footer .footer__wrapper {
 
 .register-page .password-toggle:hover,
 .register-page .password-toggle.is-active {
-  color: var(--primary);
+  color: #c5444e;
 }
 
 .register-page .password-toggle:focus-visible {
