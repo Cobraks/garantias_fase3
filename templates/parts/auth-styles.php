@@ -302,11 +302,21 @@
             transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
         }
 
+        .input-container.is-error .form-input,
+        .form-input[aria-invalid="true"] {
+            border-color: #dc2626;
+        }
+
         .form-input:focus {
             outline: none;
             border-color: #000000;
             box-shadow: none;
             background: #fff;
+        }
+
+        .input-container.is-error .form-label,
+        .form-input[aria-invalid="true"] ~ .form-label {
+            color: #dc2626;
         }
 
         .form-label {
@@ -336,6 +346,12 @@
 
         .form-input:not(:placeholder-shown) ~ .form-label {
             color: #1f2937;
+        }
+
+        .form-field-error {
+            margin-top: 0.4rem;
+            font-size: 0.875rem;
+            color: #dc2626;
         }
 
         .auth-form__meta {

@@ -3,6 +3,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+use GarantiasOnline360VO\Auth\AuthController;
 use GarantiasOnline360VO\TemplateLoader;
 use GarantiasOnline360VO\Svg;
 
@@ -17,57 +18,86 @@ if ($is_recovery_page) {
 }
 
 $default_login_url = home_url('/garantias-online/login/');
-$raw_redirect      = get_query_var('redirect_to');
-if ($raw_redirect === '') {
-    $raw_redirect = isset($_GET['redirect_to']) ? wp_unslash($_GET['redirect_to']) : '';
+$redirect_to       = $default_login_url;
+
+$state_token = get_query_var('state');
+if ($state_token === '') {
+    $state_token = isset($_GET['state']) ? wp_unslash($_GET['state']) : '';
 }
-$redirect_to       = $raw_redirect !== ''
-    ? wp_validate_redirect($raw_redirect, $default_login_url)
-    : $default_login_url;
+$state_token = is_scalar($state_token) ? (string) $state_token : '';
+
+$state_data = $state_token !== '' ? AuthController::consume_lost_password_state($state_token) : [];
+
+if (! empty($state_data['redirect_to'])) {
+    $redirect_to = $state_data['redirect_to'];
+} else {
+    $raw_redirect = get_query_var('redirect_to');
+    if ($raw_redirect === '') {
+        $raw_redirect = isset($_GET['redirect_to']) ? wp_unslash($_GET['redirect_to']) : '';
+    }
+    if ($raw_redirect !== '' && is_scalar($raw_redirect)) {
+        $redirect_to = wp_validate_redirect((string) $raw_redirect, $default_login_url);
+    }
+}
 
 $email_prefill    = '';
 $email_candidate = '';
-if (get_query_var('email') !== '') {
-    $email_candidate = get_query_var('email');
-} elseif (isset($_GET['email'])) {
-    $email_candidate = wp_unslash($_GET['email']);
-}
 
-if ($email_candidate !== '') {
-    if (! is_scalar($email_candidate)) {
-        $email_candidate = '';
-    } else {
-        $email_candidate = (string) $email_candidate;
+if (! empty($state_data['email'])) {
+    $email_prefill = sanitize_text_field((string) $state_data['email']);
+} else {
+    if (get_query_var('email') !== '') {
+        $email_candidate = get_query_var('email');
+    } elseif (isset($_GET['email'])) {
+        $email_candidate = wp_unslash($_GET['email']);
     }
 
     if ($email_candidate !== '') {
-        $email_prefill = sanitize_email($email_candidate);
+        if (! is_scalar($email_candidate)) {
+            $email_candidate = '';
+        } else {
+            $email_candidate = (string) $email_candidate;
+        }
 
-        if ($email_prefill === '') {
-            $email_prefill = sanitize_text_field($email_candidate);
+        if ($email_candidate !== '') {
+            $email_prefill = sanitize_email($email_candidate);
+
+            if ($email_prefill === '') {
+                $email_prefill = sanitize_text_field($email_candidate);
+            }
         }
     }
 }
 
-$error_code = '';
-if (get_query_var('error') !== '') {
-    $error_candidate = get_query_var('error');
-} elseif (isset($_GET['error'])) {
-    $error_candidate = wp_unslash($_GET['error']);
+$error_code   = '';
+$source_error = '';
+
+if (! empty($state_data)) {
+    if (! empty($state_data['error'])) {
+        $error_code   = sanitize_key((string) $state_data['error']);
+        $source_error = isset($state_data['source_error']) ? sanitize_key((string) $state_data['source_error']) : '';
+    }
+    $sent_status = ! empty($state_data['sent']);
 } else {
-    $error_candidate = '';
-}
+    if (get_query_var('error') !== '') {
+        $error_candidate = get_query_var('error');
+    } elseif (isset($_GET['error'])) {
+        $error_candidate = wp_unslash($_GET['error']);
+    } else {
+        $error_candidate = '';
+    }
 
-if ($error_candidate !== '' && is_scalar($error_candidate)) {
-    $error_code = sanitize_key((string) $error_candidate);
-}
+    if ($error_candidate !== '' && is_scalar($error_candidate)) {
+        $error_code = sanitize_key((string) $error_candidate);
+    }
 
-$sent_param = get_query_var('sent');
-if ($sent_param === '') {
-    $sent_param = isset($_GET['sent']) ? wp_unslash($_GET['sent']) : '';
+    $sent_param = get_query_var('sent');
+    if ($sent_param === '') {
+        $sent_param = isset($_GET['sent']) ? wp_unslash($_GET['sent']) : '';
+    }
+    $sent_param  = is_scalar($sent_param) ? (string) $sent_param : '';
+    $sent_status = sanitize_key($sent_param) === '1';
 }
-$sent_param  = is_scalar($sent_param) ? (string) $sent_param : '';
-$sent_status = sanitize_key($sent_param) === '1';
 
 $notice_message = '';
 $notice_class   = 'form-alert';
@@ -87,6 +117,21 @@ if ($sent_status) {
             break;
     }
 }
+
+$email_error_message = '';
+$email_error_id      = '';
+
+if ($error_code === 'email') {
+    $email_error_message = __('No encontramos ninguna cuenta con ese correo electrónico.', 'garantias-online-360vo');
+} elseif ($error_code === 'generic' && $source_error !== '') {
+    $email_error_message = __('No hemos podido procesar tu solicitud. Inténtalo de nuevo.', 'garantias-online-360vo');
+}
+
+if ($email_error_message !== '') {
+    $email_error_id = 'lost-email-error';
+}
+
+$email_container_class = 'input-container' . ($email_error_message !== '' ? ' is-error' : '');
 
 $login_link = $default_login_url;
 if ($redirect_to !== $default_login_url) {
@@ -132,7 +177,7 @@ if ($redirect_to !== $default_login_url) {
                 <?php endif; ?>
 
                 <div class="form-row">
-                    <div class="input-container">
+                    <div class="<?php echo esc_attr($email_container_class); ?>">
                         <input
                             type="email"
                             name="user_login"
@@ -142,12 +187,18 @@ if ($redirect_to !== $default_login_url) {
                             inputmode="email"
                             autocapitalize="none"
                             value="<?php echo esc_attr($email_prefill); ?>"
-                            <?php echo $error_code === 'email' ? ' aria-invalid="true"' : ''; ?>
+                            <?php echo $email_error_message !== '' ? ' aria-invalid="true"' : ''; ?>
+                            <?php echo $email_error_id !== '' ? ' aria-describedby="' . esc_attr($email_error_id) . '"' : ''; ?>
                             class="form-input"
                             placeholder=" ">
                         <label for="user_login" class="form-label">
                             <?php esc_html_e('Correo electrónico', 'garantias-online-360vo'); ?>
                         </label>
+                        <?php if ($email_error_message !== '') : ?>
+                            <p class="form-field-error" id="<?php echo esc_attr($email_error_id); ?>">
+                                <?php echo esc_html($email_error_message); ?>
+                            </p>
+                        <?php endif; ?>
                     </div>
                 </div>
 

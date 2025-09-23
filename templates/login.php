@@ -3,6 +3,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+use GarantiasOnline360VO\Auth\AuthController;
 use GarantiasOnline360VO\TemplateLoader;
 use GarantiasOnline360VO\Svg;
 
@@ -15,34 +16,53 @@ if ($is_login_page) {
 }
 
 $default_redirect = home_url('/garantias-online/');
-$raw_redirect_to  = get_query_var('redirect_to');
-if ($raw_redirect_to === '') {
-    $raw_redirect_to = isset($_GET['redirect_to']) ? wp_unslash($_GET['redirect_to']) : '';
+$redirect_to      = $default_redirect;
+
+$state_token = get_query_var('state');
+if ($state_token === '') {
+    $state_token = isset($_GET['state']) ? wp_unslash($_GET['state']) : '';
 }
-$redirect_to      = $raw_redirect_to !== ''
-    ? wp_validate_redirect($raw_redirect_to, $default_redirect)
-    : $default_redirect;
+$state_token = is_scalar($state_token) ? (string) $state_token : '';
+
+$state_data = $state_token !== '' ? AuthController::consume_login_state($state_token) : [];
+
+if (! empty($state_data['redirect_to'])) {
+    $redirect_to = $state_data['redirect_to'];
+} else {
+    $raw_redirect_to = get_query_var('redirect_to');
+    if ($raw_redirect_to === '') {
+        $raw_redirect_to = isset($_GET['redirect_to']) ? wp_unslash($_GET['redirect_to']) : '';
+    }
+    if ($raw_redirect_to !== '' && is_scalar($raw_redirect_to)) {
+        $redirect_to = wp_validate_redirect((string) $raw_redirect_to, $default_redirect);
+    }
+}
 
 $email_prefill    = '';
 $email_candidate = '';
-if (get_query_var('email') !== '') {
-    $email_candidate = get_query_var('email');
-} elseif (isset($_GET['email'])) {
-    $email_candidate = wp_unslash($_GET['email']);
-}
 
-if ($email_candidate !== '') {
-    if (! is_scalar($email_candidate)) {
-        $email_candidate = '';
-    } else {
-        $email_candidate = (string) $email_candidate;
+if (! empty($state_data['email'])) {
+    $email_prefill = sanitize_text_field((string) $state_data['email']);
+} else {
+    if (get_query_var('email') !== '') {
+        $email_candidate = get_query_var('email');
+    } elseif (isset($_GET['email'])) {
+        $email_candidate = wp_unslash($_GET['email']);
     }
 
     if ($email_candidate !== '') {
-        $email_prefill = sanitize_email($email_candidate);
+        if (! is_scalar($email_candidate)) {
+            $email_candidate = '';
+        } else {
+            $email_candidate = (string) $email_candidate;
+        }
 
-        if ($email_prefill === '') {
-            $email_prefill = sanitize_text_field($email_candidate);
+        if ($email_candidate !== '') {
+            $email_prefill = sanitize_email($email_candidate);
+
+            if ($email_prefill === '') {
+                $email_prefill = sanitize_text_field($email_candidate);
+            }
         }
     }
 }
@@ -52,38 +72,60 @@ if ($remember_param === '') {
     $remember_param = isset($_GET['remember']) ? wp_unslash($_GET['remember']) : '';
 }
 $remember_param = is_scalar($remember_param) ? (string) $remember_param : '';
-$remember_checked = in_array(sanitize_text_field($remember_param), ['1', 'on'], true);
+$remember_checked = ! empty($state_data) ? ! empty($state_data['remember']) : in_array(sanitize_text_field($remember_param), ['1', 'on'], true);
 
 $error_code = '';
-if (get_query_var('error') !== '') {
-    $error_candidate = get_query_var('error');
-} elseif (isset($_GET['error'])) {
-    $error_candidate = wp_unslash($_GET['error']);
+$source_error = '';
+
+if (! empty($state_data['error'])) {
+    $error_code   = sanitize_key((string) $state_data['error']);
+    $source_error = isset($state_data['source_error']) ? sanitize_key((string) $state_data['source_error']) : '';
 } else {
-    $error_candidate = '';
+    if (get_query_var('error') !== '') {
+        $error_candidate = get_query_var('error');
+    } elseif (isset($_GET['error'])) {
+        $error_candidate = wp_unslash($_GET['error']);
+    } else {
+        $error_candidate = '';
+    }
+
+    if ($error_candidate !== '' && is_scalar($error_candidate)) {
+        $error_code = sanitize_key((string) $error_candidate);
+    }
 }
 
-if ($error_candidate !== '' && is_scalar($error_candidate)) {
-    $error_code = sanitize_key((string) $error_candidate);
-}
+$global_error_message   = '';
+$email_error_message    = '';
+$password_error_message = '';
 
-$error_message = '';
 switch ($error_code) {
     case 'email':
-        $error_message = __('Correo electrónico incorrecto.', 'garantias-online-360vo');
+        $email_error_message = __('No encontramos ninguna cuenta con ese correo electrónico.', 'garantias-online-360vo');
         break;
     case 'password':
-        $error_message = $email_prefill !== ''
-            ? sprintf(__('Contraseña incorrecta para %s.', 'garantias-online-360vo'), $email_prefill)
-            : __('Contraseña incorrecta.', 'garantias-online-360vo');
+        $password_error_message = $email_prefill !== ''
+            ? sprintf(__('La contraseña no coincide con %s.', 'garantias-online-360vo'), $email_prefill)
+            : __('La contraseña introducida no es correcta.', 'garantias-online-360vo');
         break;
     case 'missing':
-        $error_message = __('Introduce tu correo electrónico y tu contraseña.', 'garantias-online-360vo');
+        if ($source_error === 'empty_username') {
+            $email_error_message = __('Introduce tu correo electrónico.', 'garantias-online-360vo');
+        } elseif ($source_error === 'empty_password') {
+            $password_error_message = __('Introduce tu contraseña.', 'garantias-online-360vo');
+        } else {
+            $email_error_message    = __('Introduce tu correo electrónico.', 'garantias-online-360vo');
+            $password_error_message = __('Introduce tu contraseña.', 'garantias-online-360vo');
+        }
         break;
     case 'generic':
-        $error_message = __('No hemos podido iniciar sesión. Inténtalo de nuevo.', 'garantias-online-360vo');
+        $global_error_message = __('No hemos podido iniciar sesión. Inténtalo de nuevo.', 'garantias-online-360vo');
         break;
 }
+
+$email_error_id    = $email_error_message !== '' ? 'user_login-error' : '';
+$password_error_id = $password_error_message !== '' ? 'user_pass-error' : '';
+$email_container_class = 'input-container' . ($email_error_message !== '' ? ' is-error' : '');
+$password_container_class = 'input-container' . ($password_error_message !== '' ? ' is-error' : '');
 ?>
 
 <main class="register-page login-page" style="view-transition-name: login">
@@ -106,9 +148,9 @@ switch ($error_code) {
                 <p class="login-card__subtitle"><?php esc_html_e('Introduce tu correo electrónico y tu contraseña para acceder al panel.', 'garantias-online-360vo'); ?></p>
             </div>
 
-            <?php if ($error_message !== '') : ?>
+            <?php if ($global_error_message !== '') : ?>
                 <div class="form-alert" role="alert">
-                    <?php echo esc_html($error_message); ?>
+                    <?php echo esc_html($global_error_message); ?>
                 </div>
             <?php endif; ?>
 
@@ -122,7 +164,7 @@ switch ($error_code) {
                 <input type="hidden" name="go_auth_action" value="login">
                 <input type="hidden" name="redirect_to" value="<?php echo esc_attr($redirect_to); ?>">
                 <div class="form-row">
-                    <div class="input-container">
+                    <div class="<?php echo esc_attr($email_container_class); ?>">
                         <input
                             name="log"
                             id="user_login"
@@ -132,24 +174,31 @@ switch ($error_code) {
                             inputmode="email"
                             autocapitalize="none"
                             value="<?php echo esc_attr($email_prefill); ?>"
-                            <?php echo in_array($error_code, ['email', 'missing'], true) ? ' aria-invalid="true"' : ''; ?>
+                            <?php echo $email_error_message !== '' ? ' aria-invalid="true"' : ''; ?>
+                            <?php echo $email_error_id !== '' ? ' aria-describedby="' . esc_attr($email_error_id) . '"' : ''; ?>
                             class="form-input"
                             placeholder=" ">
                         <label for="user_login" class="form-label">
                             <?php esc_html_e('Correo electrónico', 'garantias-online-360vo'); ?>
                         </label>
+                        <?php if ($email_error_message !== '') : ?>
+                            <p class="form-field-error" id="<?php echo esc_attr($email_error_id); ?>">
+                                <?php echo esc_html($email_error_message); ?>
+                            </p>
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <div class="form-row">
-                    <div class="input-container">
+                    <div class="<?php echo esc_attr($password_container_class); ?>">
                         <input
                             name="pwd"
                             id="user_pass"
                             type="password"
                             required
                             autocomplete="current-password"
-                            <?php echo in_array($error_code, ['password', 'missing'], true) ? ' aria-invalid="true"' : ''; ?>
+                            <?php echo $password_error_message !== '' ? ' aria-invalid="true"' : ''; ?>
+                            <?php echo $password_error_id !== '' ? ' aria-describedby="' . esc_attr($password_error_id) . '"' : ''; ?>
                             class="form-input"
                             placeholder=" ">
                         <label for="user_pass" class="form-label">
@@ -164,6 +213,11 @@ switch ($error_code) {
                             <?php echo Svg::icon('visibility', 'toggle-password__icon toggle-password__icon--on'); ?>
                             <?php echo Svg::icon('visibility_off', 'toggle-password__icon toggle-password__icon--off'); ?>
                         </button>
+                        <?php if ($password_error_message !== '') : ?>
+                            <p class="form-field-error" id="<?php echo esc_attr($password_error_id); ?>">
+                                <?php echo esc_html($password_error_message); ?>
+                            </p>
+                        <?php endif; ?>
                     </div>
                 </div>
 

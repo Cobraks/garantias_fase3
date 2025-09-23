@@ -32,6 +32,7 @@ class Rewrite
         $vars[] = 'remember';
         $vars[] = 'redirect_to';
         $vars[] = 'sent';
+        $vars[] = 'state';
         return $vars;
     }
 
