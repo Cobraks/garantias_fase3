@@ -152,6 +152,12 @@ use GarantiasOnline360VO\Docs\ReclamationDocument;
         defer></script>
 <?php endif; ?>
 
+<?php if ($is_account_page ?? false) : ?>
+    <script
+        src="<?php echo esc_url(plugins_url('assets/js/account.min.js', GARANTIAS360VO__FILE__)); ?>"
+        defer></script>
+<?php endif; ?>
+
 
 
 

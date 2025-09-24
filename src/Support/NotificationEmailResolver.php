@@ -20,29 +20,52 @@ class NotificationEmailResolver
             $default_email = sanitize_email($user->user_email);
         }
 
-        $resolved = $default_email;
+        $resolved             = $default_email;
+        $same_as_registration = null;
+        $candidates           = [];
 
         if (function_exists('get_field')) {
             $settings = get_field('ajustes_de_notificaciones', 'user_' . $user_id);
             if (is_array($settings)) {
-                $same_as_registration = isset($settings['misma_direccion_registro'])
-                    ? (bool) $settings['misma_direccion_registro']
-                    : false;
-
-                if (! $same_as_registration) {
-                    $custom = sanitize_email($settings['correo_electronico_notificaciones'] ?? '');
-                    if ($custom !== '') {
-                        $resolved = $custom;
-                    }
+                if (array_key_exists('misma_direccion_registro', $settings)) {
+                    $same_as_registration = (bool) $settings['misma_direccion_registro'];
                 }
 
-                if ($same_as_registration) {
-                    $resolved = $default_email;
-                }
+                $candidates[] = $settings['correo_electronico_notificaciones'] ?? '';
+                $candidates[] = $settings['correo_electronico'] ?? '';
+            }
+
+            $profile_group = get_field('datos_usuario', 'user_' . $user_id);
+            if (is_array($profile_group)) {
+                $candidates[] = $profile_group['correo_electronico'] ?? '';
             }
         }
 
-        if ($resolved === '' && $default_email !== '') {
+        $meta_keys = [
+            'ajustes_de_notificaciones_correo_electronico_notificaciones',
+            'ajustes_de_notificaciones_correo_electronico',
+            'datos_usuario_correo_electronico',
+        ];
+
+        foreach ($meta_keys as $meta_key) {
+            $candidates[] = get_user_meta($user_id, $meta_key, true);
+        }
+
+        foreach ($candidates as $candidate) {
+            $candidate = sanitize_email((string) $candidate);
+            if ($candidate === '') {
+                continue;
+            }
+
+            if ($same_as_registration === true) {
+                break;
+            }
+
+            $resolved = $candidate;
+            break;
+        }
+
+        if ($resolved === '' || $same_as_registration === true) {
             $resolved = $default_email;
         }
 

@@ -118,16 +118,34 @@ export default function initAutosave() {
 
         const normalizePrice = (str) => {
                 if (typeof str !== "string") return str;
-                const cleaned = str.replace(/[^0-9.,]/g, "");
-                const lastComma = cleaned.lastIndexOf(",");
-                const lastDot = cleaned.lastIndexOf(".");
-                const sep = lastComma > lastDot ? "," : ".";
-                const parts = cleaned.split(sep);
-                const intPart = parts[0].replace(/[.,]/g, "");
-                const decPart = parts[1] ? parts[1].replace(/[.,]/g, "") : "";
-                const num = decPart
-                        ? parseFloat(`${intPart}.${decPart}`)
-                        : parseFloat(intPart);
+
+                const raw = str.trim();
+                if (!raw) return "";
+
+                let cleaned = raw.replace(/\s+/g, "").replace(/[^0-9.,-]/g, "");
+                if (!cleaned) return "";
+
+                const isNegative = cleaned.startsWith("-");
+                cleaned = cleaned.replace(/-/g, "");
+
+                if (cleaned.includes(",")) {
+                        cleaned = cleaned.replace(/\./g, "");
+                        cleaned = cleaned.replace(/,/g, ".");
+                } else if (cleaned.includes(".")) {
+                        const lastDot = cleaned.lastIndexOf(".");
+                        const intPart = cleaned.slice(0, lastDot).replace(/\./g, "");
+                        const decPart = cleaned.slice(lastDot + 1).replace(/\./g, "");
+                        if (decPart && decPart.length <= 2) {
+                                cleaned = `${intPart || "0"}.${decPart}`;
+                        } else {
+                                cleaned = `${intPart}${decPart}`;
+                        }
+                }
+
+                cleaned = cleaned.replace(/[^0-9.]/g, "");
+                if (!cleaned) return "";
+
+                const num = parseFloat(`${isNegative ? "-" : ""}${cleaned}`);
                 return Number.isNaN(num) ? "" : num;
         };
 
