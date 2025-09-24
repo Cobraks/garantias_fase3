@@ -193,8 +193,15 @@
         if (paymentActivation) {
             const checkbox = paymentActivation.querySelector('[data-payment-toggle]');
             const detail = document.querySelector('[data-payment-detail]');
+            let generated = false;
+            let currentState = 'disabled';
+
+            if (detail) {
+                generated = detail.getAttribute('data-generated') === 'true';
+            }
 
             const updatePanels = (state) => {
+                currentState = state;
                 paymentActivation.setAttribute('data-state', state);
 
                 if (checkbox) {
@@ -217,22 +224,31 @@
                 panels.forEach((panel) => {
                     const rawStates = panel.getAttribute('data-payment-state') || '';
                     const allowedStates = rawStates.split(/\s+/).filter(Boolean);
-                    const shouldShow = allowedStates.length === 0 || allowedStates.includes(state);
+                    let shouldShow = allowedStates.length === 0 || allowedStates.includes(state);
+
+                    if (panel.hasAttribute('data-payment-generated')) {
+                        shouldShow = shouldShow && generated;
+                    }
+
+                    if (panel.hasAttribute('data-payment-awaiting')) {
+                        shouldShow = shouldShow && !generated;
+                    }
+
                     panel.hidden = !shouldShow;
                     panel.setAttribute('aria-hidden', String(!shouldShow));
                 });
+            };
 
-                const summaryStatuses = paymentActivation.querySelectorAll('[data-payment-state]');
-                summaryStatuses.forEach((element) => {
-                    const rawStates = element.getAttribute('data-payment-state') || '';
-                    const allowedStates = rawStates.split(/\s+/).filter(Boolean);
-                    const shouldShow = allowedStates.length === 0 || allowedStates.includes(state);
-                    element.hidden = !shouldShow;
-                    element.setAttribute('aria-hidden', String(!shouldShow));
-                });
+            const setGenerated = (value) => {
+                generated = value;
+                if (detail) {
+                    detail.setAttribute('data-generated', value ? 'true' : 'false');
+                }
+                updatePanels(currentState);
             };
 
             const initialState = paymentActivation.getAttribute('data-state') || 'disabled';
+            currentState = initialState;
             updatePanels(initialState);
 
             if (checkbox) {
@@ -240,6 +256,16 @@
                     const nextState = checkbox.checked ? 'enabled' : 'disabled';
                     updatePanels(nextState);
                 });
+            }
+
+            if (detail) {
+                const generateButton = detail.querySelector('[data-payment-generate]');
+                if (generateButton) {
+                    generateButton.addEventListener('click', () => {
+                        generateButton.disabled = true;
+                        setGenerated(true);
+                    });
+                }
             }
         }
     });

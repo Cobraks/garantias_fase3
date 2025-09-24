@@ -166,6 +166,13 @@
   margin-bottom: var(--spacing-3);
 }
 
+.account-section__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .account-section__header h2 {
   margin: 0 0 0.25rem;
   font-size: 1.25rem;
@@ -352,7 +359,7 @@
 
 @media (min-width: 960px) {
   .account-card-grid--payments {
-    grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
   }
 }
 
@@ -362,22 +369,6 @@
 
 .account-card--payments-detail {
   gap: var(--spacing-3);
-}
-
-.account-payments__current {
-  margin: 0;
-  font-size: 0.95rem;
-  color: var(--text-color);
-  font-weight: 600;
-}
-
-.account-payments__current strong {
-  display: block;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-  font-weight: 700;
 }
 
 .account-toggle {
@@ -408,11 +399,18 @@
 .account-form--sepa {
   display: grid;
   gap: var(--spacing-2);
+  grid-template-columns: repeat(1, minmax(0, 1fr));
 }
 
 @media (min-width: 720px) {
   .account-form--sepa {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .account-form--sepa {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -422,6 +420,22 @@
 
 .account-form__field--full {
   grid-column: 1 / -1;
+}
+
+.account-form__field--half {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 720px) {
+  .account-form__field--half {
+    grid-column: span 1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .account-form__field--half {
+    grid-column: span 2;
+  }
 }
 
 .account-form__field--readonly {
@@ -448,14 +462,18 @@
   gap: var(--spacing-2);
 }
 
-.account-payments__message {
-  margin: 0;
-}
-
 .account-payments__actions {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2);
+  align-items: flex-start;
+}
+
+.account-payments__followup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  align-items: flex-start;
 }
 
 .account-upload {
@@ -498,6 +516,18 @@
   margin: 0;
   font-size: 0.8rem;
   color: var(--text-secondary);
+}
+
+.account-help__list {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.account-help__list:last-of-type {
+  margin-bottom: 0;
 }
 
 .account-help--hidden[hidden] {
