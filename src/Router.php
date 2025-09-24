@@ -2,6 +2,8 @@
 
 namespace GarantiasOnline360VO;
 
+use GarantiasOnline360VO\Account\AccountViewModel;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -79,6 +81,13 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
                 break;
             case 'register':
                 TemplateLoader::load('register');
+                break;
+            case 'account':
+                $account_view = AccountViewModel::for_current_user();
+                TemplateLoader::load('account', [
+                    'account'          => $account_view,
+                    'is_account_page'  => true,
+                ]);
                 break;
             case 'dashboard':
             default:
