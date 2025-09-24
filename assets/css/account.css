@@ -335,6 +335,17 @@
   height: 1.1rem;
 }
 
+.account-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.account-card__header h3 {
+  margin: 0;
+}
+
 .account-card-grid--payments {
   align-items: stretch;
 }
@@ -370,10 +381,20 @@
   width: 100%;
 }
 
+.account-card--payments-selector select:disabled {
+  cursor: not-allowed;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+}
+
 .account-payments__panel {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-3);
+}
+
+.account-payments__panel--transfer .account-card__note {
+  margin-top: auto;
 }
 
 .account-payments__list {
@@ -417,6 +438,43 @@
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-color);
+}
+
+.account-help__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.account-help__section + .account-help__section {
+  margin-top: var(--spacing-2);
+}
+
+.account-help__section h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.account-help__section ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--text-secondary);
+}
+
+.account-form--sepa {
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+@media (min-width: 720px) {
+  .account-form--sepa {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .account-payments__links {

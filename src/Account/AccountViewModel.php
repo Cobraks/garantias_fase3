@@ -268,15 +268,50 @@ class AccountViewModel
     private static function extract_payments(string $scope, int $user_id): array
     {
         $sepa = [
-            'holder'           => '',
-            'address'          => '',
-            'iban'             => '',
-            'swift'            => '',
             'status'           => null,
-            'signed_document'  => [],
-            'pending_document' => [],
+            'status_label'     => 'Sin información del mandato',
+            'status_variant'   => 'info',
+            'locked'           => false,
+            'documents'        => [
+                'signed'  => [],
+                'pending' => [],
+            ],
+            'fields'           => [],
         ];
         $payment_type = '';
+
+        $debtor_fields = [
+            'nombre_deudor' => [
+                'label' => 'Titular de la cuenta',
+                'value' => '',
+                'name'  => 'nombre_deudor',
+            ],
+            'direccion_deudor' => [
+                'label' => 'Dirección',
+                'value' => '',
+                'name'  => 'direccion_deudor',
+            ],
+            'cp_poblacion_provincia' => [
+                'label' => 'CP, población y provincia',
+                'value' => '',
+                'name'  => 'cp_poblacion_provincia',
+            ],
+            'pais_deudor' => [
+                'label' => 'País',
+                'value' => '',
+                'name'  => 'pais_deudor',
+            ],
+            'numero_cuenta' => [
+                'label' => 'IBAN',
+                'value' => '',
+                'name'  => 'numero_cuenta',
+            ],
+            'swift_bic' => [
+                'label' => 'SWIFT / BIC',
+                'value' => '',
+                'name'  => 'swift_bic',
+            ],
+        ];
 
         $group = [];
         if (function_exists('get_field')) {
@@ -288,16 +323,18 @@ class AccountViewModel
             if (is_array($sepa_group)) {
                 if (! empty($sepa_group['datos_deudor'])) {
                     $debtor = $sepa_group['datos_deudor'];
-                    $sepa['holder'] = self::sanitize_optional_text($debtor['nombre_deudor'] ?? '')
-                        ?: self::sanitize_optional_text(get_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_nombre_deudor', true));
-                    $sepa['address'] = self::sanitize_optional_text($debtor['direccion_deudor'] ?? '');
-                    $sepa['iban'] = self::sanitize_optional_text($debtor['numero_cienta'] ?? '');
-                    $sepa['swift'] = self::sanitize_optional_text($debtor['swift_bic'] ?? '');
-                    $payment_type = self::sanitize_optional_text(
-                        is_array($debtor['tipo_pago'] ?? null)
-                            ? ($debtor['tipo_pago']['label'] ?? $debtor['tipo_pago']['value'] ?? '')
-                            : ($debtor['tipo_pago'] ?? '')
-                    );
+                    foreach ($debtor_fields as $key => $field) {
+                        $value = '';
+                        if ($key === 'numero_cuenta') {
+                            $value = $debtor['numero_cuenta']
+                                ?? $debtor['numero_cienta']
+                                ?? '';
+                        } else {
+                            $value = $debtor[$key] ?? '';
+                        }
+
+                        $debtor_fields[$key]['value'] = self::sanitize_optional_text($value);
+                    }
                 }
 
                 if (! empty($sepa_group['estado_documentos'])) {
@@ -306,39 +343,28 @@ class AccountViewModel
                         if (isset($status_group['estado_sepa'])) {
                             $sepa['status'] = (bool) $status_group['estado_sepa'];
                         }
+                        if (isset($status_group['metodo_de_pago'])) {
+                            $payment_type = self::extract_payment_label($status_group['metodo_de_pago']);
+                        }
                         if (! empty($status_group['documento_sepa_firmado'])) {
-                            $sepa['signed_document'] = self::normalize_media($status_group['documento_sepa_firmado']);
+                            $sepa['documents']['signed'] = self::normalize_media($status_group['documento_sepa_firmado']);
                         }
                         if (! empty($status_group['documento_sepa_sin_firmar'])) {
-                            $sepa['pending_document'] = self::normalize_media($status_group['documento_sepa_sin_firmar']);
+                            $sepa['documents']['pending'] = self::normalize_media($status_group['documento_sepa_sin_firmar']);
                         }
                     }
                 }
             }
         }
 
-        if ($sepa['address'] === '') {
-            $sepa['address'] = self::sanitize_optional_text(
-                get_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_direccion_deudor', true)
-            );
-        }
+        $debtor_fields = self::hydrate_debtor_meta($debtor_fields, $user_id);
+
         if ($payment_type === '') {
-            $type_meta = get_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_tipo_pago', true);
-            if (is_array($type_meta)) {
-                $payment_type = self::sanitize_optional_text($type_meta['label'] ?? $type_meta['value'] ?? '');
-            } else {
-                $payment_type = self::sanitize_optional_text($type_meta);
+            $type_meta = get_user_meta($user_id, 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago', true);
+            if ($type_meta === '') {
+                $type_meta = get_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_tipo_pago', true);
             }
-        }
-        if ($sepa['iban'] === '') {
-            $sepa['iban'] = self::sanitize_optional_text(
-                get_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', true)
-            );
-        }
-        if ($sepa['swift'] === '') {
-            $sepa['swift'] = self::sanitize_optional_text(
-                get_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_swift_bic', true)
-            );
+            $payment_type = self::extract_payment_label($type_meta);
         }
         if ($sepa['status'] === null) {
             $status_meta = get_user_meta(
@@ -350,27 +376,31 @@ class AccountViewModel
                 $sepa['status'] = (bool) $status_meta;
             }
         }
-        if (! $sepa['signed_document']) {
+        if (! $sepa['documents']['signed']) {
             $signed_meta = get_user_meta(
                 $user_id,
                 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_firmado',
                 true
             );
-            $sepa['signed_document'] = self::normalize_media($signed_meta);
+            $sepa['documents']['signed'] = self::normalize_media($signed_meta);
         }
-        if (! $sepa['pending_document']) {
+        if (! $sepa['documents']['pending']) {
             $pending_meta = get_user_meta(
                 $user_id,
                 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_sin_firmar',
                 true
             );
-            $sepa['pending_document'] = self::normalize_media($pending_meta);
+            $sepa['documents']['pending'] = self::normalize_media($pending_meta);
         }
 
         $selected_method = self::normalize_payment_method($payment_type);
         if ($selected_method === '') {
             $selected_method = 'domiciliacion';
         }
+
+        $sepa['locked'] = $selected_method === 'domiciliacion' && $sepa['status'] === true;
+        $sepa = self::decorate_sepa_status($sepa);
+        $sepa['fields'] = array_values($debtor_fields);
 
         return [
             'selected_method' => $selected_method,
@@ -379,6 +409,56 @@ class AccountViewModel
             'sepa'            => $sepa,
             'transfer'        => self::extract_transfer_details(),
         ];
+    }
+
+    private static function decorate_sepa_status(array $sepa): array
+    {
+        if ($sepa['status'] === true) {
+            $sepa['status_label'] = 'SEPA válido y activo';
+            $sepa['status_variant'] = 'success';
+        } elseif ($sepa['status'] === false) {
+            $sepa['status_label'] = 'Pendiente de validar';
+            $sepa['status_variant'] = 'warning';
+        } else {
+            $sepa['status_label'] = 'Sin información del mandato';
+            $sepa['status_variant'] = 'info';
+        }
+
+        return $sepa;
+    }
+
+    private static function hydrate_debtor_meta(array $fields, int $user_id): array
+    {
+        foreach ($fields as $key => $field) {
+            if ($field['value'] !== '') {
+                continue;
+            }
+
+            $meta_key = sprintf('gestion_pagos_gestion_sepa_datos_deudor_%s', $key);
+            $value = get_user_meta($user_id, $meta_key, true);
+
+            if ($key === 'numero_cuenta' && $value === '') {
+                $value = get_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', true);
+            }
+
+            $fields[$key]['value'] = self::sanitize_optional_text($value);
+        }
+
+        return $fields;
+    }
+
+    private static function extract_payment_label($value): string
+    {
+        if (is_array($value)) {
+            $candidate = $value['label'] ?? $value['value'] ?? '';
+            return self::sanitize_optional_text((string) $candidate);
+        }
+
+        if (is_object($value) && isset($value->label)) {
+            return self::sanitize_optional_text((string) $value->label);
+        }
+
+        return self::sanitize_optional_text((string) $value);
     }
 
     private static function available_payment_methods(): array
