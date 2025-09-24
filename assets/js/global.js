@@ -14,22 +14,52 @@ console.log("GO360 script cargado");
 		}
 
 		// Toggle menú de perfil
-		const profileBtn = document.querySelector(".top-bar__profile-link");
-		const profileMenu = document.querySelector(".top-bar__profile-menu");
+                const profileBtn = document.querySelector(".top-bar__profile-link");
+                const profileMenu = document.querySelector(".top-bar__profile-menu");
 
                 if (profileBtn && profileMenu) {
-                        // Abrir/cerrar al click en el avatar
-                        profileBtn.addEventListener("click", (e) => {
-                                e.stopPropagation();
-                                profileMenu.classList.toggle("visible");
-                        });
-                        // Cerrar al click fuera
-                        document.addEventListener("click", () => {
+                        const openMenu = () => {
+                                profileMenu.classList.add("visible");
+                                profileMenu.setAttribute("aria-hidden", "false");
+                                profileBtn.setAttribute("aria-expanded", "true");
+                        };
+
+                        const closeMenu = () => {
                                 profileMenu.classList.remove("visible");
+                                profileMenu.setAttribute("aria-hidden", "true");
+                                profileBtn.setAttribute("aria-expanded", "false");
+                        };
+
+                        profileBtn.addEventListener("click", (event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+
+                                if (profileMenu.classList.contains("visible")) {
+                                        closeMenu();
+                                } else {
+                                        openMenu();
+                                }
                         });
-                        // Evitar cierre al clicar dentro del menú
-                        profileMenu.addEventListener("click", (e) => {
-                                e.stopPropagation();
+
+                        document.addEventListener("click", (event) => {
+                                if (
+                                        profileMenu.classList.contains("visible") &&
+                                        !profileMenu.contains(event.target) &&
+                                        event.target !== profileBtn
+                                ) {
+                                        closeMenu();
+                                }
+                        });
+
+                        document.addEventListener("keydown", (event) => {
+                                if (event.key === "Escape" && profileMenu.classList.contains("visible")) {
+                                        closeMenu();
+                                        profileBtn.focus();
+                                }
+                        });
+
+                        profileMenu.addEventListener("click", (event) => {
+                                event.stopPropagation();
                         });
                 }
 

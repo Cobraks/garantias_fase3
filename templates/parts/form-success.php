@@ -8,7 +8,7 @@ use GarantiasOnline360VO\Svg;
 <div id="form-success" class="form-success">
     <div class="form-success__confetti" aria-hidden="true"></div>
 
-    <h2 class="form-success__title">¡Garantía registrada!</h2>
+    <h2 class="form-success__title">¡Garantía contratada!</h2>
     <p class="form-success__subtitle" data-plan></p>
     <p class="form-success__message" hidden></p>
 
@@ -20,7 +20,7 @@ use GarantiasOnline360VO\Svg;
             </h3>
             <p class="form-success__transfer-note">
                 <?php echo Svg::icon('warning', 'form-success__transfer-note-icon'); ?>
-                Tienes 7 días para realizar el pago y activar tu certificado.
+                Dispones de 48&nbsp;horas para realizar el pago.
             </p>
             <table class="form-success__transfer-table">
                 <tbody>
@@ -35,6 +35,13 @@ use GarantiasOnline360VO\Svg;
                     <tr data-copy-row>
                         <th scope="row">Cantidad</th>
                         <td data-copy-cell data-tooltip="Copiar cantidad"><span class="form-success__copy-target" data-amount data-toast="Cantidad copiada al portapapeles."></span><button class="form-success__copy" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Justificante</th>
+                        <td>
+                            Envía el justificante de ingreso a
+                            <a href="mailto:garantias@360vo.es">garantias@360vo.es</a>.
+                        </td>
                     </tr>
                 </tbody>
             </table>
