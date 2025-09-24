@@ -292,30 +292,42 @@ $pending = $payments['pending_document']['url'] ?? '';
                         . '</strong>.';
                 }
                 ?>
+                <?php
+                $custom_input_value = $same_as_registration === false ? $custom_notification : '';
+                ?>
                 <div class="account-card account-card--form">
                     <h3>Avisos por correo electrónico</h3>
-                    <p class="account-card__intro">
-                        Gestiona la dirección a la que enviaremos certificados y comunicaciones importantes.
-                    </p>
                     <p class="account-card__status">
                         <?php echo wp_kses($email_status, ['strong' => []]); ?>
                     </p>
                     <form class="account-form" action="#" method="post" novalidate>
                         <div class="account-field">
-                            <label class="account-field__label" for="account-notification-email">
-                                Dirección alternativa para notificaciones
-                            </label>
+                            <div class="account-field__label-wrapper">
+                                <label class="account-field__label" for="account-notification-email">
+                                    Dirección alternativa para notificaciones
+                                </label>
+                                <button
+                                    type="button"
+                                    class="account-help__trigger"
+                                    data-account-help-trigger
+                                    aria-controls="account-notification-help"
+                                    aria-expanded="false"
+                                >
+                                    <?php echo Svg::icon('help', 'account-help__icon'); ?>
+                                    <span class="screen-reader-text">Más información sobre la dirección alternativa</span>
+                                </button>
+                            </div>
                             <input
                                 type="email"
                                 id="account-notification-email"
                                 name="account-notification-email"
                                 class="account-input"
-                                value="<?php echo esc_attr($custom_notification); ?>"
+                                value="<?php echo esc_attr($custom_input_value); ?>"
                                 placeholder="nombre@empresa.com"
                                 autocomplete="off"
                             >
-                            <p class="account-help" id="account-notification-help">
-                                Guardaremos los cambios cuando habilitemos la actualización desde esta página.
+                            <p class="account-help account-help--hidden" id="account-notification-help" hidden>
+                                Escribe la dirección donde quieres recibir avisos y certificados. El correo con el que accedes seguirá siendo el que uses para iniciar sesión.
                             </p>
                         </div>
                     </form>

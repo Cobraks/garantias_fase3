@@ -71,6 +71,31 @@
             setActive(sections[0].id);
         }
 
+        const helpButtons = document.querySelectorAll('[data-account-help-trigger]');
+        helpButtons.forEach((button) => {
+            const targetId = button.getAttribute('aria-controls');
+            if (!targetId) {
+                return;
+            }
+
+            const help = document.getElementById(targetId);
+            if (!help) {
+                return;
+            }
+
+            button.addEventListener('click', () => {
+                const isExpanded = button.getAttribute('aria-expanded') === 'true';
+                const nextState = !isExpanded;
+                button.setAttribute('aria-expanded', String(nextState));
+
+                if (nextState) {
+                    help.hidden = false;
+                } else {
+                    help.hidden = true;
+                }
+            });
+        });
+
         const notificationsCard = document.querySelector('[data-notifications-card]');
         if (notificationsCard) {
             const requestButton = notificationsCard.querySelector('[data-notifications-request]');
