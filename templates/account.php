@@ -264,37 +264,77 @@ $pending = $payments['pending_document']['url'] ?? '';
                 <?php echo Svg::icon('email', 'account-section__icon'); ?>
                 <div>
                     <h2>Notificaciones</h2>
-                    <p>Controla las direcciones a las que enviaremos avisos y certificados.</p>
+                    <p>Configura cómo te avisamos por correo y desde tu dispositivo.</p>
                 </div>
             </header>
             <div class="account-card-grid">
-                <div class="account-card">
-                    <h3>Correos configurados</h3>
-                    <dl class="account-card__list">
-                        <div>
-                            <dt>Correo de registro</dt>
-                            <dd><?php echo esc_html($user['email'] ?? ''); ?></dd>
-                        </div>
-                        <div>
-                            <dt>Notificaciones</dt>
-                            <dd><?php echo esc_html($user['notification_email'] ?? ''); ?></dd>
-                        </div>
-                        <?php if (! empty($user['custom_notification'])) : ?>
-                            <div>
-                                <dt>Correo alternativo</dt>
-                                <dd><?php echo esc_html($user['custom_notification']); ?></dd>
-                            </div>
-                        <?php endif; ?>
-                    </dl>
-                    <p class="account-card__note">
-                        <?php if ($user['same_as_registration'] === true) : ?>
-                            Actualmente las notificaciones se envían a la dirección principal de tu cuenta.
-                        <?php elseif ($user['same_as_registration'] === false) : ?>
-                            Has definido un correo alternativo para recibir los avisos y copias de certificados.
-                        <?php else : ?>
-                            Puedes personalizar el correo de notificaciones desde tu perfil.
-                        <?php endif; ?>
+                <?php
+                $registration_email   = $user['email'] ?? '';
+                $notification_email   = $user['notification_email'] ?? $registration_email;
+                $custom_notification  = $user['custom_notification'] ?? '';
+                $same_as_registration = $user['same_as_registration'] ?? null;
+
+                if ($notification_email === '') {
+                    $notification_email = $registration_email;
+                }
+
+                $email_status = 'Actualmente enviamos avisos y certificados a <strong>'
+                    . esc_html($notification_email ?: $registration_email)
+                    . '</strong>.';
+
+                if ($same_as_registration === true || $notification_email === $registration_email) {
+                    $email_status = 'Los avisos y certificados se están enviando al correo con el que accedes: <strong>'
+                        . esc_html($registration_email)
+                        . '</strong>.';
+                } elseif ($same_as_registration === false && $custom_notification !== '') {
+                    $email_status = 'Tienes una dirección personalizada para avisos y certificados: <strong>'
+                        . esc_html($notification_email)
+                        . '</strong>.';
+                }
+                ?>
+                <div class="account-card account-card--form">
+                    <h3>Avisos por correo electrónico</h3>
+                    <p class="account-card__intro">
+                        Gestiona la dirección a la que enviaremos certificados y comunicaciones importantes.
                     </p>
+                    <p class="account-card__status">
+                        <?php echo wp_kses($email_status, ['strong' => []]); ?>
+                    </p>
+                    <form class="account-form" action="#" method="post" novalidate>
+                        <div class="account-field">
+                            <label class="account-field__label" for="account-notification-email">
+                                Dirección alternativa para notificaciones
+                            </label>
+                            <input
+                                type="email"
+                                id="account-notification-email"
+                                name="account-notification-email"
+                                class="account-input"
+                                value="<?php echo esc_attr($custom_notification); ?>"
+                                placeholder="nombre@empresa.com"
+                                autocomplete="off"
+                            >
+                            <p class="account-help" id="account-notification-help">
+                                Guardaremos los cambios cuando habilitemos la actualización desde esta página.
+                            </p>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="account-card account-card--notifications" data-notifications-card>
+                    <h3>Notificaciones del navegador</h3>
+                    <p class="account-card__intro">
+                        Activa las alertas del sistema para enterarte al instante de las novedades de tus garantías.
+                    </p>
+                    <div class="account-card__actions">
+                        <button type="button" class="account-button" data-notifications-request>
+                            <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
+                            Activar notificaciones
+                        </button>
+                        <p class="account-status account-status--info" data-notifications-status>
+                            Revisa los permisos disponibles en tu navegador.
+                        </p>
+                    </div>
                 </div>
             </div>
         </article>
