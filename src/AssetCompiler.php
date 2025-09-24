@@ -25,6 +25,8 @@ class AssetCompiler
         // globales
         'assets/css/global.css',
         'assets/js/global.js',
+        'assets/css/account.css',
+        'assets/js/account.js',
 
         // DASHBOARD
         'assets/css/dashboard.css',
