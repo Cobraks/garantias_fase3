@@ -76,17 +76,35 @@ class AccountViewModel
         $same_as_registration  = isset($notification_settings['misma_direccion_registro'])
             ? (bool) $notification_settings['misma_direccion_registro']
             : null;
-        $custom_notification   = $notification_settings['correo_electronico_notificaciones'] ?? '';
 
-        if ($custom_notification === '') {
-            $custom_notification = get_user_meta(
-                $user_id,
-                'ajustes_de_notificaciones_correo_electronico_notificaciones',
-                true
-            );
+        $custom_candidates = [
+            $notification_settings['correo_electronico_notificaciones'] ?? '',
+            $notification_settings['correo_electronico'] ?? '',
+        ];
+
+        $custom_candidates[] = get_user_meta(
+            $user_id,
+            'ajustes_de_notificaciones_correo_electronico_notificaciones',
+            true
+        );
+        $custom_candidates[] = get_user_meta(
+            $user_id,
+            'ajustes_de_notificaciones_correo_electronico',
+            true
+        );
+        $custom_candidates[] = $contact_meta['correo_electronico'] ?? '';
+        $custom_candidates[] = get_user_meta($user_id, 'datos_usuario_correo_electronico', true);
+
+        $custom_notification = '';
+        foreach ($custom_candidates as $candidate) {
+            $candidate = sanitize_email((string) $candidate);
+            if ($candidate === '') {
+                continue;
+            }
+
+            $custom_notification = $candidate;
+            break;
         }
-
-        $custom_notification = sanitize_email((string) $custom_notification);
 
         $notification_email = NotificationEmailResolver::resolve($user_id);
 
