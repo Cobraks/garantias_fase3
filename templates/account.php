@@ -378,12 +378,15 @@ $formatPhoneHref = static function ($phone) {
                 'swift_bic',
             ];
 
-            $sepa_full_fields = [
-                'nombre_deudor',
-                'direccion_deudor',
-            ];
+            $sepa_full_fields = [];
 
             $sepa_half_fields = [
+                'nombre_deudor',
+                'direccion_deudor',
+                'codigo_postal',
+                'poblacion',
+                'provincia',
+                'pais_deudor',
                 'numero_cuenta',
                 'swift_bic',
             ];
@@ -482,7 +485,15 @@ $formatPhoneHref = static function ($phone) {
                         data-payment-state="disabled"
                         <?php echo $activation_state === 'disabled' ? '' : 'hidden'; ?>
                     >
-                        Activa la domiciliación para generar el mandato SEPA y olvidarte de las transferencias.
+                        Activa la domiciliación para generar el mandato SEPA y olvidarte de gestionar transferencias manuales.
+                    </p>
+                    <p
+                        class="account-card__intro"
+                        data-payment-state="enabled"
+                        data-payment-awaiting
+                        <?php echo $activation_state === 'enabled' ? '' : 'hidden'; ?>
+                    >
+                        Completa los datos del titular y genera tu mandato SEPA. Después podrás firmarlo y subirlo desde aquí.
                     </p>
                     <?php if ($status_message !== '') : ?>
                         <div
@@ -579,18 +590,6 @@ $formatPhoneHref = static function ($phone) {
                             >
                                 Generar SEPA
                             </button>
-                        </div>
-                        <div
-                            class="account-payments__followup"
-                            data-payment-state="enabled"
-                            data-payment-generated
-                            <?php echo $has_generated_mandate ? '' : 'hidden'; ?>
-                        >
-                            <p class="account-card__note">Te hemos enviado un correo con el mandato SEPA y todas las instrucciones.</p>
-                            <div class="account-upload" aria-live="polite">
-                                <p>Fírmalo y súbelo aquí:</p>
-                                <button type="button" class="account-button account-button--ghost">Subir mandato firmado</button>
-                            </div>
                         </div>
                     <?php endif; ?>
                 </div>

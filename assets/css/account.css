@@ -359,7 +359,7 @@
 
 @media (min-width: 960px) {
   .account-card-grid--payments {
-    grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
   }
 }
 
@@ -388,7 +388,7 @@
 }
 
 .account-toggle__label {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .account-toggle__input:disabled + .account-toggle__label {
