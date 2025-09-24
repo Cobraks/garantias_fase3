@@ -282,7 +282,7 @@ class AccountViewModel
 
         $debtor_fields = [
             'nombre_deudor' => [
-                'label' => 'Titular de la cuenta',
+                'label' => 'Nombre completo',
                 'value' => '',
                 'name'  => 'nombre_deudor',
             ],
@@ -291,10 +291,20 @@ class AccountViewModel
                 'value' => '',
                 'name'  => 'direccion_deudor',
             ],
-            'cp_poblacion_provincia' => [
-                'label' => 'CP, población y provincia',
+            'codigo_postal' => [
+                'label' => 'Código postal',
                 'value' => '',
-                'name'  => 'cp_poblacion_provincia',
+                'name'  => 'codigo_postal',
+            ],
+            'poblacion' => [
+                'label' => 'Población',
+                'value' => '',
+                'name'  => 'poblacion',
+            ],
+            'provincia' => [
+                'label' => 'Provincia',
+                'value' => '',
+                'name'  => 'provincia',
             ],
             'pais_deudor' => [
                 'label' => 'País',
@@ -302,7 +312,7 @@ class AccountViewModel
                 'name'  => 'pais_deudor',
             ],
             'numero_cuenta' => [
-                'label' => 'IBAN',
+                'label' => 'Número de cuenta IBAN',
                 'value' => '',
                 'name'  => 'numero_cuenta',
             ],
@@ -321,19 +331,27 @@ class AccountViewModel
         if (is_array($group) && isset($group['gestion_sepa'])) {
             $sepa_group = $group['gestion_sepa'];
             if (is_array($sepa_group)) {
-                if (! empty($sepa_group['datos_deudor'])) {
+                if (! empty($sepa_group['datos_deudor']) && is_array($sepa_group['datos_deudor'])) {
                     $debtor = $sepa_group['datos_deudor'];
-                    foreach ($debtor_fields as $key => $field) {
-                        $value = '';
-                        if ($key === 'numero_cuenta') {
-                            $value = $debtor['numero_cuenta']
-                                ?? $debtor['numero_cienta']
-                                ?? '';
-                        } else {
-                            $value = $debtor[$key] ?? '';
-                        }
 
-                        $debtor_fields[$key]['value'] = self::sanitize_optional_text($value);
+                    foreach ($debtor_fields as $key => $field) {
+                        $value = self::resolve_debtor_array_value($debtor, $key);
+                        if ($value !== '') {
+                            $debtor_fields[$key]['value'] = self::sanitize_optional_text($value);
+                        }
+                    }
+
+                    if (! empty($debtor['cp_poblacion_provincia'])) {
+                        $location_parts = self::parse_debtor_location((string) $debtor['cp_poblacion_provincia']);
+                        foreach ($location_parts as $location_key => $location_value) {
+                            if ($location_value === '') {
+                                continue;
+                            }
+
+                            if (isset($debtor_fields[$location_key]) && $debtor_fields[$location_key]['value'] === '') {
+                                $debtor_fields[$location_key]['value'] = self::sanitize_optional_text($location_value);
+                            }
+                        }
                     }
                 }
 
@@ -429,22 +447,163 @@ class AccountViewModel
 
     private static function hydrate_debtor_meta(array $fields, int $user_id): array
     {
+        $combined_meta = '';
+
         foreach ($fields as $key => $field) {
-            if ($field['value'] !== '') {
-                continue;
+            if ($field['value'] === '') {
+                $value = self::get_debtor_meta_value($user_id, $key);
+
+                if ($value === '' && self::is_location_field($key)) {
+                    if ($combined_meta === '') {
+                        $combined_meta = self::get_debtor_meta_value($user_id, 'cp_poblacion_provincia');
+                    }
+
+                    if ($combined_meta !== '') {
+                        $parsed = self::parse_debtor_location($combined_meta);
+                        $value = $parsed[$key] ?? '';
+                    }
+                }
+
+                $fields[$key]['value'] = self::sanitize_optional_text($value);
             }
-
-            $meta_key = sprintf('gestion_pagos_gestion_sepa_datos_deudor_%s', $key);
-            $value = get_user_meta($user_id, $meta_key, true);
-
-            if ($key === 'numero_cuenta' && $value === '') {
-                $value = get_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', true);
-            }
-
-            $fields[$key]['value'] = self::sanitize_optional_text($value);
         }
 
         return $fields;
+    }
+
+    private static function resolve_debtor_array_value(array $data, string $key): string
+    {
+        $candidates = array_merge([$key], self::alternate_debtor_field_names($key));
+
+        foreach ($candidates as $candidate) {
+            if (! array_key_exists($candidate, $data)) {
+                continue;
+            }
+
+            $value = $data[$candidate];
+            if ($value === '' || $value === null) {
+                continue;
+            }
+
+            return (string) $value;
+        }
+
+        return '';
+    }
+
+    private static function get_debtor_meta_value(int $user_id, string $key): string
+    {
+        $base_key = sprintf('gestion_pagos_gestion_sepa_datos_deudor_%s', $key);
+        $candidates = array_merge([$base_key], self::alternate_debtor_meta_keys($key));
+
+        foreach ($candidates as $candidate) {
+            $value = get_user_meta($user_id, $candidate, true);
+            if ($value !== '') {
+                return (string) $value;
+            }
+        }
+
+        return '';
+    }
+
+    private static function alternate_debtor_field_names(string $key): array
+    {
+        switch ($key) {
+            case 'numero_cuenta':
+                return ['numero_cienta', 'iban'];
+            case 'codigo_postal':
+                return ['cp', 'codigo_postal_deudor', 'cp_deudor'];
+            case 'poblacion':
+                return ['ciudad', 'localidad', 'poblacion_deudor'];
+            case 'provincia':
+                return ['region', 'provincia_deudor'];
+            case 'pais_deudor':
+                return ['pais', 'pais_deudor_nombre'];
+            default:
+                return [];
+        }
+    }
+
+    private static function alternate_debtor_meta_keys(string $key): array
+    {
+        $suffixes = [];
+
+        switch ($key) {
+            case 'numero_cuenta':
+                $suffixes = ['numero_cienta', 'iban'];
+                break;
+            case 'codigo_postal':
+                $suffixes = ['cp', 'codigo_postal_deudor'];
+                break;
+            case 'poblacion':
+                $suffixes = ['ciudad', 'localidad', 'poblacion_deudor'];
+                break;
+            case 'provincia':
+                $suffixes = ['region', 'provincia_deudor'];
+                break;
+            case 'pais_deudor':
+                $suffixes = ['pais', 'pais_deudor_nombre'];
+                break;
+            default:
+                $suffixes = [];
+                break;
+        }
+
+        return array_map(
+            static function ($suffix) {
+                return sprintf('gestion_pagos_gestion_sepa_datos_deudor_%s', $suffix);
+            },
+            $suffixes
+        );
+    }
+
+    private static function parse_debtor_location(string $value): array
+    {
+        $result = [
+            'codigo_postal' => '',
+            'poblacion'     => '',
+            'provincia'     => '',
+        ];
+
+        $clean = trim(preg_replace('/\s+/', ' ', $value));
+        if ($clean === '') {
+            return $result;
+        }
+
+        $rest = $clean;
+
+        if (preg_match('/^(\d{4,5})[\s,.-]*(.+)$/u', $clean, $matches)) {
+            $result['codigo_postal'] = trim($matches[1]);
+            $rest = trim($matches[2]);
+        }
+
+        if ($rest === '') {
+            return $result;
+        }
+
+        if (preg_match('/^(.+?)\s*\(([^)]+)\)$/u', $rest, $matches)) {
+            $result['poblacion'] = trim($matches[1]);
+            $result['provincia'] = trim($matches[2]);
+            return $result;
+        }
+
+        foreach ([',', '·', ' - ', ' / '] as $delimiter) {
+            if (strpos($rest, $delimiter) !== false) {
+                $parts = array_map('trim', explode($delimiter, $rest, 2));
+                $result['poblacion'] = $parts[0] ?? '';
+                $result['provincia'] = $parts[1] ?? '';
+                return $result;
+            }
+        }
+
+        $result['poblacion'] = $rest;
+
+        return $result;
+    }
+
+    private static function is_location_field(string $key): bool
+    {
+        return in_array($key, ['codigo_postal', 'poblacion', 'provincia'], true);
     }
 
     private static function extract_payment_label($value): string

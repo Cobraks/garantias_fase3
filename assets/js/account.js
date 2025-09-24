@@ -189,40 +189,56 @@
             }
         }
 
-        const paymentSelector = document.querySelector('[data-payment-selector]');
-        if (paymentSelector) {
-            const select = paymentSelector.querySelector('[data-payment-select]');
-            const panelsContainer = document.querySelector('[data-payment-panels]');
-            const panels = panelsContainer
-                ? Array.from(panelsContainer.querySelectorAll('[data-payment-panel]'))
-                : [];
+        const paymentActivation = document.querySelector('[data-payment-activation]');
+        if (paymentActivation) {
+            const checkbox = paymentActivation.querySelector('[data-payment-toggle]');
+            const detail = document.querySelector('[data-payment-detail]');
 
-            const getFallback = () => (panels[0] ? panels[0].getAttribute('data-payment-panel') || '' : '');
+            const updatePanels = (state) => {
+                paymentActivation.setAttribute('data-state', state);
 
-            const setActivePanel = (value) => {
-                if (!panelsContainer) {
+                if (checkbox) {
+                    const isLocked = state === 'locked' || checkbox.hasAttribute('disabled');
+                    if (state === 'locked') {
+                        checkbox.checked = true;
+                        checkbox.disabled = true;
+                    } else if (!isLocked) {
+                        checkbox.disabled = false;
+                        checkbox.checked = state !== 'disabled';
+                    }
+                }
+
+                if (!detail) {
                     return;
                 }
 
-                const availableValues = panels.map((panel) => panel.getAttribute('data-payment-panel'));
-                const targetValue = availableValues.includes(value) ? value : getFallback() || 'domiciliacion';
-
-                panelsContainer.setAttribute('data-active', targetValue);
+                detail.setAttribute('data-state', state);
+                const panels = detail.querySelectorAll('[data-payment-state]');
                 panels.forEach((panel) => {
-                    const isActive = panel.getAttribute('data-payment-panel') === targetValue;
-                    panel.hidden = !isActive;
-                    panel.setAttribute('aria-hidden', String(!isActive));
+                    const rawStates = panel.getAttribute('data-payment-state') || '';
+                    const allowedStates = rawStates.split(/\s+/).filter(Boolean);
+                    const shouldShow = allowedStates.length === 0 || allowedStates.includes(state);
+                    panel.hidden = !shouldShow;
+                    panel.setAttribute('aria-hidden', String(!shouldShow));
+                });
+
+                const summaryStatuses = paymentActivation.querySelectorAll('[data-payment-state]');
+                summaryStatuses.forEach((element) => {
+                    const rawStates = element.getAttribute('data-payment-state') || '';
+                    const allowedStates = rawStates.split(/\s+/).filter(Boolean);
+                    const shouldShow = allowedStates.length === 0 || allowedStates.includes(state);
+                    element.hidden = !shouldShow;
+                    element.setAttribute('aria-hidden', String(!shouldShow));
                 });
             };
 
-            const initial = paymentSelector.getAttribute('data-default') || (select ? select.value : '');
-            if (initial) {
-                setActivePanel(initial);
-            }
+            const initialState = paymentActivation.getAttribute('data-state') || 'disabled';
+            updatePanels(initialState);
 
-            if (select) {
-                select.addEventListener('change', () => {
-                    setActivePanel(select.value);
+            if (checkbox) {
+                checkbox.addEventListener('change', () => {
+                    const nextState = checkbox.checked ? 'enabled' : 'disabled';
+                    updatePanels(nextState);
                 });
             }
         }

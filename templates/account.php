@@ -340,266 +340,197 @@ $formatPhoneHref = static function ($phone) {
         </article>
 
         <?php
-            $payment_methods         = $payments['methods'] ?? [];
-            $selected_payment_method = $payments['selected_method'] ?? 'domiciliacion';
+            $selected_payment_method = $payments['selected_method'] ?? 'transferencia';
             $sepa_info               = is_array($payments['sepa'] ?? null) ? $payments['sepa'] : [];
-            $transfer_info           = $payments['transfer'] ?? [];
             $sepa_status_label       = $sepa_info['status_label'] ?? 'Sin información del mandato';
             $sepa_status_variant     = $sepa_info['status_variant'] ?? 'info';
             $sepa_locked             = (bool) ($sepa_info['locked'] ?? false);
             $sepa_fields             = is_array($sepa_info['fields'] ?? null) ? $sepa_info['fields'] : [];
-            $sepa_documents          = is_array($sepa_info['documents'] ?? null) ? $sepa_info['documents'] : [];
-            $sepa_signed             = is_array($sepa_documents['signed'] ?? null) ? $sepa_documents['signed'] : [];
-            $sepa_pending            = is_array($sepa_documents['pending'] ?? null) ? $sepa_documents['pending'] : [];
-            $sepa_has_fields         = array_filter(array_map(static function ($field) {
+            $method_labels           = [
+                'domiciliacion' => 'Domiciliación bancaria',
+                'transferencia' => 'Transferencia bancaria',
+            ];
+            $current_method_label    = $method_labels[$selected_payment_method] ?? $method_labels['transferencia'];
+            $activation_state        = $sepa_locked
+                ? 'locked'
+                : ($selected_payment_method === 'domiciliacion' ? 'enabled' : 'disabled');
+            $sepa_field_lookup       = [];
+
+            foreach ($sepa_fields as $field) {
+                $field_name = (string) ($field['name'] ?? '');
+                if ($field_name === '' && isset($field['label'])) {
+                    $field_name = sanitize_title((string) $field['label']);
+                }
+
+                if ($field_name !== '') {
+                    $sepa_field_lookup[$field_name] = $field;
+                }
+            }
+
+            $sepa_field_order = [
+                'nombre_deudor',
+                'direccion_deudor',
+                'codigo_postal',
+                'poblacion',
+                'provincia',
+                'pais_deudor',
+                'numero_cuenta',
+                'swift_bic',
+            ];
+
+            $sepa_full_fields = [
+                'nombre_deudor',
+                'direccion_deudor',
+                'numero_cuenta',
+                'swift_bic',
+            ];
+
+            $has_sepa_values = array_filter(array_map(static function ($field) {
                 return trim((string) ($field['value'] ?? ''));
-            }, $sepa_fields));
-            $transfer_rows           = [];
-
-            if (! empty($transfer_info['holder'])) {
-                $transfer_rows[] = [
-                    'label' => 'Titular de la cuenta',
-                    'value' => $transfer_info['holder'],
-                ];
-            }
-
-            if (! empty($transfer_info['bank'])) {
-                $transfer_rows[] = [
-                    'label' => 'Entidad bancaria',
-                    'value' => $transfer_info['bank'],
-                ];
-            }
-
-            if (! empty($transfer_info['iban'])) {
-                $transfer_rows[] = [
-                    'label' => 'IBAN',
-                    'value' => $transfer_info['iban'],
-                    'code'  => true,
-                ];
-            }
-
-            if (! empty($transfer_info['bic'])) {
-                $transfer_rows[] = [
-                    'label' => 'BIC / SWIFT',
-                    'value' => $transfer_info['bic'],
-                    'code'  => true,
-                ];
-            }
-
-            $payment_help_id = 'account-payment-help';
+            }, $sepa_field_lookup));
         ?>
         <article id="account-payments" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('payment', 'account-section__icon'); ?>
                 <div>
                     <h2>Pagos</h2>
-                    <p>Define cómo quieres abonar tus garantías y consulta el estado de tu mandato SEPA.</p>
+                    <p>Consulta el método activo y prepara tu domiciliación bancaria cuando estés listo.</p>
                 </div>
             </header>
             <div class="account-card-grid account-card-grid--payments">
                 <div
-                    class="account-card account-card--payments-selector"
-                    data-payment-selector
-                    data-default="<?php echo esc_attr($selected_payment_method); ?>"
+                    class="account-card account-card--payments-summary"
+                    data-payment-activation
+                    data-state="<?php echo esc_attr($activation_state); ?>"
                 >
-                    <div class="account-card__header">
-                        <h3>Configura tu método de pago</h3>
-                        <button
-                            type="button"
-                            class="account-help__trigger"
-                            data-account-help-trigger
-                            aria-controls="<?php echo esc_attr($payment_help_id); ?>"
-                            aria-expanded="false"
+                    <h3>Configura tu método de pago</h3>
+                    <p class="account-payments__current">
+                        <strong>Método de pago actual:</strong> <?php echo esc_html($current_method_label); ?>
+                    </p>
+                    <?php if ($activation_state === 'disabled') : ?>
+                        <p class="account-status account-status--warning" data-payment-state="disabled">
+                            Cuando contrates una garantía, tendrás 48&nbsp;horas para realizar la transferencia y avisar a tu equipo comercial.
+                        </p>
+                    <?php else : ?>
+                        <p class="account-status account-status--success" data-payment-state="enabled locked">
+                            Las garantías se activan automáticamente gracias a tu domiciliación bancaria.
+                        </p>
+                    <?php endif; ?>
+                    <p class="account-status account-status--info" data-payment-state="disabled" <?php echo $activation_state === 'disabled' ? '' : 'hidden'; ?>>
+                        Activa la domiciliación bancaria para automatizar el cobro y evitar gestiones manuales.
+                    </p>
+                    <p class="account-status account-status--info" data-payment-state="enabled" <?php echo $activation_state === 'enabled' ? '' : 'hidden'; ?>>
+                        Completa tus datos bancarios para generar el mandato SEPA.
+                    </p>
+                    <label class="account-toggle">
+                        <input
+                            type="checkbox"
+                            class="account-toggle__input"
+                            data-payment-toggle
+                            value="1"
+                            <?php checked($activation_state !== 'disabled'); ?>
+                            <?php disabled($sepa_locked); ?>
                         >
-                            <?php echo Svg::icon('help', 'account-help__icon'); ?>
-                            <span class="screen-reader-text">Mostrar información sobre los métodos de pago</span>
-                        </button>
-                    </div>
-                    <p class="account-card__intro">
-                        Elige la modalidad que aplicaremos a tus próximas garantías.
-                    </p>
-                    <div class="account-help account-help--hidden" id="<?php echo esc_attr($payment_help_id); ?>" hidden>
-                        <div class="account-help__section">
-                            <h4>Domiciliación bancaria</h4>
-                            <ul>
-                                <li>La cobertura se activa desde el primer día sin esperas.</li>
-                                <li>360VO se encarga de los cargos automáticamente.</li>
-                                <li>Olvídate de justificantes y recordatorios de transferencias.</li>
-                            </ul>
-                        </div>
-                        <div class="account-help__section">
-                            <h4>Transferencia bancaria</h4>
-                            <ul>
-                                <li>La garantía se activa cuando confirmamos la recepción del pago.</li>
-                                <li>Debes enviar la transferencia en un plazo máximo de 48 horas.</li>
-                                <li>Es necesario remitir el justificante a 360VO para activar la cobertura.</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="account-field">
-                        <div class="account-field__label-wrapper">
-                            <label class="account-field__label" for="account-payment-method">Método de pago</label>
-                        </div>
-                        <div class="account-select">
-                            <select
-                                id="account-payment-method"
-                                class="account-input"
-                                data-payment-select
-                                <?php echo $sepa_locked ? 'disabled' : ''; ?>
-                            >
-                                <?php foreach ($payment_methods as $method) : ?>
-                                    <option
-                                        value="<?php echo esc_attr($method['value']); ?>"
-                                        <?php selected($selected_payment_method, $method['value']); ?>
-                                    >
-                                        <?php echo esc_html($method['label']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <p class="account-card__note">
-                        <?php if ($sepa_locked) : ?>
-                            Tienes un mandato SEPA activo. Contacta con tu equipo de 360VO si necesitas cambiar el método de pago.
-                        <?php else : ?>
-                            Esta preferencia se aplicará a las nuevas garantías que registres en la plataforma.
-                        <?php endif; ?>
-                    </p>
+                        <span class="account-toggle__label">Activar domiciliación bancaria</span>
+                    </label>
+                    <?php if ($sepa_locked) : ?>
+                        <p class="account-card__note">Tu mandato SEPA está validado. Si necesitas hacer cambios, contacta con tu equipo de 360VO.</p>
+                    <?php endif; ?>
                 </div>
                 <div
                     class="account-card account-card--payments-detail"
-                    data-payment-panels
-                    data-active="<?php echo esc_attr($selected_payment_method); ?>"
+                    data-payment-detail
+                    data-state="<?php echo esc_attr($activation_state); ?>"
                 >
+                    <h3>Domiciliación bancaria</h3>
+                    <div class="account-card__status account-card__status--<?php echo esc_attr($sepa_status_variant); ?>">
+                        <strong>Estado del mandato:</strong> <?php echo esc_html($sepa_status_label); ?>
+                    </div>
                     <div
-                        class="account-payments__panel account-payments__panel--sepa"
-                        data-payment-panel="domiciliacion"
-                        <?php echo $selected_payment_method === 'transferencia' ? 'hidden' : ''; ?>
-                        aria-hidden="<?php echo $selected_payment_method === 'transferencia' ? 'true' : 'false'; ?>"
+                        class="account-payments__message"
+                        data-payment-state="disabled"
+                        <?php echo $activation_state === 'disabled' ? '' : 'hidden'; ?>
                     >
-                        <h3>Mandato SEPA</h3>
-                        <div class="account-card__status account-card__status--<?php echo esc_attr($sepa_status_variant); ?>">
-                            <strong>Estado de documentación:</strong> <?php echo esc_html($sepa_status_label); ?>
-                        </div>
-                        <?php if ($sepa_locked) : ?>
-                            <p class="account-card__intro">Tus datos están validados. No necesitas hacer nada más para mantener la domiciliación activa.</p>
-                            <?php if ($sepa_has_fields) : ?>
-                                <dl class="account-card__list account-payments__details">
-                                    <?php foreach ($sepa_fields as $field) : ?>
-                                        <?php
-                                            $value = trim((string) ($field['value'] ?? ''));
-                                            if ($value === '') {
-                                                continue;
-                                            }
-                                        ?>
-                                        <div>
-                                            <dt><?php echo esc_html($field['label']); ?></dt>
-                                            <dd><?php echo esc_html($value); ?></dd>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </dl>
-                            <?php else : ?>
-                                <p class="account-card__note">Si necesitas actualizar los datos del mandato, contacta con tu equipo de 360VO.</p>
-                            <?php endif; ?>
-                        <?php else : ?>
-                            <p class="account-card__intro">Completa estos datos para tramitar la domiciliación bancaria. Revisaremos la información antes de activar el mandato.</p>
-                            <div class="account-form account-form--sepa">
-                                <?php foreach ($sepa_fields as $index => $field) : ?>
+                        <p class="account-card__intro">Activa la domiciliación para generar el mandato SEPA y olvidarte de las transferencias.</p>
+                    </div>
+                    <?php if ($sepa_locked) : ?>
+                        <?php if ($has_sepa_values) : ?>
+                            <div
+                                class="account-form account-form--sepa account-form--sepa-readonly"
+                                data-payment-state="locked"
+                                <?php echo $activation_state === 'locked' ? '' : 'hidden'; ?>
+                            >
+                                <?php foreach ($sepa_field_order as $field_key) : ?>
                                     <?php
-                                        $field_name  = $field['name'] ?? ('field_' . $index);
-                                        $field_value = (string) ($field['value'] ?? '');
-                                        $field_id    = 'account-sepa-' . sanitize_title($field_name);
+                                        $field = $sepa_field_lookup[$field_key] ?? null;
+                                        $value = trim((string) ($field['value'] ?? ''));
+                                        if ($value === '') {
+                                            continue;
+                                        }
+                                        $field_label = (string) ($field['label'] ?? $field_key);
+                                        $field_id    = 'account-sepa-' . sanitize_title($field_key);
+                                        $field_classes = ['account-form__field', 'account-form__field--readonly'];
+                                        if (in_array($field_key, $sepa_full_fields, true)) {
+                                            $field_classes[] = 'account-form__field--full';
+                                        }
                                     ?>
-                                    <div class="account-field">
-                                        <div class="account-field__label-wrapper">
-                                            <label class="account-field__label" for="<?php echo esc_attr($field_id); ?>">
-                                                <?php echo esc_html($field['label']); ?>
-                                            </label>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            id="<?php echo esc_attr($field_id); ?>"
-                                            name="account-sepa[<?php echo esc_attr($field_name); ?>]"
-                                            class="account-input"
-                                            value="<?php echo esc_attr($field_value); ?>"
-                                            placeholder="<?php echo esc_attr($field['label']); ?>"
-                                            autocomplete="off"
-                                        >
+                                    <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
+                                        <span class="account-form__label"><?php echo esc_html($field_label); ?></span>
+                                        <span class="account-form__value" id="<?php echo esc_attr($field_id); ?>-value"><?php echo esc_html($value); ?></span>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
-                        <?php endif; ?>
-                        <div class="account-payments__documents">
-                            <h4>Documentación del mandato</h4>
-                            <?php if (($sepa_signed['url'] ?? '') || ($sepa_pending['url'] ?? '')) : ?>
-                                <ul class="account-payments__links">
-                                    <?php if (! empty($sepa_signed['url'])) : ?>
-                                        <li>
-                                            <a href="<?php echo esc_url($sepa_signed['url']); ?>" target="_blank" rel="noopener noreferrer">
-                                                Mandato firmado
-                                            </a>
-                                            <?php if (! empty($sepa_signed['filename'])) : ?>
-                                                <span class="account-payments__file"><?php echo esc_html($sepa_signed['filename']); ?></span>
-                                            <?php endif; ?>
-                                        </li>
-                                    <?php endif; ?>
-                                    <?php if (! empty($sepa_pending['url'])) : ?>
-                                        <li>
-                                            <a href="<?php echo esc_url($sepa_pending['url']); ?>" target="_blank" rel="noopener noreferrer">
-                                                Borrador para imprimir y firmar
-                                            </a>
-                                            <?php if (! empty($sepa_pending['filename'])) : ?>
-                                                <span class="account-payments__file"><?php echo esc_html($sepa_pending['filename']); ?></span>
-                                            <?php endif; ?>
-                                        </li>
-                                    <?php endif; ?>
-                                </ul>
-                            <?php else : ?>
-                                <p class="account-card__note">Todavía no has cargado ningún documento de mandato.</p>
-                            <?php endif; ?>
-                        </div>
-                        <p class="account-card__note">
-                            Muy pronto podrás completar, firmar y subir el mandato SEPA directamente desde esta página. Si necesitas actualizarlo, contacta con tu comercial de 360VO.
-                        </p>
-                    </div>
-                    <div
-                        class="account-payments__panel account-payments__panel--transfer"
-                        data-payment-panel="transferencia"
-                        <?php echo $selected_payment_method === 'transferencia' ? '' : 'hidden'; ?>
-                        aria-hidden="<?php echo $selected_payment_method === 'transferencia' ? 'false' : 'true'; ?>"
-                    >
-                        <h3>Transferencia bancaria</h3>
-                        <p class="account-card__intro">Si optas por la transferencia, ten en cuenta estos pasos.</p>
-                        <ul class="account-payments__list account-payments__list--warning">
-                            <li class="account-payments__item">
-                                <?php echo Svg::icon('warning', 'account-payments__icon'); ?>
-                                <span>La garantía sólo se activa cuando confirmamos la recepción del importe.</span>
-                            </li>
-                            <li class="account-payments__item">
-                                <?php echo Svg::icon('warning', 'account-payments__icon'); ?>
-                                <span>Realiza la transferencia en las 48 horas siguientes al inicio de la garantía.</span>
-                            </li>
-                            <li class="account-payments__item">
-                                <?php echo Svg::icon('warning', 'account-payments__icon'); ?>
-                                <span>Envía el justificante a 360VO para que podamos activar la cobertura.</span>
-                            </li>
-                        </ul>
-                        <?php if (! empty($transfer_rows)) : ?>
-                            <dl class="account-card__list account-payments__details">
-                                <?php foreach ($transfer_rows as $row) : ?>
-                                    <div>
-                                        <dt><?php echo esc_html($row['label']); ?></dt>
-                                        <dd class="<?php echo ! empty($row['code']) ? 'account-card__code' : ''; ?>">
-                                            <?php echo esc_html($row['value']); ?>
-                                        </dd>
-                                    </div>
-                                <?php endforeach; ?>
-                            </dl>
                         <?php else : ?>
-                            <p class="account-card__note">Pronto mostraremos aquí los datos bancarios para tus transferencias.</p>
+                            <p class="account-card__note" data-payment-state="locked" <?php echo $activation_state === 'locked' ? '' : 'hidden'; ?>>Si necesitas actualizar los datos del mandato, contacta con tu equipo de 360VO.</p>
                         <?php endif; ?>
-                        <p class="account-card__note">No es necesario que memorices estos datos: te los recordaremos cuando registres una nueva garantía.</p>
-                    </div>
+                    <?php else : ?>
+                        <div
+                            class="account-form account-form--sepa"
+                            data-payment-state="enabled"
+                            <?php echo $activation_state === 'enabled' ? '' : 'hidden'; ?>
+                        >
+                            <?php foreach ($sepa_field_order as $field_key) : ?>
+                                <?php
+                                    $field = $sepa_field_lookup[$field_key] ?? null;
+                                    $field_label = (string) ($field['label'] ?? ucfirst(str_replace('_', ' ', $field_key)));
+                                    $field_value = (string) ($field['value'] ?? '');
+                                    $field_id    = 'account-sepa-' . sanitize_title($field_key);
+                                    $field_classes = ['account-field', 'account-form__field'];
+                                    if (in_array($field_key, $sepa_full_fields, true)) {
+                                        $field_classes[] = 'account-form__field--full';
+                                    }
+                                ?>
+                                <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
+                                    <div class="account-field__label-wrapper">
+                                        <label class="account-field__label" for="<?php echo esc_attr($field_id); ?>">
+                                            <?php echo esc_html($field_label); ?>
+                                        </label>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        id="<?php echo esc_attr($field_id); ?>"
+                                        name="account-sepa[<?php echo esc_attr($field_key); ?>]"
+                                        class="account-input"
+                                        value="<?php echo esc_attr($field_value); ?>"
+                                        placeholder="<?php echo esc_attr($field_label); ?>"
+                                        autocomplete="off"
+                                    >
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div
+                            class="account-payments__actions"
+                            data-payment-state="enabled"
+                            <?php echo $activation_state === 'enabled' ? '' : 'hidden'; ?>
+                        >
+                            <button type="button" class="account-button" disabled>Generar SEPA</button>
+                            <p class="account-card__note">Te hemos enviado un correo con el mandato SEPA y todas las instrucciones.</p>
+                            <div class="account-upload" aria-live="polite">
+                                <p>Fírmalo y súbelo aquí:</p>
+                                <button type="button" class="account-button account-button--ghost" disabled>Subir mandato firmado</button>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </article>
