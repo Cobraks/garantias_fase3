@@ -4,14 +4,27 @@ if (! defined('ABSPATH')) {
 }
 
 use GarantiasOnline360VO\Svg;
+use GarantiasOnline360VO\Support\NotificationEmailResolver;
 
 $is_auth_template = ! empty($is_auth_page);
 
 // Calculamos botón de perfil y avatar
 $current_user_id = get_current_user_id();
+$current_user = wp_get_current_user();
+$display_name = $current_user->display_name ?: $current_user->user_login;
+$notification_email = $current_user->user_email;
+
+if ($current_user_id && class_exists(NotificationEmailResolver::class)) {
+    $resolved_email = NotificationEmailResolver::resolve($current_user_id);
+    if (! empty($resolved_email)) {
+        $notification_email = $resolved_email;
+    }
+}
+
 $avatar_id = function_exists('get_field')
     ? get_field('profile_image', 'user_' . $current_user_id)
     : false;
+
 $avatar_html = $avatar_id
     ? sprintf(
         '<img src="%s" alt="%s" class="top-bar__profile-icon">',
@@ -19,11 +32,32 @@ $avatar_html = $avatar_id
         esc_attr__('Mi perfil', 'garantias-online-360vo')
     )
     : Svg::icon('user', 'top-bar__profile-icon');
-// Enlace de perfil
+
+$menu_avatar = $avatar_id
+    ? wp_get_attachment_image(
+        $avatar_id,
+        [56, 56],
+        false,
+        [
+            'class' => 'profile-menu__avatar-image',
+            'alt'   => esc_attr__('Mi perfil', 'garantias-online-360vo'),
+        ]
+    )
+    : Svg::icon('user');
+
+$profile_menu_id = 'profile-menu-' . $current_user_id;
 $profile_button = sprintf(
-    '<button type="button" class="top-bar__profile-link">%s</button>',
+    '<button type="button" class="top-bar__profile-link" aria-label="%1$s" aria-haspopup="true" aria-expanded="false" aria-controls="%2$s">%3$s</button>',
+    esc_attr(sprintf(
+        /* translators: %s: display name */
+        __('Abrir menú de cuenta de %s', 'garantias-online-360vo'),
+        $display_name
+    )),
+    esc_attr($profile_menu_id),
     $avatar_html
 );
+
+$account_url = home_url('/garantias-online/mi-cuenta/');
 $is_admin_user = current_user_can('manage_options');
 $home_destination = $is_admin_user
     ? home_url('/garantias-online')
@@ -102,6 +136,9 @@ $home_destination = $is_admin_user
     <?php endif; ?>
     <?php if (! empty($is_list_page)) : ?>
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>">
+    <?php endif; ?>
+    <?php if (! empty($is_account_page)) : ?>
+        <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/account.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
     <script src="<?php echo esc_url(plugins_url(
                         'assets/js/global.min.js',
@@ -198,13 +235,44 @@ $home_destination = $is_admin_user
                 <?php $tiene_foto = false; ?>
                 <div class="top-bar__profile">
                     <?php echo $profile_button; ?>
-                    <div class="top-bar__profile-menu">
-                        <a href="<?php echo esc_url(admin_url('profile.php')); ?>" class="profile-menu__item">
-                            <?php esc_html_e('Ajustes', 'garantias-online-360vo'); ?>
-                        </a>
-                        <a href="<?php echo esc_url(wp_logout_url(home_url('/garantias-online/'))); ?>" class="profile-menu__item">
-                            <?php esc_html_e('Salir', 'garantias-online-360vo'); ?>
-                        </a>
+                    <div
+                        class="top-bar__profile-menu"
+                        id="<?php echo esc_attr($profile_menu_id); ?>"
+                        role="menu"
+                        aria-label="<?php esc_attr_e('Menú de cuenta', 'garantias-online-360vo'); ?>"
+                        aria-hidden="true"
+                    >
+                        <div class="profile-menu__header">
+                            <div class="profile-menu__avatar" aria-hidden="true">
+                                <?php echo $menu_avatar; ?>
+                            </div>
+                            <div class="profile-menu__info">
+                                <span class="profile-menu__name"><?php echo esc_html($display_name); ?></span>
+                                <?php if (! empty($notification_email)) : ?>
+                                    <span class="profile-menu__email"><?php echo esc_html($notification_email); ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="profile-menu__list" role="none">
+                            <a
+                                href="<?php echo esc_url($account_url); ?>"
+                                class="profile-menu__item"
+                                role="menuitem"
+                            >
+                                <?php echo Svg::icon('settings', 'profile-menu__icon'); ?>
+                                <span class="profile-menu__text"><?php esc_html_e('Mi cuenta', 'garantias-online-360vo'); ?></span>
+                            </a>
+                        </div>
+                        <div class="profile-menu__footer">
+                            <a
+                                href="<?php echo esc_url(wp_logout_url(home_url('/garantias-online/'))); ?>"
+                                class="profile-menu__item profile-menu__item--logout"
+                                role="menuitem"
+                            >
+                                <?php echo Svg::icon('logout', 'profile-menu__icon'); ?>
+                                <span class="profile-menu__text"><?php esc_html_e('Cerrar sesión', 'garantias-online-360vo'); ?></span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             <?php elseif (! empty($is_register_page)) : ?>
