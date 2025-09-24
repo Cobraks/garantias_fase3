@@ -14,7 +14,8 @@ $documents        = $account['documents'] ?? [];
 $payments         = $account['payments'] ?? [];
 $document_signature = is_array($documents['signature'] ?? null) ? $documents['signature'] : [];
 $document_seal       = is_array($documents['seal'] ?? null) ? $documents['seal'] : [];
-$documents_flag      = $documents['add_to_certificates'] ?? null;
+$signature_default_label = esc_html__('+ Subir imagen de firma', 'garantias-online-360vo');
+$seal_default_label      = esc_html__('+ Subir imagen de sello', 'garantias-online-360vo');
 
 \GarantiasOnline360VO\TemplateLoader::load_part(
     'header',
@@ -60,7 +61,7 @@ $sections = [
     ],
     [
         'id'    => 'account-documents',
-        'label' => 'Documentos para certificados',
+        'label' => 'Certificados',
         'icon'  => Svg::icon('check_shield', 'account-nav__icon'),
     ],
 ];
@@ -378,17 +379,21 @@ $formatPhoneHref = static function ($phone) {
                 'swift_bic',
             ];
 
-            $sepa_full_fields = [];
-
-            $sepa_half_fields = [
+            $sepa_full_fields = [
                 'nombre_deudor',
                 'direccion_deudor',
+            ];
+
+            $sepa_half_fields = [
+                'numero_cuenta',
+                'swift_bic',
+            ];
+
+            $sepa_quarter_fields = [
                 'codigo_postal',
                 'poblacion',
                 'provincia',
                 'pais_deudor',
-                'numero_cuenta',
-                'swift_bic',
             ];
 
             $has_sepa_values = array_filter(array_map(static function ($field) {
@@ -400,23 +405,6 @@ $formatPhoneHref = static function ($phone) {
             $signed_document  = ! empty($sepa_documents['signed']);
             $has_generated_mandate = $pending_document || $signed_document || ($sepa_info['status'] !== null);
 
-            $status_message = '';
-            $status_variant = 'info';
-
-            if ($sepa_locked) {
-                $status_message = 'Mandato SEPA validado. Tus garantías se activarán automáticamente.';
-                $status_variant = 'success';
-                $has_generated_mandate = true;
-            } elseif ($signed_document) {
-                $status_message = 'Hemos recibido tu mandato firmado. Lo revisaremos en breve.';
-                $status_variant = 'warning';
-            } elseif ($pending_document) {
-                $status_message = 'Revisa tu correo, firma el mandato y súbelo para completar la domiciliación.';
-                $status_variant = 'info';
-            } elseif ($has_generated_mandate && ! empty($sepa_status_label)) {
-                $status_message = (string) $sepa_status_label;
-                $status_variant = $sepa_status_variant;
-            }
         ?>
         <article id="account-payments" class="account-section" tabindex="-1">
             <header class="account-section__header">
@@ -495,16 +483,6 @@ $formatPhoneHref = static function ($phone) {
                     >
                         Completa los datos del titular y genera tu mandato SEPA. Después podrás firmarlo y subirlo desde aquí.
                     </p>
-                    <?php if ($status_message !== '') : ?>
-                        <div
-                            class="account-card__status account-card__status--<?php echo esc_attr($status_variant); ?>"
-                            data-payment-state="enabled locked"
-                            data-payment-generated
-                            <?php echo $has_generated_mandate ? '' : 'hidden'; ?>
-                        >
-                            <strong>Estado del mandato:</strong> <?php echo esc_html($status_message); ?>
-                        </div>
-                    <?php endif; ?>
                     <?php if ($sepa_locked) : ?>
                         <?php if ($has_sepa_values) : ?>
                             <div
@@ -527,6 +505,9 @@ $formatPhoneHref = static function ($phone) {
                                         }
                                         if (in_array($field_key, $sepa_half_fields, true)) {
                                             $field_classes[] = 'account-form__field--half';
+                                        }
+                                        if (in_array($field_key, $sepa_quarter_fields, true)) {
+                                            $field_classes[] = 'account-form__field--quarter';
                                         }
                                     ?>
                                     <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
@@ -556,6 +537,9 @@ $formatPhoneHref = static function ($phone) {
                                     }
                                     if (in_array($field_key, $sepa_half_fields, true)) {
                                         $field_classes[] = 'account-form__field--half';
+                                    }
+                                    if (in_array($field_key, $sepa_quarter_fields, true)) {
+                                        $field_classes[] = 'account-form__field--quarter';
                                     }
                                 ?>
                                 <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
@@ -600,50 +584,100 @@ $formatPhoneHref = static function ($phone) {
             <header class="account-section__header">
                 <?php echo Svg::icon('check_shield', 'account-section__icon'); ?>
                 <div>
-                    <h2>Documentos para certificados</h2>
-                    <p>Gestiona la firma y el sello que aparecen en tus certificados.</p>
+                    <div class="account-section__title">
+                        <h2>Certificados</h2>
+                        <button
+                            type="button"
+                            class="account-help__trigger"
+                            aria-controls="account-certificates-help"
+                            aria-expanded="false"
+                            data-account-help-trigger
+                        >
+                            <?php echo Svg::icon('help', 'account-help__icon'); ?>
+                            <span class="screen-reader-text">Ver información sobre firma y sello</span>
+                        </button>
+                    </div>
+                    <p>Prepara la firma y el sello que incluiremos en tus certificados.</p>
                 </div>
             </header>
+            <div class="account-help account-help--hidden" id="account-certificates-help" hidden>
+                <p>Puedes subir tu firma y sello para que aparezcan en los certificados que emitimos. Mantén los archivos actualizados para evitar rechazos.</p>
+            </div>
             <div class="account-card-grid">
-                <div class="account-card">
-                    <h3>Firma y sello</h3>
-                    <dl class="account-card__list">
-                        <div>
-                            <dt>Añadir automáticamente</dt>
-                            <dd>
-                                <?php if ($documents_flag === true) : ?>
-                                    Sí, se añaden a cada certificado emitido.
-                                <?php elseif ($documents_flag === false) : ?>
-                                    No, los certificados se generan sin firma ni sello.
-                                <?php else : ?>
-                                    Sin configurar.
-                                <?php endif; ?>
-                            </dd>
+                <div class="account-card account-card--certificates" data-certificates-card>
+                    <div class="account-card__header">
+                        <h3>Firma y sello para certificados</h3>
+                        <button
+                            type="button"
+                            class="account-help__trigger"
+                            aria-controls="account-certificates-usage"
+                            aria-expanded="false"
+                            data-account-help-trigger
+                        >
+                            <?php echo Svg::icon('help', 'account-help__icon'); ?>
+                            <span class="screen-reader-text">Ver consejos para subir firma y sello</span>
+                        </button>
+                    </div>
+                    <div class="account-help account-help--hidden" id="account-certificates-usage" hidden>
+                        <p>Utiliza imágenes legibles, sin fondos y con buena resolución. Podrás revisar la previsualización antes de guardar los cambios.</p>
+                    </div>
+                    <div class="account-certificates__uploads">
+                        <div class="form-row">
+                            <div class="input-container">
+                                <div class="file-upload" id="signature-upload">
+                                    <div class="file-label">
+                                        <?php
+                                        $signature_label = $signature_default_label;
+                                        if (! empty($document_signature['name']) && is_string($document_signature['name'])) {
+                                            $signature_label = esc_html($document_signature['name']);
+                                        }
+                                        echo $signature_label;
+                                        ?>
+                                    </div>
+                                    <p class="file-hint">Formatos: JPG, PNG (máx. 5MB)</p>
+                                    <input type="file" id="signature" class="file-input" accept="image/*">
+                                    <div
+                                        class="file-preview"
+                                        id="signature-preview"
+                                        <?php echo empty($document_signature['url']) ? 'hidden aria-hidden="true"' : ''; ?>
+                                    >
+                                        <?php if (! empty($document_signature['url'])) : ?>
+                                            <img src="<?php echo esc_url($document_signature['url']); ?>" alt="Previsualización de la firma" loading="lazy">
+                                        <?php else : ?>
+                                            <img src="" alt="Previsualización de la firma" loading="lazy">
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="input-container">
+                                <div class="file-upload" id="stamp-upload">
+                                    <div class="file-label">
+                                        <?php
+                                        $seal_label = $seal_default_label;
+                                        if (! empty($document_seal['name']) && is_string($document_seal['name'])) {
+                                            $seal_label = esc_html($document_seal['name']);
+                                        }
+                                        echo $seal_label;
+                                        ?>
+                                    </div>
+                                    <p class="file-hint">Formatos: JPG, PNG (máx. 5MB)</p>
+                                    <input type="file" id="stamp" class="file-input" accept="image/*">
+                                    <div
+                                        class="file-preview"
+                                        id="stamp-preview"
+                                        <?php echo empty($document_seal['url']) ? 'hidden aria-hidden="true"' : ''; ?>
+                                    >
+                                        <?php if (! empty($document_seal['url'])) : ?>
+                                            <img src="<?php echo esc_url($document_seal['url']); ?>" alt="Previsualización del sello" loading="lazy">
+                                        <?php else : ?>
+                                            <img src="" alt="Previsualización del sello" loading="lazy">
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <?php if (! empty($document_signature['url'])) : ?>
-                            <div>
-                                <dt>Firma</dt>
-                                <dd>
-                                    <a href="<?php echo esc_url($document_signature['url']); ?>" target="_blank" rel="noopener noreferrer">
-                                        Ver archivo
-                                    </a>
-                                </dd>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (! empty($document_seal['url'])) : ?>
-                            <div>
-                                <dt>Sello</dt>
-                                <dd>
-                                    <a href="<?php echo esc_url($document_seal['url']); ?>" target="_blank" rel="noopener noreferrer">
-                                        Ver archivo
-                                    </a>
-                                </dd>
-                            </div>
-                        <?php endif; ?>
-                    </dl>
-                    <p class="account-card__note">
-                        Para actualizar estos documentos envíanos la nueva firma o sello desde tu canal habitual de soporte.
-                    </p>
+                    </div>
                 </div>
             </div>
         </article>

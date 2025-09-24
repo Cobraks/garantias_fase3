@@ -268,5 +268,88 @@
                 }
             }
         }
+
+        const setupImageUpload = (containerId, inputId, previewId) => {
+            const container = document.getElementById(containerId);
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            const previewImage = preview ? preview.querySelector('img') : null;
+
+            if (!container || !input) {
+                return;
+            }
+
+            const label = container.querySelector('.file-label');
+            const defaultLabel = label ? label.textContent : '';
+            const initialPreviewVisible = preview ? !preview.hasAttribute('hidden') : false;
+            const initialPreviewSrc = previewImage ? previewImage.getAttribute('src') : '';
+
+            const restoreInitialPreview = () => {
+                if (!preview) {
+                    return;
+                }
+
+                if (initialPreviewVisible && initialPreviewSrc) {
+                    preview.hidden = false;
+                    preview.removeAttribute('aria-hidden');
+                    if (previewImage) {
+                        previewImage.src = initialPreviewSrc;
+                    }
+                } else {
+                    preview.hidden = true;
+                    preview.setAttribute('aria-hidden', 'true');
+                    if (previewImage) {
+                        previewImage.removeAttribute('src');
+                    }
+                }
+            };
+
+            const resetPreview = () => {
+                restoreInitialPreview();
+                if (label) {
+                    label.textContent = defaultLabel;
+                }
+            };
+
+            container.addEventListener('click', (event) => {
+                if (event.target !== input) {
+                    input.click();
+                }
+            });
+
+            input.addEventListener('change', () => {
+                if (!input.files || input.files.length === 0) {
+                    resetPreview();
+                    return;
+                }
+
+                const [file] = input.files;
+                if (!file) {
+                    resetPreview();
+                    return;
+                }
+
+                if (label) {
+                    label.textContent = file.name;
+                }
+
+                if (!preview || !previewImage || !file.type || !file.type.startsWith('image/')) {
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.addEventListener('load', () => {
+                    if (typeof reader.result === 'string') {
+                        previewImage.src = reader.result;
+                        preview.hidden = false;
+                        preview.removeAttribute('aria-hidden');
+                    }
+                });
+                reader.readAsDataURL(file);
+            });
+        };
+
+        setupImageUpload('signature-upload', 'signature', 'signature-preview');
+        setupImageUpload('stamp-upload', 'stamp', 'stamp-preview');
     });
 })();

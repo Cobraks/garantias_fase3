@@ -438,6 +438,16 @@
   }
 }
 
+.account-form__field--quarter {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 720px) {
+  .account-form__field--quarter {
+    grid-column: span 1;
+  }
+}
+
 .account-form__field--readonly {
   background: var(--neutral95);
   border: 1px solid var(--neutral90);
@@ -474,6 +484,83 @@
   flex-direction: column;
   gap: var(--spacing-2);
   align-items: flex-start;
+}
+
+.account-card--certificates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.account-certificates__uploads .form-row {
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+@media (min-width: 720px) {
+  .account-certificates__uploads .form-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.account-card--certificates .input-container {
+  position: relative;
+}
+
+.account-card--certificates .file-upload {
+  border: 1px dashed var(--card-border);
+  border-radius: 1rem;
+  padding: var(--spacing-3);
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  background: var(--neutral95);
+  transition: border-color var(--transition-speed), color var(--transition-speed), background-color var(--transition-speed);
+}
+
+.account-card--certificates .file-upload:hover,
+.account-card--certificates .file-upload:focus-within {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: #fff;
+}
+
+.account-card--certificates .file-input {
+  display: none;
+}
+
+.account-card--certificates .file-label {
+  font-weight: 600;
+}
+
+.account-card--certificates .file-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.account-card--certificates .file-preview {
+  width: 100%;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  background: #fff;
+}
+
+.account-card--certificates .file-preview[hidden] {
+  display: none;
+}
+
+.account-card--certificates .file-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
 }
 
 .account-upload {
