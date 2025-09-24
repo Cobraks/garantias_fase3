@@ -379,12 +379,11 @@ $formatPhoneHref = static function ($phone) {
                 'swift_bic',
             ];
 
-            $sepa_full_fields = [
-                'nombre_deudor',
-                'direccion_deudor',
-            ];
+            $sepa_full_fields = [];
 
             $sepa_half_fields = [
+                'nombre_deudor',
+                'direccion_deudor',
                 'numero_cuenta',
                 'swift_bic',
             ];
@@ -543,20 +542,20 @@ $formatPhoneHref = static function ($phone) {
                                     }
                                 ?>
                                 <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
-                                    <div class="account-field__label-wrapper">
-                                        <label class="account-field__label" for="<?php echo esc_attr($field_id); ?>">
+                                    <div class="account-input-container">
+                                        <input
+                                            type="text"
+                                            id="<?php echo esc_attr($field_id); ?>"
+                                            name="account-sepa[<?php echo esc_attr($field_key); ?>]"
+                                            class="account-input"
+                                            value="<?php echo esc_attr($field_value); ?>"
+                                            placeholder=" "
+                                            autocomplete="off"
+                                        >
+                                        <label class="account-input__label" for="<?php echo esc_attr($field_id); ?>">
                                             <?php echo esc_html($field_label); ?>
                                         </label>
                                     </div>
-                                    <input
-                                        type="text"
-                                        id="<?php echo esc_attr($field_id); ?>"
-                                        name="account-sepa[<?php echo esc_attr($field_key); ?>]"
-                                        class="account-input"
-                                        value="<?php echo esc_attr($field_value); ?>"
-                                        placeholder="<?php echo esc_attr($field_label); ?>"
-                                        autocomplete="off"
-                                    >
                                 </div>
                             <?php endforeach; ?>
                         </div>

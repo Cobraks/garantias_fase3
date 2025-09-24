@@ -235,6 +235,7 @@
                     }
 
                     panel.hidden = !shouldShow;
+                    panel.style.display = shouldShow ? '' : 'none';
                     panel.setAttribute('aria-hidden', String(!shouldShow));
                 });
             };
