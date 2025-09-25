@@ -152,16 +152,21 @@ $formatPhoneHref = static function ($phone) {
                         height="72"
                     >
                 </div>
-                <label class="account-summary__upload" for="account-profile-image">
-                    <input
-                        id="account-profile-image"
-                        class="account-summary__upload-input"
-                        type="file"
-                        name="account_profile_image"
-                        accept="image/*"
-                    >
-                    <span class="account-summary__upload-text"><?php echo esc_html__('Cambiar imagen de perfil', 'garantias-online-360vo'); ?></span>
-                </label>
+                <input
+                    id="account-profile-image"
+                    class="account-summary__upload-input"
+                    type="file"
+                    name="account_profile_image"
+                    accept="image/*"
+                    hidden
+                >
+                <button
+                    type="button"
+                    class="account-summary__upload"
+                    data-profile-upload="account-profile-image"
+                >
+                    <?php echo esc_html__('Cambiar imagen de perfil', 'garantias-online-360vo'); ?>
+                </button>
             </div>
             <div class="account-summary__info">
                 <h1 class="account-summary__company"><?php echo esc_html($company_display_name); ?></h1>
@@ -565,18 +570,33 @@ $formatPhoneHref = static function ($phone) {
                 role="region"
                 aria-live="polite"
             >
-                <div class="account-help__body">
-                    <p><strong>Domiciliación bancaria</strong></p>
-                    <ul class="account-help__list">
-                        <li>Activa las garantías al instante, sin trámites manuales.</li>
-                        <li>Evita olvidos: los cargos se generan automáticamente.</li>
-                    </ul>
-                    <p><strong>Transferencia bancaria</strong></p>
-                    <ul class="account-help__list">
-                        <li>Debes realizar el pago en un plazo máximo de 48&nbsp;horas.</li>
-                        <li>La garantía no queda activa hasta que confirmamos la transferencia.</li>
-                        <li>Tendrás que contactar con el equipo comercial y enviar el justificante.</li>
-                    </ul>
+                <div class="account-help__body account-help__body--payments">
+                    <div class="account-help__columns">
+                        <section class="account-help__column">
+                            <h3>Domiciliación bancaria</h3>
+                            <ul class="account-help__bullets account-help__bullets--pros">
+                                <li>Activa las garantías en el momento, sin esperas ni comprobaciones manuales.</li>
+                                <li>Automatiza los cobros y evita olvidos o errores al generar transferencias.</li>
+                                <li>Recibirás un cargo por cada garantía contratada, con justificante automático.</li>
+                            </ul>
+                            <ul class="account-help__bullets account-help__bullets--cons">
+                                <li>Asegúrate de tener saldo disponible en la cuenta el día del cargo.</li>
+                                <li>Los cambios de cuenta requieren avisar previamente al equipo de 360VO.</li>
+                            </ul>
+                        </section>
+                        <section class="account-help__column">
+                            <h3>Transferencia bancaria</h3>
+                            <ul class="account-help__bullets account-help__bullets--pros">
+                                <li>Controlas manualmente cada pago y puedes agrupar transferencias si lo necesitas.</li>
+                                <li>No requiere domiciliación previa ni firmar un mandato SEPA.</li>
+                            </ul>
+                            <ul class="account-help__bullets account-help__bullets--cons">
+                                <li>Recuerda realizar la transferencia antes de 48&nbsp;horas desde la contratación.</li>
+                                <li>La garantía queda pendiente hasta que validamos el ingreso.</li>
+                                <li>Debes enviar el justificante y coordinarte con tu contacto comercial.</li>
+                            </ul>
+                        </section>
+                    </div>
                 </div>
                 <button
                     type="button"
@@ -804,7 +824,11 @@ $formatPhoneHref = static function ($phone) {
                     <div class="account-certificates__uploads">
                         <div class="form-row">
                             <div class="input-container">
-                                <div class="file-upload" id="signature-upload">
+                                <div
+                                    class="file-upload"
+                                    id="signature-upload"
+                                    data-default-label="<?php echo esc_attr($signature_default_label); ?>"
+                                >
                                     <div class="file-label">
                                         <?php
                                         $signature_label = $signature_default_label;
@@ -827,11 +851,23 @@ $formatPhoneHref = static function ($phone) {
                                             <img src="" alt="Previsualización de la firma" loading="lazy">
                                         <?php endif; ?>
                                     </div>
+                                    <button
+                                        type="button"
+                                        class="file-remove"
+                                        data-file-remove="signature"
+                                        <?php echo empty($document_signature['url']) ? 'hidden' : ''; ?>
+                                    >
+                                        <?php echo esc_html__('Eliminar imagen', 'garantias-online-360vo'); ?>
+                                    </button>
                                 </div>
                             </div>
 
                             <div class="input-container">
-                                <div class="file-upload" id="stamp-upload">
+                                <div
+                                    class="file-upload"
+                                    id="stamp-upload"
+                                    data-default-label="<?php echo esc_attr($seal_default_label); ?>"
+                                >
                                     <div class="file-label">
                                         <?php
                                         $seal_label = $seal_default_label;
@@ -854,6 +890,14 @@ $formatPhoneHref = static function ($phone) {
                                             <img src="" alt="Previsualización del sello" loading="lazy">
                                         <?php endif; ?>
                                     </div>
+                                    <button
+                                        type="button"
+                                        class="file-remove"
+                                        data-file-remove="stamp"
+                                        <?php echo empty($document_seal['url']) ? 'hidden' : ''; ?>
+                                    >
+                                        <?php echo esc_html__('Eliminar imagen', 'garantias-online-360vo'); ?>
+                                    </button>
                                 </div>
                             </div>
                         </div>
