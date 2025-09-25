@@ -251,7 +251,6 @@ $home_destination = $is_admin_user
                             <div class="profile-menu__info">
                                 <?php if ($profile_company_name !== '') : ?>
                                     <span class="profile-menu__company"><?php echo esc_html($profile_company_name); ?></span>
-                                    <span class="profile-menu__person"><?php echo esc_html($profile_person_name); ?></span>
                                 <?php else : ?>
                                     <span class="profile-menu__name"><?php echo esc_html($profile_person_name); ?></span>
                                 <?php endif; ?>

@@ -266,12 +266,6 @@ text-decoration: none;
     color: var(--text-color);
   }
 
-  .profile-menu__person {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-  }
-
   .profile-menu__email {
     font-size: 0.8125rem;
     color: var(--text-secondary);

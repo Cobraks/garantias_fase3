@@ -22,6 +22,9 @@ $seal_default_label      = esc_html__('+ Subir imagen de sello', 'garantias-onli
     compact('is_auth_page', 'is_account_page')
 );
 
+$profile_image = $user['profile_image']['url'] ?? '';
+$profile_alt   = ! empty($user['name']) ? sprintf('Avatar de %s', $user['name']) : 'Avatar de usuario';
+$company       = $user['company'] ?? ['name' => '', 'trade_name' => '', 'legal_name' => '', 'tax_id' => '', 'type' => ['label' => '']];
 $address = $user['address'] ?? [];
 $country      = isset($address['country']) ? (string) $address['country'] : '';
 $address_parts = array_filter([
@@ -29,10 +32,6 @@ $address_parts = array_filter([
     trim(trim((string) ($address['zip'] ?? '')) . ' ' . trim((string) ($address['city'] ?? ''))),
     trim((string) ($address['state'] ?? '') . ($country !== '' ? ' · ' . $country : '')),
 ]);
-
-$profile_image = $user['profile_image']['url'] ?? '';
-$profile_alt   = ! empty($user['name']) ? sprintf('Avatar de %s', $user['name']) : 'Avatar de usuario';
-$company       = $user['company'] ?? ['name' => '', 'trade_name' => '', 'legal_name' => '', 'tax_id' => '', 'type' => ['label' => '']];
 $company_address = is_array($company['address'] ?? null) ? $company['address'] : [];
 $company_country = isset($company_address['country']) ? (string) $company_address['country'] : '';
 $company_address_parts = array_filter([
@@ -40,15 +39,51 @@ $company_address_parts = array_filter([
     trim(trim((string) ($company_address['zip'] ?? '')) . ' ' . trim((string) ($company_address['city'] ?? ''))),
     trim((string) ($company_address['state'] ?? '') . ($company_country !== '' ? ' · ' . $company_country : '')),
 ]);
-$summary_address_parts = ! empty($company_address_parts) ? $company_address_parts : $address_parts;
+if (empty($company_address_parts)) {
+    $company_address_parts = $address_parts;
+}
+
+$company_display_name = '';
+if (! empty($company['name'])) {
+    $company_display_name = $company['name'];
+} elseif (! empty($company['trade_name'])) {
+    $company_display_name = $company['trade_name'];
+} elseif (! empty($company['legal_name'])) {
+    $company_display_name = $company['legal_name'];
+} else {
+    $company_display_name = $user['name'] ?? '';
+}
 
 $role_labels = [];
-if (! empty($user['roles']) && function_exists('wp_roles')) {
+$role_keys = array_map('sanitize_key', (array) ($user['roles'] ?? []));
+if ($role_keys && function_exists('wp_roles')) {
     $roles = wp_roles();
-    foreach ((array) $user['roles'] as $role_key) {
+    foreach ($role_keys as $role_key) {
         $label = $roles->roles[$role_key]['name'] ?? ucfirst(str_replace('_', ' ', (string) $role_key));
         $role_labels[] = translate_user_role($label);
     }
+}
+
+$company_type_label = isset($company['type']['label'])
+    ? trim((string) $company['type']['label'])
+    : '';
+$channel_label = '';
+
+if (in_array('go_profesional', $role_keys, true)) {
+    $channel_label = 'Profesional';
+    if ($company_type_label !== '') {
+        $channel_label .= ' - ' . $company_type_label;
+    }
+} elseif (in_array('go_gestor', $role_keys, true)) {
+    $channel_label = 'Gestoría';
+} elseif (in_array('go_comercial', $role_keys, true)) {
+    $channel_label = 'Comercial';
+} elseif ($company_type_label !== '') {
+    $channel_label = $company_type_label;
+}
+
+if ($channel_label === '' && ! empty($role_labels)) {
+    $channel_label = $role_labels[0];
 }
 
 $sections = [
@@ -97,30 +132,20 @@ $formatPhoneHref = static function ($phone) {
                 >
             </div>
             <div class="account-summary__info">
-                <h1 class="account-summary__name"><?php echo esc_html($user['name'] ?? ''); ?></h1>
-                <?php if (! empty($role_labels)) : ?>
-                    <p class="account-summary__role"><?php echo esc_html(implode(' · ', $role_labels)); ?></p>
+                <h1 class="account-summary__company"><?php echo esc_html($company_display_name); ?></h1>
+                <?php if ($channel_label !== '') : ?>
+                    <div class="account-summary__channel" role="text">
+                        <span class="account-summary__channel-label"><?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?></span>
+                        <span class="account-summary__channel-value"><?php echo esc_html($channel_label); ?></span>
+                    </div>
                 <?php endif; ?>
                 <?php if (! empty($user['email'])) : ?>
-                    <p class="account-summary__contact">
+                    <div class="account-summary__contact">
                         <?php echo Svg::icon('email', 'account-summary__icon'); ?>
                         <a href="mailto:<?php echo esc_attr($user['email']); ?>"><?php echo esc_html($user['email']); ?></a>
-                    </p>
-                <?php endif; ?>
-                <?php if (! empty($user['phone'])) : ?>
-                    <p class="account-summary__contact">
-                        <?php echo Svg::icon('phone', 'account-summary__icon'); ?>
-                        <a href="tel:<?php echo esc_attr($formatPhoneHref($user['phone'])); ?>"><?php echo esc_html($user['phone']); ?></a>
-                    </p>
+                    </div>
                 <?php endif; ?>
             </div>
-            <?php if (! empty($summary_address_parts)) : ?>
-                <ul class="account-summary__address">
-                    <?php foreach ($summary_address_parts as $line) : ?>
-                        <li><?php echo esc_html($line); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
         </section>
 
         <nav class="account-page__nav" aria-label="Secciones de la cuenta">
