@@ -259,10 +259,17 @@ text-decoration: none;
     min-width: 0;
   }
 
-  .profile-menu__name {
+  .profile-menu__name,
+  .profile-menu__company {
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-color);
+  }
+
+  .profile-menu__person {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
   }
 
   .profile-menu__email {

@@ -10,6 +10,7 @@ use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\GuaranteeLogger;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
+use GarantiasOnline360VO\Support\UserProfileResolver;
 
 class GuaranteeRestController
 {
@@ -1467,8 +1468,22 @@ class GuaranteeRestController
 
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
         $vendor_id = is_array($vendor_id) && isset($vendor_id['ID']) ? (int) $vendor_id['ID'] : (int) $vendor_id;
-        $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
-        $concesionario = $user ? $user->display_name : '';
+        $labels = [
+            'company_name' => '',
+            'personal_name' => '',
+            'company' => [
+                'name' => '',
+                'trade_name' => '',
+                'legal_name' => '',
+                'tax_id' => '',
+                'type' => ['value' => '', 'label' => ''],
+                'address' => ['street' => '', 'city' => '', 'state' => '', 'zip' => '', 'country' => ''],
+            ],
+        ];
+        if ($vendor_id) {
+            $labels = UserProfileResolver::get_vendor_labels($vendor_id);
+        }
+        $concesionario = $labels['company_name'] !== '' ? $labels['company_name'] : ($labels['personal_name'] ?? '');
 
         $canal_venta_raw = get_post_meta($id, 'garantia_contratada_canal_venta', true);
         $canal_venta_value = is_array($canal_venta_raw) && isset($canal_venta_raw['value'])
@@ -1545,6 +1560,8 @@ class GuaranteeRestController
             ],
             'concesionario' => $concesionario ?: '-',
             'vendor_id' => $vendor_id,
+            'concesionario_personal' => $labels['personal_name'] ?? '',
+            'vendor_company' => $labels['company'] ?? [],
             'canal_venta' => $canal_venta ?: '-',
             'canal_venta_value' => $canal_venta_value,
             'telefono_vendedor' => $telefono_vendedor ?: '',
@@ -1906,13 +1923,17 @@ class GuaranteeRestController
 
         $users = get_users([
             'role'   => 'go_profesional',
-            'fields' => ['ID', 'display_name'],
+            'fields' => ['ID'],
         ]);
         $concesionarios = [];
         foreach ($users as $u) {
+            $labels = UserProfileResolver::get_vendor_labels((int) $u->ID);
+            $name = $labels['company_name'] !== ''
+                ? $labels['company_name']
+                : ($labels['personal_name'] !== '' ? $labels['personal_name'] : sprintf(__('Usuario #%d', 'garantias-online-360vo'), (int) $u->ID));
             $concesionarios[] = [
-                'id'   => $u->ID,
-                'name' => $u->display_name,
+                'id'   => (int) $u->ID,
+                'name' => $name,
             ];
         }
 

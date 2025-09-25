@@ -32,7 +32,15 @@ $address_parts = array_filter([
 
 $profile_image = $user['profile_image']['url'] ?? '';
 $profile_alt   = ! empty($user['name']) ? sprintf('Avatar de %s', $user['name']) : 'Avatar de usuario';
-$company       = $user['company'] ?? ['trade_name' => '', 'legal_name' => ''];
+$company       = $user['company'] ?? ['name' => '', 'trade_name' => '', 'legal_name' => '', 'tax_id' => '', 'type' => ['label' => '']];
+$company_address = is_array($company['address'] ?? null) ? $company['address'] : [];
+$company_country = isset($company_address['country']) ? (string) $company_address['country'] : '';
+$company_address_parts = array_filter([
+    $company_address['street'] ?? '',
+    trim(trim((string) ($company_address['zip'] ?? '')) . ' ' . trim((string) ($company_address['city'] ?? ''))),
+    trim((string) ($company_address['state'] ?? '') . ($company_country !== '' ? ' · ' . $company_country : '')),
+]);
+$summary_address_parts = ! empty($company_address_parts) ? $company_address_parts : $address_parts;
 
 $role_labels = [];
 if (! empty($user['roles']) && function_exists('wp_roles')) {
@@ -106,9 +114,9 @@ $formatPhoneHref = static function ($phone) {
                     </p>
                 <?php endif; ?>
             </div>
-            <?php if (! empty($address_parts)) : ?>
+            <?php if (! empty($summary_address_parts)) : ?>
                 <ul class="account-summary__address">
-                    <?php foreach ($address_parts as $line) : ?>
+                    <?php foreach ($summary_address_parts as $line) : ?>
                         <li><?php echo esc_html($line); ?></li>
                     <?php endforeach; ?>
                 </ul>
@@ -162,6 +170,18 @@ $formatPhoneHref = static function ($phone) {
                                 <dd><?php echo esc_html($company['legal_name']); ?></dd>
                             </div>
                         <?php endif; ?>
+                        <?php if (! empty($company['tax_id'])) : ?>
+                            <div>
+                                <dt>CIF/NIF</dt>
+                                <dd><?php echo esc_html($company['tax_id']); ?></dd>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (! empty($company['type']['label'])) : ?>
+                            <div>
+                                <dt>Tipo de profesional</dt>
+                                <dd><?php echo esc_html($company['type']['label']); ?></dd>
+                            </div>
+                        <?php endif; ?>
                         <div>
                             <dt>Correo de acceso</dt>
                             <dd><?php echo esc_html($user['email'] ?? ''); ?></dd>
@@ -176,12 +196,10 @@ $formatPhoneHref = static function ($phone) {
                                 </dd>
                             </div>
                         <?php endif; ?>
-                        <?php if (! empty($address_parts)) : ?>
+                        <?php if (! empty($company_address_parts)) : ?>
                             <div>
                                 <dt>Dirección</dt>
-                                <dd>
-                                    <?php echo esc_html(implode(' · ', $address_parts)); ?>
-                                </dd>
+                                <dd><?php echo esc_html(implode(' · ', $company_address_parts)); ?></dd>
                             </div>
                         <?php endif; ?>
                         <?php if (! empty($role_labels)) : ?>
