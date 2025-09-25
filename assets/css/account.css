@@ -492,6 +492,10 @@
   outline: none;
 }
 
+.account-help__trigger[aria-expanded="true"] {
+  color: var(--primary-color);
+}
+
 .account-help__trigger:focus-visible {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
   border-radius: 0.75rem;
@@ -829,12 +833,18 @@
 .account-help {
   position: relative;
   margin-top: 0.75rem;
+  margin-bottom: var(--spacing-3);
   padding: 1rem 1rem 1rem 1.25rem;
   border-radius: 0.75rem;
   border: 1px solid rgba(37, 99, 235, 0.18);
   background: rgba(37, 99, 235, 0.08);
   font-size: 0.9rem;
   color: var(--text-color);
+}
+
+.account-help--visible,
+.account-help--hidden {
+  margin-bottom: var(--spacing-3);
 }
 
 .account-section__help {
@@ -1053,6 +1063,7 @@
   height: 0.5rem;
   border-radius: 999px;
   margin-right: 0.5rem;
+  margin-top: 0.5rem;
   vertical-align: middle;
   flex-shrink: 0;
 }

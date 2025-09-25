@@ -579,17 +579,9 @@ $formatPhoneHref = static function ($phone) {
                                 <li>Automatiza los cobros y evita olvidos o errores al generar transferencias.</li>
                                 <li>Recibirás un cargo por cada garantía contratada, con justificante automático.</li>
                             </ul>
-                            <ul class="account-help__bullets account-help__bullets--cons">
-                                <li>Asegúrate de tener saldo disponible en la cuenta el día del cargo.</li>
-                                <li>Los cambios de cuenta requieren avisar previamente al equipo de 360VO.</li>
-                            </ul>
                         </section>
                         <section class="account-help__column">
                             <h3>Transferencia bancaria</h3>
-                            <ul class="account-help__bullets account-help__bullets--pros">
-                                <li>Controlas manualmente cada pago y puedes agrupar transferencias si lo necesitas.</li>
-                                <li>No requiere domiciliación previa ni firmar un mandato SEPA.</li>
-                            </ul>
                             <ul class="account-help__bullets account-help__bullets--cons">
                                 <li>Recuerda realizar la transferencia antes de 48&nbsp;horas desde la contratación.</li>
                                 <li>La garantía queda pendiente hasta que validamos el ingreso.</li>
@@ -635,7 +627,38 @@ $formatPhoneHref = static function ($phone) {
                     data-state="<?php echo esc_attr($activation_state); ?>"
                     data-generated="<?php echo $has_generated_mandate ? 'true' : 'false'; ?>"
                 >
-                    <h3>Domiciliación bancaria</h3>
+                    <div class="account-card__header">
+                        <h3>Domiciliación bancaria</h3>
+                        <button
+                            type="button"
+                            class="account-help__trigger"
+                            aria-controls="account-payments-sepa-help"
+                            aria-expanded="false"
+                            data-account-help-trigger
+                        >
+                            <?php echo Svg::icon('help', 'account-help__icon'); ?>
+                            <span class="screen-reader-text">Cómo completar la domiciliación bancaria</span>
+                        </button>
+                    </div>
+                    <div
+                        class="account-help account-help--hidden"
+                        id="account-payments-sepa-help"
+                        hidden
+                        role="region"
+                        aria-live="polite"
+                    >
+                        <div class="account-help__body">
+                            <p>Completa los campos del mandato y selecciona «Generar SEPA». Te enviaremos el documento listo para firmar y devolverlo a 360VO.</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="account-help__close"
+                            aria-label="Cerrar ayuda"
+                            data-account-help-dismiss
+                        >
+                            <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                        </button>
+                    </div>
                     <p
                         class="account-card__intro"
                         data-payment-state="disabled"
