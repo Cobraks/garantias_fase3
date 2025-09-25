@@ -2,6 +2,8 @@
 
 namespace GarantiasOnline360VO\ActivityLog;
 
+use GarantiasOnline360VO\Support\UserProfileResolver;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -28,7 +30,7 @@ class ActivitySubscribers
     {
         ActivityLogger::log('auth.login_success', [
             'actor_id' => $user->ID,
-            'actor_name' => $user->display_name ?: $user_login,
+            'actor_name' => UserProfileResolver::get_personal_name($user),
             'actor_email' => $user->user_email,
             'actor_role' => implode(',', $user->roles ?? []),
             'context' => [
@@ -66,7 +68,7 @@ class ActivitySubscribers
         $user = get_userdata($user_id);
         ActivityLogger::log('auth.logout', [
             'actor_id' => $user_id,
-            'actor_name' => $user ? $user->display_name : '',
+            'actor_name' => $user ? UserProfileResolver::get_personal_name($user) : '',
         ]);
     }
 

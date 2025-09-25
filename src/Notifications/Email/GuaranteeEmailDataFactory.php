@@ -54,7 +54,9 @@ class GuaranteeEmailDataFactory
         $deadline = $this->compute_payment_deadline($from_date_raw);
         $customer_name = sanitize_text_field($detail['nombre_comprador'] ?? '');
         $customer_email = sanitize_email($detail['email_comprador'] ?? '');
-        $vendor_name = sanitize_text_field($detail['concesionario'] ?? '');
+        $vendor_company_name = sanitize_text_field($detail['concesionario'] ?? '');
+        $vendor_personal_name = sanitize_text_field($detail['concesionario_personal'] ?? '');
+        $vendor_name = $vendor_company_name !== '' ? $vendor_company_name : $vendor_personal_name;
         $vendor_id = isset($detail['vendor_id']) ? (int) $detail['vendor_id'] : 0;
         $vendor_email = sanitize_email($detail['email_vendedor'] ?? '');
         if ($vendor_email === '' && $vendor_id > 0) {
@@ -68,6 +70,10 @@ class GuaranteeEmailDataFactory
             'id'    => $vendor_id,
             'email' => $vendor_email,
         ]));
+        $vendor_company = [];
+        if (! empty($detail['vendor_company']) && is_array($detail['vendor_company'])) {
+            $vendor_company = $detail['vendor_company'];
+        }
         $state_value = sanitize_text_field($detail['estado']['value'] ?? '');
         $state_label = sanitize_text_field($detail['estado']['label'] ?? '');
 
@@ -96,9 +102,12 @@ class GuaranteeEmailDataFactory
                 'email' => $customer_email,
             ],
             'vendor'      => [
-                'id'    => $vendor_id,
-                'name'  => $vendor_name,
-                'email' => $vendor_email,
+                'id'            => $vendor_id,
+                'name'          => $vendor_name,
+                'company_name'  => $vendor_company_name,
+                'personal_name' => $vendor_personal_name,
+                'email'         => $vendor_email,
+                'company'       => $vendor_company,
             ],
             'transfer'    => [
                 'iban'     => $this->sanitize_transfer_iban($detail['transfer_iban'] ?? ''),

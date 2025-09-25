@@ -10,6 +10,8 @@ $payment = $guarantee['payment'] ?? '';
 $dates = $guarantee['dates'] ?? [];
 $customer = $guarantee['customer'] ?? [];
 $vendor = $guarantee['vendor'] ?? [];
+$vendor_company = $vendor['company_name'] ?? ($vendor['name'] ?? '');
+$vendor_personal = $vendor['personal_name'] ?? '';
 $permalink = $guarantee['permalink'] ?? '';
 $coverage = '';
 if (! empty($dates['from']) && ! empty($dates['to'])) {
@@ -64,7 +66,13 @@ if (! empty($dates['from']) && ! empty($dates['to'])) {
         <tr>
             <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></th>
             <td style="padding:4px 0; font-size:14px; color:#111;">
-                <?php echo esc_html(($vendor['name'] ?? '') ?: '-'); ?>
+                <?php
+                $vendor_display = $vendor_company !== '' ? $vendor_company : ($vendor_personal !== '' ? $vendor_personal : '-');
+                echo esc_html($vendor_display);
+                ?>
+                <?php if ($vendor_company !== '' && $vendor_personal !== '' && $vendor_personal !== $vendor_company) : ?>
+                    <span style="color:#888;">(<?php echo esc_html($vendor_personal); ?>)</span>
+                <?php endif; ?>
                 <?php if (! empty($vendor['email'])) : ?>
                     <span style="color:#888;">(<?php echo esc_html($vendor['email']); ?>)</span>
                 <?php endif; ?>

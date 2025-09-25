@@ -13,8 +13,12 @@ $signature = $copy['signature'] ?? '';
 $plan_name = $guarantee['plan'] ?? '';
 $vehicle_sentence = $guarantee['vehicle']['sentence'] ?? '';
 $vehicle_summary = $guarantee['vehicle']['summary'] ?? '';
-$vendor_name = $guarantee['vendor']['name'] ?? '';
-$vendor_display = $vendor_name !== '' ? $vendor_name : __('Tu equipo', 'garantias-online-360vo');
+$vendor_data = $guarantee['vendor'] ?? [];
+$vendor_personal = $vendor_data['personal_name'] ?? ($vendor_data['name'] ?? '');
+$vendor_company = $vendor_data['company_name'] ?? '';
+$vendor_display = $vendor_personal !== ''
+    ? $vendor_personal
+    : ($vendor_company !== '' ? $vendor_company : __('Tu equipo', 'garantias-online-360vo'));
 $is_domiciliation = in_array($payment_slug, ['domiciliacion', 'domiciliacion_bancaria', 'domiciliacion-bancaria'], true);
 $is_transfer = in_array($payment_slug, ['transferencia', 'transferencia_bancaria'], true);
 $heading = $is_domiciliation
