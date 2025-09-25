@@ -13,8 +13,16 @@ $signature = $copy['signature'] ?? '';
 $plan_name = $guarantee['plan'] ?? '';
 $vehicle_sentence = $guarantee['vehicle']['sentence'] ?? '';
 $vehicle_summary = $guarantee['vehicle']['summary'] ?? '';
-$vendor_name = $guarantee['vendor']['name'] ?? '';
-$vendor_display = $vendor_name !== '' ? $vendor_name : __('Tu equipo', 'garantias-online-360vo');
+$vendor_data = $guarantee['vendor'] ?? [];
+$vendor_contact = $vendor_data['contact_name'] ?? ($vendor_data['personal_name'] ?? ($vendor_data['name'] ?? ''));
+$vendor_company = $vendor_data['company_name'] ?? '';
+$vendor_display = $vendor_company !== ''
+    ? $vendor_company
+    : ($vendor_contact !== '' ? $vendor_contact : __('Tu equipo', 'garantias-online-360vo'));
+$vendor_greeting = $vendor_data['greeting_name'] ?? '';
+if ($vendor_greeting === '') {
+    $vendor_greeting = $vendor_contact !== '' ? $vendor_contact : $vendor_display;
+}
 $is_domiciliation = in_array($payment_slug, ['domiciliacion', 'domiciliacion_bancaria', 'domiciliacion-bancaria'], true);
 $is_transfer = in_array($payment_slug, ['transferencia', 'transferencia_bancaria'], true);
 $heading = $is_domiciliation
@@ -73,7 +81,7 @@ $heading = $is_domiciliation
                     __('Hola <strong>%1$s</strong>. Acabas de contratar %2$s%3$s. Aquí tienes un resumen rápido para que puedas revisar los detalles en cualquier momento.', 'garantias-online-360vo'),
                     ['strong' => []]
                 ),
-                esc_html($vendor_display),
+                esc_html($vendor_greeting),
                 wp_kses_post($plan_fragment),
                 $vehicle_fragment
             );

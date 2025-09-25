@@ -54,13 +54,23 @@ class GuaranteeEmailDataFactory
         $deadline = $this->compute_payment_deadline($from_date_raw);
         $customer_name = sanitize_text_field($detail['nombre_comprador'] ?? '');
         $customer_email = sanitize_email($detail['email_comprador'] ?? '');
-        $vendor_name = sanitize_text_field($detail['concesionario'] ?? '');
+        $vendor_company_name = sanitize_text_field($detail['concesionario'] ?? '');
+        $vendor_personal_name = sanitize_text_field($detail['concesionario_personal'] ?? '');
+        $vendor_first_name = sanitize_text_field($detail['concesionario_personal_first'] ?? '');
+        $vendor_last_name = sanitize_text_field($detail['concesionario_personal_last'] ?? '');
+        $vendor_contact_name = $vendor_personal_name !== '' ? $vendor_personal_name : $vendor_company_name;
+        $vendor_greeting_name = $vendor_first_name !== '' ? $vendor_first_name : $vendor_contact_name;
+        $vendor_name = $vendor_company_name !== '' ? $vendor_company_name : $vendor_contact_name;
         $vendor_id = isset($detail['vendor_id']) ? (int) $detail['vendor_id'] : 0;
         $vendor_email = sanitize_email($detail['email_vendedor'] ?? '');
+        $vendor_email_source = sanitize_key($detail['email_vendedor_source'] ?? 'registration');
+        $vendor_registration_email = sanitize_email($detail['email_vendedor_registro'] ?? '');
         if ($vendor_email === '' && $vendor_id > 0) {
             $vendor_user = get_user_by('id', $vendor_id);
             if ($vendor_user && $vendor_user->user_email) {
                 $vendor_email = sanitize_email($vendor_user->user_email);
+                $vendor_email_source = 'registration';
+                $vendor_registration_email = $vendor_email;
             }
         }
         error_log('[EMAIL] data_factory vendor ' . wp_json_encode([
@@ -68,6 +78,18 @@ class GuaranteeEmailDataFactory
             'id'    => $vendor_id,
             'email' => $vendor_email,
         ]));
+        $vendor_company = [];
+        if (! empty($detail['vendor_company']) && is_array($detail['vendor_company'])) {
+            $vendor_company = $detail['vendor_company'];
+        }
+        $vendor_type_label = sanitize_text_field($detail['vendor_company_type_label'] ?? ($vendor_company['type']['label'] ?? ''));
+        $vendor_channel_label = sanitize_text_field($detail['canal_venta'] ?? '');
+        $vendor_channel_summary = sanitize_text_field($detail['canal_venta_summary'] ?? '');
+        if ($vendor_channel_summary === '' && $vendor_channel_label !== '' && $vendor_type_label !== '') {
+            $vendor_channel_summary = sprintf('%s (%s)', $vendor_channel_label, $vendor_type_label);
+        } elseif ($vendor_channel_summary === '') {
+            $vendor_channel_summary = $vendor_channel_label;
+        }
         $state_value = sanitize_text_field($detail['estado']['value'] ?? '');
         $state_label = sanitize_text_field($detail['estado']['label'] ?? '');
 
@@ -96,9 +118,21 @@ class GuaranteeEmailDataFactory
                 'email' => $customer_email,
             ],
             'vendor'      => [
-                'id'    => $vendor_id,
-                'name'  => $vendor_name,
-                'email' => $vendor_email,
+                'id'            => $vendor_id,
+                'name'          => $vendor_name,
+                'company_name'  => $vendor_company_name,
+                'personal_name' => $vendor_personal_name,
+                'contact_name'  => $vendor_contact_name,
+                'greeting_name' => $vendor_greeting_name,
+                'first_name'    => $vendor_first_name,
+                'last_name'     => $vendor_last_name,
+                'email'         => $vendor_email,
+                'email_source'  => $vendor_email_source,
+                'registration_email' => $vendor_registration_email,
+                'channel_label' => $vendor_channel_label,
+                'channel_summary' => $vendor_channel_summary,
+                'type_label'   => $vendor_type_label,
+                'company'       => $vendor_company,
             ],
             'transfer'    => [
                 'iban'     => $this->sanitize_transfer_iban($detail['transfer_iban'] ?? ''),

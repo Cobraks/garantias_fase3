@@ -818,7 +818,11 @@ const ADD_DOC_KEY = "add-document";
                                 item.canal_venta && item.canal_venta.label
                                         ? item.canal_venta.label
                                         : "-";
-                        const vendedor_type = canal_venta;
+                        const canal_venta_summary =
+                                (item.detail && item.detail.canal_venta_summary)
+                                        ? item.detail.canal_venta_summary
+                                        : canal_venta;
+                        const vendedor_type = canal_venta_summary;
 
                         const hasPlan = plan !== "" && plan !== "-";
                         const hasPeriod =
@@ -855,6 +859,10 @@ const ADD_DOC_KEY = "add-document";
                         tr.dataset.estadoclase = estadoClase;
                         tr.dataset.vendedor_name = vendedor_name;
                         tr.dataset.vendedor_type = vendedor_type;
+                        tr.dataset.canal_venta_summary = canal_venta_summary;
+                        tr.dataset.concesionario = vendedor_name;
+                        tr.dataset.concesionario_personal =
+                                item.detail?.concesionario_personal ?? "";
                         tr.dataset.precio = hasPlan ? precio : "";
                         tr.dataset.canalVenta = canal_venta;
                         tr.dataset.metodoPago = item.detail.metodo_pago || "";
@@ -882,7 +890,7 @@ const ADD_DOC_KEY = "add-document";
                                         </div>
                                 </td>
                                 <td data-label="Validez">${periodHtml}</td>
-                                <td data-label="Vendedor">
+                                <td data-label="Canal de venta">
                                         <div class="guarantees-table__vendedor">
                                                 <div class="vendedor__name">${vendedor_name}</div>
                                                 <div class="vendedor__type">${vendedor_type}</div>
@@ -1327,6 +1335,30 @@ const ADD_DOC_KEY = "add-document";
     const planTitle = `${data.plan ?? "-"}${
         mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
     }`;
+    const vendorChannelSummaryRaw = skeleton("canal_venta_summary", "");
+    const vendorChannelSummary =
+        vendorChannelSummaryRaw !== ""
+            ? vendorChannelSummaryRaw
+            : skeleton("canal_venta", "-");
+    const vendorCompanyName = skeleton("concesionario", "-");
+    const vendorContactRaw = skeleton("concesionario_personal", "");
+    const vendorContactName =
+        vendorContactRaw !== "" ? vendorContactRaw : vendorCompanyName;
+    const vendorAvatarUrl =
+        data.avatar_vendedor ?? rowData.avatar_vendedor ?? "";
+    const vendorAvatarWrapper = vendorAvatarUrl
+        ? `<div class="vendor-card__avatar-wrapper"><img src="${escapeAttr(
+              vendorAvatarUrl
+          )}" alt="" class="vendor-card__avatar"></div>`
+        : `<div class="vendor-card__avatar-wrapper vendor-card__avatar-wrapper--icon"><span class="vendor-card__avatar vendor-card__avatar--icon">${userIcon}</span></div>`;
+    const vendorActionsHtml = renderFastActions(
+        data.telefono_vendedor ?? rowData.telefono_vendedor,
+        data.email_vendedor ?? rowData.email_vendedor,
+        skeletons
+    );
+    const vendorDetailsHref = escapeAttr(
+        data.vendedor_url ?? rowData.vendedor_url ?? "#"
+    );
     const fuelRaw = (
         data.combustible ?? rowData.combustible ?? ""
     )
@@ -1423,22 +1455,26 @@ const ADD_DOC_KEY = "add-document";
                 </div>` : ``}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
-                                <h3 class="detail__section-title">Canal de venta</h3>
+                                <h3 class="detail__section-title">
+                                        <span>Canal de venta</span>
+                                        <span>${vendorChannelSummary}</span>
+                                </h3>
                                 <div class="vendor-card">
-                                        ${data.avatar_vendedor ?? rowData.avatar_vendedor
-                                            ? `<img src="${data.avatar_vendedor ?? rowData.avatar_vendedor}" alt="" class="vendor-card__avatar">`
-                                            : `<span class="vendor-card__avatar vendor-card__avatar--icon">${userIcon}</span>`}
-                                        <div class="vendor-card__info">
-                                                <p class="vendor-card__name">${skeleton("concesionario", "-")}</p>
-                                                <p class="vendor-card__role">${skeleton("canal_venta", "-")}</p>
+                                        <div class="vendor-card__header">
+                                                ${vendorAvatarWrapper}
+                                                <div class="vendor-card__info">
+                                                        <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                        <p class="vendor-card__contact">${vendorContactName}</p>
+                                                </div>
+                                        </div>
+                                        ${vendorActionsHtml
+                                            ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
+                                            : ``}
+                                        <div class="vendor-card__footer">
+                                                <a href="${vendorDetailsHref}" class="vendor-card__details-link">Ver ficha del cliente</a>
+                                                <button type="button" class="vendor-card__cta">Añadir a mi agenda</button>
                                         </div>
                                 </div>
-                                ${renderFastActions(
-                                        data.telefono_vendedor ?? rowData.telefono_vendedor,
-                                        data.email_vendedor ?? rowData.email_vendedor,
-                                        skeletons
-                                )}
-                                <a href="${data.vendedor_url ?? rowData.vendedor_url ?? '#'}" class="vendor-card__details-link">Ver detalles del cliente</a>
                         </section>`
                         : ""}
                 <section class="detail__section">
@@ -1580,22 +1616,26 @@ const ADD_DOC_KEY = "add-document";
                 ${actionsHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
-                                <h3 class="detail__section-title">Canal de venta</h3>
+                                <h3 class="detail__section-title">
+                                        <span>Canal de venta</span>
+                                        <span>${vendorChannelSummary}</span>
+                                </h3>
                                 <div class="vendor-card">
-                                        ${data.avatar_vendedor ?? rowData.avatar_vendedor
-                                            ? `<img src="${data.avatar_vendedor ?? rowData.avatar_vendedor}" alt="" class="vendor-card__avatar">`
-                                            : `<span class="vendor-card__avatar vendor-card__avatar--icon">${userIcon}</span>`}
-                                        <div class="vendor-card__info">
-                                                <p class="vendor-card__name">${skeleton("concesionario", "-")}</p>
-                                                <p class="vendor-card__role">${skeleton("canal_venta", "-")}</p>
+                                        <div class="vendor-card__header">
+                                                ${vendorAvatarWrapper}
+                                                <div class="vendor-card__info">
+                                                        <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                        <p class="vendor-card__contact">${vendorContactName}</p>
+                                                </div>
+                                        </div>
+                                        ${vendorActionsHtml
+                                            ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
+                                            : ``}
+                                        <div class="vendor-card__footer">
+                                                <a href="${vendorDetailsHref}" class="vendor-card__details-link">Ver ficha del cliente</a>
+                                                <button type="button" class="vendor-card__cta">Añadir a mi agenda</button>
                                         </div>
                                 </div>
-                                ${renderFastActions(
-                                        data.telefono_vendedor ?? rowData.telefono_vendedor,
-                                        data.email_vendedor ?? rowData.email_vendedor,
-                                        skeletons
-                                )}
-                                <a href="${data.vendedor_url ?? rowData.vendedor_url ?? '#'}" class="vendor-card__details-link">Ver detalles del cliente</a>
                         </section>`
                         : ""}
                 <section class="detail__section">
