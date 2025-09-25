@@ -226,7 +226,7 @@ class GuaranteeEmailDataFactory
         if ($from_date !== '') {
             $date = date_create($from_date);
             if ($date) {
-                $date->modify('+7 days');
+                $date->modify('+2 days');
                 $raw = $date->format('Y-m-d');
                 $formatted = $date->format('d/m/Y');
             }

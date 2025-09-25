@@ -17,6 +17,19 @@ $vendor_contact = $vendor_personal !== '' ? $vendor_personal : ($vendor['greetin
 $vendor_email_source = $vendor['email_source'] ?? '';
 $vendor_email_pref = $vendor['email'] ?? '';
 $vendor_email_registration = $vendor['registration_email'] ?? '';
+$summary_context = isset($summary_context) && is_array($summary_context) ? $summary_context : [];
+$show_vendor_channel = array_key_exists('show_vendor_channel', $summary_context) ? (bool) $summary_context['show_vendor_channel'] : true;
+$show_vendor_contact = array_key_exists('show_vendor_contact', $summary_context) ? (bool) $summary_context['show_vendor_contact'] : true;
+$show_vendor_company = array_key_exists('show_vendor_company', $summary_context) ? (bool) $summary_context['show_vendor_company'] : false;
+$vendor_company_label = isset($summary_context['vendor_company_label']) && $summary_context['vendor_company_label'] !== ''
+    ? $summary_context['vendor_company_label']
+    : __('Empresa', 'garantias-online-360vo');
+$vendor_channel_value = isset($summary_context['vendor_channel_value']) && $summary_context['vendor_channel_value'] !== ''
+    ? $summary_context['vendor_channel_value']
+    : $vendor_channel;
+$vendor_channel_show_company_inline = array_key_exists('vendor_channel_show_company_inline', $summary_context)
+    ? (bool) $summary_context['vendor_channel_show_company_inline']
+    : true;
 if ($vendor_email_source === 'registration') {
     $vendor_contact_email = $vendor_email_registration !== '' ? $vendor_email_registration : $vendor_email_pref;
 } else {
@@ -75,17 +88,28 @@ if (! empty($dates['from']) && ! empty($dates['to'])) {
                 <?php endif; ?>
             </td>
         </tr>
+        <?php if ($show_vendor_channel) : ?>
         <tr>
             <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?></th>
             <td style="padding:4px 0; font-size:14px; color:#111;">
-                <?php echo esc_html($vendor_channel !== '' ? $vendor_channel : '-'); ?>
-                <?php if ($vendor_company !== '') : ?>
+                <?php echo esc_html($vendor_channel_value !== '' ? $vendor_channel_value : '-'); ?>
+                <?php if ($vendor_channel_show_company_inline && $vendor_company !== '') : ?>
                     <div style="color:#888; font-size:13px; margin-top:2px;">
                         <?php echo esc_html($vendor_company); ?>
                     </div>
                 <?php endif; ?>
             </td>
         </tr>
+        <?php endif; ?>
+        <?php if ($show_vendor_company && $vendor_company !== '') : ?>
+        <tr>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php echo esc_html($vendor_company_label); ?></th>
+            <td style="padding:4px 0; font-size:14px; color:#111;">
+                <?php echo esc_html($vendor_company); ?>
+            </td>
+        </tr>
+        <?php endif; ?>
+        <?php if ($show_vendor_contact) : ?>
         <tr>
             <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Responsable', 'garantias-online-360vo'); ?></th>
             <td style="padding:4px 0; font-size:14px; color:#111;">
@@ -95,6 +119,7 @@ if (! empty($dates['from']) && ! empty($dates['to'])) {
                 <?php endif; ?>
             </td>
         </tr>
+        <?php endif; ?>
         <?php if (! empty($permalink)) : ?>
         <tr>
             <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Enlace', 'garantias-online-360vo'); ?></th>
@@ -107,3 +132,4 @@ if (! empty($dates['from']) && ! empty($dates['to'])) {
         <?php endif; ?>
     </tbody>
 </table>
+<?php unset($summary_context); ?>

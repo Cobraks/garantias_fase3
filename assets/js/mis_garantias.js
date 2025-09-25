@@ -37,6 +37,7 @@ const ADD_DOC_KEY = "add-document";
                 const warningIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/></svg>';
                 const heartIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Zm0-108q96-86 158-147.5t98-107q36-45.5 50-81t14-70.5q0-60-40-100t-100-40q-47 0-87 26.5T518-680h-76q-15-41-55-67.5T300-774q-60 0-100 40t-40 100q0 35 14 70.5t50 81q36 45.5 98 107T480-228Zm0-273Z"/></svg>';
                 const shareIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M680-80q-50 0-85-35t-35-85q0-6 3-28L282-392q-16 15-37 23.5t-45 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q24 0 45 8.5t37 23.5l281-164q-2-7-2.5-13.5T560-760q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-24 0-45-8.5T598-672L317-508q2 7 2.5 13.5t.5 14.5q0 8-.5 14.5T317-452l281 164q16-15 37-23.5t45-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-200q0-17-11.5-28.5T680-240q-17 0-28.5 11.5T640-200q0 17 11.5 28.5T680-160ZM200-440q17 0 28.5-11.5T240-480q0-17-11.5-28.5T200-520q-17 0-28.5 11.5T160-480q0 17 11.5 28.5T200-440Zm480-280q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0 520ZM200-480Zm480-280Z"/></svg>';
+                const personAddIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M720-400v-120H600v-80h120v-120h80v120h120v80H800v120h-80Zm-360-80q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm80-80h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T440-640q0-33-23.5-56.5T360-720q-33 0-56.5 23.5T280-640q0 33 23.5 56.5T360-560Zm0-80Zm0 400Z"/></svg>';
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
                 const continueIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
                 const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
@@ -1457,22 +1458,27 @@ const ADD_DOC_KEY = "add-document";
                         ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">
                                         <span>Canal de venta</span>
-                                        <span>${vendorChannelSummary}</span>
                                 </h3>
                                 <div class="vendor-card">
                                         <div class="vendor-card__header">
-                                                ${vendorAvatarWrapper}
-                                                <div class="vendor-card__info">
-                                                        <p class="vendor-card__name">${vendorCompanyName}</p>
-                                                        <p class="vendor-card__contact">${vendorContactName}</p>
+                                                <div class="vendor-card__primary">
+                                                        ${vendorAvatarWrapper}
+                                                        <div class="vendor-card__info">
+                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                                <p class="vendor-card__contact">${vendorContactName}</p>
+                                                        </div>
                                                 </div>
+                                                ${vendorChannelSummary ? `<span class="vendor-card__badge">${vendorChannelSummary}</span>` : ""}
                                         </div>
                                         ${vendorActionsHtml
                                             ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
                                             : ``}
                                         <div class="vendor-card__footer">
                                                 <a href="${vendorDetailsHref}" class="vendor-card__details-link">Ver ficha del cliente</a>
-                                                <button type="button" class="vendor-card__cta">Añadir a mi agenda</button>
+                                                <button type="button" class="vendor-card__cta">
+                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personAddIcon}</span>
+                                                        <span class="vendor-card__cta-label">Añadir contacto</span>
+                                                </button>
                                         </div>
                                 </div>
                         </section>`
@@ -1618,22 +1624,27 @@ const ADD_DOC_KEY = "add-document";
                         ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">
                                         <span>Canal de venta</span>
-                                        <span>${vendorChannelSummary}</span>
                                 </h3>
                                 <div class="vendor-card">
                                         <div class="vendor-card__header">
-                                                ${vendorAvatarWrapper}
-                                                <div class="vendor-card__info">
-                                                        <p class="vendor-card__name">${vendorCompanyName}</p>
-                                                        <p class="vendor-card__contact">${vendorContactName}</p>
+                                                <div class="vendor-card__primary">
+                                                        ${vendorAvatarWrapper}
+                                                        <div class="vendor-card__info">
+                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                                <p class="vendor-card__contact">${vendorContactName}</p>
+                                                        </div>
                                                 </div>
+                                                ${vendorChannelSummary ? `<span class="vendor-card__badge">${vendorChannelSummary}</span>` : ""}
                                         </div>
                                         ${vendorActionsHtml
                                             ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
                                             : ``}
                                         <div class="vendor-card__footer">
                                                 <a href="${vendorDetailsHref}" class="vendor-card__details-link">Ver ficha del cliente</a>
-                                                <button type="button" class="vendor-card__cta">Añadir a mi agenda</button>
+                                                <button type="button" class="vendor-card__cta">
+                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personAddIcon}</span>
+                                                        <span class="vendor-card__cta-label">Añadir contacto</span>
+                                                </button>
                                         </div>
                                 </div>
                         </section>`
