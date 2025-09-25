@@ -918,32 +918,27 @@ section.guarantees-list.sticky-active {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    border-radius: 999px;
+    border-radius: .375rem;
     border: 1px solid #cbd5e1;
     background: #f8fafc;
-    color: #1e293b;
+    color: #000;
     font-size: 0.8rem;
-    font-weight: 600;
-    padding: 0.3rem 0.85rem;
+    font-weight: 400;
+    padding: 0.25rem 0.75rem;
     white-space: nowrap;
+    align-self: flex-start;
 }
 .vendor-card__footer {
     display: flex;
     flex-wrap: wrap;
     gap: var(--spacing-2);
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     padding-top: var(--spacing-2);
     border-top: 1px solid var(--border-color);
 }
-.vendor-card__details-link {
-    color: #e2001b;
-    font-weight: 600;
-    text-decoration: none;
-}
-.vendor-card__details-link:hover,
-.vendor-card__details-link:focus-visible {
-    text-decoration: underline;
+.vendor-card__footer > * {
+    flex: 0 0 auto;
 }
 .vendor-card__cta {
     display: inline-flex;
