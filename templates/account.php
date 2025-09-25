@@ -143,26 +143,33 @@ $formatPhoneHref = static function ($phone) {
 <div class="account-page" data-view="account">
     <aside class="account-page__sidebar">
         <section class="account-summary">
-            <div class="account-summary__avatar" aria-hidden="true">
-                <img
-                    src="<?php echo esc_url($profile_image ?: ($user['avatar_url'] ?? '')); ?>"
-                    alt="<?php echo esc_attr($profile_alt); ?>"
-                    width="96"
-                    height="96"
-                >
+            <div class="account-summary__media">
+                <div class="account-summary__avatar" aria-hidden="true">
+                    <img
+                        src="<?php echo esc_url($profile_image ?: ($user['avatar_url'] ?? '')); ?>"
+                        alt="<?php echo esc_attr($profile_alt); ?>"
+                        width="72"
+                        height="72"
+                    >
+                </div>
+                <label class="account-summary__upload" for="account-profile-image">
+                    <input
+                        id="account-profile-image"
+                        class="account-summary__upload-input"
+                        type="file"
+                        name="account_profile_image"
+                        accept="image/*"
+                    >
+                    <span class="account-summary__upload-text"><?php echo esc_html__('Cambiar imagen de perfil', 'garantias-online-360vo'); ?></span>
+                </label>
             </div>
             <div class="account-summary__info">
-                <div class="account-summary__heading">
-                    <h1 class="account-summary__company"><?php echo esc_html($company_display_name); ?></h1>
-                    <?php if ($channel_label !== '') : ?>
-                        <span class="account-summary__badge"><?php echo esc_html($channel_label); ?></span>
-                    <?php endif; ?>
-                </div>
+                <h1 class="account-summary__company"><?php echo esc_html($company_display_name); ?></h1>
                 <?php if (! empty($user['email'])) : ?>
-                    <div class="account-summary__contact">
-                        <?php echo Svg::icon('email', 'account-summary__icon'); ?>
-                        <a href="mailto:<?php echo esc_attr($user['email']); ?>"><?php echo esc_html($user['email']); ?></a>
-                    </div>
+                    <p class="account-summary__email"><?php echo esc_html($user['email']); ?></p>
+                <?php endif; ?>
+                <?php if ($channel_label !== '') : ?>
+                    <span class="account-summary__badge"><?php echo esc_html($channel_label); ?></span>
                 <?php endif; ?>
             </div>
         </section>
