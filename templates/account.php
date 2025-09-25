@@ -25,23 +25,54 @@ $seal_default_label      = esc_html__('+ Subir imagen de sello', 'garantias-onli
 $profile_image = $user['profile_image']['url'] ?? '';
 $profile_alt   = ! empty($user['name']) ? sprintf('Avatar de %s', $user['name']) : 'Avatar de usuario';
 $company       = $user['company'] ?? ['name' => '', 'trade_name' => '', 'legal_name' => '', 'tax_id' => '', 'type' => ['label' => '']];
-$address = $user['address'] ?? [];
-$country      = isset($address['country']) ? (string) $address['country'] : '';
-$address_parts = array_filter([
-    $address['street'] ?? '',
-    trim(trim((string) ($address['zip'] ?? '')) . ' ' . trim((string) ($address['city'] ?? ''))),
-    trim((string) ($address['state'] ?? '') . ($country !== '' ? ' · ' . $country : '')),
-]);
+$address = is_array($user['address'] ?? null) ? $user['address'] : [];
 $company_address = is_array($company['address'] ?? null) ? $company['address'] : [];
-$company_country = isset($company_address['country']) ? (string) $company_address['country'] : '';
+
+if (! array_filter($company_address)) {
+    $company_address = $address;
+}
+
 $company_address_parts = array_filter([
     $company_address['street'] ?? '',
     trim(trim((string) ($company_address['zip'] ?? '')) . ' ' . trim((string) ($company_address['city'] ?? ''))),
-    trim((string) ($company_address['state'] ?? '') . ($company_country !== '' ? ' · ' . $company_country : '')),
+    trim((string) ($company_address['state'] ?? '')),
 ]);
-if (empty($company_address_parts)) {
-    $company_address_parts = $address_parts;
+$company_address_display = trim(implode(' · ', array_filter($company_address_parts)));
+
+$personal_full_name = trim((string) ($user['full_name'] ?? ''));
+if ($personal_full_name === '') {
+    $personal_full_name = trim((string) ($user['name'] ?? ''));
 }
+
+if ($personal_full_name === '') {
+    $personal_full_name = __('No disponible', 'garantias-online-360vo');
+}
+
+$registration_email   = sanitize_email((string) ($user['email'] ?? ''));
+$notification_email   = sanitize_email((string) ($user['notification_email'] ?? $registration_email));
+$custom_notification  = sanitize_email((string) ($user['custom_notification'] ?? ''));
+$same_as_registration = $user['same_as_registration'] ?? null;
+
+$show_notification_email = false;
+if ($notification_email && $registration_email) {
+    $show_notification_email = strcasecmp($notification_email, $registration_email) !== 0;
+}
+
+if (! $show_notification_email && $same_as_registration === false && $custom_notification !== '') {
+    $show_notification_email = true;
+    $notification_email      = $custom_notification;
+}
+
+$assigned_names = array_unique(array_filter(array_map(static function (array $commercial): string {
+    $full_name = trim((string) ($commercial['full_name'] ?? ''));
+    if ($full_name !== '') {
+        return $full_name;
+    }
+
+    return trim((string) ($commercial['name'] ?? ''));
+}, $commercials)));
+
+$assigned_display = implode(', ', $assigned_names);
 
 $company_display_name = '';
 if (! empty($company['name'])) {
@@ -89,7 +120,7 @@ if ($channel_label === '' && ! empty($role_labels)) {
 $sections = [
     [
         'id'    => 'account-profile',
-        'label' => 'Perfil profesional',
+        'label' => 'Perfil',
         'icon'  => Svg::icon('user', 'account-nav__icon'),
     ],
     [
@@ -132,13 +163,12 @@ $formatPhoneHref = static function ($phone) {
                 >
             </div>
             <div class="account-summary__info">
-                <h1 class="account-summary__company"><?php echo esc_html($company_display_name); ?></h1>
-                <?php if ($channel_label !== '') : ?>
-                    <div class="account-summary__channel" role="text">
-                        <span class="account-summary__channel-label"><?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?></span>
-                        <span class="account-summary__channel-value"><?php echo esc_html($channel_label); ?></span>
-                    </div>
-                <?php endif; ?>
+                <div class="account-summary__heading">
+                    <h1 class="account-summary__company"><?php echo esc_html($company_display_name); ?></h1>
+                    <?php if ($channel_label !== '') : ?>
+                        <span class="account-summary__badge"><?php echo esc_html($channel_label); ?></span>
+                    <?php endif; ?>
+                </div>
                 <?php if (! empty($user['email'])) : ?>
                     <div class="account-summary__contact">
                         <?php echo Svg::icon('email', 'account-summary__icon'); ?>
@@ -171,18 +201,53 @@ $formatPhoneHref = static function ($phone) {
             <header class="account-section__header">
                 <?php echo Svg::icon('user', 'account-section__icon'); ?>
                 <div>
-                    <h2>Perfil profesional</h2>
+                    <h2>Perfil</h2>
                     <p>Información general y datos de contacto vinculados a tu cuenta.</p>
                 </div>
             </header>
-            <div class="account-card-grid">
-                <div class="account-card">
-                    <h3>Datos básicos</h3>
+            <div class="account-card-grid account-card-grid--profile">
+                <div class="account-card account-card--details">
+                    <h3>Datos personales</h3>
                     <dl class="account-card__list">
                         <div>
-                            <dt>Usuario</dt>
-                            <dd><?php echo esc_html($user['username'] ?? ''); ?></dd>
+                            <dt>Nombre</dt>
+                            <dd><?php echo esc_html($personal_full_name); ?></dd>
                         </div>
+                        <div>
+                            <dt>Teléfono de contacto</dt>
+                            <dd>
+                                <?php if (! empty($user['phone'])) : ?>
+                                    <a href="tel:<?php echo esc_attr($formatPhoneHref($user['phone'])); ?>">
+                                        <?php echo esc_html($user['phone']); ?>
+                                    </a>
+                                <?php else : ?>
+                                    <span class="account-card__placeholder">No disponible</span>
+                                <?php endif; ?>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Correo de inicio de sesión</dt>
+                            <dd>
+                                <?php if ($registration_email !== '') : ?>
+                                    <a href="mailto:<?php echo esc_attr($registration_email); ?>"><?php echo esc_html($registration_email); ?></a>
+                                <?php else : ?>
+                                    <span class="account-card__placeholder">No disponible</span>
+                                <?php endif; ?>
+                            </dd>
+                        </div>
+                        <?php if ($show_notification_email) : ?>
+                            <div>
+                                <dt>Correo de notificaciones</dt>
+                                <dd>
+                                    <a href="mailto:<?php echo esc_attr($notification_email); ?>"><?php echo esc_html($notification_email); ?></a>
+                                </dd>
+                            </div>
+                        <?php endif; ?>
+                    </dl>
+                </div>
+                <div class="account-card account-card--details">
+                    <h3>Datos de la empresa</h3>
+                    <dl class="account-card__list">
                         <?php if (! empty($company['trade_name'])) : ?>
                             <div>
                                 <dt>Nombre comercial</dt>
@@ -197,96 +262,28 @@ $formatPhoneHref = static function ($phone) {
                         <?php endif; ?>
                         <?php if (! empty($company['tax_id'])) : ?>
                             <div>
-                                <dt>CIF/NIF</dt>
-                                <dd><?php echo esc_html($company['tax_id']); ?></dd>
+                                <dt>CIF</dt>
+                                <dd class="account-card__code"><?php echo esc_html($company['tax_id']); ?></dd>
                             </div>
                         <?php endif; ?>
-                        <?php if (! empty($company['type']['label'])) : ?>
-                            <div>
-                                <dt>Tipo de profesional</dt>
-                                <dd><?php echo esc_html($company['type']['label']); ?></dd>
-                            </div>
-                        <?php endif; ?>
-                        <div>
-                            <dt>Correo de acceso</dt>
-                            <dd><?php echo esc_html($user['email'] ?? ''); ?></dd>
-                        </div>
-                        <?php if (! empty($user['phone'])) : ?>
-                            <div>
-                                <dt>Teléfono</dt>
-                                <dd>
-                                    <a href="tel:<?php echo esc_attr($formatPhoneHref($user['phone'])); ?>">
-                                        <?php echo esc_html($user['phone']); ?>
-                                    </a>
-                                </dd>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (! empty($company_address_parts)) : ?>
+                        <?php if ($company_address_display !== '') : ?>
                             <div>
                                 <dt>Dirección</dt>
-                                <dd><?php echo esc_html(implode(' · ', $company_address_parts)); ?></dd>
+                                <dd><?php echo esc_html($company_address_display); ?></dd>
                             </div>
                         <?php endif; ?>
-                        <?php if (! empty($role_labels)) : ?>
+                        <?php if ($assigned_display !== '') : ?>
                             <div>
-                                <dt>Roles en la plataforma</dt>
-                                <dd><?php echo esc_html(implode(' · ', $role_labels)); ?></dd>
+                                <dt>Comercial asignado</dt>
+                                <dd><?php echo esc_html($assigned_display); ?></dd>
+                            </div>
+                        <?php else : ?>
+                            <div>
+                                <dt>Comercial asignado</dt>
+                                <dd><span class="account-card__placeholder">Pendiente de asignar</span></dd>
                             </div>
                         <?php endif; ?>
                     </dl>
-                </div>
-                <div class="account-card">
-                    <h3>Comerciales asignados</h3>
-                    <?php if (! empty($commercials)) : ?>
-                        <ul class="account-contacts">
-                            <?php foreach ($commercials as $commercial) : ?>
-                                <?php
-                                $commercial_avatar = $commercial['profile_image']['url'] ?? '';
-                                $commercial_name   = $commercial['name'] ?? '';
-                                ?>
-                                <li class="account-contacts__item">
-                                    <div class="account-contacts__avatar" aria-hidden="true">
-                                        <?php if ($commercial_avatar) : ?>
-                                            <img
-                                                src="<?php echo esc_url($commercial_avatar); ?>"
-                                                alt=""
-                                                loading="lazy"
-                                                width="56"
-                                                height="56"
-                                            >
-                                        <?php else : ?>
-                                            <?php echo Svg::icon('user', 'account-contacts__avatar-icon'); ?>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="account-contacts__body">
-                                        <span class="account-contacts__name"><?php echo esc_html($commercial_name); ?></span>
-                                        <div class="account-contacts__actions">
-                                            <?php if (! empty($commercial['phone'])) : ?>
-                                                <a
-                                                    class="account-contacts__action account-contacts__action--phone"
-                                                    href="tel:<?php echo esc_attr($formatPhoneHref($commercial['phone'])); ?>"
-                                                >
-                                                    <?php echo Svg::icon('phone', 'account-contacts__action-icon'); ?>
-                                                    <span><?php echo esc_html($commercial['phone']); ?></span>
-                                                </a>
-                                            <?php endif; ?>
-                                            <?php if (! empty($commercial['email'])) : ?>
-                                                <a
-                                                    class="account-contacts__action account-contacts__action--email"
-                                                    href="mailto:<?php echo esc_attr($commercial['email']); ?>"
-                                                >
-                                                    <?php echo Svg::icon('email', 'account-contacts__action-icon'); ?>
-                                                    <span><?php echo esc_html($commercial['email']); ?></span>
-                                                </a>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php else : ?>
-                        <p class="account-card__empty">No tienes comerciales asociados en este momento.</p>
-                    <?php endif; ?>
                 </div>
             </div>
         </article>

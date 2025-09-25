@@ -119,6 +119,9 @@ class AccountViewModel
             'user' => [
                 'id'                   => $user_id,
                 'name'                 => $profile['personal_name'],
+                'full_name'            => $profile['personal_full_name'],
+                'first_name'           => $profile['personal_first_name'],
+                'last_name'            => $profile['personal_last_name'],
                 'username'             => $profile['username'],
                 'email'                => $profile['email'],
                 'notification_email'   => $notification_email,
@@ -196,6 +199,7 @@ class AccountViewModel
             $commercials[] = [
                 'id'    => (int) $commercial->ID,
                 'name'  => UserProfileResolver::get_personal_name($commercial),
+                'full_name' => UserProfileResolver::get_full_name($commercial),
                 'email' => sanitize_email($commercial->user_email),
                 'phone' => self::sanitize_optional_text(
                     get_user_meta($commercial_id, 'datos_usuario_telefono', true)
