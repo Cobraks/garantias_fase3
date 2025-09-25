@@ -211,9 +211,25 @@ $formatPhoneHref = static function ($phone) {
                         </button>
                     </div>
                     <p>Información general y datos de contacto vinculados a tu cuenta.</p>
-                    <p class="account-help account-help--hidden account-section__help" id="account-profile-help" hidden>
-                        Si necesitas modificar alguno de estos datos, ponte en contacto con 360VO.
-                    </p>
+                    <div
+                        class="account-help account-help--hidden account-section__help"
+                        id="account-profile-help"
+                        hidden
+                        role="region"
+                        aria-live="polite"
+                    >
+                        <div class="account-help__body">
+                            <p>Si necesitas modificar alguno de estos datos, ponte en contacto con 360VO.</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="account-help__close"
+                            aria-label="Cerrar ayuda"
+                            data-account-help-dismiss
+                        >
+                            <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                        </button>
+                    </div>
                 </div>
             </header>
             <div class="account-card-grid account-card-grid--profile">
@@ -402,9 +418,27 @@ $formatPhoneHref = static function ($phone) {
                                 placeholder="nombre@empresa.com"
                                 autocomplete="off"
                             >
-                            <p class="account-help account-help--hidden" id="account-notification-help" hidden>
-                                Escribe la dirección donde quieres recibir avisos y certificados. El correo con el que accedes seguirá siendo el que uses para iniciar sesión.
-                            </p>
+                            <div
+                                class="account-help account-help--hidden"
+                                id="account-notification-help"
+                                hidden
+                                role="region"
+                                aria-live="polite"
+                            >
+                                <div class="account-help__body">
+                                    <p>
+                                        Escribe la dirección donde quieres recibir avisos y certificados. El correo con el que accedes seguirá siendo el que uses para iniciar sesión.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="account-help__close"
+                                    aria-label="Cerrar ayuda"
+                                    data-account-help-dismiss
+                                >
+                                    <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -512,18 +546,34 @@ $formatPhoneHref = static function ($phone) {
                     <p>Elige cómo prefieres abonar tus garantías y prepara tu domiciliación bancaria cuando quieras.</p>
                 </div>
             </header>
-            <div class="account-help account-help--hidden" id="account-payments-help" hidden>
-                <p><strong>Domiciliación bancaria</strong></p>
-                <ul class="account-help__list">
-                    <li>Activa las garantías al instante, sin trámites manuales.</li>
-                    <li>Evita olvidos: los cargos se generan automáticamente.</li>
-                </ul>
-                <p><strong>Transferencia bancaria</strong></p>
-                <ul class="account-help__list">
-                    <li>Debes realizar el pago en un plazo máximo de 48&nbsp;horas.</li>
-                    <li>La garantía no queda activa hasta que confirmamos la transferencia.</li>
-                    <li>Tendrás que contactar con el equipo comercial y enviar el justificante.</li>
-                </ul>
+            <div
+                class="account-help account-help--hidden"
+                id="account-payments-help"
+                hidden
+                role="region"
+                aria-live="polite"
+            >
+                <div class="account-help__body">
+                    <p><strong>Domiciliación bancaria</strong></p>
+                    <ul class="account-help__list">
+                        <li>Activa las garantías al instante, sin trámites manuales.</li>
+                        <li>Evita olvidos: los cargos se generan automáticamente.</li>
+                    </ul>
+                    <p><strong>Transferencia bancaria</strong></p>
+                    <ul class="account-help__list">
+                        <li>Debes realizar el pago en un plazo máximo de 48&nbsp;horas.</li>
+                        <li>La garantía no queda activa hasta que confirmamos la transferencia.</li>
+                        <li>Tendrás que contactar con el equipo comercial y enviar el justificante.</li>
+                    </ul>
+                </div>
+                <button
+                    type="button"
+                    class="account-help__close"
+                    aria-label="Cerrar ayuda"
+                    data-account-help-dismiss
+                >
+                    <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                </button>
             </div>
             <div class="account-card-grid account-card-grid--payments">
                 <div
@@ -686,8 +736,24 @@ $formatPhoneHref = static function ($phone) {
                     <p>Prepara la firma y el sello que incluiremos en tus certificados.</p>
                 </div>
             </header>
-            <div class="account-help account-help--hidden" id="account-certificates-help" hidden>
-                <p>Puedes subir tu firma y sello para que aparezcan en los certificados que emitimos. Mantén los archivos actualizados para evitar rechazos.</p>
+            <div
+                class="account-help account-help--hidden"
+                id="account-certificates-help"
+                hidden
+                role="region"
+                aria-live="polite"
+            >
+                <div class="account-help__body">
+                    <p>Puedes subir tu firma y sello para que aparezcan en los certificados que emitimos. Mantén los archivos actualizados para evitar rechazos.</p>
+                </div>
+                <button
+                    type="button"
+                    class="account-help__close"
+                    aria-label="Cerrar ayuda"
+                    data-account-help-dismiss
+                >
+                    <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                </button>
             </div>
             <div class="account-card-grid">
                 <div class="account-card account-card--certificates" data-certificates-card>
@@ -704,8 +770,24 @@ $formatPhoneHref = static function ($phone) {
                             <span class="screen-reader-text">Ver consejos para subir firma y sello</span>
                         </button>
                     </div>
-                    <div class="account-help account-help--hidden" id="account-certificates-usage" hidden>
-                        <p>Utiliza imágenes legibles, sin fondos y con buena resolución. Podrás revisar la previsualización antes de guardar los cambios.</p>
+                    <div
+                        class="account-help account-help--hidden"
+                        id="account-certificates-usage"
+                        hidden
+                        role="region"
+                        aria-live="polite"
+                    >
+                        <div class="account-help__body">
+                            <p>Utiliza imágenes legibles, sin fondos y con buena resolución. Podrás revisar la previsualización antes de guardar los cambios.</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="account-help__close"
+                            aria-label="Cerrar ayuda"
+                            data-account-help-dismiss
+                        >
+                            <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                        </button>
                     </div>
                     <div class="account-certificates__uploads">
                         <div class="form-row">

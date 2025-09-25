@@ -83,17 +83,32 @@
                 return;
             }
 
+            const closeButton = help.querySelector('[data-account-help-dismiss]');
+
+            const toggleHelp = (show) => {
+                const nextState = Boolean(show);
+                button.setAttribute('aria-expanded', String(nextState));
+                help.hidden = !nextState;
+                help.classList.toggle('account-help--visible', nextState);
+            };
+
             button.addEventListener('click', () => {
                 const isExpanded = button.getAttribute('aria-expanded') === 'true';
-                const nextState = !isExpanded;
-                button.setAttribute('aria-expanded', String(nextState));
-
-                if (nextState) {
-                    help.hidden = false;
-                } else {
-                    help.hidden = true;
-                }
+                toggleHelp(!isExpanded);
             });
+
+            if (closeButton) {
+                closeButton.addEventListener('click', () => {
+                    toggleHelp(false);
+                    if (typeof button.focus === 'function') {
+                        try {
+                            button.focus({ preventScroll: true });
+                        } catch (error) {
+                            button.focus();
+                        }
+                    }
+                });
+            }
         });
 
         const notificationsCard = document.querySelector('[data-notifications-card]');
