@@ -1003,7 +1003,10 @@ export default function initAutosave() {
                                         parts.push(months.trim());
                                 }
                         }
-                        plan.textContent = parts.join(" · ");
+                        const planDescription = parts.join(" ");
+                        plan.textContent = planDescription
+                                ? `Cobertura ${planDescription}`
+                                : "Cobertura";
                 }
                 const message = successBlock.querySelector(
                         ".form-success__message"
