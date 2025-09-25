@@ -171,6 +171,18 @@ $formatPhoneHref = static function ($phone) {
                 <?php if ($channel_label !== '') : ?>
                     <span class="account-summary__badge"><?php echo esc_html($channel_label); ?></span>
                 <?php endif; ?>
+                <div class="account-summary__actions">
+                    <button
+                        type="button"
+                        class="account-summary__save disabled"
+                        data-account-save
+                        disabled
+                        aria-disabled="true"
+                    >
+                        <?php echo Svg::icon('save', 'account-summary__save-icon'); ?>
+                        <span><?php echo esc_html__('Guardar cambios', 'garantias-online-360vo'); ?></span>
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -354,7 +366,7 @@ $formatPhoneHref = static function ($phone) {
         <article id="account-notifications" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('email', 'account-section__icon'); ?>
-                <div>
+                <div class="account-section__content">
                     <h2>Notificaciones</h2>
                     <p>Configura cómo te avisamos por correo y desde tu dispositivo.</p>
                 </div>
@@ -529,7 +541,7 @@ $formatPhoneHref = static function ($phone) {
         <article id="account-payments" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('payment', 'account-section__icon'); ?>
-                <div>
+                <div class="account-section__content">
                     <div class="account-section__title">
                         <h2>Pagos</h2>
                         <button
@@ -719,7 +731,7 @@ $formatPhoneHref = static function ($phone) {
         <article id="account-documents" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('check_shield', 'account-section__icon'); ?>
-                <div>
+                <div class="account-section__content">
                     <div class="account-section__title">
                         <h2>Certificados</h2>
                         <button

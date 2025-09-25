@@ -111,6 +111,58 @@
             }
         });
 
+        const saveButton = document.querySelector('[data-account-save]');
+        const accountPage = document.querySelector('.account-page');
+
+        if (saveButton && accountPage) {
+            const setSaveDisabled = (disabled) => {
+                const method = disabled ? 'add' : 'remove';
+                saveButton.classList[method]('disabled');
+
+                if (disabled) {
+                    saveButton.setAttribute('disabled', 'disabled');
+                    saveButton.setAttribute('aria-disabled', 'true');
+                } else {
+                    saveButton.removeAttribute('disabled');
+                    saveButton.setAttribute('aria-disabled', 'false');
+                }
+            };
+
+            setSaveDisabled(saveButton.classList.contains('disabled') || saveButton.hasAttribute('disabled'));
+
+            const maybeEnableSave = (event) => {
+                const target = event.target;
+                if (!target) {
+                    return;
+                }
+
+                const tagName = target.tagName;
+                const isTextControl = tagName === 'TEXTAREA';
+                const isSelect = tagName === 'SELECT';
+                let isInput = false;
+
+                if (tagName === 'INPUT') {
+                    const type = (target.getAttribute('type') || '').toLowerCase();
+                    if (['button', 'submit', 'reset'].includes(type)) {
+                        return;
+                    }
+                    isInput = true;
+                }
+
+                if (!isInput && !isSelect && !isTextControl) {
+                    return;
+                }
+
+                if (saveButton.classList.contains('disabled')) {
+                    setSaveDisabled(false);
+                }
+            };
+
+            ['change', 'input'].forEach((eventName) => {
+                accountPage.addEventListener(eventName, maybeEnableSave, true);
+            });
+        }
+
         const notificationsCard = document.querySelector('[data-notifications-card]');
         if (notificationsCard) {
             const requestButton = notificationsCard.querySelector('[data-notifications-request]');
