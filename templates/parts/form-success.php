@@ -40,8 +40,17 @@ use GarantiasOnline360VO\Svg;
                         <th scope="row">Justificante</th>
                         <td data-copy-cell data-tooltip="Copiar dirección">
                             Envía el justificante de ingreso a
-                            <span class="form-success__copy-target" data-email data-toast="Dirección copiada al portapapeles">
-                                <a href="mailto:garantias@360vo.es">garantias@360vo.es</a>
+                            <span
+                                class="form-success__copy-target"
+                                data-email
+                                data-copy-value="garantias@460vo.es"
+                                data-toast="Dirección copiada al portapapeles"
+                            >
+                                <a
+                                    href="mailto:garantias@460vo.es"
+                                    data-email-link
+                                    data-email-base="garantias@460vo.es"
+                                >garantias@460vo.es</a>
                             </span>
                             <button
                                 class="form-success__copy"
