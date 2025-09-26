@@ -474,11 +474,31 @@ section.guarantees-list.sticky-active {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-4);
-    padding-bottom: 3rem;
+    padding-bottom: 0;
 }
 
 .guarantee-detail__inner.empty {
     overflow: hidden;
+}
+
+.guarantee-detail__plan-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    padding-inline: var(--spacing-3);
+}
+
+.guarantee-detail__plan-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--text-color);
+}
+
+.guarantee-detail__plan-price {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #60a5fa;
 }
 
 .guarantee-detail__title {
@@ -1009,20 +1029,30 @@ section.guarantees-list.sticky-active {
     background-color: #fbbf24;
 }
 
+
 .guarantee-detail__plan-duration {
     color: rgb(137, 137, 137);
     font-style: italic;
 }
 
 /* ---------------------------------------------------
-   Botón “Abrir avería” – guarantee-detail.css
+   Acciones del panel de garantía
 --------------------------------------------------- */
 
 .guarantee-detail__btn-container {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
-    padding-inline: var(--spacing-3);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem var(--spacing-3);
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.25);
+    z-index: 2;
 }
 
 .guarantee-detail__btn {
@@ -1030,35 +1060,34 @@ section.guarantees-list.sticky-active {
     align-items: center;
     justify-content: center;
     gap: var(--spacing-1);
-    padding: var(--spacing-1) var(--spacing-2);
+    padding: 0.875rem 1.5rem;
     font-size: 1rem;
-    font-weight: 500;
+    font-weight: 600;
     text-transform: none;
     letter-spacing: 0.02em;
-    border: none;
-    border-radius: 0.5rem;
-    transition: background-color var(--transition-speed), transform var(--transition-speed), box-shadow var(--transition-speed);
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    transition: background-color var(--transition-speed), transform var(--transition-speed), box-shadow var(--transition-speed), color var(--transition-speed), border-color var(--transition-speed);
     cursor: pointer;
-    /* margin-top: 1.5rem; */
     height: 42px;
 }
 
-.guarantee-detail__btn--report {
-    background-color: #e02424;
-    color: #fff;
-    margin-right: auto;
+.guarantee-detail__btn--confirm {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    color: #0b1120;
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.35);
 }
 
 .guarantee-detail__btn--continue {
-    background-color: var(--primary-color);
-    color: #fff;
-    margin-right: auto;
+    background: linear-gradient(135deg, #34d399, #10b981);
+    color: #022c22;
+    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);
 }
 
-.guarantee-detail__btn--confirm {
-    background-color: var(--primary-color);
-    color: #fff;
-    margin-right: auto;
+.guarantee-detail__btn--report {
+    background: linear-gradient(135deg, #f97316, #fb923c);
+    color: #fff7ed;
+    box-shadow: 0 10px 25px rgba(249, 115, 22, 0.35);
 }
 
 .guarantee-detail__btn-spinner {
@@ -1076,51 +1105,44 @@ section.guarantees-list.sticky-active {
     flex-shrink: 0;
 }
 
-.guarantee-detail__btn--report .guarantee-detail__btn-icon {
-    fill: #fff;
-}
-
 .guarantee-detail__btn--fav,
 .guarantee-detail__btn--share {
     width: 42px;
-    border: solid 1px var(--border-color);
-    border-radius: 4rem;
+    height: 42px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f8fafc;
+}
+
+.guarantee-detail__btn--fav {
+    margin-left: auto;
+}
+
+.guarantee-detail__btn--confirm:hover,
+.guarantee-detail__btn--continue:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 32px rgba(59, 130, 246, 0.4);
 }
 
 .guarantee-detail__btn--report:hover {
-    background-color: #c81e1e;
     transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 12px 32px rgba(249, 115, 22, 0.45);
 }
 
-.guarantee-detail__btn--continue:hover {
-    background-color: #1d4ed8;
+.guarantee-detail__btn--fav:hover,
+.guarantee-detail__btn--share:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.6);
     transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
-.guarantee-detail__btn--confirm:hover {
-    background-color: #1d4ed8;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+.detail__section--payment .detail__payment-note {
+    margin-bottom: 0.5rem;
 }
 
-.guarantee-detail__btn--report:active {
-    background-color: #9e1a1a;
-    transform: translateY(0);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-}
-
-.guarantee-detail__btn--continue:active {
-    background-color: #1e40af;
-    transform: translateY(0);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-}
-
-.guarantee-detail__btn--confirm:active {
-    background-color: #1e40af;
-    transform: translateY(0);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+.detail__section--payment .detail__transfer-table {
+    margin-top: 0;
 }
 
 .guarantee-detail__btn--report:focus-visible {

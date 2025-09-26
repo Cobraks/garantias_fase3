@@ -1353,9 +1353,21 @@ const ADD_DOC_KEY = "add-document";
         .map((val) => (typeof val === "string" ? val.trim() : ""))
         .find((val) => val) || "";
 
-    const planTitle = `${data.plan ?? "-"}${
-        mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
-    }`;
+    const planName = skeleton("plan", "-");
+    const planParts = [];
+    if (planName && planName !== "-") {
+        planParts.push(planName);
+    }
+    if (mesesTotales !== "-") {
+        planParts.push(`${mesesTotales} meses`);
+    }
+    const planPrimaryLabel = planParts.length > 0 ? planParts.join(" ") : planName || "-";
+    const planPriceRaw = skeleton("precio", "");
+    const planPrice = planPriceRaw && planPriceRaw !== "-" ? `${planPriceRaw} €` : "";
+    const planTitleHtml = `<h3 class="guarantee-detail__plan-title">` +
+        `<span class="guarantee-detail__plan-name">${planPrimaryLabel}</span>` +
+        `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
+        `</h3>`;
     const vendorChannelSummaryRaw = skeleton("canal_venta_summary", "");
     const vendorChannelSummary =
         vendorChannelSummaryRaw !== ""
@@ -1453,27 +1465,44 @@ const ADD_DOC_KEY = "add-document";
     const showChannelSection = isAdmin;
     const showActions = isAdmin;
 
+    const sinFinalButtons = [];
+    if (showActions || isProfesional) {
+        sinFinalButtons.push(
+            `<button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">` +
+                `<span class="guarantee-detail__btn-icon">${continueIcon}</span>` +
+                `<span class="guarantee-detail__btn-text">Continuar con la garantía</span>` +
+            `</button>`
+        );
+        if (showActions) {
+            sinFinalButtons.push(
+                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos">` +
+                    `<span class="guarantee-detail__btn-icon">${heartIcon}</span>` +
+                `</button>`
+            );
+            sinFinalButtons.push(
+                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir">` +
+                    `<span class="guarantee-detail__btn-icon">${shareIcon}</span>` +
+                `</button>`
+            );
+        }
+    }
+    const sinFinalActionsHtml = sinFinalButtons.length
+        ? `<div class="guarantee-detail__btn-container">${sinFinalButtons.join("")}</div>`
+        : "";
+
     if (isSinFinalizar) {
         return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${skeleton("matricula")}</h2>
                         ${hasGuaranteeInfo
-                            ? `<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
+                            ? `${planTitleHtml}
                         <div><p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
                                 <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p></div>`
                             : ""}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                ${(showActions || isProfesional) ? `<div class="guarantee-detail__btn-container">
-                        <button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">
-                                <span class="guarantee-detail__btn-icon">${continueIcon}</span>
-                                <span class="guarantee-detail__btn-text">Continuar con la garantía</span>
-                        </button>
-                        ${showActions ? `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>` : ``}
-                </div>` : ``}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">
@@ -1554,32 +1583,48 @@ const ADD_DOC_KEY = "add-document";
                         )}`
                             : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
+                ${sinFinalActionsHtml}
         </div>`;
     }
 
-    const showConfirmBtn =
-        showActions &&
-        isPendientePago &&
-        !(isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado);
-    const actionsHtml = showActions
-        ? showConfirmBtn
-            ? `<div class="guarantee-detail__btn-container">
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="Confirmar domiciliación">
-                                <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
-                                <span class="guarantee-detail__btn-text">${metodoPago.startsWith("domiciliacion") ? "Confirmar domiciliación" : "Confirmar pago"}</span>
-                        </button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
-                </div>`
-            : `<div class="guarantee-detail__btn-container">
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
-                                <span class="guarantee-detail__btn-icon">${warningIcon}</span>
-                                <span class="guarantee-detail__btn-text">Abrir expediente</span>
-                        </button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
-                </div>`
-        : ``;
+    const adminPendingDomiciliacion =
+        isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado;
+    const shouldShowConfirmBtn = showActions && (isPendientePago || adminPendingDomiciliacion);
+    const confirmLabel = adminPendingDomiciliacion
+        ? "Domiciliación pagada"
+        : metodoPago.startsWith("domiciliacion")
+            ? "Confirmar domiciliación"
+            : "Confirmar pago";
+    const adminActionButtons = [];
+    if (showActions) {
+        if (shouldShowConfirmBtn) {
+            adminActionButtons.push(
+                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="${confirmLabel}">` +
+                    `<span class="guarantee-detail__btn-icon">${paymentIcon}</span>` +
+                    `<span class="guarantee-detail__btn-text">${confirmLabel}</span>` +
+                `</button>`
+            );
+        }
+        adminActionButtons.push(
+            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">` +
+                `<span class="guarantee-detail__btn-icon">${warningIcon}</span>` +
+                `<span class="guarantee-detail__btn-text">Abrir expediente</span>` +
+            `</button>`
+        );
+        adminActionButtons.push(
+            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos">` +
+                `<span class="guarantee-detail__btn-icon">${heartIcon}</span>` +
+            `</button>`
+        );
+        adminActionButtons.push(
+            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir">` +
+                `<span class="guarantee-detail__btn-icon">${shareIcon}</span>` +
+            `</button>`
+        );
+    }
+    const actionsHtml = adminActionButtons.length
+        ? `<div class="guarantee-detail__btn-container">${adminActionButtons.join("")}</div>`
+        : "";
 
     const paymentHtml = (() => {
         if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
@@ -1591,10 +1636,6 @@ const ADD_DOC_KEY = "add-document";
                 "ES00 0000 0000 0000 0000 0000";
             return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note detail__payment-note--domiciliacion">Cobro pendiente por domiciliación bancaria.</p>
-                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="Confirmar domiciliación">
-                                        <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
-                                        <span class="guarantee-detail__btn-text">Confirmar domiciliación</span>
-                                </button>
                                 <table class="detail__transfer-table">
                                         <tbody>
                                                 <tr data-copy-row><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
@@ -1634,7 +1675,7 @@ const ADD_DOC_KEY = "add-document";
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${skeleton("matricula")}</h2>
-                        <h3 class="guarantee-detail__plan-title">${planTitle}</h3>
+                        ${planTitleHtml}
                         <div>
                                 <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
                                 <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p>
@@ -1642,7 +1683,6 @@ const ADD_DOC_KEY = "add-document";
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
                 ${paymentHtml}
-                ${actionsHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">
@@ -1720,6 +1760,7 @@ const ADD_DOC_KEY = "add-document";
                                 "email_comprador"
                         )}
                 </section>
+                ${actionsHtml}
         </div>
     `;
 }
