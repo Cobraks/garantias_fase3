@@ -181,7 +181,27 @@ $show_channel_col = ! $is_professional;
     <div class="confirm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
         <button type="button" class="confirm-modal__close" aria-label="<?php esc_attr_e('Cerrar confirmación', 'garantias-online-360vo'); ?>">&times;</button>
         <h2 id="confirm-modal-title" class="confirm-modal__title"></h2>
+        <p class="confirm-modal__subtitle"></p>
         <p class="confirm-modal__message"></p>
+        <div class="confirm-modal__summary" aria-live="polite" hidden>
+            <div class="confirm-modal__summary-row confirm-modal__summary-row--company" hidden>
+                <span class="confirm-modal__summary-label"><?php esc_html_e('Nombre empresa', 'garantias-online-360vo'); ?></span>
+                <span class="confirm-modal__summary-value confirm-modal__summary-value--company"></span>
+            </div>
+            <div class="confirm-modal__summary-row confirm-modal__summary-row--amount" hidden>
+                <span class="confirm-modal__summary-label"><?php esc_html_e('Cantidad', 'garantias-online-360vo'); ?></span>
+                <span class="confirm-modal__summary-value confirm-modal__summary-value--amount"></span>
+            </div>
+            <div class="confirm-modal__summary-row confirm-modal__summary-row--account" hidden>
+                <span class="confirm-modal__summary-label"><?php esc_html_e('Cuenta', 'garantias-online-360vo'); ?></span>
+                <span class="confirm-modal__summary-value confirm-modal__summary-value--account"></span>
+            </div>
+            <div class="confirm-modal__summary-row confirm-modal__summary-row--period" hidden>
+                <span class="confirm-modal__summary-label"><?php esc_html_e('Periodo', 'garantias-online-360vo'); ?></span>
+                <span class="confirm-modal__summary-value confirm-modal__summary-value--period"></span>
+            </div>
+        </div>
+        <p class="confirm-modal__note" hidden></p>
         <label class="confirm-modal__checkbox">
             <input type="checkbox" class="confirm-modal__checkbox-input" />
             <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>

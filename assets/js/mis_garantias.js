@@ -336,9 +336,9 @@ const ADD_DOC_KEY = "add-document";
                                         : "";
                         const isDomiciliacion = metodo.startsWith("domiciliacion");
                         const vendorName =
-        (cacheData && cacheData.concesionario) ||
-        (row && row.dataset.vendedor_name) ||
-        "";
+                                (cacheData && cacheData.concesionario) ||
+                                (row && row.dataset.vendedor_name) ||
+                                "";
                         const priceRaw =
         (cacheData && cacheData.precio) ||
         (row && row.dataset.precio) ||
@@ -347,43 +347,88 @@ const ADD_DOC_KEY = "add-document";
                         const accountCandidate =
                                 (cacheData &&
                                         (cacheData.transfer_iban || cacheData.iban_vendedor)) ||
-        (row && (row.dataset.transferIban || row.dataset.ibanVendedor)) ||
-        "";
-    const accountTextRaw =
-        typeof accountCandidate === "string"
-                ? accountCandidate.trim()
-                : "";
+                                (row && (row.dataset.transferIban || row.dataset.ibanVendedor)) ||
+                                "";
+                        const accountTextRaw =
+                                typeof accountCandidate === "string"
+                                        ? accountCandidate.trim()
+                                        : "";
                         const matricula =
                                 panel.dataset.matricula ||
                                 (row && row.dataset.matricula) ||
                                 (cacheData && cacheData.matricula) ||
                                 "";
                         const title = isDomiciliacion
-                                ? `Confirmar cobro por domiciliación Garantía ${matricula || id}`
-                                : `Confirmar pago de garantía ${matricula || id}`;
-    const cleanedVendorName =
-        typeof vendorName === "string" ? vendorName.trim() : "";
-    const companyText =
-        cleanedVendorName !== "" && cleanedVendorName !== "-"
-                ? cleanedVendorName
-                : "el cliente";
-    const normalizedAmount = formattedAmount.trim();
-    const hasAmount =
-        normalizedAmount !== "" &&
-        normalizedAmount !== "-" &&
-        normalizedAmount !== "- €";
-    const amountText = hasAmount ? normalizedAmount : "el importe acordado";
-    const hasAccount =
-        accountTextRaw !== "" && accountTextRaw !== "-";
-    const accountText = hasAccount ? accountTextRaw : "";
+                                ? "Confirmar cobro por domiciliación"
+                                : "Confirmar transferencia";
+                        const subtitle = `Garantía ${matricula || id}`;
+                        const cleanedVendorName =
+                                typeof vendorName === "string" ? vendorName.trim() : "";
+                        const companyText =
+                                cleanedVendorName !== "" && cleanedVendorName !== "-"
+                                        ? cleanedVendorName
+                                        : "el cliente";
+                        const normalizedAmount = formattedAmount.trim();
+                        const hasAmount =
+                                normalizedAmount !== "" &&
+                                normalizedAmount !== "-" &&
+                                normalizedAmount !== "- €";
+                        const amountText = hasAmount
+                                ? normalizedAmount
+                                : "el importe acordado";
+                        const hasAccount =
+                                accountTextRaw !== "" && accountTextRaw !== "-";
+                        const accountText = hasAccount ? accountTextRaw : "";
+                        const periodStart =
+                                (cacheData && cacheData.desde_fmt) ||
+                                (row && row.dataset.desdeFmt) ||
+                                "";
+                        const periodEnd =
+                                (cacheData && cacheData.hasta_fmt) ||
+                                (row && row.dataset.hastaFmt) ||
+                                "";
+                        const hasPeriod = !isDomiciliacion && periodStart && periodEnd;
+                        const periodValue = hasPeriod
+                                ? `${periodStart} al ${periodEnd}`
+                                : "";
                         let message;
                         if (isDomiciliacion) {
-                                message = `Confirmo que 360VO ha gestionado el cobro por domiciliación por valor de ${amountText} a ${companyText}. La garantía se activará.`;
-        } else if (accountText) {
-                                message = `Confirmo que ${companyText} ha realizado la transferencia por valor de ${amountText} a la cuenta ${accountText}. La garantía se activará.`;
+                                message = `Confirmo que 360VO ha gestionado el cobro por domiciliación por valor de ${amountText} a ${companyText}.`;
+                        } else if (accountText) {
+                                message = `Confirmo que ${companyText} ha realizado la transferencia por valor de ${amountText} a la cuenta ${accountText}.`;
                         } else {
-                                message = `Confirmo que ${companyText} ha realizado la transferencia por valor de ${amountText}. La garantía se activará.`;
+                                message = `Confirmo que ${companyText} ha realizado la transferencia por valor de ${amountText}.`;
                         }
+                        const summary = [];
+                        if (companyText && companyText !== "-") {
+                                summary.push({
+                                        key: "company",
+                                        label: "Nombre empresa",
+                                        value: companyText,
+                                });
+                        }
+                        if (hasAmount) {
+                                summary.push({
+                                        key: "amount",
+                                        label: "Cantidad",
+                                        value: amountText,
+                                });
+                        }
+                        if (accountText) {
+                                summary.push({
+                                        key: "account",
+                                        label: "Cuenta",
+                                        value: accountText,
+                                });
+                        }
+                        if (periodValue) {
+                                summary.push({
+                                        key: "period",
+                                        label: "Periodo",
+                                        value: periodValue,
+                                });
+                        }
+                        const note = !isDomiciliacion ? "La garantía se activará." : "";
                         const context = {
                                 btn,
                                 panel,
@@ -402,7 +447,10 @@ const ADD_DOC_KEY = "add-document";
                                 pendingConfirmContext = context;
                                 confirmModalController.open({
                                         title,
+                                        subtitle,
                                         message,
+                                        summary,
+                                        note,
                                         checkboxLabel:
                                                 "He revisado esta información y confirmo la operación.",
                                         confirmLabel: "Confirmar",
@@ -548,7 +596,24 @@ const ADD_DOC_KEY = "add-document";
                         const dialog = modal.querySelector(".confirm-modal__dialog");
                         if (!dialog) return null;
                         const titleEl = modal.querySelector(".confirm-modal__title");
+                        const subtitleEl = modal.querySelector(".confirm-modal__subtitle");
                         const messageEl = modal.querySelector(".confirm-modal__message");
+                        const summaryContainer = modal.querySelector(
+                                ".confirm-modal__summary"
+                        );
+                        const companyRow = modal.querySelector(
+                                ".confirm-modal__summary-row--company"
+                        );
+                        const amountRow = modal.querySelector(
+                                ".confirm-modal__summary-row--amount"
+                        );
+                        const accountRow = modal.querySelector(
+                                ".confirm-modal__summary-row--account"
+                        );
+                        const periodRow = modal.querySelector(
+                                ".confirm-modal__summary-row--period"
+                        );
+                        const noteEl = modal.querySelector(".confirm-modal__note");
                         const checkbox = modal.querySelector(".confirm-modal__checkbox-input");
                         const checkboxLabel = modal.querySelector(
                                 ".confirm-modal__checkbox-label"
@@ -561,6 +626,17 @@ const ADD_DOC_KEY = "add-document";
                         );
                         const closeBtn = modal.querySelector(".confirm-modal__close");
 
+                        function resetSummaryRow(row) {
+                                if (!row) return;
+                                const valueEl = row.querySelector(
+                                        ".confirm-modal__summary-value"
+                                );
+                                if (valueEl) {
+                                        valueEl.textContent = "";
+                                }
+                                row.hidden = true;
+                        }
+
                         function closeModal() {
                                 modal.classList.remove("is-open");
                                 modal.setAttribute("aria-hidden", "true");
@@ -570,6 +646,24 @@ const ADD_DOC_KEY = "add-document";
                                 if (confirmBtn) {
                                         confirmBtn.disabled = true;
                                 }
+                                if (subtitleEl) {
+                                        subtitleEl.textContent = "";
+                                        subtitleEl.hidden = true;
+                                }
+                                if (messageEl) {
+                                        messageEl.textContent = "";
+                                }
+                                resetSummaryRow(companyRow);
+                                resetSummaryRow(amountRow);
+                                resetSummaryRow(accountRow);
+                                resetSummaryRow(periodRow);
+                                if (summaryContainer) {
+                                        summaryContainer.hidden = true;
+                                }
+                                if (noteEl) {
+                                        noteEl.textContent = "";
+                                        noteEl.hidden = true;
+                                }
                                 document.removeEventListener("keydown", onKeydown);
                                 pendingConfirmContext = null;
                         }
@@ -578,7 +672,63 @@ const ADD_DOC_KEY = "add-document";
                                 if (!confirmBtn || !titleEl || !messageEl) return;
                                 const cfg = content || {};
                                 titleEl.textContent = cfg.title || "";
+                                if (subtitleEl) {
+                                        const hasSubtitle = Boolean(cfg.subtitle);
+                                        subtitleEl.textContent = cfg.subtitle || "";
+                                        subtitleEl.hidden = !hasSubtitle;
+                                }
                                 messageEl.textContent = cfg.message || "";
+                                if (summaryContainer) {
+                                        summaryContainer.hidden = true;
+                                }
+                                resetSummaryRow(companyRow);
+                                resetSummaryRow(amountRow);
+                                resetSummaryRow(accountRow);
+                                resetSummaryRow(periodRow);
+                                if (Array.isArray(cfg.summary) && cfg.summary.length) {
+                                        cfg.summary.forEach((item) => {
+                                                if (!item || !item.key) {
+                                                        return;
+                                                }
+                                                const rows = {
+                                                        company: companyRow,
+                                                        amount: amountRow,
+                                                        account: accountRow,
+                                                        period: periodRow,
+                                                };
+                                                const row = rows[item.key];
+                                                if (!row) {
+                                                        return;
+                                                }
+                                                const valueEl = row.querySelector(
+                                                        ".confirm-modal__summary-value"
+                                                );
+                                                const labelEl = row.querySelector(
+                                                        ".confirm-modal__summary-label"
+                                                );
+                                                if (labelEl && item.label) {
+                                                        labelEl.textContent = item.label;
+                                                }
+                                                if (valueEl && item.value) {
+                                                        valueEl.textContent = item.value;
+                                                        row.hidden = false;
+                                                }
+                                        });
+                                        const anyVisible = [
+                                                companyRow,
+                                                amountRow,
+                                                accountRow,
+                                                periodRow,
+                                        ].some((row) => row && !row.hidden);
+                                        if (anyVisible && summaryContainer) {
+                                                summaryContainer.hidden = false;
+                                        }
+                                }
+                                if (noteEl) {
+                                        const hasNote = Boolean(cfg.note);
+                                        noteEl.textContent = cfg.note || "";
+                                        noteEl.hidden = !hasNote;
+                                }
                                 if (checkboxLabel) {
                                         checkboxLabel.textContent =
                                                 cfg.checkboxLabel ||
