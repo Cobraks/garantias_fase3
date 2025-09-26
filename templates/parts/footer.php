@@ -4,6 +4,7 @@
 
 use GarantiasOnline360VO\Svg;
 use GarantiasOnline360VO\Docs\ReclamationDocument;
+use GarantiasOnline360VO\Support\UserProfileResolver;
 ?>
 </div> <!-- /.main-grid -->
 </div> <!-- /.container -->
@@ -92,6 +93,13 @@ use GarantiasOnline360VO\Docs\ReclamationDocument;
     $icon_save_html = Svg::icon('save');
     $reclamation_url = ReclamationDocument::get_url();
 
+    $current_user_labels = UserProfileResolver::get_vendor_labels((int) $current_user->ID);
+    $current_user_company_name = (string) ($current_user_labels['company_name'] ?? '');
+    $current_user_company_type_label = '';
+    if (! empty($current_user_labels['company']['type']['label'])) {
+        $current_user_company_type_label = (string) $current_user_labels['company']['type']['label'];
+    }
+
     if ($is_admin) {
         $js_user_role = 'admin';
     } elseif (in_array('go_profesional', (array)$current_user->roles, true)) {
@@ -122,7 +130,9 @@ use GarantiasOnline360VO\Docs\ReclamationDocument;
                             echo 'user';
                         }
                         ?>",
-                currentUserId: <?php echo (int) get_current_user_id(); ?>
+                currentUserId: <?php echo (int) get_current_user_id(); ?>,
+                companyName: "<?php echo esc_js($current_user_company_name); ?>",
+                companyTypeLabel: "<?php echo esc_js($current_user_company_type_label); ?>"
             },
             icons: {
                 percent: `<?php echo addslashes($icon_percent_html); ?>`,

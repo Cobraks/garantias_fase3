@@ -8,7 +8,11 @@
 */
 
 import { debounce } from "./form-utils.js";
-import { getUserRole } from "./config.js";
+import {
+        getUserRole,
+        getCurrentUserCompanyName,
+        getCurrentUserCompanyTypeLabel,
+} from "./config.js";
 import { showTab, isCurrentTabValid } from "./form-navigation.js";
 import FormCache from "./form-cache.js";
 
@@ -18,9 +22,14 @@ function isTipoCamion() {
 	return tipo && tipo.value === "camion";
 }
 
+function getProfesionalChannelLabel() {
+        const typeLabel = getCurrentUserCompanyTypeLabel();
+        return typeLabel ? `Profesional (${typeLabel})` : "Profesional";
+}
+
 // === Helpers de campos especiales ===
 function getSummaryText(fieldId) {
-	// Dirección
+        // Dirección
 	if (fieldId === "direccion") {
 		const direccion = document.getElementById("direccion");
 		const cp = document.getElementById("codigo_postal");
@@ -47,26 +56,24 @@ function getSummaryText(fieldId) {
 	// === MODALIDAD ahora muestra Canal de venta ===
         if (fieldId === "modalidad") {
                 const userRole = getUserRole() || "user";
-		let canalText = "";
-		if (userRole === "admin") {
-			const canalSelect = document.getElementById("canal-venta");
-			if (canalSelect && canalSelect.value) {
-				const option = canalSelect.options[canalSelect.selectedIndex];
-				canalText = option ? option.textContent : "";
-			} else {
-				canalText = "No seleccionado";
-			}
-               } else if (
-                       userRole === "comercial" ||
-                       userRole === "profesional" ||
-                       userRole === "go_profesional"
-               ) {
-                       canalText = "Profesional";
-               } else {
-			canalText = "-";
-		}
-		return { text: canalText, error: false };
-	}
+                let canalText = "";
+                if (userRole === "admin") {
+                        const canalSelect = document.getElementById("canal-venta");
+                        if (canalSelect && canalSelect.value) {
+                                const option = canalSelect.options[canalSelect.selectedIndex];
+                                canalText = option ? option.textContent : "";
+                        } else {
+                                canalText = "(no seleccionado)";
+                        }
+                } else if (userRole === "go_profesional") {
+                        canalText = getProfesionalChannelLabel();
+                } else if (userRole === "comercial" || userRole === "profesional") {
+                        canalText = "Profesional";
+                } else {
+                        canalText = "-";
+                }
+                return { text: canalText, error: false };
+        }
 
 	// Plan seleccionado
 	if (fieldId === "plan_seleccionado") {
@@ -256,33 +263,34 @@ function getSummaryText(fieldId) {
 
 // === CABECERA DE RESUMEN: CANAL Y VENDEDOR (nuevo) ===
 function updateSummaryHeader() {
-	const canalSpan = document.querySelector("[data-summary-canal]");
-	const vendedorSpan = document.querySelector("[data-summary-vendedor]");
+        const canalSpan = document.querySelector("[data-summary-canal]");
+        const vendedorSpan = document.querySelector("[data-summary-vendedor]");
         const userRole = getUserRole() || "user";
+        const currentCompanyName = (getCurrentUserCompanyName() || "").trim();
 
-	// Por defecto, escondemos ambos
-	const canalP = document.getElementById("summary-canal-venta");
-	const vendedorP = document.getElementById("summary-vendedor");
-	if (canalP) canalP.style.display = "none";
-	if (vendedorP) vendedorP.style.display = "none";
+        // Por defecto, escondemos ambos
+        const canalP = document.getElementById("summary-canal-venta");
+        const vendedorP = document.getElementById("summary-vendedor");
+        if (canalP) canalP.style.display = "none";
+        if (vendedorP) vendedorP.style.display = "none";
 
-	if (userRole === "admin") {
-		if (canalP) canalP.style.display = "";
-		if (vendedorP) vendedorP.style.display = "";
+        if (userRole === "admin") {
+                if (canalP) canalP.style.display = "";
+                if (vendedorP) vendedorP.style.display = "";
 
-		// Canal de venta
-		const canalSelect = document.getElementById("canal-venta");
-		let canalText = "";
-		if (canalSelect && canalSelect.value) {
-			const option = canalSelect.options[canalSelect.selectedIndex];
-			canalText = option ? option.textContent : "";
-		} else {
-			canalText = "No seleccionado";
-		}
-		if (canalSpan) canalSpan.textContent = canalText;
+                // Canal de venta
+                const canalSelect = document.getElementById("canal-venta");
+                let canalText = "";
+                if (canalSelect && canalSelect.value) {
+                        const option = canalSelect.options[canalSelect.selectedIndex];
+                        canalText = option ? option.textContent : "";
+                } else {
+                        canalText = "(no seleccionado)";
+                }
+                if (canalSpan) canalSpan.textContent = canalText;
 
-		// Vendedor
-		const vendedorSelect = document.getElementById("usuario-rol");
+                // Vendedor
+                const vendedorSelect = document.getElementById("usuario-rol");
 		let vendedorText = "";
 		if (vendedorSelect && vendedorSelect.value) {
 			const option = vendedorSelect.options[vendedorSelect.selectedIndex];
@@ -291,11 +299,12 @@ function updateSummaryHeader() {
 			vendedorText = "No seleccionado";
 		}
 		if (vendedorSpan) vendedorSpan.textContent = vendedorText;
-       } else if (
-               userRole === "comercial" ||
-               userRole === "profesional" ||
-               userRole === "go_profesional"
-       ) {
+       } else if (userRole === "go_profesional") {
+               if (canalP) canalP.style.display = "";
+               if (vendedorP) vendedorP.style.display = "";
+               if (canalSpan) canalSpan.textContent = getProfesionalChannelLabel();
+               if (vendedorSpan) vendedorSpan.textContent = currentCompanyName || "(no seleccionado)";
+       } else if (userRole === "comercial" || userRole === "profesional") {
                if (canalP) canalP.style.display = "";
                if (vendedorP) vendedorP.style.display = "none";
                if (canalSpan) canalSpan.textContent = "Profesional";

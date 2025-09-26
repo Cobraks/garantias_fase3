@@ -34,6 +34,16 @@ export function getCurrentUserId() {
         return null;
 }
 
+export function getCurrentUserCompanyName() {
+        const nameFromConfig = getRawConfig().user?.companyName;
+        return typeof nameFromConfig === "string" ? nameFromConfig : "";
+}
+
+export function getCurrentUserCompanyTypeLabel() {
+        const typeLabel = getRawConfig().user?.companyTypeLabel;
+        return typeof typeLabel === "string" ? typeLabel : "";
+}
+
 // Íconos
 export function getIcon(name) {
         const icons = getRawConfig().icons || {};
