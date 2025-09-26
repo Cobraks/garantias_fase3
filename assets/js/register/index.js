@@ -119,7 +119,7 @@
       });
 
       if (companySection) {
-        const showCompanyFields = channel === 'professional';
+        const showCompanyFields = ['compraventa', 'concesionario'].includes(channel);
         companySection.hidden = !showCompanyFields;
         companySection.setAttribute('aria-hidden', showCompanyFields ? 'false' : 'true');
       }

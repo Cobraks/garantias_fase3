@@ -48,14 +48,14 @@ use GarantiasOnline360VO\Svg;
 </div>
 
 <div class="guarantees-container">
-    <!-- 2. LISTA: tabla semántica con columna “Garantía” al final y “Profesional” en vendedor -->
+    <!-- 2. LISTA: tabla semántica con columna “Garantía” al final y “Canal de venta” en vendedor -->
     <section class="guarantees-list">
         <table class="guarantees-table" style="view-transition-name: garantias-table">
             <thead>
                 <tr>
                     <th><?php esc_html_e('Vehículo',  'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Validez',   'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Vendedor',  'garantias-online-360vo'); ?></th>
+                    <th><?php esc_html_e('Canal de venta',  'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Estado',    'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Garantía',  'garantias-online-360vo'); ?></th>
                 </tr>

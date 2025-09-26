@@ -3,6 +3,7 @@
 namespace GarantiasOnline360VO\Auth;
 
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
+use GarantiasOnline360VO\Support\UserProfileResolver;
 use WP_User;
 
 if (! defined('ABSPATH')) {
@@ -39,12 +40,30 @@ class PasswordResetMailer
         $site_name = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
         $subject   = sprintf(__('[%s] Restablece tu contraseña', 'garantias-online-360vo'), $site_name);
 
+        $labels = UserProfileResolver::get_vendor_labels((int) $user->ID);
+        $personal_name = $labels['personal_full_name'] ?? '';
+        if ($personal_name === '') {
+            $personal_name = $labels['personal_name'] ?? '';
+        }
+
+        $company = $labels['company'] ?? [];
+        $company_name = '';
+        if (! empty($company['trade_name'])) {
+            $company_name = $company['trade_name'];
+        } elseif (! empty($company['legal_name'])) {
+            $company_name = $company['legal_name'];
+        } elseif (! empty($labels['company_name']) && $labels['company_name'] !== $personal_name) {
+            $company_name = $labels['company_name'];
+        }
+
         $renderer = new TemplateRenderer();
         $message  = $renderer->render('password-reset', [
-            'reset_url'   => $reset_url,
-            'site_name'   => $site_name,
-            'user_login'  => $user_login,
-            'support_url' => home_url('/garantias-online/'),
+            'reset_url'     => $reset_url,
+            'site_name'     => $site_name,
+            'user_login'    => $user_login,
+            'support_url'   => home_url('/garantias-online/'),
+            'personal_name' => $personal_name,
+            'company_name'  => $company_name,
         ]);
 
         if ($message === '') {

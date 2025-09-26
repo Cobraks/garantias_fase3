@@ -491,7 +491,7 @@ footer.footer .footer__wrapper {
 
 .register-page .channel-selector {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
@@ -501,7 +501,7 @@ footer.footer .footer__wrapper {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 0.75rem;
   padding: 1.5rem 1rem;
   border: 2px solid var(--border);
   border-radius: var(--radius);
@@ -523,11 +523,6 @@ footer.footer .footer__wrapper {
   color: var(--primary);
 }
 
-.register-page .channel-btn:hover .channel-desc,
-.register-page .channel-btn.active .channel-desc {
-  color: var(--primary);
-}
-
 .register-page .channel-btn:hover .channel-name,
 .register-page .channel-btn.active .channel-name {
   color: inherit;
@@ -546,13 +541,7 @@ footer.footer .footer__wrapper {
 
 .register-page .channel-name {
   font-weight: 600;
-  margin-bottom: 0.25rem;
-  transition: color 0.2s ease;
-}
-
-.register-page .channel-desc {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+  margin-bottom: 0;
   transition: color 0.2s ease;
 }
 
