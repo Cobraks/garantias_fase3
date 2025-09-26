@@ -85,6 +85,34 @@ class UserProfileResolver
         return self::get_personal_name($user_id);
     }
 
+    public static function get_personal_with_company_label($user): string
+    {
+        $object = self::resolve_user($user);
+        if (! $object instanceof WP_User) {
+            $user_id = is_numeric($user) ? (int) $user : 0;
+        } else {
+            $user_id = (int) $object->ID;
+        }
+
+        if ($user_id <= 0) {
+            return '';
+        }
+
+        $labels = self::get_vendor_labels($user_id);
+        $personal = $labels['personal_name'] ?? '';
+        $company  = $labels['company_name'] ?? '';
+
+        if ($company !== '' && $company !== $personal) {
+            if ($personal === '') {
+                return $company;
+            }
+
+            return sprintf('%s (%s)', $personal, $company);
+        }
+
+        return $personal;
+    }
+
     public static function get_first_name($user): string
     {
         $object = self::resolve_user($user);

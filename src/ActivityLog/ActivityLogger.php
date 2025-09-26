@@ -376,9 +376,7 @@ class ActivityLogger
         if ($actor_id) {
             $user = get_userdata($actor_id);
             if ($user) {
-                if ($actor_name === '') {
-                    $actor_name = UserProfileResolver::get_personal_name($user);
-                }
+                $actor_name = UserProfileResolver::get_personal_with_company_label($user);
                 if ($actor_email === '') {
                     $actor_email = $user->user_email;
                 }
@@ -405,7 +403,7 @@ class ActivityLogger
         if (! $user) {
             return '';
         }
-        return UserProfileResolver::get_personal_name($user);
+        return UserProfileResolver::get_personal_with_company_label($user);
     }
 
     private static function prepare_context($context): array
@@ -557,7 +555,7 @@ class ActivityLogger
 
         $options = [];
         foreach ($users as $user) {
-            $label = UserProfileResolver::get_personal_name($user);
+            $label = UserProfileResolver::get_personal_with_company_label($user);
             if ($label === '') {
                 $label = $user->user_email ?: $user->user_login;
             }
