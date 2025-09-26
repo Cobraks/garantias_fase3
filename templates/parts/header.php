@@ -5,14 +5,31 @@ if (! defined('ABSPATH')) {
 
 use GarantiasOnline360VO\Svg;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
+use GarantiasOnline360VO\Support\UserProfileResolver;
 
 $is_auth_template = ! empty($is_auth_page);
 
 // Calculamos botón de perfil y avatar
 $current_user_id = get_current_user_id();
 $current_user = wp_get_current_user();
-$display_name = $current_user->display_name ?: $current_user->user_login;
+$display_name = UserProfileResolver::get_personal_name($current_user);
 $notification_email = $current_user->user_email;
+$profile_person_name = $display_name;
+$profile_company_name = '';
+
+if ($current_user instanceof \WP_User
+    && in_array('go_profesional', (array) $current_user->roles, true)
+) {
+    $labels = UserProfileResolver::get_vendor_labels($current_user_id);
+    if (! empty($labels['company_name']) && $labels['company_name'] !== $labels['personal_name']) {
+        $profile_company_name = $labels['company_name'];
+    }
+    if (! empty($labels['personal_full_name'])) {
+        $profile_person_name = $labels['personal_full_name'];
+    } elseif (! empty($labels['personal_name'])) {
+        $profile_person_name = $labels['personal_name'];
+    }
+}
 
 if ($current_user_id && class_exists(NotificationEmailResolver::class)) {
     $resolved_email = NotificationEmailResolver::resolve($current_user_id);
@@ -232,7 +249,11 @@ $home_destination = $is_admin_user
                     >
                         <div class="profile-menu__header">
                             <div class="profile-menu__info">
-                                <span class="profile-menu__name"><?php echo esc_html($display_name); ?></span>
+                                <?php if ($profile_company_name !== '') : ?>
+                                    <span class="profile-menu__company"><?php echo esc_html($profile_company_name); ?></span>
+                                <?php else : ?>
+                                    <span class="profile-menu__name"><?php echo esc_html($profile_person_name); ?></span>
+                                <?php endif; ?>
                                 <?php if (! empty($notification_email)) : ?>
                                     <span class="profile-menu__email"><?php echo esc_html($notification_email); ?></span>
                                 <?php endif; ?>

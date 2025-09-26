@@ -259,7 +259,8 @@ text-decoration: none;
     min-width: 0;
   }
 
-  .profile-menu__name {
+  .profile-menu__name,
+  .profile-menu__company {
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-color);
@@ -311,11 +312,6 @@ text-decoration: none;
     color: var(--text-secondary);
   }
 
-  .profile-menu__item:hover .profile-menu__icon,
-  .profile-menu__item:focus-visible .profile-menu__icon {
-    color: var(--primary-color);
-  }
-
   .profile-menu__text {
     flex: 1;
     white-space: nowrap;
@@ -340,10 +336,18 @@ text-decoration: none;
     color: #b91c1c;
   }
 
+  .profile-menu__item--logout:hover .profile-menu__icon {
+    color: currentColor;
+  }
+
   .profile-menu__item--logout:focus-visible {
     background: rgba(220, 38, 38, 0.12);
     color: #b91c1c;
     box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+  }
+
+  .profile-menu__item--logout:focus-visible .profile-menu__icon {
+    color: currentColor;
   }
 
 
@@ -480,7 +484,6 @@ justify-content: space-between;
     height: var(--alturaHeader);
     /* padding-inline: var(--spacing-4); */
     padding-inline: var(--spacing-3);
-    top: var(--spacing-3);
 }
 
 .top-bar__hamburger {
