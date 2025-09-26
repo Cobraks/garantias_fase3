@@ -48,12 +48,17 @@ function loadUsuariosPorRol(rol, selectId) {
 			select.appendChild(defaultOption);
 
 			if (Array.isArray(data) && data.length) {
-				data.forEach((user) => {
-					const option = document.createElement("option");
-					option.value = user.id;
-					option.textContent = user.display_name;
-					select.appendChild(option);
-				});
+                                data.forEach((user) => {
+                                        const option = document.createElement("option");
+                                        option.value = user.id;
+                                        const companyName = user.company_name || (user.company && user.company.name) || "";
+                                        const personalName = user.personal_name || user.display_name || "";
+                                        const label = companyName || personalName || user.email || `Usuario #${user.id}`;
+                                        option.textContent = label;
+                                        option.dataset.companyName = companyName;
+                                        option.dataset.personalName = personalName;
+                                        select.appendChild(option);
+                                });
 			}
 
 			// Disparar evento para que otros listeners (como SEPA) reaccionen a valor inicial si ya hay uno
