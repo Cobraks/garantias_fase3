@@ -8,6 +8,7 @@ use GarantiasOnline360VO\ActivityLog\ActivitySubscribers;
 use GarantiasOnline360VO\Auth\AuthController;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
+use GarantiasOnline360VO\Register\RegisterManager;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -51,6 +52,8 @@ class Plugin
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\UserRestController::class, 'register_routes']);
 
+        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\RegisterRestController::class, 'register_routes']);
+
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\OfertasRestController::class, 'register_routes']);
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\ActivityLogRestController::class, 'register_routes']);
@@ -74,6 +77,7 @@ class Plugin
         ProfileAvatar::init();
         SettingsPage::init();
         EmailNotificationService::init();
+        RegisterManager::init();
 
         // 5) Cargar los grupos de campos ACF (solo si ACF está activo)
         add_action('acf/init', function () {
@@ -108,6 +112,7 @@ class Plugin
     {
         Seeder::clean();
         delete_option(Seeder::OPTION_STATUS);
+        RegisterManager::clear_schedule();
     }
 }
 
