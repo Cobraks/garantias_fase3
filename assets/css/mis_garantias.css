@@ -1036,9 +1036,9 @@ section.guarantees-list.sticky-active {
     align-items: center;
     gap: 0.75rem;
     padding: 1.5rem var(--spacing-3);
-    background-color: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
-    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.25);
+    background-color: transparent;
+    backdrop-filter: none;
+    box-shadow: none;
     z-index: 2;
 }
 
@@ -1098,9 +1098,9 @@ section.guarantees-list.sticky-active {
     width: 42px;
     height: 42px;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.45);
-    background: rgba(255, 255, 255, 0.08);
-    color: #f8fafc;
+    border: 1px solid rgba(108, 108, 108, 0.45);
+    background: #ffffff;
+    color: #000000;
     padding: 0;
 }
 
@@ -1124,9 +1124,12 @@ section.guarantees-list.sticky-active {
 }
 
 .guarantee-detail__btn--fav:hover,
-.guarantee-detail__btn--share:hover {
-    background: rgba(255, 255, 255, 0.16);
-    border-color: rgba(255, 255, 255, 0.6);
+.guarantee-detail__btn--fav:focus-visible,
+.guarantee-detail__btn--share:hover,
+.guarantee-detail__btn--share:focus-visible {
+    background: #f3f4f6;
+    border-color: rgba(108, 108, 108, 0.7);
+    color: #000000;
     transform: translateY(-1px);
 }
 
@@ -1196,6 +1199,7 @@ section.guarantees-list.sticky-active {
     font-size: 1.35rem;
     font-weight: 600;
     color: #0f172a;
+    margin-bottom: 0.25rem;
 }
 
 .confirm-modal__subtitle {
@@ -1208,6 +1212,19 @@ section.guarantees-list.sticky-active {
 .confirm-modal__message {
     font-size: 0.95rem;
     line-height: 1.5;
+    color: #1f2937;
+    margin-block: 1.5rem;
+}
+
+.confirm-modal__message strong,
+.confirm-modal__message b {
+    font-weight: 500;
+}
+
+.confirm-modal__payment-window {
+    display: block;
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
     color: #1f2937;
 }
 
@@ -1223,6 +1240,7 @@ section.guarantees-list.sticky-active {
     gap: var(--spacing-2);
     font-size: 0.9rem;
     color: #1f2937;
+    margin-block: 1.5rem;
 }
 
 .confirm-modal__checkbox-input {

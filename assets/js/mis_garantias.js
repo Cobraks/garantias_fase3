@@ -462,15 +462,22 @@ const ADD_DOC_KEY = "add-document";
                                                 month: "2-digit",
                                                 year: "2-digit",
                                         });
-                                        const deadline = new Date(startDate.getTime());
-                                        deadline.setDate(deadline.getDate() + 48);
+                                        const deadline = new Date(
+                                                startDate.getTime() +
+                                                        48 * 60 * 60 * 1000
+                                        );
                                         const startDisplay = formatter.format(startDate);
                                         const deadlineDisplay = formatter.format(deadline);
                                         paymentWindowText = `Plazo de pago: del ${startDisplay} al ${deadlineDisplay}`;
                                 }
                         }
 
-                        const note = !isDomiciliacion && paymentWindowText ? paymentWindowText : "";
+                        if (paymentWindowText) {
+                                const escapedWindow = escapeHtml(paymentWindowText);
+                                message += ` <span class="confirm-modal__payment-window">${escapedWindow}</span>`;
+                        }
+
+                        const note = !isDomiciliacion ? "La garantía se activará." : "";
                         const context = {
                                 btn,
                                 panel,
