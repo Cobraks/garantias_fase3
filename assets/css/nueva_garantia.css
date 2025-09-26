@@ -854,6 +854,12 @@ border: solid 1px #b8e7bc;
     padding-right: .5rem;
 }
 
+.ofertas__item--empty {
+    color: #ea580c;
+    border-color: #fdba74;
+    background: #fff7ed;
+}
+
 .ofertas__item--loading {
   color: #6b7280;
   border: solid 1px #d1d5db;
