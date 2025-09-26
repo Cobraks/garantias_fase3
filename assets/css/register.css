@@ -166,8 +166,8 @@ footer.footer .footer__wrapper {
 
 .register-page .info-panel h1 {
   font-size: 1.875rem;
-  margin: 2rem 0 1rem;
-  color: var(--text-primary);
+  margin: 0;
+  color: #000000;
   text-align: center;
 }
 
