@@ -547,7 +547,7 @@ section.guarantees-list.sticky-active {
     margin: var(--spacing-2) 0 0;
 }
 
-.detail__docs-item {
+.detail__section--docs .detail__docs-item {
     margin-bottom: 0;
 }
 

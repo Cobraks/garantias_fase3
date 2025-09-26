@@ -6,6 +6,7 @@ use WP_REST_Server;
 use WP_Query;
 use WP_REST_Response;
 use WP_Error;
+use DateTimeImmutable;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\GuaranteeLogger;
 use GarantiasOnline360VO\SettingsPage;
@@ -1562,6 +1563,16 @@ class GuaranteeRestController
 
         $uuid = get_post_meta($id, 'estado_garantia_uuid', true);
 
+        $primera_matriculacion_display = '-';
+        if (is_string($primera_matriculacion) && $primera_matriculacion !== '') {
+            $date = DateTimeImmutable::createFromFormat('Y-m-d', $primera_matriculacion);
+            if ($date instanceof DateTimeImmutable) {
+                $primera_matriculacion_display = $date->format('d/m/y');
+            } else {
+                $primera_matriculacion_display = $primera_matriculacion;
+            }
+        }
+
         $detail = [
             'id' => $id,
             'uuid' => $uuid,
@@ -1572,7 +1583,7 @@ class GuaranteeRestController
             'tipo' => $tipo ?: '-',
             'tipo_value' => $tipo_slug,
             'kilometros' => $kilometros ?: '-',
-            'primera_matriculacion' => $primera_matriculacion ?: '-',
+            'primera_matriculacion' => $primera_matriculacion_display,
             'bastidor' => $bastidor ?: '-',
             'precio_venta' => $precio_venta ?: '-',
             'combustible' => $combustible_label ?: '-',
