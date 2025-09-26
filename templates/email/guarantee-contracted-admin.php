@@ -7,7 +7,10 @@ $initiator = $context['initiator'] ?? [];
 $initiator_name = $initiator['name'] ?? '';
 $plate_label = $guarantee['plate'] ?? '#' . ($guarantee['id'] ?? '');
 $payment_slug = $guarantee['payment_slug'] ?? '';
-$vendor = $guarantee['vendor']['name'] ?? '';
+$vendor_data = $guarantee['vendor'] ?? [];
+$vendor_company = $vendor_data['company_name'] ?? ($vendor_data['name'] ?? '');
+$vendor_personal = $vendor_data['personal_name'] ?? '';
+$vendor = $vendor_company !== '' ? $vendor_company : ($vendor_personal !== '' ? $vendor_personal : '');
 $deadline = $guarantee['payment_deadline']['formatted'] ?? '';
 $copy = $context['email_copy'] ?? [];
 $admin_intro = $copy['admin_intro'] ?? '';
@@ -81,7 +84,16 @@ $heading = $is_domiciliation
                 <?php endif; ?>
             <?php endif; ?>
         </p>
-        <?php include __DIR__ . '/partials/summary.php'; ?>
+        <?php
+        $summary_context = [
+            'show_vendor_channel'  => true,
+            'show_vendor_contact'  => true,
+            'show_vendor_company'  => true,
+            'vendor_company_label' => __('Empresa', 'garantias-online-360vo'),
+            'vendor_channel_show_company_inline' => false,
+        ];
+        include __DIR__ . '/partials/summary.php';
+        ?>
         <p style="margin-top:24px; font-size:13px; color:#777; line-height:1.4;">
             <?php esc_html_e('Puedes acceder al expediente completo desde Mis Garantías.', 'garantias-online-360vo'); ?>
         </p>
