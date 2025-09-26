@@ -13,8 +13,16 @@ $signature = $copy['signature'] ?? '';
 $plan_name = $guarantee['plan'] ?? '';
 $vehicle_sentence = $guarantee['vehicle']['sentence'] ?? '';
 $vehicle_summary = $guarantee['vehicle']['summary'] ?? '';
-$vendor_name = $guarantee['vendor']['name'] ?? '';
-$vendor_display = $vendor_name !== '' ? $vendor_name : __('Tu equipo', 'garantias-online-360vo');
+$vendor_data = $guarantee['vendor'] ?? [];
+$vendor_contact = $vendor_data['contact_name'] ?? ($vendor_data['personal_name'] ?? ($vendor_data['name'] ?? ''));
+$vendor_company = $vendor_data['company_name'] ?? '';
+$vendor_display = $vendor_company !== ''
+    ? $vendor_company
+    : ($vendor_contact !== '' ? $vendor_contact : __('Tu equipo', 'garantias-online-360vo'));
+$vendor_greeting = $vendor_data['greeting_name'] ?? '';
+if ($vendor_greeting === '') {
+    $vendor_greeting = $vendor_contact !== '' ? $vendor_contact : $vendor_display;
+}
 $is_domiciliation = in_array($payment_slug, ['domiciliacion', 'domiciliacion_bancaria', 'domiciliacion-bancaria'], true);
 $is_transfer = in_array($payment_slug, ['transferencia', 'transferencia_bancaria'], true);
 $heading = $is_domiciliation
@@ -73,7 +81,7 @@ $heading = $is_domiciliation
                     __('Hola <strong>%1$s</strong>. Acabas de contratar %2$s%3$s. Aquí tienes un resumen rápido para que puedas revisar los detalles en cualquier momento.', 'garantias-online-360vo'),
                     ['strong' => []]
                 ),
-                esc_html($vendor_display),
+                esc_html($vendor_greeting),
                 wp_kses_post($plan_fragment),
                 $vehicle_fragment
             );
@@ -98,17 +106,7 @@ $heading = $is_domiciliation
         <?php if ($is_transfer) : ?>
             <div style="padding:14px 18px; margin:0 0 18px; background:#fff4d6; border:1px solid #f7ce68; border-radius:8px; font-size:14px; color:#8b6500; line-height:1.6;">
                 <strong style="display:block; font-size:15px; color:#5c3d00; margin-bottom:4px;">¡Importante!</strong>
-                <?php
-                if ($deadline !== '') {
-                    printf(
-                        /* translators: %s: deadline date */
-                        esc_html__('Recuerda realizar la transferencia antes del %s para activar la garantía.', 'garantias-online-360vo'),
-                        esc_html($deadline)
-                    );
-                } else {
-                    esc_html_e('Recuerda realizar la transferencia cuanto antes para activar la garantía.', 'garantias-online-360vo');
-                }
-                ?>
+                <?php esc_html_e('Recuerda realizar la transferencia antes de 48 horas.', 'garantias-online-360vo'); ?>
             </div>
             <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%; border:1px solid #e5e5e5; border-radius:8px; overflow:hidden; margin:0 0 18px;">
                 <tbody>
@@ -139,7 +137,14 @@ $heading = $is_domiciliation
                 </tbody>
             </table>
         <?php endif; ?>
-        <?php include __DIR__ . '/partials/summary.php'; ?>
+        <?php
+        $summary_context = [
+            'show_vendor_channel'  => false,
+            'show_vendor_contact'  => false,
+            'show_vendor_company'  => false,
+        ];
+        include __DIR__ . '/partials/summary.php';
+        ?>
         <p style="font-size:13px; color:#777; line-height:1.5; margin:0 0 16px;">
             <?php esc_html_e('Si tienes alguna duda, puedes responder directamente a este correo o contactar con tu asesor de 360VO.', 'garantias-online-360vo'); ?>
         </p>

@@ -2,6 +2,7 @@
 namespace GarantiasOnline360VO\Admin;
 
 use GarantiasOnline360VO\GuaranteeCPT;
+use GarantiasOnline360VO\Support\UserProfileResolver;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -89,9 +90,11 @@ class GuaranteeColumns
                 }
                 $vendor = '';
                 if ($user_id) {
-                    $user = get_userdata($user_id);
-                    if ($user) {
-                        $vendor = $user->display_name;
+                    $labels = UserProfileResolver::get_vendor_labels($user_id);
+                    if (! empty($labels['company_name'])) {
+                        $vendor = $labels['company_name'];
+                    } elseif (! empty($labels['personal_name'])) {
+                        $vendor = $labels['personal_name'];
                     }
                 }
                 $parts = [];

@@ -6,10 +6,12 @@ use WP_REST_Server;
 use WP_Query;
 use WP_REST_Response;
 use WP_Error;
+use DateTimeImmutable;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\GuaranteeLogger;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
+use GarantiasOnline360VO\Support\UserProfileResolver;
 
 class GuaranteeRestController
 {
@@ -1467,8 +1469,45 @@ class GuaranteeRestController
 
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
         $vendor_id = is_array($vendor_id) && isset($vendor_id['ID']) ? (int) $vendor_id['ID'] : (int) $vendor_id;
-        $user      = $vendor_id ? get_user_by('id', $vendor_id) : false;
-        $concesionario = $user ? $user->display_name : '';
+        $labels = [
+            'company_name'       => '',
+            'personal_name'      => '',
+            'personal_full_name' => '',
+            'first_name'         => '',
+            'last_name'          => '',
+            'company' => [
+                'name' => '',
+                'trade_name' => '',
+                'legal_name' => '',
+                'tax_id' => '',
+                'type' => ['value' => '', 'label' => ''],
+                'address' => ['street' => '', 'city' => '', 'state' => '', 'zip' => '', 'country' => ''],
+            ],
+        ];
+        if ($vendor_id) {
+            $labels = UserProfileResolver::get_vendor_labels($vendor_id);
+        }
+        $vendor_company = $labels['company'] ?? [
+            'name' => '',
+            'trade_name' => '',
+            'legal_name' => '',
+            'tax_id' => '',
+            'type' => ['value' => '', 'label' => ''],
+            'address' => ['street' => '', 'city' => '', 'state' => '', 'zip' => '', 'country' => ''],
+        ];
+        $concesionario_raw = $labels['company_name'] !== ''
+            ? $labels['company_name']
+            : ($labels['personal_name'] ?? '');
+        $concesionario = sanitize_text_field($concesionario_raw);
+        $vendor_full_name = sanitize_text_field($labels['personal_full_name'] ?? ($labels['personal_name'] ?? ''));
+        $vendor_first_name = sanitize_text_field($labels['first_name'] ?? '');
+        $vendor_last_name  = sanitize_text_field($labels['last_name'] ?? '');
+        $vendor_type_label = '';
+        $vendor_type_value = '';
+        if (isset($vendor_company['type']) && is_array($vendor_company['type'])) {
+            $vendor_type_label = sanitize_text_field($vendor_company['type']['label'] ?? '');
+            $vendor_type_value = sanitize_key((string) ($vendor_company['type']['value'] ?? ''));
+        }
 
         $canal_venta_raw = get_post_meta($id, 'garantia_contratada_canal_venta', true);
         $canal_venta_value = is_array($canal_venta_raw) && isset($canal_venta_raw['value'])
@@ -1486,12 +1525,24 @@ class GuaranteeRestController
             $canal_venta = $canal_choices[$lookup] ?? ucfirst($lookup);
         }
 
+        $canal_venta_summary = $canal_venta;
+        if ($vendor_type_label !== '') {
+            $canal_venta_summary = $canal_venta !== ''
+                ? sprintf('%s (%s)', $canal_venta, $vendor_type_label)
+                : $vendor_type_label;
+        }
+
         $telefono_vendedor = $vendor_id
             ? get_user_meta($vendor_id, 'datos_usuario_telefono', true)
             : '';
-        $email_vendedor = $vendor_id
-            ? NotificationEmailResolver::resolve($vendor_id)
-            : '';
+        $email_details = $vendor_id
+            ? NotificationEmailResolver::resolve_with_details($vendor_id)
+            : ['email' => '', 'default_email' => '', 'source' => 'registration'];
+        $email_vendedor = sanitize_email($email_details['email'] ?? '');
+        $email_registro = sanitize_email($email_details['default_email'] ?? '');
+        $email_source   = is_string($email_details['source'] ?? '')
+            ? sanitize_key($email_details['source'])
+            : 'registration';
         $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
         $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
 
@@ -1512,6 +1563,16 @@ class GuaranteeRestController
 
         $uuid = get_post_meta($id, 'estado_garantia_uuid', true);
 
+        $primera_matriculacion_display = '-';
+        if (is_string($primera_matriculacion) && $primera_matriculacion !== '') {
+            $date = DateTimeImmutable::createFromFormat('Y-m-d', $primera_matriculacion);
+            if ($date instanceof DateTimeImmutable) {
+                $primera_matriculacion_display = $date->format('d/m/y');
+            } else {
+                $primera_matriculacion_display = $primera_matriculacion;
+            }
+        }
+
         $detail = [
             'id' => $id,
             'uuid' => $uuid,
@@ -1522,7 +1583,7 @@ class GuaranteeRestController
             'tipo' => $tipo ?: '-',
             'tipo_value' => $tipo_slug,
             'kilometros' => $kilometros ?: '-',
-            'primera_matriculacion' => $primera_matriculacion ?: '-',
+            'primera_matriculacion' => $primera_matriculacion_display,
             'bastidor' => $bastidor ?: '-',
             'precio_venta' => $precio_venta ?: '-',
             'combustible' => $combustible_label ?: '-',
@@ -1543,12 +1604,22 @@ class GuaranteeRestController
                 'value' => $estado,
                 'label' => $estado_label,
             ],
-            'concesionario' => $concesionario ?: '-',
+            'concesionario' => $concesionario !== '' ? $concesionario : '-',
             'vendor_id' => $vendor_id,
+            'concesionario_personal' => $vendor_full_name,
+            'concesionario_personal_first' => $vendor_first_name,
+            'concesionario_personal_last' => $vendor_last_name,
+            'concesionario_personal_greeting' => $vendor_first_name !== '' ? $vendor_first_name : $vendor_full_name,
+            'vendor_company' => $vendor_company,
+            'vendor_company_type_label' => $vendor_type_label,
+            'vendor_company_type_value' => $vendor_type_value,
             'canal_venta' => $canal_venta ?: '-',
             'canal_venta_value' => $canal_venta_value,
-            'telefono_vendedor' => $telefono_vendedor ?: '',
-            'email_vendedor' => sanitize_email($email_vendedor) ?: '',
+            'canal_venta_summary' => $canal_venta_summary,
+            'telefono_vendedor' => sanitize_text_field($telefono_vendedor ?: ''),
+            'email_vendedor' => $email_vendedor,
+            'email_vendedor_registro' => $email_registro,
+            'email_vendedor_source' => $email_source,
             'avatar_vendedor' => $avatar_vendedor ?: '',
             'vendedor_url' => $vendedor_url,
             'condicionado_url' => '',
@@ -1885,7 +1956,7 @@ class GuaranteeRestController
         if (current_user_can('manage_options')) {
             $estados[] = [
                 'value' => 'pendiente_cobro',
-                'label' => __('Pendiente de cobro', 'garantias-online-360vo'),
+                'label' => __('Pendiente de domiciliación', 'garantias-online-360vo'),
             ];
         }
 
@@ -1906,13 +1977,17 @@ class GuaranteeRestController
 
         $users = get_users([
             'role'   => 'go_profesional',
-            'fields' => ['ID', 'display_name'],
+            'fields' => ['ID'],
         ]);
         $concesionarios = [];
         foreach ($users as $u) {
+            $labels = UserProfileResolver::get_vendor_labels((int) $u->ID);
+            $name = $labels['company_name'] !== ''
+                ? $labels['company_name']
+                : ($labels['personal_name'] !== '' ? $labels['personal_name'] : sprintf(__('Usuario #%d', 'garantias-online-360vo'), (int) $u->ID));
             $concesionarios[] = [
-                'id'   => $u->ID,
-                'name' => $u->display_name,
+                'id'   => (int) $u->ID,
+                'name' => $name,
             ];
         }
 

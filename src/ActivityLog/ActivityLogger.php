@@ -2,6 +2,7 @@
 
 namespace GarantiasOnline360VO\ActivityLog;
 
+use GarantiasOnline360VO\Support\UserProfileResolver;
 use WP_Error;
 use wpdb;
 
@@ -375,9 +376,7 @@ class ActivityLogger
         if ($actor_id) {
             $user = get_userdata($actor_id);
             if ($user) {
-                if ($actor_name === '') {
-                    $actor_name = $user->display_name ?: $user->user_login;
-                }
+                $actor_name = UserProfileResolver::get_personal_with_company_label($user);
                 if ($actor_email === '') {
                     $actor_email = $user->user_email;
                 }
@@ -404,7 +403,7 @@ class ActivityLogger
         if (! $user) {
             return '';
         }
-        return $user->display_name ?: $user->user_login;
+        return UserProfileResolver::get_personal_with_company_label($user);
     }
 
     private static function prepare_context($context): array
@@ -556,7 +555,10 @@ class ActivityLogger
 
         $options = [];
         foreach ($users as $user) {
-            $label = $user->display_name ?: ($user->user_email ?: $user->user_login);
+            $label = UserProfileResolver::get_personal_with_company_label($user);
+            if ($label === '') {
+                $label = $user->user_email ?: $user->user_login;
+            }
             $options[] = [
                 'value' => (string) $user->ID,
                 'label' => $label,

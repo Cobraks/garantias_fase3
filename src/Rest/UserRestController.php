@@ -2,6 +2,7 @@
 
 namespace GarantiasOnline360VO\Rest;
 
+use GarantiasOnline360VO\Support\UserProfileResolver;
 use WP_REST_Server;
 use WP_User_Query;
 use WP_REST_Response;
@@ -75,18 +76,26 @@ class UserRestController
         $role = $request->get_param('role');
         $args = [
             'role'   => $role ? $role : '', // Si no hay role, devuelve todos
-            'fields' => ['ID', 'display_name', 'user_email'],
+            'fields' => 'all_with_meta',
             'number' => 100, // puedes paginar si quieres
         ];
         $users_query = new WP_User_Query($args);
         $users = [];
 
         foreach ($users_query->get_results() as $user) {
+            if (! $user instanceof \WP_User) {
+                continue;
+            }
             $user_id = $user->ID;
+            $profile = UserProfileResolver::build_from_user($user);
             $item = [
-                'id'           => $user_id,
-                'display_name' => $user->display_name,
-                'email'        => $user->user_email,
+                'id'             => $user_id,
+                'display_name'   => $profile['personal_name'],
+                'personal_name'  => $profile['personal_name'],
+                'company_name'   => $profile['company']['name'] ?? '',
+                'company'        => $profile['company'],
+                'username'       => $profile['username'],
+                'email'          => $profile['email'],
             ];
 
             // Si es profesional, añadimos comerciales asignados (ACF group)
@@ -96,11 +105,14 @@ class UserRestController
                 if (is_array($comerciales) && count($comerciales)) {
                     foreach ($comerciales as $com_id) {
                         $com_user = get_user_by('id', $com_id);
-                        if ($com_user) {
+                        if ($com_user instanceof \WP_User) {
+                            $com_profile = UserProfileResolver::build_from_user($com_user);
                             $item['comerciales_asignados'][] = [
-                                'id'           => $com_user->ID,
-                                'display_name' => $com_user->display_name,
-                                'email'        => $com_user->user_email,
+                                'id'             => $com_user->ID,
+                                'display_name'   => $com_profile['personal_name'],
+                                'personal_name'  => $com_profile['personal_name'],
+                                'company_name'   => $com_profile['company']['name'] ?? '',
+                                'email'          => $com_profile['email'],
                             ];
                         }
                     }
