@@ -22,32 +22,95 @@ $seal_default_label      = esc_html__('+ Subir imagen de sello', 'garantias-onli
     compact('is_auth_page', 'is_account_page')
 );
 
-$address = $user['address'] ?? [];
-$country      = isset($address['country']) ? (string) $address['country'] : '';
-$address_parts = array_filter([
-    $address['street'] ?? '',
-    trim(trim((string) ($address['zip'] ?? '')) . ' ' . trim((string) ($address['city'] ?? ''))),
-    trim((string) ($address['state'] ?? '') . ($country !== '' ? ' · ' . $country : '')),
-]);
-
 $profile_image = $user['profile_image']['url'] ?? '';
 $profile_alt   = ! empty($user['name']) ? sprintf('Avatar de %s', $user['name']) : 'Avatar de usuario';
-$company       = $user['company'] ?? ['trade_name' => '', 'legal_name' => ''];
+$company       = $user['company'] ?? ['name' => '', 'trade_name' => '', 'legal_name' => '', 'tax_id' => '', 'type' => ['label' => '']];
+$address = is_array($user['address'] ?? null) ? $user['address'] : [];
+$company_address = is_array($company['address'] ?? null) ? $company['address'] : [];
+
+if (! array_filter($company_address)) {
+    $company_address = $address;
+}
+
+$company_address_parts = array_filter([
+    $company_address['street'] ?? '',
+    trim(trim((string) ($company_address['zip'] ?? '')) . ' ' . trim((string) ($company_address['city'] ?? ''))),
+    trim((string) ($company_address['state'] ?? '')),
+]);
+$company_address_display = trim(implode(' · ', array_filter($company_address_parts)));
+
+$personal_full_name = trim((string) ($user['full_name'] ?? ''));
+if ($personal_full_name === '') {
+    $personal_full_name = trim((string) ($user['name'] ?? ''));
+}
+
+if ($personal_full_name === '') {
+    $personal_full_name = __('No disponible', 'garantias-online-360vo');
+}
+
+$registration_email   = sanitize_email((string) ($user['email'] ?? ''));
+$notification_email   = sanitize_email((string) ($user['notification_email'] ?? $registration_email));
+$custom_notification  = sanitize_email((string) ($user['custom_notification'] ?? ''));
+$same_as_registration = $user['same_as_registration'] ?? null;
+
+$show_notification_email = false;
+if ($notification_email && $registration_email) {
+    $show_notification_email = strcasecmp($notification_email, $registration_email) !== 0;
+}
+
+if (! $show_notification_email && $same_as_registration === false && $custom_notification !== '') {
+    $show_notification_email = true;
+    $notification_email      = $custom_notification;
+}
+
+$company_display_name = '';
+if (! empty($company['name'])) {
+    $company_display_name = $company['name'];
+} elseif (! empty($company['trade_name'])) {
+    $company_display_name = $company['trade_name'];
+} elseif (! empty($company['legal_name'])) {
+    $company_display_name = $company['legal_name'];
+} else {
+    $company_display_name = $user['name'] ?? '';
+}
 
 $role_labels = [];
-if (! empty($user['roles']) && function_exists('wp_roles')) {
+$role_keys = array_map('sanitize_key', (array) ($user['roles'] ?? []));
+if ($role_keys && function_exists('wp_roles')) {
     $roles = wp_roles();
-    foreach ((array) $user['roles'] as $role_key) {
+    foreach ($role_keys as $role_key) {
         $label = $roles->roles[$role_key]['name'] ?? ucfirst(str_replace('_', ' ', (string) $role_key));
         $role_labels[] = translate_user_role($label);
     }
 }
 
+$company_type_label = isset($company['type']['label'])
+    ? trim((string) $company['type']['label'])
+    : '';
+$channel_label = '';
+
+if (in_array('go_profesional', $role_keys, true)) {
+    $channel_label = 'Profesional';
+    if ($company_type_label !== '') {
+        $channel_label .= ' - ' . $company_type_label;
+    }
+} elseif (in_array('go_gestor', $role_keys, true)) {
+    $channel_label = 'Gestoría';
+} elseif (in_array('go_comercial', $role_keys, true)) {
+    $channel_label = 'Comercial';
+} elseif ($company_type_label !== '') {
+    $channel_label = $company_type_label;
+}
+
+if ($channel_label === '' && ! empty($role_labels)) {
+    $channel_label = $role_labels[0];
+}
+
 $sections = [
     [
         'id'    => 'account-profile',
-        'label' => 'Perfil profesional',
-        'icon'  => Svg::icon('user', 'account-nav__icon'),
+        'label' => 'Perfil',
+        'icon'  => Svg::icon('person', 'account-nav__icon'),
     ],
     [
         'id'    => 'account-notifications',
@@ -80,39 +143,52 @@ $formatPhoneHref = static function ($phone) {
 <div class="account-page" data-view="account">
     <aside class="account-page__sidebar">
         <section class="account-summary">
-            <div class="account-summary__avatar" aria-hidden="true">
-                <img
-                    src="<?php echo esc_url($profile_image ?: ($user['avatar_url'] ?? '')); ?>"
-                    alt="<?php echo esc_attr($profile_alt); ?>"
-                    width="96"
-                    height="96"
+            <div class="account-summary__media">
+                <div class="account-summary__avatar" aria-hidden="true">
+                    <img
+                        src="<?php echo esc_url($profile_image ?: ($user['avatar_url'] ?? '')); ?>"
+                        alt="<?php echo esc_attr($profile_alt); ?>"
+                        width="72"
+                        height="72"
+                    >
+                </div>
+                <input
+                    id="account-profile-image"
+                    class="account-summary__upload-input"
+                    type="file"
+                    name="account_profile_image"
+                    accept="image/*"
+                    hidden
                 >
+                <button
+                    type="button"
+                    class="account-summary__upload"
+                    data-profile-upload="account-profile-image"
+                >
+                    <?php echo esc_html__('Cambiar imagen de perfil', 'garantias-online-360vo'); ?>
+                </button>
             </div>
             <div class="account-summary__info">
-                <h1 class="account-summary__name"><?php echo esc_html($user['name'] ?? ''); ?></h1>
-                <?php if (! empty($role_labels)) : ?>
-                    <p class="account-summary__role"><?php echo esc_html(implode(' · ', $role_labels)); ?></p>
-                <?php endif; ?>
+                <h1 class="account-summary__company"><?php echo esc_html($company_display_name); ?></h1>
                 <?php if (! empty($user['email'])) : ?>
-                    <p class="account-summary__contact">
-                        <?php echo Svg::icon('email', 'account-summary__icon'); ?>
-                        <a href="mailto:<?php echo esc_attr($user['email']); ?>"><?php echo esc_html($user['email']); ?></a>
-                    </p>
+                    <p class="account-summary__email"><?php echo esc_html($user['email']); ?></p>
                 <?php endif; ?>
-                <?php if (! empty($user['phone'])) : ?>
-                    <p class="account-summary__contact">
-                        <?php echo Svg::icon('phone', 'account-summary__icon'); ?>
-                        <a href="tel:<?php echo esc_attr($formatPhoneHref($user['phone'])); ?>"><?php echo esc_html($user['phone']); ?></a>
-                    </p>
+                <?php if ($channel_label !== '') : ?>
+                    <span class="account-summary__badge"><?php echo esc_html($channel_label); ?></span>
                 <?php endif; ?>
+                <div class="account-summary__actions">
+                    <button
+                        type="button"
+                        class="account-summary__save disabled"
+                        data-account-save
+                        disabled
+                        aria-disabled="true"
+                    >
+                        <?php echo Svg::icon('save', 'account-summary__save-icon'); ?>
+                        <span><?php echo esc_html__('Guardar cambios', 'garantias-online-360vo'); ?></span>
+                    </button>
+                </div>
             </div>
-            <?php if (! empty($address_parts)) : ?>
-                <ul class="account-summary__address">
-                    <?php foreach ($address_parts as $line) : ?>
-                        <li><?php echo esc_html($line); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
         </section>
 
         <nav class="account-page__nav" aria-label="Secciones de la cuenta">
@@ -136,20 +212,133 @@ $formatPhoneHref = static function ($phone) {
     <section class="account-page__content">
         <article id="account-profile" class="account-section" tabindex="-1">
             <header class="account-section__header">
-                <?php echo Svg::icon('user', 'account-section__icon'); ?>
-                <div>
-                    <h2>Perfil profesional</h2>
+                <?php echo Svg::icon('person', 'account-section__icon'); ?>
+                <div class="account-section__content">
+                    <div class="account-section__title">
+                        <h2>Perfil</h2>
+                        <button
+                            type="button"
+                            class="account-help__trigger"
+                            data-account-help-trigger
+                            aria-controls="account-profile-help"
+                            aria-expanded="false"
+                        >
+                            <?php echo Svg::icon('help', 'account-help__icon'); ?>
+                            <span class="screen-reader-text">Ayuda sobre la gestión de datos del perfil</span>
+                        </button>
+                    </div>
                     <p>Información general y datos de contacto vinculados a tu cuenta.</p>
+                    <div
+                        class="account-help account-help--hidden account-section__help"
+                        id="account-profile-help"
+                        hidden
+                        role="region"
+                        aria-live="polite"
+                    >
+                        <div class="account-help__body">
+                            <p>Si necesitas modificar alguno de estos datos, ponte en contacto con 360VO.</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="account-help__close"
+                            aria-label="Cerrar ayuda"
+                            data-account-help-dismiss
+                        >
+                            <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                        </button>
+                    </div>
                 </div>
             </header>
-            <div class="account-card-grid">
-                <div class="account-card">
-                    <h3>Datos básicos</h3>
+            <div class="account-card-grid account-card-grid--profile">
+                <div class="account-card account-card--details account-card--personal">
+                    <h3>Datos personales</h3>
                     <dl class="account-card__list">
                         <div>
-                            <dt>Usuario</dt>
-                            <dd><?php echo esc_html($user['username'] ?? ''); ?></dd>
+                            <dt>Nombre</dt>
+                            <dd><?php echo esc_html($personal_full_name); ?></dd>
                         </div>
+                        <div>
+                            <dt>Teléfono de contacto</dt>
+                            <dd>
+                                <?php if (! empty($user['phone'])) : ?>
+                                    <span><?php echo esc_html($user['phone']); ?></span>
+                                <?php else : ?>
+                                    <span class="account-card__placeholder">No disponible</span>
+                                <?php endif; ?>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Correo de inicio de sesión</dt>
+                            <dd>
+                                <?php if ($registration_email !== '') : ?>
+                                    <span><?php echo esc_html($registration_email); ?></span>
+                                <?php else : ?>
+                                    <span class="account-card__placeholder">No disponible</span>
+                                <?php endif; ?>
+                            </dd>
+                        </div>
+                        <?php if ($show_notification_email) : ?>
+                            <div>
+                                <dt>Correo de notificaciones</dt>
+                                <dd>
+                                    <a href="mailto:<?php echo esc_attr($notification_email); ?>"><?php echo esc_html($notification_email); ?></a>
+                                </dd>
+                            </div>
+                        <?php endif; ?>
+                    </dl>
+                </div>
+                <div class="account-card account-card--contacts account-card--commercial">
+                    <h3>Comercial asignado</h3>
+                    <?php if (! empty($commercials)) : ?>
+                        <ul class="account-commercials">
+                            <?php foreach ($commercials as $commercial) : ?>
+                                <?php
+                                $commercial_avatar = $commercial['profile_image']['url'] ?? '';
+                                $commercial_name   = $commercial['name'] ?? '';
+                                $commercial_phone  = $commercial['phone'] ?? '';
+                                $commercial_email  = $commercial['email'] ?? '';
+                                ?>
+                                <li class="account-commercials__item">
+                                    <div class="account-commercials__avatar" aria-hidden="true">
+                                        <?php if ($commercial_avatar) : ?>
+                                            <img
+                                                src="<?php echo esc_url($commercial_avatar); ?>"
+                                                alt=""
+                                                loading="lazy"
+                                                width="56"
+                                                height="56"
+                                            >
+                                        <?php else : ?>
+                                            <?php echo Svg::icon('person', 'account-commercials__avatar-icon'); ?>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="account-commercials__body">
+                                        <span class="account-commercials__name"><?php echo esc_html($commercial_name); ?></span>
+                                        <div class="account-commercials__meta">
+                                            <?php if ($commercial_phone !== '') : ?>
+                                                <a class="account-commercials__meta-item" href="tel:<?php echo esc_attr($formatPhoneHref($commercial_phone)); ?>">
+                                                    <?php echo Svg::icon('phone', 'account-commercials__meta-icon'); ?>
+                                                    <span><?php echo esc_html($commercial_phone); ?></span>
+                                                </a>
+                                            <?php endif; ?>
+                                            <?php if ($commercial_email !== '') : ?>
+                                                <a class="account-commercials__meta-item" href="mailto:<?php echo esc_attr($commercial_email); ?>">
+                                                    <?php echo Svg::icon('email', 'account-commercials__meta-icon'); ?>
+                                                    <span><?php echo esc_html($commercial_email); ?></span>
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php else : ?>
+                        <p class="account-card__empty">Pendiente de asignar.</p>
+                    <?php endif; ?>
+                </div>
+                <div class="account-card account-card--details account-card--company">
+                    <h3>Datos de la empresa</h3>
+                    <dl class="account-card__list">
                         <?php if (! empty($company['trade_name'])) : ?>
                             <div>
                                 <dt>Nombre comercial</dt>
@@ -162,88 +351,19 @@ $formatPhoneHref = static function ($phone) {
                                 <dd><?php echo esc_html($company['legal_name']); ?></dd>
                             </div>
                         <?php endif; ?>
-                        <div>
-                            <dt>Correo de acceso</dt>
-                            <dd><?php echo esc_html($user['email'] ?? ''); ?></dd>
-                        </div>
-                        <?php if (! empty($user['phone'])) : ?>
+                        <?php if (! empty($company['tax_id'])) : ?>
                             <div>
-                                <dt>Teléfono</dt>
-                                <dd>
-                                    <a href="tel:<?php echo esc_attr($formatPhoneHref($user['phone'])); ?>">
-                                        <?php echo esc_html($user['phone']); ?>
-                                    </a>
-                                </dd>
+                                <dt>CIF</dt>
+                                <dd class="account-card__code"><?php echo esc_html($company['tax_id']); ?></dd>
                             </div>
                         <?php endif; ?>
-                        <?php if (! empty($address_parts)) : ?>
+                        <?php if ($company_address_display !== '') : ?>
                             <div>
                                 <dt>Dirección</dt>
-                                <dd>
-                                    <?php echo esc_html(implode(' · ', $address_parts)); ?>
-                                </dd>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (! empty($role_labels)) : ?>
-                            <div>
-                                <dt>Roles en la plataforma</dt>
-                                <dd><?php echo esc_html(implode(' · ', $role_labels)); ?></dd>
+                                <dd><?php echo esc_html($company_address_display); ?></dd>
                             </div>
                         <?php endif; ?>
                     </dl>
-                </div>
-                <div class="account-card">
-                    <h3>Comerciales asignados</h3>
-                    <?php if (! empty($commercials)) : ?>
-                        <ul class="account-contacts">
-                            <?php foreach ($commercials as $commercial) : ?>
-                                <?php
-                                $commercial_avatar = $commercial['profile_image']['url'] ?? '';
-                                $commercial_name   = $commercial['name'] ?? '';
-                                ?>
-                                <li class="account-contacts__item">
-                                    <div class="account-contacts__avatar" aria-hidden="true">
-                                        <?php if ($commercial_avatar) : ?>
-                                            <img
-                                                src="<?php echo esc_url($commercial_avatar); ?>"
-                                                alt=""
-                                                loading="lazy"
-                                                width="56"
-                                                height="56"
-                                            >
-                                        <?php else : ?>
-                                            <?php echo Svg::icon('user', 'account-contacts__avatar-icon'); ?>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="account-contacts__body">
-                                        <span class="account-contacts__name"><?php echo esc_html($commercial_name); ?></span>
-                                        <div class="account-contacts__actions">
-                                            <?php if (! empty($commercial['phone'])) : ?>
-                                                <a
-                                                    class="account-contacts__action account-contacts__action--phone"
-                                                    href="tel:<?php echo esc_attr($formatPhoneHref($commercial['phone'])); ?>"
-                                                >
-                                                    <?php echo Svg::icon('phone', 'account-contacts__action-icon'); ?>
-                                                    <span><?php echo esc_html($commercial['phone']); ?></span>
-                                                </a>
-                                            <?php endif; ?>
-                                            <?php if (! empty($commercial['email'])) : ?>
-                                                <a
-                                                    class="account-contacts__action account-contacts__action--email"
-                                                    href="mailto:<?php echo esc_attr($commercial['email']); ?>"
-                                                >
-                                                    <?php echo Svg::icon('email', 'account-contacts__action-icon'); ?>
-                                                    <span><?php echo esc_html($commercial['email']); ?></span>
-                                                </a>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php else : ?>
-                        <p class="account-card__empty">No tienes comerciales asociados en este momento.</p>
-                    <?php endif; ?>
                 </div>
             </div>
         </article>
@@ -251,7 +371,7 @@ $formatPhoneHref = static function ($phone) {
         <article id="account-notifications" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('email', 'account-section__icon'); ?>
-                <div>
+                <div class="account-section__content">
                     <h2>Notificaciones</h2>
                     <p>Configura cómo te avisamos por correo y desde tu dispositivo.</p>
                 </div>
@@ -315,9 +435,27 @@ $formatPhoneHref = static function ($phone) {
                                 placeholder="nombre@empresa.com"
                                 autocomplete="off"
                             >
-                            <p class="account-help account-help--hidden" id="account-notification-help" hidden>
-                                Escribe la dirección donde quieres recibir avisos y certificados. El correo con el que accedes seguirá siendo el que uses para iniciar sesión.
-                            </p>
+                            <div
+                                class="account-help account-help--hidden"
+                                id="account-notification-help"
+                                hidden
+                                role="region"
+                                aria-live="polite"
+                            >
+                                <div class="account-help__body">
+                                    <p>
+                                        Escribe la dirección donde quieres recibir avisos y certificados. El correo con el que accedes seguirá siendo el que uses para iniciar sesión.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="account-help__close"
+                                    aria-label="Cerrar ayuda"
+                                    data-account-help-dismiss
+                                >
+                                    <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -408,7 +546,7 @@ $formatPhoneHref = static function ($phone) {
         <article id="account-payments" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('payment', 'account-section__icon'); ?>
-                <div>
+                <div class="account-section__content">
                     <div class="account-section__title">
                         <h2>Pagos</h2>
                         <button
@@ -425,18 +563,41 @@ $formatPhoneHref = static function ($phone) {
                     <p>Elige cómo prefieres abonar tus garantías y prepara tu domiciliación bancaria cuando quieras.</p>
                 </div>
             </header>
-            <div class="account-help account-help--hidden" id="account-payments-help" hidden>
-                <p><strong>Domiciliación bancaria</strong></p>
-                <ul class="account-help__list">
-                    <li>Activa las garantías al instante, sin trámites manuales.</li>
-                    <li>Evita olvidos: los cargos se generan automáticamente.</li>
-                </ul>
-                <p><strong>Transferencia bancaria</strong></p>
-                <ul class="account-help__list">
-                    <li>Debes realizar el pago en un plazo máximo de 48&nbsp;horas.</li>
-                    <li>La garantía no queda activa hasta que confirmamos la transferencia.</li>
-                    <li>Tendrás que contactar con el equipo comercial y enviar el justificante.</li>
-                </ul>
+            <div
+                class="account-help account-help--hidden"
+                id="account-payments-help"
+                hidden
+                role="region"
+                aria-live="polite"
+            >
+                <div class="account-help__body account-help__body--payments">
+                    <div class="account-help__columns">
+                        <section class="account-help__column">
+                            <h3>Domiciliación bancaria</h3>
+                            <ul class="account-help__bullets account-help__bullets--pros">
+                                <li>Activa las garantías en el momento, sin esperas ni comprobaciones manuales.</li>
+                                <li>Automatiza los cobros y evita olvidos o errores al generar transferencias.</li>
+                                <li>Recibirás un cargo por cada garantía contratada, con justificante automático.</li>
+                            </ul>
+                        </section>
+                        <section class="account-help__column">
+                            <h3>Transferencia bancaria</h3>
+                            <ul class="account-help__bullets account-help__bullets--cons">
+                                <li>Recuerda realizar la transferencia antes de 48&nbsp;horas desde la contratación.</li>
+                                <li>La garantía queda pendiente hasta que validamos el ingreso.</li>
+                                <li>Debes enviar el justificante y coordinarte con tu contacto comercial.</li>
+                            </ul>
+                        </section>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    class="account-help__close"
+                    aria-label="Cerrar ayuda"
+                    data-account-help-dismiss
+                >
+                    <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                </button>
             </div>
             <div class="account-card-grid account-card-grid--payments">
                 <div
@@ -466,7 +627,38 @@ $formatPhoneHref = static function ($phone) {
                     data-state="<?php echo esc_attr($activation_state); ?>"
                     data-generated="<?php echo $has_generated_mandate ? 'true' : 'false'; ?>"
                 >
-                    <h3>Domiciliación bancaria</h3>
+                    <div class="account-card__header">
+                        <h3>Domiciliación bancaria</h3>
+                        <button
+                            type="button"
+                            class="account-help__trigger"
+                            aria-controls="account-payments-sepa-help"
+                            aria-expanded="false"
+                            data-account-help-trigger
+                        >
+                            <?php echo Svg::icon('help', 'account-help__icon'); ?>
+                            <span class="screen-reader-text">Cómo completar la domiciliación bancaria</span>
+                        </button>
+                    </div>
+                    <div
+                        class="account-help account-help--hidden"
+                        id="account-payments-sepa-help"
+                        hidden
+                        role="region"
+                        aria-live="polite"
+                    >
+                        <div class="account-help__body">
+                            <p>Completa los campos del mandato y selecciona «Generar SEPA». Te enviaremos el documento listo para firmar y devolverlo a 360VO.</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="account-help__close"
+                            aria-label="Cerrar ayuda"
+                            data-account-help-dismiss
+                        >
+                            <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                        </button>
+                    </div>
                     <p
                         class="account-card__intro"
                         data-payment-state="disabled"
@@ -582,7 +774,7 @@ $formatPhoneHref = static function ($phone) {
         <article id="account-documents" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('check_shield', 'account-section__icon'); ?>
-                <div>
+                <div class="account-section__content">
                     <div class="account-section__title">
                         <h2>Certificados</h2>
                         <button
@@ -599,8 +791,24 @@ $formatPhoneHref = static function ($phone) {
                     <p>Prepara la firma y el sello que incluiremos en tus certificados.</p>
                 </div>
             </header>
-            <div class="account-help account-help--hidden" id="account-certificates-help" hidden>
-                <p>Puedes subir tu firma y sello para que aparezcan en los certificados que emitimos. Mantén los archivos actualizados para evitar rechazos.</p>
+            <div
+                class="account-help account-help--hidden"
+                id="account-certificates-help"
+                hidden
+                role="region"
+                aria-live="polite"
+            >
+                <div class="account-help__body">
+                    <p>Puedes subir tu firma y sello para que aparezcan en los certificados que emitimos. Mantén los archivos actualizados para evitar rechazos.</p>
+                </div>
+                <button
+                    type="button"
+                    class="account-help__close"
+                    aria-label="Cerrar ayuda"
+                    data-account-help-dismiss
+                >
+                    <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                </button>
             </div>
             <div class="account-card-grid">
                 <div class="account-card account-card--certificates" data-certificates-card>
@@ -617,13 +825,33 @@ $formatPhoneHref = static function ($phone) {
                             <span class="screen-reader-text">Ver consejos para subir firma y sello</span>
                         </button>
                     </div>
-                    <div class="account-help account-help--hidden" id="account-certificates-usage" hidden>
-                        <p>Utiliza imágenes legibles, sin fondos y con buena resolución. Podrás revisar la previsualización antes de guardar los cambios.</p>
+                    <div
+                        class="account-help account-help--hidden"
+                        id="account-certificates-usage"
+                        hidden
+                        role="region"
+                        aria-live="polite"
+                    >
+                        <div class="account-help__body">
+                            <p>Utiliza imágenes legibles, sin fondos y con buena resolución. Podrás revisar la previsualización antes de guardar los cambios.</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="account-help__close"
+                            aria-label="Cerrar ayuda"
+                            data-account-help-dismiss
+                        >
+                            <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                        </button>
                     </div>
                     <div class="account-certificates__uploads">
                         <div class="form-row">
                             <div class="input-container">
-                                <div class="file-upload" id="signature-upload">
+                                <div
+                                    class="file-upload"
+                                    id="signature-upload"
+                                    data-default-label="<?php echo esc_attr($signature_default_label); ?>"
+                                >
                                     <div class="file-label">
                                         <?php
                                         $signature_label = $signature_default_label;
@@ -646,11 +874,23 @@ $formatPhoneHref = static function ($phone) {
                                             <img src="" alt="Previsualización de la firma" loading="lazy">
                                         <?php endif; ?>
                                     </div>
+                                    <button
+                                        type="button"
+                                        class="file-remove"
+                                        data-file-remove="signature"
+                                        <?php echo empty($document_signature['url']) ? 'hidden' : ''; ?>
+                                    >
+                                        <?php echo esc_html__('Eliminar imagen', 'garantias-online-360vo'); ?>
+                                    </button>
                                 </div>
                             </div>
 
                             <div class="input-container">
-                                <div class="file-upload" id="stamp-upload">
+                                <div
+                                    class="file-upload"
+                                    id="stamp-upload"
+                                    data-default-label="<?php echo esc_attr($seal_default_label); ?>"
+                                >
                                     <div class="file-label">
                                         <?php
                                         $seal_label = $seal_default_label;
@@ -673,6 +913,14 @@ $formatPhoneHref = static function ($phone) {
                                             <img src="" alt="Previsualización del sello" loading="lazy">
                                         <?php endif; ?>
                                     </div>
+                                    <button
+                                        type="button"
+                                        class="file-remove"
+                                        data-file-remove="stamp"
+                                        <?php echo empty($document_seal['url']) ? 'hidden' : ''; ?>
+                                    >
+                                        <?php echo esc_html__('Eliminar imagen', 'garantias-online-360vo'); ?>
+                                    </button>
                                 </div>
                             </div>
                         </div>

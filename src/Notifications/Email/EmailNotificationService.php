@@ -5,6 +5,7 @@ namespace GarantiasOnline360VO\Notifications\Email;
 use GarantiasOnline360VO\GuaranteeLogger;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
+use GarantiasOnline360VO\Support\UserProfileResolver;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -419,7 +420,7 @@ class EmailNotificationService
         $user = $initiator_id ? get_user_by('id', $initiator_id) : false;
         $initiator = [
             'id'    => $initiator_id,
-            'name'  => $user ? $user->display_name : '',
+            'name'  => $user ? UserProfileResolver::get_personal_name($user) : '',
             'email' => $user ? $user->user_email : '',
         ];
 
