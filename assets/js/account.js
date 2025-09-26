@@ -83,18 +83,97 @@
                 return;
             }
 
+            const closeButton = help.querySelector('[data-account-help-dismiss]');
+
+            const toggleHelp = (show) => {
+                const nextState = Boolean(show);
+                button.setAttribute('aria-expanded', String(nextState));
+                help.hidden = !nextState;
+                help.classList.toggle('account-help--visible', nextState);
+            };
+
             button.addEventListener('click', () => {
                 const isExpanded = button.getAttribute('aria-expanded') === 'true';
-                const nextState = !isExpanded;
-                button.setAttribute('aria-expanded', String(nextState));
-
-                if (nextState) {
-                    help.hidden = false;
-                } else {
-                    help.hidden = true;
-                }
+                toggleHelp(!isExpanded);
             });
+
+            if (closeButton) {
+                closeButton.addEventListener('click', () => {
+                    toggleHelp(false);
+                    if (typeof button.focus === 'function') {
+                        try {
+                            button.focus({ preventScroll: true });
+                        } catch (error) {
+                            button.focus();
+                        }
+                    }
+                });
+            }
         });
+
+        const saveButton = document.querySelector('[data-account-save]');
+        const accountPage = document.querySelector('.account-page');
+
+        if (saveButton && accountPage) {
+            const setSaveDisabled = (disabled) => {
+                const method = disabled ? 'add' : 'remove';
+                saveButton.classList[method]('disabled');
+
+                if (disabled) {
+                    saveButton.setAttribute('disabled', 'disabled');
+                    saveButton.setAttribute('aria-disabled', 'true');
+                } else {
+                    saveButton.removeAttribute('disabled');
+                    saveButton.setAttribute('aria-disabled', 'false');
+                }
+            };
+
+            setSaveDisabled(saveButton.classList.contains('disabled') || saveButton.hasAttribute('disabled'));
+
+            const maybeEnableSave = (event) => {
+                const target = event.target;
+                if (!target) {
+                    return;
+                }
+
+                const tagName = target.tagName;
+                const isTextControl = tagName === 'TEXTAREA';
+                const isSelect = tagName === 'SELECT';
+                let isInput = false;
+
+                if (tagName === 'INPUT') {
+                    const type = (target.getAttribute('type') || '').toLowerCase();
+                    if (['button', 'submit', 'reset'].includes(type)) {
+                        return;
+                    }
+                    isInput = true;
+                }
+
+                if (!isInput && !isSelect && !isTextControl) {
+                    return;
+                }
+
+                if (saveButton.classList.contains('disabled')) {
+                    setSaveDisabled(false);
+                }
+            };
+
+            ['change', 'input'].forEach((eventName) => {
+                accountPage.addEventListener(eventName, maybeEnableSave, true);
+            });
+        }
+
+        const profileUploadButton = document.querySelector('[data-profile-upload]');
+        if (profileUploadButton) {
+            const inputId = profileUploadButton.getAttribute('data-profile-upload');
+            const fileInput = inputId ? document.getElementById(inputId) : null;
+
+            if (fileInput) {
+                profileUploadButton.addEventListener('click', () => {
+                    fileInput.click();
+                });
+            }
+        }
 
         const notificationsCard = document.querySelector('[data-notifications-card]');
         if (notificationsCard) {
@@ -281,38 +360,68 @@
             }
 
             const label = container.querySelector('.file-label');
-            const defaultLabel = label ? label.textContent : '';
+            const removeButton = container.querySelector('[data-file-remove]');
+            const initialLabel = label ? label.textContent : '';
+            const defaultLabel = container.dataset.defaultLabel || initialLabel;
             const initialPreviewVisible = preview ? !preview.hasAttribute('hidden') : false;
             const initialPreviewSrc = previewImage ? previewImage.getAttribute('src') : '';
+            let allowRestoreInitial = initialPreviewVisible && Boolean(initialPreviewSrc);
 
-            const restoreInitialPreview = () => {
+            const setPreviewVisible = (visible, src = '') => {
                 if (!preview) {
                     return;
                 }
 
-                if (initialPreviewVisible && initialPreviewSrc) {
+                if (visible && src) {
                     preview.hidden = false;
                     preview.removeAttribute('aria-hidden');
                     if (previewImage) {
-                        previewImage.src = initialPreviewSrc;
+                        previewImage.src = src;
                     }
                 } else {
                     preview.hidden = true;
                     preview.setAttribute('aria-hidden', 'true');
                     if (previewImage) {
-                        previewImage.removeAttribute('src');
+                        if (src) {
+                            previewImage.src = src;
+                        } else {
+                            previewImage.removeAttribute('src');
+                        }
                     }
                 }
             };
 
-            const resetPreview = () => {
-                restoreInitialPreview();
-                if (label) {
-                    label.textContent = defaultLabel;
+            const updateRemoveVisibility = (visible) => {
+                if (!removeButton) {
+                    return;
+                }
+
+                removeButton.hidden = !visible;
+            };
+
+            const resetPreview = (options = {}) => {
+                const restoreInitial = options.restoreInitial !== false;
+
+                if (restoreInitial && allowRestoreInitial && initialPreviewVisible && initialPreviewSrc) {
+                    setPreviewVisible(true, initialPreviewSrc);
+                    updateRemoveVisibility(true);
+                    if (label) {
+                        label.textContent = initialLabel || defaultLabel;
+                    }
+                } else {
+                    setPreviewVisible(false);
+                    updateRemoveVisibility(false);
+                    if (label) {
+                        label.textContent = defaultLabel;
+                    }
                 }
             };
 
             container.addEventListener('click', (event) => {
+                if (removeButton && event.target && event.target.closest('[data-file-remove]')) {
+                    return;
+                }
+
                 if (event.target !== input) {
                     input.click();
                 }
@@ -330,24 +439,44 @@
                     return;
                 }
 
+                allowRestoreInitial = false;
+
                 if (label) {
                     label.textContent = file.name;
                 }
 
                 if (!preview || !previewImage || !file.type || !file.type.startsWith('image/')) {
+                    updateRemoveVisibility(true);
                     return;
                 }
 
                 const reader = new FileReader();
                 reader.addEventListener('load', () => {
                     if (typeof reader.result === 'string') {
-                        previewImage.src = reader.result;
-                        preview.hidden = false;
-                        preview.removeAttribute('aria-hidden');
+                        setPreviewVisible(true, reader.result);
+                        updateRemoveVisibility(true);
                     }
                 });
                 reader.readAsDataURL(file);
             });
+
+            if (removeButton) {
+                removeButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    allowRestoreInitial = false;
+                    input.value = '';
+                    resetPreview({ restoreInitial: false });
+                    const inputEvent = new Event('input', { bubbles: true });
+                    input.dispatchEvent(inputEvent);
+                });
+
+                updateRemoveVisibility(!removeButton.hasAttribute('hidden'));
+            }
+
+            if (!initialPreviewVisible) {
+                setPreviewVisible(false);
+            }
         };
 
         setupImageUpload('signature-upload', 'signature', 'signature-preview');

@@ -166,8 +166,8 @@ footer.footer .footer__wrapper {
 
 .register-page .info-panel h1 {
   font-size: 1.875rem;
-  margin: 2rem 0 1rem;
-  color: var(--text-primary);
+  margin: 0;
+  color: #000000;
   text-align: center;
 }
 
@@ -415,9 +415,33 @@ footer.footer .footer__wrapper {
   row-gap: 0;
 }
 
+.register-page .field-error {
+  color: var(--error);
+  font-size: 0.8rem;
+  margin: 0.35rem 0 0;
+  padding-left: 0.25rem;
+}
+
 .register-page .input-container {
   position: relative;
   margin-bottom: 1.5rem;
+}
+
+.register-page .input-container.error .form-input,
+.register-page .input-container.error .form-select,
+.register-page .input-container.error .form-textarea {
+  border-color: var(--error);
+}
+
+.register-page .input-container.error .form-label {
+  color: var(--error);
+}
+
+.register-page .input-container .error-message {
+  color: var(--error);
+  font-size: 0.8rem;
+  margin: 0.4rem 0 0;
+  padding-left: 0.25rem;
 }
 
 .register-page .input-container--with-toggle .form-input {
@@ -491,7 +515,7 @@ footer.footer .footer__wrapper {
 
 .register-page .channel-selector {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
@@ -502,14 +526,14 @@ footer.footer .footer__wrapper {
   align-items: center;
   justify-content: center;
   gap: 0;
-  padding: 1.5rem 1rem;
+  padding: 1.5rem 0.25rem;
   border: 2px solid var(--border);
   border-radius: var(--radius);
   background: #fff;
   cursor: pointer;
   transition: var(--transition);
   text-align: center;
-  color: var(--text-primary);
+  color: #a1a3a6;
 }
 
 .register-page .channel-btn:hover {
@@ -520,11 +544,6 @@ footer.footer .footer__wrapper {
 .register-page .channel-btn.active {
   border-color: var(--primary);
   background-color: transparent;
-  color: var(--primary);
-}
-
-.register-page .channel-btn:hover .channel-desc,
-.register-page .channel-btn.active .channel-desc {
   color: var(--primary);
 }
 
@@ -546,13 +565,7 @@ footer.footer .footer__wrapper {
 
 .register-page .channel-name {
   font-weight: 600;
-  margin-bottom: 0.25rem;
-  transition: color 0.2s ease;
-}
-
-.register-page .channel-desc {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+  margin-bottom: 0;
   transition: color 0.2s ease;
 }
 
@@ -706,6 +719,12 @@ footer.footer .footer__wrapper {
   font-size: 0.9rem;
 }
 
+.register-page .btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .register-page .btn-primary {
   background-color: var(--primary);
   color: #fff;
@@ -736,6 +755,17 @@ footer.footer .footer__wrapper {
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
+}
+
+.register-page .file-upload.error {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.register-page .file-upload .error-message {
+  color: var(--error);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
 }
 
 .register-page .file-upload:hover {
