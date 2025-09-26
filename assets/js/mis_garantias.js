@@ -44,6 +44,11 @@ const ADD_DOC_KEY = "add-document";
                 const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
                 const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
 
+                let pendingConfirmContext = null;
+                const confirmModalController = setupConfirmModal(
+                        document.querySelector(".confirm-modal")
+                );
+
                 const PDF_CACHE_LIMIT = 12;
                 const pdfBlobCache = new Map();
                 const pdfBlobOrder = [];
@@ -293,13 +298,21 @@ const ADD_DOC_KEY = "add-document";
                                 encodeURIComponent(uuid);
                 });
 
+                function formatAmountForMessage(raw) {
+                        if (raw === undefined || raw === null) return "";
+                        const str = String(raw).trim();
+                        if (!str) return "";
+                        return str.includes("€") ? str : `${str} €`;
+                }
+
                 function handleConfirmClick(e) {
                         const btn = e.target.closest(
                                 ".guarantee-detail__btn--confirm"
                         );
                         if (!btn) return;
                         const panel = btn.closest(".guarantee-detail__panel");
-                        const id = panel?.dataset.loadedId;
+                        if (!panel) return;
+                        const id = panel.dataset.loadedId;
                         if (!id) return;
                         const cacheData = detailCache.get(id);
                         const uuid = cacheData && cacheData.uuid ? cacheData.uuid : "";
@@ -307,16 +320,122 @@ const ADD_DOC_KEY = "add-document";
                         const textSpan = btn.querySelector(
                                 ".guarantee-detail__btn-text"
                         );
-                        const originalText = textSpan
-                                ? textSpan.textContent
+                        const currentLabel = textSpan
+                                ? textSpan.textContent.trim()
                                 : "";
+                        const row = tbody.querySelector(
+                                `.guarantees-table__row[data-id="${id}"]`
+                        );
+                        const metodoRaw =
+                                (cacheData && cacheData.metodo_pago) ||
+                                (row && row.dataset.metodoPago) ||
+                                "";
+                        const metodo =
+                                typeof metodoRaw === "string"
+                                        ? metodoRaw.toLowerCase().trim()
+                                        : "";
+                        const isDomiciliacion = metodo.startsWith("domiciliacion");
+                        const vendorName =
+        (cacheData && cacheData.concesionario) ||
+        (row && row.dataset.vendedor_name) ||
+        "";
+                        const priceRaw =
+        (cacheData && cacheData.precio) ||
+        (row && row.dataset.precio) ||
+        "";
+    const formattedAmount = formatAmountForMessage(priceRaw);
+                        const accountCandidate =
+                                (cacheData &&
+                                        (cacheData.transfer_iban || cacheData.iban_vendedor)) ||
+        (row && (row.dataset.transferIban || row.dataset.ibanVendedor)) ||
+        "";
+    const accountTextRaw =
+        typeof accountCandidate === "string"
+                ? accountCandidate.trim()
+                : "";
+                        const matricula =
+                                panel.dataset.matricula ||
+                                (row && row.dataset.matricula) ||
+                                (cacheData && cacheData.matricula) ||
+                                "";
+                        const title = isDomiciliacion
+                                ? `Confirmar cobro por domiciliación Garantía ${matricula || id}`
+                                : `Confirmar pago de garantía ${matricula || id}`;
+    const cleanedVendorName =
+        typeof vendorName === "string" ? vendorName.trim() : "";
+    const companyText =
+        cleanedVendorName !== "" && cleanedVendorName !== "-"
+                ? cleanedVendorName
+                : "el cliente";
+    const normalizedAmount = formattedAmount.trim();
+    const hasAmount =
+        normalizedAmount !== "" &&
+        normalizedAmount !== "-" &&
+        normalizedAmount !== "- €";
+    const amountText = hasAmount ? normalizedAmount : "el importe acordado";
+    const hasAccount =
+        accountTextRaw !== "" && accountTextRaw !== "-";
+    const accountText = hasAccount ? accountTextRaw : "";
+                        let message;
+                        if (isDomiciliacion) {
+                                message = `Confirmo que 360VO ha gestionado el cobro por domiciliación por valor de ${amountText} a ${companyText}. La garantía se activará.`;
+        } else if (accountText) {
+                                message = `Confirmo que ${companyText} ha realizado la transferencia por valor de ${amountText} a la cuenta ${accountText}. La garantía se activará.`;
+                        } else {
+                                message = `Confirmo que ${companyText} ha realizado la transferencia por valor de ${amountText}. La garantía se activará.`;
+                        }
+                        const context = {
+                                btn,
+                                panel,
+                                id,
+                                uuid,
+                                metodo,
+                                cacheData,
+                                row,
+                                resetLabel:
+                                        currentLabel ||
+                                        (isDomiciliacion
+                                                ? "Confirmar domiciliación"
+                                                : "Confirmar pago"),
+                        };
+                        if (confirmModalController) {
+                                pendingConfirmContext = context;
+                                confirmModalController.open({
+                                        title,
+                                        message,
+                                        checkboxLabel:
+                                                "He revisado esta información y confirmo la operación.",
+                                        confirmLabel: "Confirmar",
+                                });
+                                return;
+                        }
+                        runConfirmRequest(context);
+                }
+
+                function runConfirmRequest(context) {
+                        if (!context) return;
+                        const { btn, panel, id, uuid } = context;
+                        if (!btn || !panel || !id || !uuid) return;
+                        const textSpan = btn.querySelector(
+                                ".guarantee-detail__btn-text"
+                        );
+                        const metodo =
+                                typeof context.metodo === "string"
+                                        ? context.metodo.toLowerCase()
+                                        : "";
+                        const resetText =
+                                context.resetLabel ||
+                                (textSpan
+                                        ? textSpan.textContent.trim()
+                                        : metodo.startsWith("domiciliacion")
+                                        ? "Confirmar domiciliación"
+                                        : "Confirmar pago");
                         let spinner = btn.querySelector(
                                 ".guarantee-detail__btn-spinner"
                         );
                         if (!spinner) {
                                 spinner = document.createElement("span");
-                                spinner.className =
-                                        "guarantee-detail__btn-spinner";
+                                spinner.className = "guarantee-detail__btn-spinner";
                                 if (textSpan) {
                                         btn.insertBefore(spinner, textSpan);
                                 } else {
@@ -324,15 +443,16 @@ const ADD_DOC_KEY = "add-document";
                                 }
                         }
                         if (textSpan) {
-                                textSpan.textContent =
-                                        "Activando garantía";
+                                textSpan.textContent = "Activando garantía";
                         }
                         btn.disabled = true;
-                        saveStatus.classList.remove(
-                                "autosave-status--hidden"
-                        );
-                        let row;
-                        const metodo = cacheData?.metodo_pago || "";
+                        saveStatus.classList.remove("autosave-status--hidden");
+                        let row = context.row;
+                        if (!row || !row.isConnected) {
+                                row = tbody.querySelector(
+                                        `.guarantees-table__row[data-id="${id}"]`
+                                );
+                        }
                         const body = {
                                 id,
                                 uuid,
@@ -342,10 +462,7 @@ const ADD_DOC_KEY = "add-document";
                                         },
                                 },
                         };
-                        if (
-                                typeof metodo === "string" &&
-                                metodo.toLowerCase().startsWith("domiciliacion")
-                        ) {
+                        if (metodo.startsWith("domiciliacion")) {
                                 body.data.garantia_contratada = {
                                         estado_cobro: { cobro_realizado: true },
                                 };
@@ -361,9 +478,11 @@ const ADD_DOC_KEY = "add-document";
                                 .then((res) => {
                                         if (!res.ok) throw res.status;
                                         detailCache.delete(id);
-                                        row = tbody.querySelector(
-                                                `.guarantees-table__row[data-id="${id}"]`
-                                        );
+                                        if (!row || !row.isConnected) {
+                                                row = tbody.querySelector(
+                                                        `.guarantees-table__row[data-id="${id}"]`
+                                                );
+                                        }
                                         if (row) {
                                                 row.dataset.estadoclase = "activada";
                                                 row.dataset.estado = "Activada";
@@ -383,28 +502,22 @@ const ADD_DOC_KEY = "add-document";
                                                         cobroBadge.remove();
                                                 }
                                         }
-                                        return fetch(
-                                                `${restRoot}go/v1/guarantees/${id}`,
-                                                { headers: { "X-WP-Nonce": restNonce } }
-                                        );
+                                        return fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                                headers: { "X-WP-Nonce": restNonce },
+                                        });
                                 })
                                 .then((detailRes) => {
                                         if (!detailRes.ok) throw detailRes.status;
                                         const rowData = row ? buildRowData(row) : {};
-                                        return detailRes
-                                                .json()
-                                                .then((json) => {
-                                                        const data = normalizeDetailData(json);
-                                                        detailCache.set(id, data);
-                                                        panel.innerHTML = renderFullDetail(
-                                                                data,
-                                                                rowData,
-                                                                []
-                                                        );
-                                                        panel.dataset.matricula = data.matricula || rowData.matricula || "";
-                                                        panel.dataset.plan = data.plan || rowData.plan || "";
-                                                        syncPdfModalDocs(panel);
-                                                });
+                                        return detailRes.json().then((json) => {
+                                                const data = normalizeDetailData(json);
+                                                detailCache.set(id, data);
+                                                panel.innerHTML = renderFullDetail(data, rowData, []);
+                                                panel.dataset.matricula =
+                                                        data.matricula || rowData.matricula || "";
+                                                panel.dataset.plan = data.plan || rowData.plan || "";
+                                                syncPdfModalDocs(panel);
+                                        });
                                 })
                                 .catch((err) => {
                                         console.error("Error confirm payment:", err);
@@ -415,17 +528,123 @@ const ADD_DOC_KEY = "add-document";
                                                 "autosave-status--hidden"
                                         );
                                         if (textSpan) {
-                                                textSpan.textContent =
-                                                        originalText ||
-                                                        "Confirmar pago";
+                                                const fallbackLabel = metodo.startsWith(
+                                                        "domiciliacion"
+                                                )
+                                                        ? "Confirmar domiciliación"
+                                                        : "Confirmar pago";
+                                                textSpan.textContent = resetText || fallbackLabel;
                                         }
-                                        if (spinner) {
+                                        if (spinner && spinner.parentNode) {
                                                 spinner.remove();
                                         }
                                 });
                 }
                 document.addEventListener("click", handleConfirmClick);
                 document.addEventListener("click", handleShareClick);
+
+                function setupConfirmModal(modal) {
+                        if (!modal) return null;
+                        const dialog = modal.querySelector(".confirm-modal__dialog");
+                        if (!dialog) return null;
+                        const titleEl = modal.querySelector(".confirm-modal__title");
+                        const messageEl = modal.querySelector(".confirm-modal__message");
+                        const checkbox = modal.querySelector(".confirm-modal__checkbox-input");
+                        const checkboxLabel = modal.querySelector(
+                                ".confirm-modal__checkbox-label"
+                        );
+                        const confirmBtn = modal.querySelector(
+                                ".confirm-modal__btn--confirm"
+                        );
+                        const cancelBtn = modal.querySelector(
+                                ".confirm-modal__btn--cancel"
+                        );
+                        const closeBtn = modal.querySelector(".confirm-modal__close");
+
+                        function closeModal() {
+                                modal.classList.remove("is-open");
+                                modal.setAttribute("aria-hidden", "true");
+                                if (checkbox) {
+                                        checkbox.checked = false;
+                                }
+                                if (confirmBtn) {
+                                        confirmBtn.disabled = true;
+                                }
+                                document.removeEventListener("keydown", onKeydown);
+                                pendingConfirmContext = null;
+                        }
+
+                        function openModal(content) {
+                                if (!confirmBtn || !titleEl || !messageEl) return;
+                                const cfg = content || {};
+                                titleEl.textContent = cfg.title || "";
+                                messageEl.textContent = cfg.message || "";
+                                if (checkboxLabel) {
+                                        checkboxLabel.textContent =
+                                                cfg.checkboxLabel ||
+                                                "He revisado esta información y confirmo la operación.";
+                                }
+                                confirmBtn.textContent = cfg.confirmLabel || "Confirmar";
+                                confirmBtn.disabled = true;
+                                modal.classList.add("is-open");
+                                modal.setAttribute("aria-hidden", "false");
+                                document.addEventListener("keydown", onKeydown);
+                                if (checkbox && typeof checkbox.focus === "function") {
+                                        checkbox.focus();
+                                } else if (closeBtn && typeof closeBtn.focus === "function") {
+                                        closeBtn.focus();
+                                }
+                        }
+
+                        function onKeydown(event) {
+                                if (event.key === "Escape") {
+                                        closeModal();
+                                }
+                        }
+
+                        if (checkbox) {
+                                checkbox.addEventListener("change", () => {
+                                        if (!confirmBtn) return;
+                                        confirmBtn.disabled = !checkbox.checked;
+                                });
+                        }
+
+                        if (cancelBtn) {
+                                cancelBtn.addEventListener("click", () => {
+                                        closeModal();
+                                });
+                        }
+
+                        if (closeBtn) {
+                                closeBtn.addEventListener("click", () => {
+                                        closeModal();
+                                });
+                        }
+
+                        modal.addEventListener("click", (event) => {
+                                if (event.target === modal) {
+                                        closeModal();
+                                }
+                        });
+
+                        if (confirmBtn) {
+                                confirmBtn.addEventListener("click", () => {
+                                        if (confirmBtn.disabled) {
+                                                return;
+                                        }
+                                        const context = pendingConfirmContext;
+                                        closeModal();
+                                        if (context) {
+                                                runConfirmRequest(context);
+                                        }
+                                });
+                        }
+
+                        return {
+                                open: openModal,
+                                close: closeModal,
+                        };
+                }
 
                 function buildShareUrl(matricula) {
                         if (!matricula) {
@@ -1337,6 +1556,7 @@ const ADD_DOC_KEY = "add-document";
     const estadoClase = normalizeEstadoClase(estadoValue);
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
+    const canShowReportBtn = estadoClase === "activada";
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
     const metodoPago = (
         data.metodo_pago ?? rowData.metodo_pago ?? ""
@@ -1590,9 +1810,8 @@ const ADD_DOC_KEY = "add-document";
     const adminPendingDomiciliacion =
         isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado;
     const shouldShowConfirmBtn = showActions && (isPendientePago || adminPendingDomiciliacion);
-    const confirmLabel = adminPendingDomiciliacion
-        ? "Domiciliación pagada"
-        : metodoPago.startsWith("domiciliacion")
+    const confirmLabel =
+        adminPendingDomiciliacion || metodoPago.startsWith("domiciliacion")
             ? "Confirmar domiciliación"
             : "Confirmar pago";
     const adminActionButtons = [];
@@ -1605,12 +1824,14 @@ const ADD_DOC_KEY = "add-document";
                 `</button>`
             );
         }
-        adminActionButtons.push(
-            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">` +
-                `<span class="guarantee-detail__btn-icon">${warningIcon}</span>` +
-                `<span class="guarantee-detail__btn-text">Abrir expediente</span>` +
-            `</button>`
-        );
+        if (canShowReportBtn) {
+            adminActionButtons.push(
+                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">` +
+                    `<span class="guarantee-detail__btn-icon">${warningIcon}</span>` +
+                    `<span class="guarantee-detail__btn-text">Abrir expediente</span>` +
+                `</button>`
+            );
+        }
         adminActionButtons.push(
             `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos">` +
                 `<span class="guarantee-detail__btn-icon">${heartIcon}</span>` +

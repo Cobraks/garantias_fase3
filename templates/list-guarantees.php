@@ -177,6 +177,22 @@ $show_channel_col = ! $is_professional;
     </div>
 </div>
 
+<div class="confirm-modal" aria-hidden="true">
+    <div class="confirm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+        <button type="button" class="confirm-modal__close" aria-label="<?php esc_attr_e('Cerrar confirmación', 'garantias-online-360vo'); ?>">&times;</button>
+        <h2 id="confirm-modal-title" class="confirm-modal__title"></h2>
+        <p class="confirm-modal__message"></p>
+        <label class="confirm-modal__checkbox">
+            <input type="checkbox" class="confirm-modal__checkbox-input" />
+            <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
+        </label>
+        <div class="confirm-modal__actions">
+            <button type="button" class="confirm-modal__btn confirm-modal__btn--cancel"><?php esc_html_e('Cancelar', 'garantias-online-360vo'); ?></button>
+            <button type="button" class="confirm-modal__btn confirm-modal__btn--confirm" disabled><?php esc_html_e('Confirmar', 'garantias-online-360vo'); ?></button>
+        </div>
+    </div>
+</div>
+
 <?php
 \GarantiasOnline360VO\TemplateLoader::load_part(
     'footer',
