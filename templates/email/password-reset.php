@@ -3,10 +3,25 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-$site_name  = isset($site_name) ? (string) $site_name : get_bloginfo('name');
-$reset_url  = isset($reset_url) ? (string) $reset_url : home_url('/wp-login.php');
-$user_login = isset($user_login) ? (string) $user_login : '';
-$support_url = isset($support_url) ? (string) $support_url : home_url('/');
+$site_name      = isset($site_name) ? (string) $site_name : get_bloginfo('name');
+$reset_url      = isset($reset_url) ? (string) $reset_url : home_url('/wp-login.php');
+$user_login     = isset($user_login) ? (string) $user_login : '';
+$personal_name  = isset($personal_name) ? (string) $personal_name : '';
+$company_name   = isset($company_name) ? (string) $company_name : '';
+$support_url    = isset($support_url) ? (string) $support_url : home_url('/');
+
+$greeting_name = $personal_name !== ''
+    ? $personal_name
+    : ($user_login !== '' ? $user_login : __('usuario', 'garantias-online-360vo'));
+
+$reset_notice = __('Hemos recibido una solicitud para restablecer tu contraseña de acceso a Garantías Online.', 'garantias-online-360vo');
+if ($company_name !== '' && $company_name !== $greeting_name) {
+    $reset_notice = sprintf(
+        /* translators: %s: company name */
+        __('Hemos recibido una solicitud para restablecer la contraseña de acceso a Garantías Online de %s.', 'garantias-online-360vo'),
+        $company_name
+    );
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -33,10 +48,10 @@ $support_url = isset($support_url) ? (string) $support_url : home_url('/');
                     <tr>
                         <td style="padding:0 32px 24px 32px;font-size:1rem;line-height:1.5;color:#1f2937;">
                             <p style="margin:0 0 16px;">
-                                <?php echo esc_html(sprintf(__('Hola %s,', 'garantias-online-360vo'), $user_login !== '' ? $user_login : __('usuario', 'garantias-online-360vo'))); ?>
+                                <?php echo esc_html(sprintf(__('Hola %s,', 'garantias-online-360vo'), $greeting_name)); ?>
                             </p>
                             <p style="margin:0 0 16px;">
-                                <?php esc_html_e('Hemos recibido una solicitud para restablecer tu contraseña de acceso a Garantías Online.', 'garantias-online-360vo'); ?>
+                                <?php echo esc_html($reset_notice); ?>
                             </p>
                             <p style="margin:0 0 24px;">
                                 <?php esc_html_e('Haz clic en el siguiente botón para crear una contraseña nueva. Por seguridad, el enlace dejará de estar disponible en unas horas.', 'garantias-online-360vo'); ?>

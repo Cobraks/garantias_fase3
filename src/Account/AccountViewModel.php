@@ -4,6 +4,7 @@ namespace GarantiasOnline360VO\Account;
 
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
+use GarantiasOnline360VO\Support\UserProfileResolver;
 use WP_User;
 
 if (! defined('ABSPATH')) {
@@ -40,37 +41,22 @@ class AccountViewModel
 
         $contact_meta = self::get_meta_group($scope, 'datos_usuario');
 
-        $trade_name = '';
-        if (isset($contact_meta['nombre_comercial'])) {
-            $trade_name = $contact_meta['nombre_comercial'];
-        } elseif (isset($contact_meta['nombre_empresa'])) {
-            $trade_name = $contact_meta['nombre_empresa'];
-        }
-
-        if ($trade_name === '') {
-            $trade_name = get_user_meta($user_id, 'datos_usuario_nombre_comercial', true);
-        }
-        if ($trade_name === '') {
-            $trade_name = get_user_meta($user_id, 'datos_usuario_nombre_empresa', true);
-        }
-
-        $legal_name = '';
-        if (isset($contact_meta['razon_social'])) {
-            $legal_name = $contact_meta['razon_social'];
-        } elseif (isset($contact_meta['razon'])) {
-            $legal_name = $contact_meta['razon'];
-        }
-
-        if ($legal_name === '') {
-            $legal_name = get_user_meta($user_id, 'datos_usuario_razon_social', true);
-        }
-        if ($legal_name === '') {
-            $legal_name = get_user_meta($user_id, 'datos_usuario_razon', true);
-        }
+        $profile = UserProfileResolver::build_from_user($user);
+        $company_profile = $profile['company'];
 
         $company = [
-            'trade_name' => self::sanitize_optional_text($trade_name),
-            'legal_name' => self::sanitize_optional_text($legal_name),
+            'name'       => $company_profile['name'] ?? '',
+            'trade_name' => $company_profile['trade_name'] ?? '',
+            'legal_name' => $company_profile['legal_name'] ?? '',
+            'tax_id'     => $company_profile['tax_id'] ?? '',
+            'type'       => $company_profile['type'] ?? ['value' => '', 'label' => ''],
+            'address'    => $company_profile['address'] ?? [
+                'street' => '',
+                'city'   => '',
+                'state'  => '',
+                'zip'    => '',
+                'country'=> '',
+            ],
         ];
 
         $notification_settings = self::get_meta_group($scope, 'ajustes_de_notificaciones');
@@ -113,13 +99,16 @@ class AccountViewModel
             ? $contact_meta['telefono']
             : get_user_meta($user_id, 'datos_usuario_telefono', true);
 
-        $address = [
-            'street'  => $contact_meta['direccion'] ?? get_user_meta($user_id, 'datos_usuario_direccion', true),
-            'city'    => $contact_meta['localidad'] ?? get_user_meta($user_id, 'datos_usuario_localidad', true),
-            'state'   => $contact_meta['provincia'] ?? get_user_meta($user_id, 'datos_usuario_provincia', true),
-            'zip'     => $contact_meta['codigo_postal'] ?? get_user_meta($user_id, 'datos_usuario_codigo_postal', true),
-            'country' => $contact_meta['pais'] ?? get_user_meta($user_id, 'datos_usuario_pais', true),
-        ];
+        $address = $company['address'];
+        if (! array_filter($address)) {
+            $address = [
+                'street'  => $contact_meta['direccion'] ?? get_user_meta($user_id, 'datos_usuario_direccion', true),
+                'city'    => $contact_meta['localidad'] ?? get_user_meta($user_id, 'datos_usuario_localidad', true),
+                'state'   => $contact_meta['provincia'] ?? get_user_meta($user_id, 'datos_usuario_provincia', true),
+                'zip'     => $contact_meta['codigo_postal'] ?? get_user_meta($user_id, 'datos_usuario_codigo_postal', true),
+                'country' => $contact_meta['pais'] ?? get_user_meta($user_id, 'datos_usuario_pais', true),
+            ];
+        }
 
         $assigned = self::extract_commercials($scope, $user_id);
 
@@ -129,9 +118,12 @@ class AccountViewModel
         return [
             'user' => [
                 'id'                   => $user_id,
-                'name'                 => $user->display_name ?: $user->user_login,
-                'username'             => $user->user_login,
-                'email'                => sanitize_email($user->user_email),
+                'name'                 => $profile['personal_name'],
+                'full_name'            => $profile['personal_full_name'],
+                'first_name'           => $profile['personal_first_name'],
+                'last_name'            => $profile['personal_last_name'],
+                'username'             => $profile['username'],
+                'email'                => $profile['email'],
                 'notification_email'   => $notification_email,
                 'custom_notification'  => $custom_notification,
                 'same_as_registration' => $same_as_registration,
@@ -206,7 +198,8 @@ class AccountViewModel
 
             $commercials[] = [
                 'id'    => (int) $commercial->ID,
-                'name'  => $commercial->display_name ?: $commercial->user_login,
+                'name'  => UserProfileResolver::get_personal_name($commercial),
+                'full_name' => UserProfileResolver::get_full_name($commercial),
                 'email' => sanitize_email($commercial->user_email),
                 'phone' => self::sanitize_optional_text(
                     get_user_meta($commercial_id, 'datos_usuario_telefono', true)
