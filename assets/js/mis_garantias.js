@@ -37,10 +37,17 @@ const ADD_DOC_KEY = "add-document";
                 const warningIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/></svg>';
                 const heartIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Zm0-108q96-86 158-147.5t98-107q36-45.5 50-81t14-70.5q0-60-40-100t-100-40q-47 0-87 26.5T518-680h-76q-15-41-55-67.5T300-774q-60 0-100 40t-40 100q0 35 14 70.5t50 81q36 45.5 98 107T480-228Zm0-273Z"/></svg>';
                 const shareIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M680-80q-50 0-85-35t-35-85q0-6 3-28L282-392q-16 15-37 23.5t-45 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q24 0 45 8.5t37 23.5l281-164q-2-7-2.5-13.5T560-760q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-24 0-45-8.5T598-672L317-508q2 7 2.5 13.5t.5 14.5q0 8-.5 14.5T317-452l281 164q16-15 37-23.5t45-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-200q0-17-11.5-28.5T680-240q-17 0-28.5 11.5T640-200q0 17 11.5 28.5T680-160ZM200-440q17 0 28.5-11.5T240-480q0-17-11.5-28.5T200-520q-17 0-28.5 11.5T160-480q0 17 11.5 28.5T200-440Zm480-280q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0 520ZM200-480Zm480-280Z"/></svg>';
+                const personAddIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M720-400v-120H600v-80h120v-120h80v120h120v80H800v120h-80Zm-360-80q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm80-80h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T440-640q0-33-23.5-56.5T360-720q-33 0-56.5 23.5T280-640q0 33 23.5 56.5T360-560Zm0-80Zm0 400Z"/></svg>';
+                const personIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z"/></svg>';
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
                 const continueIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
                 const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
                 const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
+
+                let pendingConfirmContext = null;
+                const confirmModalController = setupConfirmModal(
+                        document.querySelector(".confirm-modal")
+                );
 
                 const PDF_CACHE_LIMIT = 12;
                 const pdfBlobCache = new Map();
@@ -291,13 +298,65 @@ const ADD_DOC_KEY = "add-document";
                                 encodeURIComponent(uuid);
                 });
 
+                function formatAmountForMessage(raw) {
+                        if (raw === undefined || raw === null) return "";
+                        const formatted = formatPrice(raw);
+                        if (formatted && formatted !== "-" && formatted.trim() !== "") {
+                                return formatted.includes("€") ? formatted : `${formatted} €`;
+                        }
+                        const str = String(raw).trim();
+                        if (!str) return "";
+                        return str.includes("€") ? str : `${str} €`;
+                }
+
+                function escapeHtml(value) {
+                        if (value === undefined || value === null) {
+                                return "";
+                        }
+                        return String(value)
+                                .replace(/&/g, "&amp;")
+                                .replace(/</g, "&lt;")
+                                .replace(/>/g, "&gt;")
+                                .replace(/"/g, "&quot;")
+                                .replace(/'/g, "&#039;");
+                }
+
+                function parseDisplayDate(value) {
+                        if (typeof value !== "string") {
+                                return null;
+                        }
+                        const trimmed = value.trim();
+                        if (!trimmed) {
+                                return null;
+                        }
+                        const parts = trimmed.split(/[\/]/);
+                        if (parts.length < 3) {
+                                return null;
+                        }
+                        const day = parseInt(parts[0], 10);
+                        const month = parseInt(parts[1], 10);
+                        let year = parseInt(parts[2], 10);
+                        if (Number.isNaN(day) || Number.isNaN(month) || Number.isNaN(year)) {
+                                return null;
+                        }
+                        if (year < 100) {
+                                year += 2000;
+                        }
+                        const date = new Date(year, month - 1, day);
+                        if (Number.isNaN(date.getTime())) {
+                                return null;
+                        }
+                        return date;
+                }
+
                 function handleConfirmClick(e) {
                         const btn = e.target.closest(
                                 ".guarantee-detail__btn--confirm"
                         );
                         if (!btn) return;
                         const panel = btn.closest(".guarantee-detail__panel");
-                        const id = panel?.dataset.loadedId;
+                        if (!panel) return;
+                        const id = panel.dataset.loadedId;
                         if (!id) return;
                         const cacheData = detailCache.get(id);
                         const uuid = cacheData && cacheData.uuid ? cacheData.uuid : "";
@@ -305,16 +364,167 @@ const ADD_DOC_KEY = "add-document";
                         const textSpan = btn.querySelector(
                                 ".guarantee-detail__btn-text"
                         );
-                        const originalText = textSpan
-                                ? textSpan.textContent
+                        const currentLabel = textSpan
+                                ? textSpan.textContent.trim()
                                 : "";
+                        const row = tbody.querySelector(
+                                `.guarantees-table__row[data-id="${id}"]`
+                        );
+                        const metodoRaw =
+                                (cacheData && cacheData.metodo_pago) ||
+                                (row && row.dataset.metodoPago) ||
+                                "";
+                        const metodo =
+                                typeof metodoRaw === "string"
+                                        ? metodoRaw.toLowerCase().trim()
+                                        : "";
+                        const isDomiciliacion = metodo.startsWith("domiciliacion");
+                        const vendorName =
+                                (cacheData && cacheData.concesionario) ||
+                                (row && row.dataset.vendedor_name) ||
+                                "";
+                        const priceRaw =
+        (cacheData && cacheData.precio) ||
+        (row && row.dataset.precio) ||
+        "";
+    const formattedAmount = formatAmountForMessage(priceRaw);
+                        const accountCandidate =
+                                (cacheData &&
+                                        (cacheData.transfer_iban || cacheData.iban_vendedor)) ||
+                                (row && (row.dataset.transferIban || row.dataset.ibanVendedor)) ||
+                                "";
+                        const accountTextRaw =
+                                typeof accountCandidate === "string"
+                                        ? accountCandidate.trim()
+                                        : "";
+                        const matricula =
+                                panel.dataset.matricula ||
+                                (row && row.dataset.matricula) ||
+                                (cacheData && cacheData.matricula) ||
+                                "";
+                        const title = isDomiciliacion
+                                ? "Confirmar cobro por domiciliación"
+                                : "Confirmar transferencia";
+                        const subtitle = `Garantía ${matricula || id}`;
+                        const cleanedVendorName =
+                                typeof vendorName === "string" ? vendorName.trim() : "";
+                        const companyText =
+                                cleanedVendorName !== "" && cleanedVendorName !== "-"
+                                        ? cleanedVendorName
+                                        : "el cliente";
+                        const normalizedAmount = formattedAmount.trim();
+                        const hasAmount =
+                                normalizedAmount !== "" &&
+                                normalizedAmount !== "-" &&
+                                normalizedAmount !== "- €";
+                        const amountText = hasAmount
+                                ? normalizedAmount
+                                : "el importe acordado";
+                        const hasAccount =
+                                accountTextRaw !== "" && accountTextRaw !== "-";
+                        const accountText = hasAccount ? accountTextRaw : "";
+                        const periodStartDisplay =
+                                (cacheData && cacheData.desde_fmt) ||
+                                (row && row.dataset.desdeFmt) ||
+                                "";
+                        const safeCompany = escapeHtml(companyText);
+                        const safeAmount = escapeHtml(amountText);
+                        const safeAccount = escapeHtml(accountText);
+
+                        let message;
+                        if (isDomiciliacion) {
+                                message = `Confirmo que 360VO ha gestionado el cobro por domiciliación por valor de <strong>${safeAmount}</strong> a <strong>${safeCompany}</strong>.`;
+                        } else if (safeAccount) {
+                                message = `Confirmo que <strong>${safeCompany}</strong> ha realizado la transferencia por valor de <strong>${safeAmount}</strong> a la cuenta ${safeAccount}.`;
+                        } else {
+                                message = `Confirmo que <strong>${safeCompany}</strong> ha realizado la transferencia por valor de <strong>${safeAmount}</strong>.`;
+                        }
+
+                        const startIso =
+                                (row && row.dataset.desde) ||
+                                (cacheData && cacheData.desde) ||
+                                "";
+                        let paymentWindowText = "";
+                        if (!isDomiciliacion) {
+                                let startDate = null;
+                                if (startIso) {
+                                        const parsedIso = new Date(startIso);
+                                        if (!Number.isNaN(parsedIso.getTime())) {
+                                                startDate = parsedIso;
+                                        }
+                                }
+                                if (!startDate && periodStartDisplay) {
+                                        startDate = parseDisplayDate(periodStartDisplay);
+                                }
+                                if (startDate) {
+                                        const formatter = new Intl.DateTimeFormat("es-ES", {
+                                                day: "2-digit",
+                                                month: "2-digit",
+                                                year: "2-digit",
+                                        });
+                                        const deadline = new Date(startDate.getTime());
+                                        deadline.setDate(deadline.getDate() + 48);
+                                        const startDisplay = formatter.format(startDate);
+                                        const deadlineDisplay = formatter.format(deadline);
+                                        paymentWindowText = `Plazo de pago: del ${startDisplay} al ${deadlineDisplay}`;
+                                }
+                        }
+
+                        const note = !isDomiciliacion && paymentWindowText ? paymentWindowText : "";
+                        const context = {
+                                btn,
+                                panel,
+                                id,
+                                uuid,
+                                metodo,
+                                cacheData,
+                                row,
+                                resetLabel:
+                                        currentLabel ||
+                                        (isDomiciliacion
+                                                ? "Confirmar domiciliación"
+                                                : "Confirmar pago"),
+                        };
+                        if (confirmModalController) {
+                                pendingConfirmContext = context;
+                                confirmModalController.open({
+                                        title,
+                                        subtitle,
+                                        message,
+                                        note,
+                                        checkboxLabel:
+                                                "He revisado esta información y confirmo la operación.",
+                                        confirmLabel: "Confirmar",
+                                });
+                                return;
+                        }
+                        runConfirmRequest(context);
+                }
+
+                function runConfirmRequest(context) {
+                        if (!context) return;
+                        const { btn, panel, id, uuid } = context;
+                        if (!btn || !panel || !id || !uuid) return;
+                        const textSpan = btn.querySelector(
+                                ".guarantee-detail__btn-text"
+                        );
+                        const metodo =
+                                typeof context.metodo === "string"
+                                        ? context.metodo.toLowerCase()
+                                        : "";
+                        const resetText =
+                                context.resetLabel ||
+                                (textSpan
+                                        ? textSpan.textContent.trim()
+                                        : metodo.startsWith("domiciliacion")
+                                        ? "Confirmar domiciliación"
+                                        : "Confirmar pago");
                         let spinner = btn.querySelector(
                                 ".guarantee-detail__btn-spinner"
                         );
                         if (!spinner) {
                                 spinner = document.createElement("span");
-                                spinner.className =
-                                        "guarantee-detail__btn-spinner";
+                                spinner.className = "guarantee-detail__btn-spinner";
                                 if (textSpan) {
                                         btn.insertBefore(spinner, textSpan);
                                 } else {
@@ -322,15 +532,16 @@ const ADD_DOC_KEY = "add-document";
                                 }
                         }
                         if (textSpan) {
-                                textSpan.textContent =
-                                        "Activando garantía";
+                                textSpan.textContent = "Activando garantía";
                         }
                         btn.disabled = true;
-                        saveStatus.classList.remove(
-                                "autosave-status--hidden"
-                        );
-                        let row;
-                        const metodo = cacheData?.metodo_pago || "";
+                        saveStatus.classList.remove("autosave-status--hidden");
+                        let row = context.row;
+                        if (!row || !row.isConnected) {
+                                row = tbody.querySelector(
+                                        `.guarantees-table__row[data-id="${id}"]`
+                                );
+                        }
                         const body = {
                                 id,
                                 uuid,
@@ -340,10 +551,7 @@ const ADD_DOC_KEY = "add-document";
                                         },
                                 },
                         };
-                        if (
-                                typeof metodo === "string" &&
-                                metodo.toLowerCase().startsWith("domiciliacion")
-                        ) {
+                        if (metodo.startsWith("domiciliacion")) {
                                 body.data.garantia_contratada = {
                                         estado_cobro: { cobro_realizado: true },
                                 };
@@ -359,9 +567,11 @@ const ADD_DOC_KEY = "add-document";
                                 .then((res) => {
                                         if (!res.ok) throw res.status;
                                         detailCache.delete(id);
-                                        row = tbody.querySelector(
-                                                `.guarantees-table__row[data-id="${id}"]`
-                                        );
+                                        if (!row || !row.isConnected) {
+                                                row = tbody.querySelector(
+                                                        `.guarantees-table__row[data-id="${id}"]`
+                                                );
+                                        }
                                         if (row) {
                                                 row.dataset.estadoclase = "activada";
                                                 row.dataset.estado = "Activada";
@@ -381,28 +591,22 @@ const ADD_DOC_KEY = "add-document";
                                                         cobroBadge.remove();
                                                 }
                                         }
-                                        return fetch(
-                                                `${restRoot}go/v1/guarantees/${id}`,
-                                                { headers: { "X-WP-Nonce": restNonce } }
-                                        );
+                                        return fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                                headers: { "X-WP-Nonce": restNonce },
+                                        });
                                 })
                                 .then((detailRes) => {
                                         if (!detailRes.ok) throw detailRes.status;
                                         const rowData = row ? buildRowData(row) : {};
-                                        return detailRes
-                                                .json()
-                                                .then((json) => {
-                                                        const data = normalizeDetailData(json);
-                                                        detailCache.set(id, data);
-                                                        panel.innerHTML = renderFullDetail(
-                                                                data,
-                                                                rowData,
-                                                                []
-                                                        );
-                                                        panel.dataset.matricula = data.matricula || rowData.matricula || "";
-                                                        panel.dataset.plan = data.plan || rowData.plan || "";
-                                                        syncPdfModalDocs(panel);
-                                                });
+                                        return detailRes.json().then((json) => {
+                                                const data = normalizeDetailData(json);
+                                                detailCache.set(id, data);
+                                                panel.innerHTML = renderFullDetail(data, rowData, []);
+                                                panel.dataset.matricula =
+                                                        data.matricula || rowData.matricula || "";
+                                                panel.dataset.plan = data.plan || rowData.plan || "";
+                                                syncPdfModalDocs(panel);
+                                        });
                                 })
                                 .catch((err) => {
                                         console.error("Error confirm payment:", err);
@@ -413,17 +617,146 @@ const ADD_DOC_KEY = "add-document";
                                                 "autosave-status--hidden"
                                         );
                                         if (textSpan) {
-                                                textSpan.textContent =
-                                                        originalText ||
-                                                        "Confirmar pago";
+                                                const fallbackLabel = metodo.startsWith(
+                                                        "domiciliacion"
+                                                )
+                                                        ? "Confirmar domiciliación"
+                                                        : "Confirmar pago";
+                                                textSpan.textContent = resetText || fallbackLabel;
                                         }
-                                        if (spinner) {
+                                        if (spinner && spinner.parentNode) {
                                                 spinner.remove();
                                         }
                                 });
                 }
                 document.addEventListener("click", handleConfirmClick);
                 document.addEventListener("click", handleShareClick);
+
+                function setupConfirmModal(modal) {
+                        if (!modal) return null;
+                        const dialog = modal.querySelector(".confirm-modal__dialog");
+                        if (!dialog) return null;
+                        const titleEl = modal.querySelector(".confirm-modal__title");
+                        const subtitleEl = modal.querySelector(".confirm-modal__subtitle");
+                        const messageEl = modal.querySelector(".confirm-modal__message");
+                        const noteEl = modal.querySelector(".confirm-modal__note");
+                        const checkbox = modal.querySelector(".confirm-modal__checkbox-input");
+                        const checkboxLabel = modal.querySelector(
+                                ".confirm-modal__checkbox-label"
+                        );
+                        const confirmBtn = modal.querySelector(
+                                ".confirm-modal__btn--confirm"
+                        );
+                        const cancelBtn = modal.querySelector(
+                                ".confirm-modal__btn--cancel"
+                        );
+                        const closeBtn = modal.querySelector(".confirm-modal__close");
+
+                        function closeModal() {
+                                modal.classList.remove("is-open");
+                                modal.setAttribute("aria-hidden", "true");
+                                if (checkbox) {
+                                        checkbox.checked = false;
+                                }
+                                if (confirmBtn) {
+                                        confirmBtn.disabled = true;
+                                }
+                                if (subtitleEl) {
+                                        subtitleEl.textContent = "";
+                                        subtitleEl.hidden = true;
+                                }
+                                if (messageEl) {
+                                        messageEl.innerHTML = "";
+                                }
+                                if (noteEl) {
+                                        noteEl.textContent = "";
+                                        noteEl.hidden = true;
+                                }
+                                document.removeEventListener("keydown", onKeydown);
+                                pendingConfirmContext = null;
+                        }
+
+                        function openModal(content) {
+                                if (!confirmBtn || !titleEl || !messageEl) return;
+                                const cfg = content || {};
+                                titleEl.textContent = cfg.title || "";
+                                if (subtitleEl) {
+                                        const hasSubtitle = Boolean(cfg.subtitle);
+                                        subtitleEl.textContent = cfg.subtitle || "";
+                                        subtitleEl.hidden = !hasSubtitle;
+                                }
+                                messageEl.innerHTML = cfg.message || "";
+                                if (noteEl) {
+                                        const hasNote = Boolean(cfg.note);
+                                        noteEl.textContent = cfg.note || "";
+                                        noteEl.hidden = !hasNote;
+                                }
+                                if (checkboxLabel) {
+                                        checkboxLabel.textContent =
+                                                cfg.checkboxLabel ||
+                                                "He revisado esta información y confirmo la operación.";
+                                }
+                                confirmBtn.textContent = cfg.confirmLabel || "Confirmar";
+                                confirmBtn.disabled = true;
+                                modal.classList.add("is-open");
+                                modal.setAttribute("aria-hidden", "false");
+                                document.addEventListener("keydown", onKeydown);
+                                if (checkbox && typeof checkbox.focus === "function") {
+                                        checkbox.focus();
+                                } else if (closeBtn && typeof closeBtn.focus === "function") {
+                                        closeBtn.focus();
+                                }
+                        }
+
+                        function onKeydown(event) {
+                                if (event.key === "Escape") {
+                                        closeModal();
+                                }
+                        }
+
+                        if (checkbox) {
+                                checkbox.addEventListener("change", () => {
+                                        if (!confirmBtn) return;
+                                        confirmBtn.disabled = !checkbox.checked;
+                                });
+                        }
+
+                        if (cancelBtn) {
+                                cancelBtn.addEventListener("click", () => {
+                                        closeModal();
+                                });
+                        }
+
+                        if (closeBtn) {
+                                closeBtn.addEventListener("click", () => {
+                                        closeModal();
+                                });
+                        }
+
+                        modal.addEventListener("click", (event) => {
+                                if (event.target === modal) {
+                                        closeModal();
+                                }
+                        });
+
+                        if (confirmBtn) {
+                                confirmBtn.addEventListener("click", () => {
+                                        if (confirmBtn.disabled) {
+                                                return;
+                                        }
+                                        const context = pendingConfirmContext;
+                                        closeModal();
+                                        if (context) {
+                                                runConfirmRequest(context);
+                                        }
+                                });
+                        }
+
+                        return {
+                                open: openModal,
+                                close: closeModal,
+                        };
+                }
 
                 function buildShareUrl(matricula) {
                         if (!matricula) {
@@ -818,7 +1151,19 @@ const ADD_DOC_KEY = "add-document";
                                 item.canal_venta && item.canal_venta.label
                                         ? item.canal_venta.label
                                         : "-";
-                        const vendedor_type = canal_venta;
+                        const canal_venta_summary =
+                                (item.detail && item.detail.canal_venta_summary)
+                                        ? item.detail.canal_venta_summary
+                                        : canal_venta;
+                        const vendedor_type = canal_venta_summary;
+        const cliente_nombre = item.detail?.nombre_comprador ?? "-";
+        const cliente_telefono_raw = item.detail?.telefono_comprador ?? "";
+        const cliente_telefono =
+                cliente_telefono_raw && cliente_telefono_raw !== "-"
+                        ? cliente_telefono_raw
+                        : "";
+        const cliente_telefono_dataset =
+                cliente_telefono !== "" ? cliente_telefono : "-";
 
                         const hasPlan = plan !== "" && plan !== "-";
                         const hasPeriod =
@@ -839,6 +1184,20 @@ const ADD_DOC_KEY = "add-document";
                                                 <span class="plan__price">${precio}€</span>
                                         </div>`
                                 : "";
+        const clientePhoneHtml =
+                cliente_telefono !== ""
+                        ? `<div class="cliente__phone">${cliente_telefono}</div>`
+                        : "";
+        const thirdColumnLabel = isProfesional ? "Cliente" : "Canal de venta";
+        const thirdColumnHtml = isProfesional
+                ? `<div class="guarantees-table__cliente">
+                                <div class="cliente__name">${cliente_nombre}</div>
+                                ${clientePhoneHtml}
+                        </div>`
+                : `<div class="guarantees-table__vendedor">
+                                <div class="vendedor__name">${vendedor_name}</div>
+                                <div class="vendedor__type">${vendedor_type}</div>
+                        </div>`;
 
                         const tr = document.createElement("tr");
                         tr.className = "guarantees-table__row";
@@ -855,12 +1214,18 @@ const ADD_DOC_KEY = "add-document";
                         tr.dataset.estadoclase = estadoClase;
                         tr.dataset.vendedor_name = vendedor_name;
                         tr.dataset.vendedor_type = vendedor_type;
+                        tr.dataset.canal_venta_summary = canal_venta_summary;
+                        tr.dataset.concesionario = vendedor_name;
+                        tr.dataset.concesionario_personal =
+                                item.detail?.concesionario_personal ?? "";
                         tr.dataset.precio = hasPlan ? precio : "";
                         tr.dataset.canalVenta = canal_venta;
                         tr.dataset.metodoPago = item.detail.metodo_pago || "";
                         tr.dataset.cobroRealizado = item.detail.cobro_realizado ? "1" : "";
                         tr.dataset.ibanVendedor = item.detail.iban_vendedor || "";
                         tr.dataset.transferIban = item.detail.transfer_iban || "";
+        tr.dataset.compradorNombre = cliente_nombre || "-";
+        tr.dataset.compradorTelefono = cliente_telefono_dataset;
 
                         const cobroBadgeHtml =
                                 isAdmin &&
@@ -869,7 +1234,7 @@ const ADD_DOC_KEY = "add-document";
                                         .toLowerCase()
                                         .startsWith("domiciliacion") &&
                                 !tr.dataset.cobroRealizado
-                                        ? `<span class="guarantees-list__badge guarantees-list__badge--pend-cobro">pend. cobro</span>`
+                                        ? `<span class="guarantees-list__badge guarantees-list__badge--pend-cobro">Pend. Domiciliación</span>`
                                         : "";
 
                         const estadoBadgeHtml = `<span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">${estadoLabel}</span>`;
@@ -882,12 +1247,7 @@ const ADD_DOC_KEY = "add-document";
                                         </div>
                                 </td>
                                 <td data-label="Validez">${periodHtml}</td>
-                                <td data-label="Vendedor">
-                                        <div class="guarantees-table__vendedor">
-                                                <div class="vendedor__name">${vendedor_name}</div>
-                                                <div class="vendedor__type">${vendedor_type}</div>
-                                        </div>
-                                </td>
+                                <td data-label="${thirdColumnLabel}">${thirdColumnHtml}</td>
                                 <td data-label="Estado">
                                         <div class="guarantees-table__estado">
                                                 ${estadoBadgeHtml}
@@ -1252,9 +1612,9 @@ const ADD_DOC_KEY = "add-document";
                                 certificate_url: "#",
                                 condicionado_url: "#",
                                 cobertura_url: "#",
-                                nombre_comprador: "-",
+                                nombre_comprador: row.dataset.compradorNombre ?? "-",
                                 dni_comprador: "-",
-                                telefono_comprador: "-",
+                                telefono_comprador: (row.dataset.compradorTelefono ?? "-") || "-",
                                 email_comprador: "-",
                                 direccion_comprador: "-",
                                 localidad_comprador: "-",
@@ -1308,6 +1668,7 @@ const ADD_DOC_KEY = "add-document";
     const estadoClase = normalizeEstadoClase(estadoValue);
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
+    const canShowReportBtn = estadoClase === "activada";
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
     const metodoPago = (
         data.metodo_pago ?? rowData.metodo_pago ?? ""
@@ -1324,9 +1685,45 @@ const ADD_DOC_KEY = "add-document";
         .map((val) => (typeof val === "string" ? val.trim() : ""))
         .find((val) => val) || "";
 
-    const planTitle = `${data.plan ?? "-"}${
-        mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
-    }`;
+    const planName = skeleton("plan", "-");
+    const planParts = [];
+    if (planName && planName !== "-") {
+        planParts.push(planName);
+    }
+    if (mesesTotales !== "-") {
+        planParts.push(`${mesesTotales} meses`);
+    }
+    const planPrimaryLabel = planParts.length > 0 ? planParts.join(" ") : planName || "-";
+    const planPriceRaw = skeleton("precio", "");
+    const planPrice = planPriceRaw && planPriceRaw !== "-" ? `${planPriceRaw} €` : "";
+    const planTitleHtml = `<h3 class="guarantee-detail__plan-title">` +
+        `<span class="guarantee-detail__plan-name">${planPrimaryLabel}</span>` +
+        `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
+        `</h3>`;
+    const vendorChannelSummaryRaw = skeleton("canal_venta_summary", "");
+    const vendorChannelSummary =
+        vendorChannelSummaryRaw !== ""
+            ? vendorChannelSummaryRaw
+            : skeleton("canal_venta", "-");
+    const vendorCompanyName = skeleton("concesionario", "-");
+    const vendorContactRaw = skeleton("concesionario_personal", "");
+    const vendorContactName =
+        vendorContactRaw !== "" ? vendorContactRaw : vendorCompanyName;
+    const vendorAvatarUrl =
+        data.avatar_vendedor ?? rowData.avatar_vendedor ?? "";
+    const vendorAvatarWrapper = vendorAvatarUrl
+        ? `<div class="vendor-card__avatar-wrapper"><img src="${escapeAttr(
+              vendorAvatarUrl
+          )}" alt="" class="vendor-card__avatar"></div>`
+        : `<div class="vendor-card__avatar-wrapper vendor-card__avatar-wrapper--icon"><span class="vendor-card__avatar vendor-card__avatar--icon">${userIcon}</span></div>`;
+    const vendorActionsHtml = renderFastActions(
+        data.telefono_vendedor ?? rowData.telefono_vendedor,
+        data.email_vendedor ?? rowData.email_vendedor,
+        skeletons
+    );
+    const vendorDetailsHref = escapeAttr(
+        data.vendedor_url ?? rowData.vendedor_url ?? "#"
+    );
     const fuelRaw = (
         data.combustible ?? rowData.combustible ?? ""
     )
@@ -1400,45 +1797,74 @@ const ADD_DOC_KEY = "add-document";
     const showChannelSection = isAdmin;
     const showActions = isAdmin;
 
+    const sinFinalButtons = [];
+    if (showActions || isProfesional) {
+        sinFinalButtons.push(
+            `<button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">` +
+                `<span class="guarantee-detail__btn-icon">${continueIcon}</span>` +
+                `<span class="guarantee-detail__btn-text">Continuar con la garantía</span>` +
+            `</button>`
+        );
+        if (showActions) {
+            sinFinalButtons.push(
+                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos">` +
+                    `<span class="guarantee-detail__btn-icon">${heartIcon}</span>` +
+                `</button>`
+            );
+            sinFinalButtons.push(
+                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir">` +
+                    `<span class="guarantee-detail__btn-icon">${shareIcon}</span>` +
+                `</button>`
+            );
+        }
+    }
+    const sinFinalActionsHtml = sinFinalButtons.length
+        ? `<div class="guarantee-detail__btn-container">${sinFinalButtons.join("")}</div>`
+        : "";
+
     if (isSinFinalizar) {
         return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${skeleton("matricula")}</h2>
                         ${hasGuaranteeInfo
-                            ? `<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
+                            ? `${planTitleHtml}
                         <div><p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
                                 <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p></div>`
                             : ""}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                ${(showActions || isProfesional) ? `<div class="guarantee-detail__btn-container">
-                        <button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">
-                                <span class="guarantee-detail__btn-icon">${continueIcon}</span>
-                                <span class="guarantee-detail__btn-text">Continuar con la garantía</span>
-                        </button>
-                        ${showActions ? `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>` : ``}
-                </div>` : ``}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
-                                <h3 class="detail__section-title">Canal de venta</h3>
+                                <h3 class="detail__section-title">
+                                        <span>Canal de venta</span>
+                                </h3>
                                 <div class="vendor-card">
-                                        ${data.avatar_vendedor ?? rowData.avatar_vendedor
-                                            ? `<img src="${data.avatar_vendedor ?? rowData.avatar_vendedor}" alt="" class="vendor-card__avatar">`
-                                            : `<span class="vendor-card__avatar vendor-card__avatar--icon">${userIcon}</span>`}
-                                        <div class="vendor-card__info">
-                                                <p class="vendor-card__name">${skeleton("concesionario", "-")}</p>
-                                                <p class="vendor-card__role">${skeleton("canal_venta", "-")}</p>
+                                        <div class="vendor-card__header">
+                                                <div class="vendor-card__primary">
+                                                        ${vendorAvatarWrapper}
+                                                        <div class="vendor-card__info">
+                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                                <p class="vendor-card__contact">${vendorContactName}</p>
+                                                        </div>
+                                                </div>
+                                                ${vendorChannelSummary ? `<span class="vendor-card__badge">${vendorChannelSummary}</span>` : ""}
+                                        </div>
+                                        ${vendorActionsHtml
+                                            ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
+                                            : ``}
+                                        <div class="vendor-card__footer">
+                                                <a href="${vendorDetailsHref}" class="vendor-card__cta vendor-card__cta--details">
+                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personIcon}</span>
+                                                        <span class="vendor-card__cta-label">Ver ficha del cliente</span>
+                                                </a>
+                                                <button type="button" class="vendor-card__cta vendor-card__cta--contact">
+                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personAddIcon}</span>
+                                                        <span class="vendor-card__cta-label">Añadir contacto</span>
+                                                </button>
                                         </div>
                                 </div>
-                                ${renderFastActions(
-                                        data.telefono_vendedor ?? rowData.telefono_vendedor,
-                                        data.email_vendedor ?? rowData.email_vendedor,
-                                        skeletons
-                                )}
-                                <a href="${data.vendedor_url ?? rowData.vendedor_url ?? '#'}" class="vendor-card__details-link">Ver detalles del cliente</a>
                         </section>`
                         : ""}
                 <section class="detail__section">
@@ -1489,32 +1915,49 @@ const ADD_DOC_KEY = "add-document";
                         )}`
                             : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
+                ${sinFinalActionsHtml}
         </div>`;
     }
 
-    const showConfirmBtn =
-        showActions &&
-        isPendientePago &&
-        !(isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado);
-    const actionsHtml = showActions
-        ? showConfirmBtn
-            ? `<div class="guarantee-detail__btn-container">
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="Confirmar pago">
-                                <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
-                                <span class="guarantee-detail__btn-text">${metodoPago.startsWith("domiciliacion") ? "Marcar garantía como pagada" : "Confirmar pago"}</span>
-                        </button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
-                </div>`
-            : `<div class="guarantee-detail__btn-container">
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
-                                <span class="guarantee-detail__btn-icon">${warningIcon}</span>
-                                <span class="guarantee-detail__btn-text">Abrir expediente</span>
-                        </button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
-                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
-                </div>`
-        : ``;
+    const adminPendingDomiciliacion =
+        isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado;
+    const shouldShowConfirmBtn = showActions && (isPendientePago || adminPendingDomiciliacion);
+    const confirmLabel =
+        adminPendingDomiciliacion || metodoPago.startsWith("domiciliacion")
+            ? "Confirmar domiciliación"
+            : "Confirmar pago";
+    const adminActionButtons = [];
+    if (showActions) {
+        if (shouldShowConfirmBtn) {
+            adminActionButtons.push(
+                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="${confirmLabel}">` +
+                    `<span class="guarantee-detail__btn-icon">${paymentIcon}</span>` +
+                    `<span class="guarantee-detail__btn-text">${confirmLabel}</span>` +
+                `</button>`
+            );
+        }
+        if (canShowReportBtn) {
+            adminActionButtons.push(
+                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">` +
+                    `<span class="guarantee-detail__btn-icon">${warningIcon}</span>` +
+                    `<span class="guarantee-detail__btn-text">Abrir expediente</span>` +
+                `</button>`
+            );
+        }
+        adminActionButtons.push(
+            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos">` +
+                `<span class="guarantee-detail__btn-icon">${heartIcon}</span>` +
+            `</button>`
+        );
+        adminActionButtons.push(
+            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir">` +
+                `<span class="guarantee-detail__btn-icon">${shareIcon}</span>` +
+            `</button>`
+        );
+    }
+    const actionsHtml = adminActionButtons.length
+        ? `<div class="guarantee-detail__btn-container">${adminActionButtons.join("")}</div>`
+        : "";
 
     const paymentHtml = (() => {
         if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
@@ -1526,10 +1969,6 @@ const ADD_DOC_KEY = "add-document";
                 "ES00 0000 0000 0000 0000 0000";
             return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note detail__payment-note--domiciliacion">Cobro pendiente por domiciliación bancaria.</p>
-                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm">
-                                        <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
-                                        <span class="guarantee-detail__btn-text">Marcar garantía como pagada</span>
-                                </button>
                                 <table class="detail__transfer-table">
                                         <tbody>
                                                 <tr data-copy-row><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
@@ -1569,7 +2008,7 @@ const ADD_DOC_KEY = "add-document";
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${skeleton("matricula")}</h2>
-                        <h3 class="guarantee-detail__plan-title">${planTitle}</h3>
+                        ${planTitleHtml}
                         <div>
                                 <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
                                 <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p>
@@ -1577,25 +2016,36 @@ const ADD_DOC_KEY = "add-document";
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
                 ${paymentHtml}
-                ${actionsHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
-                                <h3 class="detail__section-title">Canal de venta</h3>
+                                <h3 class="detail__section-title">
+                                        <span>Canal de venta</span>
+                                </h3>
                                 <div class="vendor-card">
-                                        ${data.avatar_vendedor ?? rowData.avatar_vendedor
-                                            ? `<img src="${data.avatar_vendedor ?? rowData.avatar_vendedor}" alt="" class="vendor-card__avatar">`
-                                            : `<span class="vendor-card__avatar vendor-card__avatar--icon">${userIcon}</span>`}
-                                        <div class="vendor-card__info">
-                                                <p class="vendor-card__name">${skeleton("concesionario", "-")}</p>
-                                                <p class="vendor-card__role">${skeleton("canal_venta", "-")}</p>
+                                        <div class="vendor-card__header">
+                                                <div class="vendor-card__primary">
+                                                        ${vendorAvatarWrapper}
+                                                        <div class="vendor-card__info">
+                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                                <p class="vendor-card__contact">${vendorContactName}</p>
+                                                        </div>
+                                                </div>
+                                                ${vendorChannelSummary ? `<span class="vendor-card__badge">${vendorChannelSummary}</span>` : ""}
+                                        </div>
+                                        ${vendorActionsHtml
+                                            ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
+                                            : ``}
+                                        <div class="vendor-card__footer">
+                                                <a href="${vendorDetailsHref}" class="vendor-card__cta vendor-card__cta--details">
+                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personIcon}</span>
+                                                        <span class="vendor-card__cta-label">Ver ficha del cliente</span>
+                                                </a>
+                                                <button type="button" class="vendor-card__cta vendor-card__cta--contact">
+                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personAddIcon}</span>
+                                                        <span class="vendor-card__cta-label">Añadir contacto</span>
+                                                </button>
                                         </div>
                                 </div>
-                                ${renderFastActions(
-                                        data.telefono_vendedor ?? rowData.telefono_vendedor,
-                                        data.email_vendedor ?? rowData.email_vendedor,
-                                        skeletons
-                                )}
-                                <a href="${data.vendedor_url ?? rowData.vendedor_url ?? '#'}" class="vendor-card__details-link">Ver detalles del cliente</a>
                         </section>`
                         : ""}
                 <section class="detail__section">
@@ -1643,6 +2093,7 @@ const ADD_DOC_KEY = "add-document";
                                 "email_comprador"
                         )}
                 </section>
+                ${actionsHtml}
         </div>
     `;
 }

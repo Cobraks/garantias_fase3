@@ -2,9 +2,10 @@
 "use strict";
 
 import {
-	getEffectiveUserRole,
-	getEffectiveProfessionalId,
-	ensureCurrentUserIdReady,
+        getEffectiveUserRole,
+        getEffectiveProfessionalId,
+        ensureCurrentUserIdReady,
+        isAdmin,
 } from "./form-role-utils.js";
 import { getRestRoot, getRestNonce } from "./config.js";
 import {
@@ -273,13 +274,15 @@ export async function updateOfertasList(
 
 	// Render
 	ul.innerHTML = "";
-	if (!visibles.length && !caducadas.length) {
-		const li = document.createElement("li");
-		li.className = "ofertas__item";
-		li.textContent = "Sin ofertas activas";
-		ul.appendChild(li);
-		return;
-	}
+        if (!visibles.length && !caducadas.length) {
+                if (isAdmin()) {
+                        const li = document.createElement("li");
+                        li.className = "ofertas__item ofertas__item--empty";
+                        li.textContent = "Sin ofertas activas";
+                        ul.appendChild(li);
+                }
+                return;
+        }
 
 	visibles.forEach((oferta) => {
 		const li = document.createElement("li");
