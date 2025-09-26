@@ -73,6 +73,30 @@ class EventCatalog
             'level'    => 'warning',
             'message'  => 'Se solicitó el restablecimiento de contraseña para {{context.user_email}}.',
         ],
+        'user.registration_notified' => [
+            'label'    => 'Nuevo registro notificado',
+            'category' => 'user',
+            'level'    => 'info',
+            'message'  => 'Se envió el aviso interno del registro de {{context.user_email}}.',
+        ],
+        'user.verification_sent' => [
+            'label'    => 'Código de verificación enviado',
+            'category' => 'user',
+            'level'    => 'info',
+            'message'  => 'Código de verificación enviado a {{context.user_email}}.',
+        ],
+        'user.verification_resent' => [
+            'label'    => 'Código de verificación reenviado',
+            'category' => 'user',
+            'level'    => 'warning',
+            'message'  => 'Se volvió a enviar el código de verificación a {{context.user_email}}.',
+        ],
+        'user.verification_verified' => [
+            'label'    => 'Correo verificado',
+            'category' => 'user',
+            'level'    => 'info',
+            'message'  => 'El usuario {{context.user_email}} verificó su correo electrónico.',
+        ],
         'auth.password_recovery.invalid_user' => [
             'label'    => 'Solicitud de restablecimiento sin cuenta',
             'category' => 'auth',
