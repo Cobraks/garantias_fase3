@@ -4,13 +4,22 @@
 
 use GarantiasOnline360VO\Svg;
 use GarantiasOnline360VO\Docs\ReclamationDocument;
+
+$show_example_button = false;
+
+if (function_exists('get_field')) {
+    $desarrollo_settings = get_field('desarrollo', 'option');
+    if (is_array($desarrollo_settings) && array_key_exists('boton_datos_ejemplo', $desarrollo_settings)) {
+        $show_example_button = (bool) $desarrollo_settings['boton_datos_ejemplo'];
+    }
+}
 ?>
 </div> <!-- /.main-grid -->
 </div> <!-- /.container -->
 <footer class="footer" style="view-transition-name: footer">
     <div class="footer__wrapper">
         <p class="footer__text"><?php echo '©'  . esc_html(date('Y')) . ' ' . '<span class="text--red">360</span>VO '; ?></p>
-        <?php if (! empty($is_add_guarantee)) : ?>
+        <?php if (! empty($is_add_guarantee) && $show_example_button) : ?>
             <button id="rellenar_ejemplo" class="btn"><?php esc_html_e('Rellenar datos ejemplo', 'garantias-online-360vo'); ?></button>
         <?php endif; ?>
         <nav class="footer__legal">
@@ -130,6 +139,9 @@ use GarantiasOnline360VO\Docs\ReclamationDocument;
                 warning: `<?php echo addslashes($icon_warning_html); ?>`,
                 pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
                 save: `<?php echo addslashes($icon_save_html); ?>`
+            },
+            features: {
+                exampleDataButton: <?php echo $show_example_button ? 'true' : 'false'; ?>
             },
             pages: {
                 misGarantias: "<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>",
