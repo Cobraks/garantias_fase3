@@ -10,7 +10,7 @@ import initSummary from "./modules/form-summary.js";
 import initSubmission from "./modules/form-submission.js";
 import initDynamicFields from "./modules/form-dynamic-fields.js";
 import initCalculations from "./modules/form-calculations.js";
-import initExampleData from "./modules/form-example-data.js";
+import { isExampleDataButtonEnabled } from "./modules/config.js";
 import initUserSelect from "./modules/form-user-select.js";
 import initContratacionSummary from "./modules/form-contratacion-summary.js";
 import initAutosave from "./modules/form-autosave.js";
@@ -43,7 +43,17 @@ document.addEventListener("DOMContentLoaded", () => {
         initCalculations();
 
         // 9. Botón rellenar datos de ejemplo
-        initExampleData();
+        if (isExampleDataButtonEnabled()) {
+                import("./modules/form-example-data.js")
+                        .then(({ default: initExampleData }) => {
+                                if (typeof initExampleData === "function") {
+                                        initExampleData();
+                                }
+                        })
+                        .catch((error) => {
+                                console.error("Error cargando el módulo de datos de ejemplo", error);
+                        });
+        }
 
         // 10. Lógica de envío/finalización
         initSubmission();
