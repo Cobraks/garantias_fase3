@@ -1821,3 +1821,289 @@ section.guarantees-list.sticky-active {
     to { transform: rotate(360deg); }
 }
 
+/* --------------------------------------------------
+   Clientes – vista admin
+---------------------------------------------------*/
+.clients-table__profile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.clients-table__avatar,
+.clients-table__initials {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.clients-table__avatar {
+    object-fit: cover;
+}
+
+.clients-table__client {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.clients-table__name {
+    font-weight: 600;
+    color: #111827;
+}
+
+.clients-table__company {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.clients-table__registered,
+.clients-table__meta {
+    font-size: 0.95rem;
+    color: #0f172a;
+}
+
+.clients-table__offers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.clients-table__offer-discount {
+    margin-left: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #2563eb;
+}
+
+.clients-table__empty {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.client-detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+}
+
+.client-detail__header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.client-detail__avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.35rem;
+    object-fit: cover;
+}
+
+.client-detail__avatar--initials {
+    font-size: 1.4rem;
+}
+
+.client-detail__identity {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.client-detail__title {
+    font-size: 1.35rem;
+    margin: 0;
+    color: #0f172a;
+}
+
+.client-detail__company {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.client-detail__meta-line {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #475569;
+}
+
+.client-detail__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--spacing-2);
+}
+
+.client-detail__stat {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: var(--spacing-2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.client-detail__stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+
+.client-detail__stat-value {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.client-detail__section {
+    border-top: 1px solid #e2e8f0;
+    padding-top: var(--spacing-3);
+}
+
+.client-detail__section:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+.client-detail__section-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--spacing-2);
+    color: #1f2937;
+}
+
+.client-detail__list {
+    display: grid;
+    gap: var(--spacing-1);
+    margin: 0;
+}
+
+.client-detail__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.client-detail__item dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin: 0;
+}
+
+.client-detail__item dd {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #0f172a;
+    word-break: break-word;
+}
+
+.client-detail__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.client-detail__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid #e2e8f0;
+    background: #f1f5f9;
+    font-size: 0.875rem;
+    color: #0f172a;
+}
+
+.client-detail__chip-extra {
+    font-weight: 600;
+    color: #2563eb;
+}
+
+.client-detail__chip-meta {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.client-detail__commercials {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.client-detail__commercial {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+    font-size: 0.95rem;
+    color: #0f172a;
+}
+
+.client-detail__commercial span {
+    font-size: 0.85rem;
+    color: #2563eb;
+}
+
+.client-detail__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.client-detail__status--success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.client-detail__status--warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.client-detail__status--info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.client-detail__empty {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+

@@ -11,7 +11,7 @@ class Rewrite
 
     public const SLUG                 = 'garantias-online';
     public const VAR_ENDPOINT         = 'go_endpoint';
-    public const RULES_VERSION        = 3;
+    public const RULES_VERSION        = 4;
     private const OPTION_RULES_VERSION = 'go_rewrite_rules_version';
 
     /** Hook setup */
@@ -58,6 +58,7 @@ class Rewrite
             '/registro/?$'            => 'register',
             '/averias/?$'             => 'averias',
             '/mi-cuenta/?$'           => 'account',
+            '/clientes/?$'            => 'clientes',
         ];
 
         foreach ($map as $regex => $endpoint) {
