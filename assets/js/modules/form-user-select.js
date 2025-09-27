@@ -47,19 +47,31 @@ function loadUsuariosPorRol(rol, selectId) {
 			defaultOption.selected = true;
 			select.appendChild(defaultOption);
 
-			if (Array.isArray(data) && data.length) {
+                        if (Array.isArray(data) && data.length) {
                                 data.forEach((user) => {
                                         const option = document.createElement("option");
                                         option.value = user.id;
                                         const companyName = user.company_name || (user.company && user.company.name) || "";
                                         const personalName = user.personal_name || user.display_name || "";
                                         const label = companyName || personalName || user.email || `Usuario #${user.id}`;
+                                        const companyType =
+                                                (user.company && user.company.type) || {};
+                                        const companyTypeLabel =
+                                                companyType.label || "";
+                                        const companyTypeValue =
+                                                companyType.value || "";
                                         option.textContent = label;
                                         option.dataset.companyName = companyName;
                                         option.dataset.personalName = personalName;
+                                        if (companyTypeLabel) {
+                                                option.dataset.companyTypeLabel = companyTypeLabel;
+                                        }
+                                        if (companyTypeValue) {
+                                                option.dataset.companyTypeValue = companyTypeValue;
+                                        }
                                         select.appendChild(option);
                                 });
-			}
+                        }
 
 			// Disparar evento para que otros listeners (como SEPA) reaccionen a valor inicial si ya hay uno
 			select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -71,13 +83,13 @@ function loadUsuariosPorRol(rol, selectId) {
 }
 
 function mostrarBloqueUsuarioYcargar(rol) {
-	const wrapUsuario = document.getElementById("wrap-select-usuario");
-	const usuarioSelect = document.getElementById("usuario-rol");
-	if (!wrapUsuario || !usuarioSelect) return;
-	wrapUsuario.style.display = "";
-	usuarioSelect.setAttribute("required", ""); // obligatorio
-	usuarioSelect.innerHTML = '<option value="">Cargando...</option>';
-	loadUsuariosPorRol(rol, "usuario-rol");
+        const wrapUsuario = document.getElementById("wrap-select-usuario");
+        const usuarioSelect = document.getElementById("usuario-rol");
+        if (!wrapUsuario || !usuarioSelect) return;
+        wrapUsuario.style.display = "";
+        usuarioSelect.setAttribute("required", ""); // obligatorio
+        usuarioSelect.innerHTML = '<option value="">Cargando...</option>';
+        loadUsuariosPorRol(rol, "usuario-rol");
 }
 
 /**
@@ -210,43 +222,37 @@ function setupSepaWatcher() {
 }
 
 function initUserSelect() {
-	const canalSelect = document.getElementById("canal-venta");
-	const usuarioSelect = document.getElementById("usuario-rol");
-	const wrapUsuario = document.getElementById("wrap-select-usuario");
+        const canalSelect = document.getElementById("canal-venta");
+        const usuarioSelect = document.getElementById("usuario-rol");
+        const wrapUsuario = document.getElementById("wrap-select-usuario");
         const userRole = getUserRole() || document.body.dataset.userRole || "";
 
-	// --- Para Admin: fuerza selección por defecto y carga usuarios al cargar ---
-	if (userRole === "admin" && canalSelect && usuarioSelect && wrapUsuario) {
-		// Si canal no tiene valor, selecciona 'profesional' por defecto
-		let initialValue = canalSelect.value;
-		let profesionalOption =
-			canalSelect.querySelector('option[value="profesional"]') ||
-			canalSelect.querySelector('option[value="go_profesional"]');
+        // --- Para Admin: mantener formulario sin selección por defecto y cargar usuarios bajo demanda ---
+        if (userRole === "admin" && canalSelect && usuarioSelect && wrapUsuario) {
+                const initialValue = canalSelect.value;
 
-		if (!initialValue && profesionalOption) {
-			profesionalOption.selected = true;
-			canalSelect.value = profesionalOption.value;
-			initialValue = profesionalOption.value;
-		}
-
-		// MOSTRAR SIEMPRE EL BLOQUE Y CARGAR USUARIOS AL INICIAR SI HAY VALOR
                 if (initialValue) {
                         mostrarBloqueUsuarioYcargar(initialValue);
                 } else {
                         wrapUsuario.style.display = "none";
+                        usuarioSelect.innerHTML = "";
+                        usuarioSelect.removeAttribute("required");
                 }
 
-		// Listener al cambiar canal
-		canalSelect.addEventListener("change", function () {
-			const rol = this.value;
-			if (!rol) {
-				wrapUsuario.style.display = "none";
-				if (usuarioSelect) usuarioSelect.innerHTML = "";
-				return;
-			}
-			mostrarBloqueUsuarioYcargar(rol);
-		});
-	}
+                // Listener al cambiar canal
+                canalSelect.addEventListener("change", function () {
+                        const rol = this.value;
+                        if (!rol) {
+                                wrapUsuario.style.display = "none";
+                                if (usuarioSelect) {
+                                        usuarioSelect.innerHTML = "";
+                                        usuarioSelect.removeAttribute("required");
+                                }
+                                return;
+                        }
+                        mostrarBloqueUsuarioYcargar(rol);
+                });
+        }
 
 	// --- Para Comerciales: carga usuarios asignados al cargar el form ---
 	const isComercial =
