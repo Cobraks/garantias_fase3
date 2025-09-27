@@ -66,6 +66,79 @@
             }).join(separator);
         }
 
+        function normalizeDateInput(value) {
+            if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                return value;
+            }
+
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                const normalized = value > 1e12 ? value : value * 1000;
+                const dateFromNumber = new Date(normalized);
+                if (!Number.isNaN(dateFromNumber.getTime())) {
+                    return dateFromNumber;
+                }
+            }
+
+            if (typeof value === 'string' && value.trim() !== '') {
+                const parsed = new Date(value);
+                if (!Number.isNaN(parsed.getTime())) {
+                    return parsed;
+                }
+            }
+
+            return null;
+        }
+
+        function formatShortDate(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+                return '';
+            }
+
+            return date.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit',
+            });
+        }
+
+        function getRegisteredInfo(registered) {
+            const info = typeof registered === 'object' && registered !== null ? registered : {};
+            const possibleStrings = [info.iso, info.raw, info.value, info.display];
+            const possibleNumbers = [info.timestamp, info.time, info.value];
+
+            let date = null;
+            let isoValue = typeof info.iso === 'string' ? info.iso : '';
+
+            for (let index = 0; index < possibleStrings.length && !date; index += 1) {
+                date = normalizeDateInput(possibleStrings[index]);
+            }
+
+            for (let index = 0; index < possibleNumbers.length && !date; index += 1) {
+                date = normalizeDateInput(possibleNumbers[index]);
+            }
+
+            let text = '';
+
+            if (date) {
+                text = formatShortDate(date);
+                if (!isoValue) {
+                    isoValue = date.toISOString();
+                }
+            }
+
+            if (!text) {
+                const fallback = typeof info.display === 'string' && info.display.trim() !== ''
+                    ? info.display.trim()
+                    : '';
+                text = fallback !== '' ? fallback : '—';
+            }
+
+            return {
+                text,
+                iso: isoValue,
+            };
+        }
+
         function getDisplayName(name) {
             if (!name || typeof name !== 'object') {
                 return '';
@@ -244,16 +317,18 @@
                 return `<span class="clients-table__empty">${escapeHtml(strings.offersEmpty || 'Sin ofertas activas')}</span>`;
             }
 
-            return offers
+            const items = offers
                 .map((offer) => {
                     const label = escapeHtml(offer.label || '');
                     const discount = typeof offer.discount === 'number' && offer.discount > 0
                         ? `<span class="clients-table__offer-discount">${Math.round(offer.discount)}%</span>`
                         : '';
 
-                    return `<span class="guarantees-list__badge">${label}${discount}</span>`;
+                    return `<li class="clients-table__offer-item"><span class="guarantees-list__badge">${label}${discount}</span></li>`;
                 })
                 .join('');
+
+            return `<ul class="clients-table__offer-list">${items}</ul>`;
         }
 
         function formatCommercialSummary(commercials) {
@@ -296,6 +371,7 @@
             const companyLine = name.company ? `<span class="clients-table__company">${escapeHtml(name.company)}</span>` : '';
             const offersHtml = formatOffers(item.offers);
             const commercialsText = formatCommercialSummary(commercials);
+            const registeredInfo = getRegisteredInfo(registered);
 
             const tr = document.createElement('tr');
             tr.className = 'guarantees-table__row';
@@ -314,13 +390,13 @@
                     </div>
                 </td>
                 <td data-label="${escapeHtml(strings.registered || 'Registrado desde')}" class="clients-table__registered">
-                    ${registered.display ? escapeHtml(registered.display) : '—'}
+                    ${escapeHtml(registeredInfo.text)}
                 </td>
                 <td data-label="${escapeHtml(strings.salesChannel || 'Canal de venta')}" class="clients-table__meta">
                     ${escapeHtml(salesChannel.label || '—')}
                 </td>
                 <td data-label="${escapeHtml(strings.offers || 'Ofertas activas')}" class="clients-table__offers">${offersHtml}</td>
-                <td data-label="${escapeHtml(strings.guarantees || 'Nº Garantías')}" class="clients-table__meta">
+                <td data-label="${escapeHtml(strings.guarantees || 'Nº Garantías')}" class="clients-table__meta clients-table__guarantees">
                     ${formatCount(guarantees.count)}
                 </td>
                 <td data-label="${escapeHtml(strings.paymentMethod || 'Método de pago')}" class="clients-table__meta">
@@ -343,13 +419,15 @@
         }
 
         function selectRow(row, item) {
-            if (selectedRow === row) {
-                return;
-            }
-
             const previousIndex = lastRowIndex;
             const nextIndex = parseInt(row.dataset.index || '0', 10);
             const direction = Number.isFinite(previousIndex) && nextIndex < previousIndex ? 'backward' : 'forward';
+
+            if (selectedRow === row) {
+                clearSelection();
+                showEmptyDetail('backward');
+                return;
+            }
 
             if (selectedRow) {
                 selectedRow.classList.remove('selected');
@@ -433,6 +511,7 @@
 
             const sepaVariant = sepa.variant ? ` client-detail__status--${escapeHtml(sepa.variant)}` : '';
             const sepaMessage = sepa.label || strings.sepaEmpty || 'Sin información del mandato';
+            const registeredInfo = getRegisteredInfo(registered);
 
             return `
                 <div class="client-detail">
@@ -441,7 +520,7 @@
                         <div class="client-detail__identity">
                             <h3 class="client-detail__title">${escapeHtml(displayName || strings.detailTitle || 'Detalles del cliente')}</h3>
                             ${companyLine}
-                            <p class="client-detail__meta-line">${escapeHtml(strings.registered || 'Registrado desde')}: <time datetime="${escapeAttribute(registered.iso || '')}">${escapeHtml(registered.display || '—')}</time></p>
+                            <p class="client-detail__meta-line">${escapeHtml(strings.registered || 'Registrado desde')}: <time datetime="${escapeAttribute(registeredInfo.iso || '')}">${escapeHtml(registeredInfo.text)}</time></p>
                         </div>
                     </header>
                     <div class="client-detail__stats">
@@ -546,10 +625,12 @@
         }
 
         function showEmptyDetail(direction = 'forward') {
+            const emptyTitle = strings.emptyTitle || strings.detailTitle || 'Detalles del cliente';
+            const emptyMessage = strings.selectPrompt || 'Selecciona un cliente para ver la información.';
             const content = `
                 <div class="guarantee-detail__empty">
-                    <h3 class="guarantee-detail__title">${escapeHtml(strings.detailTitle || 'Detalles del cliente')}</h3>
-                    <p>${escapeHtml(strings.selectPrompt || 'Selecciona un cliente para ver la información.')}</p>
+                    <h3 class="guarantee-detail__title">${escapeHtml(emptyTitle)}</h3>
+                    <p>${escapeHtml(emptyMessage)}</p>
                 </div>
             `;
             swapPanels(content, direction);

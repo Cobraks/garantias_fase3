@@ -1898,6 +1898,7 @@ section.guarantees-list.sticky-active {
 
 .clients-table__client-cell {
     min-width: 240px;
+    width: 240px;
 }
 
 .clients-table__offers .guarantees-list__badge {
@@ -1911,10 +1912,22 @@ section.guarantees-list.sticky-active {
 }
 
 .clients-table__offers {
+    min-width: 280px;
+}
+
+.clients-table__offer-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 0.35rem;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.clients-table__offer-item {
+    display: flex;
     align-items: center;
+    gap: 0.35rem;
 }
 
 .clients-table__offer-discount {
@@ -1922,6 +1935,11 @@ section.guarantees-list.sticky-active {
     font-size: 0.75rem;
     font-weight: 600;
     color: inherit;
+}
+
+.clients-table__guarantees {
+    min-width: 120px;
+    width: 120px;
 }
 
 .clients-table__empty {
