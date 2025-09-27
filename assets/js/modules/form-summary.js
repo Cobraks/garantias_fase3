@@ -59,9 +59,24 @@ function getSummaryText(fieldId) {
                 let canalText = "";
                 if (userRole === "admin") {
                         const canalSelect = document.getElementById("canal-venta");
-                        if (canalSelect && canalSelect.value) {
+                        const vendedorSelect = document.getElementById("usuario-rol");
+                        const canalValue = canalSelect ? canalSelect.value : "";
+                        if (canalSelect && canalValue) {
                                 const option = canalSelect.options[canalSelect.selectedIndex];
                                 canalText = option ? option.textContent : "";
+                                if (
+                                        (canalValue === "go_profesional" || canalValue === "profesional") &&
+                                        vendedorSelect &&
+                                        vendedorSelect.value
+                                ) {
+                                        const vendorOption =
+                                                vendedorSelect.options[vendedorSelect.selectedIndex];
+                                        const vendorTypeLabel =
+                                                vendorOption?.dataset?.companyTypeLabel?.trim();
+                                        if (vendorTypeLabel) {
+                                                canalText = `Profesional (${vendorTypeLabel})`;
+                                        }
+                                }
                         } else {
                                 canalText = "(no seleccionado)";
                         }
@@ -280,10 +295,25 @@ function updateSummaryHeader() {
 
                 // Canal de venta
                 const canalSelect = document.getElementById("canal-venta");
+                const canalValue = canalSelect ? canalSelect.value : "";
+                const vendedorSelect = document.getElementById("usuario-rol");
                 let canalText = "";
-                if (canalSelect && canalSelect.value) {
+                if (canalSelect && canalValue) {
                         const option = canalSelect.options[canalSelect.selectedIndex];
                         canalText = option ? option.textContent : "";
+                        if (
+                                (canalValue === "go_profesional" || canalValue === "profesional") &&
+                                vendedorSelect &&
+                                vendedorSelect.value
+                        ) {
+                                const vendorOption =
+                                        vendedorSelect.options[vendedorSelect.selectedIndex];
+                                const vendorTypeLabel =
+                                        vendorOption?.dataset?.companyTypeLabel?.trim();
+                                if (vendorTypeLabel) {
+                                        canalText = `Profesional (${vendorTypeLabel})`;
+                                }
+                        }
                 } else {
                         canalText = "(no seleccionado)";
                 }
