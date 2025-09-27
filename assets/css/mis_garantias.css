@@ -182,7 +182,7 @@ section.guarantees-list {
     z-index: 99;
     max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem);
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: auto;
     transition: max-height 300ms ease;
     border-radius: 1rem;
 
@@ -255,15 +255,15 @@ section.guarantees-list.sticky-active {
 /* Hover sobre fila: fondo ligero y transición suave */
 .guarantees-table__row:hover {
     background-color: rgba(196, 196, 196, 0.1);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    transform: none;
+    box-shadow: none;
 }
 
 /* Fila seleccionada: barra de acento y fondo suave */
 .guarantees-table__row.selected {
-   
+
     position: sticky;
-    top: 39px;
+    top: 26px;
     bottom: 0;
 }
 
@@ -286,11 +286,9 @@ section.guarantees-list.sticky-active {
     background-color 300ms ease,
   }
 
-.guarantees-table__row.selected td:first-child {
-    border-radius: 1rem 0 0 1rem;
-}
+.guarantees-table__row.selected td:first-child,
 .guarantees-table__row.selected td:last-child {
-   border-radius: 0 1rem 1rem 0;
+    border-radius: 0;
 }
 
 .guarantees-table__row.selected .vehiculo__mat {
@@ -353,9 +351,10 @@ section.guarantees-list.sticky-active {
     font-weight: 600;
     border-radius: .375rem;
     text-transform: uppercase;
-    color: #fff;
+    color: var(--neutral30);
+    background: #fff;
     white-space: nowrap;
-    border: solid 1px;
+    border: solid 1px currentColor;
 }
 .guarantees-list__badge--activada      { color: #16a34a; }
 .guarantees-list__badge--expirada      { color: #dc2626; }
@@ -507,8 +506,12 @@ section.guarantees-list.sticky-active {
     padding-inline: var(--spacing-3);
 }
 
+.detail__section--datos_cliente {
+    padding-bottom: var(--spacing-5);
+}
+
 .detail__section h3 {
-    margin-bottom: var(--spacing-1);
+    margin-bottom: var(--spacing-2);
     font-size: 1rem;
     color: grey;
     font-weight: normal;
@@ -528,6 +531,10 @@ section.guarantees-list.sticky-active {
 .detail__section li {
     margin-bottom: var(--spacing-1);
     font-size: .95rem;
+}
+
+.detail__section li strong {
+    font-weight: 500;
 }
 .detail__actions {
     display: flex;
@@ -1548,11 +1555,12 @@ section.guarantees-list.sticky-active {
     }
 
     .guarantees-table thead th {
-        padding: calc(var(--spacing-2) + 4px) var(--spacing-4);
+        padding: 0.25rem 2rem;
         text-align: left;
-        font-weight: 600;
+        font-weight: 700;
         font-size: 0.75rem;
-        color: var(--neutral40);
+        color: #fff;
+        background: #000;
         text-transform: uppercase;
         letter-spacing: 0.03em;
         border-bottom: 1px solid var(--border-color);
@@ -1592,8 +1600,8 @@ section.guarantees-list.sticky-active {
     .guarantees-table th,
     .guarantees-table td {
         border-right: none;
-        min-width: 140px;
-        max-width: 300px;
+        min-width: 120px;
+        max-width: none;
     }
 
     .column-resizers {
@@ -2084,6 +2092,42 @@ section.guarantees-list.sticky-active {
     font-size: 0.95rem;
     color: #0f172a;
     word-break: break-word;
+}
+
+.client-detail a {
+    color: #1d4ed8;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.client-detail a:hover,
+.client-detail a:focus-visible {
+    color: #1e3a8a;
+    text-decoration: underline;
+}
+
+.client-detail button {
+    appearance: none;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #111827, #1f2937);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.55rem 1.2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.client-detail button:hover,
+.client-detail button:focus-visible {
+    background: linear-gradient(135deg, #0f172a, #111827);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
 }
 
 .client-detail__chips {

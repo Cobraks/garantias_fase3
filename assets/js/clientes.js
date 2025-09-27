@@ -126,19 +126,17 @@
             }
 
             const cols = Array.from(colgroup.children);
-            const MIN_WIDTH = 150;
-            const MAX_WIDTH = 360;
-            const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+            const MIN_WIDTH = 120;
 
             let widths = headers.map((header, index) => {
                 const col = cols[index];
                 const defaultWidth = col ? parseInt(col.dataset.defaultWidth || '', 10) : NaN;
                 if (Number.isFinite(defaultWidth) && defaultWidth > 0) {
-                    return clamp(defaultWidth, MIN_WIDTH, MAX_WIDTH);
+                    return Math.max(defaultWidth, MIN_WIDTH);
                 }
 
                 const headerWidth = header.getBoundingClientRect().width;
-                return clamp(Math.round(headerWidth), MIN_WIDTH, MAX_WIDTH);
+                return Math.max(Math.round(headerWidth), MIN_WIDTH);
             });
 
             widths.forEach((width, index) => {
@@ -176,30 +174,15 @@
                     event.preventDefault();
                     const startX = event.pageX;
                     const startWidth = widths[index];
-                    const startNextWidth = widths[index + 1];
 
                     function onMove(moveEvent) {
                         const delta = moveEvent.pageX - startX;
-                        const total = startWidth + startNextWidth;
-                        let currentWidth = clamp(startWidth + delta, MIN_WIDTH, MAX_WIDTH);
-                        let nextWidth = total - currentWidth;
+                        const nextWidth = Math.max(startWidth + delta, MIN_WIDTH);
 
-                        if (nextWidth < MIN_WIDTH) {
-                            nextWidth = MIN_WIDTH;
-                            currentWidth = total - nextWidth;
-                        } else if (nextWidth > MAX_WIDTH) {
-                            nextWidth = MAX_WIDTH;
-                            currentWidth = total - nextWidth;
-                        }
-
-                        widths[index] = currentWidth;
-                        widths[index + 1] = nextWidth;
+                        widths[index] = nextWidth;
 
                         if (cols[index]) {
-                            cols[index].style.width = `${currentWidth}px`;
-                        }
-                        if (cols[index + 1]) {
-                            cols[index + 1].style.width = `${nextWidth}px`;
+                            cols[index].style.width = `${nextWidth}px`;
                         }
 
                         updateOverlay();
