@@ -216,21 +216,19 @@ function initUserSelect() {
         const userRole = getUserRole() || document.body.dataset.userRole || "";
 
 	// --- Para Admin: fuerza selección por defecto y carga usuarios al cargar ---
-	if (userRole === "admin" && canalSelect && usuarioSelect && wrapUsuario) {
-		// Si canal no tiene valor, selecciona 'profesional' por defecto
-		let initialValue = canalSelect.value;
-		let profesionalOption =
-			canalSelect.querySelector('option[value="profesional"]') ||
-			canalSelect.querySelector('option[value="go_profesional"]');
+        if (userRole === "admin" && canalSelect && usuarioSelect && wrapUsuario) {
+                // Si canal no tiene valor, selecciona 'profesional' por defecto
+                let initialValue = canalSelect.value;
+                const profesionalOption =
+                        canalSelect.querySelector('option[value="profesional"]') ||
+                        canalSelect.querySelector('option[value="go_profesional"]');
 
-		if (!initialValue && profesionalOption) {
-			profesionalOption.selected = true;
-			canalSelect.value = profesionalOption.value;
-			initialValue = profesionalOption.value;
-		}
-
-		// MOSTRAR SIEMPRE EL BLOQUE Y CARGAR USUARIOS AL INICIAR SI HAY VALOR
-                if (initialValue) {
+                if (!initialValue && profesionalOption) {
+                        profesionalOption.selected = true;
+                        canalSelect.value = profesionalOption.value;
+                        initialValue = profesionalOption.value;
+                        mostrarBloqueUsuarioYcargar(initialValue);
+                } else if (initialValue) {
                         mostrarBloqueUsuarioYcargar(initialValue);
                 } else {
                         wrapUsuario.style.display = "none";
