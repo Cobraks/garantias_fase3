@@ -4,14 +4,20 @@
 
 use GarantiasOnline360VO\Svg;
 use GarantiasOnline360VO\Docs\ReclamationDocument;
+use GarantiasOnline360VO\Support\FeatureFlags;
 use GarantiasOnline360VO\Support\UserProfileResolver;
+
+$example_data_enabled = false;
+if (! empty($is_add_guarantee)) {
+    $example_data_enabled = FeatureFlags::is_example_data_enabled();
+}
 ?>
 </div> <!-- /.main-grid -->
 </div> <!-- /.container -->
 <footer class="footer" style="view-transition-name: footer">
     <div class="footer__wrapper">
         <p class="footer__text"><?php echo '©'  . esc_html(date('Y')) . ' ' . '<span class="text--red">360</span>VO '; ?></p>
-        <?php if (! empty($is_add_guarantee)) : ?>
+        <?php if (! empty($is_add_guarantee) && $example_data_enabled) : ?>
             <button id="rellenar_ejemplo" class="btn"><?php esc_html_e('Rellenar datos ejemplo', 'garantias-online-360vo'); ?></button>
         <?php endif; ?>
         <nav class="footer__legal">
@@ -72,6 +78,9 @@ use GarantiasOnline360VO\Support\UserProfileResolver;
             },
             documents: {
                 reclamacion: "<?php echo esc_url($reclamation_url); ?>"
+            },
+            features: {
+                exampleData: <?php echo $example_data_enabled ? 'true' : 'false'; ?>
             }
         };
     </script>
@@ -147,6 +156,9 @@ use GarantiasOnline360VO\Support\UserProfileResolver;
             },
             documents: {
                 reclamacion: "<?php echo esc_url($reclamation_url); ?>"
+            },
+            features: {
+                exampleData: <?php echo $example_data_enabled ? 'true' : 'false'; ?>
             }
         };
     </script>
