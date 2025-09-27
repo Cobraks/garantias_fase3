@@ -117,7 +117,15 @@ class ClientRestController
         $account   = AccountViewModel::from_user($user);
         $user_data = $account['user'] ?? [];
 
-        $personal_name = self::clean_text($user_data['name'] ?? $user->display_name);
+        $raw_personal_name = self::clean_text($user_data['name'] ?? $user->display_name);
+        $first_name       = self::clean_text($user_data['first_name'] ?? '');
+        $last_name        = self::clean_text($user_data['last_name'] ?? '');
+        $full_name_meta   = self::clean_text($user_data['full_name'] ?? '');
+        $full_name        = trim($first_name . ' ' . $last_name);
+        if ($full_name === '') {
+            $full_name = $full_name_meta;
+        }
+        $personal_name = $full_name !== '' ? $full_name : $raw_personal_name;
         $company_name  = self::clean_text($user_data['company']['name'] ?? '');
         $registered    = self::format_registered($user_data['registered'] ?? $user->user_registered);
 
@@ -163,6 +171,9 @@ class ClientRestController
             ],
             'name'       => [
                 'personal' => $personal_name,
+                'first'    => $first_name,
+                'last'     => $last_name,
+                'full'     => $full_name,
                 'company'  => $company_name,
             ],
             'registered'   => $registered,
@@ -267,11 +278,20 @@ class ClientRestController
                 continue;
             }
 
+            $first_name = self::clean_text($commercial['first_name'] ?? '');
+            $last_name  = self::clean_text($commercial['last_name'] ?? '');
+            $full_name  = self::clean_text($commercial['full_name'] ?? '');
+            $composed   = trim($first_name . ' ' . $last_name);
+            $display    = $full_name !== '' ? $full_name : ($composed !== '' ? $composed : self::clean_text($commercial['name'] ?? ''));
+
             $formatted[] = [
-                'id'    => isset($commercial['id']) ? (int) $commercial['id'] : 0,
-                'name'  => self::clean_text($commercial['name'] ?? ($commercial['full_name'] ?? '')),
-                'email' => sanitize_email($commercial['email'] ?? ''),
-                'phone' => self::clean_text($commercial['phone'] ?? ''),
+                'id'         => isset($commercial['id']) ? (int) $commercial['id'] : 0,
+                'name'       => $display,
+                'full_name'  => $full_name !== '' ? $full_name : $display,
+                'first_name' => $first_name,
+                'last_name'  => $last_name,
+                'email'      => sanitize_email($commercial['email'] ?? ''),
+                'phone'      => self::clean_text($commercial['phone'] ?? ''),
             ];
         }
 

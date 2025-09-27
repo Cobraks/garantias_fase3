@@ -1824,12 +1824,6 @@ section.guarantees-list.sticky-active {
 /* --------------------------------------------------
    Clientes – vista admin
 ---------------------------------------------------*/
-.clients-table__profile {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
 .clients-table__avatar,
 .clients-table__initials {
     width: 44px;
@@ -1843,6 +1837,14 @@ section.guarantees-list.sticky-active {
     font-weight: 600;
     font-size: 0.9rem;
     text-transform: uppercase;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.clients-table__avatar-wrapper {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .clients-table__avatar {
@@ -1851,24 +1853,53 @@ section.guarantees-list.sticky-active {
 
 .clients-table__client {
     display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.clients-table__identity {
+    display: flex;
     flex-direction: column;
-    gap: 0.125rem;
+    gap: 0.2rem;
+    min-width: 0;
 }
 
 .clients-table__name {
     font-weight: 600;
     color: #111827;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .clients-table__company {
     font-size: 0.85rem;
     color: #64748b;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .clients-table__registered,
 .clients-table__meta {
     font-size: 0.95rem;
     color: #0f172a;
+}
+
+.clients-table__client-cell {
+    min-width: 240px;
+}
+
+.clients-table__offers .guarantees-list__badge {
+    color: #1d4ed8;
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+.clients-table__offer-discount {
+    color: inherit;
 }
 
 .clients-table__offers {
@@ -1882,7 +1913,7 @@ section.guarantees-list.sticky-active {
     margin-left: 0.35rem;
     font-size: 0.75rem;
     font-weight: 600;
-    color: #2563eb;
+    color: inherit;
 }
 
 .clients-table__empty {
@@ -1890,10 +1921,46 @@ section.guarantees-list.sticky-active {
     font-size: 0.9rem;
 }
 
+.guarantees-table__row.selected .clients-table__name,
+.guarantees-table__row.selected .clients-table__registered,
+.guarantees-table__row.selected .clients-table__meta {
+    color: #fff;
+}
+
+.guarantees-table__row.selected .clients-table__company {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.guarantees-table__row.selected .clients-table__avatar,
+.guarantees-table__row.selected .clients-table__initials {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
+}
+
+.guarantees-table__row.selected .clients-table__offers .guarantees-list__badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.clients-page .guarantees-list__filters {
+    justify-content: flex-start;
+}
+
+.clients-page .guarantees-list__search-container {
+    flex: 0 1 320px;
+    max-width: 320px;
+    width: 100%;
+}
+
 .client-detail {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-4);
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: var(--spacing-4);
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
 }
 
 .client-detail__header {

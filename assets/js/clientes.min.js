@@ -66,6 +66,176 @@
             }).join(separator);
         }
 
+        function getDisplayName(name) {
+            if (!name || typeof name !== 'object') {
+                return '';
+            }
+
+            const first = typeof name.first === 'string' ? name.first.trim() : '';
+            const last = typeof name.last === 'string' ? name.last.trim() : '';
+            const full = typeof name.full === 'string' ? name.full.trim() : '';
+            const personal = typeof name.personal === 'string' ? name.personal.trim() : '';
+            const composed = [first, last].filter(Boolean).join(' ').trim();
+
+            return full || composed || personal || '';
+        }
+
+        function getCommercialDisplay(commercial) {
+            if (!commercial || typeof commercial !== 'object') {
+                return '';
+            }
+
+            const first = typeof commercial.first_name === 'string' ? commercial.first_name.trim() : '';
+            const last = typeof commercial.last_name === 'string' ? commercial.last_name.trim() : '';
+            const full = typeof commercial.full_name === 'string' ? commercial.full_name.trim() : '';
+            const name = typeof commercial.name === 'string' ? commercial.name.trim() : '';
+            const composed = [first, last].filter(Boolean).join(' ').trim();
+
+            return full || composed || name;
+        }
+
+        function initResizableColumns(table) {
+            if (!table || table.dataset.resizableInitialized === 'true') {
+                return;
+            }
+
+            if (window.innerWidth < 1024) {
+                return;
+            }
+
+            const wrapper = table.parentElement;
+            if (!wrapper || !table.tHead || !table.tBodies.length) {
+                return;
+            }
+
+            const headers = Array.from(table.tHead.querySelectorAll('th'));
+            if (!headers.length) {
+                return;
+            }
+
+            wrapper.style.position = wrapper.style.position || 'relative';
+            table.style.tableLayout = 'fixed';
+
+            let colgroup = table.querySelector('colgroup');
+            if (!colgroup) {
+                colgroup = document.createElement('colgroup');
+                headers.forEach(() => {
+                    colgroup.appendChild(document.createElement('col'));
+                });
+                table.insertBefore(colgroup, table.firstChild);
+            }
+
+            const cols = Array.from(colgroup.children);
+            const MIN_WIDTH = 150;
+            const MAX_WIDTH = 360;
+            const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+            let widths = headers.map((header, index) => {
+                const col = cols[index];
+                const defaultWidth = col ? parseInt(col.dataset.defaultWidth || '', 10) : NaN;
+                if (Number.isFinite(defaultWidth) && defaultWidth > 0) {
+                    return clamp(defaultWidth, MIN_WIDTH, MAX_WIDTH);
+                }
+
+                const headerWidth = header.getBoundingClientRect().width;
+                return clamp(Math.round(headerWidth), MIN_WIDTH, MAX_WIDTH);
+            });
+
+            widths.forEach((width, index) => {
+                if (cols[index]) {
+                    cols[index].style.width = `${width}px`;
+                }
+            });
+
+            const overlay = document.createElement('div');
+            overlay.className = 'column-resizers';
+            wrapper.appendChild(overlay);
+
+            const handles = [];
+
+            function updateOverlay() {
+                overlay.style.width = `${table.offsetWidth}px`;
+                overlay.style.height = `${table.offsetHeight}px`;
+                overlay.style.top = `${table.offsetTop}px`;
+                overlay.style.left = `${table.offsetLeft}px`;
+
+                handles.forEach((handle, index) => {
+                    const header = headers[index];
+                    if (!header) {
+                        return;
+                    }
+
+                    const left = header.offsetLeft + header.offsetWidth;
+                    handle.style.left = `${left - 4}px`;
+                    handle.style.height = `${table.offsetHeight}px`;
+                });
+            }
+
+            function bindHandle(handle, index) {
+                handle.addEventListener('mousedown', (event) => {
+                    event.preventDefault();
+                    const startX = event.pageX;
+                    const startWidth = widths[index];
+                    const startNextWidth = widths[index + 1];
+
+                    function onMove(moveEvent) {
+                        const delta = moveEvent.pageX - startX;
+                        const total = startWidth + startNextWidth;
+                        let currentWidth = clamp(startWidth + delta, MIN_WIDTH, MAX_WIDTH);
+                        let nextWidth = total - currentWidth;
+
+                        if (nextWidth < MIN_WIDTH) {
+                            nextWidth = MIN_WIDTH;
+                            currentWidth = total - nextWidth;
+                        } else if (nextWidth > MAX_WIDTH) {
+                            nextWidth = MAX_WIDTH;
+                            currentWidth = total - nextWidth;
+                        }
+
+                        widths[index] = currentWidth;
+                        widths[index + 1] = nextWidth;
+
+                        if (cols[index]) {
+                            cols[index].style.width = `${currentWidth}px`;
+                        }
+                        if (cols[index + 1]) {
+                            cols[index + 1].style.width = `${nextWidth}px`;
+                        }
+
+                        updateOverlay();
+                    }
+
+                    function onUp() {
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                    }
+
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                });
+            }
+
+            for (let i = 0; i < widths.length - 1; i += 1) {
+                const handle = document.createElement('span');
+                handle.className = 'column-resizer';
+                overlay.appendChild(handle);
+                handles.push(handle);
+                bindHandle(handle, i);
+            }
+
+            const mutationObserver = new MutationObserver(() => {
+                updateOverlay();
+            });
+            mutationObserver.observe(table.tBodies[0], { childList: true });
+
+            window.addEventListener('resize', updateOverlay);
+
+            table.__goUpdateColumnOverlay = updateOverlay;
+            table.dataset.resizableInitialized = 'true';
+
+            requestAnimationFrame(updateOverlay);
+        }
+
         function setSpinner(visible) {
             if (!spinner) {
                 return;
@@ -109,7 +279,8 @@
             }
 
             return commercials
-                .map((commercial) => escapeHtml(commercial.name || ''))
+                .map((commercial) => getCommercialDisplay(commercial))
+                .map((display) => escapeHtml(display || ''))
                 .filter((name) => name !== '')
                 .join(', ');
         }
@@ -131,7 +302,12 @@
             const payment = item.payment || {};
             const commercials = item.commercials || [];
 
-            const avatar = profile.avatar ? `<img src="${escapeAttribute(profile.avatar)}" alt="${escapeAttribute(name.personal || name.company || '')}" class="clients-table__avatar">`
+            const displayName = getDisplayName(name);
+            const safeName = displayName || name.company || '';
+            const fallbackName = safeName !== '' ? safeName : '—';
+            const avatarAlt = safeName !== '' ? safeName : (strings.client || 'Cliente');
+            const avatar = profile.avatar
+                ? `<img src="${escapeAttribute(profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="clients-table__avatar">`
                 : `<span class="clients-table__initials">${escapeHtml(profile.initials || '')}</span>`;
 
             const companyLine = name.company ? `<span class="clients-table__company">${escapeHtml(name.company)}</span>` : '';
@@ -145,13 +321,13 @@
             tr.dataset.index = String(tbody.children.length);
 
             tr.innerHTML = `
-                <td data-label="${escapeHtml(strings.profile || 'Perfil')}">
-                    <div class="clients-table__profile">${avatar}</div>
-                </td>
-                <td data-label="${escapeHtml(strings.client || 'Cliente')}">
+                <td data-label="${escapeHtml(strings.client || 'Cliente')}" class="clients-table__client-cell">
                     <div class="clients-table__client">
-                        <span class="clients-table__name">${escapeHtml(name.personal || name.company || '')}</span>
-                        ${companyLine}
+                        <div class="clients-table__avatar-wrapper">${avatar}</div>
+                        <div class="clients-table__identity">
+                            <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
+                            ${companyLine}
+                        </div>
                     </div>
                 </td>
                 <td data-label="${escapeHtml(strings.registered || 'Registrado desde')}" class="clients-table__registered">
@@ -161,13 +337,13 @@
                     ${escapeHtml(salesChannel.label || '—')}
                 </td>
                 <td data-label="${escapeHtml(strings.offers || 'Ofertas activas')}" class="clients-table__offers">${offersHtml}</td>
-                <td data-label="${escapeHtml(strings.guarantees || 'Garantías contratadas')}" class="clients-table__meta">
+                <td data-label="${escapeHtml(strings.guarantees || 'Nº Garantías')}" class="clients-table__meta">
                     ${formatCount(guarantees.count)}
                 </td>
                 <td data-label="${escapeHtml(strings.paymentMethod || 'Método de pago')}" class="clients-table__meta">
                     ${escapeHtml(payment.label || '—')}
                 </td>
-                <td data-label="${escapeHtml(strings.commercials || 'Comercial asignado')}" class="clients-table__meta">
+                <td data-label="${escapeHtml(strings.commercials || 'Comercial')}" class="clients-table__meta">
                     ${escapeHtml(commercialsText || '—')}
                 </td>
             `;
@@ -238,11 +414,11 @@
             }
 
             const items = commercials.map((commercial) => {
-                const name = escapeHtml(commercial.name || '');
+                const display = escapeHtml(getCommercialDisplay(commercial) || '');
                 const email = commercial.email ? `<span>${formatLink('mailto', commercial.email)}</span>` : '';
                 const phone = commercial.phone ? `<span>${formatLink('tel', commercial.phone)}</span>` : '';
 
-                return `<li class="client-detail__commercial">${name}${email}${phone}</li>`;
+                return `<li class="client-detail__commercial">${display}${email}${phone}</li>`;
             });
 
             return `<ul class="client-detail__commercials">${items.join('')}</ul>`;
@@ -259,8 +435,10 @@
             const guarantees = item.guarantees || {};
             const sepa = item.sepa || {};
 
+            const displayName = getDisplayName(name);
+            const avatarAlt = displayName || name.company || '';
             const avatar = item.profile && item.profile.avatar
-                ? `<img src="${escapeAttribute(item.profile.avatar)}" alt="${escapeAttribute(name.personal || name.company || '')}" class="client-detail__avatar">`
+                ? `<img src="${escapeAttribute(item.profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="client-detail__avatar">`
                 : `<span class="client-detail__avatar client-detail__avatar--initials">${escapeHtml(item.profile?.initials || '')}</span>`;
 
             const companyLine = name.company ? `<p class="client-detail__company">${escapeHtml(name.company)}</p>` : '';
@@ -278,14 +456,14 @@
                     <header class="client-detail__header">
                         ${avatar}
                         <div class="client-detail__identity">
-                            <h3 class="client-detail__title">${escapeHtml(name.personal || strings.detailTitle || 'Detalles del cliente')}</h3>
+                            <h3 class="client-detail__title">${escapeHtml(displayName || strings.detailTitle || 'Detalles del cliente')}</h3>
                             ${companyLine}
                             <p class="client-detail__meta-line">${escapeHtml(strings.registered || 'Registrado desde')}: <time datetime="${escapeAttribute(registered.iso || '')}">${escapeHtml(registered.display || '—')}</time></p>
                         </div>
                     </header>
                     <div class="client-detail__stats">
                         <div class="client-detail__stat">
-                            <span class="client-detail__stat-label">${escapeHtml(strings.guarantees || 'Garantías contratadas')}</span>
+                            <span class="client-detail__stat-label">${escapeHtml(strings.guarantees || 'Nº Garantías')}</span>
                             <span class="client-detail__stat-value">${formatCount(guarantees.count)}</span>
                         </div>
                         <div class="client-detail__stat">
@@ -336,7 +514,7 @@
                         ${renderOffersList(item.offers)}
                     </section>
                     <section class="client-detail__section">
-                        <h4 class="client-detail__section-title">${escapeHtml(strings.commercials || 'Comercial asignado')}</h4>
+                        <h4 class="client-detail__section-title">${escapeHtml(strings.commercials || 'Comercial')}</h4>
                         ${renderCommercialsList(item.commercials)}
                     </section>
                     <section class="client-detail__section">
@@ -446,8 +624,11 @@
                 if (!append && items.length === 0) {
                     const emptyRow = document.createElement('tr');
                     emptyRow.className = 'guarantees-table__row guarantees-table__row--empty';
-                    emptyRow.innerHTML = `<td colspan="8">${escapeHtml(strings.noResults || 'No se han encontrado clientes con los filtros actuales.')}</td>`;
+                    emptyRow.innerHTML = `<td colspan="7">${escapeHtml(strings.noResults || 'No se han encontrado clientes con los filtros actuales.')}</td>`;
                     tbody.appendChild(emptyRow);
+                    if (typeof table.__goUpdateColumnOverlay === 'function') {
+                        table.__goUpdateColumnOverlay();
+                    }
                     return;
                 }
 
@@ -457,6 +638,10 @@
                     tbody.appendChild(row);
                 });
 
+                if (typeof table.__goUpdateColumnOverlay === 'function') {
+                    table.__goUpdateColumnOverlay();
+                }
+
                 if (append && selectedRow) {
                     selectedRow.focus({ preventScroll: true });
                 }
@@ -465,8 +650,11 @@
                 if (!append) {
                     const errorRow = document.createElement('tr');
                     errorRow.className = 'guarantees-table__row guarantees-table__row--empty';
-                    errorRow.innerHTML = `<td colspan="8">${escapeHtml(strings.error || 'No se ha podido cargar la información de clientes.')}</td>`;
+                    errorRow.innerHTML = `<td colspan="7">${escapeHtml(strings.error || 'No se ha podido cargar la información de clientes.')}</td>`;
                     tbody.appendChild(errorRow);
+                    if (typeof table.__goUpdateColumnOverlay === 'function') {
+                        table.__goUpdateColumnOverlay();
+                    }
                 }
             } finally {
                 state.isLoading = false;
@@ -528,6 +716,7 @@
 
         updateCloseIcon();
         setSpinner(false);
+        initResizableColumns(table);
         showEmptyDetail();
         loadPage(1, false);
     });

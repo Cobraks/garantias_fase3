@@ -118,13 +118,13 @@ if (! empty($is_add_guarantee)) {
             'taxId'             => __('CIF/NIF', 'garantias-online-360vo'),
             'address'           => __('Dirección', 'garantias-online-360vo'),
             'offers'            => __('Ofertas activas', 'garantias-online-360vo'),
-            'commercials'       => __('Comercial asignado', 'garantias-online-360vo'),
+            'commercials'       => __('Comercial', 'garantias-online-360vo'),
             'sepaStatus'        => __('Estado SEPA', 'garantias-online-360vo'),
             'sepaEmpty'         => __('Sin información del mandato', 'garantias-online-360vo'),
             'paymentMethod'     => __('Método de pago', 'garantias-online-360vo'),
             'salesChannel'      => __('Canal de venta', 'garantias-online-360vo'),
             'registered'        => __('Registrado desde', 'garantias-online-360vo'),
-            'guarantees'        => __('Garantías contratadas', 'garantias-online-360vo'),
+            'guarantees'        => __('Nº Garantías', 'garantias-online-360vo'),
         ],
     ];
     ?>
