@@ -64,3 +64,7 @@ export function getDocumentUrl(key) {
         const value = docs[key];
         return typeof value === "string" ? value : "";
 }
+
+export function isExampleDataButtonEnabled() {
+        return Boolean(getRawConfig().features?.exampleDataButton);
+}
