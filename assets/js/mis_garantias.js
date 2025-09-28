@@ -1205,7 +1205,15 @@ const ADD_DOC_KEY = "add-document";
                         return null;
                 }
 
-                function getTransferDeadlineMillis(detailData, rowData) {
+                function isSameCalendarDay(a, b) {
+                        return (
+                                a.getFullYear() === b.getFullYear() &&
+                                a.getMonth() === b.getMonth() &&
+                                a.getDate() === b.getDate()
+                        );
+                }
+
+                function getTransferDeadlineMillis(detailData, rowData, now = Date.now()) {
                         const candidates = [
                                 detailData?.desde_raw,
                                 rowData?.desde_raw,
@@ -1215,6 +1223,10 @@ const ADD_DOC_KEY = "add-document";
                         for (const candidate of candidates) {
                                 const date = parseDateTime(candidate);
                                 if (date) {
+                                        const nowDate = new Date(now);
+                                        if (isSameCalendarDay(date, nowDate)) {
+                                                return now + 48 * 60 * 60 * 1000;
+                                        }
                                         return date.getTime() + 48 * 60 * 60 * 1000;
                                 }
                         }
@@ -1283,6 +1295,13 @@ const ADD_DOC_KEY = "add-document";
                         const applyUpdate = () => {
                                 const info = getCountdownInfo(deadlineMs);
                                 countdownEl.textContent = info.label;
+                                if (noteEl) {
+                                        if (info.expired) {
+                                                noteEl.classList.add("detail__payment-note--expired");
+                                        } else {
+                                                noteEl.classList.remove("detail__payment-note--expired");
+                                        }
+                                }
                                 if (activeNote && expiredNote) {
                                         if (info.expired) {
                                                 activeNote.hidden = true;

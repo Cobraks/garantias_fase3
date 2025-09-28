@@ -1333,6 +1333,11 @@ section.guarantees-list.sticky-active {
     border-radius: 6px;
     font-weight: 500;
 }
+.detail__payment-note--expired {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-left-color: #ef4444;
+}
 .detail__payment-note [data-note-expired] {
     color: #d93025;
     font-weight: 600;
