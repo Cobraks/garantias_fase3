@@ -43,13 +43,16 @@ if (! empty($is_add_guarantee)) {
         $current_user = wp_get_current_user();
     }
     $is_admin = user_can($current_user, 'manage_options');
-    $is_comercial = in_array('go_comercial', (array) $current_user->roles, true);
+    $commercial_roles = ['go_comercial', 'go_director_comercial', 'go_garantias'];
+    $is_comercial = (bool) array_intersect($commercial_roles, (array) $current_user->roles);
     if ($is_admin) {
         $js_user_role = 'admin';
     } elseif (in_array('go_profesional', (array) $current_user->roles, true)) {
         $js_user_role = 'go_profesional';
     } elseif (in_array('go_garantias', (array) $current_user->roles, true)) {
         $js_user_role = 'go_garantias';
+    } elseif (in_array('go_director_comercial', (array) $current_user->roles, true)) {
+        $js_user_role = 'go_director_comercial';
     } elseif ($is_comercial) {
         $js_user_role = 'go_comercial';
     } else {
@@ -141,7 +144,8 @@ if (! empty($is_add_guarantee)) {
         $current_user = wp_get_current_user();
     }
     $is_admin = $is_admin ?? user_can($current_user, 'manage_options');
-    $is_comercial = $is_comercial ?? in_array('go_comercial', (array)$current_user->roles, true);
+    $commercial_roles = $commercial_roles ?? ['go_comercial', 'go_director_comercial', 'go_garantias'];
+    $is_comercial = $is_comercial ?? (bool) array_intersect($commercial_roles, (array)$current_user->roles);
     $icon_percent_html = Svg::icon('percent');
     $icon_warning_html = Svg::icon('warning');
     $icon_check_html = Svg::icon('check');
@@ -175,7 +179,8 @@ if (! empty($is_add_guarantee)) {
             user: {
                 role: "<?php
                         $is_admin = $is_admin ?? user_can($current_user, 'manage_options');
-                        $is_comercial = $is_comercial ?? in_array('go_comercial', (array)$current_user->roles, true);
+                        $commercial_roles = $commercial_roles ?? ['go_comercial', 'go_director_comercial', 'go_garantias'];
+                        $is_comercial = $is_comercial ?? (bool) array_intersect($commercial_roles, (array)$current_user->roles);
                         if ($is_admin) {
                             echo 'admin';
                         } elseif (in_array('go_profesional', (array)$current_user->roles, true)) {

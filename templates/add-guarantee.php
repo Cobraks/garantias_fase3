@@ -14,7 +14,8 @@ use GarantiasOnline360VO\Svg;
 // Solo muestra a admin/comercial, el resto se maneja por backend o autoselección en JS
 $current_user = wp_get_current_user();
 $is_admin = user_can($current_user, 'manage_options');
-$is_comercial = in_array('go_comercial', $current_user->roles, true);
+$commercial_roles = ['go_comercial', 'go_director_comercial', 'go_garantias'];
+$is_comercial = (bool) array_intersect($commercial_roles, (array) $current_user->roles);
 // <- REVISAR
 
 error_log('[add-guarantee] template loaded for user ' . $current_user->ID);
