@@ -2203,19 +2203,24 @@ const ADD_DOC_KEY = "add-document";
         : "";
 
     const transferDeadlineMs = getTransferDeadlineMillis(data, rowData);
-    const vendorCompanyData =
-        data && typeof data.vendor_company === "object" && data.vendor_company !== null
-            ? data.vendor_company
-            : null;
-    const normalizeName = (value) => (typeof value === "string" ? value.trim() : "");
-    const vendorTradeName = normalizeName(vendorCompanyData?.trade_name);
-    const vendorCompanyLabel = normalizeName(vendorCompanyData?.name);
-    const vendorFallbackName = vendorCompanyName !== "-" ? vendorCompanyName : "";
-    const vendorLegalName = normalizeName(vendorCompanyData?.legal_name);
-    const vendorDisplayName =
-        vendorTradeName || vendorCompanyLabel || normalizeName(vendorFallbackName) || vendorLegalName;
-    const vendorDisplayHtml = vendorDisplayName ? `<strong>${escapeHtml(vendorDisplayName)}</strong>` : "";
-    const adminEntityHtml = vendorDisplayHtml || "El cliente";
+    const { vendorDisplayHtml, adminEntityHtml } = (() => {
+        const vendorCompanyData =
+            data && typeof data.vendor_company === "object" && data.vendor_company !== null
+                ? data.vendor_company
+                : null;
+        const normalizeName = (value) => (typeof value === "string" ? value.trim() : "");
+        const vendorTradeName = normalizeName(vendorCompanyData?.trade_name);
+        const vendorCompanyLabel = normalizeName(vendorCompanyData?.name);
+        const vendorFallbackName = vendorCompanyName !== "-" ? vendorCompanyName : "";
+        const vendorLegalName = normalizeName(vendorCompanyData?.legal_name);
+        const vendorDisplayName =
+            vendorTradeName || vendorCompanyLabel || normalizeName(vendorFallbackName) || vendorLegalName;
+        const vendorDisplayHtml = vendorDisplayName ? `<strong>${escapeHtml(vendorDisplayName)}</strong>` : "";
+        return {
+            vendorDisplayHtml,
+            adminEntityHtml: vendorDisplayHtml || "El cliente",
+        };
+    })();
     const countdownInfo = transferDeadlineMs ? getCountdownInfo(transferDeadlineMs) : null;
     const countdownLabel = countdownInfo ? escapeHtml(countdownInfo.label) : "";
     const countdownSpan = transferDeadlineMs
