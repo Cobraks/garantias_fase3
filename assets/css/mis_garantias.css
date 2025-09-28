@@ -534,7 +534,7 @@ section.guarantees-list.sticky-active {
 }
 
 .detail__section li strong {
-    font-weight: 500;
+    font-weight: 600;
 }
 .detail__actions {
     display: flex;
@@ -1332,6 +1332,11 @@ section.guarantees-list.sticky-active {
     border-left: 4px solid #f59e0b;
     border-radius: 6px;
     font-weight: 500;
+}
+.detail__payment-note [data-note-expired] {
+    color: #d93025;
+    font-weight: 600;
+    font-size: 1.05rem;
 }
 .detail__payment-note--domiciliacion {
     background: #e0f2fe;
