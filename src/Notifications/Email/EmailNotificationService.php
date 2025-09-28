@@ -450,6 +450,17 @@ class EmailNotificationService
         return $options;
     }
 
+    public static function resolve_admin_delivery(int $guarantee_id, array $context = []): array
+    {
+        $service = new self(
+            new Mailer(),
+            new GuaranteeEmailDataFactory(),
+            new GuaranteeEmailBuilder(new TemplateRenderer())
+        );
+
+        return $service->get_admin_delivery($guarantee_id, $context);
+    }
+
     private function build_professional_options(string $reply_to): array
     {
         $options = [];
