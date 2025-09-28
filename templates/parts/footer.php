@@ -42,14 +42,18 @@ if (! empty($is_add_guarantee)) {
     if (!isset($current_user) || !($current_user instanceof WP_User)) {
         $current_user = wp_get_current_user();
     }
+    $roles = (array) $current_user->roles;
     $is_admin = user_can($current_user, 'manage_options');
-    $is_comercial = in_array('go_comercial', (array) $current_user->roles, true);
+    $is_comercial = in_array('go_comercial', $roles, true);
+    $is_director = in_array('go_director_comercial', $roles, true);
     if ($is_admin) {
         $js_user_role = 'admin';
-    } elseif (in_array('go_profesional', (array) $current_user->roles, true)) {
+    } elseif (in_array('go_profesional', $roles, true)) {
         $js_user_role = 'go_profesional';
-    } elseif (in_array('go_garantias', (array) $current_user->roles, true)) {
+    } elseif (in_array('go_garantias', $roles, true)) {
         $js_user_role = 'go_garantias';
+    } elseif ($is_director) {
+        $js_user_role = 'go_director_comercial';
     } elseif ($is_comercial) {
         $js_user_role = 'go_comercial';
     } else {
@@ -140,8 +144,11 @@ if (! empty($is_add_guarantee)) {
     if (!isset($current_user) || !($current_user instanceof WP_User)) {
         $current_user = wp_get_current_user();
     }
+    $roles = (array) $current_user->roles;
     $is_admin = $is_admin ?? user_can($current_user, 'manage_options');
-    $is_comercial = $is_comercial ?? in_array('go_comercial', (array)$current_user->roles, true);
+    $is_comercial = $is_comercial ?? in_array('go_comercial', $roles, true);
+    $is_director = in_array('go_director_comercial', $roles, true);
+    $is_garantias = in_array('go_garantias', $roles, true);
     $icon_percent_html = Svg::icon('percent');
     $icon_warning_html = Svg::icon('warning');
     $icon_check_html = Svg::icon('check');
@@ -178,10 +185,14 @@ if (! empty($is_add_guarantee)) {
                         $is_comercial = $is_comercial ?? in_array('go_comercial', (array)$current_user->roles, true);
                         if ($is_admin) {
                             echo 'admin';
-                        } elseif (in_array('go_profesional', (array)$current_user->roles, true)) {
+                        } elseif (in_array('go_profesional', $roles, true)) {
                             echo 'go_profesional';
+                        } elseif ($is_garantias) {
+                            echo 'go_garantias';
+                        } elseif ($is_director) {
+                            echo 'go_director_comercial';
                         } elseif ($is_comercial) {
-                            echo 'comercial';
+                            echo 'go_comercial';
                         } else {
                             echo 'user';
                         }

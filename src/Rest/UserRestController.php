@@ -82,6 +82,15 @@ class UserRestController
         $users_query = new WP_User_Query($args);
         $users = [];
 
+        $current_user = wp_get_current_user();
+        $current_roles = $current_user instanceof \WP_User ? (array) $current_user->roles : [];
+        $current_user_id = $current_user instanceof \WP_User ? (int) $current_user->ID : 0;
+        $is_admin_like = user_can($current_user, 'manage_options')
+            || in_array('go_garantias', $current_roles, true)
+            || in_array('go_director_comercial', $current_roles, true);
+        $is_comercial = in_array('go_comercial', $current_roles, true);
+        $restrict_to_assigned = ($role === 'go_profesional') && $is_comercial && ! $is_admin_like && $current_user_id > 0;
+
         foreach ($users_query->get_results() as $user) {
             if (! $user instanceof \WP_User) {
                 continue;
@@ -102,11 +111,13 @@ class UserRestController
             if ($role === 'go_profesional') {
                 $comerciales = get_field('ajustes_usuarios_comercial_asignado', 'user_' . $user_id);
                 $item['comerciales_asignados'] = [];
+                $assigned_ids = [];
                 if (is_array($comerciales) && count($comerciales)) {
                     foreach ($comerciales as $com_id) {
                         $com_user = get_user_by('id', $com_id);
                         if ($com_user instanceof \WP_User) {
                             $com_profile = UserProfileResolver::build_from_user($com_user);
+                            $assigned_ids[] = (int) $com_user->ID;
                             $item['comerciales_asignados'][] = [
                                 'id'             => $com_user->ID,
                                 'display_name'   => $com_profile['personal_name'],
@@ -117,6 +128,12 @@ class UserRestController
                         }
                     }
                 }
+                if ($restrict_to_assigned && ! in_array($current_user_id, $assigned_ids, true)) {
+                    continue;
+                }
+            } elseif ($restrict_to_assigned) {
+                // Si restringimos a asignados pero el usuario no es profesional, simplemente omitirlo
+                continue;
             }
 
             $users[] = $item;

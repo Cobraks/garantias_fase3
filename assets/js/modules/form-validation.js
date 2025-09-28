@@ -256,17 +256,20 @@ export function validateField(input, showError = false, isHardCheck = false) {
 	if (id === "usuario-rol") {
 		const isVisible = input.offsetParent !== null;
 		if (isVisible && !input.value) {
-			if (showError) {
-				const userRole =
+                        if (showError) {
+                                const rawRole =
                                         getUserRole() || document.body.dataset.userRole || "";
-                               const msg =
-                                       userRole === "comercial" ||
-                                       userRole === "profesional" ||
-                                       userRole === "go_profesional"
-                                               ? "Selecciona profesional"
-                                               : "Selecciona vendedor";
-				setError(input, msg);
-			}
+                                const normalizedRole = String(rawRole).toLowerCase();
+                                const shouldAskForProfessional =
+                                        normalizedRole === "comercial" ||
+                                        normalizedRole === "go_comercial" ||
+                                        normalizedRole === "profesional" ||
+                                        normalizedRole === "go_profesional";
+                                const msg = shouldAskForProfessional
+                                        ? "Selecciona profesional"
+                                        : "Selecciona vendedor";
+                                setError(input, msg);
+                        }
 			return false;
 		}
 		clearError(input);
