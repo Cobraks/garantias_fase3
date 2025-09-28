@@ -53,7 +53,7 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
             exit;
         }
 
-        if ($endpoint === 'averias' && ! $is_admin_user) {
+        if (in_array($endpoint, ['averias', 'clientes'], true) && ! $is_admin_user) {
             wp_safe_redirect(home_url('/garantias-online/mis-garantias/'));
             exit;
         }
@@ -69,6 +69,9 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
                 break;
             case 'averias':
                 TemplateLoader::load('averias');
+                break;
+            case 'clientes':
+                TemplateLoader::load('clientes');
                 break;
             case 'login':
                 TemplateLoader::load('login');

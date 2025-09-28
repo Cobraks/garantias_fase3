@@ -41,6 +41,9 @@ class AssetCompiler
         // MIS GARANTÍAS
         'assets/css/mis_garantias.css',
         'assets/js/mis_garantias.js',
+
+        // CLIENTES (admin)
+        'assets/js/clientes.js',
     ];
 
     /** Llama a esto en un hook (init o activación). */

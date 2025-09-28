@@ -87,6 +87,53 @@ if (! empty($is_add_guarantee)) {
     <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 <?php endif; ?>
 
+<?php if ($is_clients_page ?? false) : ?>
+    <?php
+    if (!isset($current_user) || !($current_user instanceof WP_User)) {
+        $current_user = wp_get_current_user();
+    }
+
+    $clients_config = [
+        'rest' => [
+            'root'  => esc_url_raw(rest_url()),
+            'nonce' => wp_create_nonce('wp_rest'),
+        ],
+        'pagination' => [
+            'perPage' => 20,
+        ],
+        'strings' => [
+            'profile'           => __('Perfil', 'garantias-online-360vo'),
+            'client'            => __('Cliente', 'garantias-online-360vo'),
+            'noResults'         => __('No se han encontrado clientes con los filtros actuales.', 'garantias-online-360vo'),
+            'offersEmpty'       => __('Sin ofertas activas', 'garantias-online-360vo'),
+            'commercialsEmpty'  => __('Sin comercial asignado', 'garantias-online-360vo'),
+            'detailTitle'       => __('Detalles del cliente', 'garantias-online-360vo'),
+            'selectPrompt'      => __('Selecciona un cliente para ver la información.', 'garantias-online-360vo'),
+            'error'             => __('No se ha podido cargar la información de clientes.', 'garantias-online-360vo'),
+            'contactEmail'      => __('Email de contacto', 'garantias-online-360vo'),
+            'notificationEmail' => __('Email de notificaciones', 'garantias-online-360vo'),
+            'contactPhone'      => __('Teléfono de contacto', 'garantias-online-360vo'),
+            'contact'           => __('Contacto', 'garantias-online-360vo'),
+            'company'           => __('Empresa', 'garantias-online-360vo'),
+            'taxId'             => __('CIF/NIF', 'garantias-online-360vo'),
+            'address'           => __('Dirección', 'garantias-online-360vo'),
+            'offers'            => __('Ofertas activas', 'garantias-online-360vo'),
+            'commercials'       => __('Comercial', 'garantias-online-360vo'),
+            'sepaStatus'        => __('Estado SEPA', 'garantias-online-360vo'),
+            'sepaEmpty'         => __('Sin información del mandato', 'garantias-online-360vo'),
+            'paymentMethod'     => __('Método de pago', 'garantias-online-360vo'),
+            'salesChannel'      => __('Canal de venta', 'garantias-online-360vo'),
+            'registered'        => __('Registrado desde', 'garantias-online-360vo'),
+            'guarantees'        => __('Nº Garantías', 'garantias-online-360vo'),
+        ],
+    ];
+    ?>
+    <script>
+        window.__GO_CLIENTES__ = <?php echo wp_json_encode($clients_config); ?>;
+    </script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/clientes.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
+<?php endif; ?>
+
 <?php if (($is_add_guarantee ?? false)) : ?>
     <?php
     // Asegura que las variables existen (y previene errores)

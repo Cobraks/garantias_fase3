@@ -58,6 +58,8 @@ class Plugin
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\ActivityLogRestController::class, 'register_routes']);
 
+        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\ClientRestController::class, 'register_routes']);
+
 
 
         add_action('rest_api_init', function () {

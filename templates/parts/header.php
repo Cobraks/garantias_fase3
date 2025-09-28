@@ -139,7 +139,7 @@ $home_destination = $is_admin_user
             window.go360Register = <?php echo wp_json_encode($register_data); ?>;
         </script>
     <?php endif; ?>
-    <?php if (! empty($is_list_page)) : ?>
+    <?php if (! empty($is_list_page) || ! empty($is_clients_page)) : ?>
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
     <?php if (! empty($is_account_page)) : ?>
@@ -222,6 +222,12 @@ $home_destination = $is_admin_user
                                     <?php esc_html_e('Averías', 'garantias-online-360vo'); ?>
                                 </a>
                             </li>
+                            <li class="menu-item">
+                                <a href="<?php echo esc_url(home_url('/garantias-online/clientes/')); ?>">
+                                    <?php echo Svg::icon('person', 'top-bar__icon'); ?>
+                                    <?php esc_html_e('Clientes', 'garantias-online-360vo'); ?>
+                                </a>
+                            </li>
                         <?php endif; ?>
                         <li class="menu-item">
                             <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>">
@@ -296,6 +302,13 @@ $home_destination = $is_admin_user
         </div>
         <nav class="mobile-menu">
             <ul>
+                <?php if ($is_admin_user) : ?>
+                    <li class="mobile-menu__item">
+                        <a href="<?php echo esc_url(home_url('/garantias-online/clientes/')); ?>">
+                            <?php esc_html_e('Clientes', 'garantias-online-360vo'); ?>
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <li class="mobile-menu__item">
                     <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>">
 

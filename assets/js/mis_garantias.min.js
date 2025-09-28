@@ -1899,7 +1899,7 @@ const ADD_DOC_KEY = "add-document";
                         <h3 class="detail__section-title">Documentación</h3>
                         ${docsListHtml}
                 </section>
-                <section class="detail__section">
+                <section class="detail__section detail__section--datos_cliente">
                         <h3>Datos del cliente</h3>
                         ${hasBuyerInfo
                             ? `<ul>
