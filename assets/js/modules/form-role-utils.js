@@ -20,11 +20,22 @@ function log(...args) {
  * Siempre en minúsculas.
  */
 export function getEffectiveUserRole() {
-	return String(getUserRole() || "").toLowerCase();
+        const rawRole = String(getUserRole() || "").toLowerCase();
+        switch (rawRole) {
+                case "go_comercial":
+                        return "comercial";
+                case "go_director_comercial":
+                case "go_garantias":
+                        return "admin";
+                case "profesional":
+                        return "go_profesional";
+                default:
+                        return rawRole;
+        }
 }
 
 export function isAdmin() {
-	return getEffectiveUserRole() === "admin";
+        return getEffectiveUserRole() === "admin";
 }
 
 export function isComercial() {

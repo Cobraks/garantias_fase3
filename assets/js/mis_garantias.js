@@ -28,8 +28,15 @@ const ADD_DOC_KEY = "add-document";
                         (goConfig.user && goConfig.user.role) ||
                         "user";
                 const isAdmin =
-                        ["administrator", "admin", "go_garantias", "go_comercial"].includes(userRole);
-                const isProfesional = userRole === "go_profesional";
+                        [
+                                "administrator",
+                                "admin",
+                                "go_garantias",
+                                "go_comercial",
+                                "go_director_comercial",
+                        ].includes(userRole);
+                const isProfesional =
+                        userRole === "go_profesional" || userRole === "profesional";
                 const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>';
                 const phoneIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M798-120q-125 0-247-54.5T329-329Q229-429 174.5-551T120-798q0-18 12-30t30-12h162q14 0 25 9.5t13 22.5l26 140q2 16-1 27t-11 19l-97 98q20 37 47.5 71.5T387-386q31 31 65 57.5t72 48.5l94-94q9-9 23.5-13.5T670-390l138 28q14 4 23 14.5t9 23.5v162q0 18-12 30t-30 12ZM241-600l66-66-17-94h-89q5 41 14 81t26 79Zm358 358q39 17 79.5 27t81.5 13v-88l-94-19-67 67ZM241-600Zm358 358Z"/></svg>';
                 const emailIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm320-280L160-640v400h640v-400L480-440Zm0-80 320-200H160l320 200ZM160-640v-80 480-400Z"/></svg>';
@@ -609,6 +616,7 @@ const ADD_DOC_KEY = "add-document";
                                                 const data = normalizeDetailData(json);
                                                 detailCache.set(id, data);
                                                 panel.innerHTML = renderFullDetail(data, rowData, []);
+                                                setupTransferCountdown(panel);
                                                 panel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
                                                 panel.dataset.plan = data.plan || rowData.plan || "";
@@ -1085,14 +1093,138 @@ const ADD_DOC_KEY = "add-document";
                         }).format(num);
                 }
 
+                function parseDateTime(value) {
+                        if (!value) return null;
+                        const str = String(value).trim();
+                        if (!str) return null;
+                        const numeric = str.replace(/[^0-9]/g, "");
+                        const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
+                                const y = Number(year);
+                                const m = Number(month) - 1;
+                                const d = Number(day);
+                                const hh = Number(hours);
+                                const mm = Number(minutes);
+                                const ss = Number(seconds);
+                                const candidate = new Date(y, m, d, hh, mm, ss);
+                                if (Number.isNaN(candidate.getTime())) return null;
+                                return candidate;
+                        };
+                        if (numeric.length >= 14) {
+                                const date = safeDate(
+                                        numeric.slice(0, 4),
+                                        numeric.slice(4, 6),
+                                        numeric.slice(6, 8),
+                                        numeric.slice(8, 10),
+                                        numeric.slice(10, 12),
+                                        numeric.slice(12, 14)
+                                );
+                                if (date) return date;
+                        }
+                        if (numeric.length === 12) {
+                                const date = safeDate(
+                                        numeric.slice(0, 4),
+                                        numeric.slice(4, 6),
+                                        numeric.slice(6, 8),
+                                        numeric.slice(8, 10),
+                                        numeric.slice(10, 12),
+                                        0
+                                );
+                                if (date) return date;
+                        }
+                        if (numeric.length === 8) {
+                                const date = safeDate(
+                                        numeric.slice(0, 4),
+                                        numeric.slice(4, 6),
+                                        numeric.slice(6, 8)
+                                );
+                                if (date) return date;
+                        }
+                        const parsed = new Date(str);
+                        if (!Number.isNaN(parsed.getTime())) {
+                                return parsed;
+                        }
+                        return null;
+                }
+
+                function getTransferDeadlineMillis(detailData, rowData) {
+                        const candidates = [
+                                detailData?.desde_raw,
+                                rowData?.desde_raw,
+                                detailData?.desde,
+                                rowData?.desde,
+                        ];
+                        for (const candidate of candidates) {
+                                const date = parseDateTime(candidate);
+                                if (date) {
+                                        return date.getTime() + 48 * 60 * 60 * 1000;
+                                }
+                        }
+                        return null;
+                }
+
+                function formatCountdown(deadlineMs) {
+                        if (!Number.isFinite(deadlineMs)) {
+                                return "--:--:--";
+                        }
+                        const now = Date.now();
+                        const diff = Math.max(0, deadlineMs - now);
+                        const totalSeconds = Math.floor(diff / 1000);
+                        const hours = Math.floor(totalSeconds / 3600);
+                        const minutes = Math.floor((totalSeconds % 3600) / 60);
+                        const seconds = totalSeconds % 60;
+                        const hoursStr = hours.toString().padStart(2, "0");
+                        const minutesStr = minutes.toString().padStart(2, "0");
+                        const secondsStr = seconds.toString().padStart(2, "0");
+                        return `${hoursStr}:${minutesStr}:${secondsStr}`;
+                }
+
+                let activeCountdownTimer = null;
+
+                function clearActiveCountdown() {
+                        if (activeCountdownTimer) {
+                                window.clearInterval(activeCountdownTimer.id);
+                                activeCountdownTimer = null;
+                        }
+                }
+
+                function setupTransferCountdown(root) {
+                        clearActiveCountdown();
+                        if (!root) return;
+                        const countdownEl = root.querySelector(".detail__payment-countdown");
+                        if (!countdownEl) return;
+                        const deadlineMs = Number(countdownEl.dataset.deadline || "");
+                        if (!Number.isFinite(deadlineMs)) {
+                                countdownEl.textContent = "--:--:--";
+                                return;
+                        }
+                        const update = () => {
+                                countdownEl.textContent = formatCountdown(deadlineMs);
+                                if (deadlineMs - Date.now() <= 0) {
+                                        clearActiveCountdown();
+                                }
+                        };
+                        update();
+                        const id = window.setInterval(() => {
+                                update();
+                                if (deadlineMs - Date.now() <= 0) {
+                                        clearActiveCountdown();
+                                }
+                        }, 1000);
+                        activeCountdownTimer = { id };
+                }
+
                 function normalizeDetailData(data) {
                         if (!data || typeof data !== "object") return data;
-                        const d = formatDate(data.desde);
+                        const rawDesde = data.desde;
+                        const d = formatDate(rawDesde);
                         data.desde = d.iso;
                         data.desde_fmt = d.display;
-                        const h = formatDate(data.hasta);
+                        data.desde_raw = rawDesde || "";
+                        const rawHasta = data.hasta;
+                        const h = formatDate(rawHasta);
                         data.hasta = h.iso;
                         data.hasta_fmt = h.display;
+                        data.hasta_raw = rawHasta || "";
                         if (data.precio !== undefined) data.precio = formatPrice(data.precio);
                         if (data.precio_venta !== undefined)
                                 data.precio_venta = formatPrice(data.precio_venta);
@@ -1149,8 +1281,10 @@ const ADD_DOC_KEY = "add-document";
                         const estadoClase = normalizeEstadoClase(estadoValue);
                         const marca_modelo = item.marca ?? "-";
                         const mat = item.mat ?? item.matricula ?? "-";
-                        const { iso: desdeIso, display: desde } = formatDate(item.desde);
-                        const { iso: hastaIso, display: hasta } = formatDate(item.hasta);
+                        const rawDesde = item.desde ?? "";
+                        const rawHasta = item.hasta ?? "";
+                        const { iso: desdeIso, display: desde } = formatDate(rawDesde);
+                        const { iso: hastaIso, display: hasta } = formatDate(rawHasta);
                         const vendedor_name = item.vendedor ?? "-";
                         const plan = item.plan ?? "";
                         const precio = formatPrice(item.precio);
@@ -1214,8 +1348,10 @@ const ADD_DOC_KEY = "add-document";
                         tr.dataset.marca_modelo = marca_modelo;
                         tr.dataset.plan = hasPlan ? plan : "";
                         tr.dataset.desde = hasPeriod ? desdeIso : "";
+                        tr.dataset.desdeRaw = hasPeriod ? rawDesde : "";
                         tr.dataset.desdeFmt = hasPeriod ? desde : "";
                         tr.dataset.hasta = hasPeriod ? hastaIso : "";
+                        tr.dataset.hastaRaw = hasPeriod ? rawHasta : "";
                         tr.dataset.hastaFmt = hasPeriod ? hasta : "";
                         tr.dataset.estado = estadoLabel;
                         tr.dataset.estadoclase = estadoClase;
@@ -1285,10 +1421,11 @@ const ADD_DOC_KEY = "add-document";
 		}
 
 		// Nuevo: mostrar el empty panel como los de detalle, solo si no está ya activo
-		function setEmptyDetailPanel(direction = "forward") {
-			const currentActive = activePanel;
-			const nextPanel = activePanel === panel1 ? panel2 : panel1;
-			// Si el empty ya está visible, no repetir animación
+                function setEmptyDetailPanel(direction = "forward") {
+                        clearActiveCountdown();
+                        const currentActive = activePanel;
+                        const nextPanel = activePanel === panel1 ? panel2 : panel1;
+                        // Si el empty ya está visible, no repetir animación
 			if (
 				nextPanel.classList.contains("active") &&
 				nextPanel.innerHTML.includes("Ninguna garantía seleccionada")
@@ -1441,6 +1578,7 @@ const ADD_DOC_KEY = "add-document";
                                                                         rowData,
                                                                         []
                                                                 );
+                                                                setupTransferCountdown(nextPanel);
                                                                 nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
                                                                 syncPdfModalDocs(nextPanel);
                                                         } else {
@@ -1454,6 +1592,7 @@ const ADD_DOC_KEY = "add-document";
                                                                                                 rowData,
                                                                                                 []
                                                                                         );
+                                                                                        setupTransferCountdown(nextPanel);
                                                                                         nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
                                                                                         syncPdfModalDocs(nextPanel);
                                                                                 }
@@ -1537,6 +1676,7 @@ const ADD_DOC_KEY = "add-document";
                                         .then((detailData) => {
                                                 if (nextPanel.dataset.loadedId === String(id)) {
                                                         nextPanel.innerHTML = renderFullDetail(detailData, rowData, []);
+                                                        setupTransferCountdown(nextPanel);
                                                         nextPanel.dataset.matricula = detailData.matricula || rowData.matricula || "";
                                                         syncPdfModalDocs(nextPanel);
                                                 }
@@ -1583,12 +1723,14 @@ const ADD_DOC_KEY = "add-document";
                                 matricula: row.dataset.matricula ?? "-",
                                 plan: row.dataset.plan ?? "-",
                                 desde: row.dataset.desde ?? "-",
+                                desde_raw: row.dataset.desdeRaw ?? row.dataset.desde ?? "",
                                 desde_fmt:
                                         row.dataset.desdeFmt ??
                                         (row.dataset.desde
                                                 ? formatDate(row.dataset.desde).display
                                                 : "-"),
                                 hasta: row.dataset.hasta ?? "-",
+                                hasta_raw: row.dataset.hastaRaw ?? row.dataset.hasta ?? "",
                                 hasta_fmt:
                                         row.dataset.hastaFmt ??
                                         (row.dataset.hasta
@@ -1966,6 +2108,24 @@ const ADD_DOC_KEY = "add-document";
         ? `<div class="guarantee-detail__btn-container">${adminActionButtons.join("")}</div>`
         : "";
 
+    const transferDeadlineMs = getTransferDeadlineMillis(data, rowData);
+    const countdownHtml = transferDeadlineMs
+        ? `<span class="detail__payment-countdown" data-deadline="${transferDeadlineMs}">${formatCountdown(
+              transferDeadlineMs
+          )}</span>`
+        : "";
+    const countdownSegment = transferDeadlineMs ? `${countdownHtml} h` : "";
+    const professionalNote = transferDeadlineMs
+        ? `Recuerda realizar la transferencia antes de ${countdownSegment} para activar la garantía.`
+        : "Recuerda realizar la transferencia para activar tu garantía.";
+    const clientNameRaw = vendorCompanyName !== "-" ? vendorCompanyName : "";
+    const clientLabel = clientNameRaw
+        ? `El cliente <strong>${escapeAttr(clientNameRaw)}</strong>`
+        : "El cliente";
+    const adminNote = transferDeadlineMs
+        ? `${clientLabel} tiene ${countdownSegment} para realizar la transferencia.`
+        : `${clientLabel} debe realizar la transferencia para activar la garantía.`;
+
     const paymentHtml = (() => {
         if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
             const concepto = `Garantía ${skeleton("matricula")}`;
@@ -1986,15 +2146,15 @@ const ADD_DOC_KEY = "add-document";
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
                         </section>`;
         }
-        if (!isAdmin && isPendientePago) {
-            if (metodoPago === "transferencia") {
-                const concepto = `Garantía ${skeleton("matricula")}`;
-                const cantidad = `${skeleton("precio", "0")} €`;
-                const ibanRow = transferIban
-                    ? `<tr data-copy-row><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
-                    : "";
-                return `<section class="detail__section detail__section--payment">
-                                <p class="detail__payment-note">Recuerda realizar la transferencia para activar tu garantía.</p>
+        if (isPendientePago && metodoPago === "transferencia") {
+            const concepto = `Garantía ${skeleton("matricula")}`;
+            const cantidad = `${skeleton("precio", "0")} €`;
+            const ibanRow = transferIban
+                ? `<tr data-copy-row><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
+                : "";
+            const noteText = isAdmin ? adminNote : professionalNote;
+            return `<section class="detail__section detail__section--payment">
+                                <p class="detail__payment-note">${noteText}</p>
                                 <table class="detail__transfer-table">
                                         <tbody>
                                                 <tr data-copy-row><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
@@ -2004,7 +2164,8 @@ const ADD_DOC_KEY = "add-document";
                                 </table>
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
                         </section>`;
-            }
+        }
+        if (!isAdmin && isPendientePago) {
             return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note">El pago se procesará mediante domiciliación bancaria.</p>
                         </section>`;
@@ -2197,6 +2358,7 @@ function initRowSelection() {
                                 if (detailCache.has(id)) {
                                         const data = detailCache.get(id);
                                         nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                        setupTransferCountdown(nextPanel);
                                         nextPanel.dataset.matricula = data.matricula || rowData.matricula || "";
                                         nextPanel.dataset.plan = data.plan || rowData.plan || "";
                                         syncPdfModalDocs(nextPanel);
@@ -2230,6 +2392,7 @@ function initRowSelection() {
                                                 const data = await fetchDetail(id);
                                                 if (nextPanel.dataset.loadedId === String(id)) {
                                                         nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                                        setupTransferCountdown(nextPanel);
                                                         nextPanel.dataset.matricula = data.matricula || rowData.matricula || "";
                                                         nextPanel.dataset.plan = data.plan || rowData.plan || "";
                                                         syncPdfModalDocs(nextPanel);

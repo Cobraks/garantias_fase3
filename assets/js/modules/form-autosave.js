@@ -1446,7 +1446,12 @@ export default function initAutosave() {
                         }
                 }
 
-                if (userRole === "admin") {
+                const normalizedRole = String(userRole).toLowerCase();
+                if (
+                        normalizedRole === "admin" ||
+                        normalizedRole === "go_garantias" ||
+                        normalizedRole === "go_director_comercial"
+                ) {
                         const canal = document.getElementById("canal-venta");
                         if (canal && canal.value) {
                                 garantia.canal_venta = canal.value;
@@ -1455,13 +1460,13 @@ export default function initAutosave() {
                         if (usuario && usuario.value) {
                                 garantia.concesionario_empresa_profesional = usuario.value;
                         }
-                } else if (userRole === "comercial") {
+                } else if (normalizedRole === "comercial" || normalizedRole === "go_comercial") {
                         garantia.canal_venta = "profesional";
                         const usuario = document.getElementById("usuario-rol");
                         if (usuario && usuario.value) {
                                 garantia.concesionario_empresa_profesional = usuario.value;
                         }
-               } else if (userRole === "profesional" || userRole === "go_profesional") {
+               } else if (normalizedRole === "profesional" || normalizedRole === "go_profesional") {
                        garantia.canal_venta = "profesional";
                        const currentId = getCurrentUserId();
                        if (currentId) {

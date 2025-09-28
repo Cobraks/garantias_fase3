@@ -14,6 +14,36 @@ import { updateNextButtonState } from "./form-navigation.js";
  * Depende de la configuración proporcionada desde PHP.
  */
 
+const ADMIN_EQUIVALENT_ROLES = new Set([
+        "admin",
+        "go_garantias",
+        "go_director_comercial",
+]);
+const COMERCIAL_EQUIVALENT_ROLES = new Set([
+        "comercial",
+        "go_comercial",
+]);
+const PROFESIONAL_EQUIVALENT_ROLES = new Set([
+        "profesional",
+        "go_profesional",
+]);
+
+function normalizeRole(value) {
+        return String(value || "").toLowerCase();
+}
+
+function isAdminLike(role) {
+        return ADMIN_EQUIVALENT_ROLES.has(normalizeRole(role));
+}
+
+function isComercial(role) {
+        return COMERCIAL_EQUIVALENT_ROLES.has(normalizeRole(role));
+}
+
+function isProfesional(role) {
+        return PROFESIONAL_EQUIVALENT_ROLES.has(normalizeRole(role));
+}
+
 function loadUsuariosPorRol(rol, selectId) {
         const restRoot = getRestRoot();
         const restNonce = getRestNonce();
@@ -47,7 +77,7 @@ function loadUsuariosPorRol(rol, selectId) {
 			defaultOption.selected = true;
 			select.appendChild(defaultOption);
 
-			if (Array.isArray(data) && data.length) {
+                        if (Array.isArray(data) && data.length) {
                                 data.forEach((user) => {
                                         const option = document.createElement("option");
                                         option.value = user.id;
@@ -59,11 +89,17 @@ function loadUsuariosPorRol(rol, selectId) {
                                         option.dataset.personalName = personalName;
                                         select.appendChild(option);
                                 });
-			}
+                        } else {
+                                const emptyOption = document.createElement("option");
+                                emptyOption.value = "";
+                                emptyOption.textContent = "Sin profesionales disponibles";
+                                emptyOption.disabled = true;
+                                select.appendChild(emptyOption);
+                        }
 
-			// Disparar evento para que otros listeners (como SEPA) reaccionen a valor inicial si ya hay uno
-			select.dispatchEvent(new Event("change", { bubbles: true }));
-		})
+                        // Disparar evento para que otros listeners (como SEPA) reaccionen a valor inicial si ya hay uno
+                        select.dispatchEvent(new Event("change", { bubbles: true }));
+                })
 		.catch((err) => {
 			select.innerHTML = '<option value="">Error cargando usuarios</option>';
 			console.warn("[form-user-select] loadUsuariosPorRol error:", err);
@@ -90,9 +126,9 @@ async function fetchEstadoSepa(targetUserId = null) {
 	let url = `${restRoot}go/v1/estado-sepa`;
 
 	// Si admin y nos pasan objetivo, lo añadimos
-        if (getUserRole() === "admin" && targetUserId) {
-		url += `?id=${encodeURIComponent(targetUserId)}`;
-	}
+        if (isAdminLike(getUserRole()) && targetUserId) {
+                url += `?id=${encodeURIComponent(targetUserId)}`;
+        }
 
 	try {
 		const res = await fetch(url, {
@@ -163,9 +199,9 @@ function setupSepaWatcher() {
 	const usuarioSelect = document.getElementById("usuario-rol");
 
 	// Cuando cambia el usuario seleccionado (admin/comercial), refrescar método pago
-	if (usuarioSelect) {
-		usuarioSelect.addEventListener("change", () => {
-			let target = null;
+        if (usuarioSelect) {
+                usuarioSelect.addEventListener("change", () => {
+                        let target = null;
                         if (usuarioSelect.value) {
                                 target = usuarioSelect.value;
                         } else {
@@ -177,15 +213,15 @@ function setupSepaWatcher() {
 
 	// Si canal cambia (por ejemplo admin elige otro canal y se recarga profesional),
 	// también puede influir indirectamente porque se carga nuevo usuario.
-	if (canalSelect) {
-		canalSelect.addEventListener("change", () => {
-			// Después de que se carguen usuarios, el propio loadUsuariosPorRol disparará el cambio en usuario-rol
-			// Pero por si no hay usuario-rol aún seleccionado, hacemos refresh con fallback
-			let target = null;
+        if (canalSelect) {
+                canalSelect.addEventListener("change", () => {
+                        // Después de que se carguen usuarios, el propio loadUsuariosPorRol disparará el cambio en usuario-rol
+                        // Pero por si no hay usuario-rol aún seleccionado, hacemos refresh con fallback
+                        let target = null;
                         const role = getUserRole();
-                       if (role === "profesional" || role === "go_profesional") {
-                               target = getCurrentUserId();
-                       } else if (role === "admin" || role === "comercial") {
+                        if (isProfesional(role)) {
+                                target = getCurrentUserId();
+                        } else if (isAdminLike(role) || isComercial(role)) {
                                 const v = document.getElementById("usuario-rol");
                                 target = (v && v.value) || getCurrentUserId();
                         } else {
@@ -197,10 +233,10 @@ function setupSepaWatcher() {
 
 	// Inicial: disparar al cargar con el objetivo apropiado
 	let initialTarget = null;
-       const role = getUserRole();
-       if (role === "profesional" || role === "go_profesional") {
-               initialTarget = getCurrentUserId();
-       } else if (role === "admin" || role === "comercial") {
+        const role = getUserRole();
+        if (isProfesional(role)) {
+                initialTarget = getCurrentUserId();
+        } else if (isAdminLike(role) || isComercial(role)) {
                 const v = document.getElementById("usuario-rol");
                 initialTarget = (v && v.value) || getCurrentUserId();
         } else {
@@ -213,14 +249,15 @@ function initUserSelect() {
 	const canalSelect = document.getElementById("canal-venta");
 	const usuarioSelect = document.getElementById("usuario-rol");
 	const wrapUsuario = document.getElementById("wrap-select-usuario");
-        const userRole = getUserRole() || document.body.dataset.userRole || "";
+        const rawRole = getUserRole() || document.body.dataset.userRole || "";
+        const userRole = normalizeRole(rawRole);
 
 	// --- Para Admin: fuerza selección por defecto y carga usuarios al cargar ---
-	if (userRole === "admin" && canalSelect && usuarioSelect && wrapUsuario) {
-		// Si canal no tiene valor, selecciona 'profesional' por defecto
-		let initialValue = canalSelect.value;
-		let profesionalOption =
-			canalSelect.querySelector('option[value="profesional"]') ||
+        if (isAdminLike(userRole) && canalSelect && usuarioSelect && wrapUsuario) {
+                // Si canal no tiene valor, selecciona 'profesional' por defecto
+                let initialValue = canalSelect.value;
+                let profesionalOption =
+                        canalSelect.querySelector('option[value="profesional"]') ||
 			canalSelect.querySelector('option[value="go_profesional"]');
 
 		if (!initialValue && profesionalOption) {
@@ -237,11 +274,11 @@ function initUserSelect() {
                 }
 
 		// Listener al cambiar canal
-		canalSelect.addEventListener("change", function () {
-			const rol = this.value;
-			if (!rol) {
-				wrapUsuario.style.display = "none";
-				if (usuarioSelect) usuarioSelect.innerHTML = "";
+                canalSelect.addEventListener("change", function () {
+                        const rol = this.value;
+                        if (!rol) {
+                                wrapUsuario.style.display = "none";
+                                if (usuarioSelect) usuarioSelect.innerHTML = "";
 				return;
 			}
 			mostrarBloqueUsuarioYcargar(rol);
@@ -249,12 +286,21 @@ function initUserSelect() {
 	}
 
 	// --- Para Comerciales: carga usuarios asignados al cargar el form ---
-	const isComercial =
-		document.body.classList.contains("rol-comercial") ||
-		userRole === "comercial";
-	if (isComercial && usuarioSelect) {
-		loadUsuariosPorRol("go_profesional", "usuario-rol");
-	}
+        const isComercialRole =
+                document.body.classList.contains("rol-comercial") ||
+                isComercial(userRole);
+        if (isComercialRole && canalSelect && usuarioSelect && wrapUsuario) {
+                if (!canalSelect.value) {
+                        canalSelect.value = "go_profesional";
+                }
+                wrapUsuario.style.display = "";
+                usuarioSelect.setAttribute("required", "");
+                loadUsuariosPorRol(canalSelect.value || "go_profesional", "usuario-rol");
+                canalSelect.addEventListener("change", function () {
+                        const value = this.value || "go_profesional";
+                        loadUsuariosPorRol(value, "usuario-rol");
+                });
+        }
 
 	// Arranca el watcher de SEPA / método de pago
 	setupSepaWatcher();

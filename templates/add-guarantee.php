@@ -10,12 +10,14 @@ use GarantiasOnline360VO\Svg;
 
 
 
-// -> REVISAR
-// Solo muestra a admin/comercial, el resto se maneja por backend o autoselección en JS
+// Roles y banderas de permisos
 $current_user = wp_get_current_user();
+$user_roles = $current_user instanceof WP_User ? (array) $current_user->roles : [];
 $is_admin = user_can($current_user, 'manage_options');
-$is_comercial = in_array('go_comercial', $current_user->roles, true);
-// <- REVISAR
+$is_comercial = in_array('go_comercial', $user_roles, true);
+$is_director = in_array('go_director_comercial', $user_roles, true);
+$is_garantias = in_array('go_garantias', $user_roles, true);
+$is_admin_like = $is_admin || $is_director || $is_garantias;
 
 error_log('[add-guarantee] template loaded for user ' . $current_user->ID);
 
@@ -359,7 +361,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                     <label for="duracion" class="form__placeholder form__placeholder--select">Duración</label>
                 </div>
 
-                <?php if ($is_admin): ?>
+                <?php if ($is_admin_like): ?>
                     <div class="form__input-container form__input-container--corto">
                         <select id="canal-venta"
                             class="form__select"
@@ -386,6 +388,18 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         </label>
                     </div>
                 <?php elseif ($is_comercial): ?>
+                    <div class="form__input-container form__input-container--corto">
+                        <select id="canal-venta"
+                            class="form__select"
+                            name="canal_venta"
+                            aria-label="Selecciona canal de venta"
+                            required>
+                            <option value="go_profesional" selected>Profesional</option>
+                        </select>
+                        <label for="canal-venta" class="form__placeholder form__placeholder--select">
+                            Canal de venta
+                        </label>
+                    </div>
                     <div class="form__input-container form__input-container--corto" id="wrap-select-usuario">
                         <select id="usuario-rol"
                             class="form__select"
