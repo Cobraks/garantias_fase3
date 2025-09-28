@@ -316,6 +316,9 @@ section.guarantees-list.sticky-active {
 .guarantees-table__row.selected .guarantees-list__badge--pend-cobro {
     background-color: #3b82f6;
 }
+.guarantees-table__row.selected .guarantees-list__badge--validacion-pendiente {
+    background-color: #3b82f6;
+}
 
 .guarantees-table td {
     display: flex;
@@ -362,6 +365,7 @@ section.guarantees-list.sticky-active {
 .guarantees-list__badge--sin-finalizar { color: #6b7280; }
 .guarantees-list__badge--expira-pronto { color: #fbbf24; }
 .guarantees-list__badge--pend-cobro { color: #3b82f6; }
+.guarantees-list__badge--validacion-pendiente { color: #3b82f6; }
 
 /* Periodo Validez */
 .guarantees-table__period > div {
@@ -534,7 +538,7 @@ section.guarantees-list.sticky-active {
 }
 
 .detail__section li strong {
-    font-weight: 500;
+    font-weight: 600;
 }
 .detail__actions {
     display: flex;
@@ -1016,6 +1020,9 @@ section.guarantees-list.sticky-active {
 .guarantee-detail__badge--pendiente-pago {
     background-color: #f59e0b;
 }
+.guarantee-detail__badge--validacion-pendiente {
+    background-color: #3b82f6;
+}
 .guarantee-detail__badge--sin-finalizar {
     background-color: #6b7280;
 }
@@ -1077,6 +1084,11 @@ section.guarantees-list.sticky-active {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     color: #f8fafc;
     box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+}
+.guarantee-detail__btn--transfer-report {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: #ecfdf5;
+    box-shadow: 0 10px 25px rgba(34, 197, 94, 0.35);
 }
 
 .guarantee-detail__btn--report {
@@ -1146,6 +1158,79 @@ section.guarantees-list.sticky-active {
 
 .detail__section--payment .detail__transfer-table {
     margin-top: 0;
+}
+
+.detail__transfer-toggle {
+    margin-top: var(--spacing-2);
+    margin-bottom: var(--spacing-2);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    background: #f9fafb;
+    overflow: hidden;
+}
+
+.detail__transfer-toggle-summary {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #1f2937;
+    list-style: none;
+}
+
+.detail__transfer-toggle-summary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+    border-radius: inherit;
+}
+
+.detail__transfer-toggle-summary::-webkit-details-marker {
+    display: none;
+}
+
+.detail__transfer-toggle-summary svg {
+    display: block;
+}
+
+.detail__transfer-toggle-label {
+    flex: 1 1 auto;
+}
+
+.detail__transfer-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #4b5563;
+    transition: color var(--transition-speed);
+}
+
+.detail__transfer-toggle-icon--open {
+    display: none;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-summary {
+    border-bottom: 1px solid var(--border-color);
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon--closed {
+    display: none;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon--open {
+    display: inline-flex;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon {
+    color: #111827;
+}
+
+.detail__transfer-toggle-content {
+    padding: 0.75rem 1rem 1rem;
 }
 
 .guarantee-detail__btn--report:focus-visible {
@@ -1333,11 +1418,24 @@ section.guarantees-list.sticky-active {
     border-radius: 6px;
     font-weight: 500;
 }
+.detail__payment-note--expired {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-left-color: #ef4444;
+    font-weight: 700;
+    font-size: 1.05rem;
+}
 .detail__payment-note--domiciliacion {
     background: #e0f2fe;
     color: #1d4ed8;
     border-left-color: #3b82f6;
     margin-bottom: var(--spacing-2);
+}
+.detail__payment-note--validation {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-left-color: #2563eb;
+    font-weight: 600;
 }
 
 .detail__section--payment {
