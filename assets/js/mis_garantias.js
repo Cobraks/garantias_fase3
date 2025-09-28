@@ -1162,20 +1162,44 @@ const ADD_DOC_KEY = "add-document";
                         return null;
                 }
 
-                function formatCountdown(deadlineMs) {
+                function getCountdownInfo(deadlineMs, now = Date.now()) {
                         if (!Number.isFinite(deadlineMs)) {
-                                return "--:--:--";
+                                return {
+                                        label: "--:--:--",
+                                        unit: "h",
+                                        expired: true,
+                                };
                         }
-                        const now = Date.now();
-                        const diff = Math.max(0, deadlineMs - now);
-                        const totalSeconds = Math.floor(diff / 1000);
+                        const diff = deadlineMs - now;
+                        const expired = diff <= 0;
+                        const safeDiff = Math.max(0, diff);
+                        const dayMs = 24 * 60 * 60 * 1000;
+                        const thresholdMs = 3 * dayMs;
+                        if (!expired && safeDiff >= thresholdMs) {
+                                const totalDays = Math.ceil(safeDiff / dayMs);
+                                const unit = totalDays === 1 ? "día" : "días";
+                                return {
+                                        label: `${totalDays} ${unit}`,
+                                        unit,
+                                        expired: false,
+                                };
+                        }
+                        const totalSeconds = Math.floor(safeDiff / 1000);
                         const hours = Math.floor(totalSeconds / 3600);
                         const minutes = Math.floor((totalSeconds % 3600) / 60);
                         const seconds = totalSeconds % 60;
                         const hoursStr = hours.toString().padStart(2, "0");
                         const minutesStr = minutes.toString().padStart(2, "0");
                         const secondsStr = seconds.toString().padStart(2, "0");
-                        return `${hoursStr}:${minutesStr}:${secondsStr}`;
+                        return {
+                                label: `${hoursStr}:${minutesStr}:${secondsStr} h`,
+                                unit: "h",
+                                expired,
+                        };
+                }
+
+                function formatCountdown(deadlineMs) {
+                        return getCountdownInfo(deadlineMs).label;
                 }
 
                 let activeCountdownTimer = null;
@@ -1197,16 +1221,30 @@ const ADD_DOC_KEY = "add-document";
                                 countdownEl.textContent = "--:--:--";
                                 return;
                         }
-                        const update = () => {
-                                countdownEl.textContent = formatCountdown(deadlineMs);
-                                if (deadlineMs - Date.now() <= 0) {
-                                        clearActiveCountdown();
+                        const noteEl = countdownEl.closest("[data-payment-note]");
+                        const activeNote = noteEl?.querySelector("[data-note-active]");
+                        const expiredNote = noteEl?.querySelector("[data-note-expired]");
+                        const applyUpdate = () => {
+                                const info = getCountdownInfo(deadlineMs);
+                                countdownEl.textContent = info.label;
+                                if (activeNote && expiredNote) {
+                                        if (info.expired) {
+                                                activeNote.hidden = true;
+                                                expiredNote.hidden = false;
+                                        } else {
+                                                activeNote.hidden = false;
+                                                expiredNote.hidden = true;
+                                        }
                                 }
+                                return info.expired;
                         };
-                        update();
+                        const initiallyExpired = applyUpdate();
+                        if (initiallyExpired) {
+                                return;
+                        }
                         const id = window.setInterval(() => {
-                                update();
-                                if (deadlineMs - Date.now() <= 0) {
+                                const isExpired = applyUpdate();
+                                if (isExpired) {
                                         clearActiveCountdown();
                                 }
                         }, 1000);
@@ -2109,22 +2147,57 @@ const ADD_DOC_KEY = "add-document";
         : "";
 
     const transferDeadlineMs = getTransferDeadlineMillis(data, rowData);
-    const countdownHtml = transferDeadlineMs
-        ? `<span class="detail__payment-countdown" data-deadline="${transferDeadlineMs}">${formatCountdown(
-              transferDeadlineMs
-          )}</span>`
+    const vendorCompanyData =
+        data && typeof data.vendor_company === "object" && data.vendor_company !== null
+            ? data.vendor_company
+            : null;
+    const vendorTradeName = vendorCompanyName !== "-" ? vendorCompanyName : "";
+    const vendorLegalNameRaw = vendorCompanyData && typeof vendorCompanyData.legal_name === "string"
+        ? vendorCompanyData.legal_name.trim()
         : "";
-    const countdownSegment = transferDeadlineMs ? `${countdownHtml} h` : "";
-    const professionalNote = transferDeadlineMs
-        ? `Recuerda realizar la transferencia antes de ${countdownSegment} para activar la garantía.`
+    const vendorFallbackName = vendorCompanyData && typeof vendorCompanyData.name === "string"
+        ? vendorCompanyData.name.trim()
+        : "";
+    const vendorTradeNameOverride = vendorCompanyData && typeof vendorCompanyData.trade_name === "string"
+        ? vendorCompanyData.trade_name.trim()
+        : "";
+    const vendorLegalName = vendorLegalNameRaw || vendorFallbackName || vendorTradeNameOverride;
+    const vendorDisplayName = vendorTradeName
+        ? vendorLegalName && vendorLegalName !== vendorTradeName
+            ? `${vendorTradeName} (${vendorLegalName})`
+            : vendorTradeName
+        : vendorLegalName;
+    const vendorDisplayHtml = vendorDisplayName ? escapeHtml(vendorDisplayName) : "";
+    const adminEntityHtml = vendorDisplayHtml || "El cliente";
+    const countdownInfo = transferDeadlineMs ? getCountdownInfo(transferDeadlineMs) : null;
+    const countdownLabel = countdownInfo ? escapeHtml(countdownInfo.label) : "";
+    const countdownSpan = transferDeadlineMs
+        ? `<span class="detail__payment-countdown" data-deadline="${transferDeadlineMs}">${countdownLabel}</span>`
+        : "";
+    const professionalExpiredText = "El plazo para realizar la transferencia ha vencido. Ponte en contacto con tu comercial o con 360VO.";
+    const adminExpiredHtml = vendorDisplayHtml
+        ? `El plazo para realizar la transferencia ha vencido. Ponte en contacto con ${vendorDisplayHtml}.`
+        : "El plazo para realizar la transferencia ha vencido. Ponte en contacto con el cliente.";
+    const adminActiveHtml = transferDeadlineMs
+        ? `${adminEntityHtml} tiene ${countdownSpan} para realizar la transferencia.`
+        : `${adminEntityHtml} debe realizar la transferencia para activar la garantía.`;
+    const professionalActiveHtml = transferDeadlineMs
+        ? `Recuerda realizar la transferencia antes de ${countdownSpan} para activar la garantía.`
         : "Recuerda realizar la transferencia para activar tu garantía.";
-    const clientNameRaw = vendorCompanyName !== "-" ? vendorCompanyName : "";
-    const clientLabel = clientNameRaw
-        ? `El cliente <strong>${escapeAttr(clientNameRaw)}</strong>`
-        : "El cliente";
-    const adminNote = transferDeadlineMs
-        ? `${clientLabel} tiene ${countdownSegment} para realizar la transferencia.`
-        : `${clientLabel} debe realizar la transferencia para activar la garantía.`;
+    const buildNoteHtml = (activeHtml, expiredHtml, info) => {
+        if (!transferDeadlineMs) {
+            return `<p class="detail__payment-note">${escapeHtml(activeHtml)}</p>`;
+        }
+        const activeHidden = info && info.expired ? " hidden" : "";
+        const expiredHidden = info && !info.expired ? " hidden" : "";
+        const safeExpiredHtml = escapeHtml(expiredHtml);
+        return `<p class="detail__payment-note" data-payment-note>` +
+            `<span data-note-active${activeHidden}>${activeHtml}</span>` +
+            `<span data-note-expired${expiredHidden}>${safeExpiredHtml}</span>` +
+        `</p>`;
+    };
+    const professionalNoteHtml = buildNoteHtml(professionalActiveHtml, professionalExpiredText, countdownInfo);
+    const adminNoteHtml = buildNoteHtml(adminActiveHtml, adminExpiredHtml, countdownInfo);
 
     const paymentHtml = (() => {
         if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
@@ -2152,9 +2225,9 @@ const ADD_DOC_KEY = "add-document";
             const ibanRow = transferIban
                 ? `<tr data-copy-row><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
                 : "";
-            const noteText = isAdmin ? adminNote : professionalNote;
+            const noteHtml = isAdmin ? adminNoteHtml : professionalNoteHtml;
             return `<section class="detail__section detail__section--payment">
-                                <p class="detail__payment-note">${noteText}</p>
+                                ${noteHtml}
                                 <table class="detail__transfer-table">
                                         <tbody>
                                                 <tr data-copy-row><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
