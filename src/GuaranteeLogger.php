@@ -40,7 +40,17 @@ class GuaranteeLogger
                 $new_status !== ''
                 && in_array(
                     $new_status,
-                    ['pendiente_pago', 'pendiente_cobro', 'pending_payment', 'pending_cobro', 'publish', 'publicada', 'activada', 'activated'],
+                    [
+                        'pendiente_pago',
+                        'validacion_pendiente',
+                        'pendiente_cobro',
+                        'pending_payment',
+                        'pending_cobro',
+                        'publish',
+                        'publicada',
+                        'activada',
+                        'activated',
+                    ],
                     true
                 )
             ) {
@@ -129,6 +139,7 @@ class GuaranteeLogger
             'contracted'          => 'guarantee.contracted',
             'contract_notice_dispatched' => 'guarantee.contracted',
             'payment_recorded'     => 'payment.recorded',
+            'transfer_reported'    => 'payment.reported',
         ];
 
         return $map[$legacy] ?? 'guarantee.updated';
@@ -199,6 +210,7 @@ class GuaranteeLogger
                 );
                 break;
             case 'payment_recorded':
+            case 'transfer_reported':
                 $context = array_merge(
                     $context,
                     self::parse_payment_details($details, $vendor, $actor)
@@ -413,6 +425,7 @@ class GuaranteeLogger
             'pending_payment'  => __('Pendiente de pago', 'garantias-online-360vo'),
             'pending_cobro'    => __('Pendiente de domiciliación', 'garantias-online-360vo'),
             'pendiente_pago'   => __('Pendiente de pago', 'garantias-online-360vo'),
+            'validacion_pendiente' => __('Validación pendiente', 'garantias-online-360vo'),
             'pendiente_cobro'  => __('Pendiente de domiciliación', 'garantias-online-360vo'),
             'sin_finalizar'    => __('Sin finalizar', 'garantias-online-360vo'),
             'publish'          => __('Publicada', 'garantias-online-360vo'),
@@ -568,6 +581,18 @@ class GuaranteeLogger
 
         if ($actor_label !== '') {
             $context['payment_actor_label'] = $actor_label;
+        }
+
+        if (is_array($decoded)) {
+            if (! empty($decoded['concept'])) {
+                $context['transfer_concept'] = wp_strip_all_tags((string) $decoded['concept']);
+            }
+            if (! empty($decoded['amount'])) {
+                $context['transfer_amount'] = wp_strip_all_tags((string) $decoded['amount']);
+            }
+            if (! empty($decoded['account'])) {
+                $context['transfer_account'] = wp_strip_all_tags((string) $decoded['account']);
+            }
         }
 
         return $context;
