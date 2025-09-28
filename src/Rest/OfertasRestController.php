@@ -33,6 +33,26 @@ class OfertasRestController
         );
     }
 
+    private static function has_global_scope($user = null): bool
+    {
+        if ($user === null) {
+            $user = wp_get_current_user();
+        }
+
+        if (!$user instanceof \WP_User) {
+            return false;
+        }
+
+        if (user_can($user, 'manage_options')) {
+            return true;
+        }
+
+        $roles = (array) $user->roles;
+        $global_roles = ['go_garantias', 'go_director_comercial'];
+
+        return (bool) array_intersect($roles, $global_roles);
+    }
+
     public static function permissions_check($request)
     {
         // Solo usuarios logueados
@@ -46,12 +66,12 @@ class OfertasRestController
     {
         $current_user = wp_get_current_user();
         $current_user_id = $current_user->ID;
-        $is_admin = user_can($current_user, 'manage_options');
+        $can_query_others = self::has_global_scope($current_user);
         $requested_user_id = $request->get_param('id');
         $user_id = $current_user_id;
 
         if ($requested_user_id && $requested_user_id != $current_user_id) {
-            if (!$is_admin) {
+            if (!$can_query_others) {
                 // No permitir acceso a otros usuarios
                 return new \WP_REST_Response([], 200);
             }
