@@ -63,6 +63,22 @@ class Roles
             'read_private_garantias'   => true,
         ];
 
+        // Director Comercial: gestión completa sobre cualquier garantía
+        $caps_director_comercial = [
+            'read'                     => true,
+            'edit_garantia'            => true,
+            'edit_garantias'           => true,
+            'publish_garantias'        => true,
+            'delete_garantia'          => false,
+            'delete_garantias'         => false,
+            'edit_others_garantias'    => true,
+            'delete_others_garantias'  => false,
+            'read_private_garantias'   => true,
+        ];
+
+        // Gestión de Garantías: mismas capacidades que el director comercial
+        $caps_gestion_garantias = $caps_director_comercial;
+
         add_role(
             'go_particular',
             __('Particular', 'garantias-online-360vo'),
@@ -86,6 +102,18 @@ class Roles
             __('Comercial', 'garantias-online-360vo'),
             $caps_comercial
         );
+
+        add_role(
+            'go_director_comercial',
+            __('Director Comercial', 'garantias-online-360vo'),
+            $caps_director_comercial
+        );
+
+        add_role(
+            'go_garantias',
+            __('Gestión de Garantías', 'garantias-online-360vo'),
+            $caps_gestion_garantias
+        );
     }
 
     /**
@@ -97,5 +125,7 @@ class Roles
         remove_role('go_profesional');
         remove_role('go_gestoria');
         remove_role('go_comercial');
+        remove_role('go_director_comercial');
+        remove_role('go_garantias');
     }
 }

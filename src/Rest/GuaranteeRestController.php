@@ -161,6 +161,36 @@ class GuaranteeRestController
         add_action('deleted_post', [__CLASS__, 'clear_list_transients_on_delete']);
     }
 
+    private static function user_has_global_scope($user = null): bool
+    {
+        if ($user === null) {
+            $user = wp_get_current_user();
+        }
+
+        if (!$user instanceof \WP_User) {
+            return false;
+        }
+
+        if (user_can($user, 'manage_options')) {
+            return true;
+        }
+
+        $roles = (array) $user->roles;
+        $unrestricted_roles = ['go_garantias', 'go_director_comercial'];
+
+        return (bool) array_intersect($roles, $unrestricted_roles);
+    }
+
+    private static function user_id_has_global_scope(int $user_id): bool
+    {
+        $user = get_user_by('id', $user_id);
+        if (!$user instanceof \WP_User) {
+            return false;
+        }
+
+        return self::user_has_global_scope($user);
+    }
+
     public static function download_document($request)
     {
         $id   = (int) $request['id'];
@@ -417,8 +447,7 @@ class GuaranteeRestController
 
         // Admin o roles internos pueden ver todo
         if (
-            current_user_can('manage_options') ||
-            in_array('go_garantias', (array) $current_user->roles, true) ||
+            self::user_has_global_scope($current_user) ||
             in_array('go_comercial', (array) $current_user->roles, true)
         ) {
             return true;
@@ -1697,7 +1726,7 @@ class GuaranteeRestController
 
         // Permisos: restringe por profesional/comercial salvo admins
         $meta_query = [];
-        if (!current_user_can('manage_options')) {
+        if (!self::user_id_has_global_scope($current_user)) {
             $user_profesional_ids = [$current_user];
             $users_asignados = get_users([
                 'role'    => 'go_profesional',
@@ -1885,7 +1914,7 @@ class GuaranteeRestController
         }
 
         $meta_query = [];
-        if (!current_user_can('manage_options')) {
+        if (!self::user_id_has_global_scope($current_user)) {
             $user_profesional_ids = [$current_user];
             $users_asignados = get_users([
                 'role'    => 'go_profesional',

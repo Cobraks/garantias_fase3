@@ -98,6 +98,10 @@ if (in_array('go_profesional', $role_keys, true)) {
     $channel_label = 'Gestoría';
 } elseif (in_array('go_comercial', $role_keys, true)) {
     $channel_label = 'Comercial';
+} elseif (in_array('go_director_comercial', $role_keys, true)) {
+    $channel_label = 'Director Comercial';
+} elseif (in_array('go_garantias', $role_keys, true)) {
+    $channel_label = 'Gestión de Garantías';
 } elseif ($company_type_label !== '') {
     $channel_label = $company_type_label;
 }

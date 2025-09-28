@@ -24,5 +24,7 @@ use GarantiasOnline360VO\Plugin;
 
 // Iniciar Autoload
 Autoloader::run();
+register_activation_hook(__FILE__, [Plugin::class, 'activate']);
+register_deactivation_hook(__FILE__, [Plugin::class, 'deactivate']);
 // Arrancar Plugin cuando todos los plugins estén cargados
 add_action('plugins_loaded', [Plugin::class, 'run']);
