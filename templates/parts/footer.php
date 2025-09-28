@@ -108,6 +108,7 @@ if (! empty($is_add_guarantee)) {
             'offersEmpty'       => __('Sin ofertas activas', 'garantias-online-360vo'),
             'commercialsEmpty'  => __('Sin comercial asignado', 'garantias-online-360vo'),
             'detailTitle'       => __('Detalles del cliente', 'garantias-online-360vo'),
+            'emptyTitle'        => __('Ningún cliente seleccionado', 'garantias-online-360vo'),
             'selectPrompt'      => __('Selecciona un cliente para ver la información.', 'garantias-online-360vo'),
             'error'             => __('No se ha podido cargar la información de clientes.', 'garantias-online-360vo'),
             'contactEmail'      => __('Email de contacto', 'garantias-online-360vo'),
