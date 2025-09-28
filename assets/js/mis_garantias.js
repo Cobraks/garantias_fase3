@@ -1096,182 +1096,186 @@ const ADD_DOC_KEY = "add-document";
                         }).format(num);
                 }
 
-                function parseDateTime(value) {
-                        if (!value) return null;
-                        if (value instanceof Date) return value;
-                        if (typeof value === "number") {
-                                const fromNumber = new Date(value);
-                                if (!Number.isNaN(fromNumber.getTime())) {
-                                        return fromNumber;
-                                }
-                        }
-                        const normalized = String(value).trim();
-                        if (!normalized) return null;
-                        const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
-                                const y = Number(year);
-                                const m = Number(month) - 1;
-                                const d = Number(day);
-                                const hh = Number(hours);
-                                const mm = Number(minutes);
-                                const ss = Number(seconds);
-                                const candidate = new Date(y, m, d, hh, mm, ss);
-                                if (Number.isNaN(candidate.getTime())) return null;
-                                return candidate;
-                        };
-                        const localMatch = normalized.match(
-                                /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
-                        );
-                        if (localMatch) {
-                                const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
-                                const date = safeDate(year, month, day, hours, minutes, seconds);
-                                if (date) return date;
-                        }
-                        const isoMatch = normalized.match(
-                                /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
-                        );
-                        if (isoMatch) {
-                                const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
-                                const date = safeDate(year, month, day, hours, minutes, seconds);
-                                if (date) return date;
-                        }
-                        const numeric = normalized.replace(/[^0-9]/g, "");
-                        const parseFromNumeric = (year, month, day, hours = "0", minutes = "0", seconds = "0") =>
-                                safeDate(year, month, day, hours, minutes, seconds);
-                        if (numeric.length >= 14) {
-                                const firstChunk = Number(numeric.slice(0, 4));
-                                if (firstChunk > 1900) {
-                                        const date = parseFromNumeric(
-                                                numeric.slice(0, 4),
-                                                numeric.slice(4, 6),
-                                                numeric.slice(6, 8),
-                                                numeric.slice(8, 10),
-                                                numeric.slice(10, 12),
-                                                numeric.slice(12, 14)
-                                        );
-                                        if (date) return date;
-                                } else {
-                                        const date = parseFromNumeric(
-                                                numeric.slice(4, 8),
-                                                numeric.slice(2, 4),
-                                                numeric.slice(0, 2),
-                                                numeric.slice(8, 10),
-                                                numeric.slice(10, 12),
-                                                numeric.slice(12, 14)
-                                        );
-                                        if (date) return date;
-                                }
-                        }
-                        if (numeric.length === 12) {
-                                const firstChunk = Number(numeric.slice(0, 4));
-                                if (firstChunk > 1900) {
-                                        const date = parseFromNumeric(
-                                                numeric.slice(0, 4),
-                                                numeric.slice(4, 6),
-                                                numeric.slice(6, 8),
-                                                numeric.slice(8, 10),
-                                                numeric.slice(10, 12)
-                                        );
-                                        if (date) return date;
-                                } else {
-                                        const date = parseFromNumeric(
-                                                numeric.slice(4, 8),
-                                                numeric.slice(2, 4),
-                                                numeric.slice(0, 2),
-                                                numeric.slice(8, 10),
-                                                numeric.slice(10, 12)
-                                        );
-                                        if (date) return date;
-                                }
-                        }
-                        if (numeric.length === 8) {
-                                const firstChunk = Number(numeric.slice(0, 4));
-                                if (firstChunk > 1900) {
-                                        const date = parseFromNumeric(
-                                                numeric.slice(0, 4),
-                                                numeric.slice(4, 6),
-                                                numeric.slice(6, 8)
-                                        );
-                                        if (date) return date;
-                                } else {
-                                        const date = parseFromNumeric(
-                                                numeric.slice(4, 8),
-                                                numeric.slice(2, 4),
-                                                numeric.slice(0, 2)
-                                        );
-                                        if (date) return date;
-                                }
-                        }
-                        const parsed = new Date(normalized);
-                        if (!Number.isNaN(parsed.getTime())) {
-                                return parsed;
-                        }
-                        return null;
-                }
-
-                function isSameCalendarDay(a, b) {
-                        return (
-                                a.getFullYear() === b.getFullYear() &&
-                                a.getMonth() === b.getMonth() &&
-                                a.getDate() === b.getDate()
-                        );
-                }
-
-                function getTransferDeadlineMillis(detailData, rowData, now = Date.now()) {
-                        const candidates = [
-                                detailData?.desde_raw,
-                                rowData?.desde_raw,
-                                detailData?.desde,
-                                rowData?.desde,
-                        ];
-                        for (const candidate of candidates) {
-                                const date = parseDateTime(candidate);
-                                if (date) {
-                                        const nowDate = new Date(now);
-                                        if (isSameCalendarDay(date, nowDate)) {
-                                                return now + 48 * 60 * 60 * 1000;
+                const { getTransferDeadlineMillis, getCountdownInfo, formatCountdown } = (() => {
+                        function parseDateTime(value) {
+                                if (!value) return null;
+                                if (value instanceof Date) return value;
+                                if (typeof value === "number") {
+                                        const fromNumber = new Date(value);
+                                        if (!Number.isNaN(fromNumber.getTime())) {
+                                                return fromNumber;
                                         }
-                                        return date.getTime() + 48 * 60 * 60 * 1000;
                                 }
+                                const normalized = String(value).trim();
+                                if (!normalized) return null;
+                                const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
+                                        const y = Number(year);
+                                        const m = Number(month) - 1;
+                                        const d = Number(day);
+                                        const hh = Number(hours);
+                                        const mm = Number(minutes);
+                                        const ss = Number(seconds);
+                                        const candidate = new Date(y, m, d, hh, mm, ss);
+                                        if (Number.isNaN(candidate.getTime())) return null;
+                                        return candidate;
+                                };
+                                const localMatch = normalized.match(
+                                        /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                                );
+                                if (localMatch) {
+                                        const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
+                                        const date = safeDate(year, month, day, hours, minutes, seconds);
+                                        if (date) return date;
+                                }
+                                const isoMatch = normalized.match(
+                                        /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                                );
+                                if (isoMatch) {
+                                        const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
+                                        const date = safeDate(year, month, day, hours, minutes, seconds);
+                                        if (date) return date;
+                                }
+                                const numeric = normalized.replace(/[^0-9]/g, "");
+                                const parseFromNumeric = (year, month, day, hours = "0", minutes = "0", seconds = "0") =>
+                                        safeDate(year, month, day, hours, minutes, seconds);
+                                if (numeric.length >= 14) {
+                                        const firstChunk = Number(numeric.slice(0, 4));
+                                        if (firstChunk > 1900) {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(0, 4),
+                                                        numeric.slice(4, 6),
+                                                        numeric.slice(6, 8),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12),
+                                                        numeric.slice(12, 14)
+                                                );
+                                                if (date) return date;
+                                        } else {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(4, 8),
+                                                        numeric.slice(2, 4),
+                                                        numeric.slice(0, 2),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12),
+                                                        numeric.slice(12, 14)
+                                                );
+                                                if (date) return date;
+                                        }
+                                }
+                                if (numeric.length === 12) {
+                                        const firstChunk = Number(numeric.slice(0, 4));
+                                        if (firstChunk > 1900) {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(0, 4),
+                                                        numeric.slice(4, 6),
+                                                        numeric.slice(6, 8),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12)
+                                                );
+                                                if (date) return date;
+                                        } else {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(4, 8),
+                                                        numeric.slice(2, 4),
+                                                        numeric.slice(0, 2),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12)
+                                                );
+                                                if (date) return date;
+                                        }
+                                }
+                                if (numeric.length === 8) {
+                                        const firstChunk = Number(numeric.slice(0, 4));
+                                        if (firstChunk > 1900) {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(0, 4),
+                                                        numeric.slice(4, 6),
+                                                        numeric.slice(6, 8)
+                                                );
+                                                if (date) return date;
+                                        } else {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(4, 8),
+                                                        numeric.slice(2, 4),
+                                                        numeric.slice(0, 2)
+                                                );
+                                                if (date) return date;
+                                        }
+                                }
+                                const parsed = new Date(normalized);
+                                if (!Number.isNaN(parsed.getTime())) {
+                                        return parsed;
+                                }
+                                return null;
                         }
-                        return null;
-                }
 
-                function getCountdownInfo(deadlineMs, now = Date.now()) {
-                        if (!Number.isFinite(deadlineMs)) {
+                        function isSameCalendarDay(a, b) {
+                                return (
+                                        a.getFullYear() === b.getFullYear() &&
+                                        a.getMonth() === b.getMonth() &&
+                                        a.getDate() === b.getDate()
+                                );
+                        }
+
+                        function getTransferDeadlineMillis(detailData, rowData, now = Date.now()) {
+                                const candidates = [
+                                        detailData?.desde_raw,
+                                        rowData?.desde_raw,
+                                        detailData?.desde,
+                                        rowData?.desde,
+                                ];
+                                for (const candidate of candidates) {
+                                        const date = parseDateTime(candidate);
+                                        if (date) {
+                                                const nowDate = new Date(now);
+                                                if (isSameCalendarDay(date, nowDate)) {
+                                                        return now + 48 * 60 * 60 * 1000;
+                                                }
+                                                return date.getTime() + 48 * 60 * 60 * 1000;
+                                        }
+                                }
+                                return null;
+                        }
+
+                        function getCountdownInfo(deadlineMs, now = Date.now()) {
+                                if (!Number.isFinite(deadlineMs)) {
+                                        return {
+                                                label: "--:--:--",
+                                                expired: true,
+                                        };
+                                }
+                                const diff = deadlineMs - now;
+                                const expired = diff <= 0;
+                                const safeDiff = Math.max(0, diff);
+                                const dayMs = 24 * 60 * 60 * 1000;
+                                const thresholdMs = 3 * dayMs;
+                                if (!expired && safeDiff > thresholdMs) {
+                                        const totalDays = Math.ceil(safeDiff / dayMs);
+                                        const unit = totalDays === 1 ? "día" : "días";
+                                        return {
+                                                label: `${totalDays} ${unit}`,
+                                                expired: false,
+                                        };
+                                }
+                                const totalSeconds = Math.floor(safeDiff / 1000);
+                                const hours = Math.floor(totalSeconds / 3600);
+                                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                                const seconds = totalSeconds % 60;
+                                const hoursStr = hours.toString().padStart(2, "0");
+                                const minutesStr = minutes.toString().padStart(2, "0");
+                                const secondsStr = seconds.toString().padStart(2, "0");
                                 return {
-                                        label: "--:--:--",
-                                        expired: true,
+                                        label: `${hoursStr}:${minutesStr}:${secondsStr}`,
+                                        expired,
                                 };
                         }
-                        const diff = deadlineMs - now;
-                        const expired = diff <= 0;
-                        const safeDiff = Math.max(0, diff);
-                        const dayMs = 24 * 60 * 60 * 1000;
-                        const thresholdMs = 3 * dayMs;
-                        if (!expired && safeDiff > thresholdMs) {
-                                const totalDays = Math.ceil(safeDiff / dayMs);
-                                const unit = totalDays === 1 ? "día" : "días";
-                                return {
-                                        label: `${totalDays} ${unit}`,
-                                        expired: false,
-                                };
-                        }
-                        const totalSeconds = Math.floor(safeDiff / 1000);
-                        const hours = Math.floor(totalSeconds / 3600);
-                        const minutes = Math.floor((totalSeconds % 3600) / 60);
-                        const seconds = totalSeconds % 60;
-                        const hoursStr = hours.toString().padStart(2, "0");
-                        const minutesStr = minutes.toString().padStart(2, "0");
-                        const secondsStr = seconds.toString().padStart(2, "0");
-                        return {
-                                label: `${hoursStr}:${minutesStr}:${secondsStr}`,
-                                expired,
-                        };
-                }
 
-                function formatCountdown(deadlineMs) {
-                        return getCountdownInfo(deadlineMs).label;
-                }
+                        function formatCountdown(deadlineMs) {
+                                return getCountdownInfo(deadlineMs).label;
+                        }
+
+                        return { getTransferDeadlineMillis, getCountdownInfo, formatCountdown };
+                })();
 
                 let activeCountdownTimer = null;
 
