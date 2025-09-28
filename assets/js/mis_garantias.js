@@ -48,8 +48,12 @@ const ADD_DOC_KEY = "add-document";
                 const personIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z"/></svg>';
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
                 const continueIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
-                const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
-                const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
+               const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
+               const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
+               const arrowDownIcon =
+                        (goConfig.icons && goConfig.icons.arrowDropDown) || "";
+               const arrowUpIcon =
+                        (goConfig.icons && goConfig.icons.arrowDropUp) || "";
 
                 let pendingConfirmContext = null;
                 const confirmModalController = setupConfirmModal(
@@ -2255,9 +2259,16 @@ const ADD_DOC_KEY = "add-document";
                                                 ${ibanRow}
                                         </tbody>
                                 </table>`;
+            const toggleLabel = "Ver detalles de la transferencia";
+            const closedIcon = arrowDownIcon || "&#9660;";
+            const openIcon = arrowUpIcon || "&#9650;";
             const tableMarkup = isAdmin
                 ? `<details class="detail__transfer-toggle">
-                                        <summary class="detail__transfer-toggle-summary">Ver detalles de la transferencia</summary>
+                                        <summary class="detail__transfer-toggle-summary">
+                                                <span class="detail__transfer-toggle-label">${toggleLabel}</span>
+                                                <span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${closedIcon}</span>
+                                                <span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${openIcon}</span>
+                                        </summary>
                                         <div class="detail__transfer-toggle-content">${tableHtml}</div>
                                 </details>`
                 : tableHtml;
