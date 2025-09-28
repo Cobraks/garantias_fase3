@@ -1065,7 +1065,10 @@ const ADD_DOC_KEY = "add-document";
                         }
                         const date = new Date(value);
                         if (!isNaN(date)) {
-                                const iso = date.toISOString().slice(0, 10);
+                                const year = date.getFullYear();
+                                const month = String(date.getMonth() + 1).padStart(2, "0");
+                                const day = String(date.getDate()).padStart(2, "0");
+                                const iso = `${year}-${month}-${day}`;
                                 const display = new Intl.DateTimeFormat("es-ES", {
                                         day: "2-digit",
                                         month: "2-digit",
@@ -1245,7 +1248,7 @@ const ADD_DOC_KEY = "add-document";
                         const safeDiff = Math.max(0, diff);
                         const dayMs = 24 * 60 * 60 * 1000;
                         const thresholdMs = 3 * dayMs;
-                        if (!expired && safeDiff >= thresholdMs) {
+                        if (!expired && safeDiff > thresholdMs) {
                                 const totalDays = Math.ceil(safeDiff / dayMs);
                                 const unit = totalDays === 1 ? "día" : "días";
                                 return {
