@@ -9,6 +9,11 @@ use WP_Error;
 use DateTimeImmutable;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\GuaranteeLogger;
+use GarantiasOnline360VO\Notifications\Email\EmailMessage;
+use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
+use GarantiasOnline360VO\Notifications\Email\GuaranteeEmailDataFactory;
+use GarantiasOnline360VO\Notifications\Email\Mailer;
+use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
 use GarantiasOnline360VO\Support\UserProfileResolver;
@@ -116,6 +121,20 @@ class GuaranteeRestController
                     'args'                => [
                         'id'   => ['validate_callback' => 'absint'],
                         'type' => ['sanitize_callback' => 'sanitize_text_field'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/confirm-transfer',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'confirm_transfer'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
                     ],
                 ],
             ]
@@ -399,6 +418,263 @@ class GuaranteeRestController
         $url = self::build_document_download_url($id, 'certificado');
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_uploaded', 'certificado');
         return new WP_REST_Response(['certificate_url' => $url], 201);
+    }
+
+    public static function confirm_transfer($request)
+    {
+        if (! is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para realizar esta acción.', 'garantias-online-360vo'),
+                ['status' => 401]
+            );
+        }
+
+        $id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($id <= 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $detail = self::get_detail_data($id, true);
+        if (! is_array($detail) || empty($detail)) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        $current_user = wp_get_current_user();
+        $user_id      = (int) $current_user->ID;
+        $roles        = (array) $current_user->roles;
+        $is_admin     = current_user_can('manage_options');
+        $is_profesional = in_array('go_profesional', $roles, true) || in_array('profesional', $roles, true);
+
+        if (! $is_profesional && ! $is_admin) {
+            return new WP_Error(
+                'rest_forbidden_role',
+                __('Solo el profesional puede confirmar la transferencia.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $vendor_id = isset($detail['vendor_id']) ? (int) $detail['vendor_id'] : 0;
+        if ($vendor_id > 0 && $user_id !== $vendor_id && ! $is_admin) {
+            return new WP_Error(
+                'rest_forbidden_owner',
+                __('No puedes modificar esta garantía.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $payment_method = sanitize_key($detail['metodo_pago'] ?? '');
+        if ($payment_method !== 'transferencia' && $payment_method !== 'transferencia_bancaria') {
+            return new WP_Error(
+                'invalid_method',
+                __('Solo puedes confirmar transferencias bancarias.', 'garantias-online-360vo'),
+                ['status' => 409]
+            );
+        }
+
+        $current_state = sanitize_key($detail['estado']['value'] ?? '');
+        if ($current_state === 'validacion_pendiente') {
+            $snapshot = self::collect_detail_snapshot($id, true);
+            return new WP_REST_Response(['detail' => $snapshot], 200);
+        }
+
+        if ($current_state !== 'pendiente_pago') {
+            return new WP_Error(
+                'invalid_state',
+                __('La garantía no está pendiente de pago.', 'garantias-online-360vo'),
+                ['status' => 409]
+            );
+        }
+
+        $params  = $request->get_json_params();
+        $concept = is_array($params) && isset($params['concept']) ? sanitize_text_field($params['concept']) : '';
+        $amount  = is_array($params) && isset($params['amount']) ? sanitize_text_field($params['amount']) : '';
+        $account = is_array($params) && isset($params['account']) ? sanitize_text_field($params['account']) : '';
+
+        update_post_meta($id, 'estado_garantia_estado_contratacion', 'validacion_pendiente');
+        update_post_meta($id, '_go360_transfer_reported_at', current_time('mysql'));
+        update_post_meta($id, '_go360_transfer_reported_by', $user_id);
+
+        delete_transient('go_gdetail_' . $id);
+        self::clear_list_transients($id, null, true);
+
+        $log_payload = [
+            'method'     => 'transferencia',
+            'state'      => 'validacion_pendiente',
+            'actor_type' => 'vendor',
+        ];
+        if ($concept !== '') {
+            $log_payload['concept'] = $concept;
+        }
+        if ($amount !== '') {
+            $log_payload['amount'] = $amount;
+        }
+        if ($account !== '') {
+            $log_payload['account'] = $account;
+        }
+        if (! empty($detail['concesionario']) && $detail['concesionario'] !== '-') {
+            $log_payload['actor_label'] = sanitize_text_field($detail['concesionario']);
+        }
+
+        GuaranteeLogger::log(
+            $user_id,
+            $id,
+            'transfer_reported',
+            wp_json_encode($log_payload)
+        );
+
+        $data_factory   = new GuaranteeEmailDataFactory();
+        $guarantee_data = $data_factory->build($id);
+
+        $vendor_label = $detail['concesionario'] ?? '';
+        if ($vendor_label === '' && isset($guarantee_data['vendor']['company_name'])) {
+            $vendor_label = (string) $guarantee_data['vendor']['company_name'];
+        }
+        if ($vendor_label === '' && isset($guarantee_data['vendor']['name'])) {
+            $vendor_label = (string) $guarantee_data['vendor']['name'];
+        }
+        $vendor_label = $vendor_label !== ''
+            ? sanitize_text_field($vendor_label)
+            : __('el cliente', 'garantias-online-360vo');
+
+        $plate = isset($guarantee_data['plate'])
+            ? sanitize_text_field($guarantee_data['plate'])
+            : '';
+        $plate_label = $plate !== '' ? $plate : sprintf('#%d', $id);
+
+        $transfer_data    = isset($guarantee_data['transfer']) && is_array($guarantee_data['transfer'])
+            ? $guarantee_data['transfer']
+            : [];
+        $transfer_concept = $concept !== ''
+            ? $concept
+            : sanitize_text_field($transfer_data['concept'] ?? '');
+        $transfer_amount  = $amount !== ''
+            ? $amount
+            : sanitize_text_field($transfer_data['amount'] ?? '');
+        $transfer_account = $account !== ''
+            ? $account
+            : sanitize_text_field($transfer_data['iban'] ?? '');
+
+        $transfer_concept = $transfer_concept !== '' ? sanitize_text_field($transfer_concept) : '';
+        $transfer_amount  = $transfer_amount !== '' ? sanitize_text_field($transfer_amount) : '';
+        $transfer_account = $transfer_account !== '' ? sanitize_text_field($transfer_account) : '';
+
+        $permalink = isset($guarantee_data['permalink'])
+            ? esc_url_raw($guarantee_data['permalink'])
+            : '';
+        if ($permalink === '') {
+            $permalink = home_url('/garantias-online/mis-garantias/');
+            if ($plate !== '') {
+                $permalink = add_query_arg('matricula', rawurlencode($plate), $permalink);
+            }
+        }
+
+        $delivery = EmailNotificationService::resolve_admin_delivery(
+            $id,
+            [
+                'event'     => 'transfer_reported',
+                'initiator' => $user_id,
+            ]
+        );
+
+        $recipients = $delivery['to'] ?? [];
+        $bcc        = $delivery['bcc'] ?? [];
+
+        if (! empty($recipients) || ! empty($bcc)) {
+            $subject = sprintf(
+                /* translators: %s: vehicle plate */
+                __('Transferencia confirmada · Garantía %s', 'garantias-online-360vo'),
+                $plate_label
+            );
+
+            $renderer = new TemplateRenderer();
+            $body = $renderer->render(
+                'transfer-reported-admin',
+                [
+                    'vendor_name' => $vendor_label,
+                    'plate_label' => $plate_label,
+                    'permalink'   => $permalink,
+                    'transfer'    => [
+                        'amount'  => $transfer_amount,
+                        'account' => $transfer_account,
+                        'concept' => $transfer_concept,
+                    ],
+                ]
+            );
+
+            if ($body === '') {
+                ob_start();
+                ?>
+                <p>
+                    <?php
+                    printf(
+                        wp_kses(
+                            /* translators: %s: customer name */
+                            __('El cliente <strong>%s</strong> ha indicado que ha realizado la transferencia.', 'garantias-online-360vo'),
+                            ['strong' => []]
+                        ),
+                        esc_html($vendor_label)
+                    );
+                    ?>
+                </p>
+                <?php if ($transfer_amount !== '' || $transfer_account !== '' || $transfer_concept !== '') : ?>
+                    <ul>
+                        <?php if ($transfer_amount !== '') : ?>
+                            <li><strong><?php esc_html_e('Importe:', 'garantias-online-360vo'); ?></strong> <?php echo esc_html($transfer_amount); ?></li>
+                        <?php endif; ?>
+                        <?php if ($transfer_account !== '') : ?>
+                            <li><strong><?php esc_html_e('Cuenta:', 'garantias-online-360vo'); ?></strong> <?php echo esc_html($transfer_account); ?></li>
+                        <?php endif; ?>
+                        <?php if ($transfer_concept !== '') : ?>
+                            <li><strong><?php esc_html_e('Concepto:', 'garantias-online-360vo'); ?></strong> <?php echo esc_html($transfer_concept); ?></li>
+                        <?php endif; ?>
+                    </ul>
+                <?php endif; ?>
+                <p><?php esc_html_e('Revisa la operación y accede a la garantía para activarla.', 'garantias-online-360vo'); ?></p>
+                <?php if ($permalink !== '') : ?>
+                    <p><a href="<?php echo esc_url($permalink); ?>"><?php esc_html_e('Abrir garantía', 'garantias-online-360vo'); ?></a></p>
+                <?php endif; ?>
+                <?php
+                $body = trim((string) ob_get_clean());
+            }
+
+            $headers  = ['Content-Type: text/html; charset=UTF-8'];
+            $metadata = [];
+            if (! empty($bcc)) {
+                $metadata['bcc'] = $bcc;
+            }
+
+            $message = new EmailMessage($recipients, $subject, $body, $headers, [], $metadata);
+            $mailer  = new Mailer();
+            $sent    = $mailer->send($message);
+
+            $log_details = sprintf(
+                'transfer_reported|to:%s',
+                implode(',', $message->get_recipients())
+            );
+            if (! empty($metadata['bcc'])) {
+                $log_details .= '|bcc:' . implode(',', $metadata['bcc']);
+            }
+
+            GuaranteeLogger::log(
+                $user_id,
+                $id,
+                $sent ? 'email_sent' : 'email_failed',
+                $log_details
+            );
+        }
+
+        $snapshot = self::collect_detail_snapshot($id, true);
+
+        return new WP_REST_Response(['detail' => $snapshot], 200);
     }
 
     public static function can_list($request)
@@ -868,7 +1144,7 @@ class GuaranteeRestController
                 $estado['estado_contratacion'] = 'activada';
             } elseif (isset($data['estado_garantia']['estado_contratacion'])) {
                 $ec = sanitize_text_field($data['estado_garantia']['estado_contratacion']);
-                $valid = ['pendiente_pago', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto'];
+                $valid = ['pendiente_pago', 'validacion_pendiente', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto'];
                 if (in_array($ec, $valid, true)) {
                     $estado['estado_contratacion'] = $ec;
                 }
@@ -1460,6 +1736,7 @@ class GuaranteeRestController
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'validacion_pendiente' => __('Validación pendiente', 'garantias-online-360vo'),
             'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
             'activada'       => __('Activada', 'garantias-online-360vo'),
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
@@ -1941,6 +2218,7 @@ class GuaranteeRestController
         sort($estados);
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'validacion_pendiente' => __('Validación pendiente', 'garantias-online-360vo'),
             'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
             'activada'       => __('Activada', 'garantias-online-360vo'),
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
