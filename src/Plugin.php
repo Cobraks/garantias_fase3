@@ -103,7 +103,7 @@ class Plugin
         update_option(Seeder::OPTION_STATUS, 'pending');
         ActivityLogger::create_table();
         PrivateDocsManager::ensure_directory();
-        update_option(Rewrite::OPTION_RULES_VERSION, Rewrite::RULES_VERSION);
+        Rewrite::mark_rules_current();
     }
 
     /**

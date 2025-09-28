@@ -14,6 +14,14 @@ class Rewrite
     public const RULES_VERSION        = 4;
     private const OPTION_RULES_VERSION = 'go_rewrite_rules_version';
 
+    /**
+     * Marca la versión almacenada como actual sin forzar un flush
+     */
+    public static function mark_rules_current(): void
+    {
+        update_option(self::OPTION_RULES_VERSION, self::RULES_VERSION);
+    }
+
     /** Hook setup */
     public static function init(): void
     {
@@ -76,7 +84,7 @@ class Rewrite
     public static function flush(): void
     {
         flush_rewrite_rules();
-        update_option(self::OPTION_RULES_VERSION, self::RULES_VERSION);
+        self::mark_rules_current();
     }
 
     public static function maybe_flush_rules(): void
@@ -88,6 +96,6 @@ class Rewrite
         }
 
         flush_rewrite_rules(false);
-        update_option(self::OPTION_RULES_VERSION, self::RULES_VERSION);
+        self::mark_rules_current();
     }
 }
