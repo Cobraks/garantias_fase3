@@ -1096,7 +1096,7 @@ const ADD_DOC_KEY = "add-document";
                         }).format(num);
                 }
 
-                const { getTransferDeadlineMillis, getCountdownInfo, formatCountdown } = (() => {
+                const { getTransferDeadlineMillis, getTransferDeadlineInfo } = (() => {
                         function parseDateTime(value) {
                                 if (!value) return null;
                                 if (value instanceof Date) return value;
@@ -1237,101 +1237,46 @@ const ADD_DOC_KEY = "add-document";
                                 return null;
                         }
 
-                        function getCountdownInfo(deadlineMs, now = Date.now()) {
+                        function formatDeadlineDate(deadlineMs) {
+                                if (!Number.isFinite(deadlineMs)) {
+                                        return "";
+                                }
+                                const date = new Date(deadlineMs);
+                                if (Number.isNaN(date.getTime())) {
+                                        return "";
+                                }
+                                try {
+                                        return new Intl.DateTimeFormat("es-ES", {
+                                                day: "numeric",
+                                                month: "long",
+                                        }).format(date);
+                                } catch (error) {
+                                        console.warn("No se pudo formatear la fecha límite de transferencia", error);
+                                        return "";
+                                }
+                        }
+
+                        function getTransferDeadlineInfo(detailData, rowData, now = Date.now()) {
+                                const deadlineMs = getTransferDeadlineMillis(detailData, rowData, now);
                                 if (!Number.isFinite(deadlineMs)) {
                                         return {
-                                                label: "--:--:--",
-                                                expired: true,
-                                        };
-                                }
-                                const diff = deadlineMs - now;
-                                const expired = diff <= 0;
-                                const safeDiff = Math.max(0, diff);
-                                const dayMs = 24 * 60 * 60 * 1000;
-                                const thresholdMs = 3 * dayMs;
-                                if (!expired && safeDiff > thresholdMs) {
-                                        const totalDays = Math.ceil(safeDiff / dayMs);
-                                        const unit = totalDays === 1 ? "día" : "días";
-                                        return {
-                                                label: `${totalDays} ${unit}`,
+                                                deadlineMs: null,
                                                 expired: false,
+                                                label: "",
                                         };
                                 }
-                                const totalSeconds = Math.floor(safeDiff / 1000);
-                                const hours = Math.floor(totalSeconds / 3600);
-                                const minutes = Math.floor((totalSeconds % 3600) / 60);
-                                const seconds = totalSeconds % 60;
-                                const hoursStr = hours.toString().padStart(2, "0");
-                                const minutesStr = minutes.toString().padStart(2, "0");
-                                const secondsStr = seconds.toString().padStart(2, "0");
                                 return {
-                                        label: `${hoursStr}:${minutesStr}:${secondsStr}`,
-                                        expired,
+                                        deadlineMs,
+                                        expired: deadlineMs <= now,
+                                        label: formatDeadlineDate(deadlineMs),
                                 };
                         }
 
-                        function formatCountdown(deadlineMs) {
-                                return getCountdownInfo(deadlineMs).label;
-                        }
-
-                        return { getTransferDeadlineMillis, getCountdownInfo, formatCountdown };
+                        return { getTransferDeadlineMillis, getTransferDeadlineInfo };
                 })();
+                function clearActiveCountdown() {}
 
-                let activeCountdownTimer = null;
-
-                function clearActiveCountdown() {
-                        if (activeCountdownTimer) {
-                                window.clearInterval(activeCountdownTimer.id);
-                                activeCountdownTimer = null;
-                        }
-                }
-
-                function setupTransferCountdown(root) {
-                        clearActiveCountdown();
-                        if (!root) return;
-                        const countdownEl = root.querySelector(".detail__payment-countdown");
-                        if (!countdownEl) return;
-                        const deadlineMs = Number(countdownEl.dataset.deadline || "");
-                        if (!Number.isFinite(deadlineMs)) {
-                                countdownEl.textContent = "--:--:--";
-                                return;
-                        }
-                        const noteEl = countdownEl.closest("[data-payment-note]");
-                        const activeNote = noteEl?.querySelector("[data-note-active]");
-                        const expiredNote = noteEl?.querySelector("[data-note-expired]");
-                        const applyUpdate = () => {
-                                const info = getCountdownInfo(deadlineMs);
-                                countdownEl.textContent = info.label;
-                                if (noteEl) {
-                                        if (info.expired) {
-                                                noteEl.classList.add("detail__payment-note--expired");
-                                        } else {
-                                                noteEl.classList.remove("detail__payment-note--expired");
-                                        }
-                                }
-                                if (activeNote && expiredNote) {
-                                        if (info.expired) {
-                                                activeNote.hidden = true;
-                                                expiredNote.hidden = false;
-                                        } else {
-                                                activeNote.hidden = false;
-                                                expiredNote.hidden = true;
-                                        }
-                                }
-                                return info.expired;
-                        };
-                        const initiallyExpired = applyUpdate();
-                        if (initiallyExpired) {
-                                return;
-                        }
-                        const id = window.setInterval(() => {
-                                const isExpired = applyUpdate();
-                                if (isExpired) {
-                                        clearActiveCountdown();
-                                }
-                        }, 1000);
-                        activeCountdownTimer = { id };
-                }
+                function setupTransferCountdown() {}
 
                 function normalizeDetailData(data) {
                         if (!data || typeof data !== "object") return data;
@@ -2228,7 +2173,8 @@ const ADD_DOC_KEY = "add-document";
         ? `<div class="guarantee-detail__btn-container">${adminActionButtons.join("")}</div>`
         : "";
 
-    const transferDeadlineMs = getTransferDeadlineMillis(data, rowData);
+    const deadlineInfo = getTransferDeadlineInfo(data, rowData);
+    const transferDeadlineMs = deadlineInfo.deadlineMs;
     const { vendorDisplayHtml, adminEntityHtml } = (() => {
         const vendorCompanyData =
             data && typeof data.vendor_company === "object" && data.vendor_company !== null
@@ -2247,34 +2193,33 @@ const ADD_DOC_KEY = "add-document";
             adminEntityHtml: vendorDisplayHtml || "El cliente",
         };
     })();
-    const countdownInfo = transferDeadlineMs ? getCountdownInfo(transferDeadlineMs) : null;
-    const countdownLabel = countdownInfo ? escapeHtml(countdownInfo.label) : "";
-    const countdownSpan = transferDeadlineMs
-        ? `<span class="detail__payment-countdown" data-deadline="${transferDeadlineMs}">${countdownLabel}</span>`
-        : "";
-    const professionalExpiredHtml = "El plazo para realizar la transferencia ha vencido. Ponte en contacto con tu comercial o con 360VO.";
+    const hasTransferDeadline = Number.isFinite(transferDeadlineMs);
+    const deadlineLabelHtml = deadlineInfo.label ? escapeHtml(deadlineInfo.label) : "";
+    const professionalExpiredHtml = escapeHtml(
+        "El plazo para realizar la transferencia ha vencido. Ponte en contacto con tu comercial o con 360VO."
+    );
     const adminExpiredHtml = vendorDisplayHtml
         ? `El plazo para realizar la transferencia ha vencido. Ponte en contacto con ${vendorDisplayHtml}.`
-        : escapeHtml("El plazo para realizar la transferencia ha vencido. Ponte en contacto con el cliente.");
-    const adminActiveHtml = transferDeadlineMs
-        ? `${adminEntityHtml} tiene ${countdownSpan} para realizar la transferencia.`
-        : `${adminEntityHtml} debe realizar la transferencia para activar la garantía.`;
-    const professionalActiveHtml = transferDeadlineMs
-        ? `Recuerda realizar la transferencia antes de ${countdownSpan} para activar la garantía.`
+        : escapeHtml(
+              "El plazo para realizar la transferencia ha vencido. Ponte en contacto con el cliente."
+          );
+    const professionalActiveHtml = hasTransferDeadline && deadlineLabelHtml
+        ? `Recuerda realizar la transferencia antes del ${deadlineLabelHtml} para activar la garantía.`
         : escapeHtml("Recuerda realizar la transferencia para activar tu garantía.");
-    const buildNoteHtml = (activeHtml, expiredHtml, info) => {
-        if (!transferDeadlineMs) {
-            return `<p class="detail__payment-note">${activeHtml}</p>`;
+    const adminActiveHtml = hasTransferDeadline && deadlineLabelHtml
+        ? `${adminEntityHtml} tiene hasta el ${deadlineLabelHtml} para activar la garantía.`
+        : `${adminEntityHtml} debe realizar la transferencia para activar la garantía.`;
+    const buildNoteHtml = (activeHtml, expiredHtml) => {
+        const classes = ["detail__payment-note"];
+        let content = activeHtml;
+        if (hasTransferDeadline && deadlineInfo.expired) {
+            classes.push("detail__payment-note--expired");
+            content = expiredHtml;
         }
-        const activeHidden = info && info.expired ? " hidden" : "";
-        const expiredHidden = info && !info.expired ? " hidden" : "";
-        return `<p class="detail__payment-note" data-payment-note>` +
-            `<span data-note-active${activeHidden}>${activeHtml}</span>` +
-            `<span data-note-expired${expiredHidden}>${expiredHtml}</span>` +
-        `</p>`;
+        return `<p class="${classes.join(" ")}">${content}</p>`;
     };
-    const professionalNoteHtml = buildNoteHtml(professionalActiveHtml, escapeHtml(professionalExpiredHtml), countdownInfo);
-    const adminNoteHtml = buildNoteHtml(adminActiveHtml, adminExpiredHtml, countdownInfo);
+    const professionalNoteHtml = buildNoteHtml(professionalActiveHtml, professionalExpiredHtml);
+    const adminNoteHtml = buildNoteHtml(adminActiveHtml, adminExpiredHtml);
 
     const paymentHtml = (() => {
         if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
@@ -2303,15 +2248,22 @@ const ADD_DOC_KEY = "add-document";
                 ? `<tr data-copy-row><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
                 : "";
             const noteHtml = isAdmin ? adminNoteHtml : professionalNoteHtml;
-            return `<section class="detail__section detail__section--payment">
-                                ${noteHtml}
-                                <table class="detail__transfer-table">
+            const tableHtml = `<table class="detail__transfer-table">
                                         <tbody>
                                                 <tr data-copy-row><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
                                                 <tr data-copy-row><th>Cantidad</th><td data-copy-cell data-tooltip="Copiar cantidad"><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
                                                 ${ibanRow}
                                         </tbody>
-                                </table>
+                                </table>`;
+            const tableMarkup = isAdmin
+                ? `<details class="detail__transfer-toggle">
+                                        <summary class="detail__transfer-toggle-summary">Ver detalles de la transferencia</summary>
+                                        <div class="detail__transfer-toggle-content">${tableHtml}</div>
+                                </details>`
+                : tableHtml;
+            return `<section class="detail__section detail__section--payment">
+                                ${noteHtml}
+                                ${tableMarkup}
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
                         </section>`;
         }

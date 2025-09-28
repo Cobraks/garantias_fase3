@@ -1148,6 +1148,55 @@ section.guarantees-list.sticky-active {
     margin-top: 0;
 }
 
+.detail__transfer-toggle {
+    margin-top: var(--spacing-2);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    background: #f9fafb;
+    overflow: hidden;
+}
+
+.detail__transfer-toggle-summary {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #1f2937;
+    list-style: none;
+}
+
+.detail__transfer-toggle-summary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+    border-radius: inherit;
+}
+
+.detail__transfer-toggle-summary::-webkit-details-marker {
+    display: none;
+}
+
+.detail__transfer-toggle-summary::after {
+    content: "\25BC";
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+    transition: transform var(--transition-speed);
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-summary {
+    border-bottom: 1px solid var(--border-color);
+    background: #eef2ff;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-summary::after {
+    transform: rotate(-180deg);
+}
+
+.detail__transfer-toggle-content {
+    padding: 0.75rem 1rem 1rem;
+}
+
 .guarantee-detail__btn--report:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(224,36,36,0.5);
@@ -1337,10 +1386,7 @@ section.guarantees-list.sticky-active {
     background: #fee2e2;
     color: #b91c1c;
     border-left-color: #ef4444;
-}
-.detail__payment-note [data-note-expired] {
-    color: #d93025;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 1.05rem;
 }
 .detail__payment-note--domiciliacion {
