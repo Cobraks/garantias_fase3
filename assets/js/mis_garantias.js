@@ -583,25 +583,16 @@ const ADD_DOC_KEY = "add-document";
                         const safeAmount = hasAmount ? escapeHtml(normalizedAmount) : "";
                         const hasAccount = transferAccount !== "" && transferAccount !== "-";
                         const safeAccount = hasAccount ? escapeHtml(transferAccount) : "";
-                        const detailsParts = [];
+                        let message = "Adjunta el justificante de la transferencia";
                         if (safeAmount) {
-                                detailsParts.push(
-                                        `por un importe de <strong>${safeAmount}</strong>`
-                                );
+                                message += ` de <strong>${safeAmount}</strong>`;
                         }
                         if (safeAccount) {
-                                detailsParts.push(
-                                        `a la cuenta <strong>${safeAccount}</strong>`
-                                );
+                                message += ` a la cuenta <strong>${safeAccount}</strong>`;
                         }
-                        detailsParts.push(
-                                `con el concepto <strong>${safeConcept}</strong>`
-                        );
-                        const detailsSentence = detailsParts.join(", ");
-                        const message =
-                                `Adjunta el comprobante de la transferencia ${detailsSentence}.`;
+                        message += ` con concepto <strong>${safeConcept}</strong>.`;
                         const note =
-                                "Validaremos la operación y recibirás la confirmación por correo en cuanto activemos la garantía.";
+                                "Validaremos la operación y te confirmaremos por correo cuando la garantía esté activa.";
                         const subtitle = `Garantía ${matricula || id}`;
                         const context = {
                                 intent: "transfer-report",
@@ -621,11 +612,11 @@ const ADD_DOC_KEY = "add-document";
                         if (confirmModalController) {
                                 pendingConfirmContext = context;
                                 confirmModalController.open({
-                                        title: "Enviar justificante de transferencia",
+                                        title: "Comprobante de transferencia",
                                         subtitle,
                                         message,
                                         note,
-                                        confirmLabel: "Enviar aviso",
+                                        confirmLabel: "Enviar comprobante",
                                         requireFile: true,
                                 });
                                 return;
