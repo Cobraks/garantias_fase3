@@ -184,6 +184,16 @@ $show_channel_col = ! $is_professional;
         <p class="confirm-modal__subtitle"></p>
         <p class="confirm-modal__message"></p>
         <p class="confirm-modal__note" hidden></p>
+        <div class="confirm-modal__upload" hidden>
+            <p class="confirm-modal__upload-title"><?php esc_html_e('Adjuntar justificante de pago', 'garantias-online-360vo'); ?></p>
+            <label class="confirm-modal__file-control">
+                <input type="file" class="confirm-modal__file-input" accept=".pdf,.jpg,.jpeg,.png" />
+                <span class="confirm-modal__file-button"><?php esc_html_e('Seleccionar archivo', 'garantias-online-360vo'); ?></span>
+            </label>
+            <p class="confirm-modal__file-name" data-empty="<?php esc_attr_e('Ningún archivo seleccionado', 'garantias-online-360vo'); ?>"><?php esc_html_e('Ningún archivo seleccionado', 'garantias-online-360vo'); ?></p>
+            <p class="confirm-modal__file-help"><?php esc_html_e('Formatos admitidos: PDF, JPG o PNG (máx. 10 MB).', 'garantias-online-360vo'); ?></p>
+            <p class="confirm-modal__file-error" role="alert" hidden></p>
+        </div>
         <label class="confirm-modal__checkbox">
             <input type="checkbox" class="confirm-modal__checkbox-input" />
             <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
