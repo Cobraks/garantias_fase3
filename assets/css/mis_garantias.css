@@ -185,10 +185,12 @@ section.guarantees-list {
     overflow-x: hidden;
     transition: max-height 300ms ease;
     border-radius: 1rem;
+    border-top-left-radius: .5rem;
+    border-top-right-radius: .5rem;
 
     background: white;
     height: 100%;
-    
+
 }
 section.guarantees-list.sticky-active {
     max-height: calc(100vh - var(--spacing-4) - 7.5rem);
@@ -316,6 +318,9 @@ section.guarantees-list.sticky-active {
 .guarantees-table__row.selected .guarantees-list__badge--pend-cobro {
     background-color: #3b82f6;
 }
+.guarantees-table__row.selected .guarantees-list__badge--validacion-pendiente {
+    background-color: #3b82f6;
+}
 
 .guarantees-table td {
     display: flex;
@@ -362,6 +367,7 @@ section.guarantees-list.sticky-active {
 .guarantees-list__badge--sin-finalizar { color: #6b7280; }
 .guarantees-list__badge--expira-pronto { color: #fbbf24; }
 .guarantees-list__badge--pend-cobro { color: #3b82f6; }
+.guarantees-list__badge--validacion-pendiente { color: #3b82f6; }
 
 /* Periodo Validez */
 .guarantees-table__period > div {
@@ -534,7 +540,7 @@ section.guarantees-list.sticky-active {
 }
 
 .detail__section li strong {
-    font-weight: 500;
+    font-weight: 600;
 }
 .detail__actions {
     display: flex;
@@ -601,6 +607,12 @@ section.guarantees-list.sticky-active {
 .detail__docs-icon svg {
     width: 100%;
     height: 100%;
+}
+.detail__docs-icon--payment {
+    color: #15803d;
+}
+.detail__docs-icon--payment svg {
+    fill: currentColor;
 }
 
 .detail__docs-label {
@@ -870,6 +882,17 @@ section.guarantees-list.sticky-active {
     border: none;
     border-radius: 0;
     background: transparent;
+
+}
+
+tr.guarantees-table__row:nth-child(even):not(.selected),
+.guarantees-table tbody tr:nth-child(even):not(.selected) {
+    background: #fcfcfc;
+}
+
+tr.guarantees-table__row:nth-child(even):not(.selected):hover,
+.guarantees-table tbody tr:nth-child(even):not(.selected):hover {
+    background: #f5f5f580;
 }
 .vendor-card__header {
     display: flex;
@@ -1016,6 +1039,9 @@ section.guarantees-list.sticky-active {
 .guarantee-detail__badge--pendiente-pago {
     background-color: #f59e0b;
 }
+.guarantee-detail__badge--validacion-pendiente {
+    background-color: #3b82f6;
+}
 .guarantee-detail__badge--sin-finalizar {
     background-color: #6b7280;
 }
@@ -1077,6 +1103,11 @@ section.guarantees-list.sticky-active {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     color: #f8fafc;
     box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+}
+.guarantee-detail__btn--transfer-report {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: #ecfdf5;
+    box-shadow: 0 10px 25px rgba(34, 197, 94, 0.35);
 }
 
 .guarantee-detail__btn--report {
@@ -1148,6 +1179,79 @@ section.guarantees-list.sticky-active {
     margin-top: 0;
 }
 
+.detail__transfer-toggle {
+    margin-top: var(--spacing-2);
+    margin-bottom: var(--spacing-2);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    background: #f9fafb;
+    overflow: hidden;
+}
+
+.detail__transfer-toggle-summary {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #1f2937;
+    list-style: none;
+}
+
+.detail__transfer-toggle-summary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+    border-radius: inherit;
+}
+
+.detail__transfer-toggle-summary::-webkit-details-marker {
+    display: none;
+}
+
+.detail__transfer-toggle-summary svg {
+    display: block;
+}
+
+.detail__transfer-toggle-label {
+    flex: 1 1 auto;
+}
+
+.detail__transfer-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #4b5563;
+    transition: color var(--transition-speed);
+}
+
+.detail__transfer-toggle-icon--open {
+    display: none;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-summary {
+    border-bottom: 1px solid var(--border-color);
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon--closed {
+    display: none;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon--open {
+    display: inline-flex;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon {
+    color: #111827;
+}
+
+.detail__transfer-toggle-content {
+    padding: 0.75rem 1rem 1rem;
+}
+
 .guarantee-detail__btn--report:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(224,36,36,0.5);
@@ -1182,13 +1286,14 @@ section.guarantees-list.sticky-active {
 .confirm-modal__dialog {
     background: #ffffff;
     border-radius: 1rem;
-    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
     max-width: 520px;
     width: 100%;
     padding: var(--spacing-5) var(--spacing-5) var(--spacing-4);
     position: relative;
     display: flex;
     flex-direction: column;
+    text-align: left;
 }
 
 .confirm-modal__close {
@@ -1205,21 +1310,21 @@ section.guarantees-list.sticky-active {
 .confirm-modal__title {
     font-size: 1.35rem;
     font-weight: 600;
-    color: #0f172a;
+    color: var(--text-primary, #0f172a);
     margin-bottom: 0.25rem;
 }
 
 .confirm-modal__subtitle {
     font-size: 1rem;
     font-weight: 500;
-    color: #475569;
+    color: var(--text-secondary, #475569);
     margin-top: -0.5rem;
 }
 
 .confirm-modal__message {
     font-size: 0.95rem;
     line-height: 1.5;
-    color: #1f2937;
+    color: var(--text-primary, #1f2937);
     margin-block: 1.5rem;
 }
 
@@ -1238,29 +1343,91 @@ section.guarantees-list.sticky-active {
 .confirm-modal__note {
     font-size: 0.9rem;
     font-weight: 500;
-    color: #047857;
+    color: var(--text-secondary, #475569);
 }
-
-.confirm-modal__checkbox {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
-    font-size: 0.9rem;
-    color: #1f2937;
-    margin-block: 1.5rem;
-}
-
-.confirm-modal__checkbox-input {
-    width: 1.1rem;
-    height: 1.1rem;
+.confirm-modal__upload {
     margin: 0;
-    flex-shrink: 0;
-    border-radius: 0.3rem;
-    accent-color: #2563eb;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
 }
-
-.confirm-modal__checkbox-label {
-    line-height: 1.45;
+.confirm-modal__upload-title {
+    margin: 0;
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+    font-size: 1.05rem;
+}
+.confirm-modal__upload-text {
+    margin: 0;
+    color: var(--text-secondary, #475569);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+.confirm-modal__file-control {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--spacing-3);
+    border-radius: 0.75rem;
+    border: 1px dashed var(--border-color, rgba(148, 163, 184, 0.65));
+    background: var(--neutral95, #f5f5f5);
+    cursor: pointer;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+    margin: 0;
+}
+.confirm-modal__file-control:hover,
+.confirm-modal__file-control:focus-within {
+    border-color: var(--primary-color, #1b4ed6);
+    box-shadow: 0 0 0 3px rgba(27, 78, 214, 0.12);
+}
+.confirm-modal__file-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.confirm-modal__file-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 1.75rem;
+    border-radius: 999px;
+    background: var(--primary-color, #1b4ed6);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: background 160ms ease, transform 160ms ease;
+    pointer-events: none;
+    box-shadow: none;
+}
+.confirm-modal__file-control:hover .confirm-modal__file-cta,
+.confirm-modal__file-control:focus-within .confirm-modal__file-cta {
+    background: color-mix(in srgb, var(--primary-color, #1b4ed6) 90%, #000 10%);
+    transform: translateY(-1px);
+}
+.confirm-modal__file-name {
+    margin: var(--spacing-2) 0 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary, #475569);
+}
+.confirm-modal__file-help {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-tertiary, #6b7280);
+}
+.confirm-modal__file-error {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #c53030;
+    font-weight: 600;
 }
 
 .confirm-modal__actions {
@@ -1333,11 +1500,33 @@ section.guarantees-list.sticky-active {
     border-radius: 6px;
     font-weight: 500;
 }
+.detail__payment-note strong {
+    font-weight: 600;
+}
+.detail__payment-note--expired {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-left-color: #ef4444;
+    font-weight: 500;
+    font-size: 1.05rem;
+}
+.detail__payment-note--expired strong {
+    font-weight: 600;
+}
 .detail__payment-note--domiciliacion {
     background: #e0f2fe;
     color: #1d4ed8;
     border-left-color: #3b82f6;
     margin-bottom: var(--spacing-2);
+}
+.detail__payment-note--validation {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-left-color: #2563eb;
+}
+
+.detail__payment-note--validation strong {
+    font-weight: 600;
 }
 
 .detail__section--payment {
@@ -1350,6 +1539,15 @@ section.guarantees-list.sticky-active {
     border-collapse: collapse;
     font-size: 1rem;
     margin-top: 1rem;
+}
+
+.detail__transfer-table tbody tr:nth-child(even) {
+    background-color: #f5f7fb;
+}
+
+.detail__transfer-table tbody tr:nth-child(even) th,
+.detail__transfer-table tbody tr:nth-child(even) td {
+    background-color: inherit;
 }
 
 .detail__transfer-table th {
@@ -1382,7 +1580,7 @@ section.guarantees-list.sticky-active {
 .detail__transfer-table tr[data-copy-row]:hover td,
 .detail__transfer-table tr[data-copy-row]:focus-within th,
 .detail__transfer-table tr[data-copy-row]:focus-within td {
-    background-color: #f3f4f6;
+    background-color: #e9edf7;
     color: #1f2937;
 }
 
@@ -1631,6 +1829,13 @@ section.guarantees-list.sticky-active {
         background: var(--neutral90);
     }
 
+    @supports (mix-blend-mode: difference) {
+        .column-resizer::after {
+            opacity: 0.35;
+            mix-blend-mode: difference;
+        }
+    }
+
     .guarantees-table td::before {
         content: none;
     }
@@ -1711,6 +1916,7 @@ section.guarantees-list.sticky-active {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
 }
 
 .guarantee-detail.sticky-active .guarantee-detail__panel {
