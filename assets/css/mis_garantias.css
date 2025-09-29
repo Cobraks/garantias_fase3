@@ -1433,6 +1433,32 @@ tr.guarantees-table__row:nth-child(even):not(.selected):hover,
     font-weight: 500;
 }
 
+.confirm-modal__checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #333333;
+    margin: 24px 0 0;
+}
+
+.confirm-modal__checkbox[hidden] {
+    display: none;
+}
+
+.confirm-modal__checkbox-input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex-shrink: 0;
+    border-radius: 4px;
+    accent-color: #007bff;
+}
+
+.confirm-modal__checkbox-label {
+    line-height: 1.5;
+}
+
 .confirm-modal__actions {
     display: flex;
     justify-content: flex-end;

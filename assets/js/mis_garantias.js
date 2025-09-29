@@ -530,6 +530,7 @@ const ADD_DOC_KEY = "add-document";
                                         message,
                                         note,
                                         confirmLabel: "Confirmar",
+                                        requireAcknowledgement: true,
                                 });
                                 return;
                         }
@@ -587,7 +588,7 @@ const ADD_DOC_KEY = "add-document";
                         const hasAccount = transferAccount !== "" && transferAccount !== "-";
                         const safeAccount = hasAccount ? escapeHtml(transferAccount) : "";
                         const safeSubtitleId = escapeHtml(matricula || id);
-                        let message = "Adjunte el comprobante de la transferencia";
+                        let message = "Adjunta el comprobante de la transferencia";
                         if (safeAmount) {
                                 message += ` por <strong>${safeAmount}</strong>`;
                         }
@@ -596,7 +597,7 @@ const ADD_DOC_KEY = "add-document";
                         }
                         message += `, utilizando el concepto <strong>${safeConcept}</strong>.`;
                         const note =
-                                "Validaremos la operación y recibirá la confirmación por email cuando la garantía esté activa.";
+                                "Validaremos la operación y recibirás un correo cuando la garantía esté activa.";
                         const subtitle = safeSubtitleId
                                 ? `Garantía <strong>${safeSubtitleId}</strong>`
                                 : "";
@@ -622,7 +623,7 @@ const ADD_DOC_KEY = "add-document";
                                         subtitle,
                                         message,
                                         note,
-                                        confirmLabel: "Enviar Comprobante",
+                                        confirmLabel: "Enviar comprobante",
                                         requireFile: true,
                                 });
                                 return;
@@ -941,8 +942,18 @@ const ADD_DOC_KEY = "add-document";
                         const fileInput = modal.querySelector(".confirm-modal__file-input");
                         const fileNameEl = modal.querySelector(".confirm-modal__file-name");
                         const fileErrorEl = modal.querySelector(".confirm-modal__file-error");
+                        const checkboxWrapper = modal.querySelector(
+                                ".confirm-modal__checkbox"
+                        );
+                        const checkboxInput = modal.querySelector(
+                                ".confirm-modal__checkbox-input"
+                        );
+                        const checkboxLabel = modal.querySelector(
+                                ".confirm-modal__checkbox-label"
+                        );
                         const fileEmptyText = fileNameEl ? fileNameEl.dataset.empty || "" : "";
                         let requiresFile = false;
+                        let requiresAcknowledgement = false;
                         let selectedFile = null;
                         let fileErrorMessage = "";
 
@@ -969,7 +980,10 @@ const ADD_DOC_KEY = "add-document";
                         function updateConfirmState() {
                                 if (!confirmBtn) return;
                                 const fileOk = !requiresFile || (selectedFile instanceof File && fileErrorMessage === "");
-                                confirmBtn.disabled = !fileOk;
+                                const ackOk =
+                                        !requiresAcknowledgement ||
+                                        (checkboxInput ? checkboxInput.checked : false);
+                                confirmBtn.disabled = !(fileOk && ackOk);
                         }
 
                         function closeModal() {
@@ -990,7 +1004,14 @@ const ADD_DOC_KEY = "add-document";
                                         uploadBlock.hidden = true;
                                 }
                                 requiresFile = false;
+                                requiresAcknowledgement = false;
                                 resetFileState();
+                                if (checkboxInput) {
+                                        checkboxInput.checked = false;
+                                }
+                                if (checkboxWrapper) {
+                                        checkboxWrapper.hidden = true;
+                                }
                                 if (confirmBtn) {
                                         confirmBtn.disabled = true;
                                 }
@@ -1016,8 +1037,20 @@ const ADD_DOC_KEY = "add-document";
                                         noteEl.hidden = !hasNote;
                                 }
                                 requiresFile = Boolean(cfg.requireFile);
+                                requiresAcknowledgement = Boolean(
+                                        cfg.requireAcknowledgement
+                                );
                                 if (uploadBlock) {
                                         uploadBlock.hidden = !requiresFile;
+                                }
+                                if (checkboxWrapper) {
+                                        checkboxWrapper.hidden = !requiresAcknowledgement;
+                                }
+                                if (checkboxLabel && cfg.checkboxLabel) {
+                                        checkboxLabel.textContent = cfg.checkboxLabel;
+                                }
+                                if (checkboxInput) {
+                                        checkboxInput.checked = false;
                                 }
                                 resetFileState();
                                 confirmBtn.textContent = cfg.confirmLabel || "Confirmar";
@@ -1076,6 +1109,12 @@ const ADD_DOC_KEY = "add-document";
                                                 fileNameEl.textContent = file.name;
                                         }
                                         setFileError("");
+                                });
+                        }
+
+                        if (checkboxInput) {
+                                checkboxInput.addEventListener("change", () => {
+                                        updateConfirmState();
                                 });
                         }
 
