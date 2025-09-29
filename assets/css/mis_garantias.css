@@ -185,10 +185,12 @@ section.guarantees-list {
     overflow-x: hidden;
     transition: max-height 300ms ease;
     border-radius: 1rem;
+    border-top-left-radius: .5rem;
+    border-top-right-radius: .5rem;
 
     background: white;
     height: 100%;
-    
+
 }
 section.guarantees-list.sticky-active {
     max-height: calc(100vh - var(--spacing-4) - 7.5rem);
@@ -316,6 +318,9 @@ section.guarantees-list.sticky-active {
 .guarantees-table__row.selected .guarantees-list__badge--pend-cobro {
     background-color: #3b82f6;
 }
+.guarantees-table__row.selected .guarantees-list__badge--validacion-pendiente {
+    background-color: #3b82f6;
+}
 
 .guarantees-table td {
     display: flex;
@@ -362,6 +367,7 @@ section.guarantees-list.sticky-active {
 .guarantees-list__badge--sin-finalizar { color: #6b7280; }
 .guarantees-list__badge--expira-pronto { color: #fbbf24; }
 .guarantees-list__badge--pend-cobro { color: #3b82f6; }
+.guarantees-list__badge--validacion-pendiente { color: #3b82f6; }
 
 /* Periodo Validez */
 .guarantees-table__period > div {
@@ -534,7 +540,7 @@ section.guarantees-list.sticky-active {
 }
 
 .detail__section li strong {
-    font-weight: 500;
+    font-weight: 600;
 }
 .detail__actions {
     display: flex;
@@ -870,6 +876,17 @@ section.guarantees-list.sticky-active {
     border: none;
     border-radius: 0;
     background: transparent;
+
+}
+
+tr.guarantees-table__row:nth-child(even):not(.selected),
+.guarantees-table tbody tr:nth-child(even):not(.selected) {
+    background: #fcfcfc;
+}
+
+tr.guarantees-table__row:nth-child(even):not(.selected):hover,
+.guarantees-table tbody tr:nth-child(even):not(.selected):hover {
+    background: #f5f5f580;
 }
 .vendor-card__header {
     display: flex;
@@ -1016,6 +1033,9 @@ section.guarantees-list.sticky-active {
 .guarantee-detail__badge--pendiente-pago {
     background-color: #f59e0b;
 }
+.guarantee-detail__badge--validacion-pendiente {
+    background-color: #3b82f6;
+}
 .guarantee-detail__badge--sin-finalizar {
     background-color: #6b7280;
 }
@@ -1077,6 +1097,11 @@ section.guarantees-list.sticky-active {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     color: #f8fafc;
     box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+}
+.guarantee-detail__btn--transfer-report {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: #ecfdf5;
+    box-shadow: 0 10px 25px rgba(34, 197, 94, 0.35);
 }
 
 .guarantee-detail__btn--report {
@@ -1146,6 +1171,79 @@ section.guarantees-list.sticky-active {
 
 .detail__section--payment .detail__transfer-table {
     margin-top: 0;
+}
+
+.detail__transfer-toggle {
+    margin-top: var(--spacing-2);
+    margin-bottom: var(--spacing-2);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    background: #f9fafb;
+    overflow: hidden;
+}
+
+.detail__transfer-toggle-summary {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #1f2937;
+    list-style: none;
+}
+
+.detail__transfer-toggle-summary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+    border-radius: inherit;
+}
+
+.detail__transfer-toggle-summary::-webkit-details-marker {
+    display: none;
+}
+
+.detail__transfer-toggle-summary svg {
+    display: block;
+}
+
+.detail__transfer-toggle-label {
+    flex: 1 1 auto;
+}
+
+.detail__transfer-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #4b5563;
+    transition: color var(--transition-speed);
+}
+
+.detail__transfer-toggle-icon--open {
+    display: none;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-summary {
+    border-bottom: 1px solid var(--border-color);
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon--closed {
+    display: none;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon--open {
+    display: inline-flex;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon {
+    color: #111827;
+}
+
+.detail__transfer-toggle-content {
+    padding: 0.75rem 1rem 1rem;
 }
 
 .guarantee-detail__btn--report:focus-visible {
@@ -1333,11 +1431,33 @@ section.guarantees-list.sticky-active {
     border-radius: 6px;
     font-weight: 500;
 }
+.detail__payment-note strong {
+    font-weight: 600;
+}
+.detail__payment-note--expired {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-left-color: #ef4444;
+    font-weight: 500;
+    font-size: 1.05rem;
+}
+.detail__payment-note--expired strong {
+    font-weight: 600;
+}
 .detail__payment-note--domiciliacion {
     background: #e0f2fe;
     color: #1d4ed8;
     border-left-color: #3b82f6;
     margin-bottom: var(--spacing-2);
+}
+.detail__payment-note--validation {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-left-color: #2563eb;
+}
+
+.detail__payment-note--validation strong {
+    font-weight: 600;
 }
 
 .detail__section--payment {
@@ -1350,6 +1470,15 @@ section.guarantees-list.sticky-active {
     border-collapse: collapse;
     font-size: 1rem;
     margin-top: 1rem;
+}
+
+.detail__transfer-table tbody tr:nth-child(even) {
+    background-color: #f5f7fb;
+}
+
+.detail__transfer-table tbody tr:nth-child(even) th,
+.detail__transfer-table tbody tr:nth-child(even) td {
+    background-color: inherit;
 }
 
 .detail__transfer-table th {
@@ -1382,7 +1511,7 @@ section.guarantees-list.sticky-active {
 .detail__transfer-table tr[data-copy-row]:hover td,
 .detail__transfer-table tr[data-copy-row]:focus-within th,
 .detail__transfer-table tr[data-copy-row]:focus-within td {
-    background-color: #f3f4f6;
+    background-color: #e9edf7;
     color: #1f2937;
 }
 
@@ -1631,6 +1760,13 @@ section.guarantees-list.sticky-active {
         background: var(--neutral90);
     }
 
+    @supports (mix-blend-mode: difference) {
+        .column-resizer::after {
+            opacity: 0.35;
+            mix-blend-mode: difference;
+        }
+    }
+
     .guarantees-table td::before {
         content: none;
     }
@@ -1711,6 +1847,14 @@ section.guarantees-list.sticky-active {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+}
+
+.guarantee-detail__panel.loading > .spinner {
+    position: absolute;
+    top: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .guarantee-detail.sticky-active .guarantee-detail__panel {
