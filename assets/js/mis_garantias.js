@@ -5,10 +5,14 @@ const ADD_DOC_KEY = "add-document";
 (() => {
         "use strict";
         document.addEventListener("DOMContentLoaded", () => {
-		console.log("DOM loaded — inicializando mis_garantias.js");
+                console.log("DOM loaded — inicializando mis_garantias.js");
 
                 const tbody = document.querySelector("tbody[data-current-page]");
                 const table = tbody.closest("table");
+                const docsConfigMap = new Map(AVAILABLE_DOCS.map((doc) => [doc.key, doc]));
+                const RECEIPT_ALLOWED_MIMES = ["application/pdf", "image/jpeg", "image/png"];
+                const RECEIPT_ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"];
+                const RECEIPT_MAX_BYTES = 10 * 1024 * 1024;
                 const listContainer = document.querySelector(".guarantees-list");
                 const scrollEnd = listContainer.querySelector("#scroll-end");
                const spinner = scrollEnd.querySelector(".spinner");
@@ -35,6 +39,8 @@ const ADD_DOC_KEY = "add-document";
                                 "go_comercial",
                                 "go_director_comercial",
                         ].includes(userRole);
+                const isCoreAdmin =
+                        userRole === "administrator" || userRole === "admin";
                 const isProfesional =
                         userRole === "go_profesional" || userRole === "profesional";
                 const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>';
@@ -48,8 +54,12 @@ const ADD_DOC_KEY = "add-document";
                 const personIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z"/></svg>';
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
                 const continueIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
-                const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
-                const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
+               const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
+               const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
+               const arrowDownIcon =
+                        (goConfig.icons && goConfig.icons.arrowDropDown) || "";
+               const arrowUpIcon =
+                        (goConfig.icons && goConfig.icons.arrowDropUp) || "";
 
                 let pendingConfirmContext = null;
                 const confirmModalController = setupConfirmModal(
@@ -138,11 +148,17 @@ const ADD_DOC_KEY = "add-document";
                                                 throw new Error("Documento vacío");
                                         }
                                         const type = (blob.type || "").toLowerCase();
-                                        if (type && !type.includes("pdf")) {
-                                                console.warn(
-                                                        "Contenido no es PDF, se intentará mostrar igualmente",
-                                                        type
-                                                );
+                                        if (type) {
+                                                const isKnownMime =
+                                                        RECEIPT_ALLOWED_MIMES.includes(
+                                                                type
+                                                        ) || type.includes("pdf");
+                                                if (!isKnownMime) {
+                                                        console.warn(
+                                                                "Contenido no es PDF, se intentará mostrar igualmente",
+                                                                type
+                                                        );
+                                                }
                                         }
                                         pdfBlobPromises.delete(normalized);
                                         return storePdfBlob(normalized, blob);
@@ -179,6 +195,9 @@ const ADD_DOC_KEY = "add-document";
                         '<span class="autosave-status__icon" style="display:none"></span>' +
                         '<span class="autosave-status__text">Guardando</span>';
                 document.body.appendChild(saveStatus);
+                const saveStatusText = saveStatus.querySelector(
+                        ".autosave-status__text"
+                );
                 const DEFAULT_PER = 12;
                 let perPage = DEFAULT_PER;
 		let currentPage = 1;
@@ -486,6 +505,7 @@ const ADD_DOC_KEY = "add-document";
 
                         const note = !isDomiciliacion ? "La garantía se activará." : "";
                         const context = {
+                                intent: "activate",
                                 btn,
                                 panel,
                                 id,
@@ -515,8 +535,114 @@ const ADD_DOC_KEY = "add-document";
                         runConfirmRequest(context);
                 }
 
+                function handleTransferReportClick(event) {
+                        const btn = event.target.closest(
+                                ".guarantee-detail__btn--transfer-report"
+                        );
+                        if (!btn) {
+                                return;
+                        }
+                        const panel = btn.closest(".guarantee-detail__panel");
+                        if (!panel) {
+                                return;
+                        }
+                        const id = panel.dataset.loadedId;
+                        if (!id) {
+                                return;
+                        }
+                        const cacheData = detailCache.get(id);
+                        if (!cacheData) {
+                                return;
+                        }
+                        const row = tbody.querySelector(
+                                `.guarantees-table__row[data-id="${id}"]`
+                        );
+                        const matricula =
+                                cacheData.matricula ||
+                                (row && row.dataset.matricula) ||
+                                panel.dataset.matricula ||
+                                "";
+                        const conceptRaw = `Garantía ${matricula || id}`;
+                        const amountRaw = formatAmountForMessage(
+                                cacheData.precio || (row && row.dataset.precio) || ""
+                        );
+                        const normalizedAmount = amountRaw.trim();
+                        const hasAmount =
+                                normalizedAmount !== "" &&
+                                normalizedAmount !== "-" &&
+                                normalizedAmount !== "- €";
+                        const transferAccount = (() => {
+                                const candidate =
+                                        cacheData.transfer_iban ||
+                                        cacheData.iban_vendedor ||
+                                        (row && (row.dataset.transferIban || row.dataset.ibanVendedor)) ||
+                                        "";
+                                return typeof candidate === "string"
+                                        ? candidate.trim()
+                                        : "";
+                        })();
+                        const safeConcept = escapeHtml(conceptRaw);
+                        const safeAmount = hasAmount ? escapeHtml(normalizedAmount) : "";
+                        const hasAccount = transferAccount !== "" && transferAccount !== "-";
+                        const safeAccount = hasAccount ? escapeHtml(transferAccount) : "";
+                        const detailsParts = [];
+                        if (safeAmount) {
+                                detailsParts.push(
+                                        `por un importe de <strong>${safeAmount}</strong>`
+                                );
+                        }
+                        if (safeAccount) {
+                                detailsParts.push(
+                                        `a la cuenta <strong>${safeAccount}</strong>`
+                                );
+                        }
+                        detailsParts.push(
+                                `con el concepto <strong>${safeConcept}</strong>`
+                        );
+                        const detailsSentence = detailsParts.join(", ");
+                        const message =
+                                `Confirmo que he realizado la transferencia ${detailsSentence}. ` +
+                                "El equipo de 360VO revisará la información y activará la garantía en un plazo máximo de 72 horas.";
+                        const note = "Recibirás un correo cuando la garantía esté activa.";
+                        const subtitle = `Garantía ${matricula || id}`;
+                        const context = {
+                                intent: "transfer-report",
+                                btn,
+                                panel,
+                                id,
+                                row,
+                                confirmPayload: {
+                                        concept: conceptRaw,
+                                        amount: hasAmount ? normalizedAmount : "",
+                                        account: hasAccount ? transferAccount : "",
+                                },
+                                resetLabel:
+                                        btn.querySelector(".guarantee-detail__btn-text")?.textContent.trim() ||
+                                        "Ya he realizado la transferencia",
+                        };
+                        if (confirmModalController) {
+                                pendingConfirmContext = context;
+                                confirmModalController.open({
+                                        title: "Ya he realizado la transferencia",
+                                        subtitle,
+                                        message,
+                                        note,
+                                        checkboxLabel:
+                                                "He revisado esta información y confirmo la transferencia.",
+                                        confirmLabel: "Enviar aviso",
+                                        requireFile: true,
+                                });
+                                return;
+                        }
+                        runConfirmRequest(context);
+                }
+
                 function runConfirmRequest(context) {
                         if (!context) return;
+                        if (context.intent === "transfer-report") {
+                                runTransferReportRequest(context);
+                                return;
+                        }
                         const { btn, panel, id, uuid } = context;
                         if (!btn || !panel || !id || !uuid) return;
                         const textSpan = btn.querySelector(
@@ -644,7 +770,163 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                 });
                 }
+
+                function runTransferReportRequest(context) {
+                        const { btn, panel, id } = context;
+                        if (!btn || !panel || !id) return;
+                        const textSpan = btn.querySelector(
+                                ".guarantee-detail__btn-text"
+                        );
+                        const resetText =
+                                context.resetLabel ||
+                                (textSpan
+                                        ? textSpan.textContent.trim()
+                                        : "Ya he realizado la transferencia");
+                        let spinner = btn.querySelector(
+                                ".guarantee-detail__btn-spinner"
+                        );
+                        if (!spinner) {
+                                spinner = document.createElement("span");
+                                spinner.className = "guarantee-detail__btn-spinner";
+                                if (textSpan) {
+                                        btn.insertBefore(spinner, textSpan);
+                                } else {
+                                        btn.appendChild(spinner);
+                                }
+                        }
+                        if (textSpan) {
+                                textSpan.textContent = "Enviando aviso";
+                        }
+                        btn.disabled = true;
+                        if (saveStatusText) {
+                                saveStatusText.textContent = "Enviando aviso";
+                        }
+                        saveStatus.classList.remove("autosave-status--hidden");
+                        const payload = context.confirmPayload || {};
+                        const formData = new FormData();
+                        formData.append("concept", payload.concept || "");
+                        formData.append("amount", payload.amount || "");
+                        formData.append("account", payload.account || "");
+                        if (context.receiptFile instanceof File) {
+                                formData.append(
+                                        "receipt",
+                                        context.receiptFile,
+                                        context.receiptFile.name || "justificante"
+                                );
+                        }
+                        context.receiptFile = null;
+                        let row = context.row;
+                        if (!row || !row.isConnected) {
+                                row = tbody.querySelector(
+                                        `.guarantees-table__row[data-id="${id}"]`
+                                );
+                        }
+                        fetch(`${restRoot}go/v1/guarantees/${id}/confirm-transfer`, {
+                                method: "POST",
+                                headers: {
+                                        "X-WP-Nonce": restNonce,
+                                },
+                                body: formData,
+                        })
+                                .then(async (res) => {
+                                        if (!res.ok) {
+                                                let message = "No se pudo enviar la confirmación. Inténtalo de nuevo.";
+                                                try {
+                                                        const data = await res.json();
+                                                        if (data && typeof data.message === "string" && data.message.trim() !== "") {
+                                                                message = data.message;
+                                                        }
+                                                } catch (jsonError) {
+                                                        try {
+                                                                const text = await res.text();
+                                                                if (typeof text === "string" && text.trim() !== "") {
+                                                                        message = text;
+                                                                }
+                                                        } catch (textError) {
+                                                                // ignore
+                                                        }
+                                                }
+                                                throw new Error(message);
+                                        }
+                                        return res.json();
+                                })
+                                .then((json) => {
+                                        const detailResponse = json?.detail || json;
+                                        if (!detailResponse) {
+                                                return;
+                                        }
+                                        const data = normalizeDetailData(detailResponse);
+                                        detailCache.set(id, data);
+                                        if (!row || !row.isConnected) {
+                                                row = tbody.querySelector(
+                                                        `.guarantees-table__row[data-id="${id}"]`
+                                                );
+                                        }
+                                        const newEstadoValue =
+                                                (data.estado && data.estado.value) ||
+                                                "validacion_pendiente";
+                                        const newEstadoLabel =
+                                                (data.estado && data.estado.label) ||
+                                                "Validación pendiente";
+                                        const newEstadoClase = normalizeEstadoClase(
+                                                newEstadoValue
+                                        );
+                                        if (row) {
+                                                row.dataset.estadoclase = newEstadoClase;
+                                                row.dataset.estado = newEstadoLabel;
+                                                const badge = row.querySelector(
+                                                        ".guarantees-list__badge"
+                                                );
+                                                if (badge) {
+                                                        badge.className =
+                                                                "guarantees-list__badge guarantees-list__badge--" +
+                                                                newEstadoClase;
+                                                        badge.textContent = newEstadoLabel;
+                                                }
+                                        }
+                                        const rowData = row ? buildRowData(row) : {};
+                                        panel.innerHTML = renderFullDetail(
+                                                data,
+                                                rowData,
+                                                []
+                                        );
+                                        panel.dataset.matricula =
+                                                data.matricula || rowData.matricula || "";
+                                        panel.dataset.plan = data.plan || rowData.plan || "";
+                                        panel.dataset.loadedId = id;
+                                        setupTransferCountdown(panel);
+                                        syncPdfModalDocs(panel);
+                                        showDetailToast(
+                                                panel,
+                                                "Hemos avisado a 360VO. Revisarán la transferencia en las próximas horas."
+                                        );
+                                })
+                                .catch((err) => {
+                                        console.error("Error reporting transfer:", err);
+                                        const message = err instanceof Error && err.message
+                                                ? err.message
+                                                : "No se pudo enviar la confirmación. Inténtalo de nuevo.";
+                                        showDetailToast(panel, message);
+                                })
+                                .finally(() => {
+                                        btn.disabled = false;
+                                        if (textSpan) {
+                                                textSpan.textContent = resetText;
+                                        }
+                                        if (spinner && spinner.parentNode) {
+                                                spinner.remove();
+                                        }
+                                        if (saveStatusText) {
+                                                saveStatusText.textContent = "Guardando";
+                                        }
+                                        saveStatus.classList.add(
+                                                "autosave-status--hidden"
+                                        );
+                                });
+                }
+
                 document.addEventListener("click", handleConfirmClick);
+                document.addEventListener("click", handleTransferReportClick);
                 document.addEventListener("click", handleShareClick);
 
                 function setupConfirmModal(modal) {
@@ -666,15 +948,47 @@ const ADD_DOC_KEY = "add-document";
                                 ".confirm-modal__btn--cancel"
                         );
                         const closeBtn = modal.querySelector(".confirm-modal__close");
+                        const uploadBlock = modal.querySelector(".confirm-modal__upload");
+                        const fileInput = modal.querySelector(".confirm-modal__file-input");
+                        const fileNameEl = modal.querySelector(".confirm-modal__file-name");
+                        const fileErrorEl = modal.querySelector(".confirm-modal__file-error");
+                        const fileEmptyText = fileNameEl ? fileNameEl.dataset.empty || "" : "";
+                        let requiresFile = false;
+                        let selectedFile = null;
+                        let fileErrorMessage = "";
+
+                        function setFileError(message) {
+                                fileErrorMessage = message;
+                                if (fileErrorEl) {
+                                        fileErrorEl.textContent = message;
+                                        fileErrorEl.hidden = message === "";
+                                }
+                                updateConfirmState();
+                        }
+
+                        function resetFileState() {
+                                selectedFile = null;
+                                if (fileInput) {
+                                        fileInput.value = "";
+                                }
+                                if (fileNameEl) {
+                                        fileNameEl.textContent = fileEmptyText;
+                                }
+                                setFileError("");
+                        }
+
+                        function updateConfirmState() {
+                                if (!confirmBtn) return;
+                                const checkboxOk = !checkbox || checkbox.checked;
+                                const fileOk = !requiresFile || (selectedFile instanceof File && fileErrorMessage === "");
+                                confirmBtn.disabled = !(checkboxOk && fileOk);
+                        }
 
                         function closeModal() {
                                 modal.classList.remove("is-open");
                                 modal.setAttribute("aria-hidden", "true");
                                 if (checkbox) {
                                         checkbox.checked = false;
-                                }
-                                if (confirmBtn) {
-                                        confirmBtn.disabled = true;
                                 }
                                 if (subtitleEl) {
                                         subtitleEl.textContent = "";
@@ -686,6 +1000,14 @@ const ADD_DOC_KEY = "add-document";
                                 if (noteEl) {
                                         noteEl.textContent = "";
                                         noteEl.hidden = true;
+                                }
+                                if (uploadBlock) {
+                                        uploadBlock.hidden = true;
+                                }
+                                requiresFile = false;
+                                resetFileState();
+                                if (confirmBtn) {
+                                        confirmBtn.disabled = true;
                                 }
                                 document.removeEventListener("keydown", onKeydown);
                                 pendingConfirmContext = null;
@@ -711,8 +1033,13 @@ const ADD_DOC_KEY = "add-document";
                                                 cfg.checkboxLabel ||
                                                 "He revisado esta información y confirmo la operación.";
                                 }
+                                requiresFile = Boolean(cfg.requireFile);
+                                if (uploadBlock) {
+                                        uploadBlock.hidden = !requiresFile;
+                                }
+                                resetFileState();
                                 confirmBtn.textContent = cfg.confirmLabel || "Confirmar";
-                                confirmBtn.disabled = true;
+                                updateConfirmState();
                                 modal.classList.add("is-open");
                                 modal.setAttribute("aria-hidden", "false");
                                 document.addEventListener("keydown", onKeydown);
@@ -731,8 +1058,50 @@ const ADD_DOC_KEY = "add-document";
 
                         if (checkbox) {
                                 checkbox.addEventListener("change", () => {
-                                        if (!confirmBtn) return;
-                                        confirmBtn.disabled = !checkbox.checked;
+                                        updateConfirmState();
+                                });
+                        }
+
+                        if (fileInput) {
+                                fileInput.addEventListener("change", () => {
+                                        const file = fileInput.files && fileInput.files.length > 0
+                                                ? fileInput.files[0]
+                                                : null;
+                                        if (!file) {
+                                                if (fileNameEl) {
+                                                        fileNameEl.textContent = fileEmptyText;
+                                                }
+                                                selectedFile = null;
+                                                setFileError(requiresFile ? "Selecciona un archivo." : "");
+                                                return;
+                                        }
+                                        if (file.size > RECEIPT_MAX_BYTES) {
+                                                selectedFile = null;
+                                                fileInput.value = "";
+                                                if (fileNameEl) {
+                                                        fileNameEl.textContent = fileEmptyText;
+                                                }
+                                                setFileError("El archivo supera los 10 MB permitidos.");
+                                                return;
+                                        }
+                                        const type = (file.type || "").toLowerCase();
+                                        const extension = (file.name.split(".").pop() || "").toLowerCase();
+                                        const allowedType = RECEIPT_ALLOWED_MIMES.includes(type);
+                                        const allowedExt = RECEIPT_ALLOWED_EXTENSIONS.includes(extension);
+                                        if (!allowedType && !allowedExt) {
+                                                selectedFile = null;
+                                                fileInput.value = "";
+                                                if (fileNameEl) {
+                                                        fileNameEl.textContent = fileEmptyText;
+                                                }
+                                                setFileError("Formato no admitido. Usa PDF, JPG o PNG.");
+                                                return;
+                                        }
+                                        selectedFile = file;
+                                        if (fileNameEl) {
+                                                fileNameEl.textContent = file.name;
+                                        }
+                                        setFileError("");
                                 });
                         }
 
@@ -760,6 +1129,9 @@ const ADD_DOC_KEY = "add-document";
                                                 return;
                                         }
                                         const context = pendingConfirmContext;
+                                        if (context) {
+                                                context.receiptFile = selectedFile || null;
+                                        }
                                         closeModal();
                                         if (context) {
                                                 runConfirmRequest(context);
@@ -1065,7 +1437,10 @@ const ADD_DOC_KEY = "add-document";
                         }
                         const date = new Date(value);
                         if (!isNaN(date)) {
-                                const iso = date.toISOString().slice(0, 10);
+                                const year = date.getFullYear();
+                                const month = String(date.getMonth() + 1).padStart(2, "0");
+                                const day = String(date.getDate()).padStart(2, "0");
+                                const iso = `${year}-${month}-${day}`;
                                 const display = new Intl.DateTimeFormat("es-ES", {
                                         day: "2-digit",
                                         month: "2-digit",
@@ -1093,125 +1468,203 @@ const ADD_DOC_KEY = "add-document";
                         }).format(num);
                 }
 
-                function parseDateTime(value) {
-                        if (!value) return null;
-                        const str = String(value).trim();
-                        if (!str) return null;
-                        const numeric = str.replace(/[^0-9]/g, "");
-                        const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
-                                const y = Number(year);
-                                const m = Number(month) - 1;
-                                const d = Number(day);
-                                const hh = Number(hours);
-                                const mm = Number(minutes);
-                                const ss = Number(seconds);
-                                const candidate = new Date(y, m, d, hh, mm, ss);
-                                if (Number.isNaN(candidate.getTime())) return null;
-                                return candidate;
-                        };
-                        if (numeric.length >= 14) {
-                                const date = safeDate(
-                                        numeric.slice(0, 4),
-                                        numeric.slice(4, 6),
-                                        numeric.slice(6, 8),
-                                        numeric.slice(8, 10),
-                                        numeric.slice(10, 12),
-                                        numeric.slice(12, 14)
-                                );
-                                if (date) return date;
+                function extractVendorType(value) {
+                        if (value === null || value === undefined) {
+                                return "";
                         }
-                        if (numeric.length === 12) {
-                                const date = safeDate(
-                                        numeric.slice(0, 4),
-                                        numeric.slice(4, 6),
-                                        numeric.slice(6, 8),
-                                        numeric.slice(8, 10),
-                                        numeric.slice(10, 12),
-                                        0
-                                );
-                                if (date) return date;
+                        const label = String(value).trim();
+                        if (!label) {
+                                return "";
                         }
-                        if (numeric.length === 8) {
-                                const date = safeDate(
-                                        numeric.slice(0, 4),
-                                        numeric.slice(4, 6),
-                                        numeric.slice(6, 8)
-                                );
-                                if (date) return date;
+                        const match = label.match(/\(([^)]+)\)/);
+                        if (match && match[1]) {
+                                return match[1].trim();
                         }
-                        const parsed = new Date(str);
-                        if (!Number.isNaN(parsed.getTime())) {
-                                return parsed;
-                        }
-                        return null;
+                        const cleaned = label.replace(/^Profesional\s*[-–:|]?\s*/i, "").trim();
+                        return cleaned || label;
                 }
 
-                function getTransferDeadlineMillis(detailData, rowData) {
-                        const candidates = [
-                                detailData?.desde_raw,
-                                rowData?.desde_raw,
-                                detailData?.desde,
-                                rowData?.desde,
-                        ];
-                        for (const candidate of candidates) {
-                                const date = parseDateTime(candidate);
-                                if (date) {
-                                        return date.getTime() + 48 * 60 * 60 * 1000;
+                const { getTransferDeadlineMillis, getTransferDeadlineInfo } = (() => {
+                        function parseDateTime(value) {
+                                if (!value) return null;
+                                if (value instanceof Date) return value;
+                                if (typeof value === "number") {
+                                        const fromNumber = new Date(value);
+                                        if (!Number.isNaN(fromNumber.getTime())) {
+                                                return fromNumber;
+                                        }
+                                }
+                                const normalized = String(value).trim();
+                                if (!normalized) return null;
+                                const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
+                                        const y = Number(year);
+                                        const m = Number(month) - 1;
+                                        const d = Number(day);
+                                        const hh = Number(hours);
+                                        const mm = Number(minutes);
+                                        const ss = Number(seconds);
+                                        const candidate = new Date(y, m, d, hh, mm, ss);
+                                        if (Number.isNaN(candidate.getTime())) return null;
+                                        return candidate;
+                                };
+                                const localMatch = normalized.match(
+                                        /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                                );
+                                if (localMatch) {
+                                        const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
+                                        const date = safeDate(year, month, day, hours, minutes, seconds);
+                                        if (date) return date;
+                                }
+                                const isoMatch = normalized.match(
+                                        /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                                );
+                                if (isoMatch) {
+                                        const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
+                                        const date = safeDate(year, month, day, hours, minutes, seconds);
+                                        if (date) return date;
+                                }
+                                const numeric = normalized.replace(/[^0-9]/g, "");
+                                const parseFromNumeric = (year, month, day, hours = "0", minutes = "0", seconds = "0") =>
+                                        safeDate(year, month, day, hours, minutes, seconds);
+                                if (numeric.length >= 14) {
+                                        const firstChunk = Number(numeric.slice(0, 4));
+                                        if (firstChunk > 1900) {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(0, 4),
+                                                        numeric.slice(4, 6),
+                                                        numeric.slice(6, 8),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12),
+                                                        numeric.slice(12, 14)
+                                                );
+                                                if (date) return date;
+                                        } else {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(4, 8),
+                                                        numeric.slice(2, 4),
+                                                        numeric.slice(0, 2),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12),
+                                                        numeric.slice(12, 14)
+                                                );
+                                                if (date) return date;
+                                        }
+                                }
+                                if (numeric.length === 12) {
+                                        const firstChunk = Number(numeric.slice(0, 4));
+                                        if (firstChunk > 1900) {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(0, 4),
+                                                        numeric.slice(4, 6),
+                                                        numeric.slice(6, 8),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12)
+                                                );
+                                                if (date) return date;
+                                        } else {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(4, 8),
+                                                        numeric.slice(2, 4),
+                                                        numeric.slice(0, 2),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12)
+                                                );
+                                                if (date) return date;
+                                        }
+                                }
+                                if (numeric.length === 8) {
+                                        const firstChunk = Number(numeric.slice(0, 4));
+                                        if (firstChunk > 1900) {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(0, 4),
+                                                        numeric.slice(4, 6),
+                                                        numeric.slice(6, 8)
+                                                );
+                                                if (date) return date;
+                                        } else {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(4, 8),
+                                                        numeric.slice(2, 4),
+                                                        numeric.slice(0, 2)
+                                                );
+                                                if (date) return date;
+                                        }
+                                }
+                                const parsed = new Date(normalized);
+                                if (!Number.isNaN(parsed.getTime())) {
+                                        return parsed;
+                                }
+                                return null;
+                        }
+
+                        function isSameCalendarDay(a, b) {
+                                return (
+                                        a.getFullYear() === b.getFullYear() &&
+                                        a.getMonth() === b.getMonth() &&
+                                        a.getDate() === b.getDate()
+                                );
+                        }
+
+                        function getTransferDeadlineMillis(detailData, rowData, now = Date.now()) {
+                                const candidates = [
+                                        detailData?.desde_raw,
+                                        rowData?.desde_raw,
+                                        detailData?.desde,
+                                        rowData?.desde,
+                                ];
+                                for (const candidate of candidates) {
+                                        const date = parseDateTime(candidate);
+                                        if (date) {
+                                                const nowDate = new Date(now);
+                                                if (isSameCalendarDay(date, nowDate)) {
+                                                        return now + 48 * 60 * 60 * 1000;
+                                                }
+                                                return date.getTime() + 48 * 60 * 60 * 1000;
+                                        }
+                                }
+                                return null;
+                        }
+
+                        function formatDeadlineDate(deadlineMs) {
+                                if (!Number.isFinite(deadlineMs)) {
+                                        return "";
+                                }
+                                const date = new Date(deadlineMs);
+                                if (Number.isNaN(date.getTime())) {
+                                        return "";
+                                }
+                                try {
+                                        return new Intl.DateTimeFormat("es-ES", {
+                                                day: "numeric",
+                                                month: "long",
+                                        }).format(date);
+                                } catch (error) {
+                                        console.warn("No se pudo formatear la fecha límite de transferencia", error);
+                                        return "";
                                 }
                         }
-                        return null;
-                }
 
-                function formatCountdown(deadlineMs) {
-                        if (!Number.isFinite(deadlineMs)) {
-                                return "--:--:--";
-                        }
-                        const now = Date.now();
-                        const diff = Math.max(0, deadlineMs - now);
-                        const totalSeconds = Math.floor(diff / 1000);
-                        const hours = Math.floor(totalSeconds / 3600);
-                        const minutes = Math.floor((totalSeconds % 3600) / 60);
-                        const seconds = totalSeconds % 60;
-                        const hoursStr = hours.toString().padStart(2, "0");
-                        const minutesStr = minutes.toString().padStart(2, "0");
-                        const secondsStr = seconds.toString().padStart(2, "0");
-                        return `${hoursStr}:${minutesStr}:${secondsStr}`;
-                }
-
-                let activeCountdownTimer = null;
-
-                function clearActiveCountdown() {
-                        if (activeCountdownTimer) {
-                                window.clearInterval(activeCountdownTimer.id);
-                                activeCountdownTimer = null;
-                        }
-                }
-
-                function setupTransferCountdown(root) {
-                        clearActiveCountdown();
-                        if (!root) return;
-                        const countdownEl = root.querySelector(".detail__payment-countdown");
-                        if (!countdownEl) return;
-                        const deadlineMs = Number(countdownEl.dataset.deadline || "");
-                        if (!Number.isFinite(deadlineMs)) {
-                                countdownEl.textContent = "--:--:--";
-                                return;
-                        }
-                        const update = () => {
-                                countdownEl.textContent = formatCountdown(deadlineMs);
-                                if (deadlineMs - Date.now() <= 0) {
-                                        clearActiveCountdown();
+                        function getTransferDeadlineInfo(detailData, rowData, now = Date.now()) {
+                                const deadlineMs = getTransferDeadlineMillis(detailData, rowData, now);
+                                if (!Number.isFinite(deadlineMs)) {
+                                        return {
+                                                deadlineMs: null,
+                                                expired: false,
+                                                label: "",
+                                        };
                                 }
-                        };
-                        update();
-                        const id = window.setInterval(() => {
-                                update();
-                                if (deadlineMs - Date.now() <= 0) {
-                                        clearActiveCountdown();
-                                }
-                        }, 1000);
-                        activeCountdownTimer = { id };
-                }
+                                return {
+                                        deadlineMs,
+                                        expired: deadlineMs <= now,
+                                        label: formatDeadlineDate(deadlineMs),
+                                };
+                        }
+
+                        return { getTransferDeadlineMillis, getTransferDeadlineInfo };
+                })();
+                function clearActiveCountdown() {}
+
+                function setupTransferCountdown() {}
 
                 function normalizeDetailData(data) {
                         if (!data || typeof data !== "object") return data;
@@ -1261,6 +1714,9 @@ const ADD_DOC_KEY = "add-document";
                         if (typeof data.transfer_iban === "string") {
                                 data.transfer_iban = data.transfer_iban.trim();
                         }
+                        if (!Array.isArray(data.documents)) {
+                                data.documents = [];
+                        }
                         return data;
                 }
 
@@ -1296,7 +1752,9 @@ const ADD_DOC_KEY = "add-document";
                                 (item.detail && item.detail.canal_venta_summary)
                                         ? item.detail.canal_venta_summary
                                         : canal_venta;
-                        const vendedor_type = canal_venta_summary;
+                        const vendedor_type_raw = canal_venta_summary;
+                        const vendedor_type_clean = extractVendorType(vendedor_type_raw);
+                        const vendedor_type = vendedor_type_clean || vendedor_type_raw || "-";
         const cliente_nombre = item.detail?.nombre_comprador ?? "-";
         const cliente_telefono_raw = item.detail?.telefono_comprador ?? "";
         const cliente_telefono =
@@ -1817,6 +2275,7 @@ const ADD_DOC_KEY = "add-document";
     const estadoClase = normalizeEstadoClase(estadoValue);
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
+    const isValidacionPendiente = estadoClase === "validacion-pendiente";
     const canShowReportBtn = estadoClase === "activada";
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
     const metodoPago = (
@@ -1850,10 +2309,14 @@ const ADD_DOC_KEY = "add-document";
         `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
         `</h3>`;
     const vendorChannelSummaryRaw = skeleton("canal_venta_summary", "");
-    const vendorChannelSummary =
+    const vendorChannelSummarySource =
         vendorChannelSummaryRaw !== ""
             ? vendorChannelSummaryRaw
             : skeleton("canal_venta", "-");
+    const vendorChannelSummary =
+        vendorChannelSummarySource && !vendorChannelSummarySource.includes("skeleton")
+            ? extractVendorType(vendorChannelSummarySource) || vendorChannelSummarySource
+            : vendorChannelSummarySource;
     const vendorCompanyName = skeleton("concesionario", "-");
     const vendorContactRaw = skeleton("concesionario_personal", "");
     const vendorContactName =
@@ -1888,17 +2351,48 @@ const ADD_DOC_KEY = "add-document";
         const str = String(val).trim();
         return str !== "" && str !== "-" && str !== "#";
     };
-    const docsData = AVAILABLE_DOCS.map((doc) => {
-        const value = data?.[doc.field] ?? rowData?.[doc.field] ?? "";
-        const url = typeof value === "string" ? value : String(value ?? "");
-        return {
-            ...doc,
-            url,
-            available: isFilled(value),
-        };
-    });
-    const availableDocs = docsData.filter((doc) => doc.available);
-    availableDocs.forEach((doc) => scheduleDocumentPreload(doc.url));
+    const docsSource = Array.isArray(data.documents)
+        ? data.documents
+        : Array.isArray(rowData.documents)
+        ? rowData.documents
+        : [];
+    const docsData = docsSource
+        .map((doc) => {
+            const key = typeof doc.key === "string" && doc.key !== "" ? doc.key : doc.row ? `extra-${doc.row}` : "";
+            const base = key && docsConfigMap.has(key) ? docsConfigMap.get(key) : null;
+            const listLabel =
+                (typeof doc.listLabel === "string" && doc.listLabel.trim() !== "" ? doc.listLabel : null) ||
+                (typeof doc.title === "string" && doc.title.trim() !== "" ? doc.title : null) ||
+                (base && base.listLabel) ||
+                (doc.kind === "transfer_receipt" ? "Justificante de transferencia" : "Documento");
+            const downloadLabel =
+                (typeof doc.downloadLabel === "string" && doc.downloadLabel.trim() !== "" ? doc.downloadLabel : null) ||
+                (base && base.successLabel) ||
+                "Descargar documento";
+            const iconKey =
+                (typeof doc.icon === "string" && doc.icon.trim() !== ""
+                    ? doc.icon.trim()
+                    : doc.kind === "transfer_receipt"
+                    ? "payment"
+                    : base && base.icon
+                    ? base.icon
+                    : "pdf").toLowerCase();
+            const url = normalizeDocUrl(doc.url || "");
+            return {
+                key: key || `doc-${Math.random().toString(16).slice(2)}`,
+                url,
+                listLabel,
+                downloadLabel,
+                iconKey,
+                mime: typeof doc.mime === "string" ? doc.mime : "",
+                extension: typeof doc.extension === "string" ? doc.extension : "",
+                filename: typeof doc.filename === "string" ? doc.filename : "",
+                kind: typeof doc.kind === "string" ? doc.kind : "general",
+                row: doc.row || "",
+            };
+        })
+        .filter((doc) => doc.url);
+    docsData.forEach((doc) => scheduleDocumentPreload(doc.url));
     const buyerFields = [
         "nombre_comprador",
         "dni_comprador",
@@ -1911,16 +2405,31 @@ const ADD_DOC_KEY = "add-document";
     ];
     const hasGuaranteeInfo =
         isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
-    const hasDocs = availableDocs.length > 0;
-    const docsButtonsHtml = availableDocs
+    const hasDocs = docsData.length > 0;
+    const docsButtonsHtml = docsData
         .map(
-            (doc, idx) =>
-                `<li class="detail__docs-item">` +
-                `<button type="button" class="detail__docs-btn" data-doc-url="${escapeAttr(doc.url)}" data-doc-index="${idx}" data-doc-key="${doc.key}" aria-label="Ver documento ${escapeAttr(doc.listLabel)}">` +
-                `<span class="detail__docs-icon detail__docs-icon--pdf">${pdfIcon}</span>` +
-                `<span class="detail__docs-label">${doc.listLabel}</span>` +
-                `</button>` +
-                `</li>`
+            (doc, idx) => {
+                const iconMarkup = doc.iconKey === "payment" ? paymentIcon : pdfIcon;
+                const attrs = [
+                    `data-doc-key="${escapeAttr(doc.key)}"`,
+                    `data-doc-index="${idx}"`,
+                    `data-doc-url="${escapeAttr(doc.url)}"`,
+                ];
+                if (doc.mime) attrs.push(`data-doc-mime="${escapeAttr(doc.mime)}"`);
+                if (doc.extension) attrs.push(`data-doc-extension="${escapeAttr(doc.extension)}"`);
+                if (doc.filename) attrs.push(`data-doc-filename="${escapeAttr(doc.filename)}"`);
+                if (doc.downloadLabel) attrs.push(`data-doc-download="${escapeAttr(doc.downloadLabel)}"`);
+                if (doc.kind) attrs.push(`data-doc-kind="${escapeAttr(doc.kind)}"`);
+                if (doc.row) attrs.push(`data-doc-row="${escapeAttr(String(doc.row))}"`);
+                return (
+                    `<li class="detail__docs-item">` +
+                    `<button type="button" class="detail__docs-btn" ${attrs.join(" ")} aria-label="Ver documento ${escapeAttr(doc.listLabel)}">` +
+                    `<span class="detail__docs-icon detail__docs-icon--${doc.iconKey}">${iconMarkup}</span>` +
+                    `<span class="detail__docs-label">${doc.listLabel}</span>` +
+                    `</button>` +
+                    `</li>`
+                );
+            }
         )
         .join("");
 
@@ -2070,11 +2579,31 @@ const ADD_DOC_KEY = "add-document";
 
     const adminPendingDomiciliacion =
         isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado;
-    const shouldShowConfirmBtn = showActions && (isPendientePago || adminPendingDomiciliacion);
+    const deadlineInfo = getTransferDeadlineInfo(data, rowData);
+    const transferDeadlineMs = deadlineInfo.deadlineMs;
+    const hasTransferDeadline = Number.isFinite(transferDeadlineMs);
+    const transferDeadlineExpired = hasTransferDeadline && Boolean(deadlineInfo.expired);
+    const shouldShowConfirmBtn =
+        showActions && (isPendientePago || isValidacionPendiente || adminPendingDomiciliacion);
     const confirmLabel =
         adminPendingDomiciliacion || metodoPago.startsWith("domiciliacion")
             ? "Confirmar domiciliación"
             : "Confirmar pago";
+    const professionalActionButtons = [];
+    if (
+        isProfesional &&
+        isPendientePago &&
+        metodoPago === "transferencia" &&
+        (!hasTransferDeadline || !transferDeadlineExpired)
+    ) {
+        professionalActionButtons.push(
+            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--transfer-report" aria-label="Ya he realizado la transferencia">` +
+                `<span class="guarantee-detail__btn-icon">${paymentIcon}</span>` +
+                `<span class="guarantee-detail__btn-text">Ya he realizado la transferencia</span>` +
+            `</button>`
+        );
+    }
+
     const adminActionButtons = [];
     if (showActions) {
         if (shouldShowConfirmBtn) {
@@ -2104,27 +2633,66 @@ const ADD_DOC_KEY = "add-document";
             `</button>`
         );
     }
-    const actionsHtml = adminActionButtons.length
-        ? `<div class="guarantee-detail__btn-container">${adminActionButtons.join("")}</div>`
+    const combinedActionButtons = [
+        ...professionalActionButtons,
+        ...adminActionButtons,
+    ];
+    const actionsHtml = combinedActionButtons.length
+        ? `<div class="guarantee-detail__btn-container">${combinedActionButtons.join("")}</div>`
         : "";
 
-    const transferDeadlineMs = getTransferDeadlineMillis(data, rowData);
-    const countdownHtml = transferDeadlineMs
-        ? `<span class="detail__payment-countdown" data-deadline="${transferDeadlineMs}">${formatCountdown(
-              transferDeadlineMs
-          )}</span>`
-        : "";
-    const countdownSegment = transferDeadlineMs ? `${countdownHtml} h` : "";
-    const professionalNote = transferDeadlineMs
-        ? `Recuerda realizar la transferencia antes de ${countdownSegment} para activar la garantía.`
-        : "Recuerda realizar la transferencia para activar tu garantía.";
-    const clientNameRaw = vendorCompanyName !== "-" ? vendorCompanyName : "";
-    const clientLabel = clientNameRaw
-        ? `El cliente <strong>${escapeAttr(clientNameRaw)}</strong>`
-        : "El cliente";
-    const adminNote = transferDeadlineMs
-        ? `${clientLabel} tiene ${countdownSegment} para realizar la transferencia.`
-        : `${clientLabel} debe realizar la transferencia para activar la garantía.`;
+    const { vendorDisplayHtml, adminEntityHtml } = (() => {
+        const vendorCompanyData =
+            data && typeof data.vendor_company === "object" && data.vendor_company !== null
+                ? data.vendor_company
+                : null;
+        const normalizeName = (value) => (typeof value === "string" ? value.trim() : "");
+        const vendorTradeName = normalizeName(vendorCompanyData?.trade_name);
+        const vendorCompanyLabel = normalizeName(vendorCompanyData?.name);
+        const vendorFallbackName = vendorCompanyName !== "-" ? vendorCompanyName : "";
+        const vendorLegalName = normalizeName(vendorCompanyData?.legal_name);
+        const vendorDisplayName =
+            vendorTradeName || vendorCompanyLabel || normalizeName(vendorFallbackName) || vendorLegalName;
+        const vendorDisplayHtml = vendorDisplayName ? `<strong>${escapeHtml(vendorDisplayName)}</strong>` : "";
+        return {
+            vendorDisplayHtml,
+            adminEntityHtml: vendorDisplayHtml || "El cliente",
+        };
+    })();
+    const deadlineLabelHtml = deadlineInfo.label ? escapeHtml(deadlineInfo.label) : "";
+    const professionalExpiredHtml = escapeHtml(
+        "El plazo para realizar la transferencia ha vencido. Ponte en contacto con tu comercial o con 360VO."
+    );
+    const adminExpiredHtml = vendorDisplayHtml
+        ? `El plazo para realizar la transferencia ha vencido. Ponte en contacto con ${vendorDisplayHtml}.`
+        : escapeHtml(
+              "El plazo para realizar la transferencia ha vencido. Ponte en contacto con el cliente."
+          );
+    const professionalActiveHtml = hasTransferDeadline && deadlineLabelHtml
+        ? `Recuerda realizar la transferencia antes del ${deadlineLabelHtml} para activar la garantía.`
+        : escapeHtml("Recuerda realizar la transferencia para activar tu garantía.");
+    const adminActiveHtml = hasTransferDeadline && deadlineLabelHtml
+        ? `${adminEntityHtml} tiene hasta el ${deadlineLabelHtml} para activar la garantía.`
+        : `${adminEntityHtml} debe realizar la transferencia para activar la garantía.`;
+    const buildNoteHtml = (activeHtml, expiredHtml) => {
+        const classes = ["detail__payment-note"];
+        let content = activeHtml;
+        if (hasTransferDeadline && deadlineInfo.expired) {
+            classes.push("detail__payment-note--expired");
+            content = expiredHtml;
+        }
+        return `<p class="${classes.join(" ")}">${content}</p>`;
+    };
+    const professionalNoteHtml = buildNoteHtml(professionalActiveHtml, professionalExpiredHtml);
+    const adminNoteHtml = buildNoteHtml(adminActiveHtml, adminExpiredHtml);
+    const professionalValidationHtml = escapeHtml(
+        "Has confirmado que has realizado la transferencia. El equipo de 360VO revisará la información y activará tu garantía en un plazo máximo de 72 horas. Recibirás un correo cuando esté activa."
+    );
+    const validationBaseHtml = vendorDisplayHtml
+        ? `${vendorDisplayHtml} ha indicado que ha realizado la transferencia.`
+        : escapeHtml("El cliente ha indicado que ha realizado la transferencia.");
+    const adminValidationHtml = `${validationBaseHtml} Revisa la operación y activa la garantía cuando proceda.`;
+    const staffValidationHtml = validationBaseHtml;
 
     const paymentHtml = (() => {
         if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
@@ -2146,22 +2714,46 @@ const ADD_DOC_KEY = "add-document";
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
                         </section>`;
         }
-        if (isPendientePago && metodoPago === "transferencia") {
+        if ((isPendientePago || isValidacionPendiente) && metodoPago === "transferencia") {
             const concepto = `Garantía ${skeleton("matricula")}`;
             const cantidad = `${skeleton("precio", "0")} €`;
             const ibanRow = transferIban
                 ? `<tr data-copy-row><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
                 : "";
-            const noteText = isAdmin ? adminNote : professionalNote;
-            return `<section class="detail__section detail__section--payment">
-                                <p class="detail__payment-note">${noteText}</p>
-                                <table class="detail__transfer-table">
+            const noteHtml = isValidacionPendiente
+                ? `<p class="detail__payment-note detail__payment-note--validation">${
+                      isAdmin
+                          ? isCoreAdmin
+                              ? adminValidationHtml
+                              : staffValidationHtml
+                          : professionalValidationHtml
+                  }</p>`
+                : isAdmin
+                ? adminNoteHtml
+                : professionalNoteHtml;
+            const tableHtml = `<table class="detail__transfer-table">
                                         <tbody>
                                                 <tr data-copy-row><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
                                                 <tr data-copy-row><th>Cantidad</th><td data-copy-cell data-tooltip="Copiar cantidad"><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
                                                 ${ibanRow}
                                         </tbody>
-                                </table>
+                                </table>`;
+            const toggleLabel = "Ver detalles de la transferencia";
+            const closedIcon = arrowDownIcon || "&#9660;";
+            const openIcon = arrowUpIcon || "&#9650;";
+            const tableMarkup = isAdmin || isValidacionPendiente
+                ? `<details class="detail__transfer-toggle">
+                                        <summary class="detail__transfer-toggle-summary">
+                                                <span class="detail__transfer-toggle-label">${toggleLabel}</span>
+                                                <span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${closedIcon}</span>
+                                                <span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${openIcon}</span>
+                                        </summary>
+                                        <div class="detail__transfer-toggle-content">${tableHtml}</div>
+                                </details>`
+                : tableHtml;
+            return `<section class="detail__section detail__section--payment">
+                                ${noteHtml}
+                                ${tableMarkup}
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
                         </section>`;
         }
@@ -2241,7 +2833,7 @@ const ADD_DOC_KEY = "add-document";
                         <h3 class="detail__section-title">Documentación</h3>
                         ${docsListHtml}
                 </section>
-                <section class="detail__section">
+                <section class="detail__section detail__section--datos_cliente">
                         <h3>Datos del cliente</h3>
                         <ul>
                                 <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
@@ -2513,13 +3105,20 @@ function initRowSelection() {
 
                                 showPdfView(buttons);
 
-                                if (dl) {
-                                        const dlUrl = url.includes("?")
-                                                ? `${url}&download=1`
-                                                : `${url}?download=1`;
-                                        dl.href = dlUrl;
-                                        dl.hidden = false;
-                                }
+                if (dl) {
+                    const dlUrl = url.includes("?")
+                            ? `${url}&download=1`
+                            : `${url}?download=1`;
+                    dl.href = dlUrl;
+                    const downloadText = btn.dataset.docDownload || "Descargar documento";
+                    dl.textContent = downloadText;
+                    if (btn.dataset.docFilename) {
+                            dl.download = btn.dataset.docFilename;
+                    } else {
+                            dl.removeAttribute("download");
+                    }
+                    dl.hidden = false;
+                }
 
                                 const applyIframeSrc = (srcUrl) => {
                                         if (!iframe || currentIdx !== idx) {
