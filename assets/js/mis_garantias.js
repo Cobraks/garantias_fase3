@@ -431,7 +431,10 @@ const ADD_DOC_KEY = "add-document";
                         const title = isDomiciliacion
                                 ? "Confirmar cobro por domiciliación"
                                 : "Confirmar transferencia";
-                        const subtitle = `Garantía ${matricula || id}`;
+                        const safeSubtitleId = escapeHtml(matricula || id);
+                        const subtitle = safeSubtitleId
+                                ? `Garantía <strong>${safeSubtitleId}</strong>`
+                                : "";
                         const cleanedVendorName =
                                 typeof vendorName === "string" ? vendorName.trim() : "";
                         const companyText =
@@ -583,17 +586,20 @@ const ADD_DOC_KEY = "add-document";
                         const safeAmount = hasAmount ? escapeHtml(normalizedAmount) : "";
                         const hasAccount = transferAccount !== "" && transferAccount !== "-";
                         const safeAccount = hasAccount ? escapeHtml(transferAccount) : "";
-                        let message = "Adjunta el justificante de la transferencia";
+                        const safeSubtitleId = escapeHtml(matricula || id);
+                        let message = "Adjunte el comprobante de la transferencia";
                         if (safeAmount) {
-                                message += ` de <strong>${safeAmount}</strong>`;
+                                message += ` por <strong>${safeAmount}</strong>`;
                         }
                         if (safeAccount) {
-                                message += ` a la cuenta <strong>${safeAccount}</strong>`;
+                                message += ` realizada a la cuenta <strong>${safeAccount}</strong>`;
                         }
-                        message += ` con concepto <strong>${safeConcept}</strong>.`;
+                        message += `, utilizando el concepto <strong>${safeConcept}</strong>.`;
                         const note =
-                                "Validaremos la operación y te confirmaremos por correo cuando la garantía esté activa.";
-                        const subtitle = `Garantía ${matricula || id}`;
+                                "Validaremos la operación y recibirá la confirmación por email cuando la garantía esté activa.";
+                        const subtitle = safeSubtitleId
+                                ? `Garantía <strong>${safeSubtitleId}</strong>`
+                                : "";
                         const context = {
                                 intent: "transfer-report",
                                 btn,
@@ -612,11 +618,11 @@ const ADD_DOC_KEY = "add-document";
                         if (confirmModalController) {
                                 pendingConfirmContext = context;
                                 confirmModalController.open({
-                                        title: "Comprobante de transferencia",
+                                        title: "Confirmación de Pago",
                                         subtitle,
                                         message,
                                         note,
-                                        confirmLabel: "Enviar comprobante",
+                                        confirmLabel: "Enviar Comprobante",
                                         requireFile: true,
                                 });
                                 return;
@@ -970,7 +976,7 @@ const ADD_DOC_KEY = "add-document";
                                 modal.classList.remove("is-open");
                                 modal.setAttribute("aria-hidden", "true");
                                 if (subtitleEl) {
-                                        subtitleEl.textContent = "";
+                                        subtitleEl.innerHTML = "";
                                         subtitleEl.hidden = true;
                                 }
                                 if (messageEl) {
@@ -998,7 +1004,9 @@ const ADD_DOC_KEY = "add-document";
                                 titleEl.textContent = cfg.title || "";
                                 if (subtitleEl) {
                                         const hasSubtitle = Boolean(cfg.subtitle);
-                                        subtitleEl.textContent = cfg.subtitle || "";
+                                        subtitleEl.innerHTML = hasSubtitle
+                                                ? cfg.subtitle
+                                                : "";
                                         subtitleEl.hidden = !hasSubtitle;
                                 }
                                 messageEl.innerHTML = cfg.message || "";
