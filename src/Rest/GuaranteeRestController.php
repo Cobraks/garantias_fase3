@@ -25,7 +25,6 @@ class GuaranteeRestController
     const NAMESPACE = 'go/v1';
     const BASE      = 'guarantees';
     const ADDITIONAL_DOCS_FIELD = 'garantia_contratada_documentacion_add_document';
-    const ADDITIONAL_DOCS_FIELD_KEY = 'field_68c7c9f0dad2c';
     const TRANSFER_RECEIPT_HASH_META = '_go360_transfer_receipt_hash';
     const TRANSFER_RECEIPT_EXTENSION_META = '_go360_transfer_receipt_extension';
     const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
@@ -828,10 +827,28 @@ class GuaranteeRestController
             $target_index = count($rows) - 1;
         }
 
-        update_field(self::ADDITIONAL_DOCS_FIELD_KEY, $rows, $post_id);
+        $rows = array_values($rows);
+
+        $final_index = null;
+        foreach ($rows as $idx => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $row_hash = isset($row['documento_privado_hash']) ? (string) $row['documento_privado_hash'] : '';
+            if ($row_hash !== '' && hash_equals($row_hash, $hash)) {
+                $final_index = $idx;
+                break;
+            }
+        }
+
+        if ($final_index === null) {
+            $final_index = $target_index !== null ? (int) $target_index : count($rows) - 1;
+        }
+
+        update_field(self::ADDITIONAL_DOCS_FIELD, $rows, $post_id);
         update_post_meta($post_id, self::TRANSFER_RECEIPT_HASH_META, $hash);
         update_post_meta($post_id, self::TRANSFER_RECEIPT_EXTENSION_META, $extension);
-        update_post_meta($post_id, self::TRANSFER_RECEIPT_ROW_META, $target_index !== null ? $target_index + 1 : 0);
+        update_post_meta($post_id, self::TRANSFER_RECEIPT_ROW_META, $final_index >= 0 ? $final_index + 1 : 0);
     }
 
     private static function extract_user_permissions($raw)
