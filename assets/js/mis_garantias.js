@@ -599,9 +599,9 @@ const ADD_DOC_KEY = "add-document";
                         );
                         const detailsSentence = detailsParts.join(", ");
                         const message =
-                                `Adjunta el justificante de la transferencia ${detailsSentence}.`;
+                                `Adjunta el comprobante de la transferencia ${detailsSentence}.`;
                         const note =
-                                "Validaremos la operación y te confirmaremos por correo cuando la garantía esté activa.";
+                                "Validaremos la operación y recibirás la confirmación por correo en cuanto activemos la garantía.";
                         const subtitle = `Garantía ${matricula || id}`;
                         const context = {
                                 intent: "transfer-report",
