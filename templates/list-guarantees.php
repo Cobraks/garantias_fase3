@@ -180,17 +180,29 @@ $show_channel_col = ! $is_professional;
 <div class="confirm-modal" aria-hidden="true">
     <div class="confirm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
         <button type="button" class="confirm-modal__close" aria-label="<?php esc_attr_e('Cerrar confirmación', 'garantias-online-360vo'); ?>">&times;</button>
-        <h2 id="confirm-modal-title" class="confirm-modal__title"></h2>
-        <p class="confirm-modal__subtitle"></p>
-        <p class="confirm-modal__message"></p>
-        <p class="confirm-modal__note" hidden></p>
-        <label class="confirm-modal__checkbox">
+        <div class="confirm-modal__intro">
+            <h2 id="confirm-modal-title" class="confirm-modal__title"></h2>
+            <p class="confirm-modal__subtitle"></p>
+            <p class="confirm-modal__message"></p>
+            <p class="confirm-modal__note" hidden></p>
+        </div>
+        <div class="confirm-modal__upload" hidden>
+            <h3 class="confirm-modal__upload-title"><?php esc_html_e('Adjuntar justificante de pago', 'garantias-online-360vo'); ?></h3>
+            <label class="confirm-modal__file-control">
+                <input type="file" class="confirm-modal__file-input" accept=".pdf,.jpg,.jpeg,.png" />
+                <span class="confirm-modal__file-cta"><?php esc_html_e('Seleccionar archivo', 'garantias-online-360vo'); ?></span>
+                <span class="confirm-modal__file-name" data-empty="<?php esc_attr_e('Ningún archivo seleccionado', 'garantias-online-360vo'); ?>"><?php esc_html_e('Ningún archivo seleccionado', 'garantias-online-360vo'); ?></span>
+            </label>
+            <p class="confirm-modal__file-help"><?php esc_html_e('Formatos: PDF, JPG o PNG (máx. 10 MB).', 'garantias-online-360vo'); ?></p>
+            <p class="confirm-modal__file-error" role="alert" hidden></p>
+        </div>
+        <label class="confirm-modal__checkbox" hidden>
             <input type="checkbox" class="confirm-modal__checkbox-input" />
             <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
         </label>
         <div class="confirm-modal__actions">
             <button type="button" class="confirm-modal__btn confirm-modal__btn--cancel"><?php esc_html_e('Cancelar', 'garantias-online-360vo'); ?></button>
-            <button type="button" class="confirm-modal__btn confirm-modal__btn--confirm" disabled><?php esc_html_e('Confirmar', 'garantias-online-360vo'); ?></button>
+            <button type="button" class="confirm-modal__btn confirm-modal__btn--confirm" disabled></button>
         </div>
     </div>
 </div>

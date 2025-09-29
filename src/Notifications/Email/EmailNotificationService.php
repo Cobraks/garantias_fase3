@@ -344,7 +344,7 @@ class EmailNotificationService
             return '';
         }
 
-        return $this->build_from_header(__('Garantías Online', 'garantias-online-360vo'), $email);
+        return $this->build_from_header(__('Garantías 360VO', 'garantias-online-360vo'), $email);
     }
 
     private function get_professional_from_header(string $reply_to = ''): string
@@ -377,7 +377,7 @@ class EmailNotificationService
             return '';
         }
 
-        return sprintf('From: %s <%s>', $name !== '' ? $name : 'Garantías Online', $email);
+        return sprintf('From: %s <%s>', $name !== '' ? $name : 'Garantías 360VO', $email);
     }
 
     private function has_been_notified(int $guarantee_id, string $slug): bool
@@ -448,6 +448,17 @@ class EmailNotificationService
         }
 
         return $options;
+    }
+
+    public static function resolve_admin_delivery(int $guarantee_id, array $context = []): array
+    {
+        $service = new self(
+            new Mailer(),
+            new GuaranteeEmailDataFactory(),
+            new GuaranteeEmailBuilder(new TemplateRenderer())
+        );
+
+        return $service->get_admin_delivery($guarantee_id, $context);
     }
 
     private function build_professional_options(string $reply_to): array
