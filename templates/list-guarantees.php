@@ -185,12 +185,13 @@ $show_channel_col = ! $is_professional;
         <p class="confirm-modal__message"></p>
         <p class="confirm-modal__note" hidden></p>
         <div class="confirm-modal__upload" hidden>
-            <p class="confirm-modal__upload-title"><?php esc_html_e('Adjuntar justificante de pago', 'garantias-online-360vo'); ?></p>
+            <h3 class="confirm-modal__upload-title"><?php esc_html_e('Adjuntar justificante de pago', 'garantias-online-360vo'); ?></h3>
+            <p class="confirm-modal__upload-text"><?php esc_html_e('Adjunta el comprobante de la transferencia bancaria para que podamos validarla. Aceptamos PDF, JPG o PNG con un tamaño máximo de 10 MB.', 'garantias-online-360vo'); ?></p>
             <label class="confirm-modal__file-control">
                 <input type="file" class="confirm-modal__file-input" accept=".pdf,.jpg,.jpeg,.png" />
-                <span class="confirm-modal__file-button"><?php esc_html_e('Seleccionar archivo', 'garantias-online-360vo'); ?></span>
+                <span class="confirm-modal__file-cta"><?php esc_html_e('Seleccionar archivo', 'garantias-online-360vo'); ?></span>
+                <span class="confirm-modal__file-name" data-empty="<?php esc_attr_e('Ningún archivo seleccionado', 'garantias-online-360vo'); ?>"><?php esc_html_e('Ningún archivo seleccionado', 'garantias-online-360vo'); ?></span>
             </label>
-            <p class="confirm-modal__file-name" data-empty="<?php esc_attr_e('Ningún archivo seleccionado', 'garantias-online-360vo'); ?>"><?php esc_html_e('Ningún archivo seleccionado', 'garantias-online-360vo'); ?></p>
             <p class="confirm-modal__file-help"><?php esc_html_e('Formatos admitidos: PDF, JPG o PNG (máx. 10 MB).', 'garantias-online-360vo'); ?></p>
             <p class="confirm-modal__file-error" role="alert" hidden></p>
         </div>

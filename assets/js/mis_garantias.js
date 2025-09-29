@@ -601,9 +601,9 @@ const ADD_DOC_KEY = "add-document";
                         );
                         const detailsSentence = detailsParts.join(", ");
                         const message =
-                                `Confirmo que he realizado la transferencia ${detailsSentence}. ` +
-                                "El equipo de 360VO revisará la información y activará la garantía en un plazo máximo de 72 horas.";
-                        const note = "Recibirás un correo cuando la garantía esté activa.";
+                                `Confirmo que he realizado la transferencia ${detailsSentence} y adjunto el justificante solicitado para su validación.`;
+                        const note =
+                                "Nuestro equipo revisará la operación y te avisará por correo en cuanto la garantía quede activada.";
                         const subtitle = `Garantía ${matricula || id}`;
                         const context = {
                                 intent: "transfer-report",
@@ -2377,7 +2377,8 @@ const ADD_DOC_KEY = "add-document";
                     : base && base.icon
                     ? base.icon
                     : "pdf").toLowerCase();
-            const url = normalizeDocUrl(doc.url || "");
+            const rawUrl = doc.url || doc.attachment_url || doc.direct_url || "";
+            const url = normalizeDocUrl(rawUrl);
             return {
                 key: key || `doc-${Math.random().toString(16).slice(2)}`,
                 url,
