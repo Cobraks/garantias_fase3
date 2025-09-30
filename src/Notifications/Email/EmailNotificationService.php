@@ -13,6 +13,14 @@ if (! defined('ABSPATH')) {
 
 class EmailNotificationService
 {
+    private const EVENT_TRANSFER_ACTIVATED_PROFESSIONAL = 'transfer_activated_professional';
+
+    private const TRANSFER_PAYMENT_SLUGS = [
+        'transferencia',
+        'transferencia_bancaria',
+        'transferencia-bancaria',
+    ];
+
 
     /** @var Mailer */
     private $mailer;
@@ -81,6 +89,17 @@ class EmailNotificationService
             && $this->should_notify('contracted_professional', $data, $context)
         ) {
             $this->send_professional_notification($guarantee_id, $data, $context, $initiator_id);
+        }
+
+        if ($this->should_send_transfer_activation($data, $context)) {
+            $slug = self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL;
+
+            if (
+                ! $this->has_been_notified($guarantee_id, $slug)
+                && $this->should_notify($slug, $data, $context)
+            ) {
+                $this->send_transfer_activation_notification($guarantee_id, $data, $context, $initiator_id);
+            }
         }
     }
 
@@ -176,6 +195,29 @@ class EmailNotificationService
         );
 
         $this->dispatch($message, $guarantee_id, 'contracted_professional', $initiator_id);
+    }
+
+    private function send_transfer_activation_notification(int $guarantee_id, array $data, array $context, int $initiator_id): void
+    {
+        $recipients = $this->get_professional_recipients($data, $context);
+        error_log('[EMAIL] transfer activation recipients ' . $guarantee_id . ' => ' . wp_json_encode($recipients));
+
+        if (empty($recipients)) {
+            $this->log_skip($guarantee_id, self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL, 'no_recipients', $initiator_id);
+            return;
+        }
+
+        $reply_to = $this->get_reply_to_address();
+        $options  = $this->build_professional_options($reply_to);
+
+        $message = $this->builder->composeTransferActivatedProfessional(
+            $data,
+            $recipients,
+            $this->build_template_context(self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL, $context, $initiator_id),
+            $options
+        );
+
+        $this->dispatch($message, $guarantee_id, self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL, $initiator_id);
     }
 
     private function has_delivery_recipients(array $delivery): bool
@@ -335,6 +377,23 @@ class EmailNotificationService
         error_log('[EMAIL] resolved reply-to => ' . $normalized);
 
         return $normalized;
+    }
+
+    private function should_send_transfer_activation(array $data, array $context): bool
+    {
+        $previous = isset($context['previous_state']) ? sanitize_key((string) $context['previous_state']) : '';
+        $current  = isset($context['current_state']) ? sanitize_key((string) $context['current_state']) : '';
+
+        if ($previous !== 'pendiente_pago' || $current !== 'activada') {
+            return false;
+        }
+
+        $slug = isset($data['payment_slug']) ? sanitize_key((string) $data['payment_slug']) : '';
+        if ($slug === '' && isset($context['payment_method'])) {
+            $slug = sanitize_key((string) $context['payment_method']);
+        }
+
+        return $slug !== '' && in_array($slug, self::TRANSFER_PAYMENT_SLUGS, true);
     }
 
     private function get_admin_from_header(): string
