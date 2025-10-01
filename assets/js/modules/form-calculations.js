@@ -51,13 +51,26 @@ function getValorInput(id) {
 	return el ? el.value : "";
 }
 function getValoresModalidadCampo(campo) {
-	if (Array.isArray(campo)) {
-		return campo.map((v) => (typeof v === "string" ? v : v.value));
-	}
-	if (typeof campo === "string") return [campo];
-	if (typeof campo === "object" && campo !== null && campo.value)
-		return [campo.value];
-	return [];
+        if (Array.isArray(campo)) {
+                return campo.map((v) => (typeof v === "string" ? v : v.value));
+        }
+        if (typeof campo === "string") return [campo];
+        if (typeof campo === "object" && campo !== null && campo.value)
+                return [campo.value];
+        return [];
+}
+
+function normalizeEjesValue(value) {
+        if (Array.isArray(value)) {
+                return normalizeEjesValue(value[0]);
+        }
+        if (value && typeof value === "object") {
+                if (value.value != null) return normalizeEjesValue(value.value);
+                if (value.label != null) return normalizeEjesValue(value.label);
+        }
+        if (value == null) return "";
+
+        return String(value).toLowerCase().trim().replace(/\s+/g, "_");
 }
 
 // --------- Condiciones / comparadores ---------
@@ -580,7 +593,7 @@ function modalidadAdmiteValor(modalidad, valoresForm) {
         const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
         const tarifas = cg?.tarifas || [];
         const esCamion = valoresForm.tipo_vehiculo === "camion";
-        const ejes = esCamion ? valoresForm.traccion_camion : null;
+        const ejes = esCamion ? normalizeEjesValue(valoresForm.traccion_camion) : "";
 
         const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
 
@@ -594,7 +607,9 @@ function modalidadAdmiteValor(modalidad, valoresForm) {
                                 ? 99999999
                                 : parseNumericFormValue(maxRaw);
                 const checkValor = tipo === "ninguna" || (valor >= min && valor <= max);
-                const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes == ejes);
+                const tarifaEjes = normalizeEjesValue(tarifa.ejes);
+                const checkEjes =
+                        !esCamion || !ejes || (tarifaEjes && tarifaEjes === ejes);
                 return checkValor && checkEjes;
         });
 }
@@ -603,26 +618,28 @@ function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
         const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
         const tarifas = cg?.tarifas || [];
         const esCamion = valoresForm.tipo_vehiculo === "camion";
-        const ejes = esCamion ? valoresForm.traccion_camion : null;
+        const ejes = esCamion ? normalizeEjesValue(valoresForm.traccion_camion) : "";
 
-	const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
-	const mesesPorGarantia = tarifas
-		.filter((tarifa) => {
-			const min = parseNumericFormValue(
+        const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
+        const mesesPorGarantia = tarifas
+                .filter((tarifa) => {
+                        const min = parseNumericFormValue(
 				tarifa.valor_min ?? tarifa.valor_minimo
 			);
 			const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
-			const max =
-				maxRaw === "" || maxRaw == null
-					? 99999999
-					: parseNumericFormValue(maxRaw);
-			const checkValor = tipo === "ninguna" || (valor >= min && valor <= max);
-			const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes == ejes);
-			return checkValor && checkEjes;
-		})
-		.map((tarifa) => Number(tarifa.duracion_meses));
+                        const max =
+                                maxRaw === "" || maxRaw == null
+                                        ? 99999999
+                                        : parseNumericFormValue(maxRaw);
+                        const checkValor = tipo === "ninguna" || (valor >= min && valor <= max);
+                        const tarifaEjes = normalizeEjesValue(tarifa.ejes);
+                        const checkEjes =
+                                !esCamion || !ejes || (tarifaEjes && tarifaEjes === ejes);
+                        return checkValor && checkEjes;
+                })
+                .map((tarifa) => Number(tarifa.duracion_meses));
 
-	return [...new Set(mesesPorGarantia)].sort((a, b) => a - b);
+        return [...new Set(mesesPorGarantia)].sort((a, b) => a - b);
 }
 
 function calcularPrecioBase(modalidad, valoresForm) {
@@ -631,26 +648,27 @@ function calcularPrecioBase(modalidad, valoresForm) {
         const tarifas = cg?.tarifas || [];
         const meses = Number(valoresForm.duracion);
         const esCamion = valoresForm.tipo_vehiculo === "camion";
-        let ejes = null;
-        if (esCamion) ejes = valoresForm.traccion_camion;
+        const ejes = esCamion ? normalizeEjesValue(valoresForm.traccion_camion) : "";
 
-	const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
+        const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
 
-	for (const tarifa of tarifas) {
-		const min = parseNumericFormValue(tarifa.valor_min ?? tarifa.valor_minimo);
+        for (const tarifa of tarifas) {
+                const min = parseNumericFormValue(tarifa.valor_min ?? tarifa.valor_minimo);
 		const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
 		const max =
 			maxRaw === "" || maxRaw == null
 				? 99999999
 				: parseNumericFormValue(maxRaw);
 
-		const checkMeses = Number(tarifa.duracion_meses) === meses;
-		const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes === ejes);
-		const checkMin = tipo === "ninguna" || valor >= min;
-		const checkMax = tipo === "ninguna" || valor <= max;
+                const checkMeses = Number(tarifa.duracion_meses) === meses;
+                const tarifaEjes = normalizeEjesValue(tarifa.ejes);
+                const checkEjes =
+                        !esCamion || !ejes || (tarifaEjes && tarifaEjes === ejes);
+                const checkMin = tipo === "ninguna" || valor >= min;
+                const checkMax = tipo === "ninguna" || valor <= max;
 
-		if (checkMeses && checkEjes && checkMin && checkMax) {
-			return Number(tarifa.precio_base);
+                if (checkMeses && checkEjes && checkMin && checkMax) {
+                        return Number(tarifa.precio_base);
 		}
 	}
 	return null;
@@ -815,16 +833,21 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 
 			const precioBase = calcularPrecioBase(m, valoresForm);
 
-			const breakdown = calcularRecargos(m, {
-				...valoresForm,
-				fecha_primera_matriculacion: getValorInput(
-					"fecha_primera_matriculacion"
-				),
-				kilometros: getValorInput("kilometros"),
-				traccion: getValorInput("traccion"),
-				cambio: getValorInput("cambio"),
-				doble_motor: getValorInput("doble_motor") || null,
-			});
+                        const traccionValue =
+                                tipoVehiculoSeleccionado === "moto"
+                                        ? ""
+                                        : getValorInput("traccion");
+
+                        const breakdown = calcularRecargos(m, {
+                                ...valoresForm,
+                                fecha_primera_matriculacion: getValorInput(
+                                        "fecha_primera_matriculacion"
+                                ),
+                                kilometros: getValorInput("kilometros"),
+                                traccion: traccionValue,
+                                cambio: getValorInput("cambio"),
+                                doble_motor: getValorInput("doble_motor") || null,
+                        });
 
                         const descuentos = getDescuentosAplicablesSync(m);
                         let multiplicador = 1;

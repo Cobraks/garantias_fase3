@@ -79,6 +79,11 @@ function isTipoCamion() {
         return tipo && tipo.value === "camion";
 }
 
+function isTipoMoto() {
+        const tipo = document.getElementById("tipo_vehiculo");
+        return tipo && tipo.value === "moto";
+}
+
 function getPotenciaUnit() {
         const combustible = document.getElementById("combustible")?.value;
         return combustible === "electrico" ? "kW" : "CV";
@@ -289,7 +294,10 @@ export function validateField(input, showError = false, isHardCheck = false) {
 
         // Tracción / camión
         if (id === "traccion" || id === "traccion_camion") {
-                if (isTipoCamion()) {
+                const esCamion = isTipoCamion();
+                const esMoto = isTipoMoto();
+
+                if (esCamion) {
                         if (id === "traccion_camion") {
                                 if (!input.value) {
                                         if (showError) setError(input, "Este campo es obligatorio.");
@@ -302,6 +310,9 @@ export function validateField(input, showError = false, isHardCheck = false) {
                                 clearError(input);
                                 return true;
                         }
+                } else if (esMoto) {
+                        clearError(input);
+                        return true;
                 } else {
                         if (id === "traccion") {
                                 if (!input.value) {
