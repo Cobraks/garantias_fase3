@@ -59,6 +59,7 @@ class EmailNotificationService
     private function register_hooks(): void
     {
         add_action('go360/guarantee/contracted', [$this, 'handle_contracted'], 10, 2);
+        add_action('go360/guarantee/payment_recorded', [$this, 'handle_payment_recorded'], 10, 5);
     }
 
     public function handle_contracted(int $guarantee_id, array $context = []): void
@@ -106,6 +107,52 @@ class EmailNotificationService
                 $this->send_transfer_activation_notification($guarantee_id, $data, $context, $initiator_id);
             }
         }
+    }
+
+    public function handle_payment_recorded(
+        int $guarantee_id,
+        string $method,
+        string $state,
+        string $actor_type = '',
+        int $initiator_id = 0
+    ): void {
+        $method_slug = sanitize_key($method);
+        if ($method_slug === '' || ! in_array($method_slug, self::TRANSFER_PAYMENT_SLUGS, true)) {
+            return;
+        }
+
+        $state_slug = sanitize_key($state);
+        if ($state_slug !== 'activada') {
+            return;
+        }
+
+        $actor_slug = sanitize_key($actor_type);
+        if ($actor_slug === 'actor') {
+            return;
+        }
+
+        if ($this->has_been_notified($guarantee_id, self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL)) {
+            return;
+        }
+
+        $data = $this->data_factory->build($guarantee_id);
+        if (empty($data)) {
+            $this->log_skip($guarantee_id, self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL, 'empty_data', $initiator_id);
+            return;
+        }
+
+        $context = [
+            'initiator'      => $initiator_id,
+            'current_state'  => $state_slug,
+            'payment_method' => $method_slug,
+            'actor_type'     => $actor_slug,
+        ];
+
+        if (! $this->should_notify(self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL, $data, $context)) {
+            return;
+        }
+
+        $this->send_transfer_activation_notification($guarantee_id, $data, $context, $initiator_id);
     }
 
     private function dispatch(?EmailMessage $message, int $guarantee_id, string $event_slug, int $initiator_id): bool
