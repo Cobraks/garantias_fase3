@@ -572,7 +572,12 @@ class EmailNotificationService
         }
 
         if ($allow_styles) {
-            return trim(wp_kses($value, EmailSettings::getAllowedSignatureHtml()));
+            /**
+             * Signatures are stored as fully prepared HTML in the options page.
+             * We therefore return the trimmed markup without additional
+             * sanitization to preserve inline styles and advanced layout.
+             */
+            return $value;
         }
 
         return trim(wp_kses_post($value));
