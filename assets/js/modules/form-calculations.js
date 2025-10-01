@@ -815,16 +815,21 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 
 			const precioBase = calcularPrecioBase(m, valoresForm);
 
-			const breakdown = calcularRecargos(m, {
-				...valoresForm,
-				fecha_primera_matriculacion: getValorInput(
-					"fecha_primera_matriculacion"
-				),
-				kilometros: getValorInput("kilometros"),
-				traccion: getValorInput("traccion"),
-				cambio: getValorInput("cambio"),
-				doble_motor: getValorInput("doble_motor") || null,
-			});
+                        const traccionValue =
+                                tipoVehiculoSeleccionado === "moto"
+                                        ? ""
+                                        : getValorInput("traccion");
+
+                        const breakdown = calcularRecargos(m, {
+                                ...valoresForm,
+                                fecha_primera_matriculacion: getValorInput(
+                                        "fecha_primera_matriculacion"
+                                ),
+                                kilometros: getValorInput("kilometros"),
+                                traccion: traccionValue,
+                                cambio: getValorInput("cambio"),
+                                doble_motor: getValorInput("doble_motor") || null,
+                        });
 
                         const descuentos = getDescuentosAplicablesSync(m);
                         let multiplicador = 1;

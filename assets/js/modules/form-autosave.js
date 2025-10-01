@@ -580,6 +580,80 @@ export default function initAutosave() {
                         return "";
                 };
 
+                const tipoVehiculoValor =
+                        document.getElementById("tipo_vehiculo")?.value ||
+                        datosVehiculo.tipo_vehiculo ||
+                        "";
+                const tipoVehiculoNormalizado = String(tipoVehiculoValor).toLowerCase();
+                const esMoto = tipoVehiculoNormalizado === "moto";
+                const esCamion = tipoVehiculoNormalizado === "camion";
+
+                const TRACCION_LABELS = {
+                        "4x4": "4x4",
+                        delantera: "Delantera",
+                        trasera: "Trasera",
+                };
+
+                const TRACCION_CAMION_LABELS = {
+                        "1_eje": "1 Eje",
+                        "1 eje": "1 Eje",
+                        "1": "1 Eje",
+                        "2_ejes": "2 Ejes",
+                        "2 ejes": "2 Ejes",
+                        "2": "2 Ejes",
+                        "3_ejes": "3 Ejes",
+                        "3 ejes": "3 Ejes",
+                        "3": "3 Ejes",
+                };
+
+                const getTraccionPdfValue = () => {
+                        if (esMoto) return "";
+
+                        if (esCamion) {
+                                const labelFromSelect = getSelectText("traccion_camion");
+                                if (labelFromSelect) return labelFromSelect;
+
+                                const labelFromData =
+                                        datosVehiculo.traccion_camion_label ||
+                                        datosVehiculo.traccion_label ||
+                                        "";
+                                if (labelFromData) return labelFromData;
+
+                                const rawValue =
+                                        datosVehiculo.traccion_camion ||
+                                        datosVehiculo.traccion ||
+                                        "";
+                                if (!rawValue) return "";
+
+                                const normalized = String(rawValue).toLowerCase();
+                                const normalizedUnderscore = normalized.replace(/\s+/g, "_");
+
+                                return (
+                                        TRACCION_CAMION_LABELS[rawValue] ||
+                                        TRACCION_CAMION_LABELS[normalized] ||
+                                        TRACCION_CAMION_LABELS[normalizedUnderscore] ||
+                                        rawValue
+                                );
+                        }
+
+                        const labelFromSelect = getSelectText("traccion");
+                        if (labelFromSelect) return labelFromSelect;
+
+                        const labelFromData = datosVehiculo.traccion_label || "";
+                        if (labelFromData) return labelFromData;
+
+                        const rawValue = datosVehiculo.traccion || "";
+                        if (!rawValue) return "";
+
+                        const normalized = String(rawValue).toLowerCase();
+
+                        return (
+                                TRACCION_LABELS[rawValue] ||
+                                TRACCION_LABELS[normalized] ||
+                                rawValue
+                        );
+                };
+
                 const pdfFieldMap = {
                         pdf_id_matricula: datosVehiculo.matricula,
                         pdf_nombre_apellidos: datosCliente.nombre_y_apellidos,
@@ -601,11 +675,7 @@ export default function initAutosave() {
                         pdf_bastidor: datosVehiculo.numero_bastidor,
                         pdf_km: formatNumber(datosVehiculo.kilometros),
                         pdf_cv: formatNumber(datosVehiculo.potencia),
-                        pdf_traccion:
-                                getSelectText("traccion") ||
-                                getSelectText("traccion_camion") ||
-                                datosVehiculo.traccion ||
-                                datosVehiculo.traccion_camion,
+                        pdf_traccion: getTraccionPdfValue(),
                         pdf_combustible:
                                 getSelectText("combustible") ||
                                 datosVehiculo.combustible,

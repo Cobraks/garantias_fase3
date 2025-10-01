@@ -2393,6 +2393,40 @@ class GuaranteeRestController
     }
 
     /**
+     * Normalize ACF select/meta field into value/label pair.
+     */
+    private static function normalize_select_field($raw)
+    {
+        if ($raw === null || $raw === '' || $raw === false) {
+            return ['value' => '', 'label' => ''];
+        }
+
+        if (is_array($raw)) {
+            $value = isset($raw['value']) ? (string) $raw['value'] : '';
+            $label = isset($raw['label']) ? (string) $raw['label'] : '';
+
+            if ($value === '' && $label !== '') {
+                $value = $label;
+            }
+
+            if ($label === '' && $value !== '') {
+                $label = $value;
+            }
+
+            return ['value' => $value, 'label' => $label];
+        }
+
+        $maybe = maybe_unserialize($raw);
+        if ($maybe !== $raw) {
+            return self::normalize_select_field($maybe);
+        }
+
+        $value = is_scalar($raw) ? (string) $raw : '';
+
+        return ['value' => $value, 'label' => $value];
+    }
+
+    /**
      * Collect all detail fields for a guarantee post.
      */
     private static function get_detail_data($id, $include_document_urls = true)
@@ -2428,8 +2462,19 @@ class GuaranteeRestController
             ? ($cambio_raw['value'] ?? $cambio_raw['label'] ?? '')
             : $cambio_raw;
 
-        $traccion = get_post_meta($id, 'datos_vehiculo_traccion', true);
-        $traccion_camion = get_post_meta($id, 'datos_vehiculo_traccion_camion', true);
+        $traccion_raw = function_exists('get_field')
+            ? get_field('datos_vehiculo_traccion', $id)
+            : get_post_meta($id, 'datos_vehiculo_traccion', true);
+        $traccion_data = self::normalize_select_field($traccion_raw);
+        $traccion = $traccion_data['value'];
+        $traccion_label = $traccion_data['label'];
+
+        $traccion_camion_raw = function_exists('get_field')
+            ? get_field('datos_vehiculo_traccion_camion', $id)
+            : get_post_meta($id, 'datos_vehiculo_traccion_camion', true);
+        $traccion_camion_data = self::normalize_select_field($traccion_camion_raw);
+        $traccion_camion = $traccion_camion_data['value'];
+        $traccion_camion_label = $traccion_camion_data['label'];
         $potencia = get_post_meta($id, 'datos_vehiculo_potencia', true);
         $potencia_kw = get_post_meta($id, 'datos_vehiculo_potencia_kw', true);
         $cilindrada = get_post_meta($id, 'datos_vehiculo_cilindrada', true);
@@ -2585,7 +2630,9 @@ class GuaranteeRestController
             'cambio' => $cambio_label ?: '-',
             'cambio_value' => $cambio_value ?: '',
             'traccion' => $traccion ?: '',
+            'traccion_label' => $traccion_label ?: '',
             'traccion_camion' => $traccion_camion ?: '',
+            'traccion_camion_label' => $traccion_camion_label ?: '',
             'potencia' => $potencia ?: '-',
             'potencia_kw' => $potencia_kw ?: '',
             'cilindrada' => $cilindrada ?: '-',
@@ -3017,6 +3064,24 @@ class GuaranteeRestController
             $post_id,
             'payment_recorded',
             wp_json_encode($payload)
+        );
+
+        /**
+         * Fires after a payment has been recorded for a guarantee.
+         *
+         * @param int    $post_id     Guarantee ID.
+         * @param string $method      Payment method slug.
+         * @param string $state       Contract state associated with the event.
+         * @param string $actor_type  Actor that confirmed the payment (platform, vendor, actor...).
+         * @param int    $initiator   Current user ID.
+         */
+        do_action(
+            'go360/guarantee/payment_recorded',
+            $post_id,
+            $method,
+            $state,
+            $actor_type,
+            get_current_user_id()
         );
     }
 

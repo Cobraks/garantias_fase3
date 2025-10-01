@@ -23,10 +23,11 @@ import {
 import { eurosString, IVA_PORCENTAJE } from "./form-utils.js";
 
 function getValoresForm() {
-	return {
-		cilindrada: document.getElementById("cilindrada")?.value || 0,
-		potencia: document.getElementById("potencia")?.value || 0,
-		duracion: Number(document.getElementById("duracion")?.value) || 0,
+        return {
+                cilindrada: document.getElementById("cilindrada")?.value || 0,
+                potencia: document.getElementById("potencia")?.value || 0,
+                duracion: Number(document.getElementById("duracion")?.value) || 0,
+                tipo_vehiculo: document.getElementById("tipo_vehiculo")?.value || "",
                 traccion_camion: document.getElementById("traccion_camion")?.value || null,
                 combustible: document.getElementById("combustible")?.value || null,
                 cambio: document.getElementById("cambio")?.value || null,
@@ -160,17 +161,24 @@ async function buildSummaryHTML() {
 	const valoresFormBase = getValoresForm();
 
 	// extender igual que en renderPlans para que se apliquen todos los recargos
-	const valoresForm = {
-		...valoresFormBase,
-		fecha_primera_matriculacion:
-			document.getElementById("fecha_primera_matriculacion")?.value || "",
-		kilometros: document.getElementById("kilometros")?.value || 0,
-		traccion: document.getElementById("traccion")?.value || "",
-		cambio: document.getElementById("cambio")?.value || "",
-		// mantener consistencia: no forzamos booleano para doble_motor aquí,
-		// porque en calcularRecargos se trata como string normalmente
-		doble_motor: document.getElementById("doble_motor")?.value || null,
-	};
+        const tipoVehiculoSeleccionado =
+                document.getElementById("tipo_vehiculo")?.value || "";
+        const esMoto = tipoVehiculoSeleccionado === "moto";
+
+        const valoresForm = {
+                ...valoresFormBase,
+                fecha_primera_matriculacion:
+                        document.getElementById("fecha_primera_matriculacion")?.value || "",
+                kilometros: document.getElementById("kilometros")?.value || 0,
+                traccion: esMoto
+                        ? ""
+                        : document.getElementById("traccion")?.value || "",
+                cambio: document.getElementById("cambio")?.value || "",
+                // mantener consistencia: no forzamos booleano para doble_motor aquí,
+                // porque en calcularRecargos se trata como string normalmente
+                doble_motor: document.getElementById("doble_motor")?.value || null,
+                tipo_vehiculo: tipoVehiculoSeleccionado,
+        };
 
         container.innerHTML = `<div class="form__contrato-prices--loading">Calculando...</div>`;
 
