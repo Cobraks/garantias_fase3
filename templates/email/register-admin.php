@@ -20,6 +20,7 @@ $full_address = array_filter([
     trim(($address['postal_code'] ?? '') . ' ' . ($address['city'] ?? '')),
     $address['province'] ?? '',
 ]);
+$logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FILE__);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -27,209 +28,214 @@ $full_address = array_filter([
     <meta charset="utf-8">
     <title><?php esc_html_e('Nuevo registro en Garantías Online', 'garantias-online-360vo'); ?></title>
 </head>
-<body style="margin:0; padding:0; background:#f7f7f7; font-family:Arial, Helvetica, sans-serif; color:#111;">
-    <div style="max-width:640px; margin:0 auto; padding:32px 24px; background:#ffffff;">
-        <div style="display:inline-block; padding:6px 14px; background:#111827; color:#ffffff; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; border-radius:999px; margin-bottom:18px;">
-            <?php esc_html_e('Nuevo registro', 'garantias-online-360vo'); ?>
-        </div>
-        <h1 style="font-size:22px; margin:0 0 16px; color:#111;">
-            <?php
-            if ($company_name !== '') {
-                printf(
-                    /* translators: %s company name */
-                    esc_html__('Se ha registrado %s', 'garantias-online-360vo'),
-                    esc_html($company_name)
-                );
-            } else {
-                esc_html_e('Se ha registrado un nuevo usuario', 'garantias-online-360vo');
-            }
-            ?>
-        </h1>
-        <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.6;">
-            <?php esc_html_e('Estos son los datos enviados a través del formulario de alta de Garantías Online.', 'garantias-online-360vo'); ?>
-        </p>
-
-        <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; margin:0 0 24px;">
-            <tbody>
-                <tr style="background:#f9fafb;">
-                    <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em;">
-                        <?php esc_html_e('Nombre', 'garantias-online-360vo'); ?>
-                    </th>
-                    <td style="padding:10px 14px; font-size:14px; color:#111; font-weight:600;">
-                        <?php echo esc_html($user['name'] ?? ''); ?>
-                    </td>
-                </tr>
-                <tr>
-                    <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                        <?php esc_html_e('Correo', 'garantias-online-360vo'); ?>
-                    </th>
-                    <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                        <?php echo esc_html($user['email'] ?? ''); ?>
-                    </td>
-                </tr>
-                <tr>
-                    <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                        <?php esc_html_e('Teléfono', 'garantias-online-360vo'); ?>
-                    </th>
-                    <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                        <?php echo esc_html($user['phone'] ?? ''); ?>
-                    </td>
-                </tr>
-                <tr>
-                    <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                        <?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?>
-                    </th>
-                    <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                        <?php echo esc_html($user['channel'] ?? ''); ?>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-
-        <h2 style="font-size:18px; margin:0 0 12px; color:#111;">
-            <?php esc_html_e('Datos de la empresa', 'garantias-online-360vo'); ?>
-        </h2>
-        <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; margin:0 0 24px;">
-            <tbody>
-                <tr style="background:#f9fafb;">
-                    <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em;">
-                        <?php esc_html_e('Nombre comercial', 'garantias-online-360vo'); ?>
-                    </th>
-                    <td style="padding:10px 14px; font-size:14px; color:#111; font-weight:600;">
-                        <?php echo esc_html($company['trade_name'] ?? ''); ?>
-                    </td>
-                </tr>
-                <tr>
-                    <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                        <?php esc_html_e('Razón social', 'garantias-online-360vo'); ?>
-                    </th>
-                    <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                        <?php echo esc_html($company['legal_name'] ?? ''); ?>
-                    </td>
-                </tr>
-                <tr>
-                    <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                        <?php esc_html_e('CIF', 'garantias-online-360vo'); ?>
-                    </th>
-                    <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                        <?php echo esc_html($company['tax_id'] ?? ''); ?>
-                    </td>
-                </tr>
-                <tr>
-                    <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                        <?php esc_html_e('Dirección', 'garantias-online-360vo'); ?>
-                    </th>
-                    <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                        <?php echo esc_html(implode(', ', $full_address)); ?>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-
-        <?php if ($workshop) : ?>
-            <h2 style="font-size:18px; margin:0 0 12px; color:#111;">
-                <?php esc_html_e('Datos del taller', 'garantias-online-360vo'); ?>
-            </h2>
-            <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; margin:0 0 24px;">
-                <tbody>
-                    <tr style="background:#f9fafb;">
-                        <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em;">
-                            <?php esc_html_e('Nombre', 'garantias-online-360vo'); ?>
-                        </th>
-                        <td style="padding:10px 14px; font-size:14px; color:#111; font-weight:600;">
-                            <?php echo esc_html($workshop['name'] ?? ''); ?>
-                        </td>
-                    </tr>
+<body style="margin:0;padding:32px 16px;background-color:#f4f4f5;font-family:'Roboto','Segoe UI','San Francisco',Arial,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:720px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
                     <tr>
-                        <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                            <?php esc_html_e('Contacto', 'garantias-online-360vo'); ?>
-                        </th>
-                        <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                            <?php echo esc_html($workshop['contact'] ?? ''); ?>
+                        <td style="padding:32px 28px 12px 28px;">
+                            <?php
+                            $badge_text = __('Nuevo registro', 'garantias-online-360vo');
+                            include __DIR__ . '/partials/header.php';
+                            ?>
+                            <h1 style="font-size:24px;margin:0 0 18px;color:#111827;font-weight:700;">
+                                <?php
+                                if ($company_name !== '') {
+                                    printf(
+                                        /* translators: %s company name */
+                                        esc_html__('Se ha registrado %s', 'garantias-online-360vo'),
+                                        esc_html($company_name)
+                                    );
+                                } else {
+                                    esc_html_e('Se ha registrado un nuevo usuario', 'garantias-online-360vo');
+                                }
+                                ?>
+                            </h1>
+                            <p style="font-size:15px;margin:0 0 24px;color:#374151;line-height:1.7;">
+                                <?php esc_html_e('Estos son los datos enviados a través del formulario de alta de Garantías Online.', 'garantias-online-360vo'); ?>
+                            </p>
+                            <h2 style="font-size:18px;margin:0 0 12px;color:#111827;font-weight:600;">
+                                <?php esc_html_e('Datos de contacto', 'garantias-online-360vo'); ?>
+                            </h2>
+                            <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:0 0 28px;">
+                                <tbody>
+                                    <tr style="background:#f9fafb;">
+                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;">
+                                            <?php esc_html_e('Nombre', 'garantias-online-360vo'); ?>
+                                        </th>
+                                        <td style="padding:12px 18px;font-size:14px;color:#111827;font-weight:600;">
+                                            <?php echo esc_html($user['name'] ?? ''); ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                            <?php esc_html_e('Correo', 'garantias-online-360vo'); ?>
+                                        </th>
+                                        <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                            <?php echo esc_html($user['email'] ?? ''); ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                            <?php esc_html_e('Teléfono', 'garantias-online-360vo'); ?>
+                                        </th>
+                                        <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                            <?php echo esc_html($user['phone'] ?? ''); ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                            <?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?>
+                                        </th>
+                                        <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                            <?php echo esc_html($user['channel'] ?? ''); ?>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <h2 style="font-size:18px;margin:0 0 12px;color:#111827;font-weight:600;">
+                                <?php esc_html_e('Datos de la empresa', 'garantias-online-360vo'); ?>
+                            </h2>
+                            <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:0 0 28px;">
+                                <tbody>
+                                    <tr style="background:#f9fafb;">
+                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;">
+                                            <?php esc_html_e('Nombre comercial', 'garantias-online-360vo'); ?>
+                                        </th>
+                                        <td style="padding:12px 18px;font-size:14px;color:#111827;font-weight:600;">
+                                            <?php echo esc_html($company['trade_name'] ?? ''); ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                            <?php esc_html_e('Razón social', 'garantias-online-360vo'); ?>
+                                        </th>
+                                        <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                            <?php echo esc_html($company['legal_name'] ?? ''); ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                            <?php esc_html_e('CIF', 'garantias-online-360vo'); ?>
+                                        </th>
+                                        <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                            <?php echo esc_html($company['tax_id'] ?? ''); ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                            <?php esc_html_e('Dirección', 'garantias-online-360vo'); ?>
+                                        </th>
+                                        <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                            <?php echo esc_html(implode(', ', $full_address)); ?>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <?php if ($workshop) : ?>
+                                <h2 style="font-size:18px;margin:0 0 12px;color:#111827;font-weight:600;">
+                                    <?php esc_html_e('Datos del taller', 'garantias-online-360vo'); ?>
+                                </h2>
+                                <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:0 0 28px;">
+                                    <tbody>
+                                        <tr style="background:#f9fafb;">
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;">
+                                                <?php esc_html_e('Nombre', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;font-weight:600;">
+                                                <?php echo esc_html($workshop['name'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('Contacto', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($workshop['contact'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('Teléfono', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($workshop['phone'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('Email', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($workshop['email'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('Dirección', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($workshop['address'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            <?php endif; ?>
+                            <?php if ($sepa) : ?>
+                                <h2 style="font-size:18px;margin:0 0 12px;color:#111827;font-weight:600;">
+                                    <?php esc_html_e('Datos SEPA', 'garantias-online-360vo'); ?>
+                                </h2>
+                                <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:0 0 28px;">
+                                    <tbody>
+                                        <tr style="background:#f9fafb;">
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;">
+                                                <?php esc_html_e('Titular', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;font-weight:600;">
+                                                <?php echo esc_html($sepa['name'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('Dirección', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($sepa['address'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('IBAN', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($sepa['iban'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('BIC', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($sepa['bic'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            <?php endif; ?>
+                            <?php if ($auto_signature) : ?>
+                                <p style="font-size:13px;margin:0 0 12px;color:#6b7280;line-height:1.6;">
+                                    <?php esc_html_e('El sistema ha adjuntado automáticamente la documentación enviada por el profesional.', 'garantias-online-360vo'); ?>
+                                </p>
+                            <?php endif; ?>
                         </td>
                     </tr>
-                    <tr>
-                        <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                            <?php esc_html_e('Teléfono', 'garantias-online-360vo'); ?>
-                        </th>
-                        <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                            <?php echo esc_html($workshop['phone'] ?? ''); ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                            <?php esc_html_e('Email', 'garantias-online-360vo'); ?>
-                        </th>
-                        <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                            <?php echo esc_html($workshop['email'] ?? ''); ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                            <?php esc_html_e('Dirección', 'garantias-online-360vo'); ?>
-                        </th>
-                        <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                            <?php echo esc_html($workshop['address'] ?? ''); ?>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        <?php endif; ?>
-
-        <?php if ($sepa) : ?>
-            <h2 style="font-size:18px; margin:0 0 12px; color:#111;">
-                <?php esc_html_e('Datos SEPA', 'garantias-online-360vo'); ?>
-            </h2>
-            <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; margin:0 0 24px;">
-                <tbody>
-                    <tr style="background:#f9fafb;">
-                        <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em;">
-                            <?php esc_html_e('Titular', 'garantias-online-360vo'); ?>
-                        </th>
-                        <td style="padding:10px 14px; font-size:14px; color:#111; font-weight:600;">
-                            <?php echo esc_html($sepa['name'] ?? ''); ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                            <?php esc_html_e('Dirección', 'garantias-online-360vo'); ?>
-                        </th>
-                        <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                            <?php echo esc_html($sepa['address'] ?? ''); ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                            <?php esc_html_e('IBAN', 'garantias-online-360vo'); ?>
-                        </th>
-                        <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                            <?php echo esc_html($sepa['iban'] ?? ''); ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th align="left" style="padding:10px 14px; font-size:12px; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; border-top:1px solid #e5e7eb;">
-                            <?php esc_html_e('SWIFT/BIC', 'garantias-online-360vo'); ?>
-                        </th>
-                        <td style="padding:10px 14px; font-size:14px; color:#111; border-top:1px solid #e5e7eb;">
-                            <?php echo esc_html($sepa['swift'] ?? ''); ?>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        <?php endif; ?>
-
-        <?php if ($auto_signature) : ?>
-            <div style="padding:14px 18px; margin:0 0 18px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; font-size:14px; color:#3730a3; line-height:1.6;">
-                <?php esc_html_e('Ha solicitado activar la firma y el sello automáticos para los certificados.', 'garantias-online-360vo'); ?>
-            </div>
-        <?php endif; ?>
-
-        <p style="font-size:13px; color:#6b7280; line-height:1.6; margin:0;">
-            <?php esc_html_e('Puedes consultar toda la información desde el panel de administración de Garantías Online.', 'garantias-online-360vo'); ?>
-        </p>
-    </div>
-    <p style="text-align:center; margin:16px 0 0; font-size:12px; color:#9ca3af;">
-        <?php esc_html_e('Mensaje generado automáticamente por Garantías Online 360VO.', 'garantias-online-360vo'); ?>
-    </p>
+                </table>
+                <p style="text-align:center;margin:16px 0 0;font-size:12px;color:#6b7280;">
+                    <?php esc_html_e('Este mensaje ha sido generado automáticamente por 360VO Garantías Online.', 'garantias-online-360vo'); ?>
+                </p>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

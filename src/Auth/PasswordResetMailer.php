@@ -2,6 +2,7 @@
 
 namespace GarantiasOnline360VO\Auth;
 
+use GarantiasOnline360VO\Notifications\Email\EmailSettings;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
 use GarantiasOnline360VO\Support\UserProfileResolver;
 use WP_User;
@@ -64,6 +65,7 @@ class PasswordResetMailer
             'support_url'   => home_url('/garantias-online/'),
             'personal_name' => $personal_name,
             'company_name'  => $company_name,
+            'signature'     => EmailSettings::getSignature(),
         ]);
 
         if ($message === '') {
@@ -88,11 +90,12 @@ class PasswordResetMailer
             $admin_email = $domain ? 'no-reply@' . ltrim($domain, '.') : 'no-reply@example.com';
         }
 
-        $from_name = '360VO';
-        $from      = sprintf('%s <%s>', $from_name, $admin_email);
+        $from_header = EmailSettings::buildFromHeader('professional', $admin_email);
 
         $headers[] = 'Content-Type: text/html; charset=UTF-8';
-        $headers[] = 'From: ' . $from;
+        if ($from_header !== '') {
+            $headers[] = $from_header;
+        }
 
         $email['subject'] = $subject;
         $email['message'] = $message;
@@ -146,8 +149,12 @@ class PasswordResetMailer
             $from_email = $domain ? 'no-reply@' . ltrim($domain, '.') : 'no-reply@example.com';
         }
 
+        $from_header = EmailSettings::buildFromHeader('admin', $from_email);
+
         $headers[] = 'Content-Type: text/html; charset=UTF-8';
-        $headers[] = sprintf('From: 360VO <%s>', $from_email);
+        if ($from_header !== '') {
+            $headers[] = $from_header;
+        }
 
         $email['to']      = $admin_email;
         $email['subject'] = sprintf(__('[%s] Contraseña de usuario actualizada', 'garantias-online-360vo'), $site_name);
