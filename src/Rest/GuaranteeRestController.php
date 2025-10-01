@@ -3018,6 +3018,24 @@ class GuaranteeRestController
             'payment_recorded',
             wp_json_encode($payload)
         );
+
+        /**
+         * Fires after a payment has been recorded for a guarantee.
+         *
+         * @param int    $post_id     Guarantee ID.
+         * @param string $method      Payment method slug.
+         * @param string $state       Contract state associated with the event.
+         * @param string $actor_type  Actor that confirmed the payment (platform, vendor, actor...).
+         * @param int    $initiator   Current user ID.
+         */
+        do_action(
+            'go360/guarantee/payment_recorded',
+            $post_id,
+            $method,
+            $state,
+            $actor_type,
+            get_current_user_id()
+        );
     }
 
     /**
