@@ -3,7 +3,6 @@
 namespace GarantiasOnline360VO\Notifications\Email;
 
 use GarantiasOnline360VO\GuaranteeLogger;
-use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
 use GarantiasOnline360VO\Support\UserProfileResolver;
 
@@ -13,6 +12,14 @@ if (! defined('ABSPATH')) {
 
 class EmailNotificationService
 {
+    private const EVENT_TRANSFER_ACTIVATED_PROFESSIONAL = 'transfer_activated_professional';
+
+    private const TRANSFER_PAYMENT_SLUGS = [
+        'transferencia',
+        'transferencia_bancaria',
+        'transferencia-bancaria',
+    ];
+
 
     /** @var Mailer */
     private $mailer;
@@ -81,6 +88,17 @@ class EmailNotificationService
             && $this->should_notify('contracted_professional', $data, $context)
         ) {
             $this->send_professional_notification($guarantee_id, $data, $context, $initiator_id);
+        }
+
+        if ($this->should_send_transfer_activation($data, $context)) {
+            $slug = self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL;
+
+            if (
+                ! $this->has_been_notified($guarantee_id, $slug)
+                && $this->should_notify($slug, $data, $context)
+            ) {
+                $this->send_transfer_activation_notification($guarantee_id, $data, $context, $initiator_id);
+            }
         }
     }
 
@@ -176,6 +194,29 @@ class EmailNotificationService
         );
 
         $this->dispatch($message, $guarantee_id, 'contracted_professional', $initiator_id);
+    }
+
+    private function send_transfer_activation_notification(int $guarantee_id, array $data, array $context, int $initiator_id): void
+    {
+        $recipients = $this->get_professional_recipients($data, $context);
+        error_log('[EMAIL] transfer activation recipients ' . $guarantee_id . ' => ' . wp_json_encode($recipients));
+
+        if (empty($recipients)) {
+            $this->log_skip($guarantee_id, self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL, 'no_recipients', $initiator_id);
+            return;
+        }
+
+        $reply_to = $this->get_reply_to_address();
+        $options  = $this->build_professional_options($reply_to);
+
+        $message = $this->builder->composeTransferActivatedProfessional(
+            $data,
+            $recipients,
+            $this->build_template_context(self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL, $context, $initiator_id),
+            $options
+        );
+
+        $this->dispatch($message, $guarantee_id, self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL, $initiator_id);
     }
 
     private function has_delivery_recipients(array $delivery): bool
@@ -318,28 +359,34 @@ class EmailNotificationService
 
     private function get_reply_to_address(): string
     {
-        $settings = $this->get_notification_settings();
-        $reply_to = '';
+        $this->get_notification_settings();
+        $reply_to = EmailSettings::getReplyTo();
 
-        if (isset($settings['direccion_respuesta'])) {
-            $reply_to = (string) $settings['direccion_respuesta'];
+        error_log('[EMAIL] resolved reply-to => ' . $reply_to);
+
+        return $reply_to;
+    }
+
+    private function should_send_transfer_activation(array $data, array $context): bool
+    {
+        $previous = isset($context['previous_state']) ? sanitize_key((string) $context['previous_state']) : '';
+        $current  = isset($context['current_state']) ? sanitize_key((string) $context['current_state']) : '';
+
+        if ($previous !== 'pendiente_pago' || $current !== 'activada') {
+            return false;
         }
 
-        if ($reply_to === '' && isset($settings['notificaciones_email']['direccion_respuesta'])) {
-            $reply_to = (string) $settings['notificaciones_email']['direccion_respuesta'];
+        $slug = isset($data['payment_slug']) ? sanitize_key((string) $data['payment_slug']) : '';
+        if ($slug === '' && isset($context['payment_method'])) {
+            $slug = sanitize_key((string) $context['payment_method']);
         }
 
-        $reply_to = apply_filters('go360/email/reply_to', $reply_to, $settings);
-
-        $normalized = sanitize_email($reply_to);
-        error_log('[EMAIL] resolved reply-to => ' . $normalized);
-
-        return $normalized;
+        return $slug !== '' && in_array($slug, self::TRANSFER_PAYMENT_SLUGS, true);
     }
 
     private function get_admin_from_header(): string
     {
-        $email = $this->resolve_sender_email('admin');
+        $email = EmailSettings::resolveSenderEmail('admin');
         if ($email === '') {
             return '';
         }
@@ -349,23 +396,12 @@ class EmailNotificationService
 
     private function get_professional_from_header(string $reply_to = ''): string
     {
-        $email = $this->resolve_sender_email('professional', $reply_to);
+        $email = EmailSettings::resolveSenderEmail('professional', $reply_to);
         if ($email === '') {
             return '';
         }
 
         return $this->build_from_header(__('Garantías 360VO', 'garantias-online-360vo'), $email);
-    }
-
-    private function resolve_sender_email(string $context, string $fallback = ''): string
-    {
-        $email = $fallback !== '' ? $fallback : sanitize_email(get_option('admin_email'));
-
-        $settings = $this->get_notification_settings();
-
-        return sanitize_email(
-            apply_filters('go360/email/sender_email', $email, $context, $settings)
-        );
     }
 
     private function build_from_header(string $name, string $email): string
@@ -489,50 +525,10 @@ class EmailNotificationService
 
     private function get_notification_settings(): array
     {
-        if ($this->notification_settings !== null) {
-            return $this->notification_settings;
+        if ($this->notification_settings === null) {
+            $this->notification_settings = EmailSettings::all();
+            error_log('[EMAIL] notification settings loaded ' . wp_json_encode($this->notification_settings));
         }
-
-        if (! function_exists('get_field')) {
-            $this->notification_settings = [];
-            return $this->notification_settings;
-        }
-
-        $root_settings = get_field('notificaciones', SettingsPage::SUBMENU_SLUG);
-        if (! is_array($root_settings)) {
-            $root_settings = [];
-        }
-
-        $notifications_group = $root_settings['notificaciones_email'] ?? get_field('notificaciones_email', SettingsPage::SUBMENU_SLUG);
-        if (! is_array($notifications_group)) {
-            $notifications_group = [];
-        }
-
-        $content_group = $root_settings['contenido_correos_electronicos'] ?? get_field('contenido_correos_electronicos', SettingsPage::SUBMENU_SLUG);
-        if (! is_array($content_group)) {
-            $content_group = [];
-        }
-
-        if (empty($root_settings['direcciones_correo']) && isset($notifications_group['direcciones_correo'])) {
-            $root_settings['direcciones_correo'] = $notifications_group['direcciones_correo'];
-        }
-        if (empty($root_settings['direccion_respuesta']) && isset($notifications_group['direccion_respuesta'])) {
-            $root_settings['direccion_respuesta'] = $notifications_group['direccion_respuesta'];
-        }
-
-        if (empty($root_settings['firma']) && isset($content_group['firma'])) {
-            $root_settings['firma'] = $content_group['firma'];
-        }
-
-        $this->notification_settings = array_merge(
-            $root_settings,
-            [
-                'notificaciones_email' => $notifications_group,
-                'contenido_correos_electronicos' => $content_group,
-            ]
-        );
-
-        error_log('[EMAIL] notification settings loaded ' . wp_json_encode($this->notification_settings));
 
         return $this->notification_settings;
     }
@@ -556,17 +552,38 @@ class EmailNotificationService
             $client_group = [];
         }
 
+        $signature_source = EmailSettings::getSignature();
+
+        if ($signature_source === '' && isset($content['firma']) && is_string($content['firma'])) {
+            $signature_source = trim($content['firma']);
+        }
+
         return [
             'admin_intro'  => $this->sanitize_copy($admin_group['mensaje_inicial'] ?? ''),
             'client_intro' => $this->sanitize_copy($client_group['mensaje_inicial'] ?? ''),
-            'signature'    => $this->sanitize_copy($content['firma'] ?? ''),
+            'signature'    => $this->sanitize_copy($signature_source, true),
         ];
     }
 
-    private function sanitize_copy($value): string
+    private function sanitize_copy($value, bool $allow_styles = false): string
     {
         if (! is_string($value)) {
             return '';
+        }
+
+        $value = trim($value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        if ($allow_styles) {
+            /**
+             * Signatures are stored as fully prepared HTML in the options page.
+             * We therefore return the trimmed markup without additional
+             * sanitization to preserve inline styles and advanced layout.
+             */
+            return $value;
         }
 
         return trim(wp_kses_post($value));

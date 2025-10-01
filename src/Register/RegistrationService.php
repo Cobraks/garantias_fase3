@@ -4,6 +4,7 @@ namespace GarantiasOnline360VO\Register;
 
 use GarantiasOnline360VO\ActivityLog\ActivityLogger;
 use GarantiasOnline360VO\Notifications\Email\EmailMessage;
+use GarantiasOnline360VO\Notifications\Email\EmailSettings;
 use GarantiasOnline360VO\Notifications\Email\Mailer;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
 use GarantiasOnline360VO\SettingsPage;
@@ -721,11 +722,17 @@ class RegistrationService
         $body = $this->renderer->render('register-admin', $context);
         $subject = sprintf(__('Nuevo registro: %s', 'garantias-online-360vo'), $data['company']['trade_name'] ?: $data['first_name']);
 
+        $headers = [];
+        $from_header = EmailSettings::buildFromHeader('admin');
+        if ($from_header !== '') {
+            $headers[] = $from_header;
+        }
+
         $message = new EmailMessage(
             $delivery['to'] ?: [$delivery['primary']],
             $subject,
             $body,
-            [],
+            $headers,
             [],
             [
                 'bcc'      => $delivery['bcc'],
@@ -769,6 +776,7 @@ class RegistrationService
             'channel_label' => $channel_label,
             'account_url'   => home_url('/garantias-online/'),
             'support_url'   => home_url('/garantias-online/soporte/'),
+            'signature'     => $this->get_signature_html(),
         ];
 
         $body = $this->renderer->render('register-welcome', $context);
@@ -777,7 +785,19 @@ class RegistrationService
         }
 
         $subject = __('Tu cuenta ya está activa en Garantías Online', 'garantias-online-360vo');
-        $message = new EmailMessage([$user->user_email], $subject, $body);
+        $headers = [];
+        $from_header = EmailSettings::buildFromHeader('professional');
+        if ($from_header !== '') {
+            $headers[] = $from_header;
+        }
+
+        $metadata = [];
+        $reply_to = EmailSettings::getReplyTo();
+        if ($reply_to !== '') {
+            $metadata['reply_to'] = $reply_to;
+        }
+
+        $message = new EmailMessage([$user->user_email], $subject, $body, $headers, [], $metadata);
 
         return $this->mailer->send($message);
     }
@@ -893,16 +913,40 @@ class RegistrationService
             'expires_at'  => gmdate('c', $expires),
             'expires_in'  => max(0, $expires - time()),
             'verification_url' => home_url('/garantias-online/registro/'),
+            'signature'   => $this->get_signature_html(),
         ];
 
         $body = $this->renderer->render('register-verification', $context);
         $subject = __('Verifica tu cuenta en Garantías Online', 'garantias-online-360vo');
 
+        $headers = [];
+        $from_header = EmailSettings::buildFromHeader('professional');
+        if ($from_header !== '') {
+            $headers[] = $from_header;
+        }
+
+        $metadata = [];
+        $reply_to = EmailSettings::getReplyTo();
+        if ($reply_to !== '') {
+            $metadata['reply_to'] = $reply_to;
+        }
+
         $message = new EmailMessage([
             $email,
-        ], $subject, $body);
+        ], $subject, $body, $headers, [], $metadata);
 
         return $this->mailer->send($message);
+    }
+
+    private function get_signature_html(): string
+    {
+        static $signature;
+
+        if ($signature === null) {
+            $signature = EmailSettings::getSignature();
+        }
+
+        return $signature;
     }
 
     /**
