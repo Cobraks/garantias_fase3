@@ -18,8 +18,13 @@ import FormCache from "./form-cache.js";
 
 // Helper para saber si el tipo de vehículo es "camion"
 function isTipoCamion() {
-	const tipo = document.getElementById("tipo_vehiculo");
-	return tipo && tipo.value === "camion";
+        const tipo = document.getElementById("tipo_vehiculo");
+        return tipo && tipo.value === "camion";
+}
+
+function isTipoMoto() {
+        const tipo = document.getElementById("tipo_vehiculo");
+        return tipo && tipo.value === "moto";
 }
 
 function getProfesionalChannelLabel() {
@@ -156,11 +161,11 @@ function getSummaryText(fieldId) {
 
 	// --- CAMBIOS CLAVE PARA CAMION ---
 	// Tracción (solo valor, sin prefijo)
-	if (fieldId === "traccion") {
-		if (isTipoCamion()) {
-			return { text: "No aplica", error: false };
-		}
-		const traccion = document.getElementById("traccion");
+        if (fieldId === "traccion") {
+                if (isTipoCamion() || isTipoMoto()) {
+                        return { text: "No aplica", error: false };
+                }
+                const traccion = document.getElementById("traccion");
 		if (!traccion || !traccion.value)
 			return { text: "Falta Tracción", error: true };
 		const selectedText =
@@ -326,15 +331,16 @@ function updateSummaryHeader() {
 
 // Refresca el resumen
 function updateSummary() {
-	// Mostrar/ocultar items según tipo_vehiculo
-	const isCamion = isTipoCamion();
-	const liTraccion = document.getElementById("summary-item-traccion");
-	const liTraccionCamion = document.getElementById(
-		"summary-item-traccion-camion"
-	);
+        // Mostrar/ocultar items según tipo_vehiculo
+        const isCamion = isTipoCamion();
+        const isMoto = isTipoMoto();
+        const liTraccion = document.getElementById("summary-item-traccion");
+        const liTraccionCamion = document.getElementById(
+                "summary-item-traccion-camion"
+        );
         const liDobleMotor = document.getElementById("summary-item-doble_motor");
 
-        if (liTraccion) liTraccion.style.display = isCamion ? "none" : "";
+        if (liTraccion) liTraccion.style.display = isCamion || isMoto ? "none" : "";
         if (liTraccionCamion) liTraccionCamion.style.display = isCamion ? "" : "none";
 
 	if (liDobleMotor) {

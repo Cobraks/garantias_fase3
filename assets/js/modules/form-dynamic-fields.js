@@ -36,25 +36,27 @@ function toggleVehiculoFields() {
 
 	if (!tipoVehiculo) return;
 
-	const isCamion = tipoVehiculo.value === "camion";
+        const isCamion = tipoVehiculo.value === "camion";
+        const isMoto = tipoVehiculo.value === "moto";
 
-	// Tracción normal
-	if (traccionContainer) {
-		traccionContainer.style.display = isCamion ? "none" : "";
-		if (isCamion) {
-			const traccion = traccionContainer.querySelector("#traccion");
-			if (traccion) traccion.value = "";
-		}
-	}
-	// Tracción camión y MMA
-	if (traccionCamionContainer) {
-		traccionCamionContainer.style.display = isCamion ? "" : "none";
-		if (!isCamion) {
-			const traccionCamion =
-				traccionCamionContainer.querySelector("#traccion_camion");
-			if (traccionCamion) traccionCamion.value = "";
-		}
-	}
+        // Tracción normal
+        if (traccionContainer) {
+                const shouldHideTraccion = isCamion || isMoto;
+                traccionContainer.style.display = shouldHideTraccion ? "none" : "";
+                if (shouldHideTraccion) {
+                        const traccion = traccionContainer.querySelector("#traccion");
+                        if (traccion) traccion.value = "";
+                }
+        }
+        // Tracción camión y MMA
+        if (traccionCamionContainer) {
+                traccionCamionContainer.style.display = isCamion ? "" : "none";
+                if (!isCamion) {
+                        const traccionCamion =
+                                traccionCamionContainer.querySelector("#traccion_camion");
+                        if (traccionCamion) traccionCamion.value = "";
+                }
+        }
         // Actualiza el estado de validación y resumen
         updateNextButtonState();
         debouncedUpdateSummary();

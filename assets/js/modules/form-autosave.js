@@ -580,6 +580,31 @@ export default function initAutosave() {
                         return "";
                 };
 
+                const tipoVehiculoValor =
+                        document.getElementById("tipo_vehiculo")?.value ||
+                        datosVehiculo.tipo_vehiculo ||
+                        "";
+                const tipoVehiculoNormalizado = String(tipoVehiculoValor).toLowerCase();
+                const esMoto = tipoVehiculoNormalizado === "moto";
+                const esCamion = tipoVehiculoNormalizado === "camion";
+
+                const getTraccionPdfValue = () => {
+                        if (esMoto) return "";
+                        if (esCamion) {
+                                return (
+                                        getSelectText("traccion_camion") ||
+                                        datosVehiculo.traccion_camion ||
+                                        datosVehiculo.traccion ||
+                                        ""
+                                );
+                        }
+                        return (
+                                getSelectText("traccion") ||
+                                datosVehiculo.traccion ||
+                                ""
+                        );
+                };
+
                 const pdfFieldMap = {
                         pdf_id_matricula: datosVehiculo.matricula,
                         pdf_nombre_apellidos: datosCliente.nombre_y_apellidos,
@@ -601,11 +626,7 @@ export default function initAutosave() {
                         pdf_bastidor: datosVehiculo.numero_bastidor,
                         pdf_km: formatNumber(datosVehiculo.kilometros),
                         pdf_cv: formatNumber(datosVehiculo.potencia),
-                        pdf_traccion:
-                                getSelectText("traccion") ||
-                                getSelectText("traccion_camion") ||
-                                datosVehiculo.traccion ||
-                                datosVehiculo.traccion_camion,
+                        pdf_traccion: getTraccionPdfValue(),
                         pdf_combustible:
                                 getSelectText("combustible") ||
                                 datosVehiculo.combustible,
