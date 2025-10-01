@@ -556,10 +556,21 @@ class EmailNotificationService
             $client_group = [];
         }
 
+        $signature_source = $content['firma'] ?? '';
+
+        if ($signature_source === '' && class_exists(EmailSettings::class) && method_exists(EmailSettings::class, 'getSignature')) {
+            $signature_source = EmailSettings::getSignature();
+        }
+
+        if ($signature_source === '' && isset($settings['firma'])) {
+            $signature_source = $settings['firma'];
+        }
+
         return [
-            'admin_intro'  => $this->sanitize_copy($admin_group['mensaje_inicial'] ?? ''),
-            'client_intro' => $this->sanitize_copy($client_group['mensaje_inicial'] ?? ''),
-            'signature'    => $this->sanitize_copy($content['firma'] ?? ''),
+            'admin_intro'        => $this->sanitize_copy($admin_group['mensaje_inicial'] ?? ''),
+            'client_intro'       => $this->sanitize_copy($client_group['mensaje_inicial'] ?? ''),
+            'signature'          => $this->prepare_raw_copy($signature_source),
+            'signature_sanitized' => $this->sanitize_copy($signature_source),
         ];
     }
 
@@ -570,5 +581,14 @@ class EmailNotificationService
         }
 
         return trim(wp_kses_post($value));
+    }
+
+    private function prepare_raw_copy($value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        return trim($value);
     }
 }
