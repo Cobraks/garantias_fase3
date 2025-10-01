@@ -44,6 +44,20 @@ class GuaranteeEmailBuilder
         );
     }
 
+    public function composeTransferActivatedProfessional(array $data, array $recipients, array $context = [], array $options = []): ?EmailMessage
+    {
+        $subject = $this->build_transfer_activation_subject($data);
+
+        return $this->create_message(
+            $recipients,
+            $subject,
+            'transfer-activated-professional',
+            $data,
+            $context,
+            $options
+        );
+    }
+
     private function create_message(array $recipients, string $subject, string $template, array $data, array $context = [], array $options = []): ?EmailMessage
     {
         $headers = $options['headers'] ?? [];
@@ -108,6 +122,15 @@ class GuaranteeEmailBuilder
         return sprintf(
             /* translators: %s: vehicle plate */
             __('Garantía %s contratada', 'garantias-online-360vo'),
+            $this->resolve_plate_label($data)
+        );
+    }
+
+    private function build_transfer_activation_subject(array $data): string
+    {
+        return sprintf(
+            /* translators: %s: vehicle plate */
+            __('Garantía %s activada', 'garantias-online-360vo'),
             $this->resolve_plate_label($data)
         );
     }
