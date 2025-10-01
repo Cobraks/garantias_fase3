@@ -96,7 +96,7 @@ class EmailNotificationService
             $this->send_professional_notification($guarantee_id, $data, $context, $initiator_id);
         }
 
-        if ($this->should_send_transfer_activation($data, $context)) {
+        if ($this->should_send_transfer_activation($guarantee_id, $data, $context)) {
             $slug = self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL;
 
             if (
@@ -373,7 +373,7 @@ class EmailNotificationService
         return $reply_to;
     }
 
-    private function should_send_transfer_activation(array $data, array $context): bool
+    private function should_send_transfer_activation(int $guarantee_id, array $data, array $context): bool
     {
         $previous = isset($context['previous_state']) ? sanitize_key((string) $context['previous_state']) : '';
         $current  = isset($context['current_state']) ? sanitize_key((string) $context['current_state']) : '';
@@ -383,8 +383,25 @@ class EmailNotificationService
         }
 
         $slug = isset($data['payment_slug']) ? sanitize_key((string) $data['payment_slug']) : '';
+
         if ($slug === '' && isset($context['payment_method'])) {
             $slug = sanitize_key((string) $context['payment_method']);
+        }
+
+        if ($slug === '' && isset($data['payment']) && is_string($data['payment'])) {
+            if (stripos($data['payment'], 'transfer') !== false) {
+                $slug = 'transferencia';
+            }
+        }
+
+        if ($slug === '' && $guarantee_id > 0) {
+            $stored = get_post_meta($guarantee_id, 'garantia_contratada_metodo_pago', true);
+            if (is_array($stored) && isset($stored['value'])) {
+                $stored = $stored['value'];
+            }
+            if (is_string($stored) && $stored !== '') {
+                $slug = sanitize_key($stored);
+            }
         }
 
         return $slug !== '' && in_array($slug, self::TRANSFER_PAYMENT_SLUGS, true);
