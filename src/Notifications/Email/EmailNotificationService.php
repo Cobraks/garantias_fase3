@@ -555,14 +555,24 @@ class EmailNotificationService
         return [
             'admin_intro'  => $this->sanitize_copy($admin_group['mensaje_inicial'] ?? ''),
             'client_intro' => $this->sanitize_copy($client_group['mensaje_inicial'] ?? ''),
-            'signature'    => $this->sanitize_copy($content['firma'] ?? ''),
+            'signature'    => $this->sanitize_copy($content['firma'] ?? '', true),
         ];
     }
 
-    private function sanitize_copy($value): string
+    private function sanitize_copy($value, bool $allow_styles = false): string
     {
         if (! is_string($value)) {
             return '';
+        }
+
+        $value = trim($value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        if ($allow_styles) {
+            return trim(wp_kses($value, EmailSettings::getAllowedSignatureHtml()));
         }
 
         return trim(wp_kses_post($value));

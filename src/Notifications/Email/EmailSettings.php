@@ -79,7 +79,12 @@ class EmailSettings
             return '';
         }
 
-        return trim(wp_kses_post($signature));
+        $signature = trim($signature);
+        if ($signature === '') {
+            return '';
+        }
+
+        return trim(wp_kses($signature, self::getAllowedSignatureHtml()));
     }
 
     /**
@@ -132,5 +137,79 @@ class EmailSettings
         $display_name = wp_strip_all_tags($display_name);
 
         return sprintf('From: %s <%s>', $display_name !== '' ? $display_name : 'Garantías 360VO', $email);
+    }
+
+    /**
+     * @return array<string,array<string,bool>>
+     */
+    public static function getAllowedSignatureHtml(): array
+    {
+        $allowed = wp_kses_allowed_html('post');
+
+        foreach ($allowed as $tag => &$attrs) {
+            if (is_array($attrs)) {
+                $attrs['style'] = true;
+            }
+        }
+        unset($attrs);
+
+        $allowed['table'] = array_merge(
+            $allowed['table'] ?? [],
+            [
+                'align'       => true,
+                'border'      => true,
+                'cellpadding' => true,
+                'cellspacing' => true,
+                'summary'     => true,
+                'width'       => true,
+                'height'      => true,
+                'role'        => true,
+                'bgcolor'     => true,
+            ]
+        );
+
+        $allowed['tbody'] = array_merge($allowed['tbody'] ?? [], ['style' => true, 'class' => true]);
+        $allowed['thead'] = array_merge($allowed['thead'] ?? [], ['style' => true, 'class' => true]);
+        $allowed['tfoot'] = array_merge($allowed['tfoot'] ?? [], ['style' => true, 'class' => true]);
+
+        $cell_attributes = [
+            'style'   => true,
+            'align'   => true,
+            'valign'  => true,
+            'colspan' => true,
+            'rowspan' => true,
+            'width'   => true,
+            'height'  => true,
+            'class'   => true,
+        ];
+
+        $allowed['tr'] = array_merge($allowed['tr'] ?? [], ['style' => true, 'class' => true, 'align' => true, 'valign' => true]);
+        $allowed['td'] = array_merge($allowed['td'] ?? [], $cell_attributes);
+        $allowed['th'] = array_merge($allowed['th'] ?? [], $cell_attributes);
+
+        $allowed['img'] = array_merge(
+            $allowed['img'] ?? [],
+            [
+                'src'    => true,
+                'alt'    => true,
+                'style'  => true,
+                'width'  => true,
+                'height' => true,
+                'class'  => true,
+                'align'  => true,
+                'border' => true,
+            ]
+        );
+
+        $allowed['a'] = array_merge(
+            $allowed['a'] ?? [],
+            [
+                'style'  => true,
+                'target' => true,
+                'rel'    => true,
+            ]
+        );
+
+        return apply_filters('go360/email/signature_allowed_html', $allowed);
     }
 }

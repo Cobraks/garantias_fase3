@@ -104,18 +104,28 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                             <?php elseif ($is_transfer) : ?>
                                 <div style="margin:0 0 20px;padding:18px 22px;background:#fdecec;border:1px solid #f5b3b5;border-radius:12px;color:#7a0f12;line-height:1.6;font-size:14px;">
                                     <strong style="display:block;margin-bottom:6px;font-size:15px;color:#bc0000;">¡Importante!</strong>
-                                    <?php esc_html_e('La contratación se ha completado pero todavía no está activada. Recuerda realizar la transferencia en las próximas 48 horas para evitar incidencias.', 'garantias-online-360vo'); ?>
-                                    <?php if ($deadline !== '') : ?>
-                                        <span style="display:block;margin-top:6px;color:#7a0f12;">
-                                            <?php
-                                            printf(
-                                                /* translators: %s: payment deadline */
-                                                esc_html__('Fecha límite de pago: %s', 'garantias-online-360vo'),
-                                                esc_html($deadline)
-                                            );
-                                            ?>
-                                        </span>
-                                    <?php endif; ?>
+                                    <?php
+                                    $transfer_notice = __('La contratación se ha completado pero todavía no está activada.', 'garantias-online-360vo');
+                                    echo '<span style="display:block;margin-top:6px;color:#7a0f12;">' . esc_html($transfer_notice) . '</span>';
+
+                                    if ($deadline !== '') {
+                                        printf(
+                                            '<span style="display:block;margin-top:4px;color:#7a0f12;">%s</span>',
+                                            esc_html(
+                                                sprintf(
+                                                    /* translators: %s: payment deadline */
+                                                    __('Recuerda realizar la transferencia antes del %s.', 'garantias-online-360vo'),
+                                                    $deadline
+                                                )
+                                            )
+                                        );
+                                    } else {
+                                        echo '<span style="display:block;margin-top:4px;color:#7a0f12;">' . esc_html__(
+                                            'Recuerda realizar la transferencia lo antes posible para evitar incidencias.',
+                                            'garantias-online-360vo'
+                                        ) . '</span>';
+                                    }
+                                    ?>
                                 </div>
                                 <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:0 0 24px;">
                                     <tbody>
