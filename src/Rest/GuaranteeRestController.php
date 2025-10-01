@@ -1863,6 +1863,17 @@ class GuaranteeRestController
             }
         }
 
+        $vendor_meta = $post_id
+            ? get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true)
+            : 0;
+        $vendor_id = $vendor_meta;
+        $context_vendor_id = self::normalize_vendor_meta($vendor_meta);
+
+        $context_payment_method = $payment_method;
+        if ($context_payment_method === '' && $post_id) {
+            $context_payment_method = (string) get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
+        }
+
         if (
             in_array($new_contract_state, ['activada', 'pendiente_pago'], true)
             && $new_contract_state !== $previous_contract_state
@@ -1872,6 +1883,8 @@ class GuaranteeRestController
                 'initiator'      => get_current_user_id(),
                 'previous_state' => $previous_contract_state,
                 'current_state'  => $new_contract_state,
+                'vendor_id'      => $context_vendor_id,
+                'payment_method' => sanitize_key($context_payment_method),
             ];
             error_log(sprintf(
                 '[AUTOSAVE] Contract state changed from %s to %s for ID %d',
@@ -1887,8 +1900,8 @@ class GuaranteeRestController
             && $post_id
             && ! $pending_payment_event
         ) {
-            $method_for_payment = $payment_method !== ''
-                ? $payment_method
+            $method_for_payment = $context_payment_method !== ''
+                ? $context_payment_method
                 : (string) get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
             $method_key = sanitize_key($method_for_payment);
             if ($method_key !== '' && strpos($method_key, 'domiciliacion') !== 0) {
@@ -1902,7 +1915,9 @@ class GuaranteeRestController
         if ($pending_payment_event && $post_id) {
             $method_for_payment = $pending_payment_event['method'] !== ''
                 ? $pending_payment_event['method']
-                : (string) get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
+                : ($context_payment_method !== ''
+                    ? $context_payment_method
+                    : (string) get_post_meta($post_id, 'garantia_contratada_metodo_pago', true));
             $method_for_payment = sanitize_text_field($method_for_payment);
             if ($method_for_payment !== '') {
                 $state_for_payment = $new_contract_state !== ''
@@ -1937,7 +1952,6 @@ class GuaranteeRestController
         // Clear cached list and detail responses so subsequent fetches reflect the update.
         self::clear_list_transients($post_id, null, true);
 
-        $vendor_id   = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
         $firma_sello = [
             'add_firma_sello' => false,
             'firma'           => '',
@@ -2148,6 +2162,14 @@ class GuaranteeRestController
             'previous_state' => sanitize_text_field($context['previous_state'] ?? ''),
             'current_state'  => sanitize_text_field($context['current_state'] ?? ''),
         ];
+
+        if (isset($context['vendor_id'])) {
+            $prepared_context['vendor_id'] = (int) $context['vendor_id'];
+        }
+
+        if (! empty($context['payment_method'])) {
+            $prepared_context['payment_method'] = sanitize_key($context['payment_method']);
+        }
 
         error_log('[AUTOSAVE] Dispatching contract notice for ID ' . $post_id . ' (state ' . $prepared_context['current_state'] . ')');
         do_action('go360/guarantee/contracted', $post_id, $prepared_context);

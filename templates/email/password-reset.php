@@ -9,6 +9,7 @@ $user_login     = isset($user_login) ? (string) $user_login : '';
 $personal_name  = isset($personal_name) ? (string) $personal_name : '';
 $company_name   = isset($company_name) ? (string) $company_name : '';
 $support_url    = isset($support_url) ? (string) $support_url : home_url('/');
+$signature      = isset($signature) ? (string) $signature : '';
 
 $greeting_name = $personal_name !== ''
     ? $personal_name
@@ -22,72 +23,69 @@ if ($company_name !== '' && $company_name !== $greeting_name) {
         $company_name
     );
 }
+$logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FILE__);
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
     <title><?php echo esc_html(sprintf(__('Restablece tu contraseña · %s', 'garantias-online-360vo'), $site_name)); ?></title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0f172a;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f1f5f9;padding:32px 16px;">
+<body style="margin:0;padding:32px 16px;background-color:#f4f4f5;font-family:'Roboto','Segoe UI','San Francisco',Arial,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
         <tr>
             <td align="center">
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 24px 48px -32px rgba(15,23,42,0.45);">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
                     <tr>
-                        <td style="padding:32px 32px 16px 32px;text-align:center;">
-                            <p style="margin:0;font-size:0.75rem;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;font-weight:600;">
-                                <?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?>
-                            </p>
-                            <h1 style="margin:12px 0 0;font-size:1.5rem;color:#0f172a;font-weight:700;">
+                        <td style="padding:32px 28px 12px 28px;">
+                            <?php
+                            $badge_text = __('Seguridad de tu cuenta', 'garantias-online-360vo');
+                            include __DIR__ . '/partials/header.php';
+                            ?>
+                            <h1 style="margin:0 0 18px;font-size:24px;color:#111827;font-weight:700;">
                                 <?php esc_html_e('Restablece tu contraseña', 'garantias-online-360vo'); ?>
                             </h1>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:0 32px 24px 32px;font-size:1rem;line-height:1.5;color:#1f2937;">
-                            <p style="margin:0 0 16px;">
+                            <p style="margin:0 0 18px;font-size:15px;color:#374151;line-height:1.7;">
                                 <?php echo esc_html(sprintf(__('Hola %s,', 'garantias-online-360vo'), $greeting_name)); ?>
                             </p>
-                            <p style="margin:0 0 16px;">
+                            <p style="margin:0 0 18px;font-size:15px;color:#374151;line-height:1.7;">
                                 <?php echo esc_html($reset_notice); ?>
                             </p>
-                            <p style="margin:0 0 24px;">
+                            <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.7;">
                                 <?php esc_html_e('Haz clic en el siguiente botón para crear una contraseña nueva. Por seguridad, el enlace dejará de estar disponible en unas horas.', 'garantias-online-360vo'); ?>
                             </p>
-                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto 24px;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
                                 <tr>
-                                    <td style="border-radius:999px;background:#e11d48;">
-                                        <a href="<?php echo esc_url($reset_url); ?>" style="display:inline-block;padding:14px 28px;font-size:1rem;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px;">
+                                    <td style="border-radius:999px;background:#bc0000;">
+                                        <a href="<?php echo esc_url($reset_url); ?>" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px;">
                                             <?php esc_html_e('Restablecer contraseña', 'garantias-online-360vo'); ?>
                                         </a>
                                     </td>
                                 </tr>
                             </table>
-                            <p style="margin:0 0 16px;font-size:0.95rem;color:#475569;">
+                            <p style="margin:0 0 16px;font-size:14px;color:#4b5563;line-height:1.6;">
                                 <?php esc_html_e('Si el botón no funciona, copia y pega este enlace en tu navegador:', 'garantias-online-360vo'); ?>
                             </p>
-                            <p style="margin:0 0 24px;font-size:0.95rem;word-break:break-all;color:#0f172a;">
-                                <a href="<?php echo esc_url($reset_url); ?>" style="color:#e11d48;text-decoration:none;">
+                            <p style="margin:0 0 24px;font-size:13px;color:#bc0000;line-height:1.6;word-break:break-all;">
+                                <a href="<?php echo esc_url($reset_url); ?>" style="color:#bc0000;text-decoration:none;">
                                     <?php echo esc_html($reset_url); ?>
                                 </a>
                             </p>
-                            <p style="margin:0;font-size:0.9rem;color:#64748b;">
+                            <p style="margin:0;font-size:13px;color:#4b5563;line-height:1.6;">
                                 <?php esc_html_e('Si tú no solicitaste este cambio, puedes ignorar este mensaje. Tu contraseña actual seguirá siendo válida.', 'garantias-online-360vo'); ?>
                             </p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:16px 32px 32px 32px;font-size:0.85rem;line-height:1.6;color:#64748b;text-align:center;background:#f8fafc;">
-                            <p style="margin:0 0 8px;">
+                            <p style="margin:24px 0 0;font-size:13px;color:#4b5563;line-height:1.6;">
                                 <?php echo esc_html(sprintf(__('Atentamente, el equipo de %s', 'garantias-online-360vo'), $site_name)); ?>
                             </p>
-                            <p style="margin:0;">
-                                <a href="<?php echo esc_url($support_url); ?>" style="color:#e11d48;text-decoration:none;">
+                            <p style="margin:4px 0 0;font-size:13px;color:#bc0000;line-height:1.6;">
+                                <a href="<?php echo esc_url($support_url); ?>" style="color:#bc0000;text-decoration:none;">
                                     <?php echo esc_html($support_url); ?>
                                 </a>
                             </p>
+                            <?php
+                            $signature_html = $signature;
+                            include __DIR__ . '/partials/signature.php';
+                            ?>
                         </td>
                     </tr>
                 </table>

@@ -21,6 +21,7 @@ $vendor_display = $vendor !== '' ? $vendor : __('El profesional', 'garantias-onl
 $heading = $is_domiciliation
     ? __('Garantía activada para %s', 'garantias-online-360vo')
     : __('Garantía contratada para %s', 'garantias-online-360vo');
+$logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FILE__);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -28,83 +29,97 @@ $heading = $is_domiciliation
     <meta charset="utf-8">
     <title><?php echo esc_html(__('Garantía activada', 'garantias-online-360vo')); ?></title>
 </head>
-<body style="margin:0; padding:0; background:#f7f7f7; font-family:Arial, Helvetica, sans-serif; color:#111;">
-    <div style="max-width:640px; margin:0 auto; padding:32px 24px; background:#ffffff;">
-        <div style="display:inline-block; padding:6px 14px; background:#e2001b; color:#ffffff; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; border-radius:999px; margin-bottom:18px;">
-            <?php esc_html_e('Nueva garantía', 'garantias-online-360vo'); ?>
-        </div>
-        <?php if ($admin_intro !== '') : ?>
-            <div style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
-                <?php echo wpautop($admin_intro); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-            </div>
-        <?php endif; ?>
-        <h1 style="font-size:22px; margin:0 0 12px; color:#111;">
-            <?php
-            printf(
-                esc_html($heading),
-                esc_html($plate_label)
-            );
-            ?>
-        </h1>
-        <p style="font-size:15px; margin:0 0 16px; color:#444; line-height:1.5;">
-            <?php if ($is_domiciliation) : ?>
-                <?php
-                printf(
-                    /* translators: %s: professional name */
-                    esc_html__('%s ha contratado la garantía mediante Domiciliación bancaria. Recuerda realizar el cobro y marcar la garantía como pagada desde el enlace de la garantía.', 'garantias-online-360vo'),
-                    '<strong style="color:#111;">' . esc_html($vendor_display) . '</strong>'
-                );
-                ?>
-            <?php elseif ($is_transfer) : ?>
-                <?php
-                $deadline_text = $deadline !== ''
-                    ? sprintf(
-                        /* translators: 1: professional name, 2: deadline */
-                        esc_html__('%1$s tiene hasta el %2$s para realizar la transferencia.', 'garantias-online-360vo'),
-                        '<strong style="color:#111;">' . esc_html($vendor_display) . '</strong>',
-                        '<strong style="color:#111;">' . esc_html($deadline) . '</strong>'
-                    )
-                    : '';
-                $prefix = esc_html__('La contratación se ha completado y se encuentra pendiente de pago.', 'garantias-online-360vo');
-                echo $deadline_text !== ''
-                    ? $prefix . ' ' . $deadline_text
-                    : $prefix;
-                ?>
-            <?php else : ?>
-                <?php if ($initiator_name) : ?>
-                    <?php
-                    printf(
-                        /* translators: %s: user name */
-                        esc_html__('El usuario %s ha completado la contratación.', 'garantias-online-360vo'),
-                        '<strong style="color:#111;">' . esc_html($initiator_name) . '</strong>'
-                    );
-                    ?>
-                <?php else : ?>
-                    <?php esc_html_e('La contratación se ha completado correctamente.', 'garantias-online-360vo'); ?>
-                <?php endif; ?>
-            <?php endif; ?>
-        </p>
-        <?php
-        $summary_context = [
-            'show_vendor_channel'  => true,
-            'show_vendor_contact'  => true,
-            'show_vendor_company'  => true,
-            'vendor_company_label' => __('Empresa', 'garantias-online-360vo'),
-            'vendor_channel_show_company_inline' => false,
-        ];
-        include __DIR__ . '/partials/summary.php';
-        ?>
-        <p style="margin-top:24px; font-size:13px; color:#777; line-height:1.4;">
-            <?php esc_html_e('Puedes acceder al expediente completo desde Mis Garantías.', 'garantias-online-360vo'); ?>
-        </p>
-        <?php if ($signature !== '') : ?>
-            <div style="margin-top:24px; font-size:13px; color:#444; line-height:1.5;">
-                <?php echo wpautop($signature); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-            </div>
-        <?php endif; ?>
-    </div>
-    <p style="text-align:center; margin:16px 0 0; font-size:12px; color:#999;">
-        <?php esc_html_e('Este mensaje ha sido generado automáticamente por 360VO Garantías Online.', 'garantias-online-360vo'); ?>
-    </p>
+<body style="margin:0;padding:32px 16px;background-color:#f4f4f5;font-family:'Roboto','Segoe UI','San Francisco',Arial,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+                    <tr>
+                        <td style="padding:32px 28px 12px 28px;">
+                            <?php
+                            $badge_text = __('Nueva garantía', 'garantias-online-360vo');
+                            include __DIR__ . '/partials/header.php';
+                            ?>
+                            <?php if ($admin_intro !== '') : ?>
+                                <div style="font-size:15px;margin:0 0 20px;color:#374151;line-height:1.6;">
+                                    <?php echo wpautop($admin_intro); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                </div>
+                            <?php endif; ?>
+                            <h1 style="font-size:24px;margin:0 0 16px;color:#111827;font-weight:700;">
+                                <?php
+                                printf(
+                                    esc_html($heading),
+                                    esc_html($plate_label)
+                                );
+                                ?>
+                            </h1>
+                            <p style="font-size:15px;margin:0 0 18px;color:#374151;line-height:1.7;">
+                                <?php if ($is_domiciliation) : ?>
+                                    <?php
+                                    printf(
+                                        /* translators: %s: professional name */
+                                        wp_kses(
+                                            __('%s ha contratado la garantía mediante Domiciliación bancaria. Recuerda realizar el cobro y marcar la garantía como pagada desde el enlace de la garantía.', 'garantias-online-360vo'),
+                                            ['strong' => []]
+                                        ),
+                                        '<strong style="color:#111827;">' . esc_html($vendor_display) . '</strong>'
+                                    );
+                                    ?>
+                                <?php elseif ($is_transfer) : ?>
+                                    <?php
+                                    $deadline_text = $deadline !== ''
+                                        ? sprintf(
+                                            /* translators: 1: professional name, 2: deadline */
+                                            esc_html__('%1$s tiene hasta el %2$s para realizar la transferencia.', 'garantias-online-360vo'),
+                                            '<strong style="color:#111827;">' . esc_html($vendor_display) . '</strong>',
+                                            '<strong style="color:#111827;">' . esc_html($deadline) . '</strong>'
+                                        )
+                                        : '';
+                                    $prefix = esc_html__('La contratación se ha completado y se encuentra pendiente de pago.', 'garantias-online-360vo');
+                                    echo $deadline_text !== ''
+                                        ? $prefix . ' ' . wp_kses_post($deadline_text)
+                                        : $prefix;
+                                    ?>
+                                <?php else : ?>
+                                    <?php if ($initiator_name) : ?>
+                                        <?php
+                                        printf(
+                                            /* translators: %s: user name */
+                                            esc_html__('El usuario %s ha completado la contratación.', 'garantias-online-360vo'),
+                                            esc_html($initiator_name)
+                                        );
+                                        ?>
+                                    <?php else : ?>
+                                        <?php esc_html_e('La contratación se ha completado correctamente.', 'garantias-online-360vo'); ?>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </p>
+                            <?php
+                            $summary_context = [
+                                'show_vendor_channel'  => true,
+                                'show_vendor_contact'  => true,
+                                'show_vendor_company'  => true,
+                                'vendor_company_label' => __('Empresa', 'garantias-online-360vo'),
+                                'vendor_channel_show_company_inline' => false,
+                            ];
+                            include __DIR__ . '/partials/summary.php';
+                            ?>
+                            <p style="margin:24px 0 16px;font-size:14px;color:#4b5563;line-height:1.6;">
+                                <?php esc_html_e('Puedes acceder al expediente completo desde Mis Garantías.', 'garantias-online-360vo'); ?>
+                            </p>
+                            <?php
+                            $signature_html = $signature;
+                            $signature_margin_top = '12px';
+                            include __DIR__ . '/partials/signature.php';
+                            ?>
+                        </td>
+                    </tr>
+                </table>
+                <p style="text-align:center;margin:16px 0 0;font-size:12px;color:#6b7280;">
+                    <?php esc_html_e('Este mensaje ha sido generado automáticamente por 360VO Garantías Online.', 'garantias-online-360vo'); ?>
+                </p>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
