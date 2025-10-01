@@ -552,10 +552,15 @@ class EmailNotificationService
             $client_group = [];
         }
 
+        $signature_source = $content['firma'] ?? '';
+        if (! is_string($signature_source) || trim($signature_source) === '') {
+            $signature_source = EmailSettings::getSignature();
+        }
+
         return [
             'admin_intro'  => $this->sanitize_copy($admin_group['mensaje_inicial'] ?? ''),
             'client_intro' => $this->sanitize_copy($client_group['mensaje_inicial'] ?? ''),
-            'signature'    => $this->sanitize_copy($content['firma'] ?? '', true),
+            'signature'    => $this->sanitize_copy($signature_source, true),
         ];
     }
 
