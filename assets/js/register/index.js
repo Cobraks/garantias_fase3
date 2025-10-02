@@ -2,7 +2,7 @@
   const REQUIRED_MESSAGE = 'Este campo es obligatorio.';
   const PASSWORD_MESSAGE = 'La contraseña debe tener al menos 8 caracteres, incluir un número y un símbolo.';
   const PASSWORD_MISMATCH_MESSAGE = 'Las contraseñas no coinciden.';
-  const EMAIL_EXISTS_MESSAGE = 'Esta cuenta ya está registrada.';
+  const EMAIL_EXISTS_MESSAGE = 'Correo electrónico ya registrado';
   const PHONE_MESSAGE = 'Introduce un teléfono válido (9 dígitos).';
   const POSTAL_CODE_MESSAGE = 'Código postal inválido.';
   const URL_MESSAGE = 'Introduce una URL válida (https://...).';
@@ -121,9 +121,9 @@
     const workshopFields = {
       container: document.getElementById('workshop-fields'),
       name: document.getElementById('workshop_name'),
-      address: document.getElementById('workshop_address'),
       fiscalName: document.getElementById('workshop_fiscal_name'),
       taxId: document.getElementById('workshop_tax_id'),
+      address: document.getElementById('workshop_address'),
       contact: document.getElementById('workshop_contact'),
       phone: document.getElementById('workshop_phone'),
       email: document.getElementById('workshop_email'),
@@ -464,6 +464,7 @@
       error.textContent = message;
       if (element) {
         element.setAttribute('aria-invalid', 'true');
+        element.classList.add('error');
       }
     };
 
@@ -477,6 +478,7 @@
       }
       if (element) {
         element.removeAttribute('aria-invalid');
+        element.classList.remove('error');
       }
     };
 
@@ -655,7 +657,13 @@
         handleEmailStatusChange('invalid');
         return false;
       }
-      clearFieldError(emailField);
+      if (state.emailStatus === 'exists') {
+        if (showError) {
+          setFieldError(emailField, EMAIL_EXISTS_MESSAGE);
+        }
+      } else {
+        clearFieldError(emailField);
+      }
       if (state.emailStatus !== 'pending' && state.emailStatus !== 'available' && state.emailStatus !== 'exists') {
         handleEmailStatusChange('pending');
       }
@@ -849,13 +857,13 @@
       if (!validateRequired(workshopFields.name, showError)) {
         valid = false;
       }
-      if (!validateRequired(workshopFields.address, showError)) {
-        valid = false;
-      }
       if (workshopFields.fiscalName && !validateRequired(workshopFields.fiscalName, showError)) {
         valid = false;
       }
       if (workshopFields.taxId && !validateRequired(workshopFields.taxId, showError)) {
+        valid = false;
+      }
+      if (!validateRequired(workshopFields.address, showError)) {
         valid = false;
       }
       if (!validateRequired(workshopFields.contact, showError)) {
