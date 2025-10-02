@@ -139,19 +139,28 @@
         const certificatesWarning = document.querySelector('[data-certificates-warning]');
         const certificatesWarningText = certificatesWarning
             ? certificatesWarning.textContent.trim()
-            : 'Necesitas subir tanto la firma como el sello para firmar que tus certificados aparezcan firmados.';
+            : 'Para firmar tus certificados necesitas subir la firma y el sello.';
         let signatureHasFile = false;
         let stampHasFile = false;
         let certificatesValid = true;
+        let certificatesWarningForced = false;
+        let certificatesRemovalWarning = false;
         let workshopVisibilityUpdater = null;
 
         const updateCertificatesWarningState = () => {
             const mismatch = (signatureHasFile && !stampHasFile) || (!signatureHasFile && stampHasFile);
             certificatesValid = !mismatch;
 
+            if (!mismatch) {
+                certificatesWarningForced = false;
+                certificatesRemovalWarning = false;
+            }
+
+            const shouldWarn = mismatch && (certificatesWarningForced || certificatesRemovalWarning);
+
             if (certificatesWarning) {
-                certificatesWarning.hidden = !mismatch;
-                certificatesWarning.setAttribute('aria-hidden', mismatch ? 'false' : 'true');
+                certificatesWarning.hidden = !shouldWarn;
+                certificatesWarning.setAttribute('aria-hidden', shouldWarn ? 'false' : 'true');
             }
 
             const toggleInvalid = (element, active) => {
@@ -162,8 +171,8 @@
                 element.classList.toggle('file-upload--invalid', active);
             };
 
-            toggleInvalid(signatureUpload, mismatch);
-            toggleInvalid(stampUpload, mismatch);
+            toggleInvalid(signatureUpload, shouldWarn);
+            toggleInvalid(stampUpload, shouldWarn);
         };
 
         const setStatus = (message, variant = 'info') => {
@@ -324,6 +333,8 @@
                 }
 
                 if (!certificatesValid) {
+                    certificatesWarningForced = true;
+                    updateCertificatesWarningState();
                     setStatus(certificatesWarningText, 'warning');
                     if (signatureUpload && typeof signatureUpload.scrollIntoView === 'function') {
                         signatureUpload.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -912,12 +923,13 @@
             let allowRestoreInitial = initialPreviewVisible && Boolean(initialPreviewSrc);
             let hasFile = initialPreviewVisible && Boolean(initialPreviewSrc);
 
-            const notifyStateChange = () => {
+            const notifyStateChange = (reason = 'change') => {
                 if (onStateChange) {
                     onStateChange({
                         hasFile,
                         input,
                         container,
+                        reason,
                     });
                 }
             };
@@ -957,6 +969,9 @@
             const resetPreview = (resetOptions = {}) => {
                 const restoreInitial = resetOptions.restoreInitial !== false;
                 const shouldRestore = restoreInitial && allowRestoreInitial && initialPreviewVisible && initialPreviewSrc;
+                const reason = typeof resetOptions.notifyReason === 'string' && resetOptions.notifyReason !== ''
+                    ? resetOptions.notifyReason
+                    : 'reset';
 
                 if (shouldRestore) {
                     setPreviewVisible(true, initialPreviewSrc);
@@ -973,7 +988,7 @@
                 }
 
                 hasFile = shouldRestore;
-                notifyStateChange();
+                notifyStateChange(reason);
             };
 
             container.addEventListener('click', (event) => {
@@ -988,13 +1003,13 @@
 
             input.addEventListener('change', () => {
                 if (!input.files || input.files.length === 0) {
-                    resetPreview();
+                    resetPreview({ notifyReason: 'reset' });
                     return;
                 }
 
                 const [file] = input.files;
                 if (!file) {
-                    resetPreview();
+                    resetPreview({ notifyReason: 'reset' });
                     return;
                 }
 
@@ -1007,7 +1022,7 @@
                 if (!preview || !previewImage || !file.type || !file.type.startsWith('image/')) {
                     updateRemoveVisibility(true);
                     hasFile = true;
-                    notifyStateChange();
+                    notifyStateChange('select');
                     return;
                 }
 
@@ -1017,7 +1032,7 @@
                         setPreviewVisible(true, reader.result);
                         updateRemoveVisibility(true);
                         hasFile = true;
-                        notifyStateChange();
+                        notifyStateChange('select');
                     }
                 });
                 reader.readAsDataURL(file);
@@ -1029,7 +1044,7 @@
                     event.stopPropagation();
                     allowRestoreInitial = false;
                     input.value = '';
-                    resetPreview({ restoreInitial: false });
+                    resetPreview({ restoreInitial: false, notifyReason: 'remove' });
                     const inputEvent = new Event('input', { bubbles: true });
                     input.dispatchEvent(inputEvent);
                 });
@@ -1041,18 +1056,38 @@
                 setPreviewVisible(false);
             }
 
-            notifyStateChange();
+            notifyStateChange('init');
         };
 
         setupImageUpload('signature-upload', 'signature', 'signature-preview', {
             onStateChange: (state) => {
                 signatureHasFile = Boolean(state && state.hasFile);
+                const reason = state && typeof state.reason === 'string' ? state.reason : '';
+
+                if (reason === 'remove') {
+                    certificatesRemovalWarning = Boolean(stampHasFile);
+                } else if (reason === 'select' || reason === 'reset' || reason === 'init') {
+                    if (!certificatesWarningForced) {
+                        certificatesRemovalWarning = false;
+                    }
+                }
+
                 updateCertificatesWarningState();
             },
         });
         setupImageUpload('stamp-upload', 'stamp', 'stamp-preview', {
             onStateChange: (state) => {
                 stampHasFile = Boolean(state && state.hasFile);
+                const reason = state && typeof state.reason === 'string' ? state.reason : '';
+
+                if (reason === 'remove') {
+                    certificatesRemovalWarning = Boolean(signatureHasFile);
+                } else if (reason === 'select' || reason === 'reset' || reason === 'init') {
+                    if (!certificatesWarningForced) {
+                        certificatesRemovalWarning = false;
+                    }
+                }
+
                 updateCertificatesWarningState();
             },
         });
