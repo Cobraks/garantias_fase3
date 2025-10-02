@@ -114,6 +114,18 @@
         const saveButton = document.querySelector('[data-account-save]');
         const accountPage = document.querySelector('.account-page');
 
+        const enableSaveButton = () => {
+            if (!saveButton) {
+                return;
+            }
+
+            if (saveButton.classList.contains('disabled')) {
+                saveButton.classList.remove('disabled');
+                saveButton.removeAttribute('disabled');
+                saveButton.setAttribute('aria-disabled', 'false');
+            }
+        };
+
         if (saveButton && accountPage) {
             const setSaveDisabled = (disabled) => {
                 const method = disabled ? 'add' : 'remove';
@@ -268,6 +280,114 @@
             }
         }
 
+        const notificationsRepeater = document.querySelector('[data-notification-repeater]');
+        if (notificationsRepeater) {
+            const rowsContainer = notificationsRepeater.querySelector('[data-repeater-rows]');
+            const template = notificationsRepeater.querySelector('template[data-repeater-template]');
+            const addButton = notificationsRepeater.querySelector('[data-repeater-add]');
+            let nextIndex = parseInt(notificationsRepeater.getAttribute('data-next-index') || '0', 10);
+
+            if (Number.isNaN(nextIndex)) {
+                nextIndex = 0;
+            }
+
+            const updateRemoveState = () => {
+                if (!rowsContainer) {
+                    return;
+                }
+
+                const rows = rowsContainer.querySelectorAll('[data-repeater-row]');
+                rows.forEach((row) => {
+                    const removeButton = row.querySelector('[data-repeater-remove]');
+                    if (!removeButton) {
+                        return;
+                    }
+                    const disabled = rows.length <= 1;
+                    removeButton.disabled = disabled;
+                    removeButton.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+                });
+            };
+
+            const bindRow = (row) => {
+                if (!row) {
+                    return;
+                }
+
+                const removeButton = row.querySelector('[data-repeater-remove]');
+                if (removeButton) {
+                    removeButton.addEventListener('click', () => {
+                        if (!rowsContainer) {
+                            return;
+                        }
+                        const rows = rowsContainer.querySelectorAll('[data-repeater-row]');
+                        if (rows.length <= 1) {
+                            return;
+                        }
+                        row.remove();
+                        updateRemoveState();
+                        enableSaveButton();
+                    });
+                }
+            };
+
+            const createRow = (data = {}) => {
+                if (!rowsContainer || !template) {
+                    return null;
+                }
+
+                const index = nextIndex;
+                nextIndex += 1;
+
+                const html = template.innerHTML.replace(/__index__/g, String(index));
+                const fragment = document.createElement('div');
+                fragment.innerHTML = html.trim();
+                const row = fragment.firstElementChild;
+
+                if (!row) {
+                    return null;
+                }
+
+                const emailInput = row.querySelector('[data-repeater-email]');
+                if (emailInput && data.email) {
+                    emailInput.value = data.email;
+                }
+
+                const bccInput = row.querySelector('[data-repeater-bcc]');
+                if (bccInput) {
+                    bccInput.checked = Boolean(data.bcc);
+                }
+
+                rowsContainer.appendChild(row);
+                bindRow(row);
+                updateRemoveState();
+                enableSaveButton();
+
+                window.requestAnimationFrame(() => {
+                    if (emailInput && typeof emailInput.focus === 'function') {
+                        try {
+                            emailInput.focus({ preventScroll: true });
+                        } catch (error) {
+                            emailInput.focus();
+                        }
+                    }
+                });
+
+                return row;
+            };
+
+            if (rowsContainer) {
+                const existingRows = rowsContainer.querySelectorAll('[data-repeater-row]');
+                existingRows.forEach((row) => bindRow(row));
+                updateRemoveState();
+            }
+
+            if (addButton) {
+                addButton.addEventListener('click', () => {
+                    createRow();
+                });
+            }
+        }
+
         const paymentActivation = document.querySelector('[data-payment-activation]');
         if (paymentActivation) {
             const checkbox = paymentActivation.querySelector('[data-payment-toggle]');
@@ -348,6 +468,179 @@
                 }
             }
         }
+
+        const formatBytes = (bytes) => {
+            if (typeof bytes !== 'number' || Number.isNaN(bytes) || bytes <= 0) {
+                return '';
+            }
+
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let value = bytes;
+            let unitIndex = 0;
+
+            while (value >= 1024 && unitIndex < units.length - 1) {
+                value /= 1024;
+                unitIndex += 1;
+            }
+
+            const decimals = value < 10 && unitIndex > 0 ? 1 : 0;
+            return `${value.toFixed(decimals)} ${units[unitIndex]}`;
+        };
+
+        const documentUploads = document.querySelectorAll('[data-document-upload]');
+        documentUploads.forEach((container) => {
+            const input = container.querySelector('input[type="file"]');
+            const label = container.querySelector('[data-document-label]');
+            const body = container.querySelector('[data-document-body]');
+            const nameElement = container.querySelector('[data-document-name]');
+            const sizeElement = container.querySelector('[data-document-size]');
+            const linkElement = container.querySelector('[data-document-link]');
+            const placeholder = container.querySelector('[data-document-placeholder]');
+            const removeButton = container.querySelector('[data-document-remove]');
+            const defaultLabel = container.dataset.defaultLabel || (label ? label.textContent : '') || '';
+
+            const initialLabel = label ? label.textContent : defaultLabel;
+            const initialSize = sizeElement && !sizeElement.hasAttribute('hidden') ? sizeElement.textContent : '';
+            const initialUrl = linkElement && !linkElement.hasAttribute('hidden') ? linkElement.getAttribute('href') : '';
+            const initialLinkText = linkElement ? linkElement.textContent : '';
+            const initialHasDocument = body ? !body.hasAttribute('hidden') : false;
+
+            const state = {
+                hasDocument: initialHasDocument,
+                label: initialLabel,
+                size: initialSize,
+                url: initialUrl,
+                linkText: initialLinkText || 'Ver documento',
+            };
+
+            let temporaryUrl = '';
+
+            const revokeTemporaryUrl = () => {
+                if (temporaryUrl) {
+                    try {
+                        URL.revokeObjectURL(temporaryUrl);
+                    } catch (error) {
+                        // Ignorado
+                    }
+                    temporaryUrl = '';
+                }
+            };
+
+            const renderState = () => {
+                if (label) {
+                    label.textContent = state.hasDocument ? state.label : defaultLabel;
+                }
+
+                if (nameElement) {
+                    nameElement.textContent = state.hasDocument ? state.label : defaultLabel;
+                }
+
+                if (body) {
+                    body.hidden = !state.hasDocument;
+                    body.setAttribute('aria-hidden', state.hasDocument ? 'false' : 'true');
+                }
+
+                if (sizeElement) {
+                    const showSize = state.hasDocument && state.size !== '';
+                    sizeElement.hidden = !showSize;
+                    sizeElement.setAttribute('aria-hidden', showSize ? 'false' : 'true');
+                    sizeElement.textContent = showSize ? state.size : '';
+                }
+
+                if (linkElement) {
+                    const hasLink = state.hasDocument && state.url !== '';
+                    if (hasLink) {
+                        linkElement.href = state.url;
+                        linkElement.textContent = state.linkText;
+                    } else {
+                        linkElement.removeAttribute('href');
+                        linkElement.textContent = initialLinkText || 'Ver documento';
+                    }
+                    linkElement.hidden = !hasLink;
+                    linkElement.setAttribute('aria-hidden', hasLink ? 'false' : 'true');
+                }
+
+                if (placeholder) {
+                    placeholder.hidden = state.hasDocument;
+                    placeholder.setAttribute('aria-hidden', state.hasDocument ? 'true' : 'false');
+                }
+
+                if (removeButton) {
+                    removeButton.hidden = !state.hasDocument;
+                }
+            };
+
+            renderState();
+
+            if (container && input) {
+                container.addEventListener('click', (event) => {
+                    if (!input) {
+                        return;
+                    }
+
+                    const target = event.target;
+                    if (target === input) {
+                        return;
+                    }
+
+                    if (removeButton && (target === removeButton || removeButton.contains(target))) {
+                        return;
+                    }
+
+                    input.click();
+                });
+            }
+
+            if (removeButton) {
+                removeButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    revokeTemporaryUrl();
+                    state.hasDocument = false;
+                    state.label = defaultLabel;
+                    state.size = '';
+                    state.url = '';
+                    state.linkText = initialLinkText || 'Ver documento';
+                    if (input) {
+                        input.value = '';
+                    }
+                    renderState();
+                    enableSaveButton();
+                });
+            }
+
+            if (input) {
+                input.addEventListener('change', () => {
+                    if (!input.files || input.files.length === 0) {
+                        renderState();
+                        return;
+                    }
+
+                    const [file] = input.files;
+                    if (!file) {
+                        renderState();
+                        return;
+                    }
+
+                    revokeTemporaryUrl();
+
+                    let formattedSize = '';
+                    if (typeof file.size === 'number') {
+                        formattedSize = formatBytes(file.size);
+                    }
+
+                    temporaryUrl = URL.createObjectURL(file);
+
+                    state.hasDocument = true;
+                    state.label = file.name || defaultLabel;
+                    state.size = formattedSize;
+                    state.url = temporaryUrl;
+                    state.linkText = 'Previsualizar';
+
+                    renderState();
+                    enableSaveButton();
+                });
+            }
+        });
 
         const setupImageUpload = (containerId, inputId, previewId) => {
             const container = document.getElementById(containerId);

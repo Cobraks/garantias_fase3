@@ -15,8 +15,9 @@ $documents        = $account['documents'] ?? [];
 $payments         = $account['payments'] ?? [];
 $document_signature = is_array($documents['signature'] ?? null) ? $documents['signature'] : [];
 $document_seal       = is_array($documents['seal'] ?? null) ? $documents['seal'] : [];
-$signature_default_label = esc_html__('+ Subir imagen de firma', 'garantias-online-360vo');
-$seal_default_label      = esc_html__('+ Subir imagen de sello', 'garantias-online-360vo');
+$signature_default_label   = esc_html__('+ Subir imagen de firma', 'garantias-online-360vo');
+$seal_default_label        = esc_html__('+ Subir imagen de sello', 'garantias-online-360vo');
+$procedure_default_label   = esc_html__('+ Subir procedimiento de reclamación', 'garantias-online-360vo');
 
 \GarantiasOnline360VO\TemplateLoader::load_part(
     'header',
@@ -108,9 +109,12 @@ if ($channel_label === '' && ! empty($role_labels)) {
     $channel_label = $role_labels[0];
 }
 
-$admin_notification_rows = [];
-$admin_reply_to_email    = '';
-$admin_claim_document    = [];
+$admin_notification_rows       = [];
+$admin_notification_next_index = 0;
+$admin_reply_to_email          = '';
+$admin_claim_document          = [];
+$admin_claim_document_size     = '';
+$admin_transfer_iban           = '';
 
 if ($is_admin_account && function_exists('get_field')) {
     $notifications_options = get_field('notificaciones', SettingsPage::SUBMENU_SLUG);
@@ -128,15 +132,12 @@ if ($is_admin_account && function_exists('get_field')) {
                     }
 
                     $email = sanitize_email((string) ($row['admin_recipients'] ?? ''));
-
-                    if ($email === '') {
-                        continue;
-                    }
-
                     $admin_notification_rows[] = [
                         'email' => $email,
                         'bcc'   => ! empty($row['copia_oculta']),
+                        'index' => $admin_notification_next_index,
                     ];
+                    $admin_notification_next_index++;
                 }
             }
 
@@ -151,8 +152,31 @@ if ($is_admin_account && function_exists('get_field')) {
 
         if (is_array($document_candidate)) {
             $admin_claim_document = $document_candidate;
+            $filesize_candidate   = $admin_claim_document['filesize'] ?? '';
+            if ($filesize_candidate !== '') {
+                if (is_numeric($filesize_candidate)) {
+                    $admin_claim_document_size = size_format((float) $filesize_candidate);
+                } elseif (is_string($filesize_candidate)) {
+                    $admin_claim_document_size = trim($filesize_candidate);
+                }
+            }
         }
     }
+
+    $bank_options = get_field('datos_bancarios', SettingsPage::SUBMENU_SLUG);
+
+    if (is_array($bank_options)) {
+        $admin_transfer_iban = trim((string) ($bank_options['iban_360vo'] ?? ''));
+    }
+}
+
+if (! $admin_notification_rows) {
+    $admin_notification_rows[] = [
+        'email' => '',
+        'bcc'   => false,
+        'index' => $admin_notification_next_index,
+    ];
+    $admin_notification_next_index++;
 }
 
 $sections = [
@@ -458,43 +482,128 @@ $formatPhoneHref = static function ($phone) {
                 <div class="account-card account-card--form">
                     <h3>Avisos por correo electrónico</h3>
                     <?php if ($is_admin_account) : ?>
-                        <p class="account-card__status">Direcciones configuradas desde la página de opciones.</p>
-                        <?php if ($admin_notification_rows) : ?>
-                            <div class="account-table account-table--notifications">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">Correo electrónico</th>
-                                            <th scope="col">Copia oculta</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($admin_notification_rows as $row) : ?>
-                                            <tr>
-                                                <td>
-                                                    <a href="mailto:<?php echo esc_attr($row['email']); ?>">
-                                                        <?php echo esc_html($row['email']); ?>
-                                                    </a>
-                                                </td>
-                                                <td><?php echo esc_html($row['bcc'] ? 'Sí' : 'No'); ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+                        <form class="account-form account-form--notifications" action="#" method="post" novalidate>
+                            <div
+                                class="account-repeater"
+                                data-notification-repeater
+                                data-next-index="<?php echo esc_attr($admin_notification_next_index); ?>"
+                            >
+                                <div class="account-repeater__header">
+                                    <span>Correo electrónico</span>
+                                    <span>Copia oculta</span>
+                                    <span class="screen-reader-text">Acciones</span>
+                                </div>
+                                <div class="account-repeater__rows" data-repeater-rows>
+                                    <?php foreach ($admin_notification_rows as $row) : ?>
+                                        <?php
+                                        $row_index = (int) ($row['index'] ?? 0);
+                                        $email_id  = 'admin-notification-' . $row_index;
+                                        $bcc_id    = 'admin-notification-bcc-' . $row_index;
+                                        $email_value = (string) ($row['email'] ?? '');
+                                        $bcc_enabled = ! empty($row['bcc']);
+                                        ?>
+                                        <div class="account-repeater__row" data-repeater-row data-repeater-index="<?php echo esc_attr($row_index); ?>">
+                                            <div class="account-field account-field--email">
+                                                <label class="account-field__label" for="<?php echo esc_attr($email_id); ?>">Correo electrónico</label>
+                                                <input
+                                                    type="email"
+                                                    id="<?php echo esc_attr($email_id); ?>"
+                                                    class="account-input"
+                                                    name="admin_notifications[recipients][<?php echo esc_attr($row_index); ?>][email]"
+                                                    value="<?php echo esc_attr($email_value); ?>"
+                                                    placeholder="nombre@empresa.com"
+                                                    autocomplete="off"
+                                                    data-repeater-email
+                                                >
+                                            </div>
+                                            <div class="account-field account-field--checkbox">
+                                                <label class="account-checkbox" for="<?php echo esc_attr($bcc_id); ?>">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="<?php echo esc_attr($bcc_id); ?>"
+                                                        name="admin_notifications[recipients][<?php echo esc_attr($row_index); ?>][bcc]"
+                                                        value="1"
+                                                        <?php checked($bcc_enabled); ?>
+                                                        data-repeater-bcc
+                                                    >
+                                                    <span>Enviar en copia oculta</span>
+                                                </label>
+                                            </div>
+                                            <div class="account-repeater__actions">
+                                                <button
+                                                    type="button"
+                                                    class="account-button account-button--ghost account-repeater__remove"
+                                                    data-repeater-remove
+                                                >
+                                                    <?php echo Svg::icon('close', 'account-button__icon'); ?>
+                                                    <span>Eliminar</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <template data-repeater-template>
+                                    <div class="account-repeater__row" data-repeater-row data-repeater-index="__index__">
+                                        <div class="account-field account-field--email">
+                                            <label class="account-field__label" for="admin-notification-__index__">Correo electrónico</label>
+                                            <input
+                                                type="email"
+                                                id="admin-notification-__index__"
+                                                class="account-input"
+                                                name="admin_notifications[recipients][__index__][email]"
+                                                placeholder="nombre@empresa.com"
+                                                autocomplete="off"
+                                                data-repeater-email
+                                            >
+                                        </div>
+                                        <div class="account-field account-field--checkbox">
+                                            <label class="account-checkbox" for="admin-notification-bcc-__index__">
+                                                <input
+                                                    type="checkbox"
+                                                    id="admin-notification-bcc-__index__"
+                                                    name="admin_notifications[recipients][__index__][bcc]"
+                                                    value="1"
+                                                    data-repeater-bcc
+                                                >
+                                                <span>Enviar en copia oculta</span>
+                                            </label>
+                                        </div>
+                                        <div class="account-repeater__actions">
+                                            <button
+                                                type="button"
+                                                class="account-button account-button--ghost account-repeater__remove"
+                                                data-repeater-remove
+                                            >
+                                                <?php echo Svg::icon('close', 'account-button__icon'); ?>
+                                                <span>Eliminar</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div class="account-repeater__footer">
+                                    <button
+                                        type="button"
+                                        class="account-button account-button--ghost account-repeater__add"
+                                        data-repeater-add
+                                    >
+                                        <?php echo Svg::icon('plus', 'account-button__icon'); ?>
+                                        <span>Añadir dirección de correo</span>
+                                    </button>
+                                </div>
                             </div>
-                        <?php else : ?>
-                            <p class="account-card__empty">No hay direcciones configuradas.</p>
-                        <?php endif; ?>
-                        <p class="account-card__note">
-                            <strong>Dirección de respuesta:</strong>
-                            <?php if ($admin_reply_to_email !== '') : ?>
-                                <a href="mailto:<?php echo esc_attr($admin_reply_to_email); ?>">
-                                    <?php echo esc_html($admin_reply_to_email); ?>
-                                </a>
-                            <?php else : ?>
-                                <span class="account-card__placeholder">No configurada</span>
-                            <?php endif; ?>
-                        </p>
+                            <div class="account-field account-field--reply">
+                                <label class="account-field__label" for="admin-reply-to-email">Dirección de respuesta</label>
+                                <input
+                                    type="email"
+                                    id="admin-reply-to-email"
+                                    class="account-input"
+                                    name="admin_notifications[reply_to]"
+                                    value="<?php echo esc_attr($admin_reply_to_email); ?>"
+                                    placeholder="respuestas@360vo.com"
+                                    autocomplete="off"
+                                >
+                            </div>
+                        </form>
                     <?php else : ?>
                         <p class="account-card__status">
                             <?php echo wp_kses($email_status, ['strong' => []]); ?>
@@ -633,9 +742,6 @@ $formatPhoneHref = static function ($phone) {
             $signed_document  = ! empty($sepa_documents['signed']);
             $has_generated_mandate = $pending_document || $signed_document || ($sepa_info['status'] !== null);
 
-            $transfer_details = is_array($payments['transfer'] ?? null) ? $payments['transfer'] : [];
-            $transfer_iban    = isset($transfer_details['iban']) ? trim((string) $transfer_details['iban']) : '';
-
         ?>
         <article id="account-payments" class="account-section" tabindex="-1">
             <header class="account-section__header">
@@ -705,21 +811,28 @@ $formatPhoneHref = static function ($phone) {
             <?php endif; ?>
             <div class="account-card-grid account-card-grid--payments">
                 <?php if ($is_admin_account) : ?>
-                    <div class="account-card account-card--payments-summary">
+                    <div class="account-card account-card--payments-summary account-card--admin-transfer">
                         <h3>Configurar transferencias</h3>
                         <p class="account-card__status">Cuenta bancaria utilizada para los cobros por transferencia.</p>
-                        <div class="account-field">
+                        <div class="account-field account-field--with-icon">
                             <label class="account-field__label" for="account-transfer-iban">Cuenta de destino</label>
-                            <input
-                                type="text"
-                                id="account-transfer-iban"
-                                class="account-input"
-                                value="<?php echo esc_attr($transfer_iban); ?>"
-                                placeholder="ES00 0000 0000 0000 0000 0000"
-                                readonly
-                            >
+                            <div class="account-input-wrapper">
+                                <span class="account-input-wrapper__icon" aria-hidden="true">
+                                    <?php echo Svg::icon('iban', 'account-input-wrapper__svg'); ?>
+                                </span>
+                                <input
+                                    type="text"
+                                    id="account-transfer-iban"
+                                    class="account-input"
+                                    name="admin_transfer_iban"
+                                    value="<?php echo esc_attr($admin_transfer_iban); ?>"
+                                    placeholder="ES00 0000 0000 0000 0000 0000"
+                                    autocomplete="off"
+                                >
+                            </div>
+                            <p class="account-field__hint">Introduce el IBAN al que se deberán realizar las transferencias.</p>
                         </div>
-                        <?php if ($transfer_iban === '') : ?>
+                        <?php if ($admin_transfer_iban === '') : ?>
                             <p class="account-card__note">No hay una cuenta configurada actualmente.</p>
                         <?php endif; ?>
                     </div>
@@ -953,23 +1066,81 @@ $formatPhoneHref = static function ($phone) {
             <?php endif; ?>
             <div class="account-card-grid">
                 <?php if ($is_admin_account) : ?>
+                    <?php
+                    $procedure_label = $procedure_default_label;
+                    if (! empty($admin_claim_document['filename']) && is_string($admin_claim_document['filename'])) {
+                        $procedure_label = esc_html($admin_claim_document['filename']);
+                    } elseif (! empty($admin_claim_document['title']) && is_string($admin_claim_document['title'])) {
+                        $procedure_label = esc_html($admin_claim_document['title']);
+                    }
+                    $procedure_url = isset($admin_claim_document['url']) ? (string) $admin_claim_document['url'] : '';
+                    ?>
                     <div class="account-card account-card--certificates account-card--procedure">
                         <h3>Procedimiento de reclamación</h3>
-                        <?php if (! empty($admin_claim_document['url'])) : ?>
-                            <p class="account-card__status">Archivo disponible para descargar.</p>
-                            <a
-                                class="account-button"
-                                href="<?php echo esc_url($admin_claim_document['url']); ?>"
-                                download
+                        <div class="account-upload account-upload--document">
+                            <div
+                                class="file-upload file-upload--document"
+                                id="procedure-upload"
+                                data-default-label="<?php echo esc_attr($procedure_default_label); ?>"
+                                data-document-upload
                             >
-                                Descargar documento
-                            </a>
-                            <?php if (! empty($admin_claim_document['filename'])) : ?>
-                                <p class="account-card__note"><?php echo esc_html($admin_claim_document['filename']); ?></p>
-                            <?php endif; ?>
-                        <?php else : ?>
-                            <p class="account-card__empty">No se ha subido ningún documento.</p>
-                        <?php endif; ?>
+                                <div class="file-label" data-document-label><?php echo $procedure_label; ?></div>
+                                <p class="file-hint">Formatos admitidos: PDF, DOC, JPG, PNG (máx. 10MB)</p>
+                                <input
+                                    type="file"
+                                    id="procedure"
+                                    class="file-input"
+                                    name="admin_claim_document"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                >
+                                <div class="file-preview file-preview--document" data-document-preview>
+                                    <div
+                                        class="file-document"
+                                        data-document-body
+                                        <?php echo $procedure_url === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                    >
+                                        <span class="file-document__icon" aria-hidden="true">
+                                            <?php echo Svg::icon('pdf', 'file-document__svg'); ?>
+                                        </span>
+                                        <div class="file-document__meta">
+                                            <p class="file-document__name" data-document-name><?php echo $procedure_label; ?></p>
+                                            <p
+                                                class="file-document__size"
+                                                data-document-size
+                                                <?php echo $admin_claim_document_size === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                            >
+                                                <?php echo esc_html($admin_claim_document_size); ?>
+                                            </p>
+                                            <a
+                                                class="file-document__link"
+                                                data-document-link
+                                                href="<?php echo esc_url($procedure_url); ?>"
+                                                <?php echo $procedure_url === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                                target="_blank"
+                                                rel="noopener"
+                                            >
+                                                Ver documento
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <p
+                                        class="file-document__placeholder"
+                                        data-document-placeholder
+                                        <?php echo $procedure_url !== '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                    >
+                                        No se ha seleccionado ningún archivo.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="file-remove"
+                                    data-document-remove
+                                    <?php echo $procedure_url === '' ? 'hidden' : ''; ?>
+                                >
+                                    <?php echo esc_html__('Eliminar archivo', 'garantias-online-360vo'); ?>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 <?php else : ?>
                     <div class="account-card account-card--certificates" data-certificates-card>
