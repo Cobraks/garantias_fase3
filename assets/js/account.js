@@ -139,7 +139,7 @@
         const certificatesWarning = document.querySelector('[data-certificates-warning]');
         const certificatesWarningText = certificatesWarning
             ? certificatesWarning.textContent.trim()
-            : 'Para firmar tus certificados necesitas subir la firma y el sello.';
+            : 'Necesitas subir tanto la firma como el sello si quieres que tus certificados se generen ya firmados.';
         let signatureHasFile = false;
         let stampHasFile = false;
         let certificatesValid = true;
@@ -348,10 +348,44 @@
                     return;
                 }
 
-                const payload = {
-                    notifications: collectNotificationsPayload(),
-                    workshop: collectWorkshopPayload(),
+                const notificationsPayload = collectNotificationsPayload();
+                const workshopPayload = collectWorkshopPayload();
+                const usingFormData = profileImageFile instanceof File;
+
+                const buildFormData = () => {
+                    const formData = new FormData();
+
+                    const appendObject = (object, prefix) => {
+                        Object.keys(object).forEach((key) => {
+                            const value = object[key];
+                            let normalized = value;
+
+                            if (typeof value === 'boolean') {
+                                normalized = value ? '1' : '0';
+                            } else if (value === null || typeof value === 'undefined') {
+                                normalized = '';
+                            }
+
+                            formData.append(`${prefix}[${key}]`, normalized);
+                        });
+                    };
+
+                    appendObject(notificationsPayload, 'notifications');
+                    appendObject(workshopPayload, 'workshop');
+
+                    if (profileImageFile) {
+                        formData.append('profile_image', profileImageFile);
+                    }
+
+                    return formData;
                 };
+
+                const payload = usingFormData
+                    ? buildFormData()
+                    : JSON.stringify({
+                        notifications: notificationsPayload,
+                        workshop: workshopPayload,
+                    });
 
                 setSaveDisabled(true);
                 saveButton.setAttribute('aria-busy', 'true');
@@ -361,10 +395,10 @@
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
-                        'Content-Type': 'application/json',
                         'X-WP-Nonce': restNonce,
+                        ...(usingFormData ? {} : { 'Content-Type': 'application/json' }),
                     },
-                    body: JSON.stringify(payload),
+                    body: payload,
                 })
                     .then((response) => {
                         if (!response.ok) {
@@ -418,6 +452,23 @@
                             }
                         }
 
+                        if (data.profile_image) {
+                            const nextSrc = typeof data.profile_image.url === 'string'
+                                ? data.profile_image.url
+                                : '';
+                            if (nextSrc !== '') {
+                                profileImageOriginalSrc = nextSrc;
+                            }
+                            syncProfilePreview(profileImageOriginalSrc);
+                        }
+
+                        if (profileUploadInput) {
+                            profileUploadInput.value = '';
+                        }
+
+                        profileImageFile = null;
+                        revokeProfilePreview();
+
                         setStatus(strings.success || 'Cambios guardados correctamente.', 'success');
                     })
                     .catch((error) => {
@@ -436,14 +487,70 @@
         }
 
         const profileUploadButton = document.querySelector('[data-profile-upload]');
+        const profileAvatarImage = document.querySelector('.account-summary__avatar img');
+        let profileUploadInput = null;
+        let profileImageFile = null;
+        let profileImagePreviewUrl = '';
+        let profileImageOriginalSrc = profileAvatarImage && profileAvatarImage.getAttribute('src')
+            ? profileAvatarImage.getAttribute('src')
+            : '';
+
+        const revokeProfilePreview = () => {
+            if (profileImagePreviewUrl) {
+                URL.revokeObjectURL(profileImagePreviewUrl);
+                profileImagePreviewUrl = '';
+            }
+        };
+
+        const syncProfilePreview = (src) => {
+            if (!profileAvatarImage) {
+                return;
+            }
+
+            profileAvatarImage.setAttribute('src', src || '');
+        };
+
+        const resetProfileSelection = () => {
+            profileImageFile = null;
+            revokeProfilePreview();
+            syncProfilePreview(profileImageOriginalSrc);
+        };
+
+        const attachProfileUpload = (fileInput) => {
+            profileUploadButton.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', () => {
+                const files = fileInput.files;
+                if (!files || files.length === 0) {
+                    resetProfileSelection();
+                    enableSaveButton();
+                    return;
+                }
+
+                const [file] = files;
+                if (!file) {
+                    resetProfileSelection();
+                    enableSaveButton();
+                    return;
+                }
+
+                profileImageFile = file;
+                revokeProfilePreview();
+                profileImagePreviewUrl = URL.createObjectURL(file);
+                syncProfilePreview(profileImagePreviewUrl);
+                enableSaveButton();
+            });
+        };
+
         if (profileUploadButton) {
             const inputId = profileUploadButton.getAttribute('data-profile-upload');
             const fileInput = inputId ? document.getElementById(inputId) : null;
 
             if (fileInput) {
-                profileUploadButton.addEventListener('click', () => {
-                    fileInput.click();
-                });
+                profileUploadInput = fileInput;
+                attachProfileUpload(fileInput);
             }
         }
 

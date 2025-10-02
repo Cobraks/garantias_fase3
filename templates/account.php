@@ -1321,7 +1321,7 @@ $formatPhoneHref = static function ($phone) {
                                             aria-live="polite"
                                             role="alert"
                                         >
-                                            Para firmar tus certificados necesitas subir la firma y el sello.
+                                            Necesitas subir tanto la firma como el sello si quieres que tus certificados se generen ya firmados.
                                         </p>
                                     </div>
                                 </div>
