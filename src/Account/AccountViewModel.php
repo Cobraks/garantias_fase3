@@ -114,6 +114,8 @@ class AccountViewModel
 
         $documents = self::extract_documents($scope, $user_id);
         $payments  = self::extract_payments($scope, $user_id);
+        $role_keys = array_map('sanitize_key', (array) $user->roles);
+        $is_commercial_account = in_array('go_comercial', $role_keys, true);
 
         return [
             'user' => [
@@ -138,6 +140,10 @@ class AccountViewModel
             'commercials'   => $assigned,
             'documents'     => $documents,
             'payments'      => $payments,
+            'workshop'      => self::extract_workshop($scope, $user_id),
+            'clients'       => $is_commercial_account
+                ? self::extract_commercial_clients($user_id)
+                : [],
         ];
     }
 
@@ -211,6 +217,114 @@ class AccountViewModel
         return $commercials;
     }
 
+    private static function extract_commercial_clients(int $commercial_id): array
+    {
+        $clients = [];
+
+        $query = new \WP_User_Query([
+            'role__in' => ['go_profesional'],
+            'number'   => -1,
+            'fields'   => ['ID'],
+        ]);
+
+        $candidate_ids = [];
+        if ($query instanceof \WP_User_Query) {
+            $candidate_ids = array_map('intval', (array) $query->get_results());
+        }
+
+        if (! $candidate_ids) {
+            return $clients;
+        }
+
+        foreach ($candidate_ids as $client_id) {
+            if ($client_id <= 0) {
+                continue;
+            }
+
+            $assigned_ids = [];
+
+            if (function_exists('get_field')) {
+                $assigned_field = get_field('ajustes_usuarios_comercial_asignado', 'user_' . $client_id);
+                $assigned_ids   = self::normalize_user_ids($assigned_field);
+            }
+
+            if (! $assigned_ids) {
+                $meta_value   = get_user_meta($client_id, 'ajustes_usuarios_comercial_asignado', true);
+                $assigned_ids = self::normalize_user_ids($meta_value);
+            }
+
+            if (! in_array($commercial_id, $assigned_ids, true)) {
+                continue;
+            }
+
+            $client_user = get_user_by('id', $client_id);
+            if (! $client_user instanceof WP_User) {
+                continue;
+            }
+
+            $profile = UserProfileResolver::build_from_user($client_user);
+
+            $profile_image = ['id' => 0, 'url' => '', 'filename' => ''];
+            if (function_exists('get_field')) {
+                $image = get_field('profile_image', 'user_' . $client_id);
+                if ($image) {
+                    $profile_image = self::normalize_media($image);
+                }
+            }
+
+            if (! $profile_image['url']) {
+                $profile_image['url'] = get_avatar_url($client_id, ['size' => 128]);
+            }
+
+            $contact_meta = self::get_meta_group('user_' . $client_id, 'datos_usuario');
+            $phone        = '';
+            $phone_candidates = [
+                $contact_meta['telefono'] ?? '',
+                get_user_meta($client_id, 'datos_usuario_telefono', true),
+            ];
+
+            foreach ($phone_candidates as $candidate) {
+                $candidate = self::sanitize_optional_text($candidate);
+                if ($candidate !== '') {
+                    $phone = $candidate;
+                    break;
+                }
+            }
+
+            $clients[] = [
+                'id'            => $client_id,
+                'company_name'  => $profile['company']['name'] ?? '',
+                'username'      => $profile['username'] ?? '',
+                'email'         => sanitize_email($profile['email'] ?? $client_user->user_email),
+                'phone'         => $phone,
+                'profile_image' => $profile_image,
+                'contact_name'  => $profile['personal_full_name'] ?: $profile['personal_name'],
+            ];
+        }
+
+        if ($clients) {
+            usort(
+                $clients,
+                static function (array $a, array $b): int {
+                    $labelA = strtolower(trim((string) ($a['company_name'] ?? '')));
+                    $labelB = strtolower(trim((string) ($b['company_name'] ?? '')));
+
+                    if ($labelA === '') {
+                        $labelA = strtolower(trim((string) ($a['contact_name'] ?? '')));
+                    }
+
+                    if ($labelB === '') {
+                        $labelB = strtolower(trim((string) ($b['contact_name'] ?? '')));
+                    }
+
+                    return $labelA <=> $labelB;
+                }
+            );
+        }
+
+        return $clients;
+    }
+
     private static function extract_documents(string $scope, int $user_id): array
     {
         $group = [];
@@ -256,6 +370,77 @@ class AccountViewModel
             'signature'           => $signature_media,
             'seal'                => $seal_media,
         ];
+    }
+
+    private static function extract_workshop(string $scope, int $user_id): array
+    {
+        $defaults = [
+            'has_workshop'   => false,
+            'name'           => '',
+            'fiscal_name'    => '',
+            'tax_id'         => '',
+            'contact_person' => '',
+            'phone'          => '',
+            'email'          => '',
+            'address'        => '',
+        ];
+
+        $group = [];
+
+        if (function_exists('get_field')) {
+            $services = get_field('servicios', $scope);
+            if (is_array($services) && isset($services['taller']) && is_array($services['taller'])) {
+                $group = $services['taller'];
+            }
+        }
+
+        $has_workshop_candidates = [
+            $group['tiene_taller'] ?? null,
+            get_user_meta($user_id, 'servicios_taller_tiene_taller', true),
+        ];
+
+        foreach ($has_workshop_candidates as $candidate) {
+            $normalized = self::normalize_bool($candidate);
+            if ($normalized !== null) {
+                $defaults['has_workshop'] = $normalized;
+                break;
+            }
+        }
+
+        $field_map = [
+            'name'           => ['nombre_taller'],
+            'fiscal_name'    => ['denominacion_fiscal'],
+            'tax_id'         => ['cif_taller'],
+            'contact_person' => ['persona_contacto_taller'],
+            'phone'          => ['telefono_taller'],
+            'email'          => ['correo_taller'],
+            'address'        => ['direccion_taller'],
+        ];
+
+        foreach ($field_map as $key => $field_names) {
+            $value = '';
+
+            foreach ($field_names as $field_name) {
+                if (isset($group[$field_name]) && $group[$field_name] !== '') {
+                    $value = (string) $group[$field_name];
+                    break;
+                }
+
+                $meta_value = get_user_meta($user_id, 'servicios_taller_' . $field_name, true);
+                if (is_string($meta_value) && trim($meta_value) !== '') {
+                    $value = (string) $meta_value;
+                    break;
+                }
+            }
+
+            if ($key === 'email') {
+                $defaults[$key] = sanitize_email((string) $value);
+            } else {
+                $defaults[$key] = self::sanitize_optional_text($value);
+            }
+        }
+
+        return $defaults;
     }
 
     private static function extract_payments(string $scope, int $user_id): array
@@ -721,6 +906,35 @@ class AccountViewModel
         }
 
         return '';
+    }
+
+    private static function normalize_bool($value): ?bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value !== 0;
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+
+            if ($normalized === '') {
+                return null;
+            }
+
+            if (in_array($normalized, ['1', 'true', 'yes', 'si', 'sí', 'on'], true)) {
+                return true;
+            }
+
+            if (in_array($normalized, ['0', 'false', 'no', 'off'], true)) {
+                return false;
+            }
+        }
+
+        return null;
     }
 
     private static function normalize_media($value): array
