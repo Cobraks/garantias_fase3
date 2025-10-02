@@ -788,7 +788,7 @@
 .account-input__label {
   position: absolute;
   top: 12px;
-  left: 0;
+  left: 1rem;
   color: #64748b;
   pointer-events: none;
   transition: 0.2s ease all;
@@ -799,13 +799,25 @@
 .account-input:focus + .account-input__label,
 .account-input:not(:placeholder-shown) + .account-input__label {
   top: -0.5rem;
-  left: -2rem;
+  left: 0.8rem;
   font-size: 0.8rem;
   color: #1f2937;
 }
 
 .account-input:focus + .account-input__label {
   color: #000;
+}
+
+.account-form--floating .account-input__label,
+.account-card--admin-transfer .account-input__label {
+  left: 0;
+}
+
+.account-form--floating .account-input:focus + .account-input__label,
+.account-form--floating .account-input:not(:placeholder-shown) + .account-input__label,
+.account-card--admin-transfer .account-input:focus + .account-input__label,
+.account-card--admin-transfer .account-input:not(:placeholder-shown) + .account-input__label {
+  left: -2rem;
 }
 
 .account-form__field--full {

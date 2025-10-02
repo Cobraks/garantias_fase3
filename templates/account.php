@@ -486,7 +486,7 @@ $formatPhoneHref = static function ($phone) {
                 <div class="account-card account-card--form">
                     <h3>Avisos por correo electrónico</h3>
                     <?php if ($is_admin_account) : ?>
-                        <form class="account-form account-form--notifications" action="#" method="post" novalidate>
+                        <form class="account-form account-form--notifications account-form--floating" action="#" method="post" novalidate>
                             <div
                                 class="account-repeater"
                                 data-notification-repeater
