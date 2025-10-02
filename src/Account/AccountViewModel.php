@@ -138,6 +138,7 @@ class AccountViewModel
             'commercials'   => $assigned,
             'documents'     => $documents,
             'payments'      => $payments,
+            'workshop'      => self::extract_workshop($scope, $user_id),
         ];
     }
 
@@ -256,6 +257,77 @@ class AccountViewModel
             'signature'           => $signature_media,
             'seal'                => $seal_media,
         ];
+    }
+
+    private static function extract_workshop(string $scope, int $user_id): array
+    {
+        $defaults = [
+            'has_workshop'   => false,
+            'name'           => '',
+            'fiscal_name'    => '',
+            'tax_id'         => '',
+            'contact_person' => '',
+            'phone'          => '',
+            'email'          => '',
+            'address'        => '',
+        ];
+
+        $group = [];
+
+        if (function_exists('get_field')) {
+            $services = get_field('servicios', $scope);
+            if (is_array($services) && isset($services['taller']) && is_array($services['taller'])) {
+                $group = $services['taller'];
+            }
+        }
+
+        $has_workshop_candidates = [
+            $group['tiene_taller'] ?? null,
+            get_user_meta($user_id, 'servicios_taller_tiene_taller', true),
+        ];
+
+        foreach ($has_workshop_candidates as $candidate) {
+            $normalized = self::normalize_bool($candidate);
+            if ($normalized !== null) {
+                $defaults['has_workshop'] = $normalized;
+                break;
+            }
+        }
+
+        $field_map = [
+            'name'           => ['nombre_taller'],
+            'fiscal_name'    => ['denominacion_fiscal'],
+            'tax_id'         => ['cif_taller'],
+            'contact_person' => ['persona_contacto_taller'],
+            'phone'          => ['telefono_taller'],
+            'email'          => ['correo_taller'],
+            'address'        => ['direccion_taller'],
+        ];
+
+        foreach ($field_map as $key => $field_names) {
+            $value = '';
+
+            foreach ($field_names as $field_name) {
+                if (isset($group[$field_name]) && $group[$field_name] !== '') {
+                    $value = (string) $group[$field_name];
+                    break;
+                }
+
+                $meta_value = get_user_meta($user_id, 'servicios_taller_' . $field_name, true);
+                if (is_string($meta_value) && trim($meta_value) !== '') {
+                    $value = (string) $meta_value;
+                    break;
+                }
+            }
+
+            if ($key === 'email') {
+                $defaults[$key] = sanitize_email((string) $value);
+            } else {
+                $defaults[$key] = self::sanitize_optional_text($value);
+            }
+        }
+
+        return $defaults;
     }
 
     private static function extract_payments(string $scope, int $user_id): array
@@ -721,6 +793,35 @@ class AccountViewModel
         }
 
         return '';
+    }
+
+    private static function normalize_bool($value): ?bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value !== 0;
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+
+            if ($normalized === '') {
+                return null;
+            }
+
+            if (in_array($normalized, ['1', 'true', 'yes', 'si', 'sí', 'on'], true)) {
+                return true;
+            }
+
+            if (in_array($normalized, ['0', 'false', 'no', 'off'], true)) {
+                return false;
+            }
+        }
+
+        return null;
     }
 
     private static function normalize_media($value): array

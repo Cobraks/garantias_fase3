@@ -175,6 +175,30 @@
             });
         }
 
+        const workshopToggle = document.querySelector('[data-workshop-toggle]');
+        if (workshopToggle) {
+            const details = document.querySelector('[data-workshop-details]');
+            const updateWorkshopVisibility = () => {
+                const isChecked = workshopToggle.checked;
+                workshopToggle.setAttribute('aria-expanded', String(isChecked));
+
+                if (!details) {
+                    return;
+                }
+
+                details.hidden = !isChecked;
+
+                if (isChecked) {
+                    details.removeAttribute('aria-hidden');
+                } else {
+                    details.setAttribute('aria-hidden', 'true');
+                }
+            };
+
+            updateWorkshopVisibility();
+            workshopToggle.addEventListener('change', updateWorkshopVisibility);
+        }
+
         const profileUploadButton = document.querySelector('[data-profile-upload]');
         if (profileUploadButton) {
             const inputId = profileUploadButton.getAttribute('data-profile-upload');
