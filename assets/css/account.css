@@ -302,6 +302,10 @@
   grid-column: 1 / -1;
 }
 
+.account-card--notifications {
+  grid-column: 1 / -1;
+}
+
 .account-card-grid--profile {
   grid-template-columns: minmax(280px, 1fr) minmax(320px, 1fr);
   grid-template-areas:
@@ -562,6 +566,7 @@
   width: auto;
 }
 
+
 @media (max-width: 720px) {
   .account-repeater__header {
     display: none;
@@ -649,34 +654,42 @@
   gap: 0.75rem;
   border: 1px solid var(--card-border);
   border-radius: 0.85rem;
-  padding: 0.65rem 0.85rem;
+  padding: 0.5rem 0.85rem;
   background: #fff;
   transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+  max-width: 28rem;
 }
 
 .account-input-wrapper.account-input-wrapper--floating {
-  align-items: stretch;
-  padding: 0.5rem 0.85rem;
+  align-items: center;
+  height: 3rem;
+  padding: 0 0.85rem;
+  max-width: 24rem;
 }
 
 .account-input-wrapper.account-input-wrapper--floating .account-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
   flex: 1;
+  height: 100%;
 }
 
 .account-input-wrapper.account-input-wrapper--floating .account-input {
-  height: auto;
-  padding: 0.5rem 0.5rem 0.35rem;
+  height: 100%;
+  padding: 0;
   border: none;
   background: transparent;
+  font-weight: 400;
 }
 
 .account-input-wrapper.account-input-wrapper--floating .account-input__label {
-  left: 0.5rem;
+  left: 0;
 }
 
 .account-input-wrapper.account-input-wrapper--floating .account-input:focus + .account-input__label,
 .account-input-wrapper.account-input-wrapper--floating .account-input:not(:placeholder-shown) + .account-input__label {
-  left: 0.5rem;
+  left: 0;
 }
 
 .account-card--admin-transfer .account-input-wrapper:focus-within {
@@ -686,9 +699,10 @@
 
 .account-card--admin-transfer .account-input {
   border: none;
-  padding: 0.5rem 0.5rem 0.35rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  padding: 0;
+  background: transparent;
+  font-weight: 400;
+  letter-spacing: normal;
 }
 
 .account-card--admin-transfer .account-input::placeholder {
@@ -1224,6 +1238,44 @@
 .account-button__icon {
   width: 20px;
   height: 20px;
+}
+
+.account-button.account-repeater__remove {
+  gap: 0.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  font-weight: 400;
+}
+
+.account-button.account-repeater__remove:hover,
+.account-button.account-repeater__remove:focus-visible {
+  background: transparent;
+  color: #b91c1c;
+  box-shadow: none;
+  outline: none;
+  transform: none;
+}
+
+.account-button.account-repeater__add {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--card-border);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.account-button.account-repeater__add:hover,
+.account-button.account-repeater__add:focus-visible {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: var(--text-color);
+  box-shadow: none;
+  outline: none;
+  transform: none;
 }
 
 .account-button.account-button--ghost {
