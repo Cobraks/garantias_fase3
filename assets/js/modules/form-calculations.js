@@ -1017,8 +1017,6 @@ async function filtrarModalidadesBase() {
                         }
                 }
 
-                const esCamion = valoresForm.tipo_vehiculo === "camion";
-
                 let excedeAntiguedad = false;
                 let excedeKilometros = false;
 
@@ -1072,16 +1070,10 @@ async function filtrarModalidadesBase() {
                         maxKilometrosPermitidos = Infinity;
                 }
 
-                if (
-                        esCamion &&
-                        condicionesEspecialesArr.includes("antiguedad") &&
-                        condicionesEspecialesArr.includes("kilometraje")
-                ) {
-                        if (excedeAntiguedad && excedeKilometros) {
-                                kilometrosSuperaMaximo = true;
-                                return false;
-                        }
-                        return true;
+                if (excedeAntiguedad && excedeKilometros) {
+                        antiguedadSuperaMaximo = true;
+                        kilometrosSuperaMaximo = true;
+                        return false;
                 }
 
                 if (excedeAntiguedad) {

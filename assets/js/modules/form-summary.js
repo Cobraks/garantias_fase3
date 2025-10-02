@@ -7,7 +7,7 @@
     - No realiza validaciones, solo lee valores y estado visual.
 */
 
-import { debounce } from "./form-utils.js";
+import { debounce, getAntiguedadFromDate } from "./form-utils.js";
 import {
         getUserRole,
         getCurrentUserCompanyName,
@@ -153,14 +153,61 @@ function getSummaryText(fieldId) {
 	}
 
 	// Modelo individual
-	if (fieldId === "modelo") {
-		const modelo = document.getElementById("modelo")?.value.trim() || "";
-		if (!modelo) return { text: "Falta Modelo", error: true };
-		return { text: modelo, error: false };
-	}
+        if (fieldId === "modelo") {
+                const modelo = document.getElementById("modelo")?.value.trim() || "";
+                if (!modelo) return { text: "Falta Modelo", error: true };
+                return { text: modelo, error: false };
+        }
 
-	// --- CAMBIOS CLAVE PARA CAMION ---
-	// Tracción (solo valor, sin prefijo)
+        if (fieldId === "fecha_primera_matriculacion") {
+                const input = document.getElementById("fecha_primera_matriculacion");
+                if (!input) return { text: "", error: false };
+                const label = document.querySelector(
+                        "label[for='fecha_primera_matriculacion']"
+                );
+                const labelText = (label?.textContent || "Fecha 1ª matriculación").trim();
+                const value = input.value?.trim() || "";
+                if (!value) {
+                        return { text: `Falta ${labelText}`, error: true };
+                }
+                if (input.getAttribute("aria-invalid") === "true") {
+                        return { text: `${labelText} incorrecta`, error: true };
+                }
+                const fecha = new Date(value);
+                if (Number.isNaN(fecha.getTime())) {
+                        return { text: `${labelText} incorrecta`, error: true };
+                }
+                const monthNames = [
+                        "enero",
+                        "febrero",
+                        "marzo",
+                        "abril",
+                        "mayo",
+                        "junio",
+                        "julio",
+                        "agosto",
+                        "septiembre",
+                        "octubre",
+                        "noviembre",
+                        "diciembre",
+                ];
+                const fechaTexto = `${fecha.getDate()} de ${
+                        monthNames[fecha.getMonth()]
+                } de ${fecha.getFullYear()}`;
+                const antiguedad = getAntiguedadFromDate(value);
+                let texto = fechaTexto;
+                if (Number.isFinite(antiguedad)) {
+                        const antiguedadTexto = antiguedad.toLocaleString("es-ES", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                        });
+                        texto += ` (${antiguedadTexto} años de antigüedad)`;
+                }
+                return { text: texto, error: false };
+        }
+
+        // --- CAMBIOS CLAVE PARA CAMION ---
+        // Tracción (solo valor, sin prefijo)
         if (fieldId === "traccion") {
                 if (isTipoCamion() || isTipoMoto()) {
                         return { text: "No aplica", error: false };
