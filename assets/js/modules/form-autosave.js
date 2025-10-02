@@ -580,6 +580,37 @@ export default function initAutosave() {
                         return "";
                 };
 
+                const getSelectValue = (id) => {
+                        const el = document.getElementById(id);
+                        if (el && el.tagName === "SELECT") {
+                                return el.value || "";
+                        }
+                        return "";
+                };
+
+                const tipoVehiculoValue = (
+                        getSelectValue("tipo_vehiculo") || datosVehiculo.tipo_vehiculo || ""
+                )
+                        .toString()
+                        .toLowerCase();
+
+                const getPdfTraccionValue = () => {
+                        if (tipoVehiculoValue === "camion") {
+                                return (
+                                        getSelectText("traccion_camion") ||
+                                        datosVehiculo.traccion_camion ||
+                                        datosVehiculo.traccion ||
+                                        ""
+                                );
+                        }
+                        return (
+                                getSelectText("traccion") ||
+                                datosVehiculo.traccion ||
+                                datosVehiculo.traccion_camion ||
+                                ""
+                        );
+                };
+
                 const pdfFieldMap = {
                         pdf_id_matricula: datosVehiculo.matricula,
                         pdf_nombre_apellidos: datosCliente.nombre_y_apellidos,
@@ -601,11 +632,7 @@ export default function initAutosave() {
                         pdf_bastidor: datosVehiculo.numero_bastidor,
                         pdf_km: formatNumber(datosVehiculo.kilometros),
                         pdf_cv: formatNumber(datosVehiculo.potencia),
-                        pdf_traccion:
-                                getSelectText("traccion") ||
-                                getSelectText("traccion_camion") ||
-                                datosVehiculo.traccion ||
-                                datosVehiculo.traccion_camion,
+                        pdf_traccion: getPdfTraccionValue(),
                         pdf_combustible:
                                 getSelectText("combustible") ||
                                 datosVehiculo.combustible,
@@ -959,6 +986,87 @@ export default function initAutosave() {
                 }
         }
 
+        function parseGuaranteeStartDate(value) {
+                if (!value) return null;
+                if (value instanceof Date) return value;
+                if (typeof value === "number") {
+                        const fromNumber = new Date(value);
+                        if (!Number.isNaN(fromNumber.getTime())) {
+                                return fromNumber;
+                        }
+                }
+                const normalized = String(value).trim();
+                if (!normalized) return null;
+                const isoMatch = normalized.match(
+                        /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                );
+                if (isoMatch) {
+                        const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
+                        const candidate = new Date(
+                                Number(year),
+                                Number(month) - 1,
+                                Number(day),
+                                Number(hours),
+                                Number(minutes),
+                                Number(seconds)
+                        );
+                        if (!Number.isNaN(candidate.getTime())) {
+                                return candidate;
+                        }
+                }
+                const localMatch = normalized.match(
+                        /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                );
+                if (localMatch) {
+                        const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
+                        const candidate = new Date(
+                                Number(year),
+                                Number(month) - 1,
+                                Number(day),
+                                Number(hours),
+                                Number(minutes),
+                                Number(seconds)
+                        );
+                        if (!Number.isNaN(candidate.getTime())) {
+                                return candidate;
+                        }
+                }
+                return null;
+        }
+
+        function isSameCalendarDay(dateA, dateB) {
+                return (
+                        dateA.getFullYear() === dateB.getFullYear() &&
+                        dateA.getMonth() === dateB.getMonth() &&
+                        dateA.getDate() === dateB.getDate()
+                );
+        }
+
+        function calculateTransferDeadline(startValue, nowValue = new Date()) {
+                const startDate = parseGuaranteeStartDate(startValue);
+                if (!startDate) return null;
+                const nowDate = nowValue instanceof Date ? nowValue : new Date(nowValue);
+                if (Number.isNaN(nowDate.getTime())) return null;
+                const baseDate = isSameCalendarDay(startDate, nowDate) ? nowDate : startDate;
+                const deadline = new Date(baseDate.getTime() + 48 * 60 * 60 * 1000);
+                if (Number.isNaN(deadline.getTime())) return null;
+                return deadline;
+        }
+
+        function formatTransferDeadlineLabel(startValue) {
+                const deadline = calculateTransferDeadline(startValue);
+                if (!deadline) return "";
+                try {
+                        return new Intl.DateTimeFormat("es-ES", {
+                                day: "numeric",
+                                month: "long",
+                        }).format(deadline);
+                } catch (error) {
+                        console.warn("No se pudo formatear la fecha límite de transferencia", error);
+                        return "";
+                }
+        }
+
         function showSuccess(method, plate, amount, planName, months, docLinks, extras = {}) {
                 console.log("[AUTOSAVE] showSuccess", { docLinks });
                 fadeOut(form, false);
@@ -1098,6 +1206,27 @@ export default function initAutosave() {
                                 transfer.hidden = !showTransfer;
                         }
                         if (showTransfer && transfer) {
+                                const deadlineLabel =
+                                        typeof extras.transferDeadlineLabel === "string"
+                                                ? extras.transferDeadlineLabel.trim()
+                                                : "";
+                                const transferNote = transfer.querySelector(
+                                        ".form-success__transfer-note"
+                                );
+                                if (transferNote) {
+                                        const message = deadlineLabel
+                                                ? `Realiza el pago antes del ${deadlineLabel}.`
+                                                : "Realiza el pago lo antes posible.";
+                                        let noteTextNode = transferNote.querySelector(
+                                                ".form-success__transfer-note-text"
+                                        );
+                                        if (!noteTextNode) {
+                                                noteTextNode = document.createElement("span");
+                                                noteTextNode.className = "form-success__transfer-note-text";
+                                                transferNote.appendChild(noteTextNode);
+                                        }
+                                        noteTextNode.textContent = message;
+                                }
                                 const reference = plate
                                         ? `Garantía ${plate.toUpperCase()}`
                                         : "";
@@ -1578,6 +1707,12 @@ export default function initAutosave() {
                                                         ? json.transfer_iban.trim()
                                                         : "",
                                 };
+                                const transferDeadlineLabel = formatTransferDeadlineLabel(
+                                        payload.estado_garantia?.inicio
+                                );
+                                if (transferDeadlineLabel) {
+                                        extras.transferDeadlineLabel = transferDeadlineLabel;
+                                }
                                 showSuccess(
                                         garantia.metodo_pago,
                                         datosVehiculo.matricula,

@@ -149,6 +149,22 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                                         </tr>
                                         <tr>
                                             <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('Denominación fiscal', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($workshop['fiscal_name'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('CIF', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($workshop['tax_id'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
                                                 <?php esc_html_e('Contacto', 'garantias-online-360vo'); ?>
                                             </th>
                                             <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
