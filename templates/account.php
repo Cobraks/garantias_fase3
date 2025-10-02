@@ -294,7 +294,11 @@ $formatPhoneHref = static function ($phone) {
 
 ?>
 
-<div class="account-page" data-view="account">
+<div
+    class="account-page"
+    data-view="account"
+    <?php echo $is_admin_account ? 'data-account-admin="true"' : ''; ?>
+>
     <aside class="account-page__sidebar">
         <section class="account-summary">
             <div class="account-summary__media">
@@ -1182,6 +1186,7 @@ $formatPhoneHref = static function ($phone) {
                                 id="procedure-upload"
                                 data-default-label="<?php echo esc_attr($procedure_default_label); ?>"
                                 data-document-upload
+                                data-document-type="claim_procedure"
                             >
                                 <div class="file-label" data-document-label><?php echo $procedure_label; ?></div>
                                 <p class="file-hint">Formatos admitidos: PDF, DOC, JPG, PNG (máx. 10MB)</p>

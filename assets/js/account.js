@@ -113,6 +113,7 @@
 
         const saveButton = document.querySelector('[data-account-save]');
         const accountPage = document.querySelector('.account-page');
+        const isAdminAccount = accountPage && accountPage.getAttribute('data-account-admin') === 'true';
         const statusElement = document.querySelector('[data-account-status]');
         const statusVariants = [
             'account-status--info',
@@ -134,6 +135,9 @@
             'email',
             'address',
         ];
+        const notificationsRepeater = document.querySelector('[data-notification-repeater]');
+        const adminReplyInput = document.getElementById('admin-reply-to-email');
+        const adminTransferInput = document.getElementById('account-transfer-iban');
         const signatureUpload = document.getElementById('signature-upload');
         const stampUpload = document.getElementById('stamp-upload');
         const certificatesWarning = document.querySelector('[data-certificates-warning]');
@@ -146,6 +150,8 @@
         let certificatesWarningForced = false;
         let certificatesRemovalWarning = false;
         let workshopVisibilityUpdater = null;
+        const documentUploadStates = {};
+        const documentUploadControllers = {};
 
         const updateCertificatesWarningState = () => {
             const mismatch = (signatureHasFile && !stampHasFile) || (!signatureHasFile && stampHasFile);
@@ -324,6 +330,100 @@
             return Object.assign({ has_workshop: hasWorkshop }, values);
         };
 
+        const collectAdminNotificationsPayload = () => {
+            if (!isAdminAccount || (!notificationsRepeater && !adminReplyInput)) {
+                return null;
+            }
+
+            const recipients = [];
+
+            if (notificationsRepeater) {
+                const rows = notificationsRepeater.querySelectorAll('[data-repeater-row]');
+                rows.forEach((row) => {
+                    const emailInput = row.querySelector('[data-repeater-email]');
+                    const bccInput = row.querySelector('[data-repeater-bcc]');
+                    const email = emailInput && typeof emailInput.value === 'string'
+                        ? emailInput.value.trim()
+                        : '';
+                    const bcc = bccInput ? bccInput.checked : false;
+
+                    if (email === '' && !bcc) {
+                        return;
+                    }
+
+                    recipients.push({
+                        email,
+                        bcc,
+                    });
+                });
+            }
+
+            const replyTo = adminReplyInput && typeof adminReplyInput.value === 'string'
+                ? adminReplyInput.value.trim()
+                : '';
+
+            return {
+                recipients,
+                reply_to: replyTo,
+            };
+        };
+
+        const collectAdminTransferPayload = () => {
+            if (!isAdminAccount || !adminTransferInput) {
+                return null;
+            }
+
+            const value = typeof adminTransferInput.value === 'string'
+                ? adminTransferInput.value.trim()
+                : '';
+
+            return { iban: value };
+        };
+
+        const collectAdminDocumentsPayload = () => {
+            if (!isAdminAccount) {
+                return null;
+            }
+
+            const entries = Object.entries(documentUploadStates)
+                .filter(([, state]) => Boolean(state))
+                .reduce((accumulator, [key, state]) => {
+                    if (state && state.removed) {
+                        accumulator[key] = { remove: true };
+                    }
+                    return accumulator;
+                }, {});
+
+            return Object.keys(entries).length > 0 ? entries : null;
+        };
+
+        const collectAdminPayload = () => {
+            if (!isAdminAccount) {
+                return null;
+            }
+
+            const notifications = collectAdminNotificationsPayload();
+            const transfer = collectAdminTransferPayload();
+            const documents = collectAdminDocumentsPayload();
+
+            if (!notifications && !transfer && !documents) {
+                return null;
+            }
+
+            const payload = {};
+            if (notifications) {
+                payload.notifications = notifications;
+            }
+            if (transfer) {
+                payload.transfer = transfer;
+            }
+            if (documents) {
+                payload.documents = documents;
+            }
+
+            return payload;
+        };
+
         if (saveButton) {
             saveButton.addEventListener('click', (event) => {
                 event.preventDefault();
@@ -350,7 +450,10 @@
 
                 const notificationsPayload = collectNotificationsPayload();
                 const workshopPayload = collectWorkshopPayload();
-                const usingFormData = profileImageFile instanceof File;
+                const adminPayload = collectAdminPayload();
+                const adminDocumentFiles = Object.values(documentUploadStates)
+                    .filter((state) => state && state.input && state.input.files && state.input.files.length > 0);
+                const usingFormData = (profileImageFile instanceof File) || adminDocumentFiles.length > 0;
 
                 const buildFormData = () => {
                     const formData = new FormData();
@@ -377,6 +480,26 @@
                         formData.append('profile_image', profileImageFile);
                     }
 
+                    adminDocumentFiles.forEach((state) => {
+                        const { input } = state;
+                        if (!input) {
+                            return;
+                        }
+                        const name = input.getAttribute('name') || '';
+                        if (!name) {
+                            return;
+                        }
+                        const file = input.files && input.files[0] ? input.files[0] : null;
+                        if (!file) {
+                            return;
+                        }
+                        formData.append(name, file);
+                    });
+
+                    if (adminPayload) {
+                        formData.append('admin', JSON.stringify(adminPayload));
+                    }
+
                     return formData;
                 };
 
@@ -385,6 +508,7 @@
                     : JSON.stringify({
                         notifications: notificationsPayload,
                         workshop: workshopPayload,
+                        ...(adminPayload ? { admin: adminPayload } : {}),
                     });
 
                 setSaveDisabled(true);
@@ -469,7 +593,39 @@
                         profileImageFile = null;
                         revokeProfilePreview();
 
+                        if (data.admin) {
+                            const adminData = data.admin;
+
+                            if (adminData.notifications) {
+                                if (adminReplyInput) {
+                                    adminReplyInput.value = typeof adminData.notifications.reply_to === 'string'
+                                        ? adminData.notifications.reply_to
+                                        : '';
+                                }
+
+                                if (notificationsRepeater && typeof notificationsRepeater.__syncRows === 'function') {
+                                    notificationsRepeater.__syncRows(Array.isArray(adminData.notifications.recipients)
+                                        ? adminData.notifications.recipients
+                                        : []);
+                                }
+                            }
+
+                            if (adminData.transfer && adminTransferInput) {
+                                adminTransferInput.value = typeof adminData.transfer.iban === 'string'
+                                    ? adminData.transfer.iban
+                                    : '';
+                            }
+
+                            if (adminData.documents && adminData.documents.claim_procedure) {
+                                const controller = documentUploadControllers.claim_procedure;
+                                if (controller && typeof controller.applyServerState === 'function') {
+                                    controller.applyServerState(adminData.documents.claim_procedure);
+                                }
+                            }
+                        }
+
                         setStatus(strings.success || 'Cambios guardados correctamente.', 'success');
+                        setSaveDisabled(true);
                     })
                     .catch((error) => {
                         const message = error && typeof error.message === 'string' && error.message !== ''
@@ -647,7 +803,6 @@
             }
         }
 
-        const notificationsRepeater = document.querySelector('[data-notification-repeater]');
         if (notificationsRepeater) {
             const rowsContainer = notificationsRepeater.querySelector('[data-repeater-rows]');
             const template = notificationsRepeater.querySelector('template[data-repeater-template]');
@@ -697,13 +852,18 @@
                 }
             };
 
-            const createRow = (data = {}) => {
+            const createRow = (data = {}, options = {}) => {
                 if (!rowsContainer || !template) {
                     return null;
                 }
 
                 const index = nextIndex;
                 nextIndex += 1;
+                notificationsRepeater.setAttribute('data-next-index', String(nextIndex));
+
+                const config = typeof options === 'object' && options !== null ? options : {};
+                const suppressDirty = Boolean(config.suppressDirty);
+                const shouldFocus = config.focus !== false;
 
                 const html = template.innerHTML.replace(/__index__/g, String(index));
                 const fragment = document.createElement('div');
@@ -715,7 +875,7 @@
                 }
 
                 const emailInput = row.querySelector('[data-repeater-email]');
-                if (emailInput && data.email) {
+                if (emailInput && typeof data.email === 'string') {
                     emailInput.value = data.email;
                 }
 
@@ -727,17 +887,21 @@
                 rowsContainer.appendChild(row);
                 bindRow(row);
                 updateRemoveState();
-                enableSaveButton();
+                if (!suppressDirty) {
+                    enableSaveButton();
+                }
 
-                window.requestAnimationFrame(() => {
-                    if (emailInput && typeof emailInput.focus === 'function') {
-                        try {
-                            emailInput.focus({ preventScroll: true });
-                        } catch (error) {
-                            emailInput.focus();
+                if (shouldFocus) {
+                    window.requestAnimationFrame(() => {
+                        if (emailInput && typeof emailInput.focus === 'function') {
+                            try {
+                                emailInput.focus({ preventScroll: true });
+                            } catch (error) {
+                                emailInput.focus();
+                            }
                         }
-                    }
-                });
+                    });
+                }
 
                 return row;
             };
@@ -753,6 +917,30 @@
                     createRow();
                 });
             }
+
+            notificationsRepeater.__syncRows = (rows = []) => {
+                if (!rowsContainer || !template) {
+                    return;
+                }
+
+                rowsContainer.innerHTML = '';
+                nextIndex = 0;
+                notificationsRepeater.setAttribute('data-next-index', '0');
+
+                const normalized = Array.isArray(rows) ? rows : [];
+                if (normalized.length === 0) {
+                    createRow({}, { suppressDirty: true, focus: false });
+                } else {
+                    normalized.forEach((rowData) => {
+                        createRow({
+                            email: typeof rowData.email === 'string' ? rowData.email : '',
+                            bcc: Boolean(rowData.bcc),
+                        }, { suppressDirty: true, focus: false });
+                    });
+                }
+
+                updateRemoveState();
+            };
         }
 
         const paymentActivation = document.querySelector('[data-payment-activation]');
@@ -865,12 +1053,13 @@
             const placeholder = container.querySelector('[data-document-placeholder]');
             const removeButton = container.querySelector('[data-document-remove]');
             const defaultLabel = container.dataset.defaultLabel || (label ? label.textContent : '') || '';
+            const documentType = container.dataset.documentType || '';
 
-            const initialLabel = label ? label.textContent : defaultLabel;
-            const initialSize = sizeElement && !sizeElement.hasAttribute('hidden') ? sizeElement.textContent : '';
-            const initialUrl = linkElement && !linkElement.hasAttribute('hidden') ? linkElement.getAttribute('href') : '';
-            const initialLinkText = linkElement ? linkElement.textContent : '';
-            const initialHasDocument = body ? !body.hasAttribute('hidden') : false;
+            let initialLabel = label ? label.textContent : defaultLabel;
+            let initialSize = sizeElement && !sizeElement.hasAttribute('hidden') ? sizeElement.textContent : '';
+            let initialUrl = linkElement && !linkElement.hasAttribute('hidden') ? linkElement.getAttribute('href') : '';
+            let initialLinkText = linkElement ? linkElement.textContent : '';
+            let initialHasDocument = body ? !body.hasAttribute('hidden') : false;
 
             const state = {
                 hasDocument: initialHasDocument,
@@ -939,6 +1128,68 @@
 
             renderState();
 
+            const registerState = (reason = 'render') => {
+                if (!documentType) {
+                    return;
+                }
+
+                const files = input && input.files ? Array.from(input.files) : [];
+                const file = files.length > 0 ? files[0] : null;
+                const removed = !state.hasDocument && initialHasDocument && !file;
+
+                documentUploadStates[documentType] = {
+                    hasDocument: state.hasDocument,
+                    removed,
+                    changed: Boolean(file),
+                    input,
+                    container,
+                    reason,
+                };
+            };
+
+            const applyServerState = (data = {}) => {
+                revokeTemporaryUrl();
+
+                const hasServerDocument = data && (data.id || data.url || data.filename || data.title);
+                const nextLabel = hasServerDocument
+                    ? (typeof data.filename === 'string' && data.filename !== ''
+                        ? data.filename
+                        : (typeof data.title === 'string' && data.title !== '' ? data.title : defaultLabel))
+                    : defaultLabel;
+                const nextSize = hasServerDocument && typeof data.size === 'string' ? data.size : '';
+                const nextUrl = hasServerDocument && typeof data.url === 'string' ? data.url : '';
+                const nextLinkText = hasServerDocument && typeof data.linkText === 'string' && data.linkText !== ''
+                    ? data.linkText
+                    : (initialLinkText || 'Ver documento');
+
+                initialLabel = nextLabel;
+                initialSize = nextSize;
+                initialUrl = nextUrl;
+                initialLinkText = nextLinkText;
+                initialHasDocument = Boolean(hasServerDocument);
+
+                state.hasDocument = initialHasDocument;
+                state.label = nextLabel;
+                state.size = nextSize;
+                state.url = nextUrl;
+                state.linkText = nextLinkText;
+
+                if (input) {
+                    input.value = '';
+                }
+
+                renderState();
+                registerState('sync');
+            };
+
+            if (documentType) {
+                documentUploadControllers[documentType] = {
+                    applyServerState,
+                };
+            }
+
+            registerState('init');
+
             if (container && input) {
                 container.addEventListener('click', (event) => {
                     if (!input) {
@@ -971,6 +1222,7 @@
                         input.value = '';
                     }
                     renderState();
+                    registerState('remove');
                     enableSaveButton();
                 });
             }
@@ -1004,6 +1256,7 @@
                     state.linkText = 'Previsualizar';
 
                     renderState();
+                    registerState('select');
                     enableSaveButton();
                 });
             }

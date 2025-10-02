@@ -2,6 +2,7 @@
 
 namespace GarantiasOnline360VO\Rest;
 
+use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
 use WP_Error;
 use WP_REST_Request;
@@ -63,6 +64,8 @@ class AccountRestController
 
         $notifications_data = self::get_array_param($request, 'notifications');
         $workshop_data      = self::get_array_param($request, 'workshop');
+        $is_admin_user      = current_user_can('manage_options');
+        $admin_data         = $is_admin_user ? self::get_array_param($request, 'admin') : [];
 
         $notifications = self::update_notifications($user_id, $notifications_data);
         if (is_wp_error($notifications)) {
@@ -79,9 +82,45 @@ class AccountRestController
             return $profile_image;
         }
 
+        $admin_response = null;
+        if ($is_admin_user) {
+            $admin_response = [];
+
+            if (array_key_exists('notifications', $admin_data)) {
+                $admin_notifications = self::update_admin_notifications($admin_data['notifications']);
+                if (is_wp_error($admin_notifications)) {
+                    return $admin_notifications;
+                }
+                $admin_response['notifications'] = $admin_notifications;
+            } else {
+                $admin_response['notifications'] = self::get_admin_notifications_snapshot();
+            }
+
+            if (array_key_exists('transfer', $admin_data)) {
+                $admin_transfer = self::update_admin_transfer($admin_data['transfer']);
+                if (is_wp_error($admin_transfer)) {
+                    return $admin_transfer;
+                }
+                $admin_response['transfer'] = $admin_transfer;
+            } else {
+                $admin_response['transfer'] = self::get_admin_transfer_snapshot();
+            }
+
+            $should_update_documents = array_key_exists('documents', $admin_data) || self::admin_document_has_upload($request);
+            if ($should_update_documents) {
+                $admin_documents = self::update_admin_documents($admin_data['documents'] ?? [], $request);
+                if (is_wp_error($admin_documents)) {
+                    return $admin_documents;
+                }
+                $admin_response['documents'] = $admin_documents;
+            } else {
+                $admin_response['documents'] = self::get_admin_documents_snapshot();
+            }
+        }
+
         $resolved_notification = NotificationEmailResolver::resolve_with_details($user_id);
 
-        return rest_ensure_response([
+        $response = [
             'success'       => true,
             'notifications' => array_merge(
                 $notifications,
@@ -92,7 +131,13 @@ class AccountRestController
             ),
             'workshop'      => $workshop,
             'profile_image' => $profile_image,
-        ]);
+        ];
+
+        if ($admin_response !== null) {
+            $response['admin'] = $admin_response;
+        }
+
+        return rest_ensure_response($response);
     }
 
     /**
@@ -216,6 +261,223 @@ class AccountRestController
     }
 
     /**
+     * @param array<string, mixed>|mixed $data
+     *
+     * @return array{recipients: array<int, array{email:string,bcc:bool}>, reply_to:string}|WP_Error
+     */
+    private static function update_admin_notifications($data)
+    {
+        $data = is_array($data) ? $data : [];
+
+        $raw_recipients = isset($data['recipients']) && is_array($data['recipients'])
+            ? $data['recipients']
+            : [];
+
+        $recipients = [];
+
+        foreach ($raw_recipients as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $raw_email = isset($row['email']) ? (string) $row['email'] : '';
+            $email = sanitize_email($raw_email);
+            $bcc = ! empty($row['bcc']);
+
+            if ($raw_email === '' && ! $bcc) {
+                continue;
+            }
+
+            if ($raw_email === '' || ! is_email($email)) {
+                return new WP_Error(
+                    'go_account_admin_invalid_notification_email',
+                    __('Introduce un correo electrónico válido para las notificaciones de administración.', 'garantias-online-360vo'),
+                    ['status' => 400]
+                );
+            }
+
+            $recipients[] = [
+                'admin_recipients' => $email,
+                'copia_oculta'     => $bcc ? 1 : 0,
+            ];
+        }
+
+        $reply_raw = isset($data['reply_to']) ? (string) $data['reply_to'] : '';
+        $reply_to = sanitize_email($reply_raw);
+
+        if ($reply_raw !== '' && ! is_email($reply_to)) {
+            return new WP_Error(
+                'go_account_admin_invalid_reply_to',
+                __('La dirección de respuesta no es válida.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $options = self::get_option_group('notificaciones');
+        $notifications_group = [];
+        if (isset($options['notificaciones_email']) && is_array($options['notificaciones_email'])) {
+            $notifications_group = $options['notificaciones_email'];
+        }
+
+        $notifications_group['direcciones_correo'] = array_values($recipients);
+        $notifications_group['direccion_respuesta'] = $reply_to;
+
+        $options['notificaciones_email'] = $notifications_group;
+
+        self::update_option_field('notificaciones', $options);
+        self::update_option_field('notificaciones_notificaciones_email', $notifications_group);
+        self::update_option_field('notificaciones_notificaciones_email_direccion_respuesta', $reply_to);
+        update_option('options_notificaciones_notificaciones_email_direcciones_correo', array_values($recipients));
+        update_option('options_notificaciones_notificaciones_email_direccion_respuesta', $reply_to);
+
+        $public_recipients = array_map(
+            static function ($row) {
+                return [
+                    'email' => isset($row['admin_recipients']) ? (string) $row['admin_recipients'] : '',
+                    'bcc'   => ! empty($row['copia_oculta']),
+                ];
+            },
+            array_values($recipients)
+        );
+
+        return [
+            'recipients' => $public_recipients,
+            'reply_to'   => $reply_to,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>|mixed $data
+     *
+     * @return array{iban:string}
+     */
+    private static function update_admin_transfer($data): array
+    {
+        $data = is_array($data) ? $data : [];
+        $raw_iban = isset($data['iban']) ? (string) $data['iban'] : '';
+        $iban = strtoupper(self::sanitize_text($raw_iban));
+        $iban = preg_replace('/\s+/', ' ', trim($iban));
+
+        $options = self::get_option_group('datos_bancarios');
+        $options['iban_360vo'] = $iban;
+
+        self::update_option_field('datos_bancarios', $options);
+        self::update_option_field('datos_bancarios_iban_360vo', $iban);
+
+        if ($iban === '') {
+            delete_option('options_datos_bancarios_iban_360vo');
+        } else {
+            update_option('options_datos_bancarios_iban_360vo', $iban);
+        }
+
+        return [
+            'iban' => $iban,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>|mixed $data
+     *
+     * @return array{claim_procedure: array<string, mixed>}|WP_Error
+     */
+    private static function update_admin_documents($data, WP_REST_Request $request)
+    {
+        $data = is_array($data) ? $data : [];
+
+        $documents = self::get_option_group('documentacion');
+        $current_attachment = self::resolve_option_attachment($documents['procedimiento_de_reclamacion'] ?? null);
+
+        $files = $request->get_file_params();
+        $claim_file = is_array($files) ? ($files['admin_claim_document'] ?? null) : null;
+
+        if (is_array($claim_file) && empty($claim_file['tmp_name'])) {
+            $claim_file = null;
+        }
+
+        if ($claim_file && ! empty($claim_file['error'])) {
+            return new WP_Error(
+                'go_account_admin_document_upload',
+                __('No se ha podido subir el procedimiento de reclamación.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $claim_data = isset($data['claim_procedure']) && is_array($data['claim_procedure'])
+            ? $data['claim_procedure']
+            : [];
+
+        $remove_claim = ! empty($claim_data['remove']) && ! $claim_file;
+
+        if (! $claim_file && ! $remove_claim) {
+            return self::get_admin_documents_snapshot();
+        }
+
+        $attachment_id = $current_attachment;
+
+        if ($claim_file) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+
+            $overrides = ['test_form' => false];
+            $handled = wp_handle_upload($claim_file, $overrides);
+
+            if (! is_array($handled) || isset($handled['error'])) {
+                return new WP_Error(
+                    'go_account_admin_document_upload',
+                    $handled['error'] ?? __('Error al subir el procedimiento de reclamación.', 'garantias-online-360vo'),
+                    ['status' => 400]
+                );
+            }
+
+            $attachment = [
+                'post_mime_type' => $handled['type'] ?? 'application/pdf',
+                'post_title'     => sanitize_file_name($claim_file['name'] ?? 'procedimiento-reclamacion'),
+                'post_content'   => '',
+                'post_status'    => 'inherit',
+            ];
+
+            $new_attachment_id = wp_insert_attachment($attachment, $handled['file']);
+            if (is_wp_error($new_attachment_id) || ! $new_attachment_id) {
+                if (isset($handled['file']) && file_exists($handled['file'])) {
+                    @unlink($handled['file']);
+                }
+
+                return new WP_Error(
+                    'go_account_admin_document_upload',
+                    __('No se ha podido guardar el procedimiento de reclamación.', 'garantias-online-360vo'),
+                    ['status' => 500]
+                );
+            }
+
+            $metadata = wp_generate_attachment_metadata($new_attachment_id, $handled['file']);
+            wp_update_attachment_metadata($new_attachment_id, $metadata);
+
+            $attachment_id = (int) $new_attachment_id;
+        } elseif ($remove_claim) {
+            $attachment_id = 0;
+        }
+
+        if ($attachment_id > 0) {
+            $documents['procedimiento_de_reclamacion'] = $attachment_id;
+        } else {
+            $documents['procedimiento_de_reclamacion'] = null;
+        }
+
+        self::update_option_field('documentacion', $documents);
+
+        if ($attachment_id > 0) {
+            self::update_option_field('documentacion_procedimiento_de_reclamacion', $attachment_id);
+            update_option('options_documentacion_procedimiento_de_reclamacion', $attachment_id);
+        } else {
+            self::update_option_field('documentacion_procedimiento_de_reclamacion', null);
+            delete_option('options_documentacion_procedimiento_de_reclamacion');
+        }
+
+        return self::get_admin_documents_snapshot();
+    }
+
+    /**
      * @return array<string, mixed>|WP_Error
      */
     private static function update_profile_image(int $user_id, WP_REST_Request $request)
@@ -288,6 +550,13 @@ class AccountRestController
             return $value;
         }
 
+        if (is_string($value) && $value !== '') {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
         $json = $request->get_json_params();
         if (is_array($json) && isset($json[$key]) && is_array($json[$key])) {
             return $json[$key];
@@ -346,6 +615,193 @@ class AccountRestController
             'url'      => $url,
             'filename' => $file ? basename($file) : '',
         ];
+    }
+
+    private static function get_admin_notifications_snapshot(): array
+    {
+        $options = self::get_option_group('notificaciones');
+        $notifications_group = [];
+        if (isset($options['notificaciones_email']) && is_array($options['notificaciones_email'])) {
+            $notifications_group = $options['notificaciones_email'];
+        }
+
+        $recipients = [];
+        if (isset($notifications_group['direcciones_correo']) && is_array($notifications_group['direcciones_correo'])) {
+            foreach ($notifications_group['direcciones_correo'] as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+
+                $email = sanitize_email((string) ($row['admin_recipients'] ?? ''));
+                if ($email === '') {
+                    continue;
+                }
+
+                $recipients[] = [
+                    'email' => $email,
+                    'bcc'   => ! empty($row['copia_oculta']),
+                ];
+            }
+        }
+
+        $reply_to = '';
+        if (isset($notifications_group['direccion_respuesta'])) {
+            $reply_to = sanitize_email((string) $notifications_group['direccion_respuesta']);
+        }
+
+        if ($reply_to === '') {
+            $fallback = get_option('options_notificaciones_notificaciones_email_direccion_respuesta');
+            if (is_string($fallback) && $fallback !== '') {
+                $reply_to = sanitize_email($fallback);
+            }
+        }
+
+        return [
+            'recipients' => $recipients,
+            'reply_to'   => $reply_to,
+        ];
+    }
+
+    private static function get_admin_transfer_snapshot(): array
+    {
+        $options = self::get_option_group('datos_bancarios');
+        $iban = '';
+
+        if (isset($options['iban_360vo'])) {
+            $iban = self::sanitize_text($options['iban_360vo']);
+        }
+
+        if ($iban === '') {
+            $single = get_option('options_datos_bancarios_iban_360vo');
+            if (is_string($single) && $single !== '') {
+                $iban = self::sanitize_text($single);
+            }
+        }
+
+        return [
+            'iban' => $iban,
+        ];
+    }
+
+    private static function get_admin_documents_snapshot(): array
+    {
+        $options = self::get_option_group('documentacion');
+        $attachment_id = self::resolve_option_attachment($options['procedimiento_de_reclamacion'] ?? null);
+
+        if ($attachment_id <= 0) {
+            $fallback = get_option('options_documentacion_procedimiento_de_reclamacion');
+            if (is_numeric($fallback)) {
+                $attachment_id = (int) $fallback;
+            }
+        }
+
+        return [
+            'claim_procedure' => self::prepare_claim_document_response($attachment_id),
+        ];
+    }
+
+    private static function admin_document_has_upload(WP_REST_Request $request): bool
+    {
+        $files = $request->get_file_params();
+        if (! is_array($files)) {
+            return false;
+        }
+
+        $file = $files['admin_claim_document'] ?? null;
+        if (! is_array($file)) {
+            return false;
+        }
+
+        return ! empty($file['tmp_name']);
+    }
+
+    private static function resolve_option_attachment($value): int
+    {
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        if (is_array($value)) {
+            if (isset($value['ID'])) {
+                return (int) $value['ID'];
+            }
+
+            if (isset($value['id'])) {
+                return (int) $value['id'];
+            }
+
+            if (isset($value['value'])) {
+                return (int) $value['value'];
+            }
+        } elseif ($value instanceof \WP_Post) {
+            return (int) $value->ID;
+        }
+
+        return 0;
+    }
+
+    private static function prepare_claim_document_response(int $attachment_id): array
+    {
+        if ($attachment_id <= 0) {
+            return [
+                'id'       => 0,
+                'title'    => '',
+                'filename' => '',
+                'url'      => '',
+                'size'     => '',
+                'linkText' => __('Ver documento', 'garantias-online-360vo'),
+            ];
+        }
+
+        $title = get_the_title($attachment_id);
+        $url = wp_get_attachment_url($attachment_id) ?: '';
+        $file = get_attached_file($attachment_id);
+        $filename = $file ? basename($file) : '';
+        $size = '';
+
+        if ($file && file_exists($file)) {
+            $filesize = filesize($file);
+            if (is_numeric($filesize)) {
+                $size = size_format((float) $filesize);
+            }
+        }
+
+        return [
+            'id'       => $attachment_id,
+            'title'    => $title ? (string) $title : $filename,
+            'filename' => $filename,
+            'url'      => $url,
+            'size'     => $size,
+            'linkText' => __('Ver documento', 'garantias-online-360vo'),
+        ];
+    }
+
+    private static function get_option_group(string $field): array
+    {
+        if (function_exists('get_field')) {
+            $value = get_field($field, SettingsPage::SUBMENU_SLUG);
+            if (is_array($value)) {
+                return $value;
+            }
+        }
+
+        $option = get_option('options_' . $field);
+
+        return is_array($option) ? $option : [];
+    }
+
+    private static function update_option_field(string $field, $value): void
+    {
+        if (function_exists('update_field')) {
+            update_field($field, $value, SettingsPage::SUBMENU_SLUG);
+        }
+
+        if ($value === null) {
+            delete_option('options_' . $field);
+            return;
+        }
+
+        update_option('options_' . $field, $value);
     }
 
     private static function get_acf_group(string $scope, string $field): array
