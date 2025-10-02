@@ -224,12 +224,17 @@ class AccountViewModel
         $query = new \WP_User_Query([
             'role__in' => ['go_profesional'],
             'number'   => -1,
-            'fields'   => ['ID'],
+            'fields'   => 'ids',
         ]);
 
         $candidate_ids = [];
         if ($query instanceof \WP_User_Query) {
-            $candidate_ids = array_map('intval', (array) $query->get_results());
+            $candidate_ids = array_filter(
+                array_map('intval', (array) $query->get_results()),
+                static function ($id): bool {
+                    return is_int($id) && $id > 0;
+                }
+            );
         }
 
         if (! $candidate_ids) {
@@ -237,9 +242,6 @@ class AccountViewModel
         }
 
         foreach ($candidate_ids as $client_id) {
-            if ($client_id <= 0) {
-                continue;
-            }
 
             $assigned_ids = [];
 
