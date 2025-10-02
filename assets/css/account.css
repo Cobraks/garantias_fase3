@@ -120,6 +120,11 @@
   margin-top: auto;
 }
 
+.account-summary__status {
+  align-self: center;
+  min-height: 1rem;
+}
+
 .account-summary__save {
   display: inline-flex;
   align-items: center;
@@ -256,7 +261,7 @@
 .account-section__content {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0;
   width: 100%;
 }
 
@@ -638,6 +643,36 @@
   .account-card-grid--payments {
     grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
   }
+}
+
+.account-card-grid--workshop {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.account-card--workshop {
+  gap: 1.5rem;
+}
+
+.account-card--workshop .account-field--checkbox {
+  align-self: flex-start;
+}
+
+.account-form--workshop {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.account-form--workshop .account-form__field {
+  margin: 0;
+}
+
+.account-form--workshop .account-form__field--full {
+  grid-column: 1 / -1;
+}
+
+.account-form--workshop .account-form__field--half {
+  grid-column: span 1;
 }
 
 .account-card--payments-summary {

@@ -113,35 +113,94 @@
 
         const saveButton = document.querySelector('[data-account-save]');
         const accountPage = document.querySelector('.account-page');
+        const statusElement = document.querySelector('[data-account-status]');
+        const statusVariants = [
+            'account-status--info',
+            'account-status--success',
+            'account-status--warning',
+            'account-status--error',
+        ];
+        const accountConfig = window.go360Account || {};
+        const restEndpoint = accountConfig.rest && accountConfig.rest.endpoint ? accountConfig.rest.endpoint : '';
+        const restNonce = accountConfig.rest && accountConfig.rest.nonce ? accountConfig.rest.nonce : '';
+        const strings = accountConfig.strings || {};
+        const workshopToggle = document.querySelector('[data-workshop-toggle]');
+        const workshopFieldKeys = [
+            'name',
+            'fiscal_name',
+            'tax_id',
+            'contact_person',
+            'phone',
+            'email',
+            'address',
+        ];
+        let workshopVisibilityUpdater = null;
+
+        const setStatus = (message, variant = 'info') => {
+            if (!statusElement) {
+                return;
+            }
+
+            const text = typeof message === 'string' ? message.trim() : '';
+
+            statusElement.classList.remove(...statusVariants);
+
+            if (text === '') {
+                statusElement.textContent = '';
+                statusElement.hidden = true;
+                statusElement.setAttribute('aria-hidden', 'true');
+                return;
+            }
+
+            statusElement.textContent = text;
+            statusElement.hidden = false;
+            statusElement.setAttribute('aria-hidden', 'false');
+
+            const className = `account-status--${variant}`;
+            if (statusVariants.includes(className)) {
+                statusElement.classList.add(className);
+            } else {
+                statusElement.classList.add('account-status--info');
+            }
+        };
+
+        setStatus('', 'info');
+
+        const setSaveDisabled = (disabled) => {
+            if (!saveButton) {
+                return;
+            }
+
+            const method = disabled ? 'add' : 'remove';
+            saveButton.classList[method]('disabled');
+
+            if (disabled) {
+                saveButton.setAttribute('disabled', 'disabled');
+                saveButton.setAttribute('aria-disabled', 'true');
+            } else {
+                saveButton.removeAttribute('disabled');
+                saveButton.setAttribute('aria-disabled', 'false');
+            }
+        };
 
         const enableSaveButton = () => {
             if (!saveButton) {
                 return;
             }
 
-            if (saveButton.classList.contains('disabled')) {
-                saveButton.classList.remove('disabled');
-                saveButton.removeAttribute('disabled');
-                saveButton.setAttribute('aria-disabled', 'false');
+            const wasDisabled = saveButton.classList.contains('disabled');
+            setSaveDisabled(false);
+
+            if (wasDisabled && strings.dirty) {
+                setStatus(strings.dirty, 'info');
             }
         };
 
-        if (saveButton && accountPage) {
-            const setSaveDisabled = (disabled) => {
-                const method = disabled ? 'add' : 'remove';
-                saveButton.classList[method]('disabled');
-
-                if (disabled) {
-                    saveButton.setAttribute('disabled', 'disabled');
-                    saveButton.setAttribute('aria-disabled', 'true');
-                } else {
-                    saveButton.removeAttribute('disabled');
-                    saveButton.setAttribute('aria-disabled', 'false');
-                }
-            };
-
+        if (saveButton) {
             setSaveDisabled(saveButton.classList.contains('disabled') || saveButton.hasAttribute('disabled'));
+        }
 
+        if (saveButton && accountPage) {
             const maybeEnableSave = (event) => {
                 const target = event.target;
                 if (!target) {
@@ -166,12 +225,164 @@
                 }
 
                 if (saveButton.classList.contains('disabled')) {
-                    setSaveDisabled(false);
+                    enableSaveButton();
                 }
             };
 
             ['change', 'input'].forEach((eventName) => {
                 accountPage.addEventListener(eventName, maybeEnableSave, true);
+            });
+        }
+
+        if (workshopToggle) {
+            const details = document.querySelector('[data-workshop-details]');
+            const updateWorkshopVisibility = () => {
+                const isChecked = workshopToggle.checked;
+                workshopToggle.setAttribute('aria-expanded', String(isChecked));
+
+                if (!details) {
+                    return;
+                }
+
+                details.hidden = !isChecked;
+
+                if (isChecked) {
+                    details.removeAttribute('aria-hidden');
+                } else {
+                    details.setAttribute('aria-hidden', 'true');
+                }
+            };
+
+            workshopVisibilityUpdater = updateWorkshopVisibility;
+            updateWorkshopVisibility();
+            workshopToggle.addEventListener('change', updateWorkshopVisibility);
+        }
+
+        const collectNotificationsPayload = () => {
+            const input = document.getElementById('account-notification-email');
+            const rawValue = input && typeof input.value === 'string' ? input.value.trim() : '';
+
+            return {
+                email: rawValue,
+                use_registration: rawValue === '',
+            };
+        };
+
+        const collectWorkshopPayload = () => {
+            const hasWorkshop = workshopToggle ? workshopToggle.checked : false;
+            const values = {};
+
+            workshopFieldKeys.forEach((key) => {
+                const field = document.querySelector(`[name="account_workshop[${key}]"]`);
+                if (!field || typeof field.value !== 'string') {
+                    values[key] = '';
+                    return;
+                }
+
+                values[key] = field.value.trim();
+            });
+
+            return Object.assign({ has_workshop: hasWorkshop }, values);
+        };
+
+        if (saveButton) {
+            saveButton.addEventListener('click', (event) => {
+                event.preventDefault();
+
+                if (saveButton.classList.contains('disabled')) {
+                    return;
+                }
+
+                if (!restEndpoint || !restNonce) {
+                    const fallback = strings.error || strings.invalid || 'No se han podido guardar los cambios.';
+                    setStatus(fallback, 'error');
+                    return;
+                }
+
+                const payload = {
+                    notifications: collectNotificationsPayload(),
+                    workshop: collectWorkshopPayload(),
+                };
+
+                setSaveDisabled(true);
+                saveButton.setAttribute('aria-busy', 'true');
+                setStatus(strings.saving || 'Guardando cambios…', 'info');
+
+                fetch(restEndpoint, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': restNonce,
+                    },
+                    body: JSON.stringify(payload),
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            return response
+                                .json()
+                                .catch(() => ({}))
+                                .then((data) => {
+                                    const message = data && typeof data.message === 'string' && data.message !== ''
+                                        ? data.message
+                                        : (strings.error || strings.invalid || 'No se han podido guardar los cambios.');
+                                    const error = new Error(message);
+                                    error.code = data && data.code ? data.code : 'error';
+                                    throw error;
+                                });
+                        }
+
+                        return response.json();
+                    })
+                    .then((data) => {
+                        if (!data || data.success !== true) {
+                            throw new Error(strings.error || 'No se han podido guardar los cambios.');
+                        }
+
+                        if (data.notifications) {
+                            const notificationInput = document.getElementById('account-notification-email');
+                            if (notificationInput) {
+                                const useRegistration = Boolean(data.notifications.use_registration);
+                                const nextValue = useRegistration ? '' : (data.notifications.email || '');
+                                notificationInput.value = nextValue;
+                            }
+                        }
+
+                        if (data.workshop) {
+                            const hasWorkshop = Boolean(data.workshop.has_workshop);
+                            if (workshopToggle) {
+                                workshopToggle.checked = hasWorkshop;
+                            }
+
+                            workshopFieldKeys.forEach((key) => {
+                                const field = document.querySelector(`[name="account_workshop[${key}]"]`);
+                                if (!field) {
+                                    return;
+                                }
+
+                                const nextValue = data.workshop[key];
+                                field.value = typeof nextValue === 'string' ? nextValue : '';
+                            });
+
+                            if (typeof workshopVisibilityUpdater === 'function') {
+                                workshopVisibilityUpdater();
+                            }
+                        }
+
+                        setStatus(strings.success || 'Cambios guardados correctamente.', 'success');
+                    })
+                    .catch((error) => {
+                        const message = error && typeof error.message === 'string' && error.message !== ''
+                            ? error.message
+                            : (strings.error || strings.invalid || 'No se han podido guardar los cambios.');
+                        setStatus(message, 'error');
+                        setSaveDisabled(false);
+                    })
+                    .finally(() => {
+                        if (saveButton) {
+                            saveButton.removeAttribute('aria-busy');
+                        }
+                    });
             });
         }
 
