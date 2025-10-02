@@ -20,7 +20,7 @@ use GarantiasOnline360VO\Svg;
             </h3>
             <p class="form-success__transfer-note">
                 <?php echo Svg::icon('warning', 'form-success__transfer-note-icon'); ?>
-                Dispones de 48&nbsp;horas para realizar el pago.
+                <span class="form-success__transfer-note-text">Realiza el pago antes de la fecha límite indicada.</span>
             </p>
             <table class="form-success__transfer-table">
                 <tbody>

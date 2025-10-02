@@ -27,34 +27,54 @@ function updateSelectFloatingLabels() {
 
 function toggleVehiculoFields() {
 	const tipoVehiculo = document.getElementById("tipo_vehiculo");
-	const traccionContainer = document.querySelector(
-		".form__input-container--traccion"
-	);
+        const traccionContainer = document.querySelector(
+                ".form__input-container--traccion"
+        );
         const traccionCamionContainer = document.querySelector(
                 ".form__input-container--traccion-camion"
         );
 
 	if (!tipoVehiculo) return;
 
-	const isCamion = tipoVehiculo.value === "camion";
+        const isCamion = tipoVehiculo.value === "camion";
+        const isMoto = tipoVehiculo.value === "moto";
 
-	// Tracción normal
-	if (traccionContainer) {
-		traccionContainer.style.display = isCamion ? "none" : "";
-		if (isCamion) {
-			const traccion = traccionContainer.querySelector("#traccion");
-			if (traccion) traccion.value = "";
-		}
-	}
-	// Tracción camión y MMA
-	if (traccionCamionContainer) {
-		traccionCamionContainer.style.display = isCamion ? "" : "none";
-		if (!isCamion) {
-			const traccionCamion =
-				traccionCamionContainer.querySelector("#traccion_camion");
-			if (traccionCamion) traccionCamion.value = "";
-		}
-	}
+        // Tracción normal
+        if (traccionContainer) {
+                const traccion = traccionContainer.querySelector("#traccion");
+                const ocultarTraccion = isCamion || isMoto;
+                traccionContainer.style.display = ocultarTraccion ? "none" : "";
+                if (traccion) {
+                        if (traccion.dataset.originalRequired == null) {
+                                traccion.dataset.originalRequired = traccion.required
+                                        ? "true"
+                                        : "false";
+                        }
+                        if (ocultarTraccion) {
+                                traccion.value = "";
+                                traccion.required = false;
+                        } else if (traccion.dataset.originalRequired !== "false") {
+                                traccion.required = true;
+                        }
+                }
+        }
+        // Tracción camión y MMA
+        if (traccionCamionContainer) {
+                const traccionCamion = traccionCamionContainer.querySelector("#traccion_camion");
+                traccionCamionContainer.style.display = isCamion ? "" : "none";
+                if (traccionCamion) {
+                        if (traccionCamion.dataset.originalRequired == null) {
+                                traccionCamion.dataset.originalRequired =
+                                        traccionCamion.required ? "true" : "false";
+                        }
+                        if (!isCamion) {
+                                traccionCamion.value = "";
+                                traccionCamion.required = false;
+                        } else if (traccionCamion.dataset.originalRequired !== "false") {
+                                traccionCamion.required = true;
+                        }
+                }
+        }
         // Actualiza el estado de validación y resumen
         updateNextButtonState();
         debouncedUpdateSummary();
