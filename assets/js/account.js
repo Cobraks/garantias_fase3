@@ -134,7 +134,37 @@
             'email',
             'address',
         ];
+        const signatureUpload = document.getElementById('signature-upload');
+        const stampUpload = document.getElementById('stamp-upload');
+        const certificatesWarning = document.querySelector('[data-certificates-warning]');
+        const certificatesWarningText = certificatesWarning
+            ? certificatesWarning.textContent.trim()
+            : 'Necesitas subir tanto la firma como el sello para firmar que tus certificados aparezcan firmados.';
+        let signatureHasFile = false;
+        let stampHasFile = false;
+        let certificatesValid = true;
         let workshopVisibilityUpdater = null;
+
+        const updateCertificatesWarningState = () => {
+            const mismatch = (signatureHasFile && !stampHasFile) || (!signatureHasFile && stampHasFile);
+            certificatesValid = !mismatch;
+
+            if (certificatesWarning) {
+                certificatesWarning.hidden = !mismatch;
+                certificatesWarning.setAttribute('aria-hidden', mismatch ? 'false' : 'true');
+            }
+
+            const toggleInvalid = (element, active) => {
+                if (!element) {
+                    return;
+                }
+
+                element.classList.toggle('file-upload--invalid', active);
+            };
+
+            toggleInvalid(signatureUpload, mismatch);
+            toggleInvalid(stampUpload, mismatch);
+        };
 
         const setStatus = (message, variant = 'info') => {
             if (!statusElement) {
@@ -290,6 +320,14 @@
                 event.preventDefault();
 
                 if (saveButton.classList.contains('disabled')) {
+                    return;
+                }
+
+                if (!certificatesValid) {
+                    setStatus(certificatesWarningText, 'warning');
+                    if (signatureUpload && typeof signatureUpload.scrollIntoView === 'function') {
+                        signatureUpload.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                     return;
                 }
 
@@ -853,7 +891,7 @@
             }
         });
 
-        const setupImageUpload = (containerId, inputId, previewId) => {
+        const setupImageUpload = (containerId, inputId, previewId, options) => {
             const container = document.getElementById(containerId);
             const input = document.getElementById(inputId);
             const preview = document.getElementById(previewId);
@@ -863,6 +901,8 @@
                 return;
             }
 
+            const config = typeof options === 'object' && options !== null ? options : {};
+            const onStateChange = typeof config.onStateChange === 'function' ? config.onStateChange : null;
             const label = container.querySelector('.file-label');
             const removeButton = container.querySelector('[data-file-remove]');
             const initialLabel = label ? label.textContent : '';
@@ -870,6 +910,17 @@
             const initialPreviewVisible = preview ? !preview.hasAttribute('hidden') : false;
             const initialPreviewSrc = previewImage ? previewImage.getAttribute('src') : '';
             let allowRestoreInitial = initialPreviewVisible && Boolean(initialPreviewSrc);
+            let hasFile = initialPreviewVisible && Boolean(initialPreviewSrc);
+
+            const notifyStateChange = () => {
+                if (onStateChange) {
+                    onStateChange({
+                        hasFile,
+                        input,
+                        container,
+                    });
+                }
+            };
 
             const setPreviewVisible = (visible, src = '') => {
                 if (!preview) {
@@ -903,10 +954,11 @@
                 removeButton.hidden = !visible;
             };
 
-            const resetPreview = (options = {}) => {
-                const restoreInitial = options.restoreInitial !== false;
+            const resetPreview = (resetOptions = {}) => {
+                const restoreInitial = resetOptions.restoreInitial !== false;
+                const shouldRestore = restoreInitial && allowRestoreInitial && initialPreviewVisible && initialPreviewSrc;
 
-                if (restoreInitial && allowRestoreInitial && initialPreviewVisible && initialPreviewSrc) {
+                if (shouldRestore) {
                     setPreviewVisible(true, initialPreviewSrc);
                     updateRemoveVisibility(true);
                     if (label) {
@@ -919,6 +971,9 @@
                         label.textContent = defaultLabel;
                     }
                 }
+
+                hasFile = shouldRestore;
+                notifyStateChange();
             };
 
             container.addEventListener('click', (event) => {
@@ -951,6 +1006,8 @@
 
                 if (!preview || !previewImage || !file.type || !file.type.startsWith('image/')) {
                     updateRemoveVisibility(true);
+                    hasFile = true;
+                    notifyStateChange();
                     return;
                 }
 
@@ -959,6 +1016,8 @@
                     if (typeof reader.result === 'string') {
                         setPreviewVisible(true, reader.result);
                         updateRemoveVisibility(true);
+                        hasFile = true;
+                        notifyStateChange();
                     }
                 });
                 reader.readAsDataURL(file);
@@ -981,9 +1040,22 @@
             if (!initialPreviewVisible) {
                 setPreviewVisible(false);
             }
+
+            notifyStateChange();
         };
 
-        setupImageUpload('signature-upload', 'signature', 'signature-preview');
-        setupImageUpload('stamp-upload', 'stamp', 'stamp-preview');
+        setupImageUpload('signature-upload', 'signature', 'signature-preview', {
+            onStateChange: (state) => {
+                signatureHasFile = Boolean(state && state.hasFile);
+                updateCertificatesWarningState();
+            },
+        });
+        setupImageUpload('stamp-upload', 'stamp', 'stamp-preview', {
+            onStateChange: (state) => {
+                stampHasFile = Boolean(state && state.hasFile);
+                updateCertificatesWarningState();
+            },
+        });
+        updateCertificatesWarningState();
     });
 })();

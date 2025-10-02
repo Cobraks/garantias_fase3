@@ -1313,6 +1313,16 @@ $formatPhoneHref = static function ($phone) {
                                         >
                                             <?php echo esc_html__('Eliminar imagen', 'garantias-online-360vo'); ?>
                                         </button>
+                                        <p
+                                            class="file-warning"
+                                            data-certificates-warning
+                                            hidden
+                                            aria-hidden="true"
+                                            aria-live="polite"
+                                            role="alert"
+                                        >
+                                            Necesitas subir tanto la firma como el sello para firmar que tus certificados aparezcan firmados.
+                                        </p>
                                     </div>
                                 </div>
 

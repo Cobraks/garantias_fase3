@@ -1006,6 +1006,23 @@
   padding: 1rem;
 }
 
+.account-card--certificates .file-warning {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #9a3412;
+  line-height: 1.45;
+}
+
+.account-card--certificates .file-warning[hidden] {
+  display: none;
+}
+
+.account-card--certificates .file-upload--invalid {
+  border-color: #fb923c;
+  background: rgba(249, 115, 22, 0.08);
+  color: #9a3412;
+}
+
 .account-upload--document .file-upload {
   text-align: left;
   align-items: flex-start;
