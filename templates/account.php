@@ -469,7 +469,7 @@ $formatPhoneHref = static function ($phone) {
                         <?php endif; ?>
                     </dl>
                 </div>
-                <?php if (! $is_admin_account) : ?>
+                <?php if (! $is_admin_account && ! $is_commercial_account) : ?>
                     <div class="account-card account-card--contacts account-card--commercial">
                         <h3>Comercial asignado</h3>
                         <?php if (! empty($commercials)) : ?>
@@ -846,7 +846,7 @@ $formatPhoneHref = static function ($phone) {
                                         ?>
                                     </span>
                                     <?php if ($client_username !== '') : ?>
-                                        <span class="account-clients__username">@<?php echo esc_html($client_username); ?></span>
+                                        <span class="account-clients__username"><?php echo esc_html($client_username); ?></span>
                                     <?php endif; ?>
                                 </div>
                             </div>
