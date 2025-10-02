@@ -129,7 +129,7 @@
   border: none;
   background: var(--primary-color);
   color: #fff;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.95rem;
   line-height: 1;
   cursor: pointer;
@@ -658,6 +658,7 @@
   background: #fff;
   transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
   max-width: 28rem;
+  height: 3rem;
 }
 
 .account-input-wrapper.account-input-wrapper--floating {
@@ -689,7 +690,7 @@
 
 .account-input-wrapper.account-input-wrapper--floating .account-input:focus + .account-input__label,
 .account-input-wrapper.account-input-wrapper--floating .account-input:not(:placeholder-shown) + .account-input__label {
-  left: 0;
+  left: -2rem;
 }
 
 .account-card--admin-transfer .account-input-wrapper:focus-within {
@@ -787,7 +788,7 @@
 .account-input__label {
   position: absolute;
   top: 12px;
-  left: 1rem;
+  left: 0;
   color: #64748b;
   pointer-events: none;
   transition: 0.2s ease all;
@@ -798,7 +799,7 @@
 .account-input:focus + .account-input__label,
 .account-input:not(:placeholder-shown) + .account-input__label {
   top: -0.5rem;
-  left: 0.8rem;
+  left: -2rem;
   font-size: 0.8rem;
   color: #1f2937;
 }
@@ -1039,19 +1040,27 @@
   margin-top: 0.75rem;
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid var(--neutral80);
-  background: #fff;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   cursor: pointer;
-  transition: border-color var(--transition-speed), color var(--transition-speed), background-color var(--transition-speed);
+  transition: color var(--transition-speed), transform var(--transition-speed);
+}
+
+.account-card--certificates .file-remove::before {
+  content: "\00d7";
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .account-card--certificates .file-remove:hover,
 .account-card--certificates .file-remove:focus-visible {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-  background: rgba(37, 99, 235, 0.05);
+  color: #b91c1c;
+  transform: translateY(-1px);
   outline: none;
 }
 
@@ -1281,14 +1290,18 @@
 .account-button.account-button--ghost {
   background: transparent;
   color: var(--primary-color);
-  border: 1px solid currentColor;
+  border: none;
+  padding: 0;
+  font-weight: 400;
 }
 
 .account-button.account-button--ghost:hover,
 .account-button.account-button--ghost:focus-visible {
-  background: rgba(37, 99, 235, 0.08);
+  background: transparent;
   color: var(--primary-color);
   box-shadow: none;
+  outline: none;
+  transform: none;
 }
 
 .account-status {
