@@ -1382,7 +1382,7 @@ $formatPhoneHref = static function ($phone) {
                             </label>
                         </div>
                         <form
-                            class="account-form account-form--floating account-form--workshop"
+                            class="account-form account-form--workshop"
                             action="#"
                             method="post"
                             novalidate
