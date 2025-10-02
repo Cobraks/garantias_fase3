@@ -569,8 +569,11 @@
     };
 
     const handleEmailStatusChange = (status) => {
+      const previousStatus = state.emailStatus;
       state.emailStatus = status;
-      updateStep1ButtonState();
+      if (previousStatus !== status) {
+        updateStep1ButtonState();
+      }
     };
 
     const checkEmailAvailability = async () => {

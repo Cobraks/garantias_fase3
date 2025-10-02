@@ -145,7 +145,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             </div>
 
                             <div class="input-container input-container--with-toggle">
-                                <input type="password" id="password" class="form-input input-with-icon" placeholder=" " required>
+                                <input type="password" id="password" class="form-input input-with-icon" placeholder=" " required autocomplete="new-password">
                                 <label for="password" class="form-label">Contraseña</label>
                                 <button
                                     type="button"
@@ -162,7 +162,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             </div>
 
                             <div class="input-container input-container--with-toggle">
-                                <input type="password" id="confirm_password" class="form-input input-with-icon" placeholder=" " required>
+                                <input type="password" id="confirm_password" class="form-input input-with-icon" placeholder=" " required autocomplete="new-password">
                                 <label for="confirm_password" class="form-label">Confirmar contraseña</label>
                                 <button
                                     type="button"
