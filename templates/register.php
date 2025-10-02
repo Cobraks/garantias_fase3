@@ -332,6 +332,18 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             </div>
                         </div>
 
+                        <div class="form-row">
+                            <div class="input-container">
+                                <input type="text" id="workshop_fiscal_name" class="form-input" placeholder=" ">
+                                <label for="workshop_fiscal_name" class="form-label">Denominación fiscal</label>
+                            </div>
+
+                            <div class="input-container">
+                                <input type="text" id="workshop_tax_id" class="form-input" placeholder=" ">
+                                <label for="workshop_tax_id" class="form-label">CIF del taller</label>
+                            </div>
+                        </div>
+
                         <div class="form-row form-row--three">
                             <div class="input-container">
                                 <input type="text" id="workshop_contact" class="form-input" placeholder=" ">
@@ -536,6 +548,14 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             <div class="summary-item">
                                 <span class="summary-label">Nombre:</span>
                                 <span class="summary-value" id="summary-workshop-name">—</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Denominación fiscal:</span>
+                                <span class="summary-value" id="summary-workshop-fiscal-name">—</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">CIF:</span>
+                                <span class="summary-value" id="summary-workshop-tax-id">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Contacto:</span>

@@ -488,6 +488,8 @@ class RegistrationService
                 'taller' => [
                     'tiene_taller'         => $data['has_workshop'],
                     'nombre_taller'        => $data['workshop']['name'] ?? '',
+                    'denominacion_fiscal'  => $data['workshop']['fiscal_name'] ?? '',
+                    'cif_taller'           => $data['workshop']['tax_id'] ?? '',
                     'persona_contacto_taller' => $data['workshop']['contact'] ?? '',
                     'telefono_taller'      => $data['workshop']['phone'] ?? '',
                     'correo_taller'        => $data['workshop']['email'] ?? '',
@@ -550,6 +552,8 @@ class RegistrationService
         if ($data['has_workshop']) {
             update_user_meta($user_id, 'servicios_taller_tiene_taller', 1);
             update_user_meta($user_id, 'servicios_taller_nombre_taller', $data['workshop']['name']);
+            update_user_meta($user_id, 'servicios_taller_denominacion_fiscal', $data['workshop']['fiscal_name']);
+            update_user_meta($user_id, 'servicios_taller_cif_taller', $data['workshop']['tax_id']);
             update_user_meta($user_id, 'servicios_taller_persona_contacto_taller', $data['workshop']['contact']);
             update_user_meta($user_id, 'servicios_taller_telefono_taller', $data['workshop']['phone']);
             update_user_meta($user_id, 'servicios_taller_correo_taller', $data['workshop']['email']);
@@ -1183,22 +1187,26 @@ class RegistrationService
         if (! $enabled) {
             return [];
         }
-        $name    = $this->sanitize_text($data['workshop_name'] ?? '');
-        $address = $this->sanitize_text($data['workshop_address'] ?? '');
-        $contact = $this->sanitize_text($data['workshop_contact'] ?? '');
-        $phone   = $this->sanitize_phone($data['workshop_phone'] ?? '');
-        $email   = sanitize_email($data['workshop_email'] ?? '');
+        $name        = $this->sanitize_text($data['workshop_name'] ?? '');
+        $address     = $this->sanitize_text($data['workshop_address'] ?? '');
+        $fiscal_name = $this->sanitize_text($data['workshop_fiscal_name'] ?? '');
+        $tax_id      = strtoupper($this->sanitize_text($data['workshop_tax_id'] ?? ''));
+        $contact     = $this->sanitize_text($data['workshop_contact'] ?? '');
+        $phone       = $this->sanitize_phone($data['workshop_phone'] ?? '');
+        $email       = sanitize_email($data['workshop_email'] ?? '');
 
-        if ($name === '' || $address === '' || $contact === '' || $phone === '' || ! is_email($email)) {
+        if ($name === '' || $address === '' || $fiscal_name === '' || $tax_id === '' || $contact === '' || $phone === '' || ! is_email($email)) {
             return new WP_Error('go_register_workshop', __('Completa los datos del taller para continuar.', 'garantias-online-360vo'));
         }
 
         return [
-            'name'    => $name,
-            'address' => $address,
-            'contact' => $contact,
-            'phone'   => $phone,
-            'email'   => $email,
+            'name'        => $name,
+            'address'     => $address,
+            'fiscal_name' => $fiscal_name,
+            'tax_id'      => $tax_id,
+            'contact'     => $contact,
+            'phone'       => $phone,
+            'email'       => $email,
         ];
     }
 

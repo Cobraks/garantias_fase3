@@ -122,6 +122,8 @@
       container: document.getElementById('workshop-fields'),
       name: document.getElementById('workshop_name'),
       address: document.getElementById('workshop_address'),
+      fiscalName: document.getElementById('workshop_fiscal_name'),
+      taxId: document.getElementById('workshop_tax_id'),
       contact: document.getElementById('workshop_contact'),
       phone: document.getElementById('workshop_phone'),
       email: document.getElementById('workshop_email'),
@@ -147,6 +149,8 @@
       sepaStatus: document.getElementById('summary-sepa-status'),
       workshopGroup: document.getElementById('summary-workshop'),
       workshopName: document.getElementById('summary-workshop-name'),
+      workshopFiscalName: document.getElementById('summary-workshop-fiscal-name'),
+      workshopTaxId: document.getElementById('summary-workshop-tax-id'),
       workshopContact: document.getElementById('summary-workshop-contact'),
       workshopAddress: document.getElementById('summary-workshop-address'),
       workshopPhone: document.getElementById('summary-workshop-phone'),
@@ -845,6 +849,12 @@
       if (!validateRequired(workshopFields.address, showError)) {
         valid = false;
       }
+      if (workshopFields.fiscalName && !validateRequired(workshopFields.fiscalName, showError)) {
+        valid = false;
+      }
+      if (workshopFields.taxId && !validateRequired(workshopFields.taxId, showError)) {
+        valid = false;
+      }
       if (!validateRequired(workshopFields.contact, showError)) {
         valid = false;
       }
@@ -1065,6 +1075,12 @@
         summary.workshopGroup.setAttribute('aria-hidden', isActive ? 'false' : 'true');
         if (isActive) {
           summary.workshopName.textContent = workshopFields.name?.value.trim() || '—';
+          if (summary.workshopFiscalName) {
+            summary.workshopFiscalName.textContent = workshopFields.fiscalName?.value.trim() || '—';
+          }
+          if (summary.workshopTaxId) {
+            summary.workshopTaxId.textContent = workshopFields.taxId?.value.trim() || '—';
+          }
           summary.workshopContact.textContent = workshopFields.contact?.value.trim() || '—';
           summary.workshopAddress.textContent = workshopFields.address?.value.trim() || '—';
           summary.workshopPhone.textContent = workshopFields.phone?.value.trim() || '—';
@@ -1184,6 +1200,8 @@
       formData.append('has_workshop', hasWorkshop ? '1' : '0');
       formData.append('workshop_name', getValue('workshop_name'));
       formData.append('workshop_address', getValue('workshop_address'));
+      formData.append('workshop_fiscal_name', getValue('workshop_fiscal_name'));
+      formData.append('workshop_tax_id', getValue('workshop_tax_id').toUpperCase());
       formData.append('workshop_contact', getValue('workshop_contact'));
       formData.append('workshop_phone', getValue('workshop_phone'));
       formData.append('workshop_email', getValue('workshop_email'));
@@ -1635,10 +1653,13 @@
       });
     }
 
-    ['workshop_name', 'workshop_address', 'workshop_contact', 'workshop_email'].forEach((id) => {
+    ['workshop_name', 'workshop_address', 'workshop_fiscal_name', 'workshop_tax_id', 'workshop_contact', 'workshop_email'].forEach((id) => {
       const field = document.getElementById(id);
       if (!field) return;
       field.addEventListener('input', () => {
+        if (id === 'workshop_tax_id') {
+          field.value = field.value.toUpperCase();
+        }
         updateStep2ButtonState();
         updateSummary();
       });
