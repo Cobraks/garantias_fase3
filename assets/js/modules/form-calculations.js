@@ -709,21 +709,30 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
         const plansContainer = document.getElementById("formPlans");
         if (!plansContainer) return;
 
-        const { mostrarMensajeAntiguedad = false, mostrarMensajeKilometros = false } = opciones;
+        const {
+                mostrarMensajeAntiguedad = false,
+                mostrarMensajeAntiguedadMinima = false,
+                mostrarMensajeKilometros = false,
+        } = opciones;
 
         plansContainer.classList.remove("form__plans--featured");
 
         const preciosConIVA = document.getElementById("check-iva")?.checked !== false;
 
         if (!modalidades || !modalidades.length) {
+                const mensajeAntiguedadMinima =
+                        "El vehículo no alcanza la antigüedad mínima permitida para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
                 const mensajeAntiguedad =
-                        "El vehículo supera la antigüedad máxima. Ponte en contacto con el Departamento Comercial de 360VO";
+                        "El vehículo supera la antigüedad máxima permitida para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
                 const mensajeKilometros =
-                        "El vehículo supera el límite de antigüedad y kilómetros. Ponte en contacto con el Departamento Comercial de 360VO";
+                        "El vehículo supera el límite de kilómetros permitido para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
 
                 let texto = "No hay garantías disponibles para estos filtros.";
                 let variant = "empty";
-                if (mostrarMensajeAntiguedad) {
+                if (mostrarMensajeAntiguedadMinima) {
+                        texto = mensajeAntiguedadMinima;
+                        variant = "warning";
+                } else if (mostrarMensajeAntiguedad) {
                         texto = mensajeAntiguedad;
                         variant = "warning";
                 } else if (mostrarMensajeKilometros) {
@@ -977,6 +986,7 @@ async function filtrarModalidadesBase() {
         );
 
         let antiguedadSuperaMaximo = false;
+        let antiguedadPorDebajoMinima = false;
         let maxAntiguedadPermitida = 0;
         let kilometrosSuperaMaximo = false;
         let maxKilometrosPermitidos = 0;
@@ -1007,8 +1017,6 @@ async function filtrarModalidadesBase() {
                         }
                 }
 
-                const esCamion = valoresForm.tipo_vehiculo === "camion";
-
                 let excedeAntiguedad = false;
                 let excedeKilometros = false;
 
@@ -1026,8 +1034,10 @@ async function filtrarModalidadesBase() {
                         }
 
                         if (antiguedad === null || isNaN(antiguedad)) return false;
-                        if (antiguedad <= 1) return false;
-                        if (antiguedad < desde) return false;
+                        if (antiguedad < desde) {
+                                antiguedadPorDebajoMinima = true;
+                                return false;
+                        }
                         if (hasta !== null && antiguedad > hasta) {
                                 excedeAntiguedad = true;
                         }
@@ -1060,16 +1070,11 @@ async function filtrarModalidadesBase() {
                         maxKilometrosPermitidos = Infinity;
                 }
 
-                if (
-                        esCamion &&
-                        condicionesEspecialesArr.includes("antiguedad") &&
-                        condicionesEspecialesArr.includes("kilometraje")
-                ) {
-                        if (excedeAntiguedad && excedeKilometros) {
-                                kilometrosSuperaMaximo = true;
-                                return false;
-                        }
-                        return true;
+                if (excedeAntiguedad && excedeKilometros) {
+                        // FLAG: Revisar condición para camiones si supera 12 años y 800.000km.
+                        antiguedadSuperaMaximo = true;
+                        kilometrosSuperaMaximo = true;
+                        return false;
                 }
 
                 if (excedeAntiguedad) {
@@ -1128,8 +1133,14 @@ async function filtrarModalidadesBase() {
                         kilometrosSuperaMaximo = true;
                 }
                 updateDuracionSelect([]);
+                const mostrarAntiguedadMinima =
+                        antiguedadPorDebajoMinima &&
+                        !antiguedadSuperaMaximo &&
+                        !kilometrosSuperaMaximo;
+
                 renderPlans([], valoresForm, {
                         mostrarMensajeAntiguedad: antiguedadSuperaMaximo,
+                        mostrarMensajeAntiguedadMinima: mostrarAntiguedadMinima,
                         mostrarMensajeKilometros: kilometrosSuperaMaximo,
                 });
         } else {
