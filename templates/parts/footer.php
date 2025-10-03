@@ -237,6 +237,24 @@ if (! empty($is_add_guarantee)) {
 <?php endif; ?>
 
 <?php if ($is_account_page ?? false) : ?>
+    <?php
+    $account_config = [
+        'rest'     => [
+            'endpoint' => esc_url_raw(rest_url('go/v1/account')),
+            'nonce'    => wp_create_nonce('wp_rest'),
+        ],
+        'strings'  => [
+            'saving'  => __('Guardando cambios…', 'garantias-online-360vo'),
+            'success' => __('Cambios guardados correctamente.', 'garantias-online-360vo'),
+            'error'   => __('No se han podido guardar los cambios. Inténtalo de nuevo.', 'garantias-online-360vo'),
+            'invalid' => __('Revisa los datos introducidos e inténtalo de nuevo.', 'garantias-online-360vo'),
+            'dirty'   => __('Tienes cambios sin guardar.', 'garantias-online-360vo'),
+        ],
+    ];
+    ?>
+    <script>
+        window.go360Account = <?php echo wp_json_encode($account_config); ?>;
+    </script>
     <script
         src="<?php echo esc_url(plugins_url('assets/js/account.min.js', GARANTIAS360VO__FILE__)); ?>"
         defer></script>

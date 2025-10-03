@@ -113,35 +113,139 @@
 
         const saveButton = document.querySelector('[data-account-save]');
         const accountPage = document.querySelector('.account-page');
+        const isAdminAccount = accountPage && accountPage.getAttribute('data-account-admin') === 'true';
+        const statusElement = document.querySelector('[data-account-status]');
+        const statusVariants = [
+            'account-status--info',
+            'account-status--success',
+            'account-status--warning',
+            'account-status--error',
+        ];
+        const accountConfig = window.go360Account || {};
+        const restEndpoint = accountConfig.rest && accountConfig.rest.endpoint ? accountConfig.rest.endpoint : '';
+        const restNonce = accountConfig.rest && accountConfig.rest.nonce ? accountConfig.rest.nonce : '';
+        const strings = accountConfig.strings || {};
+        const workshopToggle = document.querySelector('[data-workshop-toggle]');
+        const workshopFieldKeys = [
+            'name',
+            'fiscal_name',
+            'tax_id',
+            'contact_person',
+            'phone',
+            'email',
+            'address',
+        ];
+        const notificationsRepeater = document.querySelector('[data-notification-repeater]');
+        const adminReplyInput = document.getElementById('admin-reply-to-email');
+        const adminTransferInput = document.getElementById('account-transfer-iban');
+        const signatureUpload = document.getElementById('signature-upload');
+        const stampUpload = document.getElementById('stamp-upload');
+        const certificatesWarning = document.querySelector('[data-certificates-warning]');
+        const certificatesWarningText = certificatesWarning
+            ? certificatesWarning.textContent.trim()
+            : 'Necesitas subir tanto la firma como el sello si quieres que tus certificados se generen ya firmados.';
+        let signatureHasFile = false;
+        let stampHasFile = false;
+        let certificatesValid = true;
+        let certificatesWarningForced = false;
+        let certificatesRemovalWarning = false;
+        let workshopVisibilityUpdater = null;
+        const documentUploadStates = {};
+        const documentUploadControllers = {};
+
+        const updateCertificatesWarningState = () => {
+            const mismatch = (signatureHasFile && !stampHasFile) || (!signatureHasFile && stampHasFile);
+            certificatesValid = !mismatch;
+
+            if (!mismatch) {
+                certificatesWarningForced = false;
+                certificatesRemovalWarning = false;
+            }
+
+            const shouldWarn = mismatch && (certificatesWarningForced || certificatesRemovalWarning);
+
+            if (certificatesWarning) {
+                certificatesWarning.hidden = !shouldWarn;
+                certificatesWarning.setAttribute('aria-hidden', shouldWarn ? 'false' : 'true');
+            }
+
+            const toggleInvalid = (element, active) => {
+                if (!element) {
+                    return;
+                }
+
+                element.classList.toggle('file-upload--invalid', active);
+            };
+
+            toggleInvalid(signatureUpload, shouldWarn);
+            toggleInvalid(stampUpload, shouldWarn);
+        };
+
+        const setStatus = (message, variant = 'info') => {
+            if (!statusElement) {
+                return;
+            }
+
+            const text = typeof message === 'string' ? message.trim() : '';
+
+            statusElement.classList.remove(...statusVariants);
+
+            if (text === '') {
+                statusElement.textContent = '';
+                statusElement.hidden = true;
+                statusElement.setAttribute('aria-hidden', 'true');
+                return;
+            }
+
+            statusElement.textContent = text;
+            statusElement.hidden = false;
+            statusElement.setAttribute('aria-hidden', 'false');
+
+            const className = `account-status--${variant}`;
+            if (statusVariants.includes(className)) {
+                statusElement.classList.add(className);
+            } else {
+                statusElement.classList.add('account-status--info');
+            }
+        };
+
+        setStatus('', 'info');
+
+        const setSaveDisabled = (disabled) => {
+            if (!saveButton) {
+                return;
+            }
+
+            const method = disabled ? 'add' : 'remove';
+            saveButton.classList[method]('disabled');
+
+            if (disabled) {
+                saveButton.setAttribute('disabled', 'disabled');
+                saveButton.setAttribute('aria-disabled', 'true');
+            } else {
+                saveButton.removeAttribute('disabled');
+                saveButton.setAttribute('aria-disabled', 'false');
+            }
+        };
 
         const enableSaveButton = () => {
             if (!saveButton) {
                 return;
             }
 
-            if (saveButton.classList.contains('disabled')) {
-                saveButton.classList.remove('disabled');
-                saveButton.removeAttribute('disabled');
-                saveButton.setAttribute('aria-disabled', 'false');
+            const wasDisabled = saveButton.classList.contains('disabled');
+            setSaveDisabled(false);
+
+            if (wasDisabled && strings.dirty) {
+                setStatus(strings.dirty, 'info');
             }
         };
 
-        if (saveButton && accountPage) {
-            const setSaveDisabled = (disabled) => {
-                const method = disabled ? 'add' : 'remove';
-                saveButton.classList[method]('disabled');
-
-                if (disabled) {
-                    saveButton.setAttribute('disabled', 'disabled');
-                    saveButton.setAttribute('aria-disabled', 'true');
-                } else {
-                    saveButton.removeAttribute('disabled');
-                    saveButton.setAttribute('aria-disabled', 'false');
-                }
-            };
-
+        if (saveButton) {
             setSaveDisabled(saveButton.classList.contains('disabled') || saveButton.hasAttribute('disabled'));
+        }
 
+        if (saveButton && accountPage) {
             const maybeEnableSave = (event) => {
                 const target = event.target;
                 if (!target) {
@@ -166,7 +270,7 @@
                 }
 
                 if (saveButton.classList.contains('disabled')) {
-                    setSaveDisabled(false);
+                    enableSaveButton();
                 }
             };
 
@@ -175,15 +279,434 @@
             });
         }
 
+        if (workshopToggle) {
+            const details = document.querySelector('[data-workshop-details]');
+            const updateWorkshopVisibility = () => {
+                const isChecked = workshopToggle.checked;
+                workshopToggle.setAttribute('aria-expanded', String(isChecked));
+
+                if (!details) {
+                    return;
+                }
+
+                details.hidden = !isChecked;
+
+                if (isChecked) {
+                    details.removeAttribute('aria-hidden');
+                } else {
+                    details.setAttribute('aria-hidden', 'true');
+                }
+            };
+
+            workshopVisibilityUpdater = updateWorkshopVisibility;
+            updateWorkshopVisibility();
+            workshopToggle.addEventListener('change', updateWorkshopVisibility);
+        }
+
+        const collectNotificationsPayload = () => {
+            const input = document.getElementById('account-notification-email');
+            const rawValue = input && typeof input.value === 'string' ? input.value.trim() : '';
+
+            return {
+                email: rawValue,
+                use_registration: rawValue === '',
+            };
+        };
+
+        const collectWorkshopPayload = () => {
+            const hasWorkshop = workshopToggle ? workshopToggle.checked : false;
+            const values = {};
+
+            workshopFieldKeys.forEach((key) => {
+                const field = document.querySelector(`[name="account_workshop[${key}]"]`);
+                if (!field || typeof field.value !== 'string') {
+                    values[key] = '';
+                    return;
+                }
+
+                values[key] = field.value.trim();
+            });
+
+            return Object.assign({ has_workshop: hasWorkshop }, values);
+        };
+
+        const collectAdminNotificationsPayload = () => {
+            if (!isAdminAccount || (!notificationsRepeater && !adminReplyInput)) {
+                return null;
+            }
+
+            const recipients = [];
+
+            if (notificationsRepeater) {
+                const rows = notificationsRepeater.querySelectorAll('[data-repeater-row]');
+                rows.forEach((row) => {
+                    const emailInput = row.querySelector('[data-repeater-email]');
+                    const bccInput = row.querySelector('[data-repeater-bcc]');
+                    const email = emailInput && typeof emailInput.value === 'string'
+                        ? emailInput.value.trim()
+                        : '';
+                    const bcc = bccInput ? bccInput.checked : false;
+
+                    if (email === '' && !bcc) {
+                        return;
+                    }
+
+                    recipients.push({
+                        email,
+                        bcc,
+                    });
+                });
+            }
+
+            const replyTo = adminReplyInput && typeof adminReplyInput.value === 'string'
+                ? adminReplyInput.value.trim()
+                : '';
+
+            return {
+                recipients,
+                reply_to: replyTo,
+            };
+        };
+
+        const collectAdminTransferPayload = () => {
+            if (!isAdminAccount || !adminTransferInput) {
+                return null;
+            }
+
+            const value = typeof adminTransferInput.value === 'string'
+                ? adminTransferInput.value.trim()
+                : '';
+
+            return { iban: value };
+        };
+
+        const collectAdminDocumentsPayload = () => {
+            if (!isAdminAccount) {
+                return null;
+            }
+
+            const entries = Object.entries(documentUploadStates)
+                .filter(([, state]) => Boolean(state))
+                .reduce((accumulator, [key, state]) => {
+                    if (state && state.removed) {
+                        accumulator[key] = { remove: true };
+                    }
+                    return accumulator;
+                }, {});
+
+            return Object.keys(entries).length > 0 ? entries : null;
+        };
+
+        const collectAdminPayload = () => {
+            if (!isAdminAccount) {
+                return null;
+            }
+
+            const notifications = collectAdminNotificationsPayload();
+            const transfer = collectAdminTransferPayload();
+            const documents = collectAdminDocumentsPayload();
+
+            if (!notifications && !transfer && !documents) {
+                return null;
+            }
+
+            const payload = {};
+            if (notifications) {
+                payload.notifications = notifications;
+            }
+            if (transfer) {
+                payload.transfer = transfer;
+            }
+            if (documents) {
+                payload.documents = documents;
+            }
+
+            return payload;
+        };
+
+        if (saveButton) {
+            saveButton.addEventListener('click', (event) => {
+                event.preventDefault();
+
+                if (saveButton.classList.contains('disabled')) {
+                    return;
+                }
+
+                if (!certificatesValid) {
+                    certificatesWarningForced = true;
+                    updateCertificatesWarningState();
+                    setStatus(certificatesWarningText, 'warning');
+                    if (signatureUpload && typeof signatureUpload.scrollIntoView === 'function') {
+                        signatureUpload.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    return;
+                }
+
+                if (!restEndpoint || !restNonce) {
+                    const fallback = strings.error || strings.invalid || 'No se han podido guardar los cambios.';
+                    setStatus(fallback, 'error');
+                    return;
+                }
+
+                const notificationsPayload = collectNotificationsPayload();
+                const workshopPayload = collectWorkshopPayload();
+                const adminPayload = collectAdminPayload();
+                const adminDocumentFiles = Object.values(documentUploadStates)
+                    .filter((state) => state && state.input && state.input.files && state.input.files.length > 0);
+                const usingFormData = (profileImageFile instanceof File) || adminDocumentFiles.length > 0;
+
+                const buildFormData = () => {
+                    const formData = new FormData();
+
+                    const appendObject = (object, prefix) => {
+                        Object.keys(object).forEach((key) => {
+                            const value = object[key];
+                            let normalized = value;
+
+                            if (typeof value === 'boolean') {
+                                normalized = value ? '1' : '0';
+                            } else if (value === null || typeof value === 'undefined') {
+                                normalized = '';
+                            }
+
+                            formData.append(`${prefix}[${key}]`, normalized);
+                        });
+                    };
+
+                    appendObject(notificationsPayload, 'notifications');
+                    appendObject(workshopPayload, 'workshop');
+
+                    if (profileImageFile) {
+                        formData.append('profile_image', profileImageFile);
+                    }
+
+                    adminDocumentFiles.forEach((state) => {
+                        const { input } = state;
+                        if (!input) {
+                            return;
+                        }
+                        const name = input.getAttribute('name') || '';
+                        if (!name) {
+                            return;
+                        }
+                        const file = input.files && input.files[0] ? input.files[0] : null;
+                        if (!file) {
+                            return;
+                        }
+                        formData.append(name, file);
+                    });
+
+                    if (adminPayload) {
+                        formData.append('admin', JSON.stringify(adminPayload));
+                    }
+
+                    return formData;
+                };
+
+                const payload = usingFormData
+                    ? buildFormData()
+                    : JSON.stringify({
+                        notifications: notificationsPayload,
+                        workshop: workshopPayload,
+                        ...(adminPayload ? { admin: adminPayload } : {}),
+                    });
+
+                setSaveDisabled(true);
+                saveButton.setAttribute('aria-busy', 'true');
+                setStatus(strings.saving || 'Guardando cambios…', 'info');
+
+                fetch(restEndpoint, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-WP-Nonce': restNonce,
+                        ...(usingFormData ? {} : { 'Content-Type': 'application/json' }),
+                    },
+                    body: payload,
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            return response
+                                .json()
+                                .catch(() => ({}))
+                                .then((data) => {
+                                    const message = data && typeof data.message === 'string' && data.message !== ''
+                                        ? data.message
+                                        : (strings.error || strings.invalid || 'No se han podido guardar los cambios.');
+                                    const error = new Error(message);
+                                    error.code = data && data.code ? data.code : 'error';
+                                    throw error;
+                                });
+                        }
+
+                        return response.json();
+                    })
+                    .then((data) => {
+                        if (!data || data.success !== true) {
+                            throw new Error(strings.error || 'No se han podido guardar los cambios.');
+                        }
+
+                        if (data.notifications) {
+                            const notificationInput = document.getElementById('account-notification-email');
+                            if (notificationInput) {
+                                const useRegistration = Boolean(data.notifications.use_registration);
+                                const nextValue = useRegistration ? '' : (data.notifications.email || '');
+                                notificationInput.value = nextValue;
+                            }
+                        }
+
+                        if (data.workshop) {
+                            const hasWorkshop = Boolean(data.workshop.has_workshop);
+                            if (workshopToggle) {
+                                workshopToggle.checked = hasWorkshop;
+                            }
+
+                            workshopFieldKeys.forEach((key) => {
+                                const field = document.querySelector(`[name="account_workshop[${key}]"]`);
+                                if (!field) {
+                                    return;
+                                }
+
+                                const nextValue = data.workshop[key];
+                                field.value = typeof nextValue === 'string' ? nextValue : '';
+                            });
+
+                            if (typeof workshopVisibilityUpdater === 'function') {
+                                workshopVisibilityUpdater();
+                            }
+                        }
+
+                        if (data.profile_image) {
+                            const nextSrc = typeof data.profile_image.url === 'string'
+                                ? data.profile_image.url
+                                : '';
+                            if (nextSrc !== '') {
+                                profileImageOriginalSrc = nextSrc;
+                            }
+                            syncProfilePreview(profileImageOriginalSrc);
+                        }
+
+                        if (profileUploadInput) {
+                            profileUploadInput.value = '';
+                        }
+
+                        profileImageFile = null;
+                        revokeProfilePreview();
+
+                        if (data.admin) {
+                            const adminData = data.admin;
+
+                            if (adminData.notifications) {
+                                if (adminReplyInput) {
+                                    adminReplyInput.value = typeof adminData.notifications.reply_to === 'string'
+                                        ? adminData.notifications.reply_to
+                                        : '';
+                                }
+
+                                if (notificationsRepeater && typeof notificationsRepeater.__syncRows === 'function') {
+                                    notificationsRepeater.__syncRows(Array.isArray(adminData.notifications.recipients)
+                                        ? adminData.notifications.recipients
+                                        : []);
+                                }
+                            }
+
+                            if (adminData.transfer && adminTransferInput) {
+                                adminTransferInput.value = typeof adminData.transfer.iban === 'string'
+                                    ? adminData.transfer.iban
+                                    : '';
+                            }
+
+                            if (adminData.documents && adminData.documents.claim_procedure) {
+                                const controller = documentUploadControllers.claim_procedure;
+                                if (controller && typeof controller.applyServerState === 'function') {
+                                    controller.applyServerState(adminData.documents.claim_procedure);
+                                }
+                            }
+                        }
+
+                        setStatus(strings.success || 'Cambios guardados correctamente.', 'success');
+                        setSaveDisabled(true);
+                    })
+                    .catch((error) => {
+                        const message = error && typeof error.message === 'string' && error.message !== ''
+                            ? error.message
+                            : (strings.error || strings.invalid || 'No se han podido guardar los cambios.');
+                        setStatus(message, 'error');
+                        setSaveDisabled(false);
+                    })
+                    .finally(() => {
+                        if (saveButton) {
+                            saveButton.removeAttribute('aria-busy');
+                        }
+                    });
+            });
+        }
+
         const profileUploadButton = document.querySelector('[data-profile-upload]');
+        const profileAvatarImage = document.querySelector('.account-summary__avatar img');
+        let profileUploadInput = null;
+        let profileImageFile = null;
+        let profileImagePreviewUrl = '';
+        let profileImageOriginalSrc = profileAvatarImage && profileAvatarImage.getAttribute('src')
+            ? profileAvatarImage.getAttribute('src')
+            : '';
+
+        const revokeProfilePreview = () => {
+            if (profileImagePreviewUrl) {
+                URL.revokeObjectURL(profileImagePreviewUrl);
+                profileImagePreviewUrl = '';
+            }
+        };
+
+        const syncProfilePreview = (src) => {
+            if (!profileAvatarImage) {
+                return;
+            }
+
+            profileAvatarImage.setAttribute('src', src || '');
+        };
+
+        const resetProfileSelection = () => {
+            profileImageFile = null;
+            revokeProfilePreview();
+            syncProfilePreview(profileImageOriginalSrc);
+        };
+
+        const attachProfileUpload = (fileInput) => {
+            profileUploadButton.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', () => {
+                const files = fileInput.files;
+                if (!files || files.length === 0) {
+                    resetProfileSelection();
+                    enableSaveButton();
+                    return;
+                }
+
+                const [file] = files;
+                if (!file) {
+                    resetProfileSelection();
+                    enableSaveButton();
+                    return;
+                }
+
+                profileImageFile = file;
+                revokeProfilePreview();
+                profileImagePreviewUrl = URL.createObjectURL(file);
+                syncProfilePreview(profileImagePreviewUrl);
+                enableSaveButton();
+            });
+        };
+
         if (profileUploadButton) {
             const inputId = profileUploadButton.getAttribute('data-profile-upload');
             const fileInput = inputId ? document.getElementById(inputId) : null;
 
             if (fileInput) {
-                profileUploadButton.addEventListener('click', () => {
-                    fileInput.click();
-                });
+                profileUploadInput = fileInput;
+                attachProfileUpload(fileInput);
             }
         }
 
@@ -280,7 +803,6 @@
             }
         }
 
-        const notificationsRepeater = document.querySelector('[data-notification-repeater]');
         if (notificationsRepeater) {
             const rowsContainer = notificationsRepeater.querySelector('[data-repeater-rows]');
             const template = notificationsRepeater.querySelector('template[data-repeater-template]');
@@ -330,13 +852,18 @@
                 }
             };
 
-            const createRow = (data = {}) => {
+            const createRow = (data = {}, options = {}) => {
                 if (!rowsContainer || !template) {
                     return null;
                 }
 
                 const index = nextIndex;
                 nextIndex += 1;
+                notificationsRepeater.setAttribute('data-next-index', String(nextIndex));
+
+                const config = typeof options === 'object' && options !== null ? options : {};
+                const suppressDirty = Boolean(config.suppressDirty);
+                const shouldFocus = config.focus !== false;
 
                 const html = template.innerHTML.replace(/__index__/g, String(index));
                 const fragment = document.createElement('div');
@@ -348,7 +875,7 @@
                 }
 
                 const emailInput = row.querySelector('[data-repeater-email]');
-                if (emailInput && data.email) {
+                if (emailInput && typeof data.email === 'string') {
                     emailInput.value = data.email;
                 }
 
@@ -360,17 +887,21 @@
                 rowsContainer.appendChild(row);
                 bindRow(row);
                 updateRemoveState();
-                enableSaveButton();
+                if (!suppressDirty) {
+                    enableSaveButton();
+                }
 
-                window.requestAnimationFrame(() => {
-                    if (emailInput && typeof emailInput.focus === 'function') {
-                        try {
-                            emailInput.focus({ preventScroll: true });
-                        } catch (error) {
-                            emailInput.focus();
+                if (shouldFocus) {
+                    window.requestAnimationFrame(() => {
+                        if (emailInput && typeof emailInput.focus === 'function') {
+                            try {
+                                emailInput.focus({ preventScroll: true });
+                            } catch (error) {
+                                emailInput.focus();
+                            }
                         }
-                    }
-                });
+                    });
+                }
 
                 return row;
             };
@@ -386,6 +917,30 @@
                     createRow();
                 });
             }
+
+            notificationsRepeater.__syncRows = (rows = []) => {
+                if (!rowsContainer || !template) {
+                    return;
+                }
+
+                rowsContainer.innerHTML = '';
+                nextIndex = 0;
+                notificationsRepeater.setAttribute('data-next-index', '0');
+
+                const normalized = Array.isArray(rows) ? rows : [];
+                if (normalized.length === 0) {
+                    createRow({}, { suppressDirty: true, focus: false });
+                } else {
+                    normalized.forEach((rowData) => {
+                        createRow({
+                            email: typeof rowData.email === 'string' ? rowData.email : '',
+                            bcc: Boolean(rowData.bcc),
+                        }, { suppressDirty: true, focus: false });
+                    });
+                }
+
+                updateRemoveState();
+            };
         }
 
         const paymentActivation = document.querySelector('[data-payment-activation]');
@@ -498,12 +1053,13 @@
             const placeholder = container.querySelector('[data-document-placeholder]');
             const removeButton = container.querySelector('[data-document-remove]');
             const defaultLabel = container.dataset.defaultLabel || (label ? label.textContent : '') || '';
+            const documentType = container.dataset.documentType || '';
 
-            const initialLabel = label ? label.textContent : defaultLabel;
-            const initialSize = sizeElement && !sizeElement.hasAttribute('hidden') ? sizeElement.textContent : '';
-            const initialUrl = linkElement && !linkElement.hasAttribute('hidden') ? linkElement.getAttribute('href') : '';
-            const initialLinkText = linkElement ? linkElement.textContent : '';
-            const initialHasDocument = body ? !body.hasAttribute('hidden') : false;
+            let initialLabel = label ? label.textContent : defaultLabel;
+            let initialSize = sizeElement && !sizeElement.hasAttribute('hidden') ? sizeElement.textContent : '';
+            let initialUrl = linkElement && !linkElement.hasAttribute('hidden') ? linkElement.getAttribute('href') : '';
+            let initialLinkText = linkElement ? linkElement.textContent : '';
+            let initialHasDocument = body ? !body.hasAttribute('hidden') : false;
 
             const state = {
                 hasDocument: initialHasDocument,
@@ -572,6 +1128,68 @@
 
             renderState();
 
+            const registerState = (reason = 'render') => {
+                if (!documentType) {
+                    return;
+                }
+
+                const files = input && input.files ? Array.from(input.files) : [];
+                const file = files.length > 0 ? files[0] : null;
+                const removed = !state.hasDocument && initialHasDocument && !file;
+
+                documentUploadStates[documentType] = {
+                    hasDocument: state.hasDocument,
+                    removed,
+                    changed: Boolean(file),
+                    input,
+                    container,
+                    reason,
+                };
+            };
+
+            const applyServerState = (data = {}) => {
+                revokeTemporaryUrl();
+
+                const hasServerDocument = data && (data.id || data.url || data.filename || data.title);
+                const nextLabel = hasServerDocument
+                    ? (typeof data.filename === 'string' && data.filename !== ''
+                        ? data.filename
+                        : (typeof data.title === 'string' && data.title !== '' ? data.title : defaultLabel))
+                    : defaultLabel;
+                const nextSize = hasServerDocument && typeof data.size === 'string' ? data.size : '';
+                const nextUrl = hasServerDocument && typeof data.url === 'string' ? data.url : '';
+                const nextLinkText = hasServerDocument && typeof data.linkText === 'string' && data.linkText !== ''
+                    ? data.linkText
+                    : (initialLinkText || 'Ver documento');
+
+                initialLabel = nextLabel;
+                initialSize = nextSize;
+                initialUrl = nextUrl;
+                initialLinkText = nextLinkText;
+                initialHasDocument = Boolean(hasServerDocument);
+
+                state.hasDocument = initialHasDocument;
+                state.label = nextLabel;
+                state.size = nextSize;
+                state.url = nextUrl;
+                state.linkText = nextLinkText;
+
+                if (input) {
+                    input.value = '';
+                }
+
+                renderState();
+                registerState('sync');
+            };
+
+            if (documentType) {
+                documentUploadControllers[documentType] = {
+                    applyServerState,
+                };
+            }
+
+            registerState('init');
+
             if (container && input) {
                 container.addEventListener('click', (event) => {
                     if (!input) {
@@ -604,6 +1222,7 @@
                         input.value = '';
                     }
                     renderState();
+                    registerState('remove');
                     enableSaveButton();
                 });
             }
@@ -637,12 +1256,13 @@
                     state.linkText = 'Previsualizar';
 
                     renderState();
+                    registerState('select');
                     enableSaveButton();
                 });
             }
         });
 
-        const setupImageUpload = (containerId, inputId, previewId) => {
+        const setupImageUpload = (containerId, inputId, previewId, options) => {
             const container = document.getElementById(containerId);
             const input = document.getElementById(inputId);
             const preview = document.getElementById(previewId);
@@ -652,6 +1272,8 @@
                 return;
             }
 
+            const config = typeof options === 'object' && options !== null ? options : {};
+            const onStateChange = typeof config.onStateChange === 'function' ? config.onStateChange : null;
             const label = container.querySelector('.file-label');
             const removeButton = container.querySelector('[data-file-remove]');
             const initialLabel = label ? label.textContent : '';
@@ -659,6 +1281,18 @@
             const initialPreviewVisible = preview ? !preview.hasAttribute('hidden') : false;
             const initialPreviewSrc = previewImage ? previewImage.getAttribute('src') : '';
             let allowRestoreInitial = initialPreviewVisible && Boolean(initialPreviewSrc);
+            let hasFile = initialPreviewVisible && Boolean(initialPreviewSrc);
+
+            const notifyStateChange = (reason = 'change') => {
+                if (onStateChange) {
+                    onStateChange({
+                        hasFile,
+                        input,
+                        container,
+                        reason,
+                    });
+                }
+            };
 
             const setPreviewVisible = (visible, src = '') => {
                 if (!preview) {
@@ -692,10 +1326,14 @@
                 removeButton.hidden = !visible;
             };
 
-            const resetPreview = (options = {}) => {
-                const restoreInitial = options.restoreInitial !== false;
+            const resetPreview = (resetOptions = {}) => {
+                const restoreInitial = resetOptions.restoreInitial !== false;
+                const shouldRestore = restoreInitial && allowRestoreInitial && initialPreviewVisible && initialPreviewSrc;
+                const reason = typeof resetOptions.notifyReason === 'string' && resetOptions.notifyReason !== ''
+                    ? resetOptions.notifyReason
+                    : 'reset';
 
-                if (restoreInitial && allowRestoreInitial && initialPreviewVisible && initialPreviewSrc) {
+                if (shouldRestore) {
                     setPreviewVisible(true, initialPreviewSrc);
                     updateRemoveVisibility(true);
                     if (label) {
@@ -708,6 +1346,9 @@
                         label.textContent = defaultLabel;
                     }
                 }
+
+                hasFile = shouldRestore;
+                notifyStateChange(reason);
             };
 
             container.addEventListener('click', (event) => {
@@ -722,13 +1363,13 @@
 
             input.addEventListener('change', () => {
                 if (!input.files || input.files.length === 0) {
-                    resetPreview();
+                    resetPreview({ notifyReason: 'reset' });
                     return;
                 }
 
                 const [file] = input.files;
                 if (!file) {
-                    resetPreview();
+                    resetPreview({ notifyReason: 'reset' });
                     return;
                 }
 
@@ -740,6 +1381,8 @@
 
                 if (!preview || !previewImage || !file.type || !file.type.startsWith('image/')) {
                     updateRemoveVisibility(true);
+                    hasFile = true;
+                    notifyStateChange('select');
                     return;
                 }
 
@@ -748,6 +1391,8 @@
                     if (typeof reader.result === 'string') {
                         setPreviewVisible(true, reader.result);
                         updateRemoveVisibility(true);
+                        hasFile = true;
+                        notifyStateChange('select');
                     }
                 });
                 reader.readAsDataURL(file);
@@ -759,7 +1404,7 @@
                     event.stopPropagation();
                     allowRestoreInitial = false;
                     input.value = '';
-                    resetPreview({ restoreInitial: false });
+                    resetPreview({ restoreInitial: false, notifyReason: 'remove' });
                     const inputEvent = new Event('input', { bubbles: true });
                     input.dispatchEvent(inputEvent);
                 });
@@ -770,9 +1415,42 @@
             if (!initialPreviewVisible) {
                 setPreviewVisible(false);
             }
+
+            notifyStateChange('init');
         };
 
-        setupImageUpload('signature-upload', 'signature', 'signature-preview');
-        setupImageUpload('stamp-upload', 'stamp', 'stamp-preview');
+        setupImageUpload('signature-upload', 'signature', 'signature-preview', {
+            onStateChange: (state) => {
+                signatureHasFile = Boolean(state && state.hasFile);
+                const reason = state && typeof state.reason === 'string' ? state.reason : '';
+
+                if (reason === 'remove') {
+                    certificatesRemovalWarning = Boolean(stampHasFile);
+                } else if (reason === 'select' || reason === 'reset' || reason === 'init') {
+                    if (!certificatesWarningForced) {
+                        certificatesRemovalWarning = false;
+                    }
+                }
+
+                updateCertificatesWarningState();
+            },
+        });
+        setupImageUpload('stamp-upload', 'stamp', 'stamp-preview', {
+            onStateChange: (state) => {
+                stampHasFile = Boolean(state && state.hasFile);
+                const reason = state && typeof state.reason === 'string' ? state.reason : '';
+
+                if (reason === 'remove') {
+                    certificatesRemovalWarning = Boolean(signatureHasFile);
+                } else if (reason === 'select' || reason === 'reset' || reason === 'init') {
+                    if (!certificatesWarningForced) {
+                        certificatesRemovalWarning = false;
+                    }
+                }
+
+                updateCertificatesWarningState();
+            },
+        });
+        updateCertificatesWarningState();
     });
 })();

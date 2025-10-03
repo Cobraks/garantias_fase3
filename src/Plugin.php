@@ -50,6 +50,8 @@ class Plugin
         add_action('init', [PrivateDocsManager::class, 'ensure_directory']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
 
+        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\AccountRestController::class, 'register_routes']);
+
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\UserRestController::class, 'register_routes']);
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\RegisterRestController::class, 'register_routes']);

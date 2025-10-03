@@ -13,6 +13,79 @@ $user             = $account['user'] ?? [];
 $commercials      = $account['commercials'] ?? [];
 $documents        = $account['documents'] ?? [];
 $payments         = $account['payments'] ?? [];
+$clients          = $account['clients'] ?? [];
+$workshop        = is_array($account['workshop'] ?? null) ? $account['workshop'] : [];
+$workshop_defaults = [
+    'has_workshop'   => false,
+    'name'           => '',
+    'fiscal_name'    => '',
+    'tax_id'         => '',
+    'contact_person' => '',
+    'phone'          => '',
+    'email'          => '',
+    'address'        => '',
+];
+$workshop = array_merge($workshop_defaults, $workshop);
+$workshop_has = ! empty($workshop['has_workshop']);
+$workshop_fields = [
+    [
+        'key'          => 'name',
+        'label'        => 'Nombre del taller',
+        'id'           => 'account-workshop-name',
+        'type'         => 'text',
+        'autocomplete' => 'organization',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'fiscal_name',
+        'label'        => 'Denominación fiscal',
+        'id'           => 'account-workshop-fiscal-name',
+        'type'         => 'text',
+        'autocomplete' => 'organization',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'tax_id',
+        'label'        => 'CIF',
+        'id'           => 'account-workshop-tax-id',
+        'type'         => 'text',
+        'autocomplete' => '',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'contact_person',
+        'label'        => 'Persona de contacto del taller',
+        'id'           => 'account-workshop-contact',
+        'type'         => 'text',
+        'autocomplete' => 'name',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'phone',
+        'label'        => 'Teléfono del taller',
+        'id'           => 'account-workshop-phone',
+        'type'         => 'tel',
+        'autocomplete' => 'tel',
+        'inputmode'    => 'tel',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'email',
+        'label'        => 'Correo del taller',
+        'id'           => 'account-workshop-email',
+        'type'         => 'email',
+        'autocomplete' => 'email',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'address',
+        'label'        => 'Dirección del taller',
+        'id'           => 'account-workshop-address',
+        'type'         => 'text',
+        'autocomplete' => 'street-address',
+        'class'        => 'account-form__field--full',
+    ],
+];
 $document_signature = is_array($documents['signature'] ?? null) ? $documents['signature'] : [];
 $document_seal       = is_array($documents['seal'] ?? null) ? $documents['seal'] : [];
 $signature_default_label   = esc_html__('+ Subir imagen de firma', 'garantias-online-360vo');
@@ -79,6 +152,8 @@ if (! empty($company['name'])) {
 $role_labels = [];
 $role_keys = array_map('sanitize_key', (array) ($user['roles'] ?? []));
 $is_admin_account = in_array('administrator', $role_keys, true);
+$is_professional_account = in_array('go_profesional', $role_keys, true);
+$is_commercial_account = in_array('go_comercial', $role_keys, true);
 if ($role_keys && function_exists('wp_roles')) {
     $roles = wp_roles();
     foreach ($role_keys as $role_key) {
@@ -92,14 +167,14 @@ $company_type_label = isset($company['type']['label'])
     : '';
 $channel_label = '';
 
-if (in_array('go_profesional', $role_keys, true)) {
+if ($is_professional_account) {
     $channel_label = 'Profesional';
     if ($company_type_label !== '') {
         $channel_label .= ' - ' . $company_type_label;
     }
 } elseif (in_array('go_gestor', $role_keys, true)) {
     $channel_label = 'Gestoría';
-} elseif (in_array('go_comercial', $role_keys, true)) {
+} elseif ($is_commercial_account) {
     $channel_label = 'Comercial';
 } elseif ($company_type_label !== '') {
     $channel_label = $company_type_label;
@@ -190,17 +265,37 @@ $sections = [
         'label' => 'Notificaciones',
         'icon'  => Svg::icon('email', 'account-nav__icon'),
     ],
-    [
+];
+
+if (! $is_commercial_account || $is_admin_account) {
+    $sections[] = [
         'id'    => 'account-payments',
         'label' => 'Pagos',
         'icon'  => Svg::icon('payment', 'account-nav__icon'),
-    ],
-    [
+    ];
+
+    $sections[] = [
         'id'    => 'account-documents',
         'label' => 'Certificados',
         'icon'  => Svg::icon('check_shield', 'account-nav__icon'),
-    ],
-];
+    ];
+}
+
+if ($is_professional_account) {
+    $sections[] = [
+        'id'    => 'account-workshop',
+        'label' => 'Taller',
+        'icon'  => Svg::icon('taller', 'account-nav__icon'),
+    ];
+}
+
+if ($is_commercial_account && ! $is_admin_account) {
+    $sections[] = [
+        'id'    => 'account-clients',
+        'label' => 'Clientes asignados',
+        'icon'  => Svg::icon('clients', 'account-nav__icon'),
+    ];
+}
 
 $formatPhoneHref = static function ($phone) {
     if (! is_string($phone)) {
@@ -213,7 +308,11 @@ $formatPhoneHref = static function ($phone) {
 
 ?>
 
-<div class="account-page" data-view="account">
+<div
+    class="account-page"
+    data-view="account"
+    <?php echo $is_admin_account ? 'data-account-admin="true"' : ''; ?>
+>
     <aside class="account-page__sidebar">
         <section class="account-summary">
             <div class="account-summary__media">
@@ -260,6 +359,12 @@ $formatPhoneHref = static function ($phone) {
                         <?php echo Svg::icon('save', 'account-summary__save-icon'); ?>
                         <span><?php echo esc_html__('Guardar cambios', 'garantias-online-360vo'); ?></span>
                     </button>
+                    <p
+                        class="account-status account-status--info account-summary__status"
+                        data-account-status
+                        hidden
+                        aria-hidden="true"
+                    ></p>
                 </div>
             </div>
         </section>
@@ -364,7 +469,7 @@ $formatPhoneHref = static function ($phone) {
                         <?php endif; ?>
                     </dl>
                 </div>
-                <?php if (! $is_admin_account) : ?>
+                <?php if (! $is_admin_account && ! $is_commercial_account) : ?>
                     <div class="account-card account-card--contacts account-card--commercial">
                         <h3>Comercial asignado</h3>
                         <?php if (! empty($commercials)) : ?>
@@ -688,6 +793,99 @@ $formatPhoneHref = static function ($phone) {
             </div>
         </article>
 
+        <?php if ($is_commercial_account && ! $is_admin_account) : ?>
+        <article id="account-clients" class="account-section" tabindex="-1">
+            <header class="account-section__header">
+                <?php echo Svg::icon('clients', 'account-section__icon'); ?>
+                <div class="account-section__content">
+                    <h2>Clientes asignados</h2>
+                    <p><?php echo esc_html__('Consulta los profesionales que tienes asignados y contacta con ellos rápidamente.', 'garantias-online-360vo'); ?></p>
+                </div>
+            </header>
+
+            <?php if (! empty($clients)) : ?>
+                <div class="account-card-grid account-card-grid--clients">
+                    <?php foreach ($clients as $client) : ?>
+                        <?php
+                        $client_avatar = $client['profile_image']['url'] ?? '';
+                        $client_company = trim((string) ($client['company_name'] ?? ''));
+                        $client_username = trim((string) ($client['username'] ?? ''));
+                        $client_phone = trim((string) ($client['phone'] ?? ''));
+                        $client_email = sanitize_email((string) ($client['email'] ?? ''));
+                        $client_contact = trim((string) ($client['contact_name'] ?? ''));
+                        if ($client_contact !== '') {
+                            $client_avatar_alt = sprintf(__('Avatar de %s', 'garantias-online-360vo'), $client_contact);
+                        } elseif ($client_company !== '') {
+                            $client_avatar_alt = sprintf(__('Logo de %s', 'garantias-online-360vo'), $client_company);
+                        } else {
+                            $client_avatar_alt = __('Avatar de cliente', 'garantias-online-360vo');
+                        }
+                        ?>
+                        <div class="account-card account-clients__item">
+                            <div class="account-clients__header">
+                                <div class="account-clients__avatar" aria-hidden="true">
+                                    <?php if ($client_avatar) : ?>
+                                        <img
+                                            src="<?php echo esc_url($client_avatar); ?>"
+                                            alt="<?php echo esc_attr($client_avatar_alt); ?>"
+                                            loading="lazy"
+                                            width="64"
+                                            height="64"
+                                        >
+                                    <?php else : ?>
+                                        <?php echo Svg::icon('person', 'account-clients__avatar-icon'); ?>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="account-clients__identity">
+                                    <span class="account-clients__company">
+                                        <?php
+                                        $client_display_name = $client_company !== ''
+                                            ? $client_company
+                                            : ($client_contact !== '' ? $client_contact : __('Cliente sin nombre', 'garantias-online-360vo'));
+                                        echo esc_html($client_display_name);
+                                        ?>
+                                    </span>
+                                    <?php if ($client_username !== '') : ?>
+                                        <span class="account-clients__username"><?php echo esc_html($client_username); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <?php if ($client_phone !== '' || $client_email !== '') : ?>
+                                <div class="account-clients__actions">
+                                    <?php if ($client_phone !== '') : ?>
+                                        <a
+                                            class="account-clients__action"
+                                            href="tel:<?php echo esc_attr($formatPhoneHref($client_phone)); ?>"
+                                        >
+                                            <?php echo Svg::icon('phone', 'account-clients__action-icon'); ?>
+                                            <span><?php echo esc_html($client_phone); ?></span>
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if ($client_email !== '') : ?>
+                                        <a
+                                            class="account-clients__action"
+                                            href="mailto:<?php echo esc_attr($client_email); ?>"
+                                        >
+                                            <?php echo Svg::icon('email', 'account-clients__action-icon'); ?>
+                                            <span><?php echo esc_html($client_email); ?></span>
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else : ?>
+                                <p class="account-clients__empty"><?php echo esc_html__('Sin datos de contacto disponibles.', 'garantias-online-360vo'); ?></p>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else : ?>
+                <div class="account-card">
+                    <p class="account-card__empty"><?php echo esc_html__('Aún no tienes clientes asignados.', 'garantias-online-360vo'); ?></p>
+                </div>
+            <?php endif; ?>
+        </article>
+        <?php endif; ?>
+
         <?php
             $selected_payment_method = $payments['selected_method'] ?? 'transferencia';
             $sepa_info               = is_array($payments['sepa'] ?? null) ? $payments['sepa'] : [];
@@ -753,6 +951,7 @@ $formatPhoneHref = static function ($phone) {
             $has_generated_mandate = $pending_document || $signed_document || ($sepa_info['status'] !== null);
 
         ?>
+        <?php if (! $is_commercial_account || $is_admin_account) : ?>
         <article id="account-payments" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('payment', 'account-section__icon'); ?>
@@ -1026,7 +1225,9 @@ $formatPhoneHref = static function ($phone) {
                 <?php endif; ?>
             </div>
         </article>
+        <?php endif; ?>
 
+        <?php if (! $is_commercial_account || $is_admin_account) : ?>
         <article id="account-documents" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('check_shield', 'account-section__icon'); ?>
@@ -1095,6 +1296,7 @@ $formatPhoneHref = static function ($phone) {
                                 id="procedure-upload"
                                 data-default-label="<?php echo esc_attr($procedure_default_label); ?>"
                                 data-document-upload
+                                data-document-type="claim_procedure"
                             >
                                 <div class="file-label" data-document-label><?php echo $procedure_label; ?></div>
                                 <p class="file-hint">Formatos admitidos: PDF, DOC, JPG, PNG (máx. 10MB)</p>
@@ -1226,6 +1428,16 @@ $formatPhoneHref = static function ($phone) {
                                         >
                                             <?php echo esc_html__('Eliminar imagen', 'garantias-online-360vo'); ?>
                                         </button>
+                                        <p
+                                            class="file-warning"
+                                            data-certificates-warning
+                                            hidden
+                                            aria-hidden="true"
+                                            aria-live="polite"
+                                            role="alert"
+                                        >
+                                            Necesitas subir tanto la firma como el sello si quieres que tus certificados se generen ya firmados.
+                                        </p>
                                     </div>
                                 </div>
 
@@ -1273,6 +1485,76 @@ $formatPhoneHref = static function ($phone) {
                 <?php endif; ?>
             </div>
         </article>
+        <?php endif; ?>
+        <?php if ($is_professional_account) : ?>
+            <article id="account-workshop" class="account-section" tabindex="-1">
+                <header class="account-section__header">
+                    <?php echo Svg::icon('taller', 'account-section__icon'); ?>
+                    <div class="account-section__content">
+                        <h2>Taller</h2>
+                        <p>Indica si trabajas con un taller propio o asociado y revisa sus datos principales.</p>
+                    </div>
+                </header>
+                <div class="account-card-grid account-card-grid--workshop">
+                    <div class="account-card account-card--form account-card--workshop">
+                        <h3>Datos del taller</h3>
+                        <div class="account-field account-field--checkbox">
+                            <label class="account-checkbox account-checkbox--center" for="account-workshop-toggle">
+                                <input
+                                    type="checkbox"
+                                    id="account-workshop-toggle"
+                                    name="account_workshop[has_workshop]"
+                                    value="1"
+                                    data-workshop-toggle
+                                    aria-controls="account-workshop-details"
+                                    aria-expanded="<?php echo $workshop_has ? 'true' : 'false'; ?>"
+                                    <?php checked($workshop_has); ?>
+                                >
+                                <span>Dispongo de taller propio / asociado</span>
+                            </label>
+                        </div>
+                        <form
+                            class="account-form account-form--workshop"
+                            action="#"
+                            method="post"
+                            novalidate
+                            id="account-workshop-details"
+                            data-workshop-details
+                            <?php echo $workshop_has ? '' : 'hidden aria-hidden="true"'; ?>
+                        >
+                            <?php foreach ($workshop_fields as $field) : ?>
+                                <?php
+                                $field_value   = (string) ($workshop[$field['key']] ?? '');
+                                $field_classes = ['account-field', 'account-form__field'];
+                                if (! empty($field['class'])) {
+                                    $field_classes[] = $field['class'];
+                                }
+                                $autocomplete = isset($field['autocomplete']) ? (string) $field['autocomplete'] : '';
+                                $inputmode    = isset($field['inputmode']) ? (string) $field['inputmode'] : '';
+                                ?>
+                                <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
+                                    <div class="account-input-container">
+                                        <input
+                                            type="<?php echo esc_attr($field['type']); ?>"
+                                            id="<?php echo esc_attr($field['id']); ?>"
+                                            class="account-input"
+                                            name="account_workshop[<?php echo esc_attr($field['key']); ?>]"
+                                            value="<?php echo esc_attr($field_value); ?>"
+                                            placeholder=" "
+                                            <?php echo $autocomplete !== '' ? 'autocomplete="' . esc_attr($autocomplete) . '"' : ''; ?>
+                                            <?php echo $inputmode !== '' ? 'inputmode="' . esc_attr($inputmode) . '"' : ''; ?>
+                                        >
+                                        <label class="account-input__label" for="<?php echo esc_attr($field['id']); ?>">
+                                            <?php echo esc_html($field['label']); ?>
+                                        </label>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </form>
+                    </div>
+                </div>
+            </article>
+        <?php endif; ?>
     </section>
 </div>
 
