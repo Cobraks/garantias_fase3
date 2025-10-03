@@ -107,96 +107,136 @@ function calcularRecargos(modalidad, valoresForm) {
 			topePorGrupo[g.selec_grupo] = Number(g.valor_max_grupo) / 100;
 	});
 
-	const suplementosAplicados = [];
+        const evaluaciones = [];
 
-	for (const sup of suplementos) {
-		const condicion = sup.condicion;
-		const tipo = tipoCondicion[condicion];
-		const comparador = comparadores[tipo]?.[sup.comparador];
-		if (!comparador) continue;
+        suplementos.forEach((sup, index) => {
+                const condicion = sup.condicion;
+                const tipo = tipoCondicion[condicion];
+                const comparador = comparadores[tipo]?.[sup.comparador];
+                if (!comparador) return;
 
-		let inputValor = null;
-		switch (condicion) {
-			case "antiguedad":
-				inputValor = getAntiguedadFromDate(
-					valoresForm.fecha_primera_matriculacion
-				);
-				break;
-			case "kilometros":
-				inputValor = parseNumericFormValue(valoresForm.kilometros);
-				break;
-			case "potencia":
-				inputValor = parseNumericFormValue(valoresForm.potencia);
-				break;
-			case "traccion":
-				inputValor = valoresForm.traccion || "";
-				break;
-			case "cambio":
-				inputValor = valoresForm.cambio || "";
-				break;
-			case "doble_motor":
-				inputValor = valoresForm.doble_motor;
-				break;
-			default:
-				inputValor = null;
-		}
+                let inputValor = null;
+                switch (condicion) {
+                        case "antiguedad":
+                                inputValor = getAntiguedadFromDate(
+                                        valoresForm.fecha_primera_matriculacion
+                                );
+                                break;
+                        case "kilometros":
+                                inputValor = parseNumericFormValue(valoresForm.kilometros);
+                                break;
+                        case "potencia":
+                                inputValor = parseNumericFormValue(valoresForm.potencia);
+                                break;
+                        case "traccion":
+                                inputValor = valoresForm.traccion || "";
+                                break;
+                        case "cambio":
+                                inputValor = valoresForm.cambio || "";
+                                break;
+                        case "doble_motor":
+                                inputValor = valoresForm.doble_motor;
+                                break;
+                        default:
+                                inputValor = null;
+                }
 
-		const matches = comparador(inputValor, sup.valor);
-		if (matches) {
-			suplementosAplicados.push({
-				condicion: sup.condicion,
-				valorCondicion: inputValor,
-				comparador: sup.comparador,
-				valorComparar: sup.valor,
-				recargo: Number(sup.recargo) / 100,
-				grupo: sup.grupo_acumulabilidad,
-				acumulable: !!sup.acumulable,
-				descripcion: sup.descripcion,
-			});
-		}
-	}
+                const matches = comparador(inputValor, sup.valor);
+                const condicionesExactas =
+                        sup.condiciones_exactas === true ||
+                        sup.condiciones_exactas === "true" ||
+                        sup.condiciones_exactas === 1 ||
+                        sup.condiciones_exactas === "1";
+
+                evaluaciones.push({
+                        condicion: sup.condicion,
+                        valorCondicion: inputValor,
+                        comparador: sup.comparador,
+                        valorComparar: sup.valor,
+                        recargo: Number(sup.recargo) / 100,
+                        grupo: sup.grupo_acumulabilidad,
+                        acumulable: !!sup.acumulable,
+                        descripcion: sup.descripcion,
+                        condicionesExactas,
+                        matches,
+                        index,
+                });
+        });
+
+        const evaluacionesPorGrupo = {};
+        for (const evalSup of evaluaciones) {
+                const grupo = evalSup.grupo || "X";
+                evaluacionesPorGrupo[grupo] = evaluacionesPorGrupo[grupo] || [];
+                evaluacionesPorGrupo[grupo].push(evalSup);
+        }
+
+        const suplementosAplicados = [];
+        for (const grupo of Object.keys(evaluacionesPorGrupo)) {
+                const evaluadosGrupo = evaluacionesPorGrupo[grupo];
+                const exactos = evaluadosGrupo.filter((e) => e.condicionesExactas);
+                const todasCondicionesExactasCumplen =
+                        exactos.length === 0 || exactos.every((e) => e.matches);
+
+                evaluadosGrupo.forEach((evaluado) => {
+                        if (!evaluado.matches) return;
+                        if (evaluado.condicionesExactas && !todasCondicionesExactasCumplen)
+                                return;
+
+                        const { index, ...rest } = evaluado;
+                        delete rest.condicionesExactas;
+                        delete rest.matches;
+                        suplementosAplicados.push({ ...rest, index });
+                });
+        }
+
+        suplementosAplicados.sort((a, b) => a.index - b.index);
+        suplementosAplicados.forEach((sup) => {
+                delete sup.index;
+        });
 
         const grupos = {};
-				for (const sup of suplementosAplicados) {
-					const grupo = sup.grupo || "X";
-					grupos[grupo] = grupos[grupo] || [];
-					grupos[grupo].push(sup);
-				}
+        for (const sup of suplementosAplicados) {
+                const grupo = sup.grupo || "X";
+                grupos[grupo] = grupos[grupo] || [];
+                grupos[grupo].push(sup);
+        }
 
+        const items = [];
+        const gruposAgregados = new Set();
+        for (const sup of suplementosAplicados) {
+                const grupo = sup.grupo || "X";
+                const arr = grupos[grupo];
+                const esAcumulable = arr.some((s) => s.acumulable);
+                if (esAcumulable || arr.length === 1) {
+                        items.push({
+                                descripcion: sup.descripcion,
+                                porcentajeOriginal: sup.recargo,
+                                grupo,
+                        });
+                } else if (!gruposAgregados.has(grupo)) {
+                        const maxRecargo = Math.max(...arr.map((s) => s.recargo));
+                        const descripciones = arr
+                                .map((s) => s.descripcion)
+                                .filter(Boolean);
+                        let descripcionTxt = "";
+                        if (descripciones.length === 2)
+                                descripcionTxt = descripciones.join(" y ");
+                        else if (descripciones.length > 2)
+                                descripcionTxt =
+                                        descripciones.slice(0, -1).join(", ") +
+                                        " y " +
+                                        descripciones[descripciones.length - 1];
+                        else descripcionTxt = descripciones[0] || "";
+                        items.push({
+                                descripcion: descripcionTxt,
+                                porcentajeOriginal: maxRecargo,
+                                grupo,
+                        });
+                        gruposAgregados.add(grupo);
+                }
+        }
 
-const items = [];
-const gruposAgregados = new Set();
-for (const sup of suplementosAplicados) {
-	const grupo = sup.grupo || "X";
-	const arr = grupos[grupo];
-	const esAcumulable = arr.some((s) => s.acumulable);
-	if (esAcumulable || arr.length === 1) {
-		items.push({
-			descripcion: sup.descripcion,
-			porcentajeOriginal: sup.recargo,
-			grupo,
-		});
-	} else if (!gruposAgregados.has(grupo)) {
-		const maxRecargo = Math.max(...arr.map((s) => s.recargo));
-		const descripciones = arr.map((s) => s.descripcion).filter(Boolean);
-		let descripcionTxt = "";
-		if (descripciones.length === 2) descripcionTxt = descripciones.join(" y ");
-		else if (descripciones.length > 2)
-			descripcionTxt =
-				descripciones.slice(0, -1).join(", ") +
-				" y " +
-				descripciones[descripciones.length - 1];
-		else descripcionTxt = descripciones[0] || "";
-		items.push({
-			descripcion: descripcionTxt,
-			porcentajeOriginal: maxRecargo,
-			grupo,
-		});
-		gruposAgregados.add(grupo);
-	}
-}
-
-      const remainingPorGrupo = {};
+        const remainingPorGrupo = {};
         for (const item of items) {
                 const grupo = item.grupo || "X";
                 if (remainingPorGrupo[grupo] == null)
