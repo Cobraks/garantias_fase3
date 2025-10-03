@@ -150,8 +150,11 @@
       email: document.getElementById('summary-email'),
       phone: document.getElementById('summary-phone'),
       preferencesGroup: document.getElementById('summary-preferences'),
+      webItem: document.getElementById('summary-web-item'),
       web: document.getElementById('summary-web'),
+      signatureItem: document.getElementById('summary-signature-item'),
       signature: document.getElementById('summary-signature'),
+      sepaStatusItem: document.getElementById('summary-sepa-status-item'),
       sepaStatus: document.getElementById('summary-sepa-status'),
       workshopGroup: document.getElementById('summary-workshop'),
       workshopName: document.getElementById('summary-workshop-name'),
@@ -631,6 +634,15 @@
     const formatAddress = (address, postal, city, province) => {
       const parts = [address, [postal, city].filter(Boolean).join(' '), province].filter(Boolean);
       return parts.length ? parts.join(', ') : '—';
+    };
+
+    const setVisibility = (element, visible) => {
+      if (!element) {
+        return;
+      }
+      element.hidden = !visible;
+      element.setAttribute('aria-hidden', visible ? 'false' : 'true');
+      element.style.display = visible ? '' : 'none';
     };
 
     const handleEmailStatusChange = (status) => {
@@ -1130,22 +1142,17 @@
       if (summary.channel) {
         summary.channel.textContent = CHANNEL_LABELS[state.selectedChannel] || '—';
       }
-      if (summary.tradeNameItem) {
-        const visible = !isIndividual;
-        summary.tradeNameItem.style.display = visible ? '' : 'none';
-        summary.tradeNameItem.setAttribute('aria-hidden', visible ? 'false' : 'true');
-      }
+
+      setVisibility(summary.tradeNameItem, !isIndividual);
       if (summary.tradeName) {
         summary.tradeName.textContent = isIndividual ? '—' : (getValue('company_trade_name') || '—');
       }
-      if (summary.legalNameItem) {
-        const visible = !isIndividual;
-        summary.legalNameItem.style.display = visible ? '' : 'none';
-        summary.legalNameItem.setAttribute('aria-hidden', visible ? 'false' : 'true');
-      }
+
+      setVisibility(summary.legalNameItem, !isIndividual);
       if (summary.legalName) {
         summary.legalName.textContent = isIndividual ? '—' : (getValue('company_legal_name') || '—');
       }
+
       if (summary.name) {
         const name = combineName();
         summary.name.textContent = name || '—';
@@ -1156,64 +1163,99 @@
       if (summary.phone && phoneField) {
         summary.phone.textContent = phoneField.value.trim() || '—';
       }
-      if (summary.preferencesGroup) {
-        summary.preferencesGroup.hidden = isIndividual;
-        summary.preferencesGroup.setAttribute('aria-hidden', isIndividual ? 'true' : 'false');
-        summary.preferencesGroup.style.display = isIndividual ? 'none' : '';
+
+      const workshopActive = !isIndividual && !!(hasWorkshopField && hasWorkshopField.checked);
+      setVisibility(summary.workshopGroup, workshopActive);
+      if (workshopActive) {
+        summary.workshopName.textContent = workshopFields.name?.value.trim() || '—';
+        if (summary.workshopFiscalName) {
+          summary.workshopFiscalName.textContent = workshopFields.fiscalName?.value.trim() || '—';
+        }
+        if (summary.workshopTaxId) {
+          summary.workshopTaxId.textContent = workshopFields.taxId?.value.trim() || '—';
+        }
+        summary.workshopContact.textContent = workshopFields.contact?.value.trim() || '—';
+        summary.workshopAddress.textContent = workshopFields.address?.value.trim() || '—';
+        summary.workshopPhone.textContent = workshopFields.phone?.value.trim() || '—';
+        summary.workshopEmail.textContent = workshopFields.email?.value.trim() || '—';
+      } else {
+        if (summary.workshopName) {
+          summary.workshopName.textContent = '—';
+        }
+        if (summary.workshopFiscalName) {
+          summary.workshopFiscalName.textContent = '—';
+        }
+        if (summary.workshopTaxId) {
+          summary.workshopTaxId.textContent = '—';
+        }
+        if (summary.workshopContact) {
+          summary.workshopContact.textContent = '—';
+        }
+        if (summary.workshopAddress) {
+          summary.workshopAddress.textContent = '—';
+        }
+        if (summary.workshopPhone) {
+          summary.workshopPhone.textContent = '—';
+        }
+        if (summary.workshopEmail) {
+          summary.workshopEmail.textContent = '—';
+        }
       }
+
+      const webActive = !isIndividual && !!(hasWebField && hasWebField.checked);
       if (summary.web) {
+        summary.web.textContent = '—';
+      }
+      setVisibility(summary.webItem, webActive);
+      if (webActive && summary.web) {
         const urlInput = document.getElementById('web_url');
         const value = urlInput && urlInput.value.trim() ? urlInput.value.trim() : '—';
-        summary.web.textContent = isIndividual ? '—' : value;
+        summary.web.textContent = value;
       }
+
+      const signatureActive = !isIndividual && !!(autoSignatureField && autoSignatureField.checked);
       if (summary.signature) {
-        if (isIndividual) {
-          summary.signature.textContent = '—';
-        } else {
-          summary.signature.textContent = autoSignatureField && autoSignatureField.checked ? 'Activada' : 'No activada';
-        }
+        summary.signature.textContent = '—';
       }
+      setVisibility(summary.signatureItem, signatureActive);
+      if (signatureActive && summary.signature) {
+        summary.signature.textContent = 'Activada';
+      }
+
+      const sepaActive = !isIndividual && !!(enableSepaField && enableSepaField.checked);
       if (summary.sepaStatus) {
-        if (isIndividual) {
-          summary.sepaStatus.textContent = '—';
-        } else {
-          summary.sepaStatus.textContent = enableSepaField && enableSepaField.checked ? 'Activada' : 'No activada';
-        }
+        summary.sepaStatus.textContent = '—';
+      }
+      setVisibility(summary.sepaStatusItem, sepaActive);
+      if (sepaActive && summary.sepaStatus) {
+        summary.sepaStatus.textContent = 'Activada';
       }
 
-      if (summary.workshopGroup) {
-        const isActive = !isIndividual && hasWorkshopField && hasWorkshopField.checked;
-        summary.workshopGroup.hidden = !isActive;
-        summary.workshopGroup.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-        if (isActive) {
-          summary.workshopName.textContent = workshopFields.name?.value.trim() || '—';
-          if (summary.workshopFiscalName) {
-            summary.workshopFiscalName.textContent = workshopFields.fiscalName?.value.trim() || '—';
-          }
-          if (summary.workshopTaxId) {
-            summary.workshopTaxId.textContent = workshopFields.taxId?.value.trim() || '—';
-          }
-          summary.workshopContact.textContent = workshopFields.contact?.value.trim() || '—';
-          summary.workshopAddress.textContent = workshopFields.address?.value.trim() || '—';
-          summary.workshopPhone.textContent = workshopFields.phone?.value.trim() || '—';
-          summary.workshopEmail.textContent = workshopFields.email?.value.trim() || '—';
-        }
+      if (summary.preferencesGroup) {
+        const preferencesVisible = !isIndividual && (webActive || signatureActive || sepaActive);
+        setVisibility(summary.preferencesGroup, preferencesVisible);
       }
 
-      if (summary.sepaGroup) {
-        const isActive = !isIndividual && enableSepaField && enableSepaField.checked;
-        summary.sepaGroup.hidden = !isActive;
-        summary.sepaGroup.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-        if (isActive) {
-          summary.sepaName.textContent = getValue('sepa_name') || '—';
-          summary.sepaAddress.textContent = formatAddress(
-            getValue('sepa_address'),
-            getValue('sepa_postal_code'),
-            getValue('sepa_city'),
-            getValue('sepa_state')
-          );
-          const ibanValue = sepaIbanField ? sepaIbanField.value.trim() : '';
-          summary.sepaIban.textContent = ibanValue ? formatIban(ibanValue) : '—';
+      setVisibility(summary.sepaGroup, sepaActive);
+      if (sepaActive && summary.sepaGroup) {
+        summary.sepaName.textContent = getValue('sepa_name') || '—';
+        summary.sepaAddress.textContent = formatAddress(
+          getValue('sepa_address'),
+          getValue('sepa_postal_code'),
+          getValue('sepa_city'),
+          getValue('sepa_state')
+        );
+        const ibanValue = sepaIbanField ? sepaIbanField.value.trim() : '';
+        summary.sepaIban.textContent = ibanValue ? formatIban(ibanValue) : '—';
+      } else if (summary.sepaGroup) {
+        if (summary.sepaName) {
+          summary.sepaName.textContent = '—';
+        }
+        if (summary.sepaAddress) {
+          summary.sepaAddress.textContent = '—';
+        }
+        if (summary.sepaIban) {
+          summary.sepaIban.textContent = '—';
         }
       }
     };
