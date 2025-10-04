@@ -19,6 +19,21 @@ import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.j
 
 const pdfCache = new Map();
 
+const CHANNEL_NORMALIZATION = {
+        profesional: "profesional",
+        go_profesional: "profesional",
+        particular: "particular",
+        go_particular: "particular",
+        gestoria: "gestoria",
+        go_gestoria: "gestoria",
+};
+
+function normalizeChannel(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        return CHANNEL_NORMALIZATION[key] || "";
+}
+
 async function loadStaticPdf(url, options = {}) {
         if (!url) return null;
 
@@ -1583,7 +1598,10 @@ export default function initAutosave() {
                 ) {
                         const canal = document.getElementById("canal-venta");
                         if (canal && canal.value) {
-                                garantia.canal_venta = canal.value;
+                                const canalNormalizado = normalizeChannel(canal.value);
+                                garantia.canal_venta = canalNormalizado || "profesional";
+                        } else {
+                                garantia.canal_venta = "profesional";
                         }
                         const usuario = document.getElementById("usuario-rol");
                         if (usuario && usuario.value) {
@@ -1596,12 +1614,14 @@ export default function initAutosave() {
                                 garantia.concesionario_empresa_profesional = usuario.value;
                         }
                } else if (normalizedRole === "profesional" || normalizedRole === "go_profesional") {
-                       garantia.canal_venta = "profesional";
-                       const currentId = getCurrentUserId();
-                       if (currentId) {
-                               garantia.concesionario_empresa_profesional = currentId;
-                       }
-               }
+                        garantia.canal_venta = "profesional";
+                        const currentId = getCurrentUserId();
+                        if (currentId) {
+                                garantia.concesionario_empresa_profesional = currentId;
+                        }
+               } else if (normalizedRole === "go_particular" || normalizedRole === "particular") {
+                        garantia.canal_venta = "particular";
+                }
 
                 if (Object.keys(garantia).length) {
                         payload.garantia_contratada = garantia;

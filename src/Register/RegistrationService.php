@@ -716,6 +716,9 @@ class RegistrationService
                 'phone'  => $data['phone'],
                 'channel'=> $data['channel_label'],
             ],
+            'channel_key'   => $data['channel'],
+            'channel_label' => $data['channel_label'],
+            'requires_transfer' => $data['channel'] === 'individual',
             'company' => $data['company'],
             'workshop'=> $data['has_workshop'] ? $data['workshop'] : null,
             'web'     => $data['has_web'] ? $data['web_url'] : '',
@@ -911,6 +914,26 @@ class RegistrationService
             ? (string) $data['email']
             : (string) get_userdata($user_id)->user_email;
 
+        $channel_key = '';
+        $channel_label = '';
+        if (is_array($data)) {
+            if (isset($data['channel'])) {
+                $channel_key = (string) $data['channel'];
+            }
+            if (isset($data['channel_label'])) {
+                $channel_label = (string) $data['channel_label'];
+            }
+        }
+        if ($channel_key === '' && $user_id) {
+            $channel_key = (string) get_user_meta($user_id, 'datos_empresa_tipo_profesional', true);
+        }
+        if ($channel_label === '' && isset(self::CHANNELS[$channel_key]['label'])) {
+            $channel_label = self::CHANNELS[$channel_key]['label'];
+        }
+        if ($channel_label === '') {
+            $channel_label = __('Profesional', 'garantias-online-360vo');
+        }
+
         $context = [
             'name'        => $first_name,
             'code'        => $code,
@@ -918,6 +941,8 @@ class RegistrationService
             'expires_in'  => max(0, $expires - time()),
             'verification_url' => home_url('/garantias-online/registro/'),
             'signature'   => $this->get_signature_html(),
+            'channel_key'   => $channel_key,
+            'channel_label' => $channel_label,
         ];
 
         $body = $this->renderer->render('register-verification', $context);

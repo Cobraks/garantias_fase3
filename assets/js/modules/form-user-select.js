@@ -44,11 +44,49 @@ function isProfesional(role) {
         return PROFESIONAL_EQUIVALENT_ROLES.has(normalizeRole(role));
 }
 
+function getChannelSlug(value) {
+        const normalized = normalizeRole(value);
+        switch (normalized) {
+                case "go_profesional":
+                case "profesional":
+                        return "profesional";
+                case "go_particular":
+                case "particular":
+                        return "particular";
+                case "go_gestoria":
+                case "gestoria":
+                        return "gestoria";
+                default:
+                        return "";
+        }
+}
+
+function channelRequiresSeller(channelSlug) {
+        return channelSlug === "profesional";
+}
+
+function getRoleValueForFetch(value) {
+        const normalized = normalizeRole(value);
+        switch (normalized) {
+                case "profesional":
+                case "go_profesional":
+                        return "go_profesional";
+                case "gestoria":
+                case "go_gestoria":
+                        return "go_gestoria";
+                case "particular":
+                case "go_particular":
+                        return "go_particular";
+                default:
+                        return value;
+        }
+}
+
 function loadUsuariosPorRol(rol, selectId) {
         const restRoot = getRestRoot();
         const restNonce = getRestNonce();
 
-	const select = document.getElementById(selectId);
+        const select = document.getElementById(selectId);
 	if (!select) return;
 
 	// Vacía el select y muestra cargando
@@ -154,22 +192,40 @@ async function fetchEstadoSepa(targetUserId = null) {
  * @param {string|number|null} targetUserId - profesional/vendedor seleccionado (o null)
  */
 async function refreshMetodoPagoPorUsuario(targetUserId) {
-	const tieneSepa = await fetchEstadoSepa(targetUserId);
-	const select = document.getElementById("metodo_pago");
-	const mensaje = document.querySelector(".mensaje_falta_sepa");
-	if (!select) return;
+        const select = document.getElementById("metodo_pago");
+        const mensaje = document.querySelector(".mensaje_falta_sepa");
+        if (!select) return;
 
-	// Reconstruir opciones: siempre transferencia
-	select.innerHTML = "";
-	const optTrans = document.createElement("option");
-	optTrans.value = "transferencia";
-	optTrans.textContent = "Transferencia bancaria";
-	select.appendChild(optTrans);
+        const canalSelect = document.getElementById("canal-venta");
+        const canalSlug = canalSelect
+                ? getChannelSlug(canalSelect.value)
+                : getChannelSlug(getUserRole());
 
-	if (tieneSepa) {
-		const optDomic = document.createElement("option");
-		optDomic.value = "domiciliacion";
-		optDomic.textContent = "Domiciliación bancaria";
+        // Reconstruir opciones: siempre transferencia
+        select.innerHTML = "";
+        const optTrans = document.createElement("option");
+        optTrans.value = "transferencia";
+        optTrans.textContent = "Transferencia bancaria";
+        select.appendChild(optTrans);
+
+        if (canalSlug === "particular") {
+                optTrans.selected = true;
+                if (mensaje) mensaje.style.display = "none";
+                const container = select.closest(".form__input-container");
+                if (container) {
+                        if (select.value) container.classList.add("has-value");
+                        else container.classList.remove("has-value");
+                }
+                updateNextButtonState();
+                return;
+        }
+
+        const tieneSepa = await fetchEstadoSepa(targetUserId);
+
+        if (tieneSepa) {
+                const optDomic = document.createElement("option");
+                optDomic.value = "domiciliacion";
+                optDomic.textContent = "Domiciliación bancaria";
 		optDomic.selected = true;
 		select.appendChild(optDomic);
 		optTrans.selected = false;
@@ -246,46 +302,61 @@ function setupSepaWatcher() {
 }
 
 function initUserSelect() {
-	const canalSelect = document.getElementById("canal-venta");
-	const usuarioSelect = document.getElementById("usuario-rol");
-	const wrapUsuario = document.getElementById("wrap-select-usuario");
+        const canalSelect = document.getElementById("canal-venta");
+        const usuarioSelect = document.getElementById("usuario-rol");
+        const wrapUsuario = document.getElementById("wrap-select-usuario");
         const rawRole = getUserRole() || document.body.dataset.userRole || "";
         const userRole = normalizeRole(rawRole);
 
-	// --- Para Admin: fuerza selección por defecto y carga usuarios al cargar ---
+        // --- Para Admin: fuerza selección por defecto y carga usuarios al cargar ---
         if (isAdminLike(userRole) && canalSelect && usuarioSelect && wrapUsuario) {
                 // Si canal no tiene valor, selecciona 'profesional' por defecto
                 let initialValue = canalSelect.value;
                 let profesionalOption =
                         canalSelect.querySelector('option[value="profesional"]') ||
-			canalSelect.querySelector('option[value="go_profesional"]');
+                        canalSelect.querySelector('option[value="go_profesional"]');
 
-		if (!initialValue && profesionalOption) {
-			profesionalOption.selected = true;
-			canalSelect.value = profesionalOption.value;
-			initialValue = profesionalOption.value;
-		}
-
-		// MOSTRAR SIEMPRE EL BLOQUE Y CARGAR USUARIOS AL INICIAR SI HAY VALOR
-                if (initialValue) {
-                        mostrarBloqueUsuarioYcargar(initialValue);
-                } else {
-                        wrapUsuario.style.display = "none";
+                if (!initialValue && profesionalOption) {
+                        profesionalOption.selected = true;
+                        canalSelect.value = profesionalOption.value;
+                        initialValue = profesionalOption.value;
                 }
 
-		// Listener al cambiar canal
+                // MOSTRAR SIEMPRE EL BLOQUE Y CARGAR USUARIOS AL INICIAR SI HAY VALOR
+                if (initialValue) {
+                        const canalSlug = getChannelSlug(initialValue);
+                        if (channelRequiresSeller(canalSlug)) {
+                                mostrarBloqueUsuarioYcargar(
+                                        getRoleValueForFetch(initialValue)
+                                );
+                                wrapUsuario.style.display = "";
+                                usuarioSelect.setAttribute("required", "");
+                        } else {
+                                wrapUsuario.style.display = "none";
+                                usuarioSelect.removeAttribute("required");
+                                usuarioSelect.innerHTML = "";
+                        }
+                } else {
+                        wrapUsuario.style.display = "none";
+                        usuarioSelect.removeAttribute("required");
+                }
+
+                // Listener al cambiar canal
                 canalSelect.addEventListener("change", function () {
                         const rol = this.value;
-                        if (!rol) {
+                        const canalSlug = getChannelSlug(rol);
+                        if (!rol || !channelRequiresSeller(canalSlug)) {
                                 wrapUsuario.style.display = "none";
                                 if (usuarioSelect) usuarioSelect.innerHTML = "";
-				return;
-			}
-			mostrarBloqueUsuarioYcargar(rol);
-		});
-	}
+                                if (usuarioSelect)
+                                        usuarioSelect.removeAttribute("required");
+                                return;
+                        }
+                        mostrarBloqueUsuarioYcargar(getRoleValueForFetch(rol));
+                });
+        }
 
-	// --- Para Comerciales: carga usuarios asignados al cargar el form ---
+        // --- Para Comerciales: carga usuarios asignados al cargar el form ---
         const isComercialRole =
                 document.body.classList.contains("rol-comercial") ||
                 isComercial(userRole);
@@ -295,15 +366,18 @@ function initUserSelect() {
                 }
                 wrapUsuario.style.display = "";
                 usuarioSelect.setAttribute("required", "");
-                loadUsuariosPorRol(canalSelect.value || "go_profesional", "usuario-rol");
+                loadUsuariosPorRol(
+                        getRoleValueForFetch(canalSelect.value || "go_profesional"),
+                        "usuario-rol"
+                );
                 canalSelect.addEventListener("change", function () {
-                        const value = this.value || "go_profesional";
+                        const value = getRoleValueForFetch(this.value || "go_profesional");
                         loadUsuariosPorRol(value, "usuario-rol");
                 });
         }
 
-	// Arranca el watcher de SEPA / método de pago
-	setupSepaWatcher();
+        // Arranca el watcher de SEPA / método de pago
+        setupSepaWatcher();
 }
 
 // Export como función de inicialización

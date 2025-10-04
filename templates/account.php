@@ -154,6 +154,7 @@ $role_keys = array_map('sanitize_key', (array) ($user['roles'] ?? []));
 $is_admin_account = in_array('administrator', $role_keys, true);
 $is_professional_account = in_array('go_profesional', $role_keys, true);
 $is_commercial_account = in_array('go_comercial', $role_keys, true);
+$is_individual_account = in_array('go_particular', $role_keys, true);
 if ($role_keys && function_exists('wp_roles')) {
     $roles = wp_roles();
     foreach ($role_keys as $role_key) {
@@ -267,7 +268,7 @@ $sections = [
     ],
 ];
 
-if (! $is_commercial_account || $is_admin_account) {
+if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account) {
     $sections[] = [
         'id'    => 'account-payments',
         'label' => 'Pagos',
@@ -469,10 +470,19 @@ $formatPhoneHref = static function ($phone) {
                         <?php endif; ?>
                     </dl>
                 </div>
-                <?php if (! $is_admin_account && ! $is_commercial_account) : ?>
+                <?php
+                $has_assigned_commercials = ! empty($commercials);
+                $show_commercial_card = ! $is_admin_account
+                    && ! $is_commercial_account
+                    && ($has_assigned_commercials || ! $is_individual_account);
+                $show_company_card = ! $is_admin_account
+                    && ! $is_commercial_account
+                    && ! $is_individual_account;
+                ?>
+                <?php if ($show_commercial_card) : ?>
                     <div class="account-card account-card--contacts account-card--commercial">
                         <h3>Comercial asignado</h3>
-                        <?php if (! empty($commercials)) : ?>
+                        <?php if ($has_assigned_commercials) : ?>
                             <ul class="account-commercials">
                                 <?php foreach ($commercials as $commercial) : ?>
                                     <?php
@@ -515,10 +525,12 @@ $formatPhoneHref = static function ($phone) {
                                     </li>
                                 <?php endforeach; ?>
                             </ul>
-                        <?php else : ?>
+                        <?php elseif (! $is_individual_account) : ?>
                             <p class="account-card__empty">Pendiente de asignar.</p>
                         <?php endif; ?>
                     </div>
+                <?php endif; ?>
+                <?php if ($show_company_card) : ?>
                     <div class="account-card account-card--details account-card--company">
                         <h3>Datos de la empresa</h3>
                         <dl class="account-card__list">
@@ -951,7 +963,7 @@ $formatPhoneHref = static function ($phone) {
             $has_generated_mandate = $pending_document || $signed_document || ($sepa_info['status'] !== null);
 
         ?>
-        <?php if (! $is_commercial_account || $is_admin_account) : ?>
+        <?php if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account) : ?>
         <article id="account-payments" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('payment', 'account-section__icon'); ?>
@@ -1227,7 +1239,7 @@ $formatPhoneHref = static function ($phone) {
         </article>
         <?php endif; ?>
 
-        <?php if (! $is_commercial_account || $is_admin_account) : ?>
+        <?php if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account) : ?>
         <article id="account-documents" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('check_shield', 'account-section__icon'); ?>

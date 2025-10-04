@@ -171,6 +171,8 @@ if (! empty($is_add_guarantee)) {
         $js_user_role = 'admin';
     } elseif (in_array('go_profesional', (array)$current_user->roles, true)) {
         $js_user_role = 'go_profesional';
+    } elseif (in_array('go_particular', (array)$current_user->roles, true)) {
+        $js_user_role = 'go_particular';
     } elseif ($is_comercial) {
         $js_user_role = 'comercial';
     } else {
@@ -191,6 +193,8 @@ if (! empty($is_add_guarantee)) {
                             echo 'admin';
                         } elseif (in_array('go_profesional', $roles, true)) {
                             echo 'go_profesional';
+                        } elseif (in_array('go_particular', $roles, true)) {
+                            echo 'go_particular';
                         } elseif ($is_garantias) {
                             echo 'go_garantias';
                         } elseif ($is_director) {

@@ -11,6 +11,9 @@ $url        = isset($verification_url) && $verification_url !== ''
     ? $verification_url
     : home_url('/garantias-online/registro/');
 $signature  = isset($signature) ? (string) $signature : '';
+$channel_key = isset($channel_key) ? (string) $channel_key : '';
+$channel_label = isset($channel_label) ? (string) $channel_label : '';
+$is_individual = $channel_key === 'individual';
 
 $deadline_sentence = '';
 if ($expires_in > 0) {
@@ -55,6 +58,11 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                             <p style="font-size:15px;margin:0 0 18px;color:#374151;line-height:1.7;">
                                 <?php esc_html_e('Para activar tu cuenta introduce el siguiente código en el paso final del registro.', 'garantias-online-360vo'); ?>
                             </p>
+                            <?php if ($is_individual) : ?>
+                                <p style="font-size:15px;margin:0 0 18px;color:#374151;line-height:1.7;">
+                                    <?php esc_html_e('Como particular, podrás gestionar los pagos de tus garantías mediante transferencia bancaria. Tras activar tu cuenta te enviaremos las instrucciones para completar el ingreso.', 'garantias-online-360vo'); ?>
+                                </p>
+                            <?php endif; ?>
                             <div style="display:inline-block;padding:20px 36px;border:2px dashed #bc0000;border-radius:16px;margin:0 0 20px;font-size:32px;letter-spacing:0.3em;font-weight:700;color:#bc0000;">
                                 <?php echo esc_html($code); ?>
                             </div>
