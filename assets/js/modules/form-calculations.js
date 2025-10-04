@@ -182,7 +182,7 @@ function normalizeSelectValue(field) {
         return "";
 }
 
-function tarifaCoincideConFiltrosParticulares(tarifa, valoresForm) {
+function evaluarFiltrosParticulares(tarifa, valoresForm) {
         const tipoTarifa = normalizeSelectValue(tarifa.tipo_de_vehiculo);
         const traccionTarifa = normalizeSelectValue(tarifa.traccion);
         const desdeAnosRaw = tarifa.desde_anos;
@@ -198,20 +198,20 @@ function tarifaCoincideConFiltrosParticulares(tarifa, valoresForm) {
                 (hastaAnosRaw !== undefined && hastaAnosRaw !== null && hastaAnosRaw !== "");
 
         if (tieneRangoAntiguedad && (antiguedad === null || Number.isNaN(antiguedad))) {
-                return false;
+                return { coincide: false, especificidad: 0 };
         }
 
         if (antiguedad !== null && !Number.isNaN(antiguedad)) {
                 if (desdeAnosRaw !== undefined && desdeAnosRaw !== null && desdeAnosRaw !== "") {
                         const desdeNum = Number(desdeAnosRaw);
                         if (!Number.isNaN(desdeNum) && antiguedad < desdeNum) {
-                                return false;
+                                return { coincide: false, especificidad: 0 };
                         }
                 }
                 if (hastaAnosRaw !== undefined && hastaAnosRaw !== null && hastaAnosRaw !== "") {
                         const hastaNum = Number(hastaAnosRaw);
                         if (!Number.isNaN(hastaNum) && antiguedad > hastaNum) {
-                                return false;
+                                return { coincide: false, especificidad: 0 };
                         }
                 }
         }
@@ -229,11 +229,27 @@ function tarifaCoincideConFiltrosParticulares(tarifa, valoresForm) {
                 ? traccionSeleccionada === String(traccionTarifa).toLowerCase()
                 : true;
 
+        let coincide;
         if (tieneTipo && tieneTraccion) {
-                return tipoCoincide || traccionCoincide;
+                coincide = tipoCoincide || traccionCoincide;
+        } else {
+                coincide = tipoCoincide && traccionCoincide;
         }
 
-        return tipoCoincide && traccionCoincide;
+        let especificidad = 0;
+        if (coincide) {
+                if (tieneTipo || tieneTraccion) {
+                        especificidad += 1; // indica que es una tarifa con filtros especiales
+                }
+                if (tieneTipo && tipoCoincide) {
+                        especificidad += 1;
+                }
+                if (tieneTraccion && traccionCoincide) {
+                        especificidad += 1;
+                }
+        }
+
+        return { coincide, especificidad };
 }
 
 function syncCanalVentaSelect(canalesDisponibles, canalActivo) {
@@ -933,11 +949,8 @@ function modalidadAdmiteValor(modalidad, valoresForm) {
                                 : parseNumericFormValue(maxRaw);
                 const checkValor = tipo === "ninguna" || (valor >= min && valor <= max);
                 const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes == ejes);
-                const filtrosParticularesOk = tarifaCoincideConFiltrosParticulares(
-                        tarifa,
-                        valoresForm
-                );
-                return checkValor && checkEjes && filtrosParticularesOk;
+                const { coincide } = evaluarFiltrosParticulares(tarifa, valoresForm);
+                return checkValor && checkEjes && coincide;
         });
 }
 
@@ -948,23 +961,20 @@ function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
         const ejes = esCamion ? valoresForm.traccion_camion : null;
 
 	const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
-	const mesesPorGarantia = tarifas
-		.filter((tarifa) => {
-			const min = parseNumericFormValue(
-				tarifa.valor_min ?? tarifa.valor_minimo
-			);
-			const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
+        const mesesPorGarantia = tarifas
+                .filter((tarifa) => {
+                        const min = parseNumericFormValue(
+                                tarifa.valor_min ?? tarifa.valor_minimo
+                        );
+                        const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
                         const max =
                                 maxRaw === "" || maxRaw == null
                                         ? 99999999
                                         : parseNumericFormValue(maxRaw);
                         const checkValor = tipo === "ninguna" || (valor >= min && valor <= max);
                         const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes == ejes);
-                        const filtrosParticularesOk = tarifaCoincideConFiltrosParticulares(
-                                tarifa,
-                                valoresForm
-                        );
-                        return checkValor && checkEjes && filtrosParticularesOk;
+                        const { coincide } = evaluarFiltrosParticulares(tarifa, valoresForm);
+                        return checkValor && checkEjes && coincide;
                 })
                 .map((tarifa) => Number(tarifa.duracion_meses));
 
@@ -982,13 +992,16 @@ function calcularPrecioBase(modalidad, valoresForm) {
 
 	const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
 
-	for (const tarifa of tarifas) {
-		const min = parseNumericFormValue(tarifa.valor_min ?? tarifa.valor_minimo);
-		const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
-		const max =
-			maxRaw === "" || maxRaw == null
-				? 99999999
-				: parseNumericFormValue(maxRaw);
+        let mejorTarifa = null;
+        let mejorEspecificidad = -1;
+
+        for (const tarifa of tarifas) {
+                const min = parseNumericFormValue(tarifa.valor_min ?? tarifa.valor_minimo);
+                const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
+                const max =
+                        maxRaw === "" || maxRaw == null
+                                ? 99999999
+                                : parseNumericFormValue(maxRaw);
 
                 const checkMeses = Number(tarifa.duracion_meses) === meses;
                 const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes === ejes);
@@ -996,19 +1009,29 @@ function calcularPrecioBase(modalidad, valoresForm) {
                 const checkMax = tipo === "ninguna" || valor <= max;
 
                 if (checkMeses && checkEjes && checkMin && checkMax) {
-                        const filtrosParticularesOk =
-                                tarifaCoincideConFiltrosParticulares(tarifa, valoresForm);
-                        if (!filtrosParticularesOk) continue;
+                        const { coincide, especificidad } = evaluarFiltrosParticulares(
+                                tarifa,
+                                valoresForm
+                        );
+                        if (!coincide) continue;
 
-                        const precioBaseRaw = tarifa.precio_base;
-                        if (precioBaseRaw === null || precioBaseRaw === "") {
-                                return null;
+                        if (especificidad > mejorEspecificidad) {
+                                mejorTarifa = tarifa;
+                                mejorEspecificidad = especificidad;
                         }
-                        const precio = parseNumericFormValue(precioBaseRaw);
-                        return Number.isNaN(precio) ? null : precio;
                 }
         }
-        return null;
+
+        if (!mejorTarifa) {
+                return null;
+        }
+
+        const precioBaseRaw = mejorTarifa.precio_base;
+        if (precioBaseRaw === null || precioBaseRaw === "") {
+                return null;
+        }
+        const precio = parseNumericFormValue(precioBaseRaw);
+        return Number.isNaN(precio) ? null : precio;
 }
 
 // --------- UI AUXILIARES ---------
