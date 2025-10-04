@@ -18,6 +18,9 @@
   };
 
   const PROFESSIONAL_CHANNELS = new Set(['compraventa', 'concesionario']);
+  const INDIVIDUAL_CHANNEL = 'individual';
+  const STEP_SEQUENCE_DEFAULT = [1, 2, 3];
+  const STEP_SEQUENCE_INDIVIDUAL = [1, 3];
   const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
   const POSTAL_CODE_REGEX = /^(0[1-9]|[1-4]\d|5[0-3])\d{3}$/;
   const PHONE_REGEX = /^[6-9]\d{8}$/;
@@ -139,13 +142,19 @@
 
     const summary = {
       channel: document.getElementById('summary-channel'),
+      tradeNameItem: document.getElementById('summary-trade-name-item'),
       tradeName: document.getElementById('summary-trade-name'),
+      legalNameItem: document.getElementById('summary-legal-name-item'),
       legalName: document.getElementById('summary-legal-name'),
       name: document.getElementById('summary-name'),
       email: document.getElementById('summary-email'),
       phone: document.getElementById('summary-phone'),
+      preferencesGroup: document.getElementById('summary-preferences'),
+      webItem: document.getElementById('summary-web-item'),
       web: document.getElementById('summary-web'),
+      signatureItem: document.getElementById('summary-signature-item'),
       signature: document.getElementById('summary-signature'),
+      sepaStatusItem: document.getElementById('summary-sepa-status-item'),
       sepaStatus: document.getElementById('summary-sepa-status'),
       workshopGroup: document.getElementById('summary-workshop'),
       workshopName: document.getElementById('summary-workshop-name'),
@@ -163,7 +172,8 @@
 
     const state = {
       currentStep: 1,
-      totalSteps: 3,
+      stepSequence: STEP_SEQUENCE_DEFAULT.slice(),
+      totalSteps: STEP_SEQUENCE_DEFAULT.length,
       selectedChannel: null,
       emailStatus: 'empty',
       emailValue: '',
@@ -178,6 +188,30 @@
       },
       verifyLockedUntil: 0,
     };
+
+    const isStepAvailable = (stepNumber) => state.stepSequence.includes(stepNumber);
+    const getStepNumberAtPosition = (position) => {
+      if (!state.stepSequence.length) {
+        return 1;
+      }
+      const index = Math.min(Math.max(position - 1, 0), state.stepSequence.length - 1);
+      return state.stepSequence[index];
+    };
+    const getCurrentStepNumber = () => getStepNumberAtPosition(state.currentStep);
+    const setStepSequence = (sequence) => {
+      const nextSequence = Array.isArray(sequence) && sequence.length ? sequence : STEP_SEQUENCE_DEFAULT;
+      state.stepSequence = nextSequence.slice();
+      state.totalSteps = state.stepSequence.length;
+      if (state.currentStep > state.totalSteps) {
+        state.currentStep = state.totalSteps;
+      }
+      if (state.currentStep < 1) {
+        state.currentStep = 1;
+      }
+      showCurrentStep();
+      updateProgress();
+    };
+    let resetStep2Fields = () => {};
 
     let resendTimer = null;
     let verifyUnlockTimer = null;
@@ -517,39 +551,71 @@
 
     const updateProgress = () => {
       if (progressBar) {
-        const progress = state.totalSteps > 1 ? ((state.currentStep - 1) / (state.totalSteps - 1)) * 100 : 0;
+        const total = state.stepSequence.length;
+        const progress = total > 1 ? ((state.currentStep - 1) / (total - 1)) * 100 : 0;
         progressBar.style.width = `${progress}%`;
       }
 
       steps.forEach((step) => {
         const stepNumber = Number(step.getAttribute('data-step'));
+        const position = state.stepSequence.indexOf(stepNumber);
+        const isVisible = position !== -1;
         step.classList.remove('active', 'completed');
-        if (stepNumber < state.currentStep) {
+        if (!isVisible) {
+          step.style.display = 'none';
+          step.setAttribute('aria-hidden', 'true');
+          return;
+        }
+        step.style.display = '';
+        step.setAttribute('aria-hidden', 'false');
+        const stepPosition = position + 1;
+        if (stepPosition < state.currentStep) {
           step.classList.add('completed');
-        } else if (stepNumber === state.currentStep) {
+        } else if (stepPosition === state.currentStep) {
           step.classList.add('active');
         }
       });
     };
 
     const showCurrentStep = () => {
+      const activeNumber = getCurrentStepNumber();
       formSteps.forEach((step) => {
-        step.classList.remove('active');
+        const id = step.getAttribute('id') || '';
+        const match = id.match(/^step-(\d+)/);
+        if (!match) {
+          return;
+        }
+        const stepNumber = Number(match[1]);
+        if (stepNumber === 4) {
+          if (!step.classList.contains('active')) {
+            step.hidden = true;
+            step.setAttribute('aria-hidden', 'true');
+          }
+          return;
+        }
+        const visible = isStepAvailable(stepNumber);
+        if (!visible) {
+          step.classList.remove('active');
+          step.hidden = true;
+          step.setAttribute('aria-hidden', 'true');
+          return;
+        }
+        const isActive = stepNumber === activeNumber;
+        step.classList.toggle('active', isActive);
+        step.hidden = !isActive;
+        step.setAttribute('aria-hidden', isActive ? 'false' : 'true');
       });
-      const activeStep = document.getElementById(`step-${state.currentStep}`);
-      if (activeStep) {
-        activeStep.classList.add('active');
-      }
     };
 
     const goToStep = (stepNumber) => {
-      state.currentStep = Math.max(1, Math.min(stepNumber, state.totalSteps));
+      const total = state.stepSequence.length;
+      state.currentStep = Math.max(1, Math.min(stepNumber, total));
       showCurrentStep();
       updateProgress();
       if (progressContainer) {
         progressContainer.style.display = '';
       }
-      if (state.currentStep === 3) {
+      if (getCurrentStepNumber() === 3) {
         updateSummary();
       }
     };
@@ -568,6 +634,15 @@
     const formatAddress = (address, postal, city, province) => {
       const parts = [address, [postal, city].filter(Boolean).join(' '), province].filter(Boolean);
       return parts.length ? parts.join(', ') : '—';
+    };
+
+    const setVisibility = (element, visible) => {
+      if (!element) {
+        return;
+      }
+      element.hidden = !visible;
+      element.setAttribute('aria-hidden', visible ? 'false' : 'true');
+      element.style.display = visible ? '' : 'none';
     };
 
     const handleEmailStatusChange = (status) => {
@@ -990,6 +1065,9 @@
     };
 
     const validateStep2 = (showError) => {
+      if (!isStepAvailable(2)) {
+        return true;
+      }
       let valid = true;
       if (!validateWorkshopSection(showError)) {
         valid = false;
@@ -1020,6 +1098,13 @@
     };
 
     const updateStep2ButtonState = () => {
+      if (!step2Next) {
+        return;
+      }
+      if (!isStepAvailable(2)) {
+        setButtonDisabled(step2Next, true);
+        return;
+      }
       const isValid = validateStep2(false);
       setButtonDisabled(step2Next, !isValid);
     };
@@ -1030,6 +1115,9 @@
     };
 
     const prefillSepaFields = () => {
+      if (!isStepAvailable(2)) {
+        return;
+      }
       const entries = [
         { target: 'sepa_name', get: combineName },
         { target: 'sepa_address', source: 'company_address' },
@@ -1050,15 +1138,21 @@
     };
 
     const updateSummary = () => {
+      const isIndividual = state.selectedChannel === INDIVIDUAL_CHANNEL;
       if (summary.channel) {
         summary.channel.textContent = CHANNEL_LABELS[state.selectedChannel] || '—';
       }
+
+      setVisibility(summary.tradeNameItem, !isIndividual);
       if (summary.tradeName) {
-        summary.tradeName.textContent = getValue('company_trade_name') || '—';
+        summary.tradeName.textContent = isIndividual ? '—' : (getValue('company_trade_name') || '—');
       }
+
+      setVisibility(summary.legalNameItem, !isIndividual);
       if (summary.legalName) {
-        summary.legalName.textContent = getValue('company_legal_name') || '—';
+        summary.legalName.textContent = isIndividual ? '—' : (getValue('company_legal_name') || '—');
       }
+
       if (summary.name) {
         const name = combineName();
         summary.name.textContent = name || '—';
@@ -1069,55 +1163,105 @@
       if (summary.phone && phoneField) {
         summary.phone.textContent = phoneField.value.trim() || '—';
       }
-      if (summary.web) {
-        const urlInput = document.getElementById('web_url');
-        summary.web.textContent = urlInput && urlInput.value.trim() ? urlInput.value.trim() : '—';
-      }
-      if (summary.signature) {
-        summary.signature.textContent = autoSignatureField && autoSignatureField.checked ? 'Activada' : 'No activada';
-      }
-      if (summary.sepaStatus) {
-        summary.sepaStatus.textContent = enableSepaField && enableSepaField.checked ? 'Activada' : 'No activada';
-      }
 
-      if (summary.workshopGroup) {
-        const isActive = hasWorkshopField && hasWorkshopField.checked;
-        summary.workshopGroup.hidden = !isActive;
-        summary.workshopGroup.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-        if (isActive) {
-          summary.workshopName.textContent = workshopFields.name?.value.trim() || '—';
-          if (summary.workshopFiscalName) {
-            summary.workshopFiscalName.textContent = workshopFields.fiscalName?.value.trim() || '—';
-          }
-          if (summary.workshopTaxId) {
-            summary.workshopTaxId.textContent = workshopFields.taxId?.value.trim() || '—';
-          }
-          summary.workshopContact.textContent = workshopFields.contact?.value.trim() || '—';
-          summary.workshopAddress.textContent = workshopFields.address?.value.trim() || '—';
-          summary.workshopPhone.textContent = workshopFields.phone?.value.trim() || '—';
-          summary.workshopEmail.textContent = workshopFields.email?.value.trim() || '—';
+      const workshopActive = !isIndividual && !!(hasWorkshopField && hasWorkshopField.checked);
+      setVisibility(summary.workshopGroup, workshopActive);
+      if (workshopActive) {
+        summary.workshopName.textContent = workshopFields.name?.value.trim() || '—';
+        if (summary.workshopFiscalName) {
+          summary.workshopFiscalName.textContent = workshopFields.fiscalName?.value.trim() || '—';
+        }
+        if (summary.workshopTaxId) {
+          summary.workshopTaxId.textContent = workshopFields.taxId?.value.trim() || '—';
+        }
+        summary.workshopContact.textContent = workshopFields.contact?.value.trim() || '—';
+        summary.workshopAddress.textContent = workshopFields.address?.value.trim() || '—';
+        summary.workshopPhone.textContent = workshopFields.phone?.value.trim() || '—';
+        summary.workshopEmail.textContent = workshopFields.email?.value.trim() || '—';
+      } else {
+        if (summary.workshopName) {
+          summary.workshopName.textContent = '—';
+        }
+        if (summary.workshopFiscalName) {
+          summary.workshopFiscalName.textContent = '—';
+        }
+        if (summary.workshopTaxId) {
+          summary.workshopTaxId.textContent = '—';
+        }
+        if (summary.workshopContact) {
+          summary.workshopContact.textContent = '—';
+        }
+        if (summary.workshopAddress) {
+          summary.workshopAddress.textContent = '—';
+        }
+        if (summary.workshopPhone) {
+          summary.workshopPhone.textContent = '—';
+        }
+        if (summary.workshopEmail) {
+          summary.workshopEmail.textContent = '—';
         }
       }
 
-      if (summary.sepaGroup) {
-        const isActive = enableSepaField && enableSepaField.checked;
-        summary.sepaGroup.hidden = !isActive;
-        summary.sepaGroup.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-        if (isActive) {
-          summary.sepaName.textContent = getValue('sepa_name') || '—';
-          summary.sepaAddress.textContent = formatAddress(
-            getValue('sepa_address'),
-            getValue('sepa_postal_code'),
-            getValue('sepa_city'),
-            getValue('sepa_state')
-          );
-          const ibanValue = sepaIbanField ? sepaIbanField.value.trim() : '';
-          summary.sepaIban.textContent = ibanValue ? formatIban(ibanValue) : '—';
+      const webActive = !isIndividual && !!(hasWebField && hasWebField.checked);
+      if (summary.web) {
+        summary.web.textContent = '—';
+      }
+      setVisibility(summary.webItem, webActive);
+      if (webActive && summary.web) {
+        const urlInput = document.getElementById('web_url');
+        const value = urlInput && urlInput.value.trim() ? urlInput.value.trim() : '—';
+        summary.web.textContent = value;
+      }
+
+      const signatureActive = !isIndividual && !!(autoSignatureField && autoSignatureField.checked);
+      if (summary.signature) {
+        summary.signature.textContent = '—';
+      }
+      setVisibility(summary.signatureItem, signatureActive);
+      if (signatureActive && summary.signature) {
+        summary.signature.textContent = 'Activada';
+      }
+
+      const sepaActive = !isIndividual && !!(enableSepaField && enableSepaField.checked);
+      if (summary.sepaStatus) {
+        summary.sepaStatus.textContent = '—';
+      }
+      setVisibility(summary.sepaStatusItem, sepaActive);
+      if (sepaActive && summary.sepaStatus) {
+        summary.sepaStatus.textContent = 'Activada';
+      }
+
+      if (summary.preferencesGroup) {
+        const preferencesVisible = !isIndividual && (webActive || signatureActive || sepaActive);
+        setVisibility(summary.preferencesGroup, preferencesVisible);
+      }
+
+      setVisibility(summary.sepaGroup, sepaActive);
+      if (sepaActive && summary.sepaGroup) {
+        summary.sepaName.textContent = getValue('sepa_name') || '—';
+        summary.sepaAddress.textContent = formatAddress(
+          getValue('sepa_address'),
+          getValue('sepa_postal_code'),
+          getValue('sepa_city'),
+          getValue('sepa_state')
+        );
+        const ibanValue = sepaIbanField ? sepaIbanField.value.trim() : '';
+        summary.sepaIban.textContent = ibanValue ? formatIban(ibanValue) : '—';
+      } else if (summary.sepaGroup) {
+        if (summary.sepaName) {
+          summary.sepaName.textContent = '—';
+        }
+        if (summary.sepaAddress) {
+          summary.sepaAddress.textContent = '—';
+        }
+        if (summary.sepaIban) {
+          summary.sepaIban.textContent = '—';
         }
       }
     };
 
     const handleChannelSelection = (channel) => {
+      const previousChannel = state.selectedChannel;
       state.selectedChannel = channel;
       channelButtons.forEach((button) => {
         button.classList.toggle('active', button.getAttribute('data-channel') === channel);
@@ -1127,10 +1271,24 @@
         companySection.hidden = !showCompany;
         companySection.setAttribute('aria-hidden', showCompany ? 'false' : 'true');
       }
+      const isIndividual = channel === INDIVIDUAL_CHANNEL;
+      setStepSequence(isIndividual ? STEP_SEQUENCE_INDIVIDUAL : STEP_SEQUENCE_DEFAULT);
+      if (isIndividual) {
+        resetStep2Fields();
+      }
+      const channelChanged = previousChannel && previousChannel !== channel;
+      if (channelChanged) {
+        state.sepaEdited.clear();
+      }
+      if (channelChanged) {
+        state.currentStep = 1;
+        goToStep(1);
+      }
       clearChannelError();
       updateStep1ButtonState();
+      updateStep2ButtonState();
       updateSummary();
-      if (enableSepaField && enableSepaField.checked) {
+      if (!isIndividual && enableSepaField && enableSepaField.checked) {
         prefillSepaFields();
       }
     };
@@ -1168,16 +1326,27 @@
       if (!validateStep1(true)) {
         return;
       }
-      prefillSepaFields();
+      if (isStepAvailable(2)) {
+        prefillSepaFields();
+      }
       goToStep(2);
     };
 
     const step2Handler = () => {
+      if (!isStepAvailable(2)) {
+        updateSummary();
+        const position = state.stepSequence.indexOf(3);
+        const nextStep = position >= 0 ? position + 1 : state.stepSequence.length;
+        goToStep(nextStep);
+        return;
+      }
       if (!validateStep2(true)) {
         return;
       }
       updateSummary();
-      goToStep(3);
+      const position = state.stepSequence.indexOf(3);
+      const nextStep = position >= 0 ? position + 1 : state.stepSequence.length;
+      goToStep(nextStep);
     };
 
     const buildRegistrationPayload = () => {
@@ -1190,6 +1359,7 @@
         formData.append('go360_register_nonce', nonceField.value);
       }
 
+      const isIndividual = state.selectedChannel === INDIVIDUAL_CHANNEL;
       formData.append('channel', state.selectedChannel || '');
       formData.append('first_name', getValue('first_name'));
       formData.append('last_name', getValue('last_name'));
@@ -1199,50 +1369,50 @@
       formData.append('confirm_password', confirmField ? confirmField.value : '');
       formData.append('terms', termsCheckbox && termsCheckbox.checked ? '1' : '0');
 
-      formData.append('company_trade_name', getValue('company_trade_name'));
-      formData.append('company_legal_name', getValue('company_legal_name'));
-      formData.append('company_cif', getValue('company_cif'));
-      formData.append('company_address', getValue('company_address'));
-      formData.append('company_postal_code', getValue('company_postal_code'));
-      formData.append('company_city', getValue('company_city'));
-      formData.append('company_province', getValue('company_province'));
+      formData.append('company_trade_name', isIndividual ? '' : getValue('company_trade_name'));
+      formData.append('company_legal_name', isIndividual ? '' : getValue('company_legal_name'));
+      formData.append('company_cif', isIndividual ? '' : getValue('company_cif'));
+      formData.append('company_address', isIndividual ? '' : getValue('company_address'));
+      formData.append('company_postal_code', isIndividual ? '' : getValue('company_postal_code'));
+      formData.append('company_city', isIndividual ? '' : getValue('company_city'));
+      formData.append('company_province', isIndividual ? '' : getValue('company_province'));
 
-      const hasWorkshop = hasWorkshopField && hasWorkshopField.checked;
+      const hasWorkshop = !isIndividual && hasWorkshopField && hasWorkshopField.checked;
       formData.append('has_workshop', hasWorkshop ? '1' : '0');
-      formData.append('workshop_name', getValue('workshop_name'));
-      formData.append('workshop_address', getValue('workshop_address'));
-      formData.append('workshop_fiscal_name', getValue('workshop_fiscal_name'));
-      formData.append('workshop_tax_id', getValue('workshop_tax_id').toUpperCase());
-      formData.append('workshop_contact', getValue('workshop_contact'));
-      formData.append('workshop_phone', getValue('workshop_phone'));
-      formData.append('workshop_email', getValue('workshop_email'));
+      formData.append('workshop_name', hasWorkshop ? getValue('workshop_name') : '');
+      formData.append('workshop_address', hasWorkshop ? getValue('workshop_address') : '');
+      formData.append('workshop_fiscal_name', hasWorkshop ? getValue('workshop_fiscal_name') : '');
+      formData.append('workshop_tax_id', hasWorkshop ? getValue('workshop_tax_id').toUpperCase() : '');
+      formData.append('workshop_contact', hasWorkshop ? getValue('workshop_contact') : '');
+      formData.append('workshop_phone', hasWorkshop ? getValue('workshop_phone') : '');
+      formData.append('workshop_email', hasWorkshop ? getValue('workshop_email') : '');
 
-      const hasWeb = hasWebField && hasWebField.checked;
+      const hasWeb = !isIndividual && hasWebField && hasWebField.checked;
       formData.append('has_web', hasWeb ? '1' : '0');
-      formData.append('web_url', getValue('web_url'));
+      formData.append('web_url', hasWeb ? getValue('web_url') : '');
 
-      const autoSignature = autoSignatureField && autoSignatureField.checked;
-      const enableSepa = enableSepaField && enableSepaField.checked;
+      const autoSignature = !isIndividual && autoSignatureField && autoSignatureField.checked;
+      const enableSepa = !isIndividual && enableSepaField && enableSepaField.checked;
 
       formData.append('auto_signature', autoSignature ? '1' : '0');
       formData.append('enable_sepa', enableSepa ? '1' : '0');
 
-      formData.append('sepa_name', getValue('sepa_name'));
-      formData.append('sepa_address', getValue('sepa_address'));
-      formData.append('sepa_postal_code', getValue('sepa_postal_code'));
-      formData.append('sepa_city', getValue('sepa_city'));
-      formData.append('sepa_state', getValue('sepa_state'));
-      formData.append('sepa_country', getValue('sepa_country'));
-      formData.append('sepa_swift', getValue('sepa_swift'));
-      formData.append('sepa_iban', sepaIbanField ? sepaIbanField.value.trim() : '');
+      formData.append('sepa_name', enableSepa ? getValue('sepa_name') : '');
+      formData.append('sepa_address', enableSepa ? getValue('sepa_address') : '');
+      formData.append('sepa_postal_code', enableSepa ? getValue('sepa_postal_code') : '');
+      formData.append('sepa_city', enableSepa ? getValue('sepa_city') : '');
+      formData.append('sepa_state', enableSepa ? getValue('sepa_state') : '');
+      formData.append('sepa_country', enableSepa ? getValue('sepa_country') : '');
+      formData.append('sepa_swift', enableSepa ? getValue('sepa_swift') : '');
+      formData.append('sepa_iban', enableSepa && sepaIbanField ? sepaIbanField.value.trim() : '');
 
-      if (avatarInput && avatarInput.files && avatarInput.files[0]) {
+      if (!isIndividual && avatarInput && avatarInput.files && avatarInput.files[0]) {
         formData.append('avatar', avatarInput.files[0]);
       }
-      if (signatureInput && signatureInput.files && signatureInput.files[0]) {
+      if (!isIndividual && signatureInput && signatureInput.files && signatureInput.files[0]) {
         formData.append('signature', signatureInput.files[0]);
       }
-      if (stampInput && stampInput.files && stampInput.files[0]) {
+      if (!isIndividual && stampInput && stampInput.files && stampInput.files[0]) {
         formData.append('stamp', stampInput.files[0]);
       }
 
@@ -1253,7 +1423,7 @@
       setRegisterError('');
 
       const step1Valid = validateStep1(true);
-      const step2Valid = validateStep2(true);
+      const step2Valid = isStepAvailable(2) ? validateStep2(true) : true;
 
       if (!step1Valid) {
         goToStep(1);
@@ -1261,7 +1431,10 @@
       }
 
       if (!step2Valid) {
-        goToStep(2);
+        const position = state.stepSequence.indexOf(2);
+        if (position >= 0) {
+          goToStep(position + 1);
+        }
         return;
       }
 
@@ -1928,6 +2101,79 @@
 
     setupImageUpload('signature-upload', 'signature', 'signature-preview');
     setupImageUpload('stamp-upload', 'stamp', 'stamp-preview');
+
+    resetStep2Fields = () => {
+      const uncheck = (checkbox) => {
+        if (!checkbox) {
+          return;
+        }
+        checkbox.checked = false;
+        checkbox.dispatchEvent(new Event('change'));
+      };
+
+      uncheck(hasWorkshopField);
+      uncheck(hasWebField);
+      uncheck(autoSignatureField);
+      uncheck(enableSepaField);
+
+      const fieldsToClear = [
+        'web_url',
+        'workshop_name',
+        'workshop_address',
+        'workshop_fiscal_name',
+        'workshop_tax_id',
+        'workshop_contact',
+        'workshop_phone',
+        'workshop_email',
+        'sepa_name',
+        'sepa_address',
+        'sepa_postal_code',
+        'sepa_city',
+        'sepa_state',
+        'sepa_country',
+        'sepa_swift',
+        'sepa_iban',
+      ];
+      fieldsToClear.forEach((id) => {
+        const field = document.getElementById(id);
+        if (!field) {
+          return;
+        }
+        if (field.tagName === 'INPUT' || field.tagName === 'TEXTAREA') {
+          const defaultValue = Object.prototype.hasOwnProperty.call(field, 'defaultValue')
+            ? field.defaultValue
+            : '';
+          field.value = defaultValue || '';
+        }
+        clearFieldError(field);
+      });
+
+      state.sepaEdited.clear();
+
+      if (signatureInput) {
+        signatureInput.value = '';
+        signatureInput.dispatchEvent(new Event('change'));
+      }
+      if (stampInput) {
+        stampInput.value = '';
+        stampInput.dispatchEvent(new Event('change'));
+      }
+      if (signatureUpload) {
+        clearUploadError(signatureUpload);
+      }
+      if (stampUpload) {
+        clearUploadError(stampUpload);
+      }
+
+      const avatarFileInput = document.getElementById('avatar');
+      if (avatarFileInput) {
+        avatarFileInput.value = '';
+        avatarFileInput.dispatchEvent(new Event('change'));
+      }
+
+      updateStep2ButtonState();
+      updateSummary();
+    };
 
     document.querySelectorAll('.password-toggle').forEach((toggle) => {
       const targetId = toggle.getAttribute('data-target');

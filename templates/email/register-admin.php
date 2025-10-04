@@ -9,6 +9,9 @@ $workshop = is_array($workshop ?? null) ? $workshop : null;
 $sepa     = is_array($sepa ?? null) ? $sepa : null;
 $user     = is_array($user ?? null) ? $user : [];
 $auto_signature = ! empty($auto_signature);
+$channel_key = isset($channel_key) ? (string) $channel_key : '';
+$channel_label = isset($channel_label) ? (string) $channel_label : ($user['channel'] ?? '');
+$requires_transfer = ! empty($requires_transfer);
 
 $company_name = $company['trade_name'] ?? '';
 if ($company_name === '' && ! empty($company['legal_name'])) {
@@ -20,6 +23,39 @@ $full_address = array_filter([
     trim(($address['postal_code'] ?? '') . ' ' . ($address['city'] ?? '')),
     $address['province'] ?? '',
 ]);
+$has_company = false;
+foreach ([
+    $company['trade_name'] ?? '',
+    $company['legal_name'] ?? '',
+    $company['tax_id'] ?? '',
+    $address['street'] ?? '',
+    $address['postal_code'] ?? '',
+    $address['city'] ?? '',
+    $address['province'] ?? '',
+] as $value) {
+    if (trim((string) $value) !== '') {
+        $has_company = true;
+        break;
+    }
+}
+$has_workshop = false;
+if (is_array($workshop)) {
+    foreach ($workshop as $value) {
+        if (trim((string) $value) !== '') {
+            $has_workshop = true;
+            break;
+        }
+    }
+}
+$has_sepa = false;
+if (is_array($sepa)) {
+    foreach ($sepa as $value) {
+        if (trim((string) $value) !== '') {
+            $has_sepa = true;
+            break;
+        }
+    }
+}
 $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FILE__);
 ?>
 <!DOCTYPE html>
@@ -55,6 +91,11 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                             <p style="font-size:15px;margin:0 0 24px;color:#374151;line-height:1.7;">
                                 <?php esc_html_e('Estos son los datos enviados a través del formulario de alta de Garantías Online.', 'garantias-online-360vo'); ?>
                             </p>
+                            <?php if ($requires_transfer) : ?>
+                                <p style="font-size:14px;margin:0 0 18px;color:#b91c1c;line-height:1.6;font-weight:600;">
+                                    <?php esc_html_e('Registro de particular: las garantías se abonarán mediante transferencia bancaria (domiciliación no disponible).', 'garantias-online-360vo'); ?>
+                                </p>
+                            <?php endif; ?>
                             <h2 style="font-size:18px;margin:0 0 12px;color:#111827;font-weight:600;">
                                 <?php esc_html_e('Datos de contacto', 'garantias-online-360vo'); ?>
                             </h2>
@@ -89,51 +130,53 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                                             <?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?>
                                         </th>
                                         <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
-                                            <?php echo esc_html($user['channel'] ?? ''); ?>
+                                            <?php echo esc_html($channel_label !== '' ? $channel_label : ($user['channel'] ?? '')); ?>
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
-                            <h2 style="font-size:18px;margin:0 0 12px;color:#111827;font-weight:600;">
-                                <?php esc_html_e('Datos de la empresa', 'garantias-online-360vo'); ?>
-                            </h2>
-                            <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:0 0 28px;">
-                                <tbody>
-                                    <tr style="background:#f9fafb;">
-                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;">
-                                            <?php esc_html_e('Nombre comercial', 'garantias-online-360vo'); ?>
-                                        </th>
-                                        <td style="padding:12px 18px;font-size:14px;color:#111827;font-weight:600;">
-                                            <?php echo esc_html($company['trade_name'] ?? ''); ?>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
-                                            <?php esc_html_e('Razón social', 'garantias-online-360vo'); ?>
-                                        </th>
-                                        <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
-                                            <?php echo esc_html($company['legal_name'] ?? ''); ?>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
-                                            <?php esc_html_e('CIF', 'garantias-online-360vo'); ?>
-                                        </th>
-                                        <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
-                                            <?php echo esc_html($company['tax_id'] ?? ''); ?>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
-                                            <?php esc_html_e('Dirección', 'garantias-online-360vo'); ?>
-                                        </th>
-                                        <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
-                                            <?php echo esc_html(implode(', ', $full_address)); ?>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <?php if ($workshop) : ?>
+                            <?php if ($has_company) : ?>
+                                <h2 style="font-size:18px;margin:0 0 12px;color:#111827;font-weight:600;">
+                                    <?php esc_html_e('Datos de la empresa', 'garantias-online-360vo'); ?>
+                                </h2>
+                                <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:0 0 28px;">
+                                    <tbody>
+                                        <tr style="background:#f9fafb;">
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;">
+                                                <?php esc_html_e('Nombre comercial', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;font-weight:600;">
+                                                <?php echo esc_html($company['trade_name'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('Razón social', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($company['legal_name'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('CIF', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html($company['tax_id'] ?? ''); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th align="left" style="padding:12px 18px;font-size:12px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;border-top:1px solid #e5e7eb;">
+                                                <?php esc_html_e('Dirección', 'garantias-online-360vo'); ?>
+                                            </th>
+                                            <td style="padding:12px 18px;font-size:14px;color:#111827;border-top:1px solid #e5e7eb;">
+                                                <?php echo esc_html(implode(', ', $full_address)); ?>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            <?php endif; ?>
+                            <?php if ($has_workshop) : ?>
                                 <h2 style="font-size:18px;margin:0 0 12px;color:#111827;font-weight:600;">
                                     <?php esc_html_e('Datos del taller', 'garantias-online-360vo'); ?>
                                 </h2>
@@ -198,7 +241,7 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                                     </tbody>
                                 </table>
                             <?php endif; ?>
-                            <?php if ($sepa) : ?>
+                            <?php if ($has_sepa) : ?>
                                 <h2 style="font-size:18px;margin:0 0 12px;color:#111827;font-weight:600;">
                                     <?php esc_html_e('Datos SEPA', 'garantias-online-360vo'); ?>
                                 </h2>
