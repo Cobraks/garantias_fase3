@@ -93,22 +93,12 @@ function init() {
         handleDateInputs();
 
 	// Limpia error visual de vendedor si cambia selección
-        const usuarioHidden = document.getElementById("usuario-rol");
-        const usuarioDisplay = document.getElementById("usuario-rol-display");
-        const handleUserPickerUpdate = () => {
-                clearError(usuarioDisplay || usuarioHidden);
-                updateNextButtonState();
-                debouncedUpdateSummary();
-        };
-        if (usuarioHidden) {
-                usuarioHidden.addEventListener("change", handleUserPickerUpdate);
-        }
-        if (usuarioDisplay) {
-                usuarioDisplay.addEventListener("change", handleUserPickerUpdate);
-                usuarioDisplay.addEventListener("input", () => {
-                        if (!usuarioHidden || !usuarioHidden.value) {
-                                clearError(usuarioDisplay);
-                        }
+	const usuarioSelect = document.getElementById("usuario-rol");
+	if (usuarioSelect) {
+		usuarioSelect.addEventListener("change", () => {
+                        clearError(usuarioSelect);
+                        updateNextButtonState();
+                        debouncedUpdateSummary();
                 });
         }
 	const canalSelect = document.getElementById("canal-venta");

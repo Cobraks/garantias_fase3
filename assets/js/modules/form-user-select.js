@@ -8,18 +8,82 @@ import {
         getCurrentUserId,
 } from "./config.js";
 import { updateNextButtonState } from "./form-navigation.js";
-import UserPicker, { escapeHtml } from "./user-picker.js";
 
 const ADMIN_EQUIVALENT_ROLES = new Set([
         "admin",
         "go_garantias",
         "go_director_comercial",
 ]);
-const COMERCIAL_EQUIVALENT_ROLES = new Set(["comercial", "go_comercial"]);
-const PROFESIONAL_EQUIVALENT_ROLES = new Set(["profesional", "go_profesional"]);
+const COMERCIAL_EQUIVALENT_ROLES = new Set([
+        "comercial",
+        "go_comercial",
+]);
+const PROFESIONAL_EQUIVALENT_ROLES = new Set([
+        "profesional",
+        "go_profesional",
+]);
+
+const CHANNEL_NORMALIZATION = {
+        profesional: "profesional",
+        go_profesional: "profesional",
+        particular: "particular",
+        go_particular: "particular",
+        gestoria: "gestoria",
+        go_gestoria: "gestoria",
+};
+
+const CHANNEL_ROLE_MAP = {
+        profesional: "go_profesional",
+        particular: "go_particular",
+        gestoria: "go_gestoria",
+};
+
+const CHANNEL_TEXTS = {
+        profesional: {
+                placeholder: "Selecciona profesional",
+                empty: "Sin profesionales disponibles",
+                loading: "Cargando profesionales...",
+                error: "Error cargando profesionales",
+                labelAdmin: "Vendedor",
+                labelComercial: "Profesional asignado",
+        },
+        particular: {
+                placeholder: "Selecciona cliente",
+                empty: "Sin particulares disponibles",
+                loading: "Cargando particulares...",
+                error: "Error cargando particulares",
+                labelAdmin: "Cliente particular",
+                labelComercial: "Cliente particular",
+        },
+        gestoria: {
+                placeholder: "Selecciona gestoría",
+                empty: "Sin gestorías disponibles",
+                loading: "Cargando gestorías...",
+                error: "Error cargando gestorías",
+                labelAdmin: "Gestoría",
+                labelComercial: "Gestoría",
+        },
+};
+
+let baseUserRole = "";
+let currentChannelSlug = "";
 
 function normalizeRole(value) {
         return String(value || "").toLowerCase();
+}
+
+function getChannelSlug(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        return CHANNEL_NORMALIZATION[key] || "";
+}
+
+function getRoleValueForFetch(channelSlug) {
+        return CHANNEL_ROLE_MAP[channelSlug] || "";
+}
+
+function getChannelTexts(channelSlug) {
+        return CHANNEL_TEXTS[channelSlug] || CHANNEL_TEXTS.profesional;
 }
 
 function isAdminLike(role) {
@@ -34,317 +98,26 @@ function isProfesional(role) {
         return PROFESIONAL_EQUIVALENT_ROLES.has(normalizeRole(role));
 }
 
-function getChannelSlug(value) {
-        const normalized = normalizeRole(value);
-        switch (normalized) {
-                case "go_profesional":
-                case "profesional":
-                        return "profesional";
-                case "go_particular":
-                case "particular":
-                        return "particular";
-                case "go_gestoria":
-                case "gestoria":
-                        return "gestoria";
-                default:
-                        return "";
-        }
-}
-
-function getRoleValueForFetch(channelSlug) {
-        switch (channelSlug) {
-                case "profesional":
-                        return "go_profesional";
-                case "particular":
-                        return "go_particular";
-                case "gestoria":
-                        return "go_gestoria";
-                default:
-                        return "";
-        }
-}
-
 function channelRequiresAssignment(channelSlug) {
         return channelSlug === "profesional" || channelSlug === "particular";
 }
 
-function computeInitials(text = "") {
-        const value = String(text).trim();
-        if (!value) return "?";
-        const parts = value.split(/\s+/).filter(Boolean);
-        if (!parts.length) return value.charAt(0).toUpperCase();
-        const first = parts[0].charAt(0);
-        const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : "";
-        return `${first}${last}`.toUpperCase() || first.toUpperCase();
-}
-
-function buildOption(user, channelSlug) {
-        if (!user) return null;
+function buildUserLabel(user, channelSlug) {
+        if (!user) return "";
         const personalName = (user.personal_name || user.display_name || "").trim();
-        const companyName = (
-                user.company_name || (user.company && user.company.name) || ""
-        ).trim();
+        const companyName = (user.company_name || user.company?.name || "").trim();
         const email = (user.email || "").trim();
+        const fallback = `Usuario #${user.id}`;
 
-        const fallbackLabel = `Usuario #${user.id}`;
-        let label = fallbackLabel;
+        if (channelSlug === "particular") {
+                return personalName || email || fallback;
+        }
+
         if (channelSlug === "profesional") {
-                        label = companyName || personalName || email || fallbackLabel;
-        } else if (channelSlug === "particular") {
-                        label = personalName || email || companyName || fallbackLabel;
-        } else {
-                        label = personalName || companyName || email || fallbackLabel;
+                return companyName || personalName || email || fallback;
         }
 
-        const secondaryParts = [];
-        if (channelSlug === "profesional") {
-                if (personalName && personalName !== label) secondaryParts.push(personalName);
-                if (companyName && companyName !== label) secondaryParts.push(companyName);
-        } else if (channelSlug === "particular") {
-                if (companyName && companyName !== label) secondaryParts.push(companyName);
-        }
-        if (email && !secondaryParts.includes(email)) secondaryParts.push(email);
-
-        return {
-                id: String(user.id),
-                label,
-                secondary: secondaryParts.join(" · "),
-                avatar: user.avatar || "",
-                initials: computeInitials(personalName || companyName || email),
-                email,
-                personalName,
-                companyName,
-                displayValue: label,
-        };
-}
-
-function renderOption(option) {
-        const avatar = option.avatar
-                ? `<img src="${escapeHtml(option.avatar)}" alt="" class="user-picker__avatar" loading="lazy" decoding="async" />`
-                : `<span class="user-picker__avatar user-picker__avatar--placeholder">${escapeHtml(
-                                option.initials || "?",
-                        )}</span>`;
-
-        const lines = [`<span class="user-picker__primary">${escapeHtml(option.label)}</span>`];
-
-        if (option.personalName && option.personalName !== option.label) {
-                lines.push(
-                        `<span class="user-picker__meta">${escapeHtml(option.personalName)}</span>`,
-                );
-        }
-        if (
-                option.companyName &&
-                option.companyName !== option.label &&
-                option.companyName !== option.personalName
-        ) {
-                lines.push(
-                        `<span class="user-picker__meta">${escapeHtml(option.companyName)}</span>`,
-                );
-        }
-        if (option.email) {
-                lines.push(
-                        `<span class="user-picker__meta user-picker__meta--muted">${escapeHtml(
-                                option.email,
-                        )}</span>`,
-                );
-        } else if (option.secondary && lines.length === 1) {
-                lines.push(
-                        `<span class="user-picker__meta">${escapeHtml(option.secondary)}</span>`,
-                );
-        }
-
-        return `${avatar}<span class="user-picker__info">${lines.join("")}</span>`;
-}
-
-let pickerInstance = null;
-let currentChannelSlug = "";
-let currentFetchRole = "";
-let searchAbortController = null;
-let resolveAbortController = null;
-let baseUserRole = "";
-
-async function fetchUsuariosList(role, searchTerm = "") {
-        if (!role) return [];
-        if (searchAbortController) searchAbortController.abort();
-        const controller = new AbortController();
-        searchAbortController = controller;
-        const params = new URLSearchParams({ role });
-        if (searchTerm) params.append("search", searchTerm);
-        try {
-                const res = await fetch(`${getRestRoot()}go/v1/usuarios?${params.toString()}`, {
-                        method: "GET",
-                        credentials: "include",
-                        headers: {
-                                "X-WP-Nonce": getRestNonce(),
-                                Accept: "application/json",
-                        },
-                        signal: controller.signal,
-                });
-                if (!res.ok) throw new Error(`REST ${res.status}`);
-                const data = await res.json();
-                return Array.isArray(data) ? data : [];
-        } catch (error) {
-                if (error.name === "AbortError") return [];
-                console.warn("[form-user-select] fetchUsuariosList error", error);
-                return [];
-        }
-}
-
-async function fetchUsuarioById(role, id) {
-        if (!id) return null;
-        if (resolveAbortController) resolveAbortController.abort();
-        const controller = new AbortController();
-        resolveAbortController = controller;
-        const params = new URLSearchParams({ id });
-        if (role) params.append("role", role);
-        try {
-                const res = await fetch(`${getRestRoot()}go/v1/usuarios?${params.toString()}`, {
-                        method: "GET",
-                        credentials: "include",
-                        headers: {
-                                "X-WP-Nonce": getRestNonce(),
-                                Accept: "application/json",
-                        },
-                        signal: controller.signal,
-                });
-                if (!res.ok) throw new Error(`REST ${res.status}`);
-                const data = await res.json();
-                if (Array.isArray(data) && data.length) return data[0];
-                return null;
-        } catch (error) {
-                if (error.name === "AbortError") return null;
-                console.warn("[form-user-select] fetchUsuarioById error", error);
-                return null;
-        }
-}
-
-function ensurePicker() {
-        if (pickerInstance) return pickerInstance;
-
-        const container = document.querySelector("[data-user-picker-container]");
-        if (!container) return null;
-        const input = container.querySelector("[data-user-picker-input]");
-        const valueInput = container.querySelector("[data-user-picker-target]");
-        const results = container.querySelector("[data-user-picker-results]");
-        const clearBtn = container.querySelector("[data-user-picker-clear]");
-        const labelEl = container.querySelector("[data-user-picker-label]");
-
-        if (!input || !valueInput || !results) return null;
-
-        pickerInstance = new UserPicker({
-                container,
-                input,
-                valueInput,
-                resultsContainer: results,
-                clearButton: clearBtn,
-                labelElement: labelEl,
-                renderItem: renderOption,
-                messages: {
-                        empty: "Sin usuarios disponibles",
-                        noResults: "No se han encontrado coincidencias",
-                        loading: "Buscando usuarios...",
-                        error: "No ha sido posible cargar los usuarios.",
-                },
-                onSearch: async () => [],
-                resolveById: async (id) => {
-                        if (!id) return null;
-                        const user = await fetchUsuarioById(currentFetchRole, id);
-                        const slug =
-                                currentChannelSlug ||
-                                getChannelSlug(document.getElementById("canal-venta")?.value);
-                        return user ? buildOption(user, slug || "profesional") : null;
-                },
-                onChange: (option) => {
-                        const selectedId = option ? option.id : null;
-                        refreshMetodoPagoPorUsuario(selectedId);
-                        updateNextButtonState();
-                },
-        });
-
-        return pickerInstance;
-}
-
-function configurePickerForChannel(channelSlug, { keepValue = false } = {}) {
-        const picker = ensurePicker();
-        if (!picker) return;
-
-        const container = picker.container;
-        const input = picker.input;
-
-        currentChannelSlug = channelSlug;
-        currentFetchRole = getRoleValueForFetch(channelSlug);
-
-        const requiresAssignment = channelRequiresAssignment(channelSlug);
-        if (!requiresAssignment) {
-                if (container) {
-                        container.style.display = "none";
-                        container.classList.remove("has-value");
-                }
-                if (input) {
-                        input.required = false;
-                        input.value = "";
-                }
-                picker.clear({ preserveText: false, silent: false });
-                return;
-        }
-
-        if (container) {
-                container.style.display = "";
-        }
-        if (input) {
-                input.required = true;
-        }
-
-        const isComercialRole =
-                baseUserRole === "comercial" || baseUserRole === "go_comercial";
-        const labelText =
-                channelSlug === "particular"
-                        ? "Cliente particular"
-                        : isComercialRole
-                        ? "Profesional asignado"
-                        : "Vendedor";
-        const placeholderText =
-                channelSlug === "particular"
-                        ? "Buscar por nombre, apellidos o correo..."
-                        : "Buscar profesional por empresa, responsable o correo...";
-        const messages =
-                channelSlug === "particular"
-                        ? {
-                                  empty: "Sin particulares disponibles",
-                                  noResults: "No se encontraron particulares",
-                                  loading: "Buscando particulares...",
-                                  error: "No ha sido posible cargar los particulares.",
-                          }
-                        : {
-                                  empty: "Sin profesionales disponibles",
-                                  noResults: "No se encontraron profesionales",
-                                  loading: "Buscando profesionales...",
-                                  error: "No ha sido posible cargar los profesionales.",
-                          };
-
-        picker.setLabel(labelText);
-        picker.setPlaceholder(placeholderText);
-        picker.setMessages(messages);
-
-        picker.setSearchProvider(async (term) => {
-                const users = await fetchUsuariosList(currentFetchRole, term);
-                return users
-                        .map((user) => buildOption(user, currentChannelSlug))
-                        .filter(Boolean);
-        });
-
-        picker.setResolveHandler(async (id) => {
-                const user = await fetchUsuarioById(currentFetchRole, id);
-                return user ? buildOption(user, currentChannelSlug) : null;
-        });
-
-        if (!keepValue) {
-                picker.clear({ preserveText: false, silent: false });
-        }
-
-        const selectedId = picker.valueInput ? picker.valueInput.value : null;
-        refreshMetodoPagoPorUsuario(selectedId || null);
-        updateNextButtonState();
+        return personalName || companyName || email || fallback;
 }
 
 async function fetchEstadoSepa(targetUserId = null) {
@@ -375,13 +148,27 @@ async function fetchEstadoSepa(targetUserId = null) {
         }
 }
 
+function updateSelectDataset(select) {
+        if (!select) return;
+        const selectedOption = select.options[select.selectedIndex];
+        const label =
+                selectedOption &&
+                !selectedOption.disabled &&
+                selectedOption.value
+                        ? selectedOption.textContent
+                        : "";
+        select.dataset.displayLabel = label ? label.trim() : "";
+}
+
 async function refreshMetodoPagoPorUsuario(targetUserId) {
         const select = document.getElementById("metodo_pago");
         const mensaje = document.querySelector(".mensaje_falta_sepa");
         if (!select) return;
 
         const canalSelect = document.getElementById("canal-venta");
-        const canalSlug = canalSelect ? getChannelSlug(canalSelect.value) : currentChannelSlug;
+        const canalSlug = canalSelect
+                ? getChannelSlug(canalSelect.value)
+                : currentChannelSlug;
 
         select.innerHTML = "";
         const optTransfer = document.createElement("option");
@@ -421,15 +208,146 @@ async function refreshMetodoPagoPorUsuario(targetUserId) {
         updateNextButtonState();
 }
 
+async function loadUsuariosPorCanal(channelSlug, { keepValue = false } = {}) {
+        const select = document.getElementById("usuario-rol");
+        if (!select) return;
+
+        const role = getRoleValueForFetch(channelSlug);
+        const texts = getChannelTexts(channelSlug);
+        const previousValue = keepValue ? select.value : "";
+
+        if (!role) {
+                select.innerHTML = "";
+                select.value = "";
+                updateSelectDataset(select);
+                select.dispatchEvent(new Event("change", { bubbles: true }));
+                return;
+        }
+
+        select.innerHTML = `<option value="">${texts.loading}</option>`;
+
+        try {
+                const res = await fetch(
+                        `${getRestRoot()}go/v1/usuarios?role=${encodeURIComponent(role)}`,
+                        {
+                                method: "GET",
+                                credentials: "include",
+                                headers: {
+                                        "X-WP-Nonce": getRestNonce(),
+                                        Accept: "application/json",
+                                },
+                        },
+                );
+                if (!res.ok) throw new Error(`REST ${res.status}`);
+                const data = await res.json();
+
+                select.innerHTML = "";
+                const defaultOption = document.createElement("option");
+                defaultOption.value = "";
+                defaultOption.textContent = texts.placeholder;
+                defaultOption.disabled = true;
+                defaultOption.selected = true;
+                select.appendChild(defaultOption);
+
+                if (Array.isArray(data) && data.length) {
+                        data.forEach((user) => {
+                                const option = document.createElement("option");
+                                option.value = user.id;
+                                option.textContent = buildUserLabel(user, channelSlug);
+                                option.dataset.companyName =
+                                        user.company_name || user.company?.name || "";
+                                option.dataset.personalName =
+                                        user.personal_name || user.display_name || "";
+                                select.appendChild(option);
+                        });
+
+                        if (keepValue && previousValue) {
+                                const existing = Array.from(select.options).find(
+                                        (opt) => opt.value === String(previousValue),
+                                );
+                                if (existing) {
+                                        existing.selected = true;
+                                        defaultOption.selected = false;
+                                }
+                        }
+                } else {
+                        const emptyOption = document.createElement("option");
+                        emptyOption.value = "";
+                        emptyOption.textContent = texts.empty;
+                        emptyOption.disabled = true;
+                        select.appendChild(emptyOption);
+                }
+        } catch (error) {
+                select.innerHTML = "";
+                const errorOption = document.createElement("option");
+                errorOption.value = "";
+                errorOption.textContent = texts.error;
+                errorOption.disabled = true;
+                select.appendChild(errorOption);
+                console.warn("[form-user-select] loadUsuariosPorCanal error:", error);
+        }
+
+        updateSelectDataset(select);
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        updateNextButtonState();
+}
+
+function configureUsuarioSelect(channelValue, { keepValue = false } = {}) {
+        const channelSlug = getChannelSlug(channelValue);
+        currentChannelSlug = channelSlug;
+
+        const wrapUsuario = document.getElementById("wrap-select-usuario");
+        const usuarioSelect = document.getElementById("usuario-rol");
+        if (!wrapUsuario || !usuarioSelect) {
+                if (!channelRequiresAssignment(channelSlug)) {
+                        refreshMetodoPagoPorUsuario(getCurrentUserId() || null);
+                } else if (channelSlug === "particular") {
+                        refreshMetodoPagoPorUsuario(null);
+                }
+                return;
+        }
+
+        if (!channelRequiresAssignment(channelSlug)) {
+                        wrapUsuario.style.display = "none";
+                        usuarioSelect.removeAttribute("required");
+                        usuarioSelect.innerHTML = "";
+                        usuarioSelect.value = "";
+                        updateSelectDataset(usuarioSelect);
+                        usuarioSelect.dispatchEvent(
+                                new Event("change", { bubbles: true }),
+                        );
+                        refreshMetodoPagoPorUsuario(getCurrentUserId() || null);
+                        updateNextButtonState();
+                        return;
+        }
+
+        wrapUsuario.style.display = "";
+        usuarioSelect.setAttribute("required", "");
+
+        const label = wrapUsuario.querySelector('label[for="usuario-rol"]');
+        if (label) {
+                const texts = getChannelTexts(channelSlug);
+                const role = normalizeRole(baseUserRole);
+                const labelText = isComercial(role)
+                        ? texts.labelComercial
+                        : texts.labelAdmin;
+                label.textContent = labelText;
+        }
+
+        loadUsuariosPorCanal(channelSlug, { keepValue });
+}
+
 function setupSepaWatcher() {
         const canalSelect = document.getElementById("canal-venta");
-        const usuarioHidden = document.getElementById("usuario-rol");
+        const usuarioSelect = document.getElementById("usuario-rol");
 
-        if (usuarioHidden) {
-                usuarioHidden.addEventListener("change", () => {
-                        const target = usuarioHidden.value || getCurrentUserId() || null;
+        if (usuarioSelect) {
+                usuarioSelect.addEventListener("change", () => {
+                        updateSelectDataset(usuarioSelect);
+                        const target = usuarioSelect.value || getCurrentUserId() || null;
                         refreshMetodoPagoPorUsuario(target);
                 });
+                updateSelectDataset(usuarioSelect);
         }
 
         if (canalSelect) {
@@ -463,51 +381,41 @@ function setupSepaWatcher() {
 
 function initUserSelect() {
         const canalSelect = document.getElementById("canal-venta");
+        const usuarioSelect = document.getElementById("usuario-rol");
+        const wrapUsuario = document.getElementById("wrap-select-usuario");
         const rawRole = getUserRole() || document.body.dataset.userRole || "";
-        const normalizedRole = normalizeRole(rawRole);
-        baseUserRole = normalizedRole;
+        baseUserRole = normalizeRole(rawRole);
 
-        let initialChannel = "";
-        if (isAdminLike(normalizedRole)) {
-                if (canalSelect && !canalSelect.value) {
-                        const defaultOption =
+        let initialChannelValue = canalSelect ? canalSelect.value : "";
+
+        if (isAdminLike(baseUserRole) && canalSelect && usuarioSelect && wrapUsuario) {
+                if (!initialChannelValue) {
+                        const profesionalOption =
                                 canalSelect.querySelector('option[value="go_profesional"]') ||
                                 canalSelect.querySelector('option[value="profesional"]');
-                        if (defaultOption) {
-                                defaultOption.selected = true;
-                                canalSelect.value = defaultOption.value;
+                        if (profesionalOption) {
+                                profesionalOption.selected = true;
+                                canalSelect.value = profesionalOption.value;
+                                initialChannelValue = profesionalOption.value;
                         }
                 }
-                initialChannel = getChannelSlug(canalSelect?.value) || "profesional";
-        } else if (isComercial(normalizedRole)) {
-                if (canalSelect) {
-                        canalSelect.value = "go_profesional";
-                }
-                initialChannel = "profesional";
-        } else if (normalizedRole === "go_particular" || normalizedRole === "particular") {
-                initialChannel = "particular";
-        } else if (normalizedRole === "go_gestoria" || normalizedRole === "gestoria") {
-                initialChannel = "gestoria";
+        } else if (isComercial(baseUserRole) && canalSelect) {
+                canalSelect.value = "go_profesional";
+                initialChannelValue = canalSelect.value;
+        } else if (
+                baseUserRole === "go_particular" ||
+                baseUserRole === "particular"
+        ) {
+                initialChannelValue = "go_particular";
+        } else if (baseUserRole === "go_gestoria" || baseUserRole === "gestoria") {
+                initialChannelValue = "go_gestoria";
         }
 
-        currentChannelSlug = initialChannel;
-        currentFetchRole = getRoleValueForFetch(initialChannel);
+        configureUsuarioSelect(initialChannelValue, { keepValue: true });
 
-        const picker = ensurePicker();
-
-        if (initialChannel) {
-                configurePickerForChannel(initialChannel, { keepValue: true });
-        } else if (picker && picker.container) {
-                picker.container.style.display = "none";
-        }
-
-        if (isAdminLike(normalizedRole) && canalSelect) {
+        if (canalSelect && (isAdminLike(baseUserRole) || isComercial(baseUserRole))) {
                 canalSelect.addEventListener("change", (event) => {
-                        configurePickerForChannel(getChannelSlug(event.target.value));
-                });
-        } else if (isComercial(normalizedRole) && canalSelect) {
-                canalSelect.addEventListener("change", (event) => {
-                        configurePickerForChannel(getChannelSlug(event.target.value));
+                        configureUsuarioSelect(event.target.value);
                 });
         }
 

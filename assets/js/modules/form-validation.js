@@ -258,15 +258,9 @@ export function validateField(input, showError = false, isHardCheck = false) {
         const id = input.id;
 
 	// Vendedor / profesional (usuario-rol) visible
-        if (id === "usuario-rol" || id === "usuario-rol-display") {
-                const hiddenInput = document.getElementById("usuario-rol");
-                const displayInput = document.getElementById("usuario-rol-display");
-                const container = document.querySelector("[data-user-picker-container]");
-                const isVisible =
-                        container && container.offsetParent !== null && container.style.display !== "none";
-                const hasValue = hiddenInput && hiddenInput.value;
-
-                if (isVisible && !hasValue) {
+	if (id === "usuario-rol") {
+		const isVisible = input.offsetParent !== null;
+                if (isVisible && !input.value) {
                         if (showError) {
                                 const rawRole =
                                         getUserRole() || document.body.dataset.userRole || "";
@@ -282,14 +276,13 @@ export function validateField(input, showError = false, isHardCheck = false) {
                                 let msg = "Selecciona vendedor";
                                 if (isParticular) msg = "Selecciona cliente";
                                 else if (shouldAskForProfessional) msg = "Selecciona profesional";
-                                setError(displayInput || hiddenInput || input, msg);
+                                setError(input, msg);
                         }
                         return false;
                 }
-                if (displayInput) clearError(displayInput);
-                if (hiddenInput) clearError(hiddenInput);
-                return true;
-        }
+		clearError(input);
+		return true;
+	}
 
 	// Canal de venta (admin), si está visible y vacío
 	if (id === "canal-venta") {
