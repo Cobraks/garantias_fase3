@@ -372,7 +372,7 @@ export { refreshOfertasDisplay as updateOfertas, showOfertasLoading };
 
 function prefetchAllVendorOffers() {
         const select = document.getElementById("usuario-rol");
-        if (!select) return;
+        if (!select || !select.options) return;
         const ids = Array.from(select.options)
                 .map((o) => Number(o.value))
                 .filter((id) => !isNaN(id));

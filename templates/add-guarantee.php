@@ -377,15 +377,21 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                             Canal de venta
                         </label>
                     </div>
-                    <div class="form__input-container form__input-container--corto" id="wrap-select-usuario" style="display:none;">
-                        <select id="usuario-rol"
-                            class="form__select"
-                            name="usuario_rol"
-                            aria-label="Selecciona vendedor">
-                        </select>
-                        <label for="usuario-rol" class="form__placeholder form__placeholder--select">
+                    <div class="form__input-container form__input-container--corto" id="wrap-select-usuario" data-user-picker-container style="display:none;">
+                        <input id="usuario-rol-display"
+                            class="form__input user-picker__input"
+                            type="search"
+                            placeholder=" "
+                            autocomplete="off"
+                            data-user-picker-input />
+                        <label for="usuario-rol-display" class="form__placeholder" data-user-picker-label>
                             Vendedor
                         </label>
+                        <button type="button" class="user-picker__clear" data-user-picker-clear aria-label="Limpiar selección">
+                            <?php echo Svg::icon('clear'); ?>
+                        </button>
+                        <div class="user-picker__results" id="usuario-rol-results" role="listbox" data-user-picker-results></div>
+                        <input id="usuario-rol" name="usuario_rol" type="hidden" data-user-picker-target />
                     </div>
                 <?php elseif ($is_comercial): ?>
                     <div class="form__input-container form__input-container--corto">
@@ -400,15 +406,21 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                             Canal de venta
                         </label>
                     </div>
-                    <div class="form__input-container form__input-container--corto" id="wrap-select-usuario">
-                        <select id="usuario-rol"
-                            class="form__select"
-                            name="usuario_rol"
-                            aria-label="Selecciona profesional asignado">
-                        </select>
-                        <label for="usuario-rol" class="form__placeholder form__placeholder--select">
+                    <div class="form__input-container form__input-container--corto" id="wrap-select-usuario" data-user-picker-container>
+                        <input id="usuario-rol-display"
+                            class="form__input user-picker__input"
+                            type="search"
+                            placeholder=" "
+                            autocomplete="off"
+                            data-user-picker-input />
+                        <label for="usuario-rol-display" class="form__placeholder" data-user-picker-label>
                             Profesional asignado
                         </label>
+                        <button type="button" class="user-picker__clear" data-user-picker-clear aria-label="Limpiar selección">
+                            <?php echo Svg::icon('clear'); ?>
+                        </button>
+                        <div class="user-picker__results" id="usuario-rol-results" role="listbox" data-user-picker-results></div>
+                        <input id="usuario-rol" name="usuario_rol" type="hidden" data-user-picker-target />
                     </div>
                 <?php endif; ?>
                 <div class="form__ofertas">

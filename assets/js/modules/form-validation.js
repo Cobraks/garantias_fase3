@@ -258,9 +258,15 @@ export function validateField(input, showError = false, isHardCheck = false) {
         const id = input.id;
 
 	// Vendedor / profesional (usuario-rol) visible
-	if (id === "usuario-rol") {
-		const isVisible = input.offsetParent !== null;
-		if (isVisible && !input.value) {
+        if (id === "usuario-rol" || id === "usuario-rol-display") {
+                const hiddenInput = document.getElementById("usuario-rol");
+                const displayInput = document.getElementById("usuario-rol-display");
+                const container = document.querySelector("[data-user-picker-container]");
+                const isVisible =
+                        container && container.offsetParent !== null && container.style.display !== "none";
+                const hasValue = hiddenInput && hiddenInput.value;
+
+                if (isVisible && !hasValue) {
                         if (showError) {
                                 const rawRole =
                                         getUserRole() || document.body.dataset.userRole || "";
@@ -270,16 +276,20 @@ export function validateField(input, showError = false, isHardCheck = false) {
                                         normalizedRole === "go_comercial" ||
                                         normalizedRole === "profesional" ||
                                         normalizedRole === "go_profesional";
-                                const msg = shouldAskForProfessional
-                                        ? "Selecciona profesional"
-                                        : "Selecciona vendedor";
-                                setError(input, msg);
+                                const canalSelect = document.getElementById("canal-venta");
+                                const canalValue = (canalSelect && canalSelect.value) || "";
+                                const isParticular = canalValue.toLowerCase().includes("particular");
+                                let msg = "Selecciona vendedor";
+                                if (isParticular) msg = "Selecciona cliente";
+                                else if (shouldAskForProfessional) msg = "Selecciona profesional";
+                                setError(displayInput || hiddenInput || input, msg);
                         }
-			return false;
-		}
-		clearError(input);
-		return true;
-	}
+                        return false;
+                }
+                if (displayInput) clearError(displayInput);
+                if (hiddenInput) clearError(hiddenInput);
+                return true;
+        }
 
 	// Canal de venta (admin), si está visible y vacío
 	if (id === "canal-venta") {

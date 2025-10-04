@@ -153,15 +153,25 @@ function isCurrentTabValid() {
 		if (!document.querySelector(".form__plan.selected")) valid = false;
 
 		const canalVenta = document.getElementById("canal-venta");
-		const usuarioRol = document.getElementById("usuario-rol");
-		if (canalVenta && canalVenta.offsetParent !== null && !canalVenta.value) {
-			validateField(canalVenta, true, true);
-			valid = false;
-		}
-		if (usuarioRol && usuarioRol.offsetParent !== null && !usuarioRol.value) {
-			validateField(usuarioRol, true, true);
-			valid = false;
-		}
+                const usuarioRolHidden = document.getElementById("usuario-rol");
+                const usuarioPickerContainer = document.querySelector(
+                        "[data-user-picker-container]",
+                );
+                const usuarioVisible =
+                        usuarioPickerContainer &&
+                        usuarioPickerContainer.offsetParent !== null &&
+                        usuarioPickerContainer.style.display !== "none";
+
+                if (canalVenta && canalVenta.offsetParent !== null && !canalVenta.value) {
+                        validateField(canalVenta, true, true);
+                        valid = false;
+                }
+                if (usuarioVisible && usuarioRolHidden && !usuarioRolHidden.value) {
+                        const displayInput = document.getElementById("usuario-rol-display") ||
+                                usuarioRolHidden;
+                        validateField(displayInput, true, true);
+                        valid = false;
+                }
 	}
 	return valid;
 }
@@ -181,12 +191,19 @@ function updateNextButtonState(showErrors = false) {
 	if (currentFieldset.id === "seleccionar-garantia") {
 		if (!document.querySelector(".form__plan.selected")) allValid = false;
 		const canalVenta = document.getElementById("canal-venta");
-		const usuarioRol = document.getElementById("usuario-rol");
-		if (canalVenta && canalVenta.offsetParent !== null && !canalVenta.value)
-			allValid = false;
-		if (usuarioRol && usuarioRol.offsetParent !== null && !usuarioRol.value)
-			allValid = false;
-	}
+                const usuarioRolHidden = document.getElementById("usuario-rol");
+                const usuarioPickerContainer = document.querySelector(
+                        "[data-user-picker-container]",
+                );
+                const usuarioVisible =
+                        usuarioPickerContainer &&
+                        usuarioPickerContainer.offsetParent !== null &&
+                        usuarioPickerContainer.style.display !== "none";
+                if (canalVenta && canalVenta.offsetParent !== null && !canalVenta.value)
+                        allValid = false;
+                if (usuarioVisible && usuarioRolHidden && !usuarioRolHidden.value)
+                        allValid = false;
+        }
 
         if (FormCache.nextButton) {
                 FormCache.nextButton.classList.toggle("disabled", !allValid);
