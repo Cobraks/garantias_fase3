@@ -1,19 +1,19 @@
 :root {
-  --auth-surface: #f1f5f9;
-  --auth-surface-contrast: #ffffff;
-  --auth-accent: #2563eb;
-  --auth-accent-dark: #1e40af;
-  --auth-muted: #64748b;
+  --auth-surface: var(--go-color-f1f5f9);
+  --auth-surface-contrast: var(--go-color-ffffff);
+  --auth-accent: var(--go-color-2563eb);
+  --auth-accent-dark: var(--go-color-1e40af);
+  --auth-muted: var(--go-color-64748b);
 }
 
 .login-page {
-  --auth-accent: #c5444e;
-  --auth-accent-dark: #a8323c;
+  --auth-accent: var(--go-color-c5444e);
+  --auth-accent-dark: var(--go-color-a8323c);
 }
 
 .body--auth {
   background: var(--auth-surface);
-  color: var(--text-primary, #1f2937);
+  color: var(--text-primary, var(--go-color-1f2937));
 }
 
 .body--auth .container--auth {
@@ -62,7 +62,7 @@
 }
 
 .login-page .auth-form .form-input {
-  background-color: #fff;
+  background-color: var(--go-color-ffffff);
   border-color: var(--border);
   border-radius: 12px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -74,7 +74,7 @@
 
 .login-page .auth-form .form-input:focus {
   border-color: var(--auth-accent);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 2px rgba(var(--go-color-2563eb-rgb), 0.15);
 }
 
 
@@ -113,21 +113,21 @@
 }
 
 .login-page .badge {
-  background: rgba(197, 68, 78, 0.12);
-  color: #c5444e;
+  background: rgba(var(--go-color-c5444e-rgb), 0.12);
+  color: var(--go-color-c5444e);
 }
 
 .login-page .features-list li .feature-icon {
-  color: #c5444e;
+  color: var(--go-color-c5444e);
 }
 
 .login-page a {
-  color: #c5444e;
+  color: var(--go-color-c5444e);
 }
 
 .login-page a:hover,
 .login-page a:focus-visible {
-  color: #a8323c;
+  color: var(--go-color-a8323c);
 }
 
 @media (max-width: 1024px) {
