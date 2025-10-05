@@ -274,6 +274,30 @@ $home_destination = $is_admin_user
                                 <?php echo Svg::icon('settings', 'profile-menu__icon'); ?>
                                 <span class="profile-menu__text"><?php esc_html_e('Mi cuenta', 'garantias-online-360vo'); ?></span>
                             </a>
+                            <button
+                                type="button"
+                                class="profile-menu__item profile-menu__item--theme"
+                                role="switch"
+                                aria-checked="false"
+                                data-theme-toggle
+                                data-theme-label-off="<?php esc_attr_e('Activar modo oscuro', 'garantias-online-360vo'); ?>"
+                                data-theme-label-on="<?php esc_attr_e('Activar modo claro', 'garantias-online-360vo'); ?>"
+                                data-theme-status-off="<?php esc_attr_e('Desactivado', 'garantias-online-360vo'); ?>"
+                                data-theme-status-on="<?php esc_attr_e('Activado', 'garantias-online-360vo'); ?>"
+                                title="<?php esc_attr_e('Activar modo oscuro', 'garantias-online-360vo'); ?>"
+                            >
+                                <span class="profile-menu__icon profile-menu__icon--theme" aria-hidden="true">
+                                    <?php echo Svg::icon('sun', 'profile-menu__theme-icon profile-menu__theme-icon--sun'); ?>
+                                    <?php echo Svg::icon('moon', 'profile-menu__theme-icon profile-menu__theme-icon--moon'); ?>
+                                </span>
+                                <span class="profile-menu__text">
+                                    <span class="profile-menu__theme-title"><?php esc_html_e('Modo oscuro', 'garantias-online-360vo'); ?></span>
+                                    <span class="profile-menu__theme-status" data-theme-status><?php esc_html_e('Desactivado', 'garantias-online-360vo'); ?></span>
+                                </span>
+                                <span class="profile-menu__theme-switch" aria-hidden="true">
+                                    <span class="profile-menu__theme-thumb"></span>
+                                </span>
+                            </button>
                         </div>
                         <div class="profile-menu__footer">
                             <a
