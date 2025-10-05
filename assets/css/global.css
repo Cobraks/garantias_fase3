@@ -374,6 +374,12 @@
   --surface: var(--go-color-ffffff);
   --surface-alt: var(--go-color-f1f5f9);
   --surface-soft: var(--go-color-f9fafb);
+  --surface-popover-shadow: 0 20px 45px -18px rgba(var(--go-color-0f172a-rgb), 0.28),
+    0 12px 30px -22px rgba(var(--go-color-0f172a-rgb), 0.22);
+  --table-row-hover-bg: rgba(var(--go-color-000000-rgb), 0.06);
+  --table-row-zebra-bg: rgba(var(--go-color-000000-rgb), 0.03);
+  --table-row-selected-bg: #000000ab;
+  --table-row-selected-text: var(--go-color-ffffff);
   --neutral5: var(--go-color-111111);
   --neutral20: var(--go-color-606060);
   --neutral30: var(--go-color-777777);
@@ -851,12 +857,10 @@ text-decoration: none;
 }
 
 .top-bar__menu li.button-item--nueva-garantia a {
-  background: var(--go-color-2563eb);
-  color: white;
-  border-color: var(--go-color-2563eb);
-
-  background: black;
-  border-color: black;
+  background: var(--primary-color);
+  color: var(--text-inverse);
+  border-color: var(--primary-color);
+  box-shadow: 0 12px 24px -18px rgba(var(--go-color-2563eb-rgb), 0.45);
 }
 
 .top-bar__menu li a:hover {
@@ -865,10 +869,9 @@ text-decoration: none;
 }
 
 .top-bar__menu li.button-item--nueva-garantia a:hover {
-  background: var(--go-color-1d4ed8);
-  color: white;
-  border-color: var(--go-color-1d4ed8);
-
+  background: var(--primary-color-hover);
+  color: var(--text-inverse);
+  border-color: var(--primary-color-hover);
 }
 
   .top-bar__icon {
@@ -917,8 +920,8 @@ text-decoration: none;
     padding: 1.35rem;
     background: var(--surface);
     border-radius: 1rem;
-    box-shadow: 0 25px 50px -12px rgba(var(--go-color-0f172a-rgb), 0.25);
-    border: 1px solid rgba(var(--go-color-0f172a-rgb), 0.06);
+    box-shadow: var(--surface-popover-shadow);
+    border: 1px solid rgba(var(--go-color-0f172a-rgb), 0.12);
     z-index: 14000;
   }
 
@@ -1372,6 +1375,12 @@ display: block;
   --surface: #1d1312;
   --surface-alt: #241715;
   --surface-soft: #2c1c1a;
+  --surface-popover-shadow: 0 24px 48px -24px rgba(5, 2, 1, 0.78),
+    0 18px 38px -24px rgba(var(--go-color-e2001b-rgb), 0.35);
+  --table-row-hover-bg: rgba(255, 228, 214, 0.08);
+  --table-row-zebra-bg: rgba(255, 228, 214, 0.04);
+  --table-row-selected-bg: rgba(255, 228, 214, 0.22);
+  --table-row-selected-text: var(--go-color-2b2112);
   --border-color: #3f2a27;
   --border-color-strong: #533631;
   --card-border: rgba(140, 98, 88, 0.35);
@@ -1443,9 +1452,28 @@ display: block;
   color: var(--text-color);
 }
 
-:root[data-theme='dark'] .top-bar__profile-menu,
+:root[data-theme='dark'] .top-bar__profile-menu {
+  background: rgba(29, 19, 18, 0.96);
+  border-color: rgba(255, 228, 214, 0.18);
+  box-shadow: var(--surface-popover-shadow);
+}
+
 :root[data-theme='dark'] .profile-menu__footer {
   border-color: var(--border-color);
+}
+
+:root[data-theme='dark'] .top-bar__menu li.button-item--nueva-garantia a {
+  background: var(--go-color-b45309);
+  border-color: transparent;
+  color: var(--text-inverse);
+  box-shadow: 0 14px 28px -18px rgba(var(--go-color-e2001b-rgb), 0.45),
+    0 0 0 1px rgba(var(--go-color-b45309-rgb), 0.35);
+}
+
+:root[data-theme='dark'] .top-bar__menu li.button-item--nueva-garantia a:hover {
+  background: var(--go-color-c2410c);
+  border-color: transparent;
+  color: var(--text-inverse);
 }
 
 :root[data-theme='dark'] .hamburger-line {

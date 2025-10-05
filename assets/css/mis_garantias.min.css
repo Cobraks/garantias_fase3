@@ -83,9 +83,10 @@ body.scrolled .container {
     flex-wrap: wrap;
     gap: var(--spacing-2);
     grid-column: 1 / -1;
-    background: var(--surface-alt);
+    background: var(--surface);
     padding: var(--spacing-2);
     border-radius: 0 0 1rem 1rem;
+    border: 1px solid transparent;
     /* box-shadow: 0 2px 6px rgba(var(--go-color-000000-rgb), 0.05); */
     transition: all 0.3s ease-out;
     z-index: 9999;
@@ -258,7 +259,7 @@ section.guarantees-list.sticky-active {
 }
 /* Hover sobre fila: fondo ligero y transición suave */
 .guarantees-table__row:hover {
-    background-color: rgba(var(--go-color-c4c4c4-rgb), 0.1);
+    background-color: var(--table-row-hover-bg);
     transform: none;
     box-shadow: none;
 }
@@ -269,12 +270,13 @@ section.guarantees-list.sticky-active {
     position: sticky;
     top: 26px;
     bottom: 0;
+    background-color: var(--table-row-selected-bg);
 }
 
 .guarantees-table__row.selected td {
-    color: var(--text-inverse);
+    color: var(--table-row-selected-text);
     border: none;
-    background-color: rgba(var(--go-color-e2001b-rgb), 0.22);
+    background-color: var(--table-row-selected-bg);
     backdrop-filter: blur(2px);
 }
 
@@ -295,32 +297,31 @@ section.guarantees-list.sticky-active {
 }
 
 .guarantees-table__row.selected .vehiculo__mat {
-    color: var(--text-inverse);
+    color: var(--table-row-selected-text);
 }
 .guarantees-table__row.selected .guarantees-list__badge {
     border: none;
-    color: var(--text-inverse);
+    color: var(--table-row-selected-text);
+    background-color: rgba(255, 255, 255, 0.06);
 }
 .guarantees-table__row.selected .guarantees-list__badge--activada {
-    background-color: var(--go-color-16a34a);
+    background-color: rgba(var(--go-color-16a34a-rgb), 0.28);
 }
 .guarantees-table__row.selected .guarantees-list__badge--pendiente-pago {
-    background-color: var(--go-color-f59e0b);
+    background-color: rgba(var(--go-color-f59e0b-rgb), 0.28);
 }
 .guarantees-table__row.selected .guarantees-list__badge--sin-finalizar {
-    background-color: var(--go-color-6b7280);
+    background-color: rgba(var(--go-color-6b7280-rgb), 0.28);
 }
 .guarantees-table__row.selected .guarantees-list__badge--expira-pronto {
-    background-color: var(--go-color-fbbf24);
+    background-color: rgba(var(--go-color-fbbf24-rgb), 0.28);
 }
 .guarantees-table__row.selected .guarantees-list__badge--expirada {
-    background-color: var(--go-color-dc2626);
+    background-color: rgba(var(--go-color-dc2626-rgb), 0.28);
 }
-.guarantees-table__row.selected .guarantees-list__badge--pend-cobro {
-    background-color: var(--go-color-3b82f6);
-}
+.guarantees-table__row.selected .guarantees-list__badge--pend-cobro,
 .guarantees-table__row.selected .guarantees-list__badge--validacion-pendiente {
-    background-color: var(--go-color-3b82f6);
+    background-color: rgba(var(--go-color-3b82f6-rgb), 0.28);
 }
 
 .guarantees-table td {
@@ -706,6 +707,8 @@ section.guarantees-list.sticky-active {
     color: var(--text-inverse);
     padding: var(--spacing-1) var(--spacing-2);
     border-radius: 0.375rem;
+    border: 1px solid transparent;
+    box-shadow: 0 12px 24px -18px rgba(var(--go-color-2563eb-rgb), 0.45);
     text-decoration: none;
     font-weight: 500;
 }
@@ -888,12 +891,12 @@ section.guarantees-list.sticky-active {
 
 tr.guarantees-table__row:nth-child(even):not(.selected),
 .guarantees-table tbody tr:nth-child(even):not(.selected) {
-    background: var(--go-color-fcfcfc);
+    background: var(--table-row-zebra-bg);
 }
 
-tr.guarantees-table__row:nth-child(even):not(.selected):hover,
-.guarantees-table tbody tr:nth-child(even):not(.selected):hover {
-    background: #f5f5f580;
+tr.guarantees-table__row:not(.selected):hover,
+.guarantees-table tbody tr:not(.selected):hover {
+    background: var(--table-row-hover-bg);
 }
 .vendor-card__header {
     display: flex;
@@ -1899,12 +1902,48 @@ tr.guarantees-table__row:nth-child(even):not(.selected):hover,
     background: rgba(26, 17, 16, 0.85);
 }
 
+:root[data-theme='dark'] .guarantees-list__filters {
+    background: rgba(36, 23, 21, 0.94);
+    border-color: rgba(255, 228, 214, 0.1);
+    box-shadow: 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+}
+
+:root[data-theme='dark'] .guarantees-list__badge {
+    background: rgba(255, 228, 214, 0.08);
+    border-color: rgba(255, 228, 214, 0.22);
+    color: var(--text-color);
+}
+
+:root[data-theme='dark'] .guarantees-list__badge--pend-cobro,
+:root[data-theme='dark'] .guarantees-list__badge--validacion-pendiente {
+    color: #8bbdfc;
+    border-color: rgba(139, 189, 252, 0.45);
+    background: rgba(139, 189, 252, 0.18);
+}
+
+:root[data-theme='dark'] .vendor-card__badge {
+    background: rgba(var(--go-color-b45309-rgb), 0.28);
+    color: var(--text-inverse);
+}
+
+:root[data-theme='dark'] .pdf-modal__download {
+    background: var(--go-color-b45309);
+    border-color: rgba(var(--go-color-b45309-rgb), 0.45);
+    color: var(--text-inverse);
+    box-shadow: 0 16px 32px -20px rgba(var(--go-color-e2001b-rgb), 0.5);
+}
+
+:root[data-theme='dark'] .pdf-modal__download:hover {
+    background: var(--go-color-c2410c);
+    border-color: rgba(var(--go-color-c2410c-rgb), 0.45);
+}
+
 :root[data-theme='dark'] .scroll_up--list button {
     box-shadow: 0 0 0 2px rgba(var(--go-color-e2001b-rgb), 0.25);
 }
 
 :root[data-theme='dark'] .guarantees-table__row:hover {
-    background-color: rgba(var(--go-color-e2001b-rgb), 0.1);
+    background-color: var(--table-row-hover-bg);
 }
 
 :root[data-theme='dark'] .guarantees-table td::before {
