@@ -51,6 +51,8 @@ $avatar_html = $avatar_id
     : Svg::icon('user', 'top-bar__profile-icon');
 
 $profile_menu_id = 'profile-menu-' . $current_user_id;
+$theme_toggle_id = wp_unique_id('theme-toggle-');
+$theme_toggle_label_id = wp_unique_id('theme-toggle-label-');
 $profile_button = sprintf(
     '<button type="button" class="top-bar__profile-link" aria-label="%1$s" aria-haspopup="true" aria-expanded="false" aria-controls="%2$s">%3$s</button>',
     esc_attr(sprintf(
@@ -274,6 +276,19 @@ $home_destination = $is_admin_user
                                 <?php echo Svg::icon('settings', 'profile-menu__icon'); ?>
                                 <span class="profile-menu__text"><?php esc_html_e('Mi cuenta', 'garantias-online-360vo'); ?></span>
                             </a>
+                        </div>
+                        <div class="profile-menu__theme" role="group" aria-labelledby="<?php echo esc_attr($theme_toggle_label_id); ?>">
+                            <div class="profile-menu__theme-label">
+                                <span id="<?php echo esc_attr($theme_toggle_label_id); ?>"><?php esc_html_e('Modo oscuro', 'garantias-online-360vo'); ?></span>
+                                <small><?php esc_html_e('Reduce el brillo para trabajar en entornos con poca luz.', 'garantias-online-360vo'); ?></small>
+                            </div>
+                            <label class="profile-menu__theme-toggle" for="<?php echo esc_attr($theme_toggle_id); ?>">
+                                <input
+                                    type="checkbox"
+                                    id="<?php echo esc_attr($theme_toggle_id); ?>"
+                                    data-theme-toggle
+                                >
+                            </label>
                         </div>
                         <div class="profile-menu__footer">
                             <a
