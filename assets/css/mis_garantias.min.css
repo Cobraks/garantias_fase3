@@ -298,27 +298,26 @@ section.guarantees-list.sticky-active {
 }
 .guarantees-table__row.selected .guarantees-list__badge {
     border: none;
-    color: var(--table-row-selected-text);
-    background-color: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
 }
 .guarantees-table__row.selected .guarantees-list__badge--activada {
-    background-color: rgba(var(--go-color-16a34a-rgb), 0.28);
+    background-color: var(--go-color-16a34a);
 }
 .guarantees-table__row.selected .guarantees-list__badge--pendiente-pago {
-    background-color: rgba(var(--go-color-f59e0b-rgb), 0.28);
+    background-color: var(--go-color-f59e0b);
 }
 .guarantees-table__row.selected .guarantees-list__badge--sin-finalizar {
-    background-color: rgba(var(--go-color-6b7280-rgb), 0.28);
+    background-color: var(--go-color-6b7280);
 }
 .guarantees-table__row.selected .guarantees-list__badge--expira-pronto {
-    background-color: rgba(var(--go-color-fbbf24-rgb), 0.28);
+    background-color: var(--go-color-fbbf24);
 }
 .guarantees-table__row.selected .guarantees-list__badge--expirada {
-    background-color: rgba(var(--go-color-dc2626-rgb), 0.28);
+    background-color: var(--go-color-dc2626);
 }
 .guarantees-table__row.selected .guarantees-list__badge--pend-cobro,
 .guarantees-table__row.selected .guarantees-list__badge--validacion-pendiente {
-    background-color: rgba(var(--go-color-3b82f6-rgb), 0.28);
+    background-color: var(--go-color-3b82f6);
 }
 
 .guarantees-table td {
@@ -1900,16 +1899,22 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .guarantees-list__filters {
-    background: rgba(13, 16, 22, 0.96);
-    border: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.26);
+    background: rgba(26, 27, 32, 0.96);
+    border: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.32);
     border-top: none;
     box-shadow: 0 20px 48px -28px rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(14px);
 }
 
+:root[data-theme='dark'] .guarantee-detail {
+    background: rgba(32, 34, 39, 0.94);
+    border: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.32);
+    box-shadow: 0 28px 64px -38px rgba(0, 0, 0, 0.78);
+}
+
 :root[data-theme='dark'] .guarantees-list__badge {
-    background: rgba(13, 16, 22, 0.82);
-    border-color: rgba(var(--go-color-94a3b8-rgb), 0.32);
+    background: rgba(32, 34, 39, 0.85);
+    border-color: rgba(var(--go-color-94a3b8-rgb), 0.38);
     color: var(--text-secondary);
 }
 
@@ -1974,6 +1979,10 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 :root[data-theme='dark'] .guarantees-table__row:hover td {
     background-color: var(--table-row-hover-bg);
+}
+
+:root[data-theme='dark'] .guarantees-table__row.selected:hover td {
+    background-color: rgba(255, 255, 255, 0.94);
 }
 
 :root[data-theme='dark'] .guarantees-table td::before {
