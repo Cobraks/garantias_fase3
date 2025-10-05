@@ -135,8 +135,9 @@
   }
 
 :root[data-theme='dark'] .nav-buttons {
-    background-color: rgba(36, 23, 21, 0.92);
-    border-top-color: rgba(255, 228, 214, 0.12);
+    background-color: rgba(10, 20, 38, 0.94);
+    border-top-color: rgba(91, 139, 255, 0.2);
+    box-shadow: inset 0 1px 0 rgba(107, 144, 222, 0.08);
 }
 
 :root[data-theme='dark'] .tabs__link.completed .tabs__circle {
