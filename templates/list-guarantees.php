@@ -121,6 +121,16 @@ $show_channel_col = ! $is_professional;
 
 
     <!-- 3. DETALLE: dos paneles -->
+    <button
+        type="button"
+        class="guarantee-detail__toggle"
+        data-detail-toggle
+        aria-expanded="false"
+        data-toggle-label-open="<?php esc_attr_e('Ocultar detalles', 'garantias-online-360vo'); ?>"
+        data-toggle-label-closed="<?php esc_attr_e('Ver detalles de la garantía', 'garantias-online-360vo'); ?>"
+    >
+        <span data-detail-toggle-label><?php esc_html_e('Ver detalles de la garantía', 'garantias-online-360vo'); ?></span>
+    </button>
     <aside class="guarantee-detail" style="view-transition-name: resume-derecha">
         <!-- Panel 1: mensaje cuando no hay selección -->
         <div class="guarantee-detail__panel active" id="detail-panel-1">

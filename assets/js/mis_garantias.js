@@ -208,7 +208,40 @@ const ADD_DOC_KEY = "add-document";
 		let searchQuery = "";
 		let lastValidQuery = "";
 		let lastValidResults = [];
-                const detail = document.querySelector(".guarantee-detail");
+const detail = document.querySelector(".guarantee-detail");
+const detailToggleButton = document.querySelector("[data-detail-toggle]");
+const detailToggleLabel = detailToggleButton?.querySelector(
+"[data-detail-toggle-label]"
+);
+const detailToggleOpenLabel = detailToggleButton?.dataset.toggleLabelOpen ||
+"Ocultar detalles";
+const detailToggleClosedLabel =
+detailToggleButton?.dataset.toggleLabelClosed ||
+"Ver detalles de la garantía";
+
+const setDetailVisibility = (isOpen) => {
+if (!detail) {
+return;
+}
+detail.classList.toggle("guarantee-detail--open", Boolean(isOpen));
+if (detailToggleButton) {
+detailToggleButton.setAttribute("aria-expanded", String(Boolean(isOpen)));
+detailToggleButton.classList.toggle("is-open", Boolean(isOpen));
+}
+if (detailToggleLabel) {
+detailToggleLabel.textContent = isOpen
+? detailToggleOpenLabel
+: detailToggleClosedLabel;
+}
+};
+
+if (detailToggleButton) {
+detailToggleButton.addEventListener("click", () => {
+const isOpen = detail?.classList.contains("guarantee-detail--open");
+setDetailVisibility(!isOpen);
+});
+setDetailVisibility(false);
+}
                 let panel1 = document.getElementById("detail-panel-1");
                 let panel2 = document.getElementById("detail-panel-2");
                 let lastEmptyPanel = panel1;
@@ -1927,8 +1960,9 @@ const ADD_DOC_KEY = "add-document";
 				},
 				{ once: true }
 			);
-			lastEmptyPanel = nextPanel;
-		}
+lastEmptyPanel = nextPanel;
+setDetailVisibility(false);
+}
 
                 function clearSelectionAndDetail(options = {}) {
                         const preserveQuery = Boolean(options.preserveQuery);
@@ -2971,17 +3005,19 @@ function initRowSelection() {
 				const idx = rows.indexOf(row);
 
 				// Deselección
-				if (row.classList.contains("selected")) {
-					rows.forEach((r) => r.classList.remove("selected"));
-					prevSelectedRow = null;
-					prevIdx = null;
-					history.replaceState(null, "", window.location.pathname);
-					setEmptyDetailPanel(idx > prevIdx ? "forward" : "back");
-					return;
-				}
+if (row.classList.contains("selected")) {
+rows.forEach((r) => r.classList.remove("selected"));
+prevSelectedRow = null;
+prevIdx = null;
+history.replaceState(null, "", window.location.pathname);
+setEmptyDetailPanel(idx > prevIdx ? "forward" : "back");
+setDetailVisibility(false);
+return;
+}
 
-				rows.forEach((r) => r.classList.remove("selected"));
-				row.classList.add("selected");
+rows.forEach((r) => r.classList.remove("selected"));
+row.classList.add("selected");
+setDetailVisibility(true);
 				const id = row.dataset.id;
 				history.replaceState(
 					null,
