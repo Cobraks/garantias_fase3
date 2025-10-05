@@ -741,7 +741,7 @@
   --go-color-ffffff: #1f1f1f;
   --go-color-ffffff-rgb: 31 31 31;
   --logo-vo-fill: #cdd6f3;
-  --logo-360-fill: #6686ff;
+  --logo-360-fill: #d24d74;
   --primary-color: #5b8bff;
   --primary-color-hover: #3f6ff3;
   --primary-color-strong: #2f57d8;
@@ -760,8 +760,8 @@
     0 18px 48px -28px rgba(3, 9, 24, 0.66);
   --table-row-hover-bg: rgba(107, 144, 222, 0.18);
   --table-row-zebra-bg: rgba(107, 144, 222, 0.1);
-  --table-row-selected-bg: rgba(151, 188, 255, 0.24);
-  --table-row-selected-text: #061023;
+  --table-row-selected-bg: rgba(255, 255, 255, 0.18);
+  --table-row-selected-text: var(--go-color-f8fafc);
   --border-color: rgba(122, 150, 196, 0.28);
   --border-color-strong: rgba(122, 150, 196, 0.46);
   --card-border: rgba(122, 150, 196, 0.2);
@@ -973,10 +973,10 @@ text-decoration: none;
     padding: 1.35rem;
     background: var(--surface);
     border-radius: 1rem;
-    box-shadow: 0 26px 60px -28px rgba(var(--go-color-0f172a-rgb), 0.22),
-      0 18px 40px -30px rgba(var(--go-color-0f172a-rgb), 0.18),
-      0 0 0 1px rgba(var(--go-color-94a3b8-rgb), 0.22);
-    border: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.28);
+    box-shadow: 0 28px 64px -28px rgba(var(--go-color-0f172a-rgb), 0.26),
+      0 18px 42px -28px rgba(var(--go-color-2563eb-rgb), 0.18),
+      0 0 0 1px rgba(var(--go-color-1e293b-rgb), 0.06);
+    border: 1px solid rgba(var(--go-color-1e293b-rgb), 0.14);
     backdrop-filter: blur(12px);
     z-index: 14000;
   }
@@ -1032,10 +1032,15 @@ text-decoration: none;
     text-decoration: none;
     border-radius: 0.75rem;
     transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    background: transparent;
+    border: none;
+    text-align: left;
+    width: 100%;
   }
 
   .profile-menu__item--theme {
     cursor: pointer;
+    justify-content: flex-start;
   }
 
   .profile-menu__item--theme .profile-menu__icon--theme {
@@ -1066,7 +1071,7 @@ text-decoration: none;
   }
 
   .profile-menu__theme-title {
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.2;
   }
 
@@ -1081,10 +1086,10 @@ text-decoration: none;
     width: 40px;
     height: 22px;
     border-radius: 999px;
-    background: var(--surface-alt);
+    background: rgba(var(--go-color-2563eb-rgb), 0.08);
     position: relative;
     transition: background-color var(--transition-speed), box-shadow var(--transition-speed);
-    box-shadow: inset 0 0 0 1px rgba(var(--go-color-94a3b8-rgb), 0.25);
+    box-shadow: inset 0 0 0 1px rgba(var(--go-color-2563eb-rgb), 0.2);
   }
 
   .profile-menu__theme-thumb {
@@ -1111,15 +1116,15 @@ text-decoration: none;
   }
 
   .profile-menu__item:hover {
-    background: rgba(var(--go-color-0f172a-rgb), 0.05);
+    background: rgba(var(--go-color-2563eb-rgb), 0.12);
     color: var(--text-color);
   }
 
   .profile-menu__item:focus-visible {
-    background: rgba(var(--go-color-2563eb-rgb), 0.12);
+    background: rgba(var(--go-color-2563eb-rgb), 0.18);
     color: var(--text-color);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(var(--go-color-2563eb-rgb), 0.3);
+    box-shadow: 0 0 0 2px rgba(var(--go-color-2563eb-rgb), 0.35);
   }
 
   .profile-menu__icon {
@@ -1396,18 +1401,18 @@ display: block;
 }
 
 :root[data-theme='dark'] .top-bar {
-  border-top: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.22);
-  border-left: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.22);
-  border-right: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.22);
+  border-top: 1px solid rgba(var(--go-color-60a5fa-rgb), 0.38);
+  border-left: 1px solid rgba(var(--go-color-60a5fa-rgb), 0.32);
+  border-right: 1px solid rgba(var(--go-color-60a5fa-rgb), 0.32);
   border-bottom: 0;
   box-shadow: 0 22px 48px -30px rgba(5, 12, 28, 0.8);
 }
 
 :root[data-theme='dark'] .top-bar__profile-menu {
   background: rgba(15, 23, 42, 0.96);
-  border: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.32);
-  box-shadow: 0 32px 64px -30px rgba(5, 12, 28, 0.75),
-    0 0 0 1px rgba(var(--go-color-0f172a-rgb), 0.4);
+  border: 1px solid rgba(var(--go-color-60a5fa-rgb), 0.42);
+  box-shadow: 0 34px 70px -30px rgba(5, 12, 28, 0.82),
+    0 0 0 1px rgba(var(--go-color-1d4ed8-rgb), 0.4);
   backdrop-filter: blur(18px);
 }
 
