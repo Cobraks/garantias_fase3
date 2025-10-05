@@ -18,7 +18,7 @@
 }
 
 .account-summary {
-  background: var(--go-color-ffffff);
+  background: var(--surface);
   border: 1px solid var(--card-border);
   border-radius: 1.25rem;
   padding: var(--spacing-3);
@@ -61,7 +61,7 @@
   padding: 0.35rem 0.75rem;
   border: 1px solid var(--card-border);
   border-radius: 999px;
-  background: var(--go-color-ffffff);
+  background: var(--surface);
   color: var(--text-secondary);
   font-size: 0.85rem;
   font-weight: 500;
@@ -133,7 +133,7 @@
   border-radius: 999px;
   border: none;
   background: var(--primary-color);
-  color: var(--go-color-ffffff);
+  color: var(--text-inverse);
   font-weight: 500;
   font-size: 0.95rem;
   line-height: 1;
@@ -222,7 +222,7 @@
 
 .account-page__nav a[aria-current="page"] {
   background: var(--go-color-000000);
-  color: var(--go-color-ffffff);
+  color: var(--text-inverse);
   font-weight: 600;
 }
 
@@ -245,7 +245,7 @@
 }
 
 .account-section {
-  background: var(--go-color-ffffff);
+  background: var(--surface);
   border-radius: 1.25rem;
   padding: var(--spacing-3);
   border: 1px solid var(--card-border);
@@ -348,7 +348,7 @@
 }
 
 .account-card {
-  background: var(--go-color-ffffff);
+  background: var(--surface);
   border: 1px solid var(--card-border);
   border-radius: 1rem;
   padding: var(--spacing-3);
@@ -436,7 +436,7 @@
 .account-clients__action:hover,
 .account-clients__action:focus-visible {
   background: var(--primary-color);
-  color: var(--go-color-ffffff);
+  color: var(--text-inverse);
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.2);
 }
@@ -631,7 +631,7 @@
   border: 1px solid var(--card-border);
   border-radius: 1rem;
   padding: var(--spacing-3);
-  background: var(--go-color-ffffff);
+  background: var(--surface);
 }
 
 .account-repeater__header,
@@ -794,7 +794,7 @@
   border: 1px solid var(--card-border);
   border-radius: 0.85rem;
   padding: 0.5rem 0.85rem;
-  background: var(--go-color-ffffff);
+  background: var(--surface);
   transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
   max-width: 28rem;
   height: 3rem;
@@ -931,7 +931,7 @@
   color: var(--go-color-64748b);
   pointer-events: none;
   transition: 0.2s ease all;
-  background: var(--go-color-ffffff);
+  background: var(--surface);
   padding: 0 4px;
 }
 
@@ -1095,7 +1095,7 @@
   border-radius: 0.85rem;
   overflow: hidden;
   border: 1px solid var(--card-border);
-  background: var(--go-color-ffffff);
+  background: var(--surface);
 }
 
 .account-card--certificates .file-preview[hidden] {
@@ -1257,7 +1257,7 @@
   padding: 0.75rem 1rem;
   border-radius: 0.75rem;
   border: 1px solid var(--card-border);
-  background: var(--go-color-ffffff);
+  background: var(--surface);
   color: var(--text-color);
   font-size: 0.95rem;
   transition: border-color var(--transition-speed), color var(--transition-speed), background-color var(--transition-speed);
@@ -1385,7 +1385,7 @@
   border-radius: 0.75rem;
   border: none;
   background: var(--primary-color);
-  color: var(--go-color-ffffff);
+  color: var(--text-inverse);
   font-weight: 600;
   font-size: 1rem;
   line-height: 1;

@@ -777,7 +777,7 @@ body {
   
   /* Top Bar */
   .top-bar {
-    background: var(--go-color-ffffff);
+    background: var(--surface);
     border-radius: 1rem;
     box-shadow: 0 2px 5px rgba(var(--go-color-000000-rgb), 0.1);
     max-width: 1440px;
@@ -915,7 +915,7 @@ text-decoration: none;
     flex-direction: column;
     min-width: 19rem;
     padding: 1.35rem;
-    background: var(--go-color-ffffff);
+    background: var(--surface);
     border-radius: 1rem;
     box-shadow: 0 25px 50px -12px rgba(var(--go-color-0f172a-rgb), 0.25);
     border: 1px solid rgba(var(--go-color-0f172a-rgb), 0.06);
@@ -1139,7 +1139,7 @@ text-decoration: none;
     top: 100%;
     left: 0;
     right: 0;
-    background: var(--go-color-ffffff);
+    background: var(--surface);
     border-top: 1px solid var(--border-color);
     padding: var(--spacing-2);
   }
@@ -1180,7 +1180,7 @@ text-decoration: none;
       margin-top: var(--spacing-4);
   } */
   .footer__wrapper {
-    background: var(--go-color-ffffff);
+    background: var(--surface);
     max-width: 1440px;
     margin: 0 auto;
     display: flex;
@@ -1292,4 +1292,162 @@ display: block;
   .footer__wrapper {
     max-width: 1800px;
   }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --go-color-000000: #000000;
+  --go-color-000000-rgb: 0 0 0;
+  --go-color-ffffff: #1d1312;
+  --go-color-ffffff-rgb: 29 19 18;
+  --go-color-f1f5f9: #241715;
+  --go-color-f1f5f9-rgb: 36 23 21;
+  --go-color-f9fafb: #2c1c1a;
+  --go-color-f9fafb-rgb: 44 28 26;
+  --go-color-eef0f4: #140d0d;
+  --go-color-eef0f4-rgb: 20 13 13;
+  --go-color-e5e7eb: #3f2a27;
+  --go-color-e5e7eb-rgb: 63 42 39;
+  --go-color-e2e8f0: #3a2522;
+  --go-color-e2e8f0-rgb: 58 37 34;
+  --go-color-d1d5db: #422c29;
+  --go-color-d1d5db-rgb: 66 44 41;
+  --go-color-cbd5e1: #4f332f;
+  --go-color-cbd5e1-rgb: 79 51 47;
+  --go-color-1f2937: #f6ede6;
+  --go-color-1f2937-rgb: 246 237 230;
+  --go-color-64748b: #d8c1b8;
+  --go-color-64748b-rgb: 216 193 184;
+  --go-color-94a3b8: #c5a79e;
+  --go-color-94a3b8-rgb: 197 167 158;
+  --go-color-111827: #f2e6df;
+  --go-color-111827-rgb: 242 230 223;
+  --go-color-111111: #f8eee7;
+  --go-color-111111-rgb: 248 238 231;
+  --go-color-0f172a: #2b1b19;
+  --go-color-0f172a-rgb: 43 27 25;
+  --go-color-2563eb: #f97316;
+  --go-color-2563eb-rgb: 249 115 22;
+  --go-color-1d4ed8: #ea580c;
+  --go-color-1d4ed8-rgb: 234 88 12;
+  --go-color-1e40af: #c2410c;
+  --go-color-1e40af-rgb: 194 65 12;
+  --go-color-e0e7ff: #47261a;
+  --go-color-e0e7ff-rgb: 71 38 26;
+  --go-color-0ea5e9: #38bdf8;
+  --go-color-0ea5e9-rgb: 56 189 248;
+  --go-color-e0f2fe: #1a2832;
+  --go-color-e0f2fe-rgb: 26 40 50;
+  --go-color-16a34a: #34d399;
+  --go-color-16a34a-rgb: 52 211 153;
+  --go-color-15803d: #059669;
+  --go-color-15803d-rgb: 5 150 105;
+  --go-color-22c55e: #22c55e;
+  --go-color-22c55e-rgb: 34 197 94;
+  --go-color-dc2626: #f87171;
+  --go-color-dc2626-rgb: 248 113 113;
+  --go-color-b91c1c: #dc2626;
+  --go-color-b91c1c-rgb: 220 38 38;
+  --go-color-fff5f5: #3b1d1d;
+  --go-color-f59e0b: #fbbf24;
+  --go-color-f59e0b-rgb: 251 191 36;
+  --go-color-b45309: #d97706;
+  --go-color-b45309-rgb: 217 119 6;
+  --go-color-fff7ed: #3b261a;
+  --go-color-ecfdf5: #153128;
+  --go-color-ecfdf5-rgb: 21 49 40;
+  --go-color-e2001b: #ad4c38;
+  --go-color-e2001b-rgb: 173 76 56;
+  --primary-color: var(--go-color-2563eb);
+  --primary-color-hover: var(--go-color-1d4ed8);
+  --primary-color-strong: var(--go-color-1e40af);
+  --primary-color-soft: rgba(var(--go-color-2563eb-rgb), 0.16);
+  --primary: var(--primary-color);
+  --accent-color: var(--primary-color);
+  --text-color: #f6ede6;
+  --text-secondary: #d8c1b8;
+  --text-tertiary: #c5a79e;
+  --text-inverse: #fff9f3;
+  --background: #140d0d;
+  --surface: #1d1312;
+  --surface-alt: #241715;
+  --surface-soft: #2c1c1a;
+  --border-color: #3f2a27;
+  --border-color-strong: #533631;
+  --card-border: rgba(140, 98, 88, 0.35);
+  --neutral5: #f6ede6;
+  --neutral20: #c9a293;
+  --neutral30: #b17f72;
+  --neutral80: #3b2623;
+  --neutral90: #291a19;
+  --neutral95: #201211;
+  --neutral98: #190d0c;
+  --outline: #8f5c51;
+  --step-inactive: #55322d;
+  --danger-color: var(--go-color-dc2626);
+  --danger-color-strong: var(--go-color-b91c1c);
+  --danger-color-soft: #3b1d1d;
+  --warning-color: var(--go-color-f59e0b);
+  --warning-color-strong: var(--go-color-b45309);
+  --warning-color-soft: #3a2817;
+  --success-color: var(--go-color-16a34a);
+  --success-color-strong: var(--go-color-15803d);
+  --success-color-soft: #152d23;
+  --info-color: var(--go-color-0ea5e9);
+  --info-color-soft: #1a2832;
+  --focus-ring: rgba(249, 115, 22, 0.38);
+  --shadow-soft: 0 24px 48px -18px rgba(5, 2, 1, 0.7);
+  --scrollbar-thumb: #7d4538;
+  --scrollbar-track: #261715;
+}
+
+:root[data-theme='dark'] body {
+  background-color: var(--background);
+  color: var(--text-color);
+}
+
+:root[data-theme='dark'] a {
+  color: var(--primary-color);
+}
+
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea,
+:root[data-theme='dark'] .select2-container--default .select2-selection--single,
+:root[data-theme='dark'] .select2-container--default .select2-selection--multiple {
+  background-color: var(--surface);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+:root[data-theme='dark'] input::placeholder,
+:root[data-theme='dark'] textarea::placeholder,
+:root[data-theme='dark'] .select2-container--default .select2-selection__placeholder {
+  color: var(--text-tertiary);
+}
+
+:root[data-theme='dark'] label,
+:root[data-theme='dark'] legend {
+  color: var(--text-secondary);
+  background-color: transparent;
+}
+
+:root[data-theme='dark'] .top-bar,
+:root[data-theme='dark'] .footer__wrapper,
+:root[data-theme='dark'] .profile-menu,
+:root[data-theme='dark'] .mobile-menu,
+:root[data-theme='dark'] .profile-menu__item,
+:root[data-theme='dark'] .profile-menu__footer,
+:root[data-theme='dark'] .profile-menu__link {
+  background-color: var(--surface);
+  color: var(--text-color);
+}
+
+:root[data-theme='dark'] .top-bar__profile-menu,
+:root[data-theme='dark'] .profile-menu__footer {
+  border-color: var(--border-color);
+}
+
+:root[data-theme='dark'] .hamburger-line {
+  background: var(--text-color);
 }

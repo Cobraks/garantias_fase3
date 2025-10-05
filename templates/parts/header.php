@@ -75,6 +75,31 @@ $home_destination = $is_admin_user
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title><?php echo esc_html(get_bloginfo('name')); ?> – Garantías Online</title>
+    <script>
+        (function () {
+            var storageKey = 'go_theme';
+            var theme = null;
+            try {
+                theme = localStorage.getItem(storageKey);
+            } catch (error) {
+                theme = null;
+            }
+
+            if (theme !== 'dark' && theme !== 'light') {
+                try {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                } catch (error) {
+                    theme = 'light';
+                }
+            }
+
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="<?= esc_url(plugins_url('assets/css/global.min.css', GARANTIAS360VO__FILE__)); ?>">
 
 

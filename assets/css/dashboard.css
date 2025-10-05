@@ -45,7 +45,7 @@
 /* Mensaje de contexto */
 .dashboard__context-message {
     background: black;
-    color: white;
+    color: var(--text-inverse);
     padding: var(--spacing-3) var(--spacing-3);
     border-radius: 8px;
     font-size: 0.875rem;
@@ -82,12 +82,12 @@
 }
 
 .dashboard__filter-select {
-    background: white;
+    background: var(--surface);
     border: 1px solid var(--card-border);
     border-radius: 8px;
     padding: 10px 16px;
     font-size: 0.875rem;
-    color: var(--text-primary);
+    color: var(--text-color);
     min-width: 200px;
     transition: all 0.3s ease;
 }
@@ -288,7 +288,7 @@ flex: 1;
 
 .dashboard__alerts-count {
     background: var(--danger-color);
-    color: white;
+    color: var(--text-inverse);
     font-size: 1rem;
     font-weight: 600;
     width: 2rem;
@@ -344,13 +344,13 @@ flex: 1;
 .dashboard__alerts-date {
     font-size: 0.75rem;
     color: var(--danger-color);
-    background: white;
+    background: var(--danger-color-soft);
     padding: 3px 8px;
     border-radius: 999px;
     display: inline-block;
     margin-top: 4px;
     font-weight: 600;
-    border: solid 1px;
+    border: 1px solid rgba(var(--go-color-dc2626-rgb), 0.25);
 }
 
 /* Contenedor para KPIs apilados */
@@ -380,7 +380,7 @@ flex: 1;
     align-items: center;
     padding: var(--spacing-1);
     border-radius: 12px;
-    background: white;
+    background: var(--surface);
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
@@ -623,7 +623,7 @@ flex: 1;
     position: absolute;
     width: 70px;
     height: 70px;
-    background: white;
+    background: var(--surface);
     border-radius: 50%;
 }
 
@@ -733,7 +733,7 @@ flex: 1;
     flex-direction: column;
     transition: all 0.3s ease;
     flex: 1;
-    color: white; /* Texto blanco para ambos */
+    color: var(--text-inverse); /* Texto blanco para ambos */
 }
 
 .dashboard__finance-item:hover {
@@ -764,7 +764,7 @@ flex: 1;
     padding: 4px 8px;
     border-radius: 999px;
     background: rgba(var(--go-color-000000-rgb), 0.3); /* Fondo semi-transparente */
-    color: white; /* Texto blanco para el badge */
+    color: var(--text-inverse); /* Texto blanco para el badge */
 }
 
 .dashboard__finance-value {
@@ -772,7 +772,7 @@ flex: 1;
     font-weight: 700;
     margin: 0;
     transition: transform 0.3s ease;
-    color: white; /* Aseguramos que el valor sea blanco */
+    color: var(--text-inverse); /* Aseguramos que el valor sea blanco */
 }
 
 .dashboard__finance-item:hover .dashboard__finance-value {
@@ -781,7 +781,7 @@ flex: 1;
 
 /* Títulos de los módulos de finanzas en blanco */
 .dashboard__finance-item .dashboard__module-title {
-    color: white;
+    color: var(--text-inverse);
     border-bottom: 1px solid rgba(var(--go-color-ffffff-rgb), 0.2);
 }
 
@@ -801,12 +801,12 @@ flex: 1;
 }
 
 .dashboard__doc-filter {
-    background: white;
+    background: var(--surface);
     border: 1px solid var(--card-border);
     border-radius: 8px;
     padding: 8px 12px;
     font-size: 0.875rem;
-    color: var(--text-primary);
+    color: var(--text-color);
     transition: all 0.3s ease;
     flex: 1;
 }

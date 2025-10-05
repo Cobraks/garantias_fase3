@@ -2,7 +2,7 @@
       /* FORMULARIO CON TABS, CONTENIDO Y BOTONES INTEGRADOS */
       /* =================================================== */
       .form-container {
-        background: var(--go-color-ffffff);
+        background: var(--surface);
         border-radius: var(--spacing-2);
         /*box-shadow: 0 4px 6px -1px rgba(var(--go-color-000000-rgb), 0.1);
         */overflow: hidden;
@@ -24,7 +24,7 @@
     justify-content: space-between; /* Distribuye equitativamente los tabs */
     align-items: center;
     padding: var(--spacing-2);
-    background-color: var(--go-color-ffffff);
+    background-color: var(--surface);
     padding-inline: 0;
   }
   
@@ -89,7 +89,7 @@
     height: 2rem;
     border: 2px solid var(--step-inactive);
     border-radius: 50%;
-    background-color: var(--go-color-ffffff);
+    background-color: var(--surface);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -99,31 +99,25 @@
     -moz-transition: background-color var(--transition-speed), border-color var(--transition-speed), width .3s ease-in-out, height .3s ease-in-out;
     -ms-transition: background-color var(--transition-speed), border-color var(--transition-speed), width .3s ease-in-out, height .3s ease-in-out;
     -o-transition: background-color var(--transition-speed), border-color var(--transition-speed), width .3s ease-in-out, height .3s ease-in-out;
-    color: var(--go-color-b9b9b9);
+    color: var(--text-secondary);
   }
   
   
   .tabs__link.completed .tabs__circle {
-    background: green;
-    background: white;
-    border: none;
-    color: black;
-    border: solid;
+    background: var(--surface-alt);
+    border: 2px solid var(--primary-color);
+    color: var(--text-color);
   }
   
   /* Estado activo: cambia el color del círculo */
   .tabs__link.active .tabs__circle {
-   
-    color: var(--go-color-ffffff);
+    color: var(--text-inverse);
     background-color: var(--primary-color);
     border-color: var(--primary-color);
-     background-color: white;
-    border: solid  black;
-    background-color: black;
   }
-  
+
   .tabs__link:hover .tabs__circle {
-   background-color: var(--go-color-efefef);
+    background-color: var(--surface-alt);
   }
   
   .tabs__link.completed:hover .tabs__circle {
@@ -229,7 +223,7 @@
         gap: var(--spacing-2);
         padding: var(--spacing-3) var(--spacing-2);
         border-top: 1px solid var(--border-color);
-        background-color: var(--go-color-ffffff);
+        background-color: var(--surface-alt);
         margin-top: var(--spacing-6);
         justify-content: center;
       }
@@ -274,7 +268,7 @@
   
       .btn-primary {
         background-color: var(--primary-color);
-        color: var(--go-color-ffffff);
+        color: var(--text-inverse);
 
       }
   
@@ -299,20 +293,20 @@
   
   
       .btn-secondary {
-        background-color: var(--go-color-ffffff);
+        background-color: var(--surface);
         color: var(--text-color);
         border: 1px solid var(--border-color);
       }
-  
+
       .btn-secondary:hover {
-        background-color: var(--go-color-f9fafb);
+        background-color: var(--surface-alt);
       }
   
       /* =================================================== */
       /* SUMARIO (lado derecho en escritorio, debajo en móvil) */
       /* =================================================== */
       .summary-container {
-        background: var(--go-color-ffffff);
+        background: var(--surface);
         padding: var(--spacing-3);
         border-radius: var(--spacing-2);
         /* box-shadow: 0 4px 6px -1px rgba(var(--go-color-000000-rgb), 0.1); */
@@ -621,7 +615,7 @@ fill: var(--go-color-003048);
       padding: 0.5rem 1rem;
       height: 60px;
       background-color: var(--primary);
-      color: var(--go-color-ffffff);
+      color: var(--text-inverse);
       border: none;
       border-radius: 4px;
       cursor: pointer;
@@ -642,7 +636,7 @@ fill: var(--go-color-003048);
   .form__button--next {
       padding: 0;
       background-color: var(--primary);
-      color: var(--go-color-ffffff);
+      color: var(--text-inverse);
       border: none;
       border-radius: 4px;
       cursor: pointer;
@@ -730,7 +724,7 @@ fill: var(--go-color-003048);
       border-radius: 12px;
       border: 0;
       box-sizing: border-box;
-      background: white;
+      background: var(--surface);
       font-size: 1rem;
       height: 100%;
       padding: 4px 1rem 0;
@@ -783,7 +777,7 @@ fill: var(--go-color-003048);
   .form__input:not(:placeholder-shown) ~ .form__placeholder {
       transform: translateY(-30px) scale(0.75);
       padding-inline: 4px;
-      background: white;
+      background: var(--surface);
       left: 12px;
       color: var(--primary);
   }
@@ -939,7 +933,7 @@ border: solid 1px var(--go-color-b8e7bc);
    =================================================================== */
 .form__plan {
   position: relative;
-  background: var(--go-color-ffffff);
+  background: var(--surface);
   border: 1px solid var(--outline);
   border-radius: var(--radius);
   padding: 24px 16px;
@@ -1232,7 +1226,7 @@ width: 100%;
 
 
 .form__plan-button:hover:not([disabled]) {
-background: var(--go-color-ffffff);
+background: var(--surface);
   border-color: var(--go-color-86b3e9);
 }
 
@@ -1241,7 +1235,7 @@ background: var(--go-color-ffffff);
 }
 
 .form__plan:hover .form__plan-button {
-  background: white;
+  background: var(--surface);
     border-color: var(--go-color-c7c7ff);
 }
 
@@ -1322,7 +1316,7 @@ background: var(--go-color-ffffff);
 
 .form__plan--premium .form__plan-button {
   border: none;
-  background: white;
+  background: var(--surface);
 }
 
 .form__plan--premium .form__plan-title {
@@ -1401,7 +1395,7 @@ border-color: var(--go-color-2bc3ff);
       --focus: 2px rgba(var(--go-color-275efe-rgb), .3);
       --border: var(--go-color-bbc1e1);
       --border-hover: var(--go-color-275efe);
-      --background: var(--go-color-ffffff);
+      --background: var(--surface);
       --disabled: var(--go-color-f6f8ff);
       --disabled-inner: var(--go-color-e1e6f9);
       -webkit-appearance: none;
@@ -1630,7 +1624,7 @@ border-color: var(--go-color-2bc3ff);
   .form__select:not([value=""]) ~ .form__placeholder--select {
       transform: translateY(-30px) scale(0.75);
       padding-inline: 4px;
-      background: white;
+      background: var(--surface);
       left: 12px;
       color: var(--primary);
   }
@@ -1672,7 +1666,7 @@ border-color: var(--go-color-2bc3ff);
   /* Inputs de tipo fecha */
   .form__input[type="date"] ~ .form__placeholder {
       transform: translateY(-30px) scale(0.75);
-      background: white;
+      background: var(--surface);
       left: 12px;
       color: var(--go-color-65657b); /* Color original */
   }
@@ -1687,7 +1681,7 @@ border-color: var(--go-color-2bc3ff);
       transition: transform 200ms, color 200ms;
       pointer-events: none;
       white-space: nowrap;
-      background: white;
+      background: var(--surface);
       padding-inline: 4px;
       color: var(--go-color-65657b); /* Color original */
       display: none; /* Oculto por defecto */
@@ -1784,20 +1778,20 @@ border-color: var(--go-color-2bc3ff);
   }
   
   .form__input-container.error .form__suffix {
-      border-left: solid 1px  var(--go-color-c0392b);
-      background: rgb(255, 228, 228);
-      color: red;
+      border-left: solid 1px  var(--danger-color-strong);
+      background: var(--danger-color-soft);
+      color: var(--danger-color-strong);
   }
   .form__input-container.error .form__input:focus ~ .form__suffix {
-      color: var(--go-color-c0392b);
-      background: rgb(255, 214, 214);
-  border-left: solid 2px  var(--go-color-c0392b);
+      color: var(--danger-color-strong);
+      background: var(--danger-color-soft);
+  border-left: solid 2px  var(--danger-color-strong);
   }
   
   /* Borde verde durante la validación en tiempo real */
   .form__input-container.validating .form__input,
   .form__input-container.validating .form__select {
-      outline: solid 2px green;
+      outline: solid 2px var(--success-color);
       transition: border-color 0.2s;
   }
   
@@ -1953,7 +1947,7 @@ margin-top: .5rem;
     position: absolute;
     right: var(--spacing-3);
     bottom: 1.5rem;
-    background: var(--go-color-ffffff);
+    background: var(--surface);
     border: 1px solid var(--go-color-cccccc);
     border-radius: var(--spacing-1);
     padding: .5rem var(--spacing-2);
@@ -2030,7 +2024,7 @@ margin-top: .5rem;
     width: 1rem;
     height: 1rem;
     border: 2px solid rgba(var(--go-color-ffffff-rgb), .3);
-    border-top-color: var(--go-color-ffffff);
+    border-top-color: var(--text-inverse);
     border-radius: 50%;
     animation: btn-spin .8s linear infinite;
   }
@@ -2138,7 +2132,7 @@ margin-top: .5rem;
   }
 
   .document-card {
-    background: var(--go-color-ffffff);
+    background: var(--surface);
     border: 1px solid var(--go-color-e2e8f0);
     border-radius: 12px;
     padding: 1.5rem;
@@ -2204,13 +2198,13 @@ margin-top: .5rem;
 
   .form-success__details-link {
     background-color: var(--color-primary);
-    color: var(--go-color-ffffff);
+    color: var(--text-inverse);
   }
 
   .form-success__details-link:hover,
   .form-success__details-link:focus-visible {
     background-color: var(--go-color-b80017);
-    color: var(--go-color-ffffff);
+    color: var(--text-inverse);
   }
 
   .form-success__details-link [data-ref-text] {
@@ -2227,7 +2221,7 @@ margin-top: .5rem;
   .form-success__new:hover,
   .form-success__new:focus-visible {
     background-color: var(--go-color-111111);
-    color: var(--go-color-ffffff);
+    color: var(--text-inverse);
   }
 
   .form-success__details-link:focus-visible {
@@ -2241,8 +2235,8 @@ margin-top: .5rem;
   }
 
   .form-success__payment {
-    /* background: var(--go-color-ffffff); */
-    background: white;
+    /* background: var(--surface); */
+    background: var(--surface);
     border: 1px solid var(--go-color-e5e7eb);
     border-radius: 10px;
     padding: 1.5rem;
