@@ -246,7 +246,6 @@ section.guarantees-list.sticky-active {
 }
 .guarantees-table__row {
     display: block;
-    background: var(--go-color-ffffff);
     margin-bottom: var(--spacing-3);
     border-radius: var(--spacing-2);
     box-shadow: 0 1px 3px rgba(var(--go-color-000000-rgb), 0.05);
@@ -259,7 +258,6 @@ section.guarantees-list.sticky-active {
 }
 /* Hover sobre fila: fondo ligero y transición suave */
 .guarantees-table__row:hover {
-    background-color: var(--table-row-hover-bg);
     transform: none;
     box-shadow: none;
 }
@@ -270,7 +268,6 @@ section.guarantees-list.sticky-active {
     position: sticky;
     top: 26px;
     bottom: 0;
-    background-color: var(--table-row-selected-bg);
 }
 
 .guarantees-table__row.selected td {
@@ -889,13 +886,13 @@ section.guarantees-list.sticky-active {
 
 }
 
-tr.guarantees-table__row:nth-child(even):not(.selected),
-.guarantees-table tbody tr:nth-child(even):not(.selected) {
+tr.guarantees-table__row:nth-child(even):not(.selected) td,
+.guarantees-table tbody tr:nth-child(even):not(.selected) td {
     background: var(--table-row-zebra-bg);
 }
 
-tr.guarantees-table__row:not(.selected):hover,
-.guarantees-table tbody tr:not(.selected):hover {
+tr.guarantees-table__row:not(.selected):hover td,
+.guarantees-table tbody tr:not(.selected):hover td {
     background: var(--table-row-hover-bg);
 }
 .vendor-card__header {
@@ -1899,7 +1896,7 @@ tr.guarantees-table__row:not(.selected):hover,
 }
 
 :root[data-theme='dark'] .guarantee-detail__header {
-    background: rgba(26, 17, 16, 0.85);
+    background: rgba(15, 23, 42, 0.85);
 }
 
 :root[data-theme='dark'] .guarantees-list__filters {

@@ -259,7 +259,6 @@ section.guarantees-list.sticky-active {
 }
 /* Hover sobre fila: fondo ligero y transición suave */
 .guarantees-table__row:hover {
-    background-color: var(--table-row-hover-bg);
     transform: none;
     box-shadow: none;
 }
@@ -270,7 +269,6 @@ section.guarantees-list.sticky-active {
     position: sticky;
     top: 26px;
     bottom: 0;
-    background-color: var(--table-row-selected-bg);
 }
 
 .guarantees-table__row.selected td {
@@ -889,13 +887,13 @@ section.guarantees-list.sticky-active {
 
 }
 
-tr.guarantees-table__row:nth-child(even):not(.selected),
-.guarantees-table tbody tr:nth-child(even):not(.selected) {
+tr.guarantees-table__row:nth-child(even):not(.selected) td,
+.guarantees-table tbody tr:nth-child(even):not(.selected) td {
     background: var(--table-row-zebra-bg);
 }
 
-tr.guarantees-table__row:not(.selected):hover,
-.guarantees-table tbody tr:not(.selected):hover {
+tr.guarantees-table__row:not(.selected):hover td,
+.guarantees-table tbody tr:not(.selected):hover td {
     background: var(--table-row-hover-bg);
 }
 .vendor-card__header {
@@ -1898,56 +1896,106 @@ tr.guarantees-table__row:not(.selected):hover,
 
 }
 
+
 :root[data-theme='dark'] .guarantee-detail__header {
-    background: rgba(26, 17, 16, 0.85);
+    background: rgba(15, 23, 42, 0.85);
 }
 
 :root[data-theme='dark'] .guarantees-list__filters {
-    background: rgba(36, 23, 21, 0.94);
-    border-color: rgba(255, 228, 214, 0.1);
-    box-shadow: 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+    background: rgba(17, 28, 49, 0.92);
+    border: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.18);
+    border-top: none;
+    box-shadow: 0 18px 40px -26px rgba(5, 12, 28, 0.65);
+    backdrop-filter: blur(14px);
 }
 
 :root[data-theme='dark'] .guarantees-list__badge {
-    background: rgba(255, 228, 214, 0.08);
-    border-color: rgba(255, 228, 214, 0.22);
+    background: rgba(148, 163, 184, 0.12);
+    border-color: rgba(148, 163, 184, 0.28);
     color: var(--text-color);
 }
 
 :root[data-theme='dark'] .guarantees-list__badge--pend-cobro,
 :root[data-theme='dark'] .guarantees-list__badge--validacion-pendiente {
-    color: #8bbdfc;
-    border-color: rgba(139, 189, 252, 0.45);
-    background: rgba(139, 189, 252, 0.18);
+    color: #9cc9ff;
+    border-color: rgba(156, 201, 255, 0.45);
+    background: rgba(156, 201, 255, 0.2);
 }
 
 :root[data-theme='dark'] .vendor-card__badge {
-    background: rgba(var(--go-color-b45309-rgb), 0.28);
-    color: var(--text-inverse);
+    background: rgba(112, 149, 214, 0.22);
+    color: var(--text-color);
 }
 
 :root[data-theme='dark'] .pdf-modal__download {
-    background: var(--go-color-b45309);
-    border-color: rgba(var(--go-color-b45309-rgb), 0.45);
+    background: var(--primary-color);
+    border-color: rgba(var(--go-color-2563eb-rgb), 0.45);
     color: var(--text-inverse);
-    box-shadow: 0 16px 32px -20px rgba(var(--go-color-e2001b-rgb), 0.5);
+    box-shadow: 0 16px 32px -22px rgba(var(--go-color-2563eb-rgb), 0.45);
 }
 
 :root[data-theme='dark'] .pdf-modal__download:hover {
-    background: var(--go-color-c2410c);
-    border-color: rgba(var(--go-color-c2410c-rgb), 0.45);
+    background: var(--primary-color-hover);
+    border-color: rgba(var(--go-color-1d4ed8-rgb), 0.45);
 }
 
 :root[data-theme='dark'] .scroll_up--list button {
-    box-shadow: 0 0 0 2px rgba(var(--go-color-e2001b-rgb), 0.25);
+    box-shadow: 0 0 0 2px rgba(var(--go-color-2563eb-rgb), 0.25);
 }
 
-:root[data-theme='dark'] .guarantees-table__row:hover {
+:root[data-theme='dark'] .guarantees-table__row:hover td {
     background-color: var(--table-row-hover-bg);
 }
 
 :root[data-theme='dark'] .guarantees-table td::before {
     color: var(--text-secondary);
+}
+
+:root[data-theme='dark'] .detail__transfer-table th {
+    color: var(--text-color);
+}
+
+:root[data-theme='dark'] .detail__transfer-table td {
+    color: var(--text-secondary);
+}
+
+:root[data-theme='dark'] .detail__transfer-table tr[data-copy-row]:hover th,
+:root[data-theme='dark'] .detail__transfer-table tr[data-copy-row]:hover td,
+:root[data-theme='dark'] .detail__transfer-table tr[data-copy-row]:focus-within th,
+:root[data-theme='dark'] .detail__transfer-table tr[data-copy-row]:focus-within td {
+    background-color: rgba(112, 149, 214, 0.18);
+    color: var(--text-color);
+}
+
+:root[data-theme='dark'] .detail__transfer-table [data-copy-cell]::after {
+    background: rgba(8, 15, 28, 0.92);
+    color: var(--go-color-f9fafb);
+    box-shadow: 0 18px 32px -24px rgba(5, 12, 28, 0.6);
+}
+
+:root[data-theme='dark'] .detail__transfer-table [data-copy-cell]::before {
+    border-color: rgba(8, 15, 28, 0.92) transparent transparent transparent;
+}
+
+:root[data-theme='dark'] .detail__copy-btn {
+    color: var(--text-secondary);
+}
+
+:root[data-theme='dark'] .detail__copy-btn:hover,
+:root[data-theme='dark'] .detail__copy-btn:focus-visible {
+    background: rgba(112, 149, 214, 0.18);
+    color: var(--text-color);
+}
+
+:root[data-theme='dark'] .detail__transfer-table tr:hover .detail__copy-btn,
+:root[data-theme='dark'] .detail__transfer-table tr:focus-within .detail__copy-btn {
+    color: var(--text-color);
+}
+
+:root[data-theme='dark'] .detail__copy-toast {
+    background: rgba(15, 23, 42, 0.95);
+    color: var(--text-color);
+    box-shadow: 0 24px 48px -28px rgba(5, 12, 28, 0.65);
 }
 
 
