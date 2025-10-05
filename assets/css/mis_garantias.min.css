@@ -1895,26 +1895,26 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .guarantee-detail__header {
-    background: rgba(15, 23, 42, 0.85);
+    background: rgba(38, 40, 46, 0.92);
 }
 
 :root[data-theme='dark'] .guarantees-list__filters {
-    background: rgba(26, 27, 32, 0.96);
-    border: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.32);
+    background: var(--surface);
+    border: 1px solid rgba(214, 220, 234, 0.26);
     border-top: none;
     box-shadow: 0 20px 48px -28px rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(14px);
 }
 
 :root[data-theme='dark'] .guarantee-detail {
-    background: rgba(32, 34, 39, 0.94);
-    border: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.32);
+    background: var(--surface-alt);
+    border: 1px solid rgba(214, 220, 234, 0.26);
     box-shadow: 0 28px 64px -38px rgba(0, 0, 0, 0.78);
 }
 
 :root[data-theme='dark'] .guarantees-list__badge {
-    background: rgba(32, 34, 39, 0.85);
-    border-color: rgba(var(--go-color-94a3b8-rgb), 0.38);
+    background: rgba(40, 42, 48, 0.88);
+    border-color: rgba(214, 220, 234, 0.28);
     color: var(--text-secondary);
 }
 
@@ -1982,7 +1982,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .guarantees-table__row.selected:hover td {
-    background-color: rgba(255, 255, 255, 0.94);
+    background-color: rgba(255, 255, 255, 0.96);
 }
 
 :root[data-theme='dark'] .guarantees-table td::before {
