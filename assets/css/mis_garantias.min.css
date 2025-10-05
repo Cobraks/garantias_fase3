@@ -1643,7 +1643,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     top: -1.5rem;
     transform: translateY(-8px);
     background: rgba(var(--go-color-111827-rgb), .92);
-    color: var(--go-color-f9fafb);
+    color: var(--text-color);
     font-size: .75rem;
     line-height: 1.3;
     padding: .35rem .75rem;
@@ -1900,16 +1900,16 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .guarantees-list__filters {
-    background: rgba(8, 16, 32, 0.95);
-    border: 1px solid rgba(122, 150, 196, 0.24);
+    background: rgba(13, 16, 22, 0.96);
+    border: 1px solid rgba(var(--go-color-94a3b8-rgb), 0.26);
     border-top: none;
-    box-shadow: 0 18px 40px -26px rgba(3, 9, 24, 0.65);
+    box-shadow: 0 20px 48px -28px rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(14px);
 }
 
 :root[data-theme='dark'] .guarantees-list__badge {
-    background: rgba(5, 14, 28, 0.82);
-    border-color: rgba(122, 150, 196, 0.32);
+    background: rgba(13, 16, 22, 0.82);
+    border-color: rgba(var(--go-color-94a3b8-rgb), 0.32);
     color: var(--text-secondary);
 }
 
@@ -1992,18 +1992,18 @@ tr.guarantees-table__row:not(.selected):hover td,
 :root[data-theme='dark'] .detail__transfer-table tr[data-copy-row]:hover td,
 :root[data-theme='dark'] .detail__transfer-table tr[data-copy-row]:focus-within th,
 :root[data-theme='dark'] .detail__transfer-table tr[data-copy-row]:focus-within td {
-    background-color: rgba(112, 149, 214, 0.18);
+    background-color: rgba(var(--go-color-94a3b8-rgb), 0.18);
     color: var(--text-color);
 }
 
 :root[data-theme='dark'] .detail__transfer-table [data-copy-cell]::after {
-    background: rgba(8, 15, 28, 0.92);
-    color: var(--go-color-f9fafb);
-    box-shadow: 0 18px 32px -24px rgba(5, 12, 28, 0.6);
+    background: rgba(13, 16, 22, 0.92);
+    color: var(--text-color);
+    box-shadow: 0 18px 32px -24px rgba(0, 0, 0, 0.6);
 }
 
 :root[data-theme='dark'] .detail__transfer-table [data-copy-cell]::before {
-    border-color: rgba(8, 15, 28, 0.92) transparent transparent transparent;
+    border-color: rgba(13, 16, 22, 0.92) transparent transparent transparent;
 }
 
 :root[data-theme='dark'] .detail__copy-btn {
@@ -2012,7 +2012,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 :root[data-theme='dark'] .detail__copy-btn:hover,
 :root[data-theme='dark'] .detail__copy-btn:focus-visible {
-    background: rgba(112, 149, 214, 0.18);
+    background: rgba(var(--go-color-94a3b8-rgb), 0.18);
     color: var(--text-color);
 }
 
@@ -2022,9 +2022,9 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .detail__copy-toast {
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(13, 16, 22, 0.95);
     color: var(--text-color);
-    box-shadow: 0 24px 48px -28px rgba(5, 12, 28, 0.65);
+    box-shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.68);
 }
 
 
