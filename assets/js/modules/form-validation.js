@@ -260,7 +260,7 @@ export function validateField(input, showError = false, isHardCheck = false) {
 	// Vendedor / profesional (usuario-rol) visible
 	if (id === "usuario-rol") {
 		const isVisible = input.offsetParent !== null;
-		if (isVisible && !input.value) {
+                if (isVisible && !input.value) {
                         if (showError) {
                                 const rawRole =
                                         getUserRole() || document.body.dataset.userRole || "";
@@ -270,13 +270,16 @@ export function validateField(input, showError = false, isHardCheck = false) {
                                         normalizedRole === "go_comercial" ||
                                         normalizedRole === "profesional" ||
                                         normalizedRole === "go_profesional";
-                                const msg = shouldAskForProfessional
-                                        ? "Selecciona profesional"
-                                        : "Selecciona vendedor";
+                                const canalSelect = document.getElementById("canal-venta");
+                                const canalValue = (canalSelect && canalSelect.value) || "";
+                                const isParticular = canalValue.toLowerCase().includes("particular");
+                                let msg = "Selecciona vendedor";
+                                if (isParticular) msg = "Selecciona cliente";
+                                else if (shouldAskForProfessional) msg = "Selecciona profesional";
                                 setError(input, msg);
                         }
-			return false;
-		}
+                        return false;
+                }
 		clearError(input);
 		return true;
 	}

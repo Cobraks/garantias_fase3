@@ -276,6 +276,25 @@ $home_destination = $is_admin_user
                             </a>
                         </div>
                         <div class="profile-menu__footer">
+                            <div class="profile-menu__theme" role="none">
+                                <span class="profile-menu__theme-icon profile-menu__theme-icon--sun" aria-hidden="true">
+                                    <?php echo Svg::icon('theme_sun', 'profile-menu__theme-icon-svg'); ?>
+                                </span>
+                                <label class="theme-toggle" data-theme-toggle>
+                                    <input
+                                        type="checkbox"
+                                        class="theme-toggle__input"
+                                        role="switch"
+                                        aria-checked="false"
+                                        aria-label="<?php esc_attr_e('Cambiar tema', 'garantias-online-360vo'); ?>"
+                                    >
+                                    <span class="theme-toggle__track"></span>
+                                    <span class="theme-toggle__thumb"></span>
+                                </label>
+                                <span class="profile-menu__theme-icon profile-menu__theme-icon--moon" aria-hidden="true">
+                                    <?php echo Svg::icon('theme_moon', 'profile-menu__theme-icon-svg'); ?>
+                                </span>
+                            </div>
                             <a
                                 href="<?php echo esc_url(wp_logout_url(home_url('/garantias-online/'))); ?>"
                                 class="profile-menu__item profile-menu__item--logout"

@@ -521,11 +521,11 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 <span class="summary-label">Tipo:</span>
                                 <span class="summary-value" id="summary-channel">—</span>
                             </div>
-                            <div class="summary-item">
+                            <div class="summary-item" id="summary-trade-name-item">
                                 <span class="summary-label">Nombre comercial:</span>
                                 <span class="summary-value" id="summary-trade-name">—</span>
                             </div>
-                            <div class="summary-item">
+                            <div class="summary-item" id="summary-legal-name-item">
                                 <span class="summary-label">Razón social:</span>
                                 <span class="summary-value" id="summary-legal-name">—</span>
                             </div>
@@ -575,17 +575,17 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             </div>
                         </div>
 
-                        <div class="summary-group">
+                        <div class="summary-group" id="summary-preferences">
                             <div class="summary-title">Preferencias</div>
-                            <div class="summary-item">
+                            <div class="summary-item" id="summary-web-item">
                                 <span class="summary-label">Web 360VO:</span>
                                 <span class="summary-value" id="summary-web">—</span>
                             </div>
-                            <div class="summary-item">
+                            <div class="summary-item" id="summary-signature-item">
                                 <span class="summary-label">Firma automática:</span>
                                 <span class="summary-value" id="summary-signature">—</span>
                             </div>
-                            <div class="summary-item">
+                            <div class="summary-item" id="summary-sepa-status-item">
                                 <span class="summary-label">Domiciliación:</span>
                                 <span class="summary-value" id="summary-sepa-status">—</span>
                             </div>

@@ -5,8 +5,8 @@ import {
         eurosString,
         parseNumericFormValue,
         getAntiguedadFromDate,
-       IVA_PORCENTAJE,
-       debounce,
+        IVA_PORCENTAJE,
+        debounce,
 } from "./form-utils.js";
 import {
         fetchOfertas,
@@ -39,6 +39,314 @@ function log(...args) {
 
 const MODALIDAD_CACHE_TTL = 5 * 60 * 1000; // 5 minutos de cache
 let filtroToken = 0;
+
+const CHANNEL_NORMALIZATION = {
+        profesional: "profesional",
+        go_profesional: "profesional",
+        particular: "particular",
+        go_particular: "particular",
+        gestoria: "gestoria",
+        go_gestoria: "gestoria",
+};
+
+let vehicleTypesByChannelCache = new Map();
+
+function normalizeChannel(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        return CHANNEL_NORMALIZATION[key] || "";
+}
+
+function getDefaultChannelForRole() {
+        const role = getEffectiveUserRole();
+        switch (role) {
+                case "go_particular":
+                case "particular":
+                        return "particular";
+                case "go_gestoria":
+                case "gestoria":
+                        return "gestoria";
+                default:
+                        return "profesional";
+        }
+}
+
+function getModalidadChannels(modalidad) {
+        const canalField =
+                modalidad?.acf?.condiciones_generales_y_tarifas?.condiciones_modalidad
+                        ?.canal_venta;
+
+        let canales = [];
+        if (Array.isArray(canalField)) {
+                canales = canalField;
+        } else if (typeof canalField === "string" && canalField) {
+                canales = [canalField];
+        } else if (canalField && typeof canalField === "object") {
+                if (Array.isArray(canalField.value)) {
+                        canales = canalField.value;
+                } else if (canalField.value) {
+                        canales = [canalField.value];
+                }
+        }
+
+        const normalizados = canales
+                .map((item) => {
+                        if (typeof item === "object" && item !== null) {
+                                if (typeof item.value !== "undefined") {
+                                        return item.value;
+                                }
+                                if (typeof item.label !== "undefined") {
+                                        return item.label;
+                                }
+                        }
+                        return item;
+                })
+                .map((item) => normalizeChannel(item))
+                .filter(Boolean);
+
+        if (!normalizados.length) {
+                return ["profesional"];
+        }
+        return Array.from(new Set(normalizados));
+}
+
+function buildVehicleTypesCache(modalidades) {
+        const map = new Map();
+        modalidades.forEach((modalidad) => {
+                const tipos = Array.isArray(modalidad.tipo_vehiculo)
+                        ? modalidad.tipo_vehiculo
+                        : [];
+                const canales = getModalidadChannels(modalidad);
+                canales.forEach((canal) => {
+                        if (!map.has(canal)) {
+                                map.set(canal, new Set());
+                        }
+                        const current = map.get(canal);
+                        tipos.forEach((tipo) => {
+                                if (typeof tipo === "string" && tipo) {
+                                        current.add(tipo);
+                                }
+                        });
+                });
+        });
+        return map;
+}
+
+function getVehicleTypesForChannel(canal) {
+        if (!vehicleTypesByChannelCache || vehicleTypesByChannelCache.size === 0) {
+                return new Set();
+        }
+        if (!canal) return new Set();
+        return new Set(vehicleTypesByChannelCache.get(canal) || []);
+}
+
+function getActiveChannelSlug(canalesDisponibles = []) {
+        const select = document.getElementById("canal-venta");
+        const canalesSet = new Set(canalesDisponibles);
+        let selectValue = select ? normalizeChannel(select.value) : "";
+
+        if (selectValue && (!canalesSet.size || canalesSet.has(selectValue))) {
+                return selectValue;
+        }
+
+        const fallback = getDefaultChannelForRole();
+        if (canalesSet.size) {
+                if (canalesSet.has(fallback)) {
+                        return fallback;
+                }
+                const first = canalesSet.values().next();
+                if (!first.done) return first.value;
+        }
+        return fallback;
+}
+
+function normalizeSelectValue(field) {
+        if (!field) return "";
+        if (typeof field === "string") return field;
+        if (Array.isArray(field)) {
+                if (!field.length) return "";
+                const first = field[0];
+                if (typeof first === "object" && first !== null && first.value) {
+                        return first.value;
+                }
+                return String(first || "");
+        }
+        if (typeof field === "object") {
+                if (typeof field.value !== "undefined") {
+                        return String(field.value || "");
+                }
+                if (typeof field.label !== "undefined") {
+                        return String(field.label || "");
+                }
+        }
+        return "";
+}
+
+function evaluarFiltrosParticulares(tarifa, valoresForm) {
+        const tipoTarifa = normalizeSelectValue(tarifa.tipo_de_vehiculo);
+        const traccionTarifa = normalizeSelectValue(tarifa.traccion);
+        const desdeAnosRaw = tarifa.desde_anos;
+        const hastaAnosRaw = tarifa.hasta_anos;
+
+        const antiguedad =
+                valoresForm.antiguedad !== null && valoresForm.antiguedad !== undefined
+                        ? Number(valoresForm.antiguedad)
+                        : null;
+
+        const tieneRangoAntiguedad =
+                (desdeAnosRaw !== undefined && desdeAnosRaw !== null && desdeAnosRaw !== "") ||
+                (hastaAnosRaw !== undefined && hastaAnosRaw !== null && hastaAnosRaw !== "");
+
+        if (tieneRangoAntiguedad && (antiguedad === null || Number.isNaN(antiguedad))) {
+                return { coincide: false, especificidad: 0 };
+        }
+
+        if (antiguedad !== null && !Number.isNaN(antiguedad)) {
+                if (desdeAnosRaw !== undefined && desdeAnosRaw !== null && desdeAnosRaw !== "") {
+                        const desdeNum = Number(desdeAnosRaw);
+                        if (!Number.isNaN(desdeNum) && antiguedad < desdeNum) {
+                                return { coincide: false, especificidad: 0 };
+                        }
+                }
+                if (hastaAnosRaw !== undefined && hastaAnosRaw !== null && hastaAnosRaw !== "") {
+                        const hastaNum = Number(hastaAnosRaw);
+                        if (!Number.isNaN(hastaNum) && antiguedad > hastaNum) {
+                                return { coincide: false, especificidad: 0 };
+                        }
+                }
+        }
+
+        const tipoSeleccionado = String(valoresForm.tipo_vehiculo || "").toLowerCase();
+        const traccionSeleccionada = String(valoresForm.traccion || "").toLowerCase();
+
+        const tieneTipo = tipoTarifa && tipoTarifa !== "ninguno";
+        const tieneTraccion = traccionTarifa && traccionTarifa !== "ninguna";
+
+        const tipoCoincide = tieneTipo
+                ? tipoSeleccionado === String(tipoTarifa).toLowerCase()
+                : true;
+        const traccionCoincide = tieneTraccion
+                ? traccionSeleccionada === String(traccionTarifa).toLowerCase()
+                : true;
+
+        let coincide;
+        if (tieneTipo && tieneTraccion) {
+                coincide = tipoCoincide || traccionCoincide;
+        } else {
+                coincide = tipoCoincide && traccionCoincide;
+        }
+
+        let especificidad = 0;
+        if (coincide) {
+                if (tieneTipo || tieneTraccion) {
+                        especificidad += 1; // indica que es una tarifa con filtros especiales
+                }
+                if (tieneTipo && tipoCoincide) {
+                        especificidad += 1;
+                }
+                if (tieneTraccion && traccionCoincide) {
+                        especificidad += 1;
+                }
+        }
+
+        return { coincide, especificidad };
+}
+
+function syncCanalVentaSelect(canalesDisponibles, canalActivo) {
+        const select = document.getElementById("canal-venta");
+        if (!select) return;
+
+        const opciones = Array.from(select.options).filter((opt) => opt.value !== "");
+        const disponiblesSet = new Set(canalesDisponibles);
+
+        let needsValueReset = false;
+        opciones.forEach((opt) => {
+                const canalOpt = normalizeChannel(opt.value);
+                const habilitar = disponiblesSet.size === 0 || disponiblesSet.has(canalOpt);
+                opt.disabled = !habilitar;
+                opt.hidden = !habilitar;
+                if (!habilitar && opt.selected) {
+                        opt.selected = false;
+                        needsValueReset = true;
+                }
+        });
+
+        if (disponiblesSet.size === 0) {
+                if (select.value) {
+                        select.value = "";
+                        select.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+                const container = select.closest(".form__input-container");
+                if (container) container.classList.remove("has-value");
+                return;
+        }
+
+        let targetCanal = canalActivo && disponiblesSet.has(canalActivo)
+                ? canalActivo
+                : getActiveChannelSlug(Array.from(disponiblesSet));
+
+        let opcionObjetivo = opciones.find(
+                (opt) => !opt.disabled && normalizeChannel(opt.value) === targetCanal
+        );
+
+        if (!opcionObjetivo) {
+                opcionObjetivo = opciones.find((opt) => !opt.disabled) || null;
+                targetCanal = opcionObjetivo ? normalizeChannel(opcionObjetivo.value) : targetCanal;
+        }
+
+        if (opcionObjetivo) {
+                const nuevoValor = opcionObjetivo.value;
+                if (select.value !== nuevoValor || needsValueReset) {
+                        opcionObjetivo.selected = true;
+                        select.value = nuevoValor;
+                        select.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+                const container = select.closest(".form__input-container");
+                if (container) container.classList.add("has-value");
+        }
+}
+
+function syncTipoVehiculoOptions(canalActivo) {
+        const select = document.getElementById("tipo_vehiculo");
+        if (!select) return;
+
+        const opciones = Array.from(select.options).filter((opt) => opt.value !== "");
+        if (!opciones.length) return;
+
+        const restringir = canalActivo === "particular" || getDefaultChannelForRole() === "particular";
+        const permitidos = restringir ? getVehicleTypesForChannel("particular") : null;
+
+        let primerPermitido = null;
+        opciones.forEach((opt) => {
+                if (!restringir) {
+                        opt.disabled = false;
+                        opt.hidden = false;
+                        return;
+                }
+                const habilitar = permitidos.has(opt.value);
+                opt.disabled = !habilitar;
+                opt.hidden = !habilitar;
+                if (habilitar && primerPermitido === null) {
+                        primerPermitido = opt.value;
+                }
+        });
+
+        if (restringir) {
+                if (!permitidos.has(select.value)) {
+                        const nuevoValor = primerPermitido || "";
+                        if (select.value !== nuevoValor) {
+                                select.value = nuevoValor;
+                                select.dispatchEvent(new Event("change", { bubbles: true }));
+                        }
+                }
+        }
+
+        const container = select.closest(".form__input-container");
+        if (container) {
+                if (select.value) container.classList.add("has-value");
+                else container.classList.remove("has-value");
+        }
+}
 
 // --------- Helpers de formato auxiliares locales ---------
 function redondearEuros(valor) {
@@ -479,36 +787,42 @@ async function updateOfertas() {
 
 // --------- MODALIDADES (con cache) ---------
 let modalidadesCache = {
-	timestamp: 0,
-	data: null,
+        timestamp: 0,
+        data: null,
 };
 async function fetchModalidades() {
-	const now = Date.now();
-	if (
-		modalidadesCache.data &&
-		now - modalidadesCache.timestamp < MODALIDAD_CACHE_TTL
-	) {
-		return modalidadesCache.data;
-	}
-	const restRoot = getRestRoot();
-	const restNonce = getRestNonce();
-	try {
+        const now = Date.now();
+        if (
+                modalidadesCache.data &&
+                now - modalidadesCache.timestamp < MODALIDAD_CACHE_TTL
+        ) {
+                if (!vehicleTypesByChannelCache || vehicleTypesByChannelCache.size === 0) {
+                        vehicleTypesByChannelCache = buildVehicleTypesCache(
+                                modalidadesCache.data
+                        );
+                }
+                return modalidadesCache.data;
+        }
+        const restRoot = getRestRoot();
+        const restNonce = getRestNonce();
+        try {
 		const res = await fetch(`${restRoot}go/v1/modalidades`, {
 			method: "GET",
 			credentials: "include",
 			headers: { "X-WP-Nonce": restNonce, Accept: "application/json" },
 		});
-		if (!res.ok) throw new Error("Error al obtener modalidades");
-		const json = await res.json();
-		modalidadesCache = {
-			timestamp: now,
-			data: json,
-		};
-		return json;
-	} catch (e) {
-		log("Error:", e);
-		return [];
-	}
+                if (!res.ok) throw new Error("Error al obtener modalidades");
+                const json = await res.json();
+                modalidadesCache = {
+                        timestamp: now,
+                        data: json,
+                };
+                vehicleTypesByChannelCache = buildVehicleTypesCache(json);
+                return json;
+        } catch (e) {
+                log("Error:", e);
+                return [];
+        }
 }
 
 // --------- Reutilizables de modalidad ---------
@@ -635,7 +949,8 @@ function modalidadAdmiteValor(modalidad, valoresForm) {
                                 : parseNumericFormValue(maxRaw);
                 const checkValor = tipo === "ninguna" || (valor >= min && valor <= max);
                 const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes == ejes);
-                return checkValor && checkEjes;
+                const { coincide } = evaluarFiltrosParticulares(tarifa, valoresForm);
+                return checkValor && checkEjes && coincide;
         });
 }
 
@@ -646,23 +961,24 @@ function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
         const ejes = esCamion ? valoresForm.traccion_camion : null;
 
 	const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
-	const mesesPorGarantia = tarifas
-		.filter((tarifa) => {
-			const min = parseNumericFormValue(
-				tarifa.valor_min ?? tarifa.valor_minimo
-			);
-			const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
-			const max =
-				maxRaw === "" || maxRaw == null
-					? 99999999
-					: parseNumericFormValue(maxRaw);
-			const checkValor = tipo === "ninguna" || (valor >= min && valor <= max);
-			const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes == ejes);
-			return checkValor && checkEjes;
-		})
-		.map((tarifa) => Number(tarifa.duracion_meses));
+        const mesesPorGarantia = tarifas
+                .filter((tarifa) => {
+                        const min = parseNumericFormValue(
+                                tarifa.valor_min ?? tarifa.valor_minimo
+                        );
+                        const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
+                        const max =
+                                maxRaw === "" || maxRaw == null
+                                        ? 99999999
+                                        : parseNumericFormValue(maxRaw);
+                        const checkValor = tipo === "ninguna" || (valor >= min && valor <= max);
+                        const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes == ejes);
+                        const { coincide } = evaluarFiltrosParticulares(tarifa, valoresForm);
+                        return checkValor && checkEjes && coincide;
+                })
+                .map((tarifa) => Number(tarifa.duracion_meses));
 
-	return [...new Set(mesesPorGarantia)].sort((a, b) => a - b);
+        return [...new Set(mesesPorGarantia)].sort((a, b) => a - b);
 }
 
 function calcularPrecioBase(modalidad, valoresForm) {
@@ -676,24 +992,46 @@ function calcularPrecioBase(modalidad, valoresForm) {
 
 	const { tipo, valor } = determineValorComparar(modalidad, valoresForm);
 
-	for (const tarifa of tarifas) {
-		const min = parseNumericFormValue(tarifa.valor_min ?? tarifa.valor_minimo);
-		const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
-		const max =
-			maxRaw === "" || maxRaw == null
-				? 99999999
-				: parseNumericFormValue(maxRaw);
+        let mejorTarifa = null;
+        let mejorEspecificidad = -1;
 
-		const checkMeses = Number(tarifa.duracion_meses) === meses;
-		const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes === ejes);
-		const checkMin = tipo === "ninguna" || valor >= min;
-		const checkMax = tipo === "ninguna" || valor <= max;
+        for (const tarifa of tarifas) {
+                const min = parseNumericFormValue(tarifa.valor_min ?? tarifa.valor_minimo);
+                const maxRaw = (tarifa.valor_max ?? tarifa.valor_maximo) || "";
+                const max =
+                        maxRaw === "" || maxRaw == null
+                                ? 99999999
+                                : parseNumericFormValue(maxRaw);
 
-		if (checkMeses && checkEjes && checkMin && checkMax) {
-			return Number(tarifa.precio_base);
-		}
-	}
-	return null;
+                const checkMeses = Number(tarifa.duracion_meses) === meses;
+                const checkEjes = !esCamion || (tarifa.ejes && tarifa.ejes === ejes);
+                const checkMin = tipo === "ninguna" || valor >= min;
+                const checkMax = tipo === "ninguna" || valor <= max;
+
+                if (checkMeses && checkEjes && checkMin && checkMax) {
+                        const { coincide, especificidad } = evaluarFiltrosParticulares(
+                                tarifa,
+                                valoresForm
+                        );
+                        if (!coincide) continue;
+
+                        if (especificidad > mejorEspecificidad) {
+                                mejorTarifa = tarifa;
+                                mejorEspecificidad = especificidad;
+                        }
+                }
+        }
+
+        if (!mejorTarifa) {
+                return null;
+        }
+
+        const precioBaseRaw = mejorTarifa.precio_base;
+        if (precioBaseRaw === null || precioBaseRaw === "") {
+                return null;
+        }
+        const precio = parseNumericFormValue(precioBaseRaw);
+        return Number.isNaN(precio) ? null : precio;
 }
 
 // --------- UI AUXILIARES ---------
@@ -932,11 +1270,20 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 				buttonInner = `<span class="form__plan-button-text--label">Seleccionar</span>`;
 			}
 
-			const priceConIva = precioIVA !== null ? eurosString(precioIVA) : "--";
-			const priceSinIva =
-				precioFinal !== null ? eurosString(precioFinal) : "--";
-			const priceIvaOnly =
-				ivaSolo !== null ? `+ ${eurosString(ivaSolo)}€ IVA` : "";
+                        const isConsultar = precioFinal === null;
+                        const priceConIva =
+                                !isConsultar && precioIVA !== null
+                                        ? eurosString(precioIVA)
+                                        : "Consultar";
+                        const priceSinIva =
+                                !isConsultar && precioFinal !== null
+                                        ? eurosString(precioFinal)
+                                        : "Consultar";
+                        const priceIvaOnly =
+                                !isConsultar && ivaSolo !== null
+                                        ? `+ ${eurosString(ivaSolo)}€ IVA`
+                                        : "";
+                        const euroDisplay = !isConsultar ? "inline" : "none";
 
 			return `
             <div class="${planClasses.join(
@@ -960,20 +1307,26 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         <span class="plan-price-skeleton"></span>
                         <span class="form__plan-price-text">
                             <span class="plan-price-value" style="display:${
-															preciosConIVA ? "inline" : "none"
-														}">${priceConIva}</span>
+                                                                                                                        preciosConIVA ? "inline" : "none"
+                                                                                                                }">${priceConIva}</span>
                             <span class="plan-price-value-noiva" style="display:${
-															preciosConIVA ? "none" : "inline"
-														}">${priceSinIva}</span>
-                            <span class="form__plan-price-euro">€</span>
+                                                                                                                        preciosConIVA ? "none" : "inline"
+                                                                                                                }">${priceSinIva}</span>
+                            <span class="form__plan-price-euro" style="display:${
+                                                                                                                        euroDisplay
+                                                                                                                }">€</span>
                         </span>
                     </div>
                     <div class="form__plan-iva" style="display:${
-											preciosConIVA ? "block" : "none"
-										}">IVA incluido</div>
+                                                                                        preciosConIVA && !isConsultar
+                                                                                                ? "block"
+                                                                                                : "none"
+                                                                                }">IVA incluido</div>
                     <div class="form__plan-iva-no" style="display:${
-											preciosConIVA ? "none" : "block"
-										}">${priceIvaOnly}</div>
+                                                                                        !preciosConIVA && !isConsultar
+                                                                                                ? "block"
+                                                                                                : "none"
+                                                                                }">${priceIvaOnly}</div>
                     <div class="form__plan-description">${description}</div>
                     ${recargosHTML}
                     ${
@@ -1017,6 +1370,8 @@ async function filtrarModalidadesBase() {
                 duracion: Number(getValorInput("duracion")) || 12,
                 traccion_camion: getValorInput("traccion_camion") || null,
                 combustible: getValorInput("combustible") || null,
+                traccion: getValorInput("traccion") || "",
+                antiguedad,
         };
 
         const modalidades = await fetchModalidades();
@@ -1129,6 +1484,24 @@ async function filtrarModalidadesBase() {
         }
 
         candidatas = candidatas.filter((m) => cumpleCondiciones(m));
+
+        const canalesDisponibles = new Set();
+        candidatas.forEach((m) => {
+                const canales = getModalidadChannels(m);
+                canales.forEach((canal) => canalesDisponibles.add(canal));
+        });
+
+        const canalActivo = getActiveChannelSlug(Array.from(canalesDisponibles));
+        valoresForm.canal = canalActivo;
+
+        syncCanalVentaSelect(canalesDisponibles, canalActivo);
+        syncTipoVehiculoOptions(canalActivo);
+
+        if (canalActivo) {
+                candidatas = candidatas.filter((m) =>
+                        getModalidadChannels(m).includes(canalActivo)
+                );
+        }
 
         let disponibles = candidatas.filter((m) =>
                 modalidadAdmiteValor(m, valoresForm)

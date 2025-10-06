@@ -26,11 +26,21 @@ class UserRestController
                         'role' => [
                             'required' => false,
                             'validate_callback' => function ($param) {
-                                return is_string($param) && !empty($param);
+                                return is_string($param) && $param !== '';
                             },
                             'sanitize_callback' => 'sanitize_text_field',
                         ],
-                        // Puedes añadir más filtros en el futuro
+                        'search' => [
+                            'required' => false,
+                            'validate_callback' => function ($param) {
+                                return is_string($param);
+                            },
+                            'sanitize_callback' => 'sanitize_text_field',
+                        ],
+                        'id' => [
+                            'required' => false,
+                            'type' => 'integer',
+                        ],
                     ],
                 ],
             ]
@@ -73,12 +83,54 @@ class UserRestController
      */
     public static function get_items($request)
     {
-        $role = $request->get_param('role');
+        $role      = $request->get_param('role');
+        $search    = $request->get_param('search');
+        $single_id = (int) $request->get_param('id');
+
         $args = [
-            'role'   => $role ? $role : '', // Si no hay role, devuelve todos
-            'fields' => 'all_with_meta',
-            'number' => 100, // puedes paginar si quieres
+            'role'    => $role ? $role : '', // Si no hay role, devuelve todos
+            'fields'  => 'all_with_meta',
+            'number'  => 25,
+            'orderby' => 'display_name',
+            'order'   => 'ASC',
         ];
+
+        if ($single_id > 0) {
+            $args['include'] = [$single_id];
+            $args['number']  = 1;
+        }
+
+        if ($search) {
+            $search_term = trim(sanitize_text_field($search));
+            if ($search_term !== '') {
+                $args['search']         = '*' . $search_term . '*';
+                $args['search_columns'] = ['user_login', 'user_email', 'display_name'];
+                $args['meta_query']     = [
+                    'relation' => 'OR',
+                    [
+                        'key'     => 'first_name',
+                        'value'   => $search_term,
+                        'compare' => 'LIKE',
+                    ],
+                    [
+                        'key'     => 'last_name',
+                        'value'   => $search_term,
+                        'compare' => 'LIKE',
+                    ],
+                    [
+                        'key'     => 'datos_usuario_nombre_comercial',
+                        'value'   => $search_term,
+                        'compare' => 'LIKE',
+                    ],
+                    [
+                        'key'     => 'datos_usuario_nombre_empresa',
+                        'value'   => $search_term,
+                        'compare' => 'LIKE',
+                    ],
+                ];
+            }
+        }
+
         $users_query = new WP_User_Query($args);
         $users = [];
 
@@ -105,6 +157,7 @@ class UserRestController
                 'company'        => $profile['company'],
                 'username'       => $profile['username'],
                 'email'          => $profile['email'],
+                'avatar'         => get_avatar_url($user_id, ['size' => 64]),
             ];
 
             // Si es profesional, añadimos comerciales asignados (ACF group)
