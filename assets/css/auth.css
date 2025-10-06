@@ -1,19 +1,19 @@
 :root {
-  --auth-surface: var(--go-color-f1f5f9);
-  --auth-surface-contrast: var(--go-color-ffffff);
-  --auth-accent: var(--go-color-2563eb);
-  --auth-accent-dark: var(--go-color-1e40af);
-  --auth-muted: var(--go-color-64748b);
+  --auth-surface: var(--info-100);
+  --auth-surface-contrast: var(--gray-0);
+  --auth-accent: var(--brand-500);
+  --auth-accent-dark: var(--brand-700);
+  --auth-muted: var(--gray-400);
 }
 
 .login-page {
-  --auth-accent: var(--go-color-c5444e);
-  --auth-accent-dark: var(--go-color-a8323c);
+  --auth-accent: var(--danger-500);
+  --auth-accent-dark: var(--danger-500);
 }
 
 .body--auth {
   background: var(--auth-surface);
-  color: var(--text-primary, var(--go-color-1f2937));
+  color: var(--text-primary, var(--brand-700));
 }
 
 .body--auth .container--auth {
@@ -62,7 +62,7 @@
 }
 
 .login-page .auth-form .form-input {
-  background-color: var(--go-color-ffffff);
+  background-color: var(--gray-0);
   border-color: var(--border);
   border-radius: 12px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -74,7 +74,7 @@
 
 .login-page .auth-form .form-input:focus {
   border-color: var(--auth-accent);
-  box-shadow: 0 0 0 2px rgba(var(--go-color-2563eb-rgb), 0.15);
+  box-shadow: 0 0 0 2px rgba(var(--brand-500-rgb), 0.15);
 }
 
 
@@ -96,9 +96,9 @@
   gap: 0.6rem;
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid var(--go-color-cbd5e1);
+  border: 1px solid var(--brand-100);
   background: var(--auth-surface-contrast);
-  color: var(--go-color-475569);
+  color: var(--gray-500);
   cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -106,7 +106,7 @@
 .body--auth .footer__theme-toggle:focus-visible,
 .body--auth .footer__theme-toggle:hover {
   border-color: var(--auth-accent);
-  box-shadow: 0 0 0 2px rgba(var(--go-color-2563eb-rgb), 0.18);
+  box-shadow: 0 0 0 2px rgba(var(--brand-500-rgb), 0.18);
   outline: none;
 }
 
@@ -127,7 +127,7 @@
   width: 2.25rem;
   height: 1.25rem;
   border-radius: 999px;
-  background: var(--go-color-e2e8f0);
+  background: var(--brand-100);
   position: relative;
   transition: background 0.2s ease;
 }
@@ -146,7 +146,7 @@
 
 .body--auth .footer__theme-toggle[aria-checked="true"] .footer__theme-thumb {
   transform: translate(1rem, -50%);
-  background: var(--go-color-1e40af);
+  background: var(--brand-700);
 }
 
 .login-page .form-footer .btn {
@@ -176,21 +176,21 @@
 }
 
 .login-page .badge {
-  background: rgba(var(--go-color-c5444e-rgb), 0.12);
-  color: var(--go-color-c5444e);
+  background: rgba(var(--danger-500-rgb), 0.12);
+  color: var(--danger-500);
 }
 
 .login-page .features-list li .feature-icon {
-  color: var(--go-color-c5444e);
+  color: var(--danger-500);
 }
 
 .login-page a {
-  color: var(--go-color-c5444e);
+  color: var(--danger-500);
 }
 
 .login-page a:hover,
 .login-page a:focus-visible {
-  color: var(--go-color-a8323c);
+  color: var(--danger-500);
 }
 
 @media (max-width: 1024px) {

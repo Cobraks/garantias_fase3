@@ -73,7 +73,7 @@
 .account-summary__upload:focus-visible {
   border-color: var(--text-color);
   color: var(--text-color);
-  box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.12);
+  box-shadow: 0 0 0 3px rgba(var(--brand-500-rgb), 0.12);
 }
 
 .account-summary__upload:focus-visible {
@@ -149,7 +149,7 @@
 }
 
 .account-summary__save:focus-visible {
-  box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.2);
+  box-shadow: 0 0 0 3px rgba(var(--brand-500-rgb), 0.2);
 }
 
 .account-summary__save:active {
@@ -217,11 +217,11 @@
 }
 
 .account-page__nav a:focus-visible {
-  box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.2);
+  box-shadow: 0 0 0 3px rgba(var(--brand-500-rgb), 0.2);
 }
 
 .account-page__nav a[aria-current="page"] {
-  background: var(--go-color-000000);
+  background: var(--ink);
   color: var(--text-inverse);
   font-weight: 600;
 }
@@ -292,7 +292,7 @@
 .account-section__icon {
   width: 2rem;
   height: 2rem;
-  color: var(--go-color-000000);
+  color: var(--ink);
   flex-shrink: 0;
   margin-top: 0.15rem;
 }
@@ -438,7 +438,7 @@
   background: var(--primary-color);
   color: var(--text-inverse);
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.2);
+  box-shadow: 0 0 0 3px rgba(var(--brand-500-rgb), 0.2);
 }
 
 .account-clients__action:focus-visible {
@@ -547,13 +547,13 @@
 }
 
 .account-card__status--success {
-  background: var(--go-color-ecfdf5);
-  color: var(--go-color-166534);
+  background: var(--success-100);
+  color: var(--success-600);
 }
 
 .account-card__status--warning {
-  background: var(--go-color-fff7ed);
-  color: var(--go-color-9a3412);
+  background: var(--warning-100);
+  color: var(--warning-600);
 }
 
 .account-card__status--info {
@@ -714,7 +714,7 @@
 }
 
 .account-help__trigger:focus-visible {
-  box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.2);
+  box-shadow: 0 0 0 3px rgba(var(--brand-500-rgb), 0.2);
   border-radius: 0.75rem;
 }
 
@@ -834,7 +834,7 @@
 
 .account-card--admin-transfer .account-input-wrapper:focus-within {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.12);
+  box-shadow: 0 0 0 3px rgba(var(--brand-500-rgb), 0.12);
 }
 
 .account-card--admin-transfer .account-input {
@@ -928,7 +928,7 @@
   position: absolute;
   top: 12px;
   left: 1rem;
-  color: var(--go-color-64748b);
+  color: var(--gray-400);
   pointer-events: none;
   transition: 0.2s ease all;
   background: var(--surface);
@@ -940,11 +940,11 @@
   top: -0.5rem;
   left: 0.8rem;
   font-size: 0.8rem;
-  color: var(--go-color-1f2937);
+  color: var(--brand-700);
 }
 
 .account-input:focus + .account-input__label {
-  color: var(--go-color-000000);
+  color: var(--ink);
 }
 
 .account-form--floating .account-input__label,
@@ -1073,7 +1073,7 @@
 .account-card--certificates .file-upload:focus-within {
   border-color: var(--primary-color);
   color: var(--primary-color);
-  background: rgba(var(--go-color-2563eb-rgb), 0.05);
+  background: rgba(var(--brand-500-rgb), 0.05);
 }
 
 .account-card--certificates .file-input {
@@ -1113,7 +1113,7 @@
 .account-card--certificates .file-warning {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--go-color-9a3412);
+  color: var(--warning-600);
   line-height: 1.45;
 }
 
@@ -1122,9 +1122,9 @@
 }
 
 .account-card--certificates .file-upload--invalid {
-  border-color: var(--go-color-fb923c);
-  background: rgba(var(--go-color-f97316-rgb), 0.08);
-  color: var(--go-color-9a3412);
+  border-color: var(--warning-400);
+  background: rgba(var(--warning-400-rgb), 0.08);
+  color: var(--warning-600);
 }
 
 .account-upload--document .file-upload {
@@ -1158,7 +1158,7 @@
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 0.75rem;
-  background: rgba(var(--go-color-2563eb-rgb), 0.12);
+  background: rgba(var(--brand-500-rgb), 0.12);
   color: var(--primary-color);
   flex-shrink: 0;
 }
@@ -1210,7 +1210,7 @@
   border-radius: 999px;
   border: none;
   background: transparent;
-  color: var(--go-color-dc2626);
+  color: var(--danger-500);
   font-size: 0.9rem;
   display: inline-flex;
   align-items: center;
@@ -1227,7 +1227,7 @@
 
 .account-card--certificates .file-remove:hover,
 .account-card--certificates .file-remove:focus-visible {
-  color: var(--go-color-b91c1c);
+  color: var(--danger-500);
   transform: translateY(-1px);
   outline: none;
 }
@@ -1269,7 +1269,7 @@
 
 .account-input:focus {
   outline: none;
-  border-color: var(--go-color-000000);
+  border-color: var(--ink);
   box-shadow: none;
 }
 
@@ -1280,8 +1280,8 @@
   margin-bottom: var(--spacing-3);
   padding: 1rem 1rem 1rem 1.25rem;
   border-radius: 0.75rem;
-  border: 1px solid rgba(var(--go-color-2563eb-rgb), 0.18);
-  background: rgba(var(--go-color-2563eb-rgb), 0.08);
+  border: 1px solid rgba(var(--brand-500-rgb), 0.18);
+  background: rgba(var(--brand-500-rgb), 0.08);
   font-size: 0.9rem;
   color: var(--text-color);
 }
@@ -1340,7 +1340,7 @@
 }
 
 .account-help__close:focus-visible {
-  box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.2);
+  box-shadow: 0 0 0 3px rgba(var(--brand-500-rgb), 0.2);
   border-radius: 0.5rem;
 }
 
@@ -1396,7 +1396,7 @@
 .account-button:hover,
 .account-button:focus-visible {
   background: var(--secondary-color);
-  box-shadow: 0 8px 16px rgba(var(--go-color-2563eb-rgb), 0.15);
+  box-shadow: 0 8px 16px rgba(var(--brand-500-rgb), 0.15);
   transform: translateY(-1px);
   outline: none;
 }
@@ -1422,14 +1422,14 @@
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--go-color-dc2626);
+  color: var(--danger-500);
   font-weight: 400;
 }
 
 .account-button.account-repeater__remove:hover,
 .account-button.account-repeater__remove:focus-visible {
   background: transparent;
-  color: var(--go-color-b91c1c);
+  color: var(--danger-500);
   box-shadow: none;
   outline: none;
   transform: none;
@@ -1447,8 +1447,8 @@
 
 .account-button.account-repeater__add:hover,
 .account-button.account-repeater__add:focus-visible {
-  background: var(--go-color-f1f5f9);
-  border-color: var(--go-color-cbd5e1);
+  background: var(--info-100);
+  border-color: var(--brand-100);
   color: var(--text-color);
   box-shadow: none;
   outline: none;
@@ -1495,15 +1495,15 @@
 }
 
 .account-status--success {
-  color: var(--go-color-15803d);
+  color: var(--success-600);
 }
 
 .account-status--warning {
-  color: var(--go-color-b45309);
+  color: var(--warning-600);
 }
 
 .account-status--error {
-  color: var(--go-color-b91c1c);
+  color: var(--danger-500);
 }
 
 #account-payments-help.account-help--visible,
@@ -1556,11 +1556,11 @@
 }
 
 .account-help__bullets--pros li::before {
-  background: var(--go-color-16a34a);
+  background: var(--success-600);
 }
 
 .account-help__bullets--cons li::before {
-  background: var(--go-color-b45309);
+  background: var(--warning-600);
 }
 
 .account-help__bullets li {
