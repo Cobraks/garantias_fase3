@@ -144,39 +144,41 @@
   --text-tertiary: var(--gray-500);
   --text-inverse: var(--gray-0);
 
-  --background: var(--gray-100);
+  --background: #eef1f6;
   --background-strong: var(--gray-120);
   --surface: var(--gray-0);
-  --surface-alt: var(--gray-120);
+  --surface-alt: var(--gray-100);
   --surface-soft: var(--gray-170);
 
-  --surface-popover-shadow: 0 24px 48px -20px rgba(var(--shadow-color-rgb), 0.18);
+  --surface-popover-shadow:
+    0 20px 45px -18px rgba(var(--shadow-color-rgb), 0.28),
+    0 12px 30px -22px rgba(var(--shadow-color-rgb), 0.18);
 
-  --table-row-hover-bg: rgba(var(--brand-400-rgb), 0.12);
-  --table-row-zebra-bg: var(--surface);
-  --table-row-selected-bg: rgba(var(--brand-500-rgb), 0.16);
+  --table-row-hover-bg: rgba(var(--gray-400-rgb), 0.18);
+  --table-row-zebra-bg: var(--surface-alt);
+  --table-row-selected-bg: rgba(var(--brand-600-rgb), 0.16);
   --table-row-selected-text: var(--text-color);
 
   --border-color: var(--gray-200);
   --border-color-strong: var(--gray-300);
-  --card-border: var(--gray-170);
+  --card-border: var(--gray-200);
   --border: var(--border-color);
 
-  --focus-ring: 0 0 0 3px rgba(var(--brand-500-rgb), 0.32);
-  --focus-ring-color: rgba(var(--brand-500-rgb), 0.32);
+  --focus-ring: 0 0 0 3px rgba(var(--brand-500-rgb), 0.28);
+  --focus-ring-color: rgba(var(--brand-500-rgb), 0.28);
 
-  --shadow-soft: 0 25px 50px -12px rgba(var(--shadow-color-rgb), 0.18);
-  --shadow-md: 0 18px 32px -16px rgba(var(--shadow-color-rgb), 0.22);
+  --shadow-soft: 0 25px 50px -12px rgba(var(--shadow-color-rgb), 0.2);
+  --shadow-md: 0 20px 45px -20px rgba(var(--shadow-color-rgb), 0.24);
 
-  --overlay-soft: rgba(var(--shadow-color-rgb), 0.45);
-  --overlay-strong: rgba(var(--shadow-color-rgb), 0.65);
+  --overlay-soft: rgba(var(--shadow-color-rgb), 0.38);
+  --overlay-strong: rgba(var(--shadow-color-rgb), 0.58);
   --overlay-blur-sm: blur(4px);
   --overlay-blur-md: blur(10px);
   --client-overlay: var(--overlay-strong);
   --client-overlay-blur: var(--overlay-blur-md);
 
   --scrollbar-thumb: var(--gray-300);
-  --scrollbar-track: var(--gray-170);
+  --scrollbar-track: var(--gray-100);
 
   --logo-vo-fill: var(--gray-900);
   --logo-360-fill: #e2424d;
@@ -330,21 +332,23 @@
   --text-tertiary: var(--gray-500);
   --text-inverse: var(--gray-0);
 
-  --background: var(--gray-0);
-  --background-strong: var(--gray-50);
-  --surface: var(--gray-50);
+  --background: var(--gray-950);
+  --background-strong: var(--gray-120);
+  --surface: var(--gray-120);
   --surface-alt: var(--gray-100);
   --surface-soft: var(--gray-200);
 
-  --surface-popover-shadow: 0 28px 48px -25px rgba(var(--shadow-color-rgb), 0.65);
+  --surface-popover-shadow:
+    0 28px 48px -25px rgba(0, 0, 0, 0.65),
+    0 10px 24px -20px rgba(0, 0, 0, 0.45);
 
-  --table-row-hover-bg: rgba(var(--brand-400-rgb), 0.22);
-  --table-row-zebra-bg: rgba(var(--gray-300-rgb), 0.22);
-  --table-row-selected-bg: rgba(var(--brand-500-rgb), 0.28);
+  --table-row-hover-bg: rgba(var(--gray-400-rgb), 0.26);
+  --table-row-zebra-bg: rgba(var(--gray-300-rgb), 0.18);
+  --table-row-selected-bg: rgba(var(--brand-500-rgb), 0.26);
   --table-row-selected-text: var(--gray-900);
 
-  --border-color: rgba(var(--gray-400-rgb), 0.45);
-  --border-color-strong: rgba(var(--gray-400-rgb), 0.72);
+  --border-color: rgba(var(--gray-400-rgb), 0.48);
+  --border-color-strong: rgba(var(--gray-300-rgb), 0.65);
   --card-border: rgba(var(--gray-300-rgb), 0.5);
   --border: var(--border-color);
 
@@ -354,11 +358,11 @@
   --shadow-soft: 0 25px 50px -20px rgba(0, 0, 0, 0.55);
   --shadow-md: 0 28px 48px -25px rgba(0, 0, 0, 0.65);
 
-  --overlay-soft: rgba(12, 14, 20, 0.7);
-  --overlay-strong: rgba(12, 14, 20, 0.85);
+  --overlay-soft: rgba(8, 12, 20, 0.72);
+  --overlay-strong: rgba(8, 12, 20, 0.88);
 
-  --scrollbar-thumb: rgba(var(--gray-400-rgb), 0.6);
-  --scrollbar-track: rgba(var(--gray-40-rgb), 0.2);
+  --scrollbar-thumb: rgba(var(--gray-400-rgb), 0.7);
+  --scrollbar-track: rgba(var(--gray-40-rgb), 0.18);
 
   --logo-vo-fill: var(--gray-900);
   --logo-360-fill: var(--danger-500);
