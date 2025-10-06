@@ -863,6 +863,15 @@ body {
     display: block;
     width: 100%;
     height: auto;
+    transform-origin: 50% 50%;
+    --logo-draw-duration: 1.05s;
+    --logo-draw-delay-vo: 0.28s;
+    --logo-fill-duration: 0.38s;
+    --logo-fill-delay: 0.78s;
+    --logo-exit-fill-duration: 0.32s;
+    --logo-exit-duration: 0.7s;
+    --logo-exit-delay: 0.18s;
+    --logo-stroke-width: 2.35;
   }
 
   .top-bar__logo-vo,
@@ -875,97 +884,127 @@ body {
     fill: var(--logo-360-fill);
   }
 
-  .top-bar__logo--svg {
-    transform-origin: 50% 50%;
-  }
-
   .top-bar__logo--animate {
-    will-change: transform, opacity, filter;
-  }
-
-  .top-bar__logo--animate .top-bar__logo-360,
-  .top-bar__logo--animate .top-bar__logo-vo {
     will-change: opacity, filter;
   }
 
+  .top-bar__logo--animate path {
+    stroke-width: var(--logo-stroke-width);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: var(--path-length);
+    stroke-dashoffset: var(--path-length);
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+    animation-fill-mode: forwards;
+  }
+
+  .top-bar__logo--animate .top-bar__logo-360 path {
+    stroke: var(--logo-360-fill);
+    --logo-path-fill: var(--logo-360-fill);
+  }
+
+  .top-bar__logo--animate .top-bar__logo-vo path {
+    stroke: var(--logo-vo-fill);
+    --logo-path-fill: var(--logo-vo-fill);
+  }
+
   .top-bar__logo--enter {
-    animation: top-bar-logo-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: top-bar-logo-container-in 320ms ease-out forwards;
   }
 
-  .top-bar__logo--enter .top-bar__logo-360 {
-    animation: top-bar-logo-highlight 880ms cubic-bezier(0.33, 1, 0.68, 1) both 140ms;
+  .top-bar__logo--enter .top-bar__logo-360 path {
+    animation:
+      top-bar-logo-draw-in var(--logo-draw-duration) cubic-bezier(0.65, 0, 0.35, 1) 0s forwards,
+      top-bar-logo-fill-in var(--logo-fill-duration) ease var(--logo-fill-delay) forwards;
   }
 
-  .top-bar__logo--enter .top-bar__logo-vo {
-    animation: top-bar-logo-highlight 880ms cubic-bezier(0.33, 1, 0.68, 1) both 220ms;
+  .top-bar__logo--enter .top-bar__logo-vo path {
+    animation:
+      top-bar-logo-draw-in var(--logo-draw-duration) cubic-bezier(0.65, 0, 0.35, 1) var(--logo-draw-delay-vo) forwards,
+      top-bar-logo-fill-in var(--logo-fill-duration) ease calc(var(--logo-fill-delay) + var(--logo-draw-delay-vo)) forwards;
   }
 
   .top-bar__logo--exit {
-    animation: top-bar-logo-exit 320ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+    animation: top-bar-logo-container-out 280ms ease-out calc(var(--logo-exit-delay) + var(--logo-exit-fill-duration) + var(--logo-exit-duration)) forwards;
   }
 
-  .top-bar__logo--exit .top-bar__logo-360,
-  .top-bar__logo--exit .top-bar__logo-vo {
-    animation: top-bar-logo-fade 320ms ease forwards;
+  .top-bar__logo--exit .top-bar__logo-360 path {
+    animation:
+      top-bar-logo-fill-out var(--logo-exit-fill-duration) ease forwards,
+      top-bar-logo-draw-out var(--logo-exit-duration) cubic-bezier(0.65, 0, 0.35, 1) var(--logo-exit-fill-duration) forwards;
   }
 
-  @keyframes top-bar-logo-enter {
-    0% {
+  .top-bar__logo--exit .top-bar__logo-vo path {
+    animation:
+      top-bar-logo-fill-out var(--logo-exit-fill-duration) ease var(--logo-exit-delay) forwards,
+      top-bar-logo-draw-out var(--logo-exit-duration) cubic-bezier(0.65, 0, 0.35, 1) calc(var(--logo-exit-delay) + var(--logo-exit-fill-duration)) forwards;
+  }
+
+  @keyframes top-bar-logo-draw-in {
+    from {
+      stroke-dashoffset: var(--path-length);
+    }
+
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes top-bar-logo-draw-out {
+    from {
+      stroke-dashoffset: 0;
+    }
+
+    to {
+      stroke-dashoffset: var(--path-length);
+    }
+  }
+
+  @keyframes top-bar-logo-fill-in {
+    from {
+      fill: transparent;
+    }
+
+    to {
+      fill: var(--logo-path-fill);
+    }
+  }
+
+  @keyframes top-bar-logo-fill-out {
+    from {
+      fill: var(--logo-path-fill);
+    }
+
+    to {
+      fill: transparent;
+    }
+  }
+
+  @keyframes top-bar-logo-container-in {
+    from {
       opacity: 0;
-      transform: translateY(8px) scale(0.92);
       filter: blur(6px);
+      transform: translateY(8px);
     }
 
-    55% {
+    to {
       opacity: 1;
-      transform: translateY(-2px) scale(1.01);
-      filter: blur(0);
-    }
-
-    100% {
-      opacity: 1;
-      transform: translateY(0) scale(1);
       filter: none;
+      transform: translateY(0);
     }
   }
 
-  @keyframes top-bar-logo-highlight {
-    0% {
-      filter: none;
-    }
-
-    40% {
-      filter: saturate(1.1) brightness(1.08);
-    }
-
-    100% {
-      filter: none;
-    }
-  }
-
-  @keyframes top-bar-logo-exit {
-    0% {
+  @keyframes top-bar-logo-container-out {
+    from {
       opacity: 1;
-      transform: translateY(0) scale(1);
       filter: none;
+      transform: translateY(0);
     }
 
-    100% {
+    to {
       opacity: 0;
-      transform: translateY(-6px) scale(0.95);
       filter: blur(6px);
-    }
-  }
-
-  @keyframes top-bar-logo-fade {
-    0% {
-      opacity: 1;
-      filter: none;
-    }
-
-    100% {
-      opacity: 0;
-      filter: saturate(0.75) brightness(0.8);
+      transform: translateY(-8px);
     }
   }
 

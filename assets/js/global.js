@@ -148,16 +148,55 @@ console.log("GO360 script cargado");
 
                 const logo = document.querySelector(".top-bar__logo--svg");
                 if (logo) {
+                        const logoPaths = Array.from(logo.querySelectorAll("path"));
+                        const pathMeta = logoPaths.map((path) => {
+                                const length = path.getTotalLength();
+                                const fill = path.closest(".top-bar__logo-vo")
+                                        ? "var(--logo-vo-fill)"
+                                        : "var(--logo-360-fill)";
+                                path.style.setProperty("--path-length", `${length}`);
+                                path.style.strokeDasharray = `${length}`;
+                                path.style.strokeDashoffset = "0";
+                                path.style.setProperty("--logo-path-fill", fill);
+                                path.style.stroke = fill;
+                                path.style.fill = fill;
+                                return { path, length, fill };
+                        });
+
+                        const resetPathsToFill = () => {
+                                pathMeta.forEach(({ path, fill }) => {
+                                        path.style.strokeDashoffset = "0";
+                                        path.style.fill = fill;
+                                });
+                        };
+
+                        const prepPathsForEnter = () => {
+                                pathMeta.forEach(({ path, length }) => {
+                                        path.style.strokeDashoffset = `${length}`;
+                                        path.style.fill = "transparent";
+                                });
+                        };
+
+                        const prepPathsForExit = () => {
+                                pathMeta.forEach(({ path, fill }) => {
+                                        path.style.strokeDashoffset = "0";
+                                        path.style.fill = fill;
+                                });
+                        };
+
+                        logo.classList.add("top-bar__logo--animate");
+                        resetPathsToFill();
+
                         const runLogoEnter = () => {
-                                logo.classList.add("top-bar__logo--animate");
+                                prepPathsForEnter();
                                 logo.classList.remove("top-bar__logo--exit");
                                 logo.classList.remove("top-bar__logo--enter");
-                                void logo.offsetWidth; // Reinicia la animación
+                                void logo.offsetWidth;
                                 logo.classList.add("top-bar__logo--enter");
                         };
 
                         const runLogoExit = () => {
-                                logo.classList.add("top-bar__logo--animate");
+                                prepPathsForExit();
                                 logo.classList.remove("top-bar__logo--enter");
                                 logo.classList.remove("top-bar__logo--exit");
                                 void logo.offsetWidth;
@@ -171,8 +210,9 @@ console.log("GO360 script cargado");
                         };
 
                         logo.addEventListener("animationend", (event) => {
-                                if (event.animationName === "top-bar-logo-enter") {
+                                if (event.animationName === "top-bar-logo-container-in") {
                                         clearAnimationClass("top-bar__logo--enter");
+                                        resetPathsToFill();
                                 }
                         });
 
@@ -184,7 +224,7 @@ console.log("GO360 script cargado");
                         window.addEventListener("pageshow", runEnter);
 
                         const scheduleNavigation = (href) => {
-                                const EXIT_DURATION = 360;
+                                const EXIT_DURATION = 1450;
                                 setTimeout(() => {
                                         window.location.href = href;
                                 }, EXIT_DURATION);
