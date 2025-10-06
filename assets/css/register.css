@@ -1,15 +1,15 @@
 .register-page {
-  --primary: #2563eb;
-  --primary-dark: #1e40af;
-  --secondary: #ef4444;
-  --text-primary: #1f2937;
-  --text-secondary: #64748b;
-  --text-tertiary: #94a3b8;
-  --bg-light: #f8fafc;
-  --border: #e2e8f0;
-  --success: #10b981;
-  --error: #ef4444;
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --primary: var(--go-color-2563eb);
+  --primary-dark: var(--go-color-1e40af);
+  --secondary: var(--go-color-ef4444);
+  --text-primary: var(--go-color-1f2937);
+  --text-secondary: var(--go-color-64748b);
+  --text-tertiary: var(--go-color-94a3b8);
+  --bg-light: var(--go-color-f8fafc);
+  --border: var(--go-color-e2e8f0);
+  --success: var(--go-color-10b981);
+  --error: var(--go-color-ef4444);
+  --shadow: 0 4px 6px -1px rgba(var(--go-color-000000-rgb), 0.1), 0 2px 4px -1px rgba(var(--go-color-000000-rgb), 0.06);
   --radius: 8px;
   --transition: all 0.3s ease;
   width: 100%;
@@ -110,7 +110,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .info-panel {
-  background: #fff;
+  background: var(--go-color-ffffff);
   border-radius: 24px;
   padding: clamp(2rem, 5vh, 3.5rem);
   padding-top: clamp(3rem, 6vh, 4rem);
@@ -151,10 +151,10 @@ footer.footer .footer__wrapper {
   gap: 0.35rem;
   padding: 0.45rem 1.1rem;
   border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  box-shadow: 0 18px 34px -22px rgba(15, 23, 42, 0.35);
-  color: #000000;
+  background: var(--go-color-ffffff);
+  border: 1px solid rgba(var(--go-color-0f172a-rgb), 0.1);
+  box-shadow: 0 18px 34px -22px rgba(var(--go-color-0f172a-rgb), 0.35);
+  color: var(--go-color-000000);
   font-size: 0.78rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -167,7 +167,7 @@ footer.footer .footer__wrapper {
 .register-page .info-panel h1 {
   font-size: 1.875rem;
   margin: 0;
-  color: #000000;
+  color: var(--go-color-000000);
   text-align: center;
 }
 
@@ -194,7 +194,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .feature-icon {
-  color: #c5444e;
+  color: var(--go-color-c5444e);
   flex-shrink: 0;
   margin-top: 0.25rem;
 }
@@ -207,7 +207,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .info-panel .info-cta a {
-  color: #c5444e;
+  color: var(--go-color-c5444e);
   font-weight: 600;
   text-decoration: none;
 }
@@ -217,7 +217,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .form-panel {
-  background: #fff;
+  background: var(--go-color-ffffff);
   border-radius: 24px;
   padding: clamp(2rem, 5vh, 3.5rem);
   box-shadow: none;
@@ -236,7 +236,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .form-panel::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.4);
+  background-color: rgba(var(--go-color-94a3b8-rgb), 0.4);
   border-radius: 999px;
 }
 
@@ -265,9 +265,9 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .form-alert--error {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: rgba(var(--go-color-ef4444-rgb), 0.1);
   color: var(--error);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(var(--go-color-ef4444-rgb), 0.2);
 }
 
 .register-page .auth-form {
@@ -317,7 +317,7 @@ footer.footer .footer__wrapper {
   transform: translateY(-50%);
   height: 2px;
   width: 0%;
-  background-color: #000;
+  background-color: var(--go-color-000000);
   z-index: 2;
   transition: var(--transition);
 }
@@ -326,7 +326,7 @@ footer.footer .footer__wrapper {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: #fff;
+  background-color: var(--go-color-ffffff);
   border: 2px solid var(--border);
   display: flex;
   align-items: center;
@@ -340,9 +340,9 @@ footer.footer .footer__wrapper {
 
 .register-page .step.active,
 .register-page .step.completed {
-  border-color: #000;
-  background-color: #000;
-  color: #fff;
+  border-color: var(--go-color-000000);
+  background-color: var(--go-color-000000);
+  color: var(--go-color-ffffff);
 }
 
 .register-page .step-label {
@@ -358,7 +358,7 @@ footer.footer .footer__wrapper {
 
 .register-page .step.active .step-label,
 .register-page .step.completed .step-label {
-  color: #000;
+  color: var(--go-color-000000);
   font-weight: 600;
 }
 
@@ -462,10 +462,10 @@ footer.footer .footer__wrapper {
 .register-page .form-textarea {
   width: 100%;
   padding: 1rem;
-  border: 1px solid #d4ddeb;
+  border: 1px solid var(--go-color-d4ddeb);
   border-radius: 12px;
   font-size: 1rem;
-  background-color: #fff;
+  background-color: var(--go-color-ffffff);
   transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
 }
 
@@ -473,7 +473,7 @@ footer.footer .footer__wrapper {
 .register-page .form-select:focus,
 .register-page .form-textarea:focus {
   outline: none;
-  border-color: #000;
+  border-color: var(--go-color-000000);
   box-shadow: none;
 }
 
@@ -481,10 +481,10 @@ footer.footer .footer__wrapper {
   position: absolute;
   top: 1rem;
   left: 1rem;
-  color: #64748b;
+  color: var(--go-color-64748b);
   pointer-events: none;
   transition: 0.2s ease all;
-  background: #fff;
+  background: var(--go-color-ffffff);
   padding: 0 4px;
 }
 
@@ -497,13 +497,13 @@ footer.footer .footer__wrapper {
   top: -0.5rem;
   left: 0.8rem;
   font-size: 0.8rem;
-  color: #1f2937;
+  color: var(--go-color-1f2937);
 }
 
 .register-page .form-input:focus ~ .form-label,
 .register-page .form-select:focus ~ .form-label,
 .register-page .form-textarea:focus ~ .form-label {
-  color: #000;
+  color: var(--go-color-000000);
 }
 
 .register-page .form-hint {
@@ -529,15 +529,15 @@ footer.footer .footer__wrapper {
   padding: 1.5rem 0.25rem;
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--go-color-ffffff);
   cursor: pointer;
   transition: var(--transition);
   text-align: center;
-  color: #a1a3a6;
+  color: var(--go-color-a1a3a6);
 }
 
 .register-page .channel-btn:hover {
-  border-color: rgba(37, 99, 235, 0.35);
+  border-color: rgba(var(--go-color-2563eb-rgb), 0.35);
   color: var(--primary);
 }
 
@@ -609,13 +609,13 @@ footer.footer .footer__wrapper {
 @supports (-webkit-appearance: none) or (-moz-appearance: none) {
   .register-page .checkbox-wrapper-14 input[type=checkbox] {
     --active: var(--primary);
-    --active-inner: #fff;
-    --focus: 2px rgba(37, 99, 235, 0.25);
-    --border: #bbc1e1;
+    --active-inner: var(--go-color-ffffff);
+    --focus: 2px rgba(var(--go-color-2563eb-rgb), 0.25);
+    --border: var(--go-color-bbc1e1);
     --border-hover: var(--primary);
-    --background: #fff;
-    --disabled: #f6f8ff;
-    --disabled-inner: #e1e6f9;
+    --background: var(--go-color-ffffff);
+    --disabled: var(--go-color-f6f8ff);
+    --disabled-inner: var(--go-color-e1e6f9);
     -webkit-appearance: none;
     -moz-appearance: none;
     height: 21px;
@@ -700,7 +700,7 @@ footer.footer .footer__wrapper {
   border: 1px solid var(--error);
   border-radius: 0.75rem;
   padding: 0.75rem 1rem;
-  background: rgba(239, 68, 68, 0.08);
+  background: rgba(var(--go-color-ef4444-rgb), 0.08);
 }
 
 .register-page .checkbox-error {
@@ -715,8 +715,8 @@ footer.footer .footer__wrapper {
   margin-top: 1rem;
   gap: var(--spacing-2, 1rem);
   padding: var(--spacing-3, 1.5rem) var(--spacing-2, 1rem);
-  border-top: 1px solid var(--border-color, #e2e8f0);
-  background-color: #fff;
+  border-top: 1px solid var(--border-color, var(--go-color-e2e8f0));
+  background-color: var(--go-color-ffffff);
 }
 
 .register-page .btn {
@@ -740,7 +740,7 @@ footer.footer .footer__wrapper {
 
 .register-page .btn-primary {
   background-color: var(--primary);
-  color: #fff;
+  color: var(--go-color-ffffff);
 }
 
 .register-page .btn-primary:hover {
@@ -748,13 +748,13 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .btn-secondary {
-  background-color: #fff;
+  background-color: var(--go-color-ffffff);
   color: var(--text-primary);
   border: 1px solid var(--border);
 }
 
 .register-page .btn-secondary:hover {
-  background-color: #f9fafb;
+  background-color: var(--go-color-f9fafb);
 }
 
 .register-page .btn-link {
@@ -936,23 +936,23 @@ footer.footer .footer__wrapper {
   padding: 0.75rem 1rem;
   border-radius: 0.75rem;
   font-size: 0.9rem;
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(var(--go-color-2563eb-rgb), 0.08);
   color: var(--primary-dark);
   text-align: center;
 }
 
 .register-page .verification-feedback--error {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(var(--go-color-ef4444-rgb), 0.1);
   color: var(--error);
 }
 
 .register-page .verification-feedback--success {
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(var(--go-color-10b981-rgb), 0.12);
   color: var(--success);
 }
 
 .register-page .verification-feedback--info {
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(var(--go-color-2563eb-rgb), 0.08);
   color: var(--primary);
 }
 
@@ -966,7 +966,7 @@ footer.footer .footer__wrapper {
   margin-top: 2rem;
   padding: 1.5rem;
   border-radius: 1rem;
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(var(--go-color-10b981-rgb), 0.12);
   color: var(--success);
 }
 
@@ -1006,11 +1006,11 @@ footer.footer .footer__wrapper {
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid var(--border);
-  background-color: #fff;
+  background-color: var(--go-color-ffffff);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 0 0 4px rgba(148, 163, 184, 0.1);
+  box-shadow: inset 0 0 0 4px rgba(var(--go-color-94a3b8-rgb), 0.1);
 }
 
 .register-page .avatar-preview[hidden] {
@@ -1067,12 +1067,12 @@ footer.footer .footer__wrapper {
 .register-page .help-trigger:hover,
 .register-page .help-trigger.is-active {
   color: var(--primary);
-  background-color: rgba(37, 99, 235, 0.08);
+  background-color: rgba(var(--go-color-2563eb-rgb), 0.08);
 }
 
 .register-page .help-trigger:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 0 0 2px rgba(var(--go-color-2563eb-rgb), 0.25);
 }
 
 .register-page .help-trigger svg {
@@ -1085,8 +1085,8 @@ footer.footer .footer__wrapper {
   margin-bottom: 1.5rem;
   padding: 1rem 1.25rem;
   border-radius: var(--radius);
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: #f8fafc;
+  border: 1px solid var(--border-color, var(--go-color-e2e8f0));
+  background-color: var(--go-color-f8fafc);
   color: var(--text-secondary);
   animation: fadeIn 0.3s ease;
 }
@@ -1123,7 +1123,7 @@ footer.footer .footer__wrapper {
 
 .register-page .help-panel__close:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 0 0 2px rgba(var(--go-color-2563eb-rgb), 0.25);
   border-radius: 50%;
 }
 
@@ -1139,7 +1139,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .info-text {
-  background-color: #f0f9ff;
+  background-color: var(--go-color-f0f9ff);
   border-left: 4px solid var(--primary);
   padding: 1rem;
   margin-bottom: 1.5rem;
@@ -1153,12 +1153,12 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .info-text--sepa {
-  background-color: #f0fdf4;
+  background-color: var(--go-color-f0fdf4);
   border-left-color: var(--success);
 }
 
 .register-page .info-text--notice {
-  background-color: #f0f9ff;
+  background-color: var(--go-color-f0f9ff);
   border-left-color: var(--primary);
 }
 
@@ -1196,12 +1196,12 @@ footer.footer .footer__wrapper {
 
 .register-page .password-toggle:hover,
 .register-page .password-toggle.is-active {
-  color: #c5444e;
+  color: var(--go-color-c5444e);
 }
 
 .register-page .password-toggle:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 0 0 2px rgba(var(--go-color-2563eb-rgb), 0.25);
 }
 
 .register-page .password-toggle__icon {
