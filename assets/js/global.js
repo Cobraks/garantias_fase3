@@ -203,6 +203,25 @@ console.log("GO360 script cargado");
                                 logo.classList.add("top-bar__logo--exit");
                         };
 
+                        const waitForLogoExit = () =>
+                                new Promise((resolve) => {
+                                        let fallback;
+                                        const handle = (event) => {
+                                                if (event.animationName === "top-bar-logo-container-out") {
+                                                        window.clearTimeout(fallback);
+                                                        logo.removeEventListener("animationend", handle);
+                                                        resolve();
+                                                }
+                                        };
+
+                                        fallback = window.setTimeout(() => {
+                                                logo.removeEventListener("animationend", handle);
+                                                resolve();
+                                        }, 1200);
+
+                                        logo.addEventListener("animationend", handle);
+                                });
+
                         const clearAnimationClass = (className) => {
                                 requestAnimationFrame(() => {
                                         logo.classList.remove(className);
@@ -222,13 +241,6 @@ console.log("GO360 script cargado");
 
                         runEnter();
                         window.addEventListener("pageshow", runEnter);
-
-                        const scheduleNavigation = (href) => {
-                                const EXIT_DURATION = 1450;
-                                setTimeout(() => {
-                                        window.location.href = href;
-                                }, EXIT_DURATION);
-                        };
 
                         const shouldIgnoreClick = (event, anchor) => {
                                 if (event.defaultPrevented) {
@@ -285,13 +297,35 @@ console.log("GO360 script cargado");
 
                                 event.preventDefault();
 
+                                const destination = anchor.href;
+                                const exitPromise = waitForLogoExit();
+
                                 runLogoExit();
 
                                 if (closeProfileMenu && profileMenu && profileMenu.classList.contains("visible")) {
                                         closeProfileMenu();
                                 }
 
-                                scheduleNavigation(anchor.href);
+                                const navigate = () => {
+                                        window.location.href = destination;
+                                };
+
+                                exitPromise.then(() => {
+                                        const { startViewTransition } = document;
+                                        if (typeof startViewTransition === "function") {
+                                                try {
+                                                        startViewTransition(() => {
+                                                                navigate();
+                                                        });
+                                                        return;
+                                                } catch (error) {
+                                                        navigate();
+                                                        return;
+                                                }
+                                        }
+
+                                        navigate();
+                                });
                         });
                 }
 

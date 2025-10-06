@@ -864,10 +864,10 @@ body {
     width: 100%;
     height: auto;
     transform-origin: 50% 50%;
-    --logo-draw-duration: 1.05s;
-    --logo-draw-delay-vo: 0.28s;
-    --logo-fill-duration: 0.38s;
-    --logo-fill-delay: 0.78s;
+    --logo-draw-duration: 1.2s;
+    --logo-draw-delay-vo: 0.4s;
+    --logo-fill-duration: 0.4s;
+    --logo-fill-delay: 1s;
     --logo-exit-fill-duration: 0.32s;
     --logo-exit-duration: 0.7s;
     --logo-exit-delay: 0.18s;
