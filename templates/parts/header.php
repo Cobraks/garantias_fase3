@@ -75,6 +75,45 @@ $home_destination = $is_admin_user
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title><?php echo esc_html(get_bloginfo('name')); ?> – Garantías Online</title>
+    <script>
+        (function () {
+            var storageKey = 'go_theme';
+            var theme = null;
+            try {
+                theme = localStorage.getItem(storageKey);
+            } catch (error) {
+                theme = null;
+            }
+
+            if (theme !== 'dark' && theme !== 'light') {
+                try {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                } catch (error) {
+                    theme = 'light';
+                }
+            }
+
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+        })();
+    </script>
+    <script>
+        // Si se decide desactivar la animación del logo, elimina este script y las referencias
+        // a 'logo-transition-pending' en los estilos/JS.
+        (function () {
+            var logoExitStorageKey = 'go_logo_exit_state';
+            try {
+                if (window.sessionStorage && sessionStorage.getItem(logoExitStorageKey) === 'pending') {
+                    document.documentElement.classList.add('logo-transition-pending');
+                }
+            } catch (error) {
+                // Ignorar sessionStorage no disponible
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="<?= esc_url(plugins_url('assets/css/global.min.css', GARANTIAS360VO__FILE__)); ?>">
 
 
@@ -161,12 +200,24 @@ $home_destination = $is_admin_user
                 <span class="hamburger-line"></span>
             </button>
             <div class="top-bar__logo-container">
-                <a href="<?php echo esc_url($home_destination); ?>">
-                    <img src="<?php echo esc_url(
-                                    plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FILE__)
-                                ); ?>"
-                        alt="360Vo Garantías Online"
-                        class="top-bar__logo">
+                <a href="<?php echo esc_url($home_destination); ?>" class="top-bar__logo-link">
+                    <svg
+                        class="top-bar__logo top-bar__logo--svg"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 449.1 141.8"
+                        role="img"
+                        aria-label="360Vo Garantías Online"
+                        focusable="false">
+                        <g class="top-bar__logo-vo">
+                            <path d="M415.2,44.1c6.3,9.1,4,21.7,4.4,32.2c0.3,12-0.3,25.6-13.3,30.5c-3.7,1.4-7.7,1.7-11.6,1.9   c-5.6,0.2-11.2,0.2-16.8,0.1c-14.9,0.2-26.3-4-27.9-20.4c-0.7-7.8-0.4-15.5-0.5-23.3c0-8,0.2-17.3,6.2-23.3   c6.1-6.4,15.9-6.7,24.2-6.7c12.1,0.3,27.4-2.2,35.2,8.9L415.2,44.1z M391.1,50.5c-4.5,0-9.2,0-13.7,0c-2.7,0-5.7,0-8.1,1.4   c-4.5,2.6-3.9,8.7-4,13.3c0,5.5,0,11.1,0,16.7c-0.2,9,3.6,11.7,12.2,11.5c4.8,0,9.5,0.1,14.3,0c6.5,0.1,11.4-1.4,11.8-8.8   c0.2-7.8,0.1-15.5,0.1-23.4c0.1-8.8-4.3-10.9-12.5-10.7L391.1,50.5z"></path>
+                            <path d="M308.6,93.3c-0.4-1-21.6-58.7-21.6-58.7s-16,0-16.6,0c0,0,0,0,0,0c0.2,0.7,27.3,74.5,27.4,74.6   c4.4,0,21.2,0.1,21.2,0.1l27.8-74.5h-16.9C323.8,51.2,309.4,90.9,308.6,93.3z"></path>
+                        </g>
+                        <g class="top-bar__logo-360">
+                            <path d="M237.4,44.1c6.3,9.1,4,21.7,4.4,32.2c0.3,12-0.3,25.6-13.3,30.5c-3.7,1.4-7.7,1.7-11.6,1.9   c-5.6,0.2-11.2,0.2-16.8,0.1c-14.9,0.2-26.3-4-27.9-20.4c-0.7-7.8-0.4-15.5-0.5-23.3c0-8,0.2-17.3,6.2-23.3   c6.1-6.4,15.9-6.7,24.2-6.7c12.1,0.3,27.4-2.2,35.2,8.9L237.4,44.1z M213.3,50.5c-4.5,0-9.2,0-13.7,0c-2.7,0-5.7,0-8.1,1.4   c-4.5,2.6-3.9,8.7-4,13.3c0,5.5,0,11.1,0,16.7c-0.2,9,3.6,11.7,12.2,11.5c4.8,0,9.5,0.1,14.3,0c6.5,0.1,11.4-1.4,11.8-8.8   c0.2-7.8,0.1-15.5,0.1-23.4c0.1-8.8-4.3-10.9-12.5-10.7L213.3,50.5z"></path>
+                            <path d="M148.5,50.9c0,0-23.7,0-26.1,0c-2.4,0-4.5,2-4.7,4.6c-0.2,2.9,0,5.8,0,8.9c3.1,0,26.5,0,30.8,0   c7.4,0,14.6,5.5,15.3,14.7c0.5,5,0.4,10.1,0,15.2c-0.3,7.2-5.3,12-12.2,13.8c-9.9,0.7-20,1.1-29.9,0.6c-2.4-0.2-4.7-0.2-7.1-0.5   c-3.8-1.1-7.6-2.9-10-6.2c-1.8-3-2.7-6.3-2.7-9.9c0-13.3-0.1-26.5,0-39.8c0-13.1,9-16.8,18.5-16.8h43.3L148.5,50.9z M117.6,87   c0,5.3,3.1,6.4,5.1,6.4c2,0,18.3,0,20.8,0c2.5,0,4.9-0.7,4.9-3.9s0-0.1,0-5s-3.4-4.9-10.1-4.9c-4.3,0-20.7,0-20.7,0   S117.6,85.9,117.6,87z"></path>
+                            <path d="M77.1,108.7c-13,0-44.9,0-44.9,0l15.5-15.2c0,0,23.1,0,26.3,0s4.2-1.4,4.3-4.2c0,0,0-6.3,0-9.7   l-46,0c0.5-0.6,15.2-15.2,15.2-15.2s15.4,0,22.7-0.1c4.3,0.1,8.1-1.7,8.3-6.5c0.6-5.6-3.2-7-8-7.2c-7.5,0-33.7,0-38.4,0   C37.3,45.3,47.6,35,47.6,35s20.7,0,30,0S93.1,42,94,49c0.3,2.8,0.3,7,0.3,9.5c0,1.1-0.4,2.1-1.1,2.9c-4.6,5.5-9,10.1-9.5,10.6h10.5   c0,0.4-0.4,24-0.4,24S92.7,108.7,77.1,108.7z"></path>
+                        </g>
+                    </svg>
                 </a>
             </div>
             <?php if (! empty($is_dashboard_page)) : ?>
@@ -274,6 +325,30 @@ $home_destination = $is_admin_user
                                 <?php echo Svg::icon('settings', 'profile-menu__icon'); ?>
                                 <span class="profile-menu__text"><?php esc_html_e('Mi cuenta', 'garantias-online-360vo'); ?></span>
                             </a>
+                            <button
+                                type="button"
+                                class="profile-menu__item profile-menu__item--theme"
+                                role="switch"
+                                aria-checked="false"
+                                data-theme-toggle
+                                data-theme-label-off="<?php esc_attr_e('Activar modo oscuro', 'garantias-online-360vo'); ?>"
+                                data-theme-label-on="<?php esc_attr_e('Activar modo claro', 'garantias-online-360vo'); ?>"
+                                data-theme-status-off="<?php esc_attr_e('Desactivado', 'garantias-online-360vo'); ?>"
+                                data-theme-status-on="<?php esc_attr_e('Activado', 'garantias-online-360vo'); ?>"
+                                title="<?php esc_attr_e('Activar modo oscuro', 'garantias-online-360vo'); ?>"
+                            >
+                                <span class="profile-menu__icon profile-menu__icon--theme" aria-hidden="true">
+                                    <?php echo Svg::icon('sun', 'profile-menu__theme-icon profile-menu__theme-icon--sun'); ?>
+                                    <?php echo Svg::icon('moon', 'profile-menu__theme-icon profile-menu__theme-icon--moon'); ?>
+                                </span>
+                                <span class="profile-menu__text">
+                                    <span class="profile-menu__theme-title"><?php esc_html_e('Modo oscuro', 'garantias-online-360vo'); ?></span>
+                                    <span class="profile-menu__theme-status" data-theme-status><?php esc_html_e('Desactivado', 'garantias-online-360vo'); ?></span>
+                                </span>
+                                <span class="profile-menu__theme-switch" aria-hidden="true">
+                                    <span class="profile-menu__theme-thumb"></span>
+                                </span>
+                            </button>
                         </div>
                         <div class="profile-menu__footer">
                             <a
