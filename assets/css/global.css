@@ -943,6 +943,8 @@ text-decoration: none;
     width: 40px;
     height: 40px;
     border-radius: 50%;
+    border: 2px solid var(--go-color-2563eb);
+    box-shadow: 0 6px 18px rgba(var(--go-color-0f172a-rgb), 0.16);
   }
   .top-bar__profile-link {
     display: inline-flex;
@@ -959,8 +961,8 @@ text-decoration: none;
   }
   .top-bar__profile-link:focus-visible {
     outline: none;
-    border-color: rgba(var(--go-color-2563eb-rgb), 0.4);
-    box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.15);
+    border-color: var(--go-color-2563eb);
+    box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.25);
   }
 
   .top-bar__profile-menu {
