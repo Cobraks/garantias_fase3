@@ -159,6 +159,7 @@ console.log("GO360 script cargado");
                         const runLogoExit = () => {
                                 logo.classList.add("top-bar__logo--animate");
                                 logo.classList.remove("top-bar__logo--enter");
+                                logo.classList.remove("top-bar__logo--exit");
                                 void logo.offsetWidth;
                                 logo.classList.add("top-bar__logo--exit");
                         };
@@ -170,21 +171,8 @@ console.log("GO360 script cargado");
                         };
 
                         logo.addEventListener("animationend", (event) => {
-                                const animationsToClearEnter = [
-                                        "top-bar-logo-360-enter",
-                                        "top-bar-logo-vo-enter",
-                                ];
-                                const animationsToClearExit = [
-                                        "top-bar-logo-360-exit",
-                                        "top-bar-logo-vo-exit",
-                                ];
-
-                                if (animationsToClearEnter.includes(event.animationName)) {
+                                if (event.animationName === "top-bar-logo-enter") {
                                         clearAnimationClass("top-bar__logo--enter");
-                                }
-
-                                if (animationsToClearExit.includes(event.animationName)) {
-                                        clearAnimationClass("top-bar__logo--exit");
                                 }
                         });
 
@@ -196,7 +184,7 @@ console.log("GO360 script cargado");
                         window.addEventListener("pageshow", runEnter);
 
                         const scheduleNavigation = (href) => {
-                                const EXIT_DURATION = 240;
+                                const EXIT_DURATION = 360;
                                 setTimeout(() => {
                                         window.location.href = href;
                                 }, EXIT_DURATION);
