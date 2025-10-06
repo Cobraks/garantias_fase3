@@ -17,6 +17,28 @@ if (! empty($is_add_guarantee)) {
 <footer class="footer" style="view-transition-name: footer">
     <div class="footer__wrapper">
         <p class="footer__text"><?php echo '©'  . esc_html(date('Y')) . ' ' . '<span class="text--red">360</span>VO '; ?></p>
+        <?php if (! empty($is_auth_page)) : ?>
+            <button
+                type="button"
+                class="footer__theme-toggle"
+                role="switch"
+                aria-checked="false"
+                data-theme-toggle
+                data-theme-label-off="<?php esc_attr_e('Activar modo oscuro', 'garantias-online-360vo'); ?>"
+                data-theme-label-on="<?php esc_attr_e('Activar modo claro', 'garantias-online-360vo'); ?>"
+                data-theme-status-off="<?php esc_attr_e('Desactivado', 'garantias-online-360vo'); ?>"
+                data-theme-status-on="<?php esc_attr_e('Activado', 'garantias-online-360vo'); ?>"
+                aria-label="<?php esc_attr_e('Activar modo oscuro', 'garantias-online-360vo'); ?>"
+            >
+                <span class="footer__theme-icon" aria-hidden="true">
+                    <?php echo Svg::icon('sun', 'footer__theme-icon-sun'); ?>
+                    <?php echo Svg::icon('moon', 'footer__theme-icon-moon'); ?>
+                </span>
+                <span class="footer__theme-switch" aria-hidden="true">
+                    <span class="footer__theme-thumb"></span>
+                </span>
+            </button>
+        <?php endif; ?>
         <?php if (! empty($is_add_guarantee) && $example_data_enabled) : ?>
             <button id="rellenar_ejemplo" class="btn"><?php esc_html_e('Rellenar datos ejemplo', 'garantias-online-360vo'); ?></button>
         <?php endif; ?>
@@ -109,30 +131,92 @@ if (! empty($is_add_guarantee)) {
         'pagination' => [
             'perPage' => 20,
         ],
+        'permissions' => [
+            'canAssignCommercials' => current_user_can('manage_options'),
+        ],
+        'router' => [
+            'basePath' => trailingslashit(wp_make_link_relative(home_url('/garantias-online/clientes/'))),
+        ],
         'strings' => [
-            'profile'           => __('Perfil', 'garantias-online-360vo'),
-            'client'            => __('Cliente', 'garantias-online-360vo'),
-            'noResults'         => __('No se han encontrado clientes con los filtros actuales.', 'garantias-online-360vo'),
-            'offersEmpty'       => __('Sin ofertas activas', 'garantias-online-360vo'),
-            'commercialsEmpty'  => __('Sin comercial asignado', 'garantias-online-360vo'),
-            'detailTitle'       => __('Detalles del cliente', 'garantias-online-360vo'),
-            'selectPrompt'      => __('Selecciona un cliente para ver la información.', 'garantias-online-360vo'),
-            'error'             => __('No se ha podido cargar la información de clientes.', 'garantias-online-360vo'),
-            'contactEmail'      => __('Email de contacto', 'garantias-online-360vo'),
-            'notificationEmail' => __('Email de notificaciones', 'garantias-online-360vo'),
-            'contactPhone'      => __('Teléfono de contacto', 'garantias-online-360vo'),
-            'contact'           => __('Contacto', 'garantias-online-360vo'),
-            'company'           => __('Empresa', 'garantias-online-360vo'),
-            'taxId'             => __('CIF/NIF', 'garantias-online-360vo'),
-            'address'           => __('Dirección', 'garantias-online-360vo'),
-            'offers'            => __('Ofertas activas', 'garantias-online-360vo'),
-            'commercials'       => __('Comercial', 'garantias-online-360vo'),
-            'sepaStatus'        => __('Estado SEPA', 'garantias-online-360vo'),
-            'sepaEmpty'         => __('Sin información del mandato', 'garantias-online-360vo'),
-            'paymentMethod'     => __('Método de pago', 'garantias-online-360vo'),
-            'salesChannel'      => __('Canal de venta', 'garantias-online-360vo'),
-            'registered'        => __('Registrado desde', 'garantias-online-360vo'),
-            'guarantees'        => __('Nº Garantías', 'garantias-online-360vo'),
+            'profile'              => __('Perfil', 'garantias-online-360vo'),
+            'client'               => __('Cliente', 'garantias-online-360vo'),
+            'noResults'            => __('No se han encontrado clientes con los filtros actuales.', 'garantias-online-360vo'),
+            'offersEmpty'          => __('Sin ofertas activas', 'garantias-online-360vo'),
+            'commercialsEmpty'     => __('Sin comercial asignado', 'garantias-online-360vo'),
+            'detailTitle'          => __('Detalles del cliente', 'garantias-online-360vo'),
+            'selectPrompt'         => __('Selecciona un cliente para consultar su información, asignar comerciales, gestionar ofertas y más.', 'garantias-online-360vo'),
+            'error'                => __('No se ha podido cargar la información de clientes.', 'garantias-online-360vo'),
+            'loginEmail'           => __('Email de inicio de sesión', 'garantias-online-360vo'),
+            'notificationEmail'    => __('Email de notificaciones', 'garantias-online-360vo'),
+            'notificationEmailSame'=> __('Igual que el email de inicio de sesión', 'garantias-online-360vo'),
+            'notificationEmailDifferent' => __('El email de notificaciones es distinto al de acceso.', 'garantias-online-360vo'),
+            'contactPhone'         => __('Teléfono de contacto', 'garantias-online-360vo'),
+            'contactEmpty'         => __('No hay datos de contacto disponibles', 'garantias-online-360vo'),
+            'contact'              => __('Contacto', 'garantias-online-360vo'),
+            'company'              => __('Empresa', 'garantias-online-360vo'),
+            'legalName'            => __('Razón social', 'garantias-online-360vo'),
+            'taxId'                => __('CIF/NIF', 'garantias-online-360vo'),
+            'address'              => __('Dirección', 'garantias-online-360vo'),
+            'offers'               => __('Ofertas activas', 'garantias-online-360vo'),
+            'commercials'          => __('Comercial', 'garantias-online-360vo'),
+            'sepaStatus'           => __('Estado SEPA', 'garantias-online-360vo'),
+            'sepaEmpty'            => __('Sin información del mandato', 'garantias-online-360vo'),
+            'sepaDetails'          => __('Ver datos del deudor SEPA', 'garantias-online-360vo'),
+            'paymentMethod'        => __('Método de pago', 'garantias-online-360vo'),
+            'salesChannel'         => __('Canal de venta', 'garantias-online-360vo'),
+            'registered'           => __('Registro', 'garantias-online-360vo'),
+            'guarantees'           => __('Nº Garantías', 'garantias-online-360vo'),
+            'channelFilterAll'     => __('Todos los canales', 'garantias-online-360vo'),
+            'workshop'             => __('Taller propio', 'garantias-online-360vo'),
+            'workshopYes'          => __('Con taller propio', 'garantias-online-360vo'),
+            'workshopNo'           => __('Sin taller propio', 'garantias-online-360vo'),
+            'workshopName'         => __('Nombre del taller', 'garantias-online-360vo'),
+            'workshopContact'      => __('Persona de contacto', 'garantias-online-360vo'),
+            'workshopPhone'        => __('Teléfono', 'garantias-online-360vo'),
+            'workshopEmail'        => __('Email', 'garantias-online-360vo'),
+            'workshopAddress'      => __('Dirección', 'garantias-online-360vo'),
+            'workshopTaxId'        => __('CIF/NIF', 'garantias-online-360vo'),
+            'workshopFiscal'       => __('Denominación fiscal', 'garantias-online-360vo'),
+            'adminLink'            => __('Abrir ficha de administración del cliente', 'garantias-online-360vo'),
+            'preferences'          => __('Configuración adicional', 'garantias-online-360vo'),
+            'signatureTitle'       => __('Firma y sello en certificados', 'garantias-online-360vo'),
+            'signatureEnabled'     => __('Incluye firma y sello en los certificados', 'garantias-online-360vo'),
+            'signatureDisabled'    => __('No se añaden a los certificados', 'garantias-online-360vo'),
+            'signatureUploaded'    => __('Firma subida', 'garantias-online-360vo'),
+            'signatureMissing'     => __('Firma no disponible', 'garantias-online-360vo'),
+            'sealUploaded'         => __('Sello subido', 'garantias-online-360vo'),
+            'sealMissing'          => __('Sello no disponible', 'garantias-online-360vo'),
+            'web360Title'          => __('Web 360VO', 'garantias-online-360vo'),
+            'web360Enabled'        => __('Web 360VO activa', 'garantias-online-360vo'),
+            'web360Disabled'       => __('Sin web configurada', 'garantias-online-360vo'),
+            'web360Link'           => __('Abrir sitio', 'garantias-online-360vo'),
+            'assignCommercial'     => __('Asignar comercial', 'garantias-online-360vo'),
+            'assignCommercialTitle'=> __('Asignar comercial', 'garantias-online-360vo'),
+            'assignCommercialDescription' => __('Selecciona el comercial que gestionará a %s.', 'garantias-online-360vo'),
+            'manageCommercials'    => __('Gestionar comerciales', 'garantias-online-360vo'),
+            'assignCommercialSearchPlaceholder' => __('Buscar comercial por nombre o email…', 'garantias-online-360vo'),
+            'assignCommercialLoading' => __('Buscando comerciales…', 'garantias-online-360vo'),
+            'assignCommercialEmpty' => __('No se han encontrado comerciales con ese criterio.', 'garantias-online-360vo'),
+            'assignCommercialSave' => __('Guardar cambios', 'garantias-online-360vo'),
+            'assignCommercialSaving' => __('Guardando…', 'garantias-online-360vo'),
+            'assignCommercialSaved' => __('Cambios guardados', 'garantias-online-360vo'),
+            'assignCommercialError' => __('No se ha podido completar la operación. Inténtalo de nuevo.', 'garantias-online-360vo'),
+            'assignCommercialAssignedTitle' => __('Comerciales asignados a %s', 'garantias-online-360vo'),
+            'assignCommercialAssignedEmpty' => __('No hay comerciales asignados actualmente.', 'garantias-online-360vo'),
+            'assignCommercialRemove' => __('Eliminar asignación de %s', 'garantias-online-360vo'),
+            'assignCommercialSelectAction' => __('Seleccionar', 'garantias-online-360vo'),
+            'assignCommercialSelectedAction' => __('Seleccionado', 'garantias-online-360vo'),
+            'assignCommercialRemoveAction' => __('Quitar', 'garantias-online-360vo'),
+            'close'                => __('Cerrar', 'garantias-online-360vo'),
+        ],
+        'icons' => [
+            'email' => Svg::icon('email'),
+            'phone' => Svg::icon('phone'),
+            'arrowDown' => Svg::icon('arrow_drop_down'),
+            'arrowUp' => Svg::icon('arrow_drop_up'),
+            'personAdd' => Svg::icon('person_add'),
+            'close' => Svg::icon('cerrar'),
+            'search' => Svg::icon('search'),
         ],
     ];
     ?>
