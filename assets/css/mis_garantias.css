@@ -887,7 +887,7 @@ section.guarantees-list.sticky-active {
 }
 
 .guarantees-table tr:nth-child(2n) {
-    background: #f8f8f8;
+    background: var(--table-row-zebra-bg);
 }
 
 .guarantees-table tr.selected:nth-child(2n) {
@@ -896,7 +896,7 @@ section.guarantees-list.sticky-active {
 
 tr.guarantees-table__row:nth-child(even):not(.selected) td,
 .guarantees-table tbody tr:nth-child(even):not(.selected) td {
-    background: #f8f8f8;
+    background: var(--table-row-zebra-bg);
 }
 
 tr.guarantees-table__row:not(.selected):hover td,
@@ -1145,10 +1145,11 @@ tr.guarantees-table__row:not(.selected):hover td,
     width: 42px;
     height: 42px;
     border-radius: 999px;
-    border: 1px solid rgba(var(--go-color-6c6c6c-rgb), 0.45);
-    background: var(--go-color-ffffff);
-    color: var(--go-color-000000);
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: var(--neutral95);
+    color: var(--go-color-111827);
     padding: 0;
+    transition: background-color var(--transition-speed), border-color var(--transition-speed), color var(--transition-speed);
 }
 
 .guarantee-detail__btn--fav {
@@ -1175,8 +1176,8 @@ tr.guarantees-table__row:not(.selected):hover td,
 .guarantee-detail__btn--share:hover,
 .guarantee-detail__btn--share:focus-visible {
     background: var(--go-color-f3f4f6);
-    border-color: rgba(var(--go-color-6c6c6c-rgb), 0.7);
-    color: var(--go-color-000000);
+    border-color: rgba(15, 23, 42, 0.16);
+    color: var(--go-color-111827);
     transform: translateY(-1px);
 }
 
@@ -1994,6 +1995,22 @@ tr.guarantees-table__row:not(.selected):hover td,
 :root[data-theme='dark'] .guarantees-table__row.selected .guarantees-list__badge--validacion-pendiente {
     background-color: #3b82f6;
     color: #f8fafc;
+}
+
+:root[data-theme='dark'] .guarantee-detail__btn--fav,
+:root[data-theme='dark'] .guarantee-detail__btn--share {
+    background: rgba(236, 240, 248, 0.14);
+    border-color: rgba(126, 140, 165, 0.42);
+    color: var(--text-color);
+}
+
+:root[data-theme='dark'] .guarantee-detail__btn--fav:hover,
+:root[data-theme='dark'] .guarantee-detail__btn--fav:focus-visible,
+:root[data-theme='dark'] .guarantee-detail__btn--share:hover,
+:root[data-theme='dark'] .guarantee-detail__btn--share:focus-visible {
+    background: rgba(236, 240, 248, 0.22);
+    border-color: rgba(148, 163, 184, 0.48);
+    color: var(--text-color);
 }
 
 :root[data-theme='dark'] .vendor-card__badge {
