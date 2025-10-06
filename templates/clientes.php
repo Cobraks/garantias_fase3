@@ -27,6 +27,16 @@ $current_user    = wp_get_current_user();
             <?php echo Svg::icon('cerrar'); ?>
         </span>
     </div>
+    <div class="guarantees-list__filter-wrapper">
+        <label class="screen-reader-text" for="clientes-channel-filter"><?php esc_html_e('Filtrar por canal de venta', 'garantias-online-360vo'); ?></label>
+        <select
+            id="clientes-channel-filter"
+            class="guarantees-list__filter"
+            aria-label="<?php esc_attr_e('Filtrar por canal de venta', 'garantias-online-360vo'); ?>"
+        >
+            <option value=""><?php esc_html_e('Todos los canales', 'garantias-online-360vo'); ?></option>
+        </select>
+    </div>
 </div>
 
 <div class="guarantees-container">
@@ -35,11 +45,9 @@ $current_user    = wp_get_current_user();
             <thead>
                 <tr>
                     <th><?php esc_html_e('Cliente', 'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Registrado desde', 'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?></th>
+                    <th><?php esc_html_e('Registro', 'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Ofertas', 'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Nº Garantías', 'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Tipo de pago', 'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Comercial', 'garantias-online-360vo'); ?></th>
                 </tr>
             </thead>
@@ -53,8 +61,8 @@ $current_user    = wp_get_current_user();
     <aside class="guarantee-detail" style="view-transition-name: resume-derecha">
         <div class="guarantee-detail__panel active" id="detail-panel-1">
             <div class="guarantee-detail__empty">
-                <h3 class="guarantee-detail__title"><?php esc_html_e('Ningún cliente seleccionado', 'garantias-online-360vo'); ?></h3>
-                <p><?php esc_html_e('Haz clic en una fila para ver sus detalles aquí.', 'garantias-online-360vo'); ?></p>
+                <h3 class="guarantee-detail__title"><?php esc_html_e('Detalles del cliente', 'garantias-online-360vo'); ?></h3>
+                <p><?php esc_html_e('Selecciona un cliente para consultar su información, asignar comerciales, gestionar ofertas y más.', 'garantias-online-360vo'); ?></p>
             </div>
         </div>
         <div class="guarantee-detail__panel" id="detail-panel-2"></div>

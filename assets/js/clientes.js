@@ -15,6 +15,7 @@
         const tbody = table ? table.querySelector('tbody') : null;
         const searchInput = document.getElementById('clientes-search');
         const closeIcon = document.querySelector('.guarantees-list__close-icon');
+        const channelSelect = document.getElementById('clientes-channel-filter');
         const sentinel = document.getElementById('scroll-end');
         const spinner = sentinel ? sentinel.querySelector('.spinner') : null;
         const panel1 = document.getElementById('detail-panel-1');
@@ -36,12 +37,14 @@
             totalPages: 1,
             isLoading: false,
             search: '',
+            channel: '',
         };
 
         const cache = new Map();
         let selectedRow = null;
         let lastRowIndex = -1;
         let debounceTimer = null;
+        const COLUMN_COUNT = 5;
 
         function escapeHtml(value) {
             return String(value ?? '')
@@ -92,6 +95,72 @@
             const composed = [first, last].filter(Boolean).join(' ').trim();
 
             return full || composed || name;
+        }
+
+        function normalizeChannelOption(option) {
+            if (!option || typeof option !== 'object') {
+                return null;
+            }
+
+            const value = typeof option.value === 'string' ? option.value.trim() : '';
+            const label = typeof option.label === 'string' ? option.label.trim() : '';
+
+            if (value === '' || label === '') {
+                return null;
+            }
+
+            return { value, label };
+        }
+
+        function updateChannelFilterOptions(options) {
+            if (!channelSelect) {
+                return;
+            }
+
+            const normalized = Array.isArray(options)
+                ? options.map((option) => normalizeChannelOption(option)).filter(Boolean)
+                : [];
+
+            const seen = new Set();
+            const unique = [];
+
+            normalized.forEach((option) => {
+                if (seen.has(option.value)) {
+                    return;
+                }
+                seen.add(option.value);
+                unique.push(option);
+            });
+
+            const previousValue = state.channel || channelSelect.value || '';
+            const placeholder = typeof strings.channelFilterAll === 'string'
+                ? strings.channelFilterAll
+                : 'Todos los canales';
+
+            channelSelect.innerHTML = '';
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = placeholder;
+            channelSelect.appendChild(defaultOption);
+
+            unique.forEach((option) => {
+                const element = document.createElement('option');
+                element.value = option.value;
+                element.textContent = option.label;
+                channelSelect.appendChild(element);
+            });
+
+            if (previousValue && !seen.has(previousValue)) {
+                const fallbackOption = document.createElement('option');
+                fallbackOption.value = previousValue;
+                fallbackOption.textContent = previousValue;
+                channelSelect.appendChild(fallbackOption);
+                seen.add(previousValue);
+            }
+
+            channelSelect.value = previousValue && seen.has(previousValue) ? previousValue : '';
+            channelSelect.disabled = unique.length === 0;
         }
 
         function initResizableColumns(table) {
@@ -282,7 +351,6 @@
             const registered = item.registered || {};
             const salesChannel = item.sales_channel || {};
             const guarantees = item.guarantees || {};
-            const payment = item.payment || {};
             const commercials = item.commercials || [];
 
             const displayName = getDisplayName(name);
@@ -292,10 +360,17 @@
             const avatar = profile.avatar
                 ? `<img src="${escapeAttribute(profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="clients-table__avatar">`
                 : `<span class="clients-table__initials">${escapeHtml(profile.initials || '')}</span>`;
-
-            const companyLine = name.company ? `<span class="clients-table__company">${escapeHtml(name.company)}</span>` : '';
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+            const channelLabel = typeof salesChannel.label === 'string' ? salesChannel.label.trim() : '';
+            const channelHtml = channelLabel !== ''
+                ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
+                : '';
+            const identityLine = companyName !== ''
+                ? `<span class="clients-table__company">${escapeHtml(companyName)}${channelHtml}</span>`
+                : channelHtml;
             const offersHtml = formatOffers(item.offers);
             const commercialsText = formatCommercialSummary(commercials);
+            const registeredLabel = strings.registered || 'Registro';
 
             const tr = document.createElement('tr');
             tr.className = 'guarantees-table__row';
@@ -309,22 +384,16 @@
                         <div class="clients-table__avatar-wrapper">${avatar}</div>
                         <div class="clients-table__identity">
                             <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
-                            ${companyLine}
+                            ${identityLine || ''}
                         </div>
                     </div>
                 </td>
-                <td data-label="${escapeHtml(strings.registered || 'Registrado desde')}" class="clients-table__registered">
+                <td data-label="${escapeHtml(registeredLabel)}" class="clients-table__registered">
                     ${registered.display ? escapeHtml(registered.display) : '—'}
-                </td>
-                <td data-label="${escapeHtml(strings.salesChannel || 'Canal de venta')}" class="clients-table__meta">
-                    ${escapeHtml(salesChannel.label || '—')}
                 </td>
                 <td data-label="${escapeHtml(strings.offers || 'Ofertas activas')}" class="clients-table__offers">${offersHtml}</td>
                 <td data-label="${escapeHtml(strings.guarantees || 'Nº Garantías')}" class="clients-table__meta">
                     ${formatCount(guarantees.count)}
-                </td>
-                <td data-label="${escapeHtml(strings.paymentMethod || 'Método de pago')}" class="clients-table__meta">
-                    ${escapeHtml(payment.label || '—')}
                 </td>
                 <td data-label="${escapeHtml(strings.commercials || 'Comercial')}" class="clients-table__meta">
                     ${escapeHtml(commercialsText || '—')}
@@ -424,7 +493,9 @@
                 ? `<img src="${escapeAttribute(item.profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="client-detail__avatar">`
                 : `<span class="client-detail__avatar client-detail__avatar--initials">${escapeHtml(item.profile?.initials || '')}</span>`;
 
-            const companyLine = name.company ? `<p class="client-detail__company">${escapeHtml(name.company)}</p>` : '';
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+            const salesChannelLabel = typeof salesChannel.label === 'string' ? salesChannel.label.trim() : '';
+            const companyLine = companyName !== '' ? `<p class="client-detail__company">${escapeHtml(companyName)}</p>` : '';
             const addressLines = joinNonEmpty([
                 address.street || '',
                 joinNonEmpty([address.zip || '', address.city || ''], ' '),
@@ -433,6 +504,8 @@
 
             const sepaVariant = sepa.variant ? ` client-detail__status--${escapeHtml(sepa.variant)}` : '';
             const sepaMessage = sepa.label || strings.sepaEmpty || 'Sin información del mandato';
+            const registeredLabel = strings.registered || 'Registro';
+            const safeSalesChannel = salesChannelLabel !== '' ? escapeHtml(salesChannelLabel) : '—';
 
             return `
                 <div class="client-detail">
@@ -441,7 +514,7 @@
                         <div class="client-detail__identity">
                             <h3 class="client-detail__title">${escapeHtml(displayName || strings.detailTitle || 'Detalles del cliente')}</h3>
                             ${companyLine}
-                            <p class="client-detail__meta-line">${escapeHtml(strings.registered || 'Registrado desde')}: <time datetime="${escapeAttribute(registered.iso || '')}">${escapeHtml(registered.display || '—')}</time></p>
+                            <p class="client-detail__meta-line">${escapeHtml(registeredLabel)}: <time datetime="${escapeAttribute(registered.iso || '')}">${escapeHtml(registered.display || '—')}</time></p>
                         </div>
                     </header>
                     <div class="client-detail__stats">
@@ -451,7 +524,7 @@
                         </div>
                         <div class="client-detail__stat">
                             <span class="client-detail__stat-label">${escapeHtml(strings.salesChannel || 'Canal de venta')}</span>
-                            <span class="client-detail__stat-value">${escapeHtml(salesChannel.label || '—')}</span>
+                            <span class="client-detail__stat-value">${safeSalesChannel}</span>
                         </div>
                         <div class="client-detail__stat">
                             <span class="client-detail__stat-label">${escapeHtml(strings.paymentMethod || 'Método de pago')}</span>
@@ -518,18 +591,57 @@
             nextPanel.innerHTML = content;
             nextPanel.dataset.loadedId = content ? 'loaded' : '';
 
-            nextPanel.classList.add('active', direction === 'backward' ? 'slide-in-left' : 'slide-in-right');
-            previousPanel.classList.add(direction === 'backward' ? 'slide-out-right' : 'slide-out-left');
+            const enterClass = direction === 'backward' ? 'slide-in-left' : 'slide-in-right';
+            const leaveClass = direction === 'backward' ? 'slide-out-right' : 'slide-out-left';
 
-            nextPanel.addEventListener('animationend', () => {
+            nextPanel.classList.add('active', enterClass);
+            previousPanel.classList.add(leaveClass);
+
+            const handleNextEnd = (event) => {
+                if (event.target !== nextPanel) {
+                    return;
+                }
+
                 nextPanel.classList.remove('slide-in-left', 'slide-in-right');
-            }, { once: true });
+                if (nextPanel.__goAnimationTimeout) {
+                    window.clearTimeout(nextPanel.__goAnimationTimeout);
+                    nextPanel.__goAnimationTimeout = null;
+                }
+                nextPanel.removeEventListener('animationend', handleNextEnd);
+            };
 
-            previousPanel.addEventListener('animationend', () => {
+            const handlePreviousEnd = (event) => {
+                if (event.target !== previousPanel) {
+                    return;
+                }
+
                 previousPanel.classList.remove('slide-out-left', 'slide-out-right');
                 previousPanel.classList.remove('active');
                 previousPanel.innerHTML = '';
-            }, { once: true });
+                if (previousPanel.__goAnimationTimeout) {
+                    window.clearTimeout(previousPanel.__goAnimationTimeout);
+                    previousPanel.__goAnimationTimeout = null;
+                }
+                previousPanel.removeEventListener('animationend', handlePreviousEnd);
+            };
+
+            nextPanel.addEventListener('animationend', handleNextEnd);
+            previousPanel.addEventListener('animationend', handlePreviousEnd);
+
+            if (nextPanel.__goAnimationTimeout) {
+                window.clearTimeout(nextPanel.__goAnimationTimeout);
+            }
+            if (previousPanel.__goAnimationTimeout) {
+                window.clearTimeout(previousPanel.__goAnimationTimeout);
+            }
+
+            nextPanel.__goAnimationTimeout = window.setTimeout(() => {
+                handleNextEnd({ target: nextPanel });
+            }, 400);
+
+            previousPanel.__goAnimationTimeout = window.setTimeout(() => {
+                handlePreviousEnd({ target: previousPanel });
+            }, 400);
 
             activePanel = nextPanel;
             inactivePanel = previousPanel;
@@ -549,7 +661,7 @@
             const content = `
                 <div class="guarantee-detail__empty">
                     <h3 class="guarantee-detail__title">${escapeHtml(strings.detailTitle || 'Detalles del cliente')}</h3>
-                    <p>${escapeHtml(strings.selectPrompt || 'Selecciona un cliente para ver la información.')}</p>
+                    <p>${escapeHtml(strings.selectPrompt || 'Selecciona un cliente para consultar su información, asignar comerciales, gestionar ofertas y más.')}</p>
                 </div>
             `;
             swapPanels(content, direction);
@@ -584,6 +696,9 @@
             if (state.search) {
                 params.set('search', state.search);
             }
+            if (state.channel) {
+                params.set('channel', state.channel);
+            }
 
             try {
                 const response = await fetch(`${restRoot}go/v1/clientes?${params.toString()}`, {
@@ -599,6 +714,10 @@
                 const data = await response.json();
                 const items = Array.isArray(data.items) ? data.items : [];
 
+                if (data && data.filters && data.filters.channels) {
+                    updateChannelFilterOptions(data.filters.channels);
+                }
+
                 state.page = Number.isFinite(data.page) ? data.page : page;
                 state.totalPages = Number.isFinite(data.total_pages) ? Math.max(1, data.total_pages) : state.totalPages;
                 tbody.dataset.currentPage = String(state.page);
@@ -607,7 +726,7 @@
                 if (!append && items.length === 0) {
                     const emptyRow = document.createElement('tr');
                     emptyRow.className = 'guarantees-table__row guarantees-table__row--empty';
-                    emptyRow.innerHTML = `<td colspan="7">${escapeHtml(strings.noResults || 'No se han encontrado clientes con los filtros actuales.')}</td>`;
+                    emptyRow.innerHTML = `<td colspan="${COLUMN_COUNT}">${escapeHtml(strings.noResults || 'No se han encontrado clientes con los filtros actuales.')}</td>`;
                     tbody.appendChild(emptyRow);
                     if (typeof table.__goUpdateColumnOverlay === 'function') {
                         table.__goUpdateColumnOverlay();
@@ -633,7 +752,7 @@
                 if (!append) {
                     const errorRow = document.createElement('tr');
                     errorRow.className = 'guarantees-table__row guarantees-table__row--empty';
-                    errorRow.innerHTML = `<td colspan="7">${escapeHtml(strings.error || 'No se ha podido cargar la información de clientes.')}</td>`;
+                    errorRow.innerHTML = `<td colspan="${COLUMN_COUNT}">${escapeHtml(strings.error || 'No se ha podido cargar la información de clientes.')}</td>`;
                     tbody.appendChild(errorRow);
                     if (typeof table.__goUpdateColumnOverlay === 'function') {
                         table.__goUpdateColumnOverlay();
@@ -678,6 +797,13 @@
                     event.preventDefault();
                     closeIcon.click();
                 }
+            });
+        }
+
+        if (channelSelect) {
+            channelSelect.addEventListener('change', () => {
+                state.channel = channelSelect.value;
+                loadPage(1, false);
             });
         }
 

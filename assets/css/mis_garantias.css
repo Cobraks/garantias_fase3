@@ -2335,7 +2335,20 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 .clients-table__client-cell {
-    min-width: 240px;
+    min-width: 320px;
+}
+
+.clients-table__channel {
+    margin-left: 0.5rem;
+    font-style: italic;
+    font-size: 0.7rem;
+    color: var(--go-color-64748b);
+}
+
+.clients-table__channel--solo {
+    display: block;
+    margin-left: 0;
+    margin-top: 0.1rem;
 }
 
 .clients-table__offers .guarantees-list__badge {
@@ -2395,6 +2408,16 @@ tr.guarantees-table__row:not(.selected):hover td,
 .clients-page .guarantees-list__search-container {
     flex: 0 1 320px;
     max-width: 320px;
+    width: 100%;
+}
+
+.clients-page .guarantees-list__filter-wrapper {
+    flex: 0 1 220px;
+    max-width: 220px;
+    width: 100%;
+}
+
+.clients-page .guarantees-list__filter {
     width: 100%;
 }
 

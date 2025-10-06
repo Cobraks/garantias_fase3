@@ -116,7 +116,7 @@ if (! empty($is_add_guarantee)) {
             'offersEmpty'       => __('Sin ofertas activas', 'garantias-online-360vo'),
             'commercialsEmpty'  => __('Sin comercial asignado', 'garantias-online-360vo'),
             'detailTitle'       => __('Detalles del cliente', 'garantias-online-360vo'),
-            'selectPrompt'      => __('Selecciona un cliente para ver la información.', 'garantias-online-360vo'),
+            'selectPrompt'      => __('Selecciona un cliente para consultar su información, asignar comerciales, gestionar ofertas y más.', 'garantias-online-360vo'),
             'error'             => __('No se ha podido cargar la información de clientes.', 'garantias-online-360vo'),
             'contactEmail'      => __('Email de contacto', 'garantias-online-360vo'),
             'notificationEmail' => __('Email de notificaciones', 'garantias-online-360vo'),
@@ -131,8 +131,9 @@ if (! empty($is_add_guarantee)) {
             'sepaEmpty'         => __('Sin información del mandato', 'garantias-online-360vo'),
             'paymentMethod'     => __('Método de pago', 'garantias-online-360vo'),
             'salesChannel'      => __('Canal de venta', 'garantias-online-360vo'),
-            'registered'        => __('Registrado desde', 'garantias-online-360vo'),
+            'registered'        => __('Registro', 'garantias-online-360vo'),
             'guarantees'        => __('Nº Garantías', 'garantias-online-360vo'),
+            'channelFilterAll'  => __('Todos los canales', 'garantias-online-360vo'),
         ],
     ];
     ?>
