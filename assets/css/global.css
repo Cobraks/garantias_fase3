@@ -874,6 +874,11 @@ body {
     --logo-stroke-width: 2.35;
   }
 
+  /* Oculta el logo hasta que JS reprograme la animación tras una transición. */
+  .logo-transition-pending .top-bar__logo--svg {
+    opacity: 0;
+  }
+
   .top-bar__logo-vo,
   .top-bar__logo-vo path {
     fill: var(--logo-vo-fill);

@@ -4,6 +4,7 @@ console.log("GO360 script cargado");
 
 (function () {
         const themeStorageKey = "go_theme";
+        const logoExitStorageKey = "go_logo_exit_state";
         const root = document.documentElement;
         const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -146,6 +147,26 @@ console.log("GO360 script cargado");
                         });
                 }
 
+                const clearStoredLogoExit = () => {
+                        try {
+                                sessionStorage.removeItem(logoExitStorageKey);
+                        } catch (error) {
+                                // Ignorar errores de sessionStorage (modo incógnito, etc.)
+                        }
+                };
+
+                const markLogoExitForNextLoad = () => {
+                        try {
+                                sessionStorage.setItem(logoExitStorageKey, "pending");
+                        } catch (error) {
+                                // Ignorar errores de sessionStorage (modo incógnito, etc.)
+                        }
+                };
+
+                // Nota: para volver a un logo estático elimina todo el bloque relacionado con
+                // logoTransition (helpers de sessionStorage, clases CSS y listeners) y borra la
+                // animación en assets/css/global.css. Deja el SVG sin clases de animación.
+
                 const logo = document.querySelector(".top-bar__logo--svg");
                 if (logo) {
                         const logoPaths = Array.from(logo.querySelectorAll("path"));
@@ -189,6 +210,8 @@ console.log("GO360 script cargado");
 
                         const runLogoEnter = () => {
                                 prepPathsForEnter();
+                                document.documentElement.classList.remove("logo-transition-pending");
+                                clearStoredLogoExit();
                                 logo.classList.remove("top-bar__logo--exit");
                                 logo.classList.remove("top-bar__logo--enter");
                                 void logo.offsetWidth;
@@ -197,6 +220,7 @@ console.log("GO360 script cargado");
 
                         const runLogoExit = () => {
                                 prepPathsForExit();
+                                markLogoExitForNextLoad();
                                 logo.classList.remove("top-bar__logo--enter");
                                 logo.classList.remove("top-bar__logo--exit");
                                 void logo.offsetWidth;
@@ -327,6 +351,9 @@ console.log("GO360 script cargado");
                                         navigate();
                                 });
                         });
+                } else {
+                        document.documentElement.classList.remove("logo-transition-pending");
+                        clearStoredLogoExit();
                 }
 
                 const newLinks = document.querySelectorAll('[data-reset-draft]');

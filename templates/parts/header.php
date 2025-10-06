@@ -100,6 +100,20 @@ $home_destination = $is_admin_user
             }
         })();
     </script>
+    <script>
+        // Si se decide desactivar la animación del logo, elimina este script y las referencias
+        // a 'logo-transition-pending' en los estilos/JS.
+        (function () {
+            var logoExitStorageKey = 'go_logo_exit_state';
+            try {
+                if (window.sessionStorage && sessionStorage.getItem(logoExitStorageKey) === 'pending') {
+                    document.documentElement.classList.add('logo-transition-pending');
+                }
+            } catch (error) {
+                // Ignorar sessionStorage no disponible
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="<?= esc_url(plugins_url('assets/css/global.min.css', GARANTIAS360VO__FILE__)); ?>">
 
 
