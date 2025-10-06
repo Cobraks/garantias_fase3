@@ -157,9 +157,16 @@ class ClientRestController
         $payments     = $account['payments'] ?? [];
         $payment_info = self::format_payment($payments);
 
+        $login_email = sanitize_email($user->user_email);
+        $primary_email = sanitize_email($user_data['email'] ?? $login_email);
+        if ($primary_email === '') {
+            $primary_email = $login_email;
+        }
+
         $contact = [
-            'email'              => sanitize_email($user_data['email'] ?? $user->user_email),
-            'notification_email' => sanitize_email($user_data['notification_email'] ?? $user->user_email),
+            'login_email'        => $login_email,
+            'email'              => $primary_email,
+            'notification_email' => sanitize_email($user_data['notification_email'] ?? $primary_email ?: $login_email),
             'phone'              => self::clean_text($user_data['phone'] ?? ''),
         ];
 
@@ -207,6 +214,24 @@ class ClientRestController
             ],
             'address'      => $address,
             'sepa'         => $sepa_status,
+            'workshop'     => self::format_workshop($account['workshop'] ?? []),
+        ];
+    }
+
+    private static function format_workshop($workshop): array
+    {
+        if (! is_array($workshop)) {
+            $workshop = [];
+        }
+
+        return [
+            'has_workshop'   => ! empty($workshop['has_workshop']),
+            'name'           => self::clean_text($workshop['name'] ?? ''),
+            'tax_id'         => self::clean_text($workshop['tax_id'] ?? ''),
+            'contact_person' => self::clean_text($workshop['contact_person'] ?? ''),
+            'phone'          => self::clean_text($workshop['phone'] ?? ''),
+            'email'          => sanitize_email($workshop['email'] ?? ''),
+            'address'        => self::clean_text($workshop['address'] ?? ''),
         ];
     }
 

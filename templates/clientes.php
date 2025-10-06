@@ -42,6 +42,13 @@ $current_user    = wp_get_current_user();
 <div class="guarantees-container">
     <section class="guarantees-list">
         <table class="guarantees-table" style="view-transition-name: garantias-table">
+            <colgroup>
+                <col class="guarantees-table__col guarantees-table__col--client" data-default-width="360">
+                <col class="guarantees-table__col guarantees-table__col--registered" data-default-width="140">
+                <col class="guarantees-table__col guarantees-table__col--offers" data-default-width="220">
+                <col class="guarantees-table__col guarantees-table__col--guarantees" data-default-width="140">
+                <col class="guarantees-table__col guarantees-table__col--commercial" data-default-width="220">
+            </colgroup>
             <thead>
                 <tr>
                     <th><?php esc_html_e('Cliente', 'garantias-online-360vo'); ?></th>

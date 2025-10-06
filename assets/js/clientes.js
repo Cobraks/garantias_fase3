@@ -9,6 +9,7 @@
         const restNonce = (config.rest && config.rest.nonce) || '';
         const perPage = (config.pagination && config.pagination.perPage) || 20;
         const strings = config.strings || {};
+        const icons = config.icons || {};
 
         const listContainer = document.querySelector('.guarantees-list');
         const table = document.querySelector('.guarantees-table');
@@ -392,10 +393,10 @@
                     ${registered.display ? escapeHtml(registered.display) : '—'}
                 </td>
                 <td data-label="${escapeHtml(strings.offers || 'Ofertas activas')}" class="clients-table__offers">${offersHtml}</td>
-                <td data-label="${escapeHtml(strings.guarantees || 'Nº Garantías')}" class="clients-table__meta">
+                <td data-label="${escapeHtml(strings.guarantees || 'Nº Garantías')}" class="clients-table__meta clients-table__meta--count">
                     ${formatCount(guarantees.count)}
                 </td>
-                <td data-label="${escapeHtml(strings.commercials || 'Comercial')}" class="clients-table__meta">
+                <td data-label="${escapeHtml(strings.commercials || 'Comercial')}" class="clients-table__meta clients-table__meta--commercial">
                     ${escapeHtml(commercialsText || '—')}
                 </td>
             `;
@@ -476,6 +477,156 @@
             return `<ul class="client-detail__commercials">${items.join('')}</ul>`;
         }
 
+        function formatMultiline(value) {
+            if (typeof value !== 'string') {
+                return '';
+            }
+
+            const trimmed = value.trim();
+            if (trimmed === '') {
+                return '';
+            }
+
+            return escapeHtml(trimmed).replace(/\n/g, '<br>');
+        }
+
+        function renderContactActions(contact) {
+            const loginEmail = typeof contact.login_email === 'string' && contact.login_email ? contact.login_email.trim() : '';
+            const fallbackEmail = typeof contact.email === 'string' && contact.email ? contact.email.trim() : '';
+            const baseEmail = loginEmail !== '' ? loginEmail : fallbackEmail;
+            const notificationEmail = typeof contact.notification_email === 'string' && contact.notification_email
+                ? contact.notification_email.trim()
+                : '';
+            const phone = typeof contact.phone === 'string' && contact.phone ? contact.phone.trim() : '';
+
+            const actions = [];
+
+            if (baseEmail !== '') {
+                actions.push({
+                    type: 'email',
+                    href: `mailto:${baseEmail}`,
+                    label: strings.loginEmail || 'Email de inicio de sesión',
+                    value: baseEmail,
+                    note: '',
+                });
+            }
+
+            if (notificationEmail !== '') {
+                const isSame = baseEmail !== '' && notificationEmail.toLowerCase() === baseEmail.toLowerCase();
+                actions.push({
+                    type: 'email',
+                    href: `mailto:${notificationEmail}`,
+                    label: strings.notificationEmail || 'Email de notificaciones',
+                    value: notificationEmail,
+                    note: isSame ? (strings.notificationEmailSame || '') : '',
+                });
+            }
+
+            if (phone !== '') {
+                const sanitized = phone.replace(/[^0-9+]/g, '');
+                actions.push({
+                    type: 'phone',
+                    href: `tel:${sanitized}`,
+                    label: strings.contactPhone || 'Teléfono de contacto',
+                    value: phone,
+                    note: '',
+                });
+            }
+
+            if (actions.length === 0) {
+                return `<p class="client-detail__contact-empty">${escapeHtml(strings.contactEmpty || 'No hay datos de contacto disponibles')}</p>`;
+            }
+
+            const items = actions.map((action) => {
+                const icon = action.type === 'phone' ? icons.phone : icons.email;
+                const note = action.note && action.note.trim() !== ''
+                    ? `<span class="client-detail__contact-note">${escapeHtml(action.note)}</span>`
+                    : '';
+
+                return `
+                    <li class="fast-actions__item">
+                        <a class="fast-actions__link" href="${escapeAttribute(action.href)}">
+                            <span class="fast-actions__icon" aria-hidden="true">${icon || ''}</span>
+                            <span class="fast-actions__label">
+                                ${escapeHtml(action.label)}
+                                <span class="client-detail__contact-value">${escapeHtml(action.value)}</span>
+                                ${note}
+                            </span>
+                        </a>
+                    </li>
+                `;
+            });
+
+            return `
+                <div class="client-detail__contact-actions">
+                    <ul class="fast-actions">${items.join('')}</ul>
+                </div>
+            `;
+        }
+
+        function renderWorkshop(workshop) {
+            const data = workshop && typeof workshop === 'object' ? workshop : {};
+            const hasWorkshop = Boolean(data.has_workshop);
+            const statusClass = hasWorkshop ? 'client-detail__status--success' : 'client-detail__status--info';
+            const statusLabel = hasWorkshop
+                ? (strings.workshopYes || 'Con taller propio')
+                : (strings.workshopNo || 'Sin taller propio');
+
+            let details = '';
+
+            if (hasWorkshop) {
+                const fields = [
+                    { key: 'name', label: strings.workshopName || 'Nombre del taller' },
+                    { key: 'contact_person', label: strings.workshopContact || 'Persona de contacto' },
+                    { key: 'phone', label: strings.workshopPhone || 'Teléfono', type: 'phone' },
+                    { key: 'email', label: strings.workshopEmail || 'Email', type: 'email' },
+                    { key: 'address', label: strings.workshopAddress || 'Dirección', formatter: formatMultiline },
+                    { key: 'tax_id', label: strings.workshopTaxId || 'CIF/NIF' },
+                ];
+
+                const items = fields.map((field) => {
+                    const raw = typeof data[field.key] === 'string' ? data[field.key].trim() : '';
+
+                    if (raw === '') {
+                        return '';
+                    }
+
+                    let valueHtml = '';
+                    if (field.type === 'phone') {
+                        valueHtml = formatLink('tel', raw);
+                    } else if (field.type === 'email') {
+                        valueHtml = formatLink('mailto', raw);
+                    } else if (typeof field.formatter === 'function') {
+                        valueHtml = field.formatter(raw);
+                        if (valueHtml === '') {
+                            return '';
+                        }
+                    } else {
+                        valueHtml = escapeHtml(raw);
+                    }
+
+                    return `
+                        <div class="client-detail__item">
+                            <dt>${escapeHtml(field.label)}</dt>
+                            <dd>${valueHtml}</dd>
+                        </div>
+                    `;
+                }).filter((item) => item !== '');
+
+                if (items.length > 0) {
+                    details = `<div class="client-detail__workshop-details">${items.join('')}</div>`;
+                }
+            }
+
+            return `
+                <section class="client-detail__section client-detail__section--workshop">
+                    <h4 class="client-detail__section-title">${escapeHtml(strings.workshop || 'Taller propio')}</h4>
+                    <p class="client-detail__status ${statusClass}">${escapeHtml(statusLabel)}</p>
+                    ${details}
+                </section>
+            `;
+        }
+
         function renderDetail(item) {
             const name = item.name || {};
             const registered = item.registered || {};
@@ -506,6 +657,18 @@
             const sepaMessage = sepa.label || strings.sepaEmpty || 'Sin información del mandato';
             const registeredLabel = strings.registered || 'Registro';
             const safeSalesChannel = salesChannelLabel !== '' ? escapeHtml(salesChannelLabel) : '—';
+            const salesTagClass = salesChannelLabel !== '' ? '' : ' client-detail__stat-tag--muted';
+            const paymentLabel = typeof payment.label === 'string' ? payment.label.trim() : '';
+            const paymentDisplay = paymentLabel !== '' ? escapeHtml(paymentLabel) : '—';
+            const paymentTagClass = paymentLabel !== '' ? '' : ' client-detail__stat-tag--muted';
+            const registrationBadge = `
+                <span class="client-detail__registration">
+                    ${escapeHtml(registeredLabel)}
+                    <time datetime="${escapeAttribute(registered.iso || '')}">${registered.display ? escapeHtml(registered.display) : '—'}</time>
+                </span>
+            `;
+            const contactActions = renderContactActions(contact);
+            const workshopSection = renderWorkshop(item.workshop);
 
             return `
                 <div class="client-detail">
@@ -514,43 +677,30 @@
                         <div class="client-detail__identity">
                             <h3 class="client-detail__title">${escapeHtml(displayName || strings.detailTitle || 'Detalles del cliente')}</h3>
                             ${companyLine}
-                            <p class="client-detail__meta-line">${escapeHtml(registeredLabel)}: <time datetime="${escapeAttribute(registered.iso || '')}">${escapeHtml(registered.display || '—')}</time></p>
                         </div>
+                        ${registrationBadge}
                     </header>
                     <div class="client-detail__stats">
-                        <div class="client-detail__stat">
+                        <div class="client-detail__stat client-detail__stat--guarantees">
                             <span class="client-detail__stat-label">${escapeHtml(strings.guarantees || 'Nº Garantías')}</span>
-                            <span class="client-detail__stat-value">${formatCount(guarantees.count)}</span>
+                            <span class="client-detail__stat-emphasis">${formatCount(guarantees.count)}</span>
                         </div>
                         <div class="client-detail__stat">
                             <span class="client-detail__stat-label">${escapeHtml(strings.salesChannel || 'Canal de venta')}</span>
-                            <span class="client-detail__stat-value">${safeSalesChannel}</span>
+                            <span class="client-detail__stat-tag${salesTagClass}">${safeSalesChannel}</span>
                         </div>
                         <div class="client-detail__stat">
                             <span class="client-detail__stat-label">${escapeHtml(strings.paymentMethod || 'Método de pago')}</span>
-                            <span class="client-detail__stat-value">${escapeHtml(payment.label || '—')}</span>
+                            <span class="client-detail__stat-tag${paymentTagClass}">${paymentDisplay}</span>
                         </div>
                     </div>
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.contact || 'Contacto')}</h4>
-                        <dl class="client-detail__list">
-                            <div class="client-detail__item">
-                                <dt>${escapeHtml(strings.contactEmail || 'Email de contacto')}</dt>
-                                <dd>${formatLink('mailto', contact.email)}</dd>
-                            </div>
-                            <div class="client-detail__item">
-                                <dt>${escapeHtml(strings.notificationEmail || 'Email de notificaciones')}</dt>
-                                <dd>${formatLink('mailto', contact.notification_email)}</dd>
-                            </div>
-                            <div class="client-detail__item">
-                                <dt>${escapeHtml(strings.contactPhone || 'Teléfono de contacto')}</dt>
-                                <dd>${formatLink('tel', contact.phone)}</dd>
-                            </div>
-                        </dl>
+                        ${contactActions}
                     </section>
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.company || 'Empresa')}</h4>
-                        <dl class="client-detail__list">
+                        <dl class="client-detail__list client-detail__list--columns">
                             <div class="client-detail__item">
                                 <dt>${escapeHtml(strings.company || 'Empresa')}</dt>
                                 <dd>${escapeHtml(company.name || '—')}</dd>
@@ -565,6 +715,7 @@
                             </div>
                         </dl>
                     </section>
+                    ${workshopSection}
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.offers || 'Ofertas activas')}</h4>
                         ${renderOffersList(item.offers)}
