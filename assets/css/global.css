@@ -943,6 +943,8 @@ text-decoration: none;
     width: 40px;
     height: 40px;
     border-radius: 50%;
+    border: 2px solid rgba(var(--go-color-2563eb-rgb), 0.18);
+    box-shadow: 0 6px 16px rgba(var(--go-color-0f172a-rgb), 0.18);
   }
   .top-bar__profile-link {
     display: inline-flex;
