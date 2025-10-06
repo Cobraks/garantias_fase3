@@ -61,32 +61,6 @@ $current_user    = wp_get_current_user();
     </aside>
 </div>
 
-<style>
-    .scroll-sentinel {
-        height: 80px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .spinner {
-        width: 3rem;
-        height: 3rem;
-        margin: 0 auto;
-        border: 5px solid rgba(0, 0, 0, 0.1);
-        border-top-color: rgba(255, 0, 0, 0.6);
-        border-radius: 50%;
-        animation: spin .5s linear infinite;
-        display: none;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-</style>
-
 <?php
 \GarantiasOnline360VO\TemplateLoader::load_part(
     'footer',

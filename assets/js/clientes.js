@@ -42,6 +42,7 @@
         let selectedRow = null;
         let lastRowIndex = -1;
         let debounceTimer = null;
+        let currentAbortController = null;
 
         function escapeHtml(value) {
             return String(value ?? '')
@@ -224,7 +225,13 @@
                 return;
             }
 
-            spinner.style.display = visible ? 'block' : 'none';
+            if (visible) {
+                spinner.classList.add('is-visible');
+                spinner.setAttribute('aria-hidden', 'false');
+            } else {
+                spinner.classList.remove('is-visible');
+                spinner.setAttribute('aria-hidden', 'true');
+            }
         }
 
         function updateCloseIcon() {
@@ -370,7 +377,7 @@
             const trimmed = value.trim();
             const href = `${protocol}:${protocol === 'tel' ? trimmed.replace(/\s+/g, '') : trimmed}`;
 
-            return `<a href="${escapeAttribute(href)}">${escapeHtml(trimmed)}</a>`;
+            return `<a class="client-detail__contact-link" href="${escapeAttribute(href)}">${escapeHtml(trimmed)}</a>`;
         }
 
         function renderOffersList(offers) {
@@ -564,14 +571,20 @@
         }
 
         async function loadPage(page, append = false) {
-            if (state.isLoading) {
-                return;
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
             }
+
+            const controller = new AbortController();
+            currentAbortController = controller;
 
             state.isLoading = true;
             setSpinner(true);
 
             if (!append) {
+                state.page = 0;
+                state.totalPages = 1;
                 tbody.innerHTML = '';
                 cache.clear();
                 clearSelection();
@@ -590,6 +603,7 @@
                     method: 'GET',
                     credentials: 'same-origin',
                     headers: restNonce ? { 'X-WP-Nonce': restNonce } : {},
+                    signal: controller.signal,
                 });
 
                 if (!response.ok) {
@@ -629,6 +643,9 @@
                     selectedRow.focus({ preventScroll: true });
                 }
             } catch (error) {
+                if (error.name === 'AbortError') {
+                    return;
+                }
                 console.error('Error loading clients', error);
                 if (!append) {
                     const errorRow = document.createElement('tr');
@@ -640,8 +657,11 @@
                     }
                 }
             } finally {
-                state.isLoading = false;
-                setSpinner(false);
+                if (currentAbortController === controller) {
+                    currentAbortController = null;
+                    state.isLoading = false;
+                    setSpinner(false);
+                }
             }
         }
 
