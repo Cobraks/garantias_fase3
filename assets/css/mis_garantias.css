@@ -155,8 +155,6 @@ body.scrolled .container {
     --client-stat-border: var(--go-color-e2e8f0);
     --client-stat-label: var(--go-color-475569);
     --client-admin-text: var(--client-action-text);
-    --client-overlay: #000000c4;
-    --client-overlay-blur: blur(2px);
     --client-dialog-shadow: 0 32px 60px rgba(var(--go-color-0f172a-rgb), 0.18);
 }
 
@@ -186,8 +184,6 @@ body.scrolled .container {
     --client-stat-border: rgba(148, 163, 184, 0.35);
     --client-stat-label: rgba(203, 213, 225, 0.82);
     --client-admin-text: rgba(248, 250, 252, 0.96);
-    --client-overlay: #000000d0;
-    --client-overlay-blur: blur(2px);
     --client-dialog-shadow: 0 40px 80px rgba(0, 0, 0, 0.75);
 }
 
