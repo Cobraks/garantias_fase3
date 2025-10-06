@@ -38,6 +38,14 @@
             return;
         }
 
+        const commercialDirectory = {
+            items: [],
+            loading: false,
+            loaded: false,
+            error: '',
+            promise: null,
+        };
+
         const assignDialog = createAssignDialog();
 
         if (canAssignCommercials) {
@@ -65,14 +73,6 @@
         let lastRowIndex = -1;
         let debounceTimer = null;
         const COLUMN_COUNT = 5;
-
-        const commercialDirectory = {
-            items: [],
-            loading: false,
-            loaded: false,
-            error: '',
-            promise: null,
-        };
 
         function normalizeCommercialEntry(entry) {
             if (!entry || typeof entry !== 'object') {
