@@ -11,7 +11,7 @@ class Rewrite
 
     public const SLUG                 = 'garantias-online';
     public const VAR_ENDPOINT         = 'go_endpoint';
-    public const RULES_VERSION        = 4;
+    public const RULES_VERSION        = 5;
     private const OPTION_RULES_VERSION = 'go_rewrite_rules_version';
 
     /**
@@ -47,6 +47,7 @@ class Rewrite
         $vars[] = 'reset';
         $vars[] = 'key';
         $vars[] = 'login';
+        $vars[] = 'client_slug';
         return $vars;
     }
 
@@ -76,6 +77,12 @@ class Rewrite
                 'top'
             );
         }
+
+        add_rewrite_rule(
+            $base . '/clientes/([^/]+)/?$',
+            'index.php?' . self::VAR_ENDPOINT . '=clientes&client_slug=$matches[1]',
+            'top'
+        );
 
         
     }

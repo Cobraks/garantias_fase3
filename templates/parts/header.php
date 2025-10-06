@@ -386,5 +386,22 @@ $home_destination = $is_admin_user
         </nav>
     </header>
     <?php endif; ?>
-    <div class="container <?php echo $is_auth_template ? 'container--auth' : ''; ?>">
-        <div class="main-grid <?php echo $is_auth_template ? 'main-grid--auth' : ''; ?>">
+    <?php
+    $container_classes = ['container'];
+    if ($is_auth_template) {
+        $container_classes[] = 'container--auth';
+    }
+    if (! empty($is_clients_page)) {
+        $container_classes[] = 'clients-page';
+    }
+
+    $main_grid_classes = ['main-grid'];
+    if ($is_auth_template) {
+        $main_grid_classes[] = 'main-grid--auth';
+    }
+    if (! empty($is_clients_page)) {
+        $main_grid_classes[] = 'clients-page';
+    }
+    ?>
+    <div class="<?php echo esc_attr(implode(' ', $container_classes)); ?>">
+        <div class="<?php echo esc_attr(implode(' ', $main_grid_classes)); ?>">

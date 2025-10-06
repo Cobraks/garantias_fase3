@@ -9,12 +9,26 @@
         const restNonce = (config.rest && config.rest.nonce) || '';
         const perPage = (config.pagination && config.pagination.perPage) || 20;
         const strings = config.strings || {};
+        const icons = config.icons || {};
+        const iconEmail = icons.email || '';
+        const iconPhone = icons.phone || '';
+        const iconArrowDown = icons.arrowDown || '';
+        const iconArrowUp = icons.arrowUp || '';
+        const iconPersonAdd = icons.personAdd || '';
+        const iconClose = icons.close || '';
+        const iconSearch = icons.search || '';
+        const permissions = config.permissions || {};
+        const canAssignCommercials = Boolean(permissions.canAssignCommercials);
+        const router = config.router || {};
+        const basePath = typeof router.basePath === 'string' ? router.basePath : '';
+        const normalizedBasePath = basePath ? (basePath.endsWith('/') ? basePath : `${basePath}/`) : '';
 
         const listContainer = document.querySelector('.guarantees-list');
         const table = document.querySelector('.guarantees-table');
         const tbody = table ? table.querySelector('tbody') : null;
         const searchInput = document.getElementById('clientes-search');
         const closeIcon = document.querySelector('.guarantees-list__close-icon');
+        const channelSelect = document.getElementById('clientes-channel-filter');
         const sentinel = document.getElementById('scroll-end');
         const spinner = sentinel ? sentinel.querySelector('.spinner') : null;
         const panel1 = document.getElementById('detail-panel-1');
@@ -23,6 +37,8 @@
         if (!tbody || !panel1 || !panel2) {
             return;
         }
+
+        const assignDialog = createAssignDialog();
 
         if (closeIcon) {
             closeIcon.setAttribute('role', 'button');
@@ -36,12 +52,72 @@
             totalPages: 1,
             isLoading: false,
             search: '',
+            channel: '',
         };
 
         const cache = new Map();
+        const slugIndex = new Map();
         let selectedRow = null;
         let lastRowIndex = -1;
         let debounceTimer = null;
+        const COLUMN_COUNT = 5;
+
+        function getSlugFromUrl() {
+            if (!normalizedBasePath) {
+                return '';
+            }
+
+            const path = window.location.pathname;
+            if (!path.startsWith(normalizedBasePath)) {
+                return '';
+            }
+
+            const remainder = path.slice(normalizedBasePath.length);
+            const segments = remainder.split('/').filter((segment) => segment !== '');
+            if (segments.length === 0) {
+                return '';
+            }
+
+            try {
+                return decodeURIComponent(segments[0]).toLowerCase();
+            } catch (error) {
+                return segments[0].toLowerCase();
+            }
+        }
+
+        function buildClientUrl(slug) {
+            if (!normalizedBasePath) {
+                return window.location.pathname;
+            }
+
+            if (!slug) {
+                return `${normalizedBasePath}`;
+            }
+
+            const encodedSlug = encodeURIComponent(slug);
+            return `${normalizedBasePath}${encodedSlug}/`;
+        }
+
+        let initialSlug = getSlugFromUrl();
+
+        function updateHistory(slugValue) {
+            if (!normalizedBasePath) {
+                return;
+            }
+
+            const targetPath = buildClientUrl(slugValue);
+            const desiredPath = targetPath.endsWith('/') ? targetPath : `${targetPath}/`;
+            if (window.location.pathname === desiredPath) {
+                return;
+            }
+
+            const newUrl = `${desiredPath}${window.location.search}${window.location.hash}`;
+            try {
+                window.history.replaceState({}, '', newUrl);
+            } catch (error) {
+                // Ignore history errors (e.g. Safari private mode)
+            }
+        }
 
         function escapeHtml(value) {
             return String(value ?? '')
@@ -64,6 +140,45 @@
 
                 return typeof value === 'string' && value.trim() !== '';
             }).join(separator);
+        }
+
+        function getPreferredSlug(item) {
+            if (!item || typeof item !== 'object') {
+                return '';
+            }
+
+            if (typeof item.username === 'string' && item.username.trim() !== '') {
+                return item.username.trim();
+            }
+            if (typeof item.slug === 'string' && item.slug.trim() !== '') {
+                return item.slug.trim();
+            }
+            if (typeof item.nicename === 'string' && item.nicename.trim() !== '') {
+                return item.nicename.trim();
+            }
+
+            return '';
+        }
+
+        function registerItemSlugs(item) {
+            if (!item || typeof item !== 'object') {
+                return;
+            }
+
+            const identifiers = [];
+            if (typeof item.username === 'string' && item.username.trim() !== '') {
+                identifiers.push(item.username.trim());
+            }
+            if (typeof item.slug === 'string' && item.slug.trim() !== '') {
+                identifiers.push(item.slug.trim());
+            }
+            if (typeof item.nicename === 'string' && item.nicename.trim() !== '') {
+                identifiers.push(item.nicename.trim());
+            }
+
+            identifiers.forEach((identifier) => {
+                slugIndex.set(identifier.toLowerCase(), String(item.id));
+            });
         }
 
         function getDisplayName(name) {
@@ -92,6 +207,72 @@
             const composed = [first, last].filter(Boolean).join(' ').trim();
 
             return full || composed || name;
+        }
+
+        function normalizeChannelOption(option) {
+            if (!option || typeof option !== 'object') {
+                return null;
+            }
+
+            const value = typeof option.value === 'string' ? option.value.trim() : '';
+            const label = typeof option.label === 'string' ? option.label.trim() : '';
+
+            if (value === '' || label === '') {
+                return null;
+            }
+
+            return { value, label };
+        }
+
+        function updateChannelFilterOptions(options) {
+            if (!channelSelect) {
+                return;
+            }
+
+            const normalized = Array.isArray(options)
+                ? options.map((option) => normalizeChannelOption(option)).filter(Boolean)
+                : [];
+
+            const seen = new Set();
+            const unique = [];
+
+            normalized.forEach((option) => {
+                if (seen.has(option.value)) {
+                    return;
+                }
+                seen.add(option.value);
+                unique.push(option);
+            });
+
+            const previousValue = state.channel || channelSelect.value || '';
+            const placeholder = typeof strings.channelFilterAll === 'string'
+                ? strings.channelFilterAll
+                : 'Todos los canales';
+
+            channelSelect.innerHTML = '';
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = placeholder;
+            channelSelect.appendChild(defaultOption);
+
+            unique.forEach((option) => {
+                const element = document.createElement('option');
+                element.value = option.value;
+                element.textContent = option.label;
+                channelSelect.appendChild(element);
+            });
+
+            if (previousValue && !seen.has(previousValue)) {
+                const fallbackOption = document.createElement('option');
+                fallbackOption.value = previousValue;
+                fallbackOption.textContent = previousValue;
+                channelSelect.appendChild(fallbackOption);
+                seen.add(previousValue);
+            }
+
+            channelSelect.value = previousValue && seen.has(previousValue) ? previousValue : '';
+            channelSelect.disabled = unique.length === 0;
         }
 
         function initResizableColumns(table) {
@@ -246,12 +427,26 @@
 
             return offers
                 .map((offer) => {
-                    const label = escapeHtml(offer.label || '');
-                    const discount = typeof offer.discount === 'number' && offer.discount > 0
-                        ? `<span class="clients-table__offer-discount">${Math.round(offer.discount)}%</span>`
+                    const label = typeof offer.label === 'string' ? offer.label.trim() : '';
+                    const type = typeof offer.type === 'string' ? offer.type.trim() : '';
+                    const name = typeof offer.name === 'string' ? offer.name.trim() : '';
+                    const discountValue = typeof offer.discount === 'number' && offer.discount > 0
+                        ? Math.round(offer.discount)
+                        : null;
+                    const typeKey = type.toLowerCase();
+                    const title = typeKey === 'personalizar' && name !== ''
+                        ? escapeHtml(name)
+                        : escapeHtml(label || name || '');
+                    const discount = discountValue !== null
+                        ? `<span class="clients-table__offer-discount">-${discountValue}%</span>`
                         : '';
 
-                    return `<span class="guarantees-list__badge">${label}${discount}</span>`;
+                    return `
+                        <span class="guarantees-list__badge clients-table__offer-badge">
+                            <span class="clients-table__offer-title">${title}</span>
+                            ${discount}
+                        </span>
+                    `;
                 })
                 .join('');
         }
@@ -282,8 +477,9 @@
             const registered = item.registered || {};
             const salesChannel = item.sales_channel || {};
             const guarantees = item.guarantees || {};
-            const payment = item.payment || {};
             const commercials = item.commercials || [];
+
+            registerItemSlugs(item);
 
             const displayName = getDisplayName(name);
             const safeName = displayName || name.company || '';
@@ -292,16 +488,39 @@
             const avatar = profile.avatar
                 ? `<img src="${escapeAttribute(profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="clients-table__avatar">`
                 : `<span class="clients-table__initials">${escapeHtml(profile.initials || '')}</span>`;
-
-            const companyLine = name.company ? `<span class="clients-table__company">${escapeHtml(name.company)}</span>` : '';
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+            const channelLabel = typeof salesChannel.label === 'string' ? salesChannel.label.trim() : '';
+            const channelHtml = channelLabel !== ''
+                ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
+                : '';
+            const identityLine = companyName !== ''
+                ? `<span class="clients-table__company">${escapeHtml(companyName)}${channelHtml}</span>`
+                : channelHtml;
             const offersHtml = formatOffers(item.offers);
             const commercialsText = formatCommercialSummary(commercials);
+            const registeredLabel = strings.registered || 'Registro';
+            const username = typeof item.username === 'string' ? item.username.trim() : '';
+            const slug = typeof item.slug === 'string' ? item.slug.trim() : '';
+            const nicename = typeof item.nicename === 'string' ? item.nicename.trim() : '';
+            const rowSlug = username || slug || nicename;
 
             const tr = document.createElement('tr');
             tr.className = 'guarantees-table__row';
             tr.tabIndex = 0;
             tr.dataset.id = String(item.id);
             tr.dataset.index = String(tbody.children.length);
+            if (rowSlug) {
+                tr.dataset.slug = rowSlug.toLowerCase();
+            }
+            if (username) {
+                tr.dataset.username = username;
+            }
+            if (slug) {
+                tr.dataset.clientSlug = slug;
+            }
+            if (nicename) {
+                tr.dataset.nicename = nicename;
+            }
 
             tr.innerHTML = `
                 <td data-label="${escapeHtml(strings.client || 'Cliente')}" class="clients-table__client-cell">
@@ -309,24 +528,18 @@
                         <div class="clients-table__avatar-wrapper">${avatar}</div>
                         <div class="clients-table__identity">
                             <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
-                            ${companyLine}
+                            ${identityLine || ''}
                         </div>
                     </div>
                 </td>
-                <td data-label="${escapeHtml(strings.registered || 'Registrado desde')}" class="clients-table__registered">
+                <td data-label="${escapeHtml(registeredLabel)}" class="clients-table__registered">
                     ${registered.display ? escapeHtml(registered.display) : '—'}
                 </td>
-                <td data-label="${escapeHtml(strings.salesChannel || 'Canal de venta')}" class="clients-table__meta">
-                    ${escapeHtml(salesChannel.label || '—')}
-                </td>
                 <td data-label="${escapeHtml(strings.offers || 'Ofertas activas')}" class="clients-table__offers">${offersHtml}</td>
-                <td data-label="${escapeHtml(strings.guarantees || 'Nº Garantías')}" class="clients-table__meta">
+                <td data-label="${escapeHtml(strings.guarantees || 'Nº Garantías')}" class="clients-table__meta clients-table__meta--count">
                     ${formatCount(guarantees.count)}
                 </td>
-                <td data-label="${escapeHtml(strings.paymentMethod || 'Método de pago')}" class="clients-table__meta">
-                    ${escapeHtml(payment.label || '—')}
-                </td>
-                <td data-label="${escapeHtml(strings.commercials || 'Comercial')}" class="clients-table__meta">
+                <td data-label="${escapeHtml(strings.commercials || 'Comercial')}" class="clients-table__meta clients-table__meta--commercial">
                     ${escapeHtml(commercialsText || '—')}
                 </td>
             `;
@@ -342,8 +555,16 @@
             return tr;
         }
 
-        function selectRow(row, item) {
+        function selectRow(row, item, options = {}) {
+            const preserveUrl = Boolean(options.preserveUrl);
             if (selectedRow === row) {
+                if (!preserveUrl) {
+                    row.classList.remove('selected');
+                    selectedRow = null;
+                    lastRowIndex = -1;
+                    updateHistory('');
+                    showEmptyDetail('backward');
+                }
                 return;
             }
 
@@ -358,6 +579,16 @@
             selectedRow = row;
             lastRowIndex = nextIndex;
             row.classList.add('selected');
+
+            const slugValue = getPreferredSlug(item);
+            if (slugValue) {
+                const currentSlug = getSlugFromUrl();
+                if (!preserveUrl || currentSlug !== slugValue.toLowerCase()) {
+                    updateHistory(slugValue);
+                }
+            } else if (!preserveUrl) {
+                updateHistory('');
+            }
 
             showDetail(item, direction);
         }
@@ -379,13 +610,21 @@
             }
 
             const items = offers.map((offer) => {
-                const label = escapeHtml(offer.label || '');
-                const discount = typeof offer.discount === 'number' && offer.discount > 0
-                    ? `<span class="client-detail__chip-extra">${Math.round(offer.discount)}%</span>`
+                const label = typeof offer.label === 'string' ? offer.label.trim() : '';
+                const type = typeof offer.type === 'string' ? offer.type.trim() : '';
+                const name = typeof offer.name === 'string' ? offer.name.trim() : '';
+                const expires = typeof offer.expires === 'string' ? offer.expires.trim() : '';
+                const discountValue = typeof offer.discount === 'number' && offer.discount > 0
+                    ? Math.round(offer.discount)
+                    : null;
+                const typeKey = type.toLowerCase();
+                const title = typeKey === 'personalizar' && name !== ''
+                    ? `<span class="client-detail__chip-title">${escapeHtml(name)}</span>`
+                    : `<span class="client-detail__chip-title">${escapeHtml(label || name || '')}</span>`;
+                const discount = discountValue !== null
+                    ? `<span class="client-detail__chip-extra">-${discountValue}%</span>`
                     : '';
-                const expiry = offer.expires ? `<span class="client-detail__chip-meta">${escapeHtml(offer.expires)}</span>` : '';
-
-                return `<li class="client-detail__chip">${label}${discount}${expiry}</li>`;
+                return `<li class="client-detail__chip">${title}${discount}</li>`;
             });
 
             return `<ul class="client-detail__chips">${items.join('')}</ul>`;
@@ -397,14 +636,296 @@
             }
 
             const items = commercials.map((commercial) => {
-                const display = escapeHtml(getCommercialDisplay(commercial) || '');
-                const email = commercial.email ? `<span>${formatLink('mailto', commercial.email)}</span>` : '';
-                const phone = commercial.phone ? `<span>${formatLink('tel', commercial.phone)}</span>` : '';
+                const rawName = getCommercialDisplay(commercial) || '';
+                const name = rawName !== '' ? rawName : (strings.commercials || 'Comercial');
+                const email = typeof commercial.email === 'string' && commercial.email ? commercial.email.trim() : '';
+                const phone = typeof commercial.phone === 'string' && commercial.phone ? commercial.phone.trim() : '';
+                const avatar = typeof commercial.avatar === 'string' && commercial.avatar ? commercial.avatar.trim() : '';
+                const fallbackInitials = rawName
+                    .split(/\s+/)
+                    .filter((part) => part !== '')
+                    .map((part) => part[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase();
+                const avatarHtml = avatar !== ''
+                    ? `<img src="${escapeAttribute(avatar)}" alt="${escapeAttribute(name)}" class="client-detail__commercial-avatar">`
+                    : `<span class="client-detail__commercial-initials">${escapeHtml(fallbackInitials || name.slice(0, 1).toUpperCase())}</span>`;
 
-                return `<li class="client-detail__commercial">${display}${email}${phone}</li>`;
+                const emailLine = email !== ''
+                    ? `<p class="client-detail__commercial-contact">${escapeHtml(email)}</p>`
+                    : '';
+
+                const emailAction = email !== ''
+                    ? `<a class="client-detail__commercial-action" href="mailto:${escapeAttribute(email)}">${iconEmail}<span>${escapeHtml(email)}</span></a>`
+                    : '';
+
+                const phoneSanitized = phone.replace(/[^0-9+]/g, '');
+                const phoneAction = phone !== ''
+                    ? `<a class="client-detail__commercial-action" href="tel:${escapeAttribute(phoneSanitized)}">${iconPhone}<span>${escapeHtml(phone)}</span></a>`
+                    : '';
+
+                const actions = [emailAction, phoneAction].filter((action) => action !== '').join('\n');
+
+                return `
+                    <li class="client-detail__commercial">
+                        <div class="client-detail__commercial-media">${avatarHtml}</div>
+                        <div class="client-detail__commercial-body">
+                            <span class="client-detail__commercial-name">${escapeHtml(name)}</span>
+                            ${emailLine}
+                            ${actions !== '' ? `<div class="client-detail__commercial-actions">${actions}</div>` : ''}
+                        </div>
+                    </li>
+                `;
             });
 
             return `<ul class="client-detail__commercials">${items.join('')}</ul>`;
+        }
+
+        function formatMultiline(value) {
+            if (typeof value !== 'string') {
+                return '';
+            }
+
+            const trimmed = value.trim();
+            if (trimmed === '') {
+                return '';
+            }
+
+            return escapeHtml(trimmed).replace(/\n/g, '<br>');
+        }
+
+        function formatDefinitionValue(value) {
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                return escapeHtml(String(value));
+            }
+
+            if (typeof value === 'string') {
+                const trimmed = value.trim();
+                if (trimmed !== '') {
+                    return escapeHtml(trimmed);
+                }
+            }
+
+            return '<span class="client-detail__empty">—</span>';
+        }
+
+        function renderContactActions(contact) {
+            const loginEmail = typeof contact.login_email === 'string' && contact.login_email ? contact.login_email.trim() : '';
+            const notificationEmail = typeof contact.notification_email === 'string' && contact.notification_email
+                ? contact.notification_email.trim()
+                : '';
+            const phone = typeof contact.phone === 'string' && contact.phone ? contact.phone.trim() : '';
+
+            if (notificationEmail === '' && phone === '') {
+                return `<p class="client-detail__contact-empty">${escapeHtml(strings.contactEmpty || 'No hay datos de contacto disponibles')}</p>`;
+            }
+
+            const actions = [];
+            let showDifferenceNote = false;
+
+            if (notificationEmail !== '') {
+                const isSame = loginEmail !== '' && notificationEmail.toLowerCase() === loginEmail.toLowerCase();
+                showDifferenceNote = !isSame && loginEmail !== '';
+                actions.push(`
+                    <li class="fast-actions__item">
+                        <a class="fast-actions__link client-detail__contact-link" href="mailto:${escapeAttribute(notificationEmail)}">
+                            <span class="fast-actions__icon" aria-hidden="true">${iconEmail}</span>
+                            <span class="client-detail__contact-value">${escapeHtml(notificationEmail)}</span>
+                        </a>
+                    </li>
+                `);
+            }
+
+            if (phone !== '') {
+                const sanitizedPhone = phone.replace(/[^0-9+]/g, '');
+                actions.push(`
+                    <li class="fast-actions__item">
+                        <a class="fast-actions__link client-detail__contact-link" href="tel:${escapeAttribute(sanitizedPhone)}">
+                            <span class="fast-actions__icon" aria-hidden="true">${iconPhone}</span>
+                            <span class="client-detail__contact-value">${escapeHtml(phone)}</span>
+                        </a>
+                    </li>
+                `);
+            }
+
+            return `
+                <div class="client-detail__contact-actions">
+                    <ul class="fast-actions client-detail__contact-buttons">${actions.join('')}</ul>
+                    ${showDifferenceNote && (strings.notificationEmailDifferent || '').trim() !== ''
+                        ? `<p class="client-detail__contact-note">${escapeHtml(strings.notificationEmailDifferent)}</p>`
+                        : ''}
+                </div>
+            `;
+        }
+
+        function renderWorkshop(workshop) {
+            const data = workshop && typeof workshop === 'object' ? workshop : {};
+            const hasWorkshop = Boolean(data.has_workshop);
+            const statusClass = hasWorkshop ? 'client-detail__status--success' : 'client-detail__status--info';
+            const statusLabel = hasWorkshop
+                ? (strings.workshopYes || 'Con taller propio')
+                : (strings.workshopNo || 'Sin taller propio');
+
+            let details = '';
+
+            if (hasWorkshop) {
+                const fields = [
+                    { key: 'name', label: strings.workshopName || 'Nombre del taller' },
+                    { key: 'fiscal_name', label: strings.workshopFiscal || 'Denominación fiscal' },
+                    { key: 'contact_person', label: strings.workshopContact || 'Persona de contacto' },
+                    { key: 'phone', label: strings.workshopPhone || 'Teléfono', type: 'phone' },
+                    { key: 'email', label: strings.workshopEmail || 'Email', type: 'email' },
+                    { key: 'address', label: strings.workshopAddress || 'Dirección', formatter: formatMultiline },
+                    { key: 'tax_id', label: strings.workshopTaxId || 'CIF/NIF' },
+                ];
+
+                const items = fields.map((field) => {
+                    const raw = typeof data[field.key] === 'string' ? data[field.key].trim() : '';
+
+                    if (raw === '') {
+                        return '';
+                    }
+
+                    let valueHtml = '';
+                    if (field.type === 'phone') {
+                        valueHtml = formatLink('tel', raw);
+                    } else if (field.type === 'email') {
+                        valueHtml = formatLink('mailto', raw);
+                    } else if (typeof field.formatter === 'function') {
+                        valueHtml = field.formatter(raw);
+                        if (valueHtml === '') {
+                            return '';
+                        }
+                    } else {
+                        valueHtml = formatDefinitionValue(raw);
+                    }
+
+                    return `
+                        <div class="client-detail__item">
+                            <dt>${escapeHtml(field.label)}</dt>
+                            <dd>${valueHtml}</dd>
+                        </div>
+                    `;
+                }).filter((item) => item !== '');
+
+                if (items.length > 0) {
+                    details = `<div class="client-detail__workshop-details">${items.join('')}</div>`;
+                }
+            }
+
+            return `
+                <section class="client-detail__section client-detail__section--workshop">
+                    <h4 class="client-detail__section-title">${escapeHtml(strings.workshop || 'Taller propio')}</h4>
+                    <p class="client-detail__status ${statusClass}">${escapeHtml(statusLabel)}</p>
+                    ${details}
+                </section>
+            `;
+        }
+
+        function renderPreferences(documents, services) {
+            const docs = documents && typeof documents === 'object' ? documents : {};
+            const serviceData = services && typeof services === 'object' ? services : {};
+            const web360 = serviceData.web360 && typeof serviceData.web360 === 'object' ? serviceData.web360 : {};
+
+            const signatureEnabled = Boolean(docs.add_to_certificates);
+            const signature = docs.signature && typeof docs.signature === 'object' ? docs.signature : {};
+            const seal = docs.seal && typeof docs.seal === 'object' ? docs.seal : {};
+
+            const signatureMeta = [];
+            if (signatureEnabled) {
+                signatureMeta.push(signature.url ? (strings.signatureUploaded || 'Firma subida') : (strings.signatureMissing || 'Firma no disponible'));
+                signatureMeta.push(seal.url ? (strings.sealUploaded || 'Sello subido') : (strings.sealMissing || 'Sello no disponible'));
+            }
+
+            const webEnabled = Boolean(web360.enabled);
+            const webUrl = typeof web360.url === 'string' ? web360.url.trim() : '';
+
+            const signatureCard = {
+                title: strings.signatureTitle || 'Firma y sello en certificados',
+                status: signatureEnabled ? 'enabled' : 'disabled',
+                description: signatureEnabled
+                    ? (strings.signatureEnabled || 'Incluye firma y sello en los certificados')
+                    : (strings.signatureDisabled || 'No se añaden a los certificados'),
+                meta: signatureMeta,
+            };
+
+            const webMeta = [];
+            if (webEnabled && webUrl !== '') {
+                webMeta.push(`<a href="${escapeAttribute(webUrl)}" target="_blank" rel="noopener">${escapeHtml(webUrl)}</a>`);
+            }
+
+            const webCard = {
+                title: strings.web360Title || 'Web 360VO',
+                status: webEnabled ? 'enabled' : 'disabled',
+                description: webEnabled
+                    ? (strings.web360Enabled || 'Web 360VO activa')
+                    : (strings.web360Disabled || 'Sin web configurada'),
+                metaHtml: webMeta.join(''),
+            };
+
+            const cards = [signatureCard, webCard].map((card) => {
+                const metaHtml = card.metaHtml
+                    ? `<div class="client-detail__preference-meta">${card.metaHtml}</div>`
+                    : (Array.isArray(card.meta) && card.meta.length > 0
+                        ? `<div class="client-detail__preference-meta">${card.meta.map((entry) => escapeHtml(entry)).join(' · ')}</div>`
+                        : '');
+
+                return `
+                    <li class="client-detail__preference client-detail__preference--${card.status}">
+                        <span class="client-detail__preference-title">${escapeHtml(card.title)}</span>
+                        <p class="client-detail__preference-status">${escapeHtml(card.description)}</p>
+                        ${metaHtml}
+                    </li>
+                `;
+            });
+
+            return `
+                <section class="client-detail__section">
+                    <h4 class="client-detail__section-title">${escapeHtml(strings.preferences || 'Configuración adicional')}</h4>
+                    <ul class="client-detail__preferences">${cards.join('')}</ul>
+                </section>
+            `;
+        }
+
+        function renderSepaDetails(sepa) {
+            if (!sepa || typeof sepa !== 'object') {
+                return '';
+            }
+
+            const fields = Array.isArray(sepa.fields) ? sepa.fields : [];
+            const validFields = fields
+                .map((field) => ({
+                    label: typeof field.label === 'string' ? field.label.trim() : '',
+                    value: typeof field.value === 'string' ? field.value.trim() : '',
+                }))
+                .filter((field) => field.value !== '');
+
+            if (validFields.length === 0) {
+                return '';
+            }
+
+            const rows = validFields.map((field) => `
+                <tr>
+                    <th scope="row">${escapeHtml(field.label || strings.sepaDetails || 'Dato')}</th>
+                    <td>${escapeHtml(field.value)}</td>
+                </tr>
+            `).join('');
+
+            return `
+                <details class="detail__transfer-toggle client-detail__sepa-toggle">
+                    <summary class="detail__transfer-toggle-summary">
+                        <span class="detail__transfer-toggle-label">${escapeHtml(strings.sepaDetails || 'Ver datos del deudor SEPA')}</span>
+                        <span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${iconArrowDown}</span>
+                        <span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${iconArrowUp}</span>
+                    </summary>
+                    <div class="detail__transfer-toggle-content">
+                        <table class="detail__transfer-table client-detail__sepa-table">
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </details>
+            `;
         }
 
         function renderDetail(item) {
@@ -424,7 +945,14 @@
                 ? `<img src="${escapeAttribute(item.profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="client-detail__avatar">`
                 : `<span class="client-detail__avatar client-detail__avatar--initials">${escapeHtml(item.profile?.initials || '')}</span>`;
 
-            const companyLine = name.company ? `<p class="client-detail__company">${escapeHtml(name.company)}</p>` : '';
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+            const companyLegalName = typeof company.legal_name === 'string' ? company.legal_name.trim() : '';
+            const salesChannelLabel = typeof salesChannel.label === 'string' ? salesChannel.label.trim() : '';
+            const companyLine = companyName !== '' ? `<p class="client-detail__company">${escapeHtml(companyName)}</p>` : '';
+            const loginEmail = typeof contact.login_email === 'string' && contact.login_email ? contact.login_email.trim() : '';
+            const loginEmailLine = loginEmail !== ''
+                ? `<p class="client-detail__meta-line client-detail__login-email">${escapeHtml(loginEmail)}</p>`
+                : '';
             const addressLines = joinNonEmpty([
                 address.street || '',
                 joinNonEmpty([address.zip || '', address.city || ''], ' '),
@@ -433,6 +961,37 @@
 
             const sepaVariant = sepa.variant ? ` client-detail__status--${escapeHtml(sepa.variant)}` : '';
             const sepaMessage = sepa.label || strings.sepaEmpty || 'Sin información del mandato';
+            const registeredLabel = strings.registered || 'Registro';
+            const safeSalesChannel = salesChannelLabel !== '' ? escapeHtml(salesChannelLabel) : '—';
+            const salesTagClass = salesChannelLabel !== '' ? '' : ' client-detail__stat-tag--muted';
+            const paymentLabel = typeof payment.label === 'string' ? payment.label.trim() : '';
+            const paymentDisplay = paymentLabel !== '' ? escapeHtml(paymentLabel) : '—';
+            const paymentTagClass = paymentLabel !== '' ? '' : ' client-detail__stat-tag--muted';
+            const registrationBadge = `
+                <span class="client-detail__registration">
+                    ${escapeHtml(registeredLabel)}
+                    <time datetime="${escapeAttribute(registered.iso || '')}">${registered.display ? escapeHtml(registered.display) : '—'}</time>
+                </span>
+            `;
+            const contactActions = renderContactActions(contact);
+            const workshopSection = renderWorkshop(item.workshop);
+            const preferencesSection = renderPreferences(item.documents || {}, item.services || {});
+            const sepaDetails = renderSepaDetails(sepa);
+            const adminLink = item.links && typeof item.links.admin === 'string' ? item.links.admin.trim() : '';
+            const adminLinkHtml = adminLink !== ''
+                ? `<div class="client-detail__admin"><a class="client-detail__admin-link" href="${escapeAttribute(adminLink)}" target="_blank" rel="noopener">${escapeHtml(strings.adminLink || 'Ver ficha del cliente en el panel de gestión')}</a></div>`
+                : '';
+            const hasCommercials = Array.isArray(item.commercials) && item.commercials.length > 0;
+            const assignButton = canAssignCommercials
+                ? `
+                    <div class="client-detail__actions">
+                        <button type="button" class="client-detail__action" data-assign-commercial>
+                            ${iconPersonAdd}
+                            <span>${escapeHtml((hasCommercials ? strings.manageCommercials : strings.assignCommercial) || (hasCommercials ? 'Gestionar comerciales' : 'Asignar comercial'))}</span>
+                        </button>
+                    </div>
+                `
+                : '';
 
             return `
                 <div class="client-detail">
@@ -441,50 +1000,42 @@
                         <div class="client-detail__identity">
                             <h3 class="client-detail__title">${escapeHtml(displayName || strings.detailTitle || 'Detalles del cliente')}</h3>
                             ${companyLine}
-                            <p class="client-detail__meta-line">${escapeHtml(strings.registered || 'Registrado desde')}: <time datetime="${escapeAttribute(registered.iso || '')}">${escapeHtml(registered.display || '—')}</time></p>
+                            ${loginEmailLine}
                         </div>
+                        ${registrationBadge}
                     </header>
                     <div class="client-detail__stats">
-                        <div class="client-detail__stat">
+                        <div class="client-detail__stat client-detail__stat--guarantees">
                             <span class="client-detail__stat-label">${escapeHtml(strings.guarantees || 'Nº Garantías')}</span>
-                            <span class="client-detail__stat-value">${formatCount(guarantees.count)}</span>
+                            <span class="client-detail__stat-emphasis">${formatCount(guarantees.count)}</span>
                         </div>
                         <div class="client-detail__stat">
                             <span class="client-detail__stat-label">${escapeHtml(strings.salesChannel || 'Canal de venta')}</span>
-                            <span class="client-detail__stat-value">${escapeHtml(salesChannel.label || '—')}</span>
+                            <span class="client-detail__stat-tag${salesTagClass}">${safeSalesChannel}</span>
                         </div>
                         <div class="client-detail__stat">
                             <span class="client-detail__stat-label">${escapeHtml(strings.paymentMethod || 'Método de pago')}</span>
-                            <span class="client-detail__stat-value">${escapeHtml(payment.label || '—')}</span>
+                            <span class="client-detail__stat-tag${paymentTagClass}">${paymentDisplay}</span>
                         </div>
                     </div>
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.contact || 'Contacto')}</h4>
-                        <dl class="client-detail__list">
-                            <div class="client-detail__item">
-                                <dt>${escapeHtml(strings.contactEmail || 'Email de contacto')}</dt>
-                                <dd>${formatLink('mailto', contact.email)}</dd>
-                            </div>
-                            <div class="client-detail__item">
-                                <dt>${escapeHtml(strings.notificationEmail || 'Email de notificaciones')}</dt>
-                                <dd>${formatLink('mailto', contact.notification_email)}</dd>
-                            </div>
-                            <div class="client-detail__item">
-                                <dt>${escapeHtml(strings.contactPhone || 'Teléfono de contacto')}</dt>
-                                <dd>${formatLink('tel', contact.phone)}</dd>
-                            </div>
-                        </dl>
+                        ${contactActions}
                     </section>
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.company || 'Empresa')}</h4>
-                        <dl class="client-detail__list">
+                        <dl class="client-detail__list client-detail__list--columns">
                             <div class="client-detail__item">
                                 <dt>${escapeHtml(strings.company || 'Empresa')}</dt>
-                                <dd>${escapeHtml(company.name || '—')}</dd>
+                                <dd>${formatDefinitionValue(company.name || '')}</dd>
+                            </div>
+                            <div class="client-detail__item">
+                                <dt>${escapeHtml(strings.legalName || 'Razón social')}</dt>
+                                <dd>${formatDefinitionValue(companyLegalName)}</dd>
                             </div>
                             <div class="client-detail__item">
                                 <dt>${escapeHtml(strings.taxId || 'CIF/NIF')}</dt>
-                                <dd>${escapeHtml(company.tax_id || '—')}</dd>
+                                <dd>${formatDefinitionValue(company.tax_id || '')}</dd>
                             </div>
                             <div class="client-detail__item">
                                 <dt>${escapeHtml(strings.address || 'Dirección')}</dt>
@@ -493,43 +1044,733 @@
                         </dl>
                     </section>
                     <section class="client-detail__section">
+                        <h4 class="client-detail__section-title">${escapeHtml(strings.commercials || 'Comercial')}</h4>
+                        ${renderCommercialsList(item.commercials)}
+                        ${assignButton}
+                    </section>
+                    ${workshopSection}
+                    ${preferencesSection}
+                    <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.offers || 'Ofertas activas')}</h4>
                         ${renderOffersList(item.offers)}
                     </section>
                     <section class="client-detail__section">
-                        <h4 class="client-detail__section-title">${escapeHtml(strings.commercials || 'Comercial')}</h4>
-                        ${renderCommercialsList(item.commercials)}
-                    </section>
-                    <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.sepaStatus || 'Estado SEPA')}</h4>
                         <p class="client-detail__status${sepaVariant}">${escapeHtml(sepaMessage)}</p>
+                        ${sepaDetails}
                     </section>
+                    ${adminLinkHtml}
                 </div>
             `;
+        }
+
+        function createAssignDialog() {
+            const overlay = document.createElement('div');
+            overlay.className = 'client-dialog';
+            overlay.hidden = true;
+            overlay.setAttribute('aria-hidden', 'true');
+            overlay.innerHTML = `
+                <div class="client-dialog__backdrop" data-dialog-close></div>
+                <div class="client-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="client-dialog-title" tabindex="-1">
+                    <header class="client-dialog__header">
+                        <h2 id="client-dialog-title" class="client-dialog__title">${escapeHtml(strings.assignCommercialTitle || 'Asignar comercial')}</h2>
+                        <button type="button" class="client-dialog__close" data-dialog-close aria-label="${escapeHtml(strings.close || 'Cerrar')}">${iconClose}</button>
+                    </header>
+                    <div class="client-dialog__body">
+                        <p class="client-dialog__description">${escapeHtml(strings.assignCommercialDescription || 'Selecciona el comercial que gestionará a este cliente.')}</p>
+                        <div class="client-dialog__search">
+                            <span class="client-dialog__search-icon" aria-hidden="true">${iconSearch}</span>
+                            <input type="search" class="client-dialog__search-input" placeholder="${escapeHtml(strings.assignCommercialSearchPlaceholder || 'Buscar comercial por nombre o email…')}" aria-label="${escapeHtml(strings.assignCommercialSearchPlaceholder || 'Buscar comercial')}">
+                        </div>
+                        <div class="client-dialog__results" role="listbox" aria-live="polite"></div>
+                        <section class="client-dialog__assigned" aria-live="polite">
+                            <h3 class="client-dialog__assigned-title"></h3>
+                            <div class="client-dialog__assigned-list"></div>
+                        </section>
+                    </div>
+                    <footer class="client-dialog__footer">
+                        <span class="client-dialog__status" aria-live="polite"></span>
+                        <button type="button" class="client-dialog__save" disabled>
+                            <span class="client-dialog__save-label">${escapeHtml(strings.assignCommercialSave || 'Guardar cambios')}</span>
+                            <span class="client-dialog__spinner" aria-hidden="true"></span>
+                        </button>
+                    </footer>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            const panel = overlay.querySelector('.client-dialog__panel');
+            const titleEl = overlay.querySelector('.client-dialog__title');
+            const descriptionEl = overlay.querySelector('.client-dialog__description');
+            const searchInput = overlay.querySelector('.client-dialog__search-input');
+            const resultsContainer = overlay.querySelector('.client-dialog__results');
+            const saveButton = overlay.querySelector('.client-dialog__save');
+            const saveLabel = overlay.querySelector('.client-dialog__save-label');
+            const statusEl = overlay.querySelector('.client-dialog__status');
+            const closeControls = overlay.querySelectorAll('[data-dialog-close]');
+            const assignedSection = overlay.querySelector('.client-dialog__assigned');
+            const assignedTitle = overlay.querySelector('.client-dialog__assigned-title');
+            const assignedList = overlay.querySelector('.client-dialog__assigned-list');
+
+            let previousActiveElement = null;
+            let currentContext = null;
+            let selectedIds = new Set();
+            let originalIds = new Set();
+            let results = [];
+            let isLoading = false;
+            let isSaving = false;
+            let searchTimer = null;
+            let lastQuery = '';
+            let controller = null;
+            let selectedRecords = new Map();
+            let companyLabel = '';
+
+            function setStatus(message, variant = '') {
+                if (!statusEl) {
+                    return;
+                }
+                statusEl.textContent = message || '';
+                if (variant) {
+                    statusEl.dataset.variant = variant;
+                } else if (statusEl.dataset.variant) {
+                    delete statusEl.dataset.variant;
+                }
+            }
+
+            function hasChanges() {
+                if (selectedIds.size !== originalIds.size) {
+                    return true;
+                }
+                for (const value of selectedIds) {
+                    if (!originalIds.has(value)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function updateSaveButton() {
+                if (!saveButton || !saveLabel) {
+                    return;
+                }
+                if (isSaving) {
+                    saveLabel.textContent = strings.assignCommercialSaving || 'Guardando…';
+                    saveButton.classList.add('is-loading');
+                    saveButton.disabled = true;
+                    return;
+                }
+                saveLabel.textContent = strings.assignCommercialSave || 'Guardar cambios';
+                saveButton.classList.remove('is-loading');
+                saveButton.disabled = !hasChanges();
+            }
+
+            function getResultLabels() {
+                return {
+                    select: (strings.assignCommercialSelectAction || 'Seleccionar').trim(),
+                    selected: (strings.assignCommercialSelectedAction || 'Seleccionado').trim(),
+                    remove: (strings.assignCommercialRemoveAction || 'Quitar').trim(),
+                };
+            }
+
+            function extractCommercialSummary(commercial) {
+                if (!commercial || typeof commercial !== 'object') {
+                    return null;
+                }
+
+                const id = Number(commercial.id) || 0;
+                if (!id) {
+                    return null;
+                }
+
+                const name = getCommercialDisplay(commercial) || '';
+                const email = typeof commercial.email === 'string' && commercial.email ? commercial.email.trim() : '';
+                const phone = typeof commercial.phone === 'string' && commercial.phone ? commercial.phone.trim() : '';
+                const avatar = typeof commercial.avatar === 'string' && commercial.avatar ? commercial.avatar.trim() : '';
+                const initialsSource = typeof commercial.initials === 'string' && commercial.initials.trim() !== ''
+                    ? commercial.initials.trim()
+                    : (name || email)
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .map((part) => part[0])
+                        .join('');
+
+                const initials = initialsSource.slice(0, 2).toUpperCase();
+
+                return {
+                    id,
+                    name,
+                    email,
+                    phone,
+                    avatar,
+                    initials,
+                };
+            }
+
+            function resolveCompanyLabel(context) {
+                if (!context || typeof context !== 'object') {
+                    return (strings.client || 'este cliente');
+                }
+
+                const company = typeof context.company === 'string' ? context.company.trim() : '';
+                if (company !== '') {
+                    return company;
+                }
+
+                const name = typeof context.name === 'string' ? context.name.trim() : '';
+                if (name !== '') {
+                    return name;
+                }
+
+                return (strings.client || 'este cliente');
+            }
+
+            function syncResultStates() {
+                if (!resultsContainer) {
+                    return;
+                }
+
+                const labels = getResultLabels();
+
+                resultsContainer.querySelectorAll('.client-dialog__result').forEach((element) => {
+                    const id = Number(element.dataset.id) || 0;
+                    if (!id) {
+                        return;
+                    }
+
+                    const isSelected = selectedIds.has(id);
+                    const chip = element.querySelector('.client-dialog__result-chip');
+                    element.classList.toggle('is-selected', isSelected);
+                    element.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+
+                    if (chip && !element.dataset.hovering) {
+                        chip.textContent = isSelected ? labels.selected : labels.select;
+                    }
+                });
+            }
+
+            function renderAssignedList() {
+                if (!assignedList || !assignedSection) {
+                    return;
+                }
+
+                const resolvedCompany = companyLabel || (strings.client || 'este cliente');
+
+                if (assignedTitle) {
+                    const template = (strings.assignCommercialAssignedTitle || 'Comerciales asignados a %s').trim();
+                    assignedTitle.textContent = template.includes('%s')
+                        ? template.replace('%s', resolvedCompany)
+                        : `${template} ${resolvedCompany}`.trim();
+                }
+
+                const entries = Array.from(selectedIds)
+                    .map((id) => selectedRecords.get(id))
+                    .filter((entry) => entry && entry.id);
+
+                if (entries.length === 0) {
+                    assignedList.innerHTML = `<p class="client-dialog__assigned-empty">${escapeHtml(strings.assignCommercialAssignedEmpty || 'No hay comerciales asignados actualmente.')}</p>`;
+                    assignedSection.classList.add('client-dialog__assigned--empty');
+                    return;
+                }
+
+                assignedSection.classList.remove('client-dialog__assigned--empty');
+                const removeTemplate = (strings.assignCommercialRemove || 'Quitar de %s').trim();
+                const removeLabel = removeTemplate.includes('%s')
+                    ? removeTemplate.replace('%s', resolvedCompany)
+                    : `${removeTemplate} ${resolvedCompany}`.trim();
+
+                const itemsHtml = entries.map((entry) => {
+                    const avatarHtml = entry.avatar
+                        ? `<img src="${escapeAttribute(entry.avatar)}" alt="${escapeAttribute(entry.name || entry.email || strings.commercials || 'Comercial')}" class="client-dialog__assigned-avatar">`
+                        : `<span class="client-dialog__assigned-avatar client-dialog__assigned-avatar--initials">${escapeHtml(entry.initials || (entry.name || entry.email || 'C').slice(0, 2).toUpperCase())}</span>`;
+                    const emailLine = entry.email
+                        ? `<span class="client-dialog__assigned-email">${escapeHtml(entry.email)}</span>`
+                        : '';
+
+                    return `
+                        <article class="client-dialog__assigned-card">
+                            <div class="client-dialog__assigned-media">${avatarHtml}</div>
+                            <div class="client-dialog__assigned-info">
+                                <span class="client-dialog__assigned-name">${escapeHtml(entry.name || entry.email || strings.commercials || 'Comercial')}</span>
+                                ${emailLine}
+                            </div>
+                            <button type="button" class="client-dialog__assigned-remove" data-remove-id="${entry.id}">
+                                ${escapeHtml(removeLabel)}
+                            </button>
+                        </article>
+                    `;
+                }).join('');
+
+                assignedList.innerHTML = itemsHtml;
+                assignedList.querySelectorAll('[data-remove-id]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const id = Number(button.dataset.removeId) || 0;
+                        if (!id) {
+                            return;
+                        }
+                        if (selectedIds.has(id)) {
+                            selectedIds.delete(id);
+                            selectedRecords.delete(id);
+                            updateSaveButton();
+                            syncResultStates();
+                            renderAssignedList();
+                        }
+                    });
+                });
+            }
+
+            function renderResults(messageOverride = '') {
+                if (!resultsContainer) {
+                    return;
+                }
+                if (messageOverride) {
+                    resultsContainer.innerHTML = `<div class="client-dialog__results-message">${escapeHtml(messageOverride)}</div>`;
+                    return;
+                }
+                if (isLoading) {
+                    resultsContainer.innerHTML = `<div class="client-dialog__results-message client-dialog__results-message--loading">${escapeHtml(strings.assignCommercialLoading || 'Buscando comerciales…')}</div>`;
+                    return;
+                }
+                if (!Array.isArray(results) || results.length === 0) {
+                    resultsContainer.innerHTML = `<div class="client-dialog__results-message">${escapeHtml(strings.assignCommercialEmpty || 'No se han encontrado comerciales con ese criterio.')}</div>`;
+                    return;
+                }
+
+                const labels = getResultLabels();
+
+                const itemsHtml = results.map((commercial) => {
+                    const id = Number(commercial.id) || 0;
+                    const name = getCommercialDisplay(commercial) || '';
+                    const email = typeof commercial.email === 'string' && commercial.email ? commercial.email.trim() : '';
+                    const avatar = typeof commercial.avatar === 'string' && commercial.avatar ? commercial.avatar.trim() : '';
+                    const initials = (name || email || '').split(/\s+/).filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+                    const isSelected = selectedIds.has(id);
+                    const avatarHtml = avatar !== ''
+                        ? `<img src="${escapeAttribute(avatar)}" alt="${escapeAttribute(name || email || strings.commercials || 'Comercial')}" class="client-dialog__result-avatar">`
+                        : `<span class="client-dialog__result-avatar client-dialog__result-avatar--initials">${escapeHtml(initials || 'C')}</span>`;
+                    const emailHtml = email !== '' ? `<span class="client-dialog__result-email">${escapeHtml(email)}</span>` : '';
+                    const chipLabel = isSelected ? labels.selected : labels.select;
+
+                    return `
+                        <button type="button" class="client-dialog__result${isSelected ? ' is-selected' : ''}" role="option" data-id="${id}" aria-selected="${isSelected ? 'true' : 'false'}">
+                            <span class="client-dialog__result-media">${avatarHtml}</span>
+                            <span class="client-dialog__result-body">
+                                <span class="client-dialog__result-name">${escapeHtml(name || email || strings.commercials || 'Comercial')}</span>
+                                ${emailHtml}
+                            </span>
+                            <span class="client-dialog__result-chip" aria-hidden="true">${escapeHtml(chipLabel)}</span>
+                        </button>
+                    `;
+                }).join('');
+
+                resultsContainer.innerHTML = itemsHtml;
+
+                resultsContainer.querySelectorAll('.client-dialog__result').forEach((element) => {
+                    const id = Number(element.dataset.id) || 0;
+                    if (!id) {
+                        return;
+                    }
+
+                    const chip = element.querySelector('.client-dialog__result-chip');
+                    const commercial = results.find((entry) => Number(entry.id) === id) || null;
+
+                    element.addEventListener('click', () => {
+                        if (selectedIds.has(id)) {
+                            selectedIds.delete(id);
+                            selectedRecords.delete(id);
+                            element.classList.remove('is-selected');
+                            element.setAttribute('aria-selected', 'false');
+                            if (chip) {
+                                element.dataset.hovering = '';
+                                chip.textContent = labels.select;
+                            }
+                        } else {
+                            selectedIds.add(id);
+                            const summary = extractCommercialSummary(commercial) || { id };
+                            if (summary && summary.id) {
+                                selectedRecords.set(summary.id, summary);
+                            }
+                            element.classList.add('is-selected');
+                            element.setAttribute('aria-selected', 'true');
+                            if (chip) {
+                                chip.textContent = labels.selected;
+                            }
+                        }
+
+                        updateSaveButton();
+                        renderAssignedList();
+                        syncResultStates();
+                    });
+
+                    element.addEventListener('mouseenter', () => {
+                        element.dataset.hovering = 'true';
+                        if (selectedIds.has(id) && chip) {
+                            chip.textContent = labels.remove;
+                        }
+                    });
+
+                    element.addEventListener('mouseleave', () => {
+                        element.dataset.hovering = '';
+                        if (chip) {
+                            chip.textContent = selectedIds.has(id) ? labels.selected : labels.select;
+                        }
+                    });
+                });
+
+                syncResultStates();
+            }
+
+            async function performSearch(query) {
+                const trimmed = query.trim();
+                const normalized = trimmed.toLowerCase();
+                if (normalized === lastQuery && results.length) {
+                    return;
+                }
+                lastQuery = normalized;
+
+                if (controller) {
+                    controller.abort();
+                }
+
+                controller = new AbortController();
+                isLoading = true;
+                renderResults();
+
+                try {
+                    const params = new URLSearchParams();
+                    if (trimmed !== '') {
+                        params.set('search', trimmed);
+                    }
+
+                    const response = await fetch(`${restRoot}go/v1/clientes/comerciales?${params.toString()}`, {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        headers: restNonce ? { 'X-WP-Nonce': restNonce } : {},
+                        signal: controller.signal,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Request failed: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    results = Array.isArray(data.items) ? data.items : [];
+                    results.forEach((entry) => {
+                        if (entry && typeof entry.id !== 'undefined') {
+                            entry.id = Number(entry.id) || 0;
+                        }
+                        const summary = extractCommercialSummary(entry);
+                        if (summary && selectedIds.has(summary.id)) {
+                            selectedRecords.set(summary.id, summary);
+                        }
+                    });
+                    isLoading = false;
+                    renderResults();
+                    controller = null;
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    console.error('Error fetching commercials', error);
+                    isLoading = false;
+                    results = [];
+                    renderResults(strings.assignCommercialError || 'No se ha podido cargar la lista de comerciales.');
+                    controller = null;
+                }
+            }
+
+            function handleSearchInput() {
+                if (!searchInput) {
+                    return;
+                }
+                if (searchTimer) {
+                    window.clearTimeout(searchTimer);
+                }
+                const value = searchInput.value || '';
+                searchTimer = window.setTimeout(() => {
+                    performSearch(value);
+                }, 250);
+            }
+
+            async function saveSelection() {
+                if (!currentContext || !currentContext.id || isSaving || !hasChanges()) {
+                    return;
+                }
+
+                const ids = Array.from(selectedIds).filter((value) => Number.isFinite(value) && value > 0);
+                isSaving = true;
+                setStatus(strings.assignCommercialSaving || 'Guardando…');
+                updateSaveButton();
+
+                try {
+                    const response = await fetch(`${restRoot}go/v1/clientes/${currentContext.id}/commercials`, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(restNonce ? { 'X-WP-Nonce': restNonce } : {}),
+                        },
+                        body: JSON.stringify({ commercial_ids: ids }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Request failed: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const updatedCommercials = Array.isArray(data.commercials) ? data.commercials : [];
+                    originalIds = new Set(updatedCommercials.map((entry) => Number(entry.id) || 0));
+                    selectedIds = new Set(originalIds);
+                    selectedRecords = new Map();
+                    updatedCommercials.forEach((entry) => {
+                        const summary = extractCommercialSummary(entry);
+                        if (summary) {
+                            selectedRecords.set(summary.id, summary);
+                        }
+                    });
+                    setStatus(strings.assignCommercialSaved || 'Cambios guardados', 'success');
+                    isSaving = false;
+                    updateSaveButton();
+                    renderAssignedList();
+                    syncResultStates();
+                    if (typeof currentContext.onComplete === 'function') {
+                        currentContext.onComplete(updatedCommercials);
+                    }
+                } catch (error) {
+                    console.error('Error saving commercials', error);
+                    setStatus(strings.assignCommercialError || 'No se ha podido guardar la asignación.', 'error');
+                    isSaving = false;
+                    updateSaveButton();
+                }
+            }
+
+            function handleKeydown(event) {
+                if (event.key === 'Escape') {
+                    close();
+                }
+            }
+
+            function close() {
+                overlay.classList.remove('is-open');
+                overlay.setAttribute('aria-hidden', 'true');
+                overlay.hidden = true;
+                document.removeEventListener('keydown', handleKeydown);
+                if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+                    previousActiveElement.focus();
+                }
+                companyLabel = '';
+                selectedRecords = new Map();
+            }
+
+            closeControls.forEach((element) => {
+                element.addEventListener('click', close);
+            });
+
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay) {
+                    close();
+                }
+            });
+
+            if (searchInput) {
+                searchInput.addEventListener('input', handleSearchInput);
+            }
+
+            if (saveButton) {
+                saveButton.addEventListener('click', saveSelection);
+            }
+
+            return {
+                open(context = {}) {
+                    currentContext = context;
+                    companyLabel = resolveCompanyLabel(context);
+                    const placeholder = companyLabel;
+                    const template = strings.assignCommercialDescription || 'Selecciona el comercial que gestionará a %s.';
+                    const descriptionText = template.includes('%s')
+                        ? template.replace('%s', placeholder)
+                        : `${template} ${placeholder}`.trim();
+
+                    titleEl.textContent = strings.assignCommercialTitle || 'Asignar comercial';
+                    descriptionEl.textContent = descriptionText;
+
+                    const assignedIds = Array.isArray(context.assignedIds)
+                        ? context.assignedIds.map((value) => Number(value) || 0)
+                        : Array.isArray(context.commercials)
+                            ? context.commercials.map((entry) => Number(entry.id) || 0)
+                            : [];
+
+                    originalIds = new Set(assignedIds);
+                    selectedIds = new Set(assignedIds);
+                    selectedRecords = new Map();
+                    (Array.isArray(context.commercials) ? context.commercials : []).forEach((entry) => {
+                        const summary = extractCommercialSummary(entry);
+                        if (summary) {
+                            selectedRecords.set(summary.id, summary);
+                        }
+                    });
+                    results = [];
+                    isLoading = true;
+                    isSaving = false;
+                    lastQuery = '';
+                    setStatus('');
+                    renderResults();
+                    updateSaveButton();
+                    renderAssignedList();
+
+                    if (searchInput) {
+                        searchInput.value = '';
+                    }
+
+                    if (controller) {
+                        controller.abort();
+                        controller = null;
+                    }
+
+                    previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                    overlay.hidden = false;
+                    overlay.setAttribute('aria-hidden', 'false');
+                    overlay.classList.add('is-open');
+                    document.addEventListener('keydown', handleKeydown);
+
+                    window.requestAnimationFrame(() => {
+                        if (panel && typeof panel.focus === 'function') {
+                            panel.focus();
+                        }
+                        performSearch('');
+                    });
+                },
+                close,
+            };
+        }
+
+        function initDetailInteractions(container, item) {
+            if (!container) {
+                return;
+            }
+
+            const assignButton = container.querySelector('[data-assign-commercial]');
+            if (assignButton && assignDialog && typeof assignDialog.open === 'function') {
+                assignButton.addEventListener('click', () => {
+                    if (!item) {
+                        return;
+                    }
+
+                    const displayName = getDisplayName(item.name || {}) || '';
+                    const companyName = typeof item.name?.company === 'string' ? item.name.company.trim() : '';
+                    const assignedIds = Array.isArray(item.commercials)
+                        ? item.commercials.map((commercial) => Number(commercial.id) || 0)
+                        : [];
+
+                    assignDialog.open({
+                        id: item.id,
+                        name: displayName,
+                        company: companyName,
+                        commercials: Array.isArray(item.commercials) ? item.commercials : [],
+                        assignedIds,
+                        onComplete(updatedCommercials) {
+                            if (!Array.isArray(updatedCommercials)) {
+                                return;
+                            }
+
+                            item.commercials = updatedCommercials;
+                            cache.set(String(item.id), item);
+                            refreshActiveDetail(item);
+                            updateRowCommercialSummary(item);
+                        },
+                    });
+                });
+            }
         }
 
         let activePanel = panel1;
         let inactivePanel = panel2;
 
-        function swapPanels(content, direction = 'forward') {
+        function refreshActiveDetail(item) {
+            if (!activePanel) {
+                return;
+            }
+
+            activePanel.innerHTML = renderDetail(item);
+            initDetailInteractions(activePanel, item);
+        }
+
+        function updateRowCommercialSummary(item) {
+            if (!item || typeof item.id === 'undefined') {
+                return;
+            }
+
+            const row = tbody.querySelector(`tr[data-id="${item.id}"]`);
+            if (!row) {
+                return;
+            }
+
+            const cell = row.querySelector('.clients-table__meta--commercial');
+            if (!cell) {
+                return;
+            }
+
+            const summary = formatCommercialSummary(item.commercials || []);
+            cell.textContent = summary !== '' ? summary : '—';
+        }
+
+        function swapPanels(content, direction = 'forward', itemContext = null) {
             const nextPanel = activePanel === panel1 ? panel2 : panel1;
             const previousPanel = activePanel;
 
             nextPanel.innerHTML = content;
             nextPanel.dataset.loadedId = content ? 'loaded' : '';
+            initDetailInteractions(nextPanel, itemContext);
 
-            nextPanel.classList.add('active', direction === 'backward' ? 'slide-in-left' : 'slide-in-right');
-            previousPanel.classList.add(direction === 'backward' ? 'slide-out-right' : 'slide-out-left');
+            const enterClass = direction === 'backward' ? 'slide-in-left' : 'slide-in-right';
+            const leaveClass = direction === 'backward' ? 'slide-out-right' : 'slide-out-left';
 
-            nextPanel.addEventListener('animationend', () => {
+            nextPanel.classList.add('active', enterClass);
+            previousPanel.classList.add(leaveClass);
+
+            const handleNextEnd = (event) => {
+                if (event.target !== nextPanel) {
+                    return;
+                }
+
                 nextPanel.classList.remove('slide-in-left', 'slide-in-right');
-            }, { once: true });
+                if (nextPanel.__goAnimationTimeout) {
+                    window.clearTimeout(nextPanel.__goAnimationTimeout);
+                    nextPanel.__goAnimationTimeout = null;
+                }
+                nextPanel.removeEventListener('animationend', handleNextEnd);
+            };
 
-            previousPanel.addEventListener('animationend', () => {
+            const handlePreviousEnd = (event) => {
+                if (event.target !== previousPanel) {
+                    return;
+                }
+
                 previousPanel.classList.remove('slide-out-left', 'slide-out-right');
                 previousPanel.classList.remove('active');
                 previousPanel.innerHTML = '';
-            }, { once: true });
+                if (previousPanel.__goAnimationTimeout) {
+                    window.clearTimeout(previousPanel.__goAnimationTimeout);
+                    previousPanel.__goAnimationTimeout = null;
+                }
+                previousPanel.removeEventListener('animationend', handlePreviousEnd);
+            };
+
+            nextPanel.addEventListener('animationend', handleNextEnd);
+            previousPanel.addEventListener('animationend', handlePreviousEnd);
+
+            if (nextPanel.__goAnimationTimeout) {
+                window.clearTimeout(nextPanel.__goAnimationTimeout);
+            }
+            if (previousPanel.__goAnimationTimeout) {
+                window.clearTimeout(previousPanel.__goAnimationTimeout);
+            }
+
+            nextPanel.__goAnimationTimeout = window.setTimeout(() => {
+                handleNextEnd({ target: nextPanel });
+            }, 400);
+
+            previousPanel.__goAnimationTimeout = window.setTimeout(() => {
+                handlePreviousEnd({ target: previousPanel });
+            }, 400);
 
             activePanel = nextPanel;
             inactivePanel = previousPanel;
@@ -542,17 +1783,21 @@
             }
 
             const content = renderDetail(item);
-            swapPanels(content, direction);
+            swapPanels(content, direction, item);
         }
 
-        function showEmptyDetail(direction = 'forward') {
+        function showEmptyDetail(direction = 'forward', options = {}) {
+            const preserveUrl = Boolean(options.preserveUrl);
+            if (!preserveUrl) {
+                updateHistory('');
+            }
             const content = `
                 <div class="guarantee-detail__empty">
                     <h3 class="guarantee-detail__title">${escapeHtml(strings.detailTitle || 'Detalles del cliente')}</h3>
-                    <p>${escapeHtml(strings.selectPrompt || 'Selecciona un cliente para ver la información.')}</p>
+                    <p>${escapeHtml(strings.selectPrompt || 'Selecciona un cliente para consultar su información, asignar comerciales, gestionar ofertas y más.')}</p>
                 </div>
             `;
-            swapPanels(content, direction);
+            swapPanels(content, direction, null);
         }
 
         function clearSelection() {
@@ -570,12 +1815,13 @@
 
             state.isLoading = true;
             setSpinner(true);
+            let queuedPage = null;
 
             if (!append) {
                 tbody.innerHTML = '';
                 cache.clear();
                 clearSelection();
-                showEmptyDetail();
+                showEmptyDetail('forward', { preserveUrl: Boolean(initialSlug) });
             }
 
             const params = new URLSearchParams();
@@ -583,6 +1829,9 @@
             params.set('per_page', String(perPage));
             if (state.search) {
                 params.set('search', state.search);
+            }
+            if (state.channel) {
+                params.set('channel', state.channel);
             }
 
             try {
@@ -599,6 +1848,10 @@
                 const data = await response.json();
                 const items = Array.isArray(data.items) ? data.items : [];
 
+                if (data && data.filters && data.filters.channels) {
+                    updateChannelFilterOptions(data.filters.channels);
+                }
+
                 state.page = Number.isFinite(data.page) ? data.page : page;
                 state.totalPages = Number.isFinite(data.total_pages) ? Math.max(1, data.total_pages) : state.totalPages;
                 tbody.dataset.currentPage = String(state.page);
@@ -607,7 +1860,7 @@
                 if (!append && items.length === 0) {
                     const emptyRow = document.createElement('tr');
                     emptyRow.className = 'guarantees-table__row guarantees-table__row--empty';
-                    emptyRow.innerHTML = `<td colspan="7">${escapeHtml(strings.noResults || 'No se han encontrado clientes con los filtros actuales.')}</td>`;
+                    emptyRow.innerHTML = `<td colspan="${COLUMN_COUNT}">${escapeHtml(strings.noResults || 'No se han encontrado clientes con los filtros actuales.')}</td>`;
                     tbody.appendChild(emptyRow);
                     if (typeof table.__goUpdateColumnOverlay === 'function') {
                         table.__goUpdateColumnOverlay();
@@ -621,6 +1874,25 @@
                     tbody.appendChild(row);
                 });
 
+                if (initialSlug) {
+                    const matchedId = slugIndex.get(initialSlug);
+                    if (matchedId) {
+                        const targetRow = tbody.querySelector(`tr[data-id="${matchedId}"]`);
+                        const targetItem = cache.get(String(matchedId));
+                        if (targetRow && targetItem) {
+                            selectRow(targetRow, targetItem, { preserveUrl: true });
+                            initialSlug = '';
+                            window.requestAnimationFrame(() => {
+                                targetRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                            });
+                        }
+                    } else if (state.page < state.totalPages) {
+                        queuedPage = state.page + 1;
+                    } else {
+                        initialSlug = '';
+                    }
+                }
+
                 if (typeof table.__goUpdateColumnOverlay === 'function') {
                     table.__goUpdateColumnOverlay();
                 }
@@ -633,7 +1905,7 @@
                 if (!append) {
                     const errorRow = document.createElement('tr');
                     errorRow.className = 'guarantees-table__row guarantees-table__row--empty';
-                    errorRow.innerHTML = `<td colspan="7">${escapeHtml(strings.error || 'No se ha podido cargar la información de clientes.')}</td>`;
+                    errorRow.innerHTML = `<td colspan="${COLUMN_COUNT}">${escapeHtml(strings.error || 'No se ha podido cargar la información de clientes.')}</td>`;
                     tbody.appendChild(errorRow);
                     if (typeof table.__goUpdateColumnOverlay === 'function') {
                         table.__goUpdateColumnOverlay();
@@ -642,6 +1914,9 @@
             } finally {
                 state.isLoading = false;
                 setSpinner(false);
+                if (queuedPage && queuedPage <= state.totalPages) {
+                    loadPage(queuedPage, true);
+                }
             }
         }
 
@@ -681,6 +1956,13 @@
             });
         }
 
+        if (channelSelect) {
+            channelSelect.addEventListener('change', () => {
+                state.channel = channelSelect.value;
+                loadPage(1, false);
+            });
+        }
+
         if (sentinel && listContainer) {
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach((entry) => {
@@ -700,7 +1982,7 @@
         updateCloseIcon();
         setSpinner(false);
         initResizableColumns(table);
-        showEmptyDetail();
+        showEmptyDetail('forward', { preserveUrl: Boolean(initialSlug) });
         loadPage(1, false);
     });
 })();
