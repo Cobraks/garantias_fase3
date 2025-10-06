@@ -148,10 +148,6 @@ console.log("GO360 script cargado");
 
                 const logo = document.querySelector(".top-bar__logo--svg");
                 if (logo) {
-                        const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-                        const shouldReduceMotion = () => reduceMotionQuery.matches;
-
                         const runLogoEnter = () => {
                                 logo.classList.add("top-bar__logo--animate");
                                 logo.classList.remove("top-bar__logo--exit");
@@ -192,23 +188,14 @@ console.log("GO360 script cargado");
                                 }
                         });
 
-                        const runEnterSafely = () => {
-                                if (shouldReduceMotion()) {
-                                        logo.classList.remove("top-bar__logo--exit", "top-bar__logo--enter");
-                                        return;
-                                }
+                        const runEnter = () => {
                                 runLogoEnter();
                         };
 
-                        runEnterSafely();
-                        window.addEventListener("pageshow", runEnterSafely);
+                        runEnter();
+                        window.addEventListener("pageshow", runEnter);
 
                         const scheduleNavigation = (href) => {
-                                if (shouldReduceMotion()) {
-                                        window.location.href = href;
-                                        return;
-                                }
-
                                 const EXIT_DURATION = 240;
                                 setTimeout(() => {
                                         window.location.href = href;
@@ -270,9 +257,7 @@ console.log("GO360 script cargado");
 
                                 event.preventDefault();
 
-                                if (!shouldReduceMotion()) {
-                                        runLogoExit();
-                                }
+                                runLogoExit();
 
                                 if (closeProfileMenu && profileMenu && profileMenu.classList.contains("visible")) {
                                         closeProfileMenu();
@@ -280,10 +265,6 @@ console.log("GO360 script cargado");
 
                                 scheduleNavigation(anchor.href);
                         });
-
-                        if (typeof reduceMotionQuery.addEventListener === "function") {
-                                reduceMotionQuery.addEventListener("change", runEnterSafely);
-                        }
                 }
 
                 const newLinks = document.querySelectorAll('[data-reset-draft]');

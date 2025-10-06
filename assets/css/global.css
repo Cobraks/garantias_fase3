@@ -958,15 +958,6 @@ body {
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .top-bar__logo--animate .top-bar__logo-360,
-    .top-bar__logo--animate .top-bar__logo-vo {
-      animation: none !important;
-      transition: none !important;
-      will-change: auto;
-    }
-  }
-  
   /* Menú de navegación desktop */
   .top-bar__menu {
     flex: 2;
