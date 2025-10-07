@@ -163,7 +163,12 @@ $show_channel_col = ! $is_professional;
                 </div>
             </div>
             <a class="pdf-modal__download" href="#" download>
-                <?php esc_html_e('Descargar PDF', 'garantias-online-360vo'); ?>
+                <span class="pdf-modal__download-icon" aria-hidden="true">
+                    <?php echo Svg::icon('download'); ?>
+                </span>
+                <span class="pdf-modal__download-label">
+                    <?php esc_html_e('Descargar PDF', 'garantias-online-360vo'); ?>
+                </span>
             </a>
             <div class="pdf-modal__nav">
                 <button type="button" class="pdf-modal__nav-btn pdf-modal__nav-btn--prev" disabled>

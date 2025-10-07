@@ -698,9 +698,9 @@ section.guarantees-list.sticky-active {
 }
 
 .detail__docs-btn--condicionado {
-    background: rgba(var(--go-color-2563eb-rgb), 0.08);
-    border-color: rgba(var(--go-color-2563eb-rgb), 0.35);
-    color: var(--primary-color);
+    background: transparent;
+    border-color: var(--card-border);
+    color: var(--text-secondary);
 }
 
 .detail__docs-btn--add:hover,
@@ -712,9 +712,9 @@ section.guarantees-list.sticky-active {
 
 .detail__docs-btn--condicionado:hover,
 .detail__docs-btn--condicionado:focus-visible {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-    color: var(--text-inverse);
+    background: var(--go-color-f1f5f9);
+    border-color: var(--go-color-cbd5e1);
+    color: var(--text-color);
 }
 
 .detail__docs-btn--add .detail__docs-icon svg {
@@ -788,14 +788,47 @@ section.guarantees-list.sticky-active {
     position: absolute;
     bottom: var(--spacing-2);
     right: var(--spacing-2);
-    background: var(--primary-color);
-    color: var(--text-inverse);
-    padding: var(--spacing-1) var(--spacing-2);
-    border-radius: 0.375rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-color-hover));
+    color: #fff;
     border: 1px solid transparent;
-    box-shadow: 0 12px 24px -18px rgba(var(--go-color-2563eb-rgb), 0.45);
+    box-shadow: 0 20px 36px -18px rgba(var(--go-color-2563eb-rgb), 0.55);
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.pdf-modal__download:hover,
+.pdf-modal__download:focus-visible {
+    background: var(--primary-color-hover);
+    border-color: rgba(var(--go-color-1d4ed8-rgb), 0.45);
+    box-shadow: 0 24px 44px -18px rgba(var(--go-color-1d4ed8-rgb), 0.5);
+    color: #fff;
+}
+
+.pdf-modal__download:focus-visible {
+    outline: 3px solid rgba(var(--go-color-2563eb-rgb), 0.3);
+    outline-offset: 2px;
+}
+
+.pdf-modal__download-icon svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    display: block;
+}
+
+.pdf-modal__download-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pdf-modal__download-label {
+    line-height: 1.2;
 }
 
 .pdf-modal__header {
@@ -1827,12 +1860,15 @@ tr.guarantees-table__row:not(.selected):hover td,
     bottom: calc(1.5rem + 96px);
     left: 50%;
     transform: translate(-50%, 20px);
-    background: rgba(var(--go-color-0f172a-rgb), 0.95);
-    color: var(--go-color-f8fafc);
-    padding: 0.65rem 1.4rem;
-    border-radius: 0.75rem;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    box-shadow: 0 20px 40px rgba(var(--go-color-0f172a-rgb), 0.35);
+    background: rgba(var(--go-color-2563eb-rgb), 0.95);
+    color: #fff;
+    padding: 0.85rem 1.75rem;
+    border-radius: 0.9rem;
+    border: none;
+    box-shadow: 0 28px 48px -20px rgba(var(--go-color-2563eb-rgb), 0.55);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
     opacity: 0;
     transition: opacity var(--transition-speed), transform var(--transition-speed);
     z-index: 1000;
@@ -2039,6 +2075,11 @@ tr.guarantees-table__row:not(.selected):hover td,
     background-color: var(--table-row-zebra-bg);
 }
 
+:root[data-theme='dark'] tr.guarantees-table__row:nth-child(even):not(.selected):hover td,
+:root[data-theme='dark'] .guarantees-table tbody tr:nth-child(even):not(.selected):hover td {
+    background-color: var(--table-row-hover-bg);
+}
+
 :root[data-theme='dark'] .client-detail {
     background: var(--surface);
     border-right: 1px solid var(--client-panel-border);
@@ -2139,8 +2180,8 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .client-detail__loading-spinner {
-    border-color: rgba(var(--go-color-ef4444-rgb), 0.35);
-    border-top-color: var(--danger-color);
+    border-color: rgba(129, 140, 248, 0.45);
+    border-top-color: rgba(191, 219, 254, 0.9);
 }
 
 :root[data-theme='dark'] .guarantee-detail .fast-actions__link,
@@ -2232,27 +2273,31 @@ tr.guarantees-table__row:not(.selected):hover td,
 :root[data-theme='dark'] .detail__docs-btn.detail__docs-btn--add {
     background: var(--primary-color);
     border-color: var(--primary-color);
-    color: var(--text-inverse);
+    color: #fff;
+}
+
+:root[data-theme='dark'] .detail__docs-item.detail__docs-item--add .detail__docs-label {
+    color: #fff;
 }
 
 :root[data-theme='dark'] .detail__docs-btn.detail__docs-btn--add:hover,
 :root[data-theme='dark'] .detail__docs-btn.detail__docs-btn--add:focus-visible {
     background: var(--primary-color-hover);
     border-color: var(--primary-color-hover);
-    color: var(--text-inverse);
+    color: #fff;
 }
 
 :root[data-theme='dark'] .detail__docs-btn--condicionado {
-    background: rgba(148, 163, 184, 0.22);
-    border-color: rgba(148, 163, 184, 0.42);
-    color: rgba(248, 250, 252, 0.94);
+    background: rgba(148, 163, 184, 0.14);
+    border-color: rgba(148, 163, 184, 0.32);
+    color: rgba(226, 232, 240, 0.95);
 }
 
 :root[data-theme='dark'] .detail__docs-btn--condicionado:hover,
 :root[data-theme='dark'] .detail__docs-btn--condicionado:focus-visible {
-    background: rgba(148, 163, 184, 0.32);
-    border-color: rgba(191, 203, 222, 0.55);
-    color: var(--text-inverse);
+    background: rgba(148, 163, 184, 0.28);
+    border-color: rgba(226, 232, 240, 0.45);
+    color: #f8fafc;
 }
 
 :root[data-theme='dark'] .detail__payment-note {
@@ -2314,19 +2359,26 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .client-dialog__close {
-    background: var(--surface-soft);
-    color: var(--text-color);
+    background: rgba(32, 36, 46, 0.95);
+    color: rgba(226, 232, 240, 0.92);
+    border-color: rgba(82, 96, 120, 0.55);
 }
 
 :root[data-theme='dark'] .client-dialog__close:hover,
 :root[data-theme='dark'] .client-dialog__close:focus-visible {
-    background: var(--client-accent-soft);
-    color: var(--text-color);
+    background: rgba(var(--client-accent-rgb), 0.22);
+    border-color: rgba(var(--client-accent-rgb), 0.6);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(var(--client-accent-rgb), 0.2);
 }
 
 :root[data-theme='dark'] .client-dialog__backdrop {
-    background: #000000d0;
+    background-color: rgba(8, 10, 15, 0);
     backdrop-filter: blur(2px);
+}
+
+:root[data-theme='dark'] .client-dialog.is-open .client-dialog__backdrop {
+    background-color: rgba(8, 10, 15, 0.82);
 }
 
 :root[data-theme='dark'] .client-dialog__search {
@@ -2594,15 +2646,18 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .pdf-modal__download {
-    background: var(--primary-color);
-    border-color: rgba(var(--go-color-2563eb-rgb), 0.45);
-    color: var(--text-inverse);
-    box-shadow: 0 16px 32px -22px rgba(var(--go-color-2563eb-rgb), 0.45);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(67, 56, 202, 0.98));
+    border-color: rgba(129, 140, 248, 0.55);
+    color: #fff;
+    box-shadow: 0 24px 48px -20px rgba(67, 56, 202, 0.65);
 }
 
-:root[data-theme='dark'] .pdf-modal__download:hover {
-    background: var(--primary-color-hover);
-    border-color: rgba(var(--go-color-1d4ed8-rgb), 0.45);
+:root[data-theme='dark'] .pdf-modal__download:hover,
+:root[data-theme='dark'] .pdf-modal__download:focus-visible {
+    background: linear-gradient(135deg, rgba(129, 140, 248, 0.97), rgba(99, 102, 241, 0.99));
+    border-color: rgba(165, 180, 252, 0.65);
+    box-shadow: 0 28px 54px -20px rgba(99, 102, 241, 0.6);
+    color: #fff;
 }
 
 :root[data-theme='dark'] .scroll_up--list button {
@@ -2629,6 +2684,15 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: var(--text-secondary);
 }
 
+:root[data-theme='dark'] .detail__transfer-table tbody tr:nth-child(even) {
+    background-color: rgba(148, 163, 184, 0.12);
+}
+
+:root[data-theme='dark'] .detail__transfer-table tbody tr:nth-child(even) th,
+:root[data-theme='dark'] .detail__transfer-table tbody tr:nth-child(even) td {
+    background-color: inherit;
+}
+
 :root[data-theme='dark'] .detail__transfer-table tr[data-copy-row]:hover th,
 :root[data-theme='dark'] .detail__transfer-table tr[data-copy-row]:hover td,
 :root[data-theme='dark'] .detail__transfer-table tr[data-copy-row]:focus-within th,
@@ -2638,13 +2702,13 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .detail__transfer-table [data-copy-cell]::after {
-    background: rgba(13, 16, 22, 0.92);
-    color: var(--text-color);
-    box-shadow: 0 18px 32px -24px rgba(0, 0, 0, 0.6);
+    background: #fff;
+    color: #0f172a;
+    box-shadow: 0 20px 36px -20px rgba(15, 23, 42, 0.35);
 }
 
 :root[data-theme='dark'] .detail__transfer-table [data-copy-cell]::before {
-    border-color: rgba(13, 16, 22, 0.92) transparent transparent transparent;
+    border-color: #fff transparent transparent transparent;
 }
 
 :root[data-theme='dark'] .detail__copy-btn {
@@ -2663,9 +2727,9 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .detail__copy-toast {
-    background: rgba(13, 16, 22, 0.95);
-    color: var(--text-color);
-    box-shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.68);
+    background: rgba(99, 102, 241, 0.95);
+    color: #fff;
+    box-shadow: 0 30px 54px -24px rgba(79, 70, 229, 0.6);
 }
 
 
@@ -2755,8 +2819,8 @@ tr.guarantees-table__row:not(.selected):hover td,
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    border: 3px solid rgba(var(--go-color-ef4444-rgb), 0.28);
-    border-top-color: var(--danger-color);
+    border: 3px solid rgba(var(--go-color-2563eb-rgb), 0.25);
+    border-top-color: var(--primary-color);
     display: inline-flex;
     animation: go-spin 0.9s linear infinite;
 }
@@ -3300,7 +3364,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 .client-detail__list--columns .client-detail__item {
-    flex: 1 1 200px;
+    min-width: 220px;
 }
 
 .client-detail__item--direccion {
@@ -3376,6 +3440,11 @@ tr.guarantees-table__row:not(.selected):hover td,
     font-weight: 500;
     text-decoration: none;
     transition: color 0.2s ease, box-shadow 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .client-detail a:hover,
@@ -3655,7 +3724,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 .client-detail__commercial-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 1rem;
     margin-top: 0.5rem;
     padding-top: 0.25rem;
     width: 100%;
@@ -3752,10 +3821,10 @@ tr.guarantees-table__row:not(.selected):hover td,
 .client-dialog__backdrop {
     position: absolute;
     inset: 0;
-    background: var(--client-overlay);
+    background-color: rgba(15, 23, 42, 0);
     backdrop-filter: var(--client-overlay-blur);
     opacity: 0;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.25s ease, background-color 0.3s ease;
 }
 
 .client-dialog__panel {
@@ -3784,6 +3853,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .client-dialog.is-open .client-dialog__backdrop {
     opacity: 1;
+    background-color: rgba(15, 23, 42, 0.65);
 }
 
 .client-dialog__header {
@@ -3806,21 +3876,26 @@ tr.guarantees-table__row:not(.selected):hover td,
     border: 1px solid var(--client-panel-border);
     background: var(--surface-soft);
     color: var(--text-secondary);
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .client-dialog__close:hover,
 .client-dialog__close:focus-visible {
-    background: var(--client-accent-soft);
-    border-color: var(--client-panel-border-strong);
-    color: var(--text-color);
+    background: rgba(var(--client-accent-rgb), 0.12);
+    border-color: rgba(var(--client-accent-rgb), 0.45);
+    color: var(--client-accent-strong);
+    box-shadow: 0 0 0 3px rgba(var(--client-accent-rgb), 0.12);
+}
+
+.client-dialog__close:focus-visible {
+    outline: none;
 }
 
 .client-dialog__close svg {
@@ -4365,7 +4440,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     border-radius: 999px;
     border: none;
     background: var(--primary-color);
-    color: var(--text-inverse);
+    color: #fff;
     font-weight: 600;
     display: inline-flex;
     align-items: center;
