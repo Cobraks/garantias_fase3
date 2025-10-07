@@ -4,6 +4,12 @@
         }
 
         body.body--auth {
+            --auth-surface: #f8fafc;
+            --auth-surface-contrast: #ffffff;
+            --auth-field-border: #e2e8f0;
+            --auth-field-text: #0f172a;
+            --auth-muted: #64748b;
+            --auth-toggle-track: #e2e8f0;
             margin: 0;
             height: calc(100dvh - 36px);
             min-height: 0;
@@ -16,6 +22,12 @@
 
         :root[data-theme='dark'] body.body--auth {
             color-scheme: dark;
+            --auth-surface: #0b0e16;
+            --auth-surface-contrast: #121724;
+            --auth-field-border: rgba(82, 96, 120, 0.45);
+            --auth-field-text: rgba(226, 232, 240, 0.96);
+            --auth-muted: rgba(148, 163, 184, 0.78);
+            --auth-toggle-track: rgba(45, 55, 72, 0.65);
         }
 
         .container.container--auth {
@@ -46,6 +58,7 @@
             left: 0;
             width: 100%;
             z-index: 10;
+            background: transparent;
         }
 
         footer.footer .footer__wrapper {
@@ -66,7 +79,7 @@
 
         .login-card {
             position: relative;
-            background: var(--auth-surface-contrast);
+            background: var(--auth-surface-contrast, #ffffff);
             border-radius: 22px;
             padding: clamp(2.75rem, 6vw, 3.5rem);
             padding-top: clamp(3.25rem, 7vw, 4rem);
@@ -88,7 +101,7 @@
             gap: 0.5rem;
             padding: 0.5rem 1.25rem;
             border-radius: 999px;
-            background: var(--auth-surface-contrast);
+            background: var(--auth-surface-contrast, #ffffff);
             border: 1px solid var(--auth-field-border);
             box-shadow: 0 18px 34px -26px rgba(15, 23, 42, 0.32);
             color: var(--auth-field-text);
@@ -315,6 +328,28 @@
             border-color: #000000;
             box-shadow: none;
             background: #fff;
+        }
+
+        footer.footer .footer__theme-toggle {
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+
+        :root[data-theme='dark'] .login-card {
+            background: rgba(18, 23, 36, 0.92);
+            border-color: rgba(148, 163, 184, 0.28);
+            box-shadow: 0 28px 48px -22px rgba(15, 23, 42, 0.55);
+        }
+
+        :root[data-theme='dark'] .login-card__badge {
+            background: rgba(24, 30, 44, 0.95);
+            border-color: rgba(148, 163, 184, 0.3);
+            color: rgba(226, 232, 240, 0.92);
+        }
+
+        :root[data-theme='dark'] .login-card__title {
+            color: #ffffff;
         }
 
         .input-container.is-error .form-label,

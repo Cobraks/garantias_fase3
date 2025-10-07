@@ -162,8 +162,11 @@ $show_channel_col = ! $is_professional;
                     <p><?php esc_html_e('Aquí el sistema para subir documentación.', 'garantias-online-360vo'); ?></p>
                 </div>
             </div>
-            <a class="pdf-modal__download" href="#" download>
-                <?php esc_html_e('Descargar PDF', 'garantias-online-360vo'); ?>
+            <a class="pdf-modal__download" href="#" download aria-label="<?php esc_attr_e('Descargar PDF', 'garantias-online-360vo'); ?>">
+                <?php echo Svg::icon('download', 'pdf-modal__download-icon'); ?>
+                <span class="pdf-modal__download-text">
+                    <?php esc_html_e('Descargar PDF', 'garantias-online-360vo'); ?>
+                </span>
             </a>
             <div class="pdf-modal__nav">
                 <button type="button" class="pdf-modal__nav-btn pdf-modal__nav-btn--prev" disabled>
