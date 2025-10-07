@@ -62,8 +62,8 @@ use GarantiasOnline360VO\Svg;
         </a>
     </div>
     <div class="form-success__actions">
-        <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>" class="form-success__details-link" hidden>Ver garantía <span data-ref-text></span></a>
         <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" class="form-success__new" data-reset-draft>Añadir nueva garantía</a>
+        <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>" class="form-success__details-link" hidden>Ver garantía <span data-ref-text></span></a>
     </div>
     <audio id="form-success__sound" src="<?php echo esc_url(plugins_url('assets/sounds/success.mp3', GARANTIAS360VO__FILE__)); ?>" preload="auto"></audio>
 </div>

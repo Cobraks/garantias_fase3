@@ -250,8 +250,8 @@ export default function initAutosave() {
                 const status = signatureStatus || {};
                 const autoReady = Boolean(status.enabled && status.hasSignature && status.hasSeal);
                 const text = autoReady
-                        ? "Certificado disponible para descarga y firma automática para tu cliente."
-                        : "Certificado disponible para descarga y firma por vendedor y comprador.";
+                        ? "Certificado listo para descargar y remitir a tu cliente para su firma."
+                        : "Certificado listo para descargar y firmar por el profesional y el comprador.";
                 messageEl.textContent = text;
                 messageEl.hidden = false;
         }
