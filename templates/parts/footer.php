@@ -17,7 +17,11 @@ if (! empty($is_add_guarantee)) {
 <footer class="footer" style="view-transition-name: footer">
     <div class="footer__wrapper">
         <p class="footer__text"><?php echo '©'  . esc_html(date('Y')) . ' ' . '<span class="text--red">360</span>VO '; ?></p>
-        <?php if (! empty($is_auth_page)) : ?>
+        <?php $show_footer_theme_toggle = ! is_user_logged_in(); ?>
+        <?php if (! empty($is_auth_page)) {
+            $show_footer_theme_toggle = true;
+        } ?>
+        <?php if ($show_footer_theme_toggle) : ?>
             <button
                 type="button"
                 class="footer__theme-toggle"
@@ -212,6 +216,13 @@ if (! empty($is_add_guarantee)) {
             'assignCommercialSelectAction' => __('Seleccionar', 'garantias-online-360vo'),
             'assignCommercialSelectedAction' => __('Seleccionado', 'garantias-online-360vo'),
             'assignCommercialRemoveAction' => __('Quitar', 'garantias-online-360vo'),
+            'manageOffers'         => __('Gestionar ofertas', 'garantias-online-360vo'),
+            'manageOffersTitle'    => __('Gestionar ofertas', 'garantias-online-360vo'),
+            'manageOffersTitleTemplate' => __('Gestionar ofertas de %s', 'garantias-online-360vo'),
+            'manageSepa'           => __('Gestionar SEPA', 'garantias-online-360vo'),
+            'manageSepaTitle'      => __('Gestionar SEPA', 'garantias-online-360vo'),
+            'manageSepaTitleTemplate' => __('Gestionar SEPA de %s', 'garantias-online-360vo'),
+            'dialogSave'           => __('Guardar cambios', 'garantias-online-360vo'),
             'close'                => __('Cerrar', 'garantias-online-360vo'),
         ],
         'icons' => [
@@ -222,6 +233,8 @@ if (! empty($is_add_guarantee)) {
             'personAdd' => Svg::icon('person_add'),
             'close' => Svg::icon('cerrar'),
             'search' => Svg::icon('search'),
+            'manageOffers' => Svg::icon('manage_offers'),
+            'manageSepa' => Svg::icon('payment'),
         ],
     ];
     ?>
