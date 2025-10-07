@@ -17,28 +17,36 @@ import {
 
 // === Helpers de UI: colores y conectores ===
 function updateConnectors() {
-	document
-		.querySelectorAll(".tabs__connector .connector")
-		.forEach((connector, i) => {
-			const leftTab = FormCache.tabs[i];
-			const rightTab = FormCache.tabs[i + 1];
-			const styles = getComputedStyle(document.documentElement);
-			const leftColor = leftTab.classList.contains("completed")
-				? "#000"
-				: leftTab.classList.contains("active") && FormCache.tabCompletion[i]
-				? styles.getPropertyValue("--step-active")
-				: styles.getPropertyValue("--step-inactive");
-			const rightColor = rightTab?.classList.contains("completed")
-				? "#000"
-				: rightTab?.classList.contains("active") &&
-				  FormCache.tabCompletion[i + 1]
-				? styles.getPropertyValue("--step-active")
-				: styles.getPropertyValue("--step-inactive");
-			if (connector && leftColor && rightColor) {
-				connector.style.background =
-					leftColor === rightColor
-						? leftColor
-						: `linear-gradient(to right, ${leftColor}, ${rightColor})`;
+        document
+                .querySelectorAll(".tabs__connector .connector")
+                .forEach((connector, i) => {
+                        const leftTab = FormCache.tabs[i];
+                        const rightTab = FormCache.tabs[i + 1];
+                        const styles = getComputedStyle(document.documentElement);
+                        const idleColor = styles.getPropertyValue("--wizard-connector-idle").trim() ||
+                                styles.getPropertyValue("--step-inactive").trim() ||
+                                "#d1d5db";
+                        const activeColor = styles.getPropertyValue("--wizard-connector-active").trim() ||
+                                styles.getPropertyValue("--step-active").trim() ||
+                                styles.getPropertyValue("--primary-color").trim() ||
+                                "#2563eb";
+                        const completedColor = styles.getPropertyValue("--wizard-connector-complete").trim() || activeColor;
+                        const leftColor = leftTab.classList.contains("completed")
+                                ? completedColor
+                                : leftTab.classList.contains("active") && FormCache.tabCompletion[i]
+                                ? activeColor
+                                : idleColor;
+                        const rightColor = rightTab?.classList.contains("completed")
+                                ? completedColor
+                                : rightTab?.classList.contains("active") &&
+                                  FormCache.tabCompletion[i + 1]
+                                ? activeColor
+                                : idleColor;
+                        if (connector && leftColor && rightColor) {
+                                connector.style.background =
+                                        leftColor === rightColor
+                                                ? leftColor
+                                                : `linear-gradient(to right, ${leftColor}, ${rightColor})`;
 			}
 		});
 }

@@ -88,6 +88,7 @@ if (! empty($is_add_guarantee)) {
         $js_user_role = 'user';
     }
     $icon_pdf_html = Svg::icon('pdf');
+    $icon_download_html = Svg::icon('download');
     $icon_plus_html = Svg::icon('plus');
     $icon_arrow_down_html = Svg::icon('arrow_drop_down');
     $icon_arrow_up_html = Svg::icon('arrow_drop_up');
@@ -106,11 +107,13 @@ if (! empty($is_add_guarantee)) {
                 pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
                 plus: `<?php echo addslashes($icon_plus_html); ?>`,
                 arrowDropDown: `<?php echo addslashes($icon_arrow_down_html); ?>`,
-                arrowDropUp: `<?php echo addslashes($icon_arrow_up_html); ?>`
+                arrowDropUp: `<?php echo addslashes($icon_arrow_up_html); ?>`,
+                download: `<?php echo addslashes($icon_download_html); ?>`
             },
             pages: {
                 misGarantias: "<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>",
-                nuevaGarantia: "<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>"
+                nuevaGarantia: "<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>",
+                clientes: "<?php echo esc_url(trailingslashit(home_url('/garantias-online/clientes/'))); ?>"
             },
             documents: {
                 reclamacion: "<?php echo esc_url($reclamation_url); ?>"

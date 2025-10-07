@@ -8,6 +8,7 @@ export const AVAILABLE_DOCS = [
                 routeType: "certificado",
                 listLabel: "Certificado",
                 successLabel: "Descargar certificado",
+                icon: "pdf",
         },
         {
                 key: "cobertura",
@@ -15,6 +16,7 @@ export const AVAILABLE_DOCS = [
                 routeType: "cobertura",
                 listLabel: "Cobertura",
                 successLabel: "Descargar cobertura",
+                icon: "pdf",
         },
         {
                 key: "condicionado",
@@ -22,6 +24,7 @@ export const AVAILABLE_DOCS = [
                 routeType: "condicionado",
                 listLabel: "Condicionado",
                 successLabel: "Descargar condicionado",
+                icon: "download",
         },
 ];
 

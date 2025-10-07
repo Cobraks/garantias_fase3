@@ -5,7 +5,6 @@ const ADD_DOC_KEY = "add-document";
 (() => {
         "use strict";
         document.addEventListener("DOMContentLoaded", () => {
-                console.log("DOM loaded — inicializando mis_garantias.js");
 
                 const tbody = document.querySelector("tbody[data-current-page]");
                 const table = tbody.closest("table");
@@ -55,6 +54,7 @@ const ADD_DOC_KEY = "add-document";
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
                 const continueIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
                const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
+               const downloadIcon = (goConfig.icons && goConfig.icons.download) || "";
                const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
                const arrowDownIcon =
                         (goConfig.icons && goConfig.icons.arrowDropDown) || "";
@@ -2377,9 +2377,15 @@ const ADD_DOC_KEY = "add-document";
         data.email_vendedor ?? rowData.email_vendedor,
         skeletons
     );
-    const vendorDetailsHref = escapeAttr(
-        data.vendedor_url ?? rowData.vendedor_url ?? "#"
-    );
+    let vendorDetailsHrefRaw = data.vendor_profile_url ?? data.vendedor_url ?? rowData.vendedor_url ?? "";
+    if ((!vendorDetailsHrefRaw || vendorDetailsHrefRaw === "#") && data.vendor_slug) {
+        const clientsBase = (goConfig.pages && goConfig.pages.clientes) || "";
+        if (clientsBase) {
+            const base = clientsBase.replace(/\/+$/, "");
+            vendorDetailsHrefRaw = `${base}/${data.vendor_slug}/`;
+        }
+    }
+    const vendorDetailsHref = escapeAttr(vendorDetailsHrefRaw && vendorDetailsHrefRaw !== "#" ? vendorDetailsHrefRaw : "#");
     const fuelRaw = (
         data.combustible ?? rowData.combustible ?? ""
     )
@@ -2454,7 +2460,16 @@ const ADD_DOC_KEY = "add-document";
     const docsButtonsHtml = docsData
         .map(
             (doc, idx) => {
-                const iconMarkup = doc.iconKey === "payment" ? paymentIcon : pdfIcon;
+                const rawClassKey = typeof doc.key === "string" ? doc.key : String(doc.key || "");
+                const safeClassName = rawClassKey
+                    ? rawClassKey.toLowerCase().replace(/[^a-z0-9_-]/g, "")
+                    : "";
+                const buttonClass = safeClassName !== "" ? ` detail__docs-btn--${safeClassName}` : "";
+                const iconMarkup = doc.iconKey === "payment"
+                    ? paymentIcon
+                    : doc.iconKey === "download" && downloadIcon !== ""
+                    ? downloadIcon
+                    : pdfIcon;
                 const attrs = [
                     `data-doc-key="${escapeAttr(doc.key)}"`,
                     `data-doc-index="${idx}"`,
@@ -2468,7 +2483,7 @@ const ADD_DOC_KEY = "add-document";
                 if (doc.row) attrs.push(`data-doc-row="${escapeAttr(String(doc.row))}"`);
                 return (
                     `<li class="detail__docs-item">` +
-                    `<button type="button" class="detail__docs-btn" ${attrs.join(" ")} aria-label="Ver documento ${escapeAttr(doc.listLabel)}">` +
+                    `<button type="button" class="detail__docs-btn${buttonClass}" ${attrs.join(" ")} aria-label="Ver documento ${escapeAttr(doc.listLabel)}">` +
                     `<span class="detail__docs-icon detail__docs-icon--${doc.iconKey}">${iconMarkup}</span>` +
                     `<span class="detail__docs-label">${doc.listLabel}</span>` +
                     `</button>` +
