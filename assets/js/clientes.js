@@ -17,6 +17,8 @@
         const iconPersonAdd = icons.personAdd || '';
         const iconClose = icons.close || '';
         const iconSearch = icons.search || '';
+        const iconManageOffers = icons.manageOffers || '';
+        const iconManageSepa = icons.manageSepa || '';
         const permissions = config.permissions || {};
         const canAssignCommercials = Boolean(permissions.canAssignCommercials);
         const router = config.router || {};
@@ -38,6 +40,8 @@
             return;
         }
 
+        let dialogIdCounter = 0;
+
         const commercialDirectory = {
             items: [],
             loading: false,
@@ -47,6 +51,18 @@
         };
 
         const assignDialog = createAssignDialog();
+        const offersDialog = createSimpleDialog({
+            titleKey: 'manageOffersTitle',
+            titleTemplateKey: 'manageOffersTitleTemplate',
+            fallbackTitle: 'Gestionar ofertas',
+            saveLabelKey: 'dialogSave',
+        });
+        const sepaDialog = createSimpleDialog({
+            titleKey: 'manageSepaTitle',
+            titleTemplateKey: 'manageSepaTitleTemplate',
+            fallbackTitle: 'Gestionar SEPA',
+            saveLabelKey: 'dialogSave',
+        });
 
         if (canAssignCommercials) {
             fetchCommercialDirectory().catch(() => {});
@@ -73,6 +89,11 @@
         let lastRowIndex = -1;
         let debounceTimer = null;
         const COLUMN_COUNT = 5;
+
+        function uniqueId(prefix) {
+            dialogIdCounter += 1;
+            return `${prefix}-${dialogIdCounter}`;
+        }
 
         function normalizeCommercialEntry(entry) {
             if (!entry || typeof entry !== 'object') {
@@ -311,6 +332,25 @@
             const composed = [first, last].filter(Boolean).join(' ').trim();
 
             return full || composed || personal || '';
+        }
+
+        function getCompanyLabelFromItem(item) {
+            if (!item || typeof item !== 'object') {
+                return strings.client || 'este cliente';
+            }
+
+            const name = item.name && typeof item.name === 'object' ? item.name : {};
+            const company = typeof name.company === 'string' ? name.company.trim() : '';
+            if (company !== '') {
+                return company;
+            }
+
+            const display = getDisplayName(name);
+            if (display !== '') {
+                return display;
+            }
+
+            return strings.client || 'este cliente';
         }
 
         function getCommercialDisplay(commercial) {
@@ -1110,6 +1150,22 @@
                     </div>
                 `
                 : '';
+            const manageOffersButton = `
+                <div class="client-detail__actions client-detail__actions--inline">
+                    <button type="button" class="client-detail__action" data-manage-offers>
+                        ${iconManageOffers}
+                        <span>${escapeHtml(strings.manageOffers || 'Gestionar ofertas')}</span>
+                    </button>
+                </div>
+            `;
+            const manageSepaButton = `
+                <div class="client-detail__actions client-detail__actions--inline">
+                    <button type="button" class="client-detail__action" data-manage-sepa>
+                        ${iconManageSepa}
+                        <span>${escapeHtml(strings.manageSepa || 'Gestionar SEPA')}</span>
+                    </button>
+                </div>
+            `;
 
             return `
                 <div class="client-detail">
@@ -1171,11 +1227,13 @@
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.offers || 'Ofertas activas')}</h4>
                         ${renderOffersList(item.offers)}
+                        ${manageOffersButton}
                     </section>
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.sepaStatus || 'Estado SEPA')}</h4>
                         <p class="client-detail__status${sepaVariant}">${escapeHtml(sepaMessage)}</p>
                         ${sepaDetails}
+                        ${manageSepaButton}
                     </section>
                     ${adminLinkHtml}
                 </div>
@@ -1195,18 +1253,21 @@
                         <button type="button" class="client-dialog__close" data-dialog-close aria-label="${escapeHtml(strings.close || 'Cerrar')}">${iconClose}</button>
                     </header>
                     <div class="client-dialog__body">
-                        <section class="client-dialog__assigned" aria-live="polite">
-                            <h3 class="client-dialog__assigned-title"></h3>
+                        <section class="client-dialog__section client-dialog__section--assigned client-dialog__assigned" aria-live="polite">
+                            <h3 class="client-dialog__section-title client-dialog__assigned-title"></h3>
                             <div class="client-dialog__assigned-list"></div>
                         </section>
-                        <div class="client-dialog__intro">
-                            <p class="client-dialog__description">${escapeHtml(strings.assignCommercialDescription || 'Selecciona el comercial que gestionará a este cliente.')}</p>
-                            <div class="client-dialog__search">
-                                <span class="client-dialog__search-icon" aria-hidden="true">${iconSearch}</span>
-                                <input type="search" class="client-dialog__search-input" placeholder="${escapeHtml(strings.assignCommercialSearchPlaceholder || 'Buscar comercial por nombre o email…')}" aria-label="${escapeHtml(strings.assignCommercialSearchPlaceholder || 'Buscar comercial')}">
+                        <section class="client-dialog__section client-dialog__section--directory" aria-live="polite">
+                            <h3 class="client-dialog__section-title">${escapeHtml(strings.assignCommercial || 'Seleccionar comercial')}</h3>
+                            <div class="client-dialog__intro">
+                                <p class="client-dialog__description">${escapeHtml(strings.assignCommercialDescription || 'Selecciona el comercial que gestionará a este cliente.')}</p>
+                                <div class="client-dialog__search">
+                                    <span class="client-dialog__search-icon" aria-hidden="true">${iconSearch}</span>
+                                    <input type="search" class="client-dialog__search-input" placeholder="${escapeHtml(strings.assignCommercialSearchPlaceholder || 'Buscar comercial por nombre o email…')}" aria-label="${escapeHtml(strings.assignCommercialSearchPlaceholder || 'Buscar comercial')}">
+                                </div>
                             </div>
-                        </div>
-                        <div class="client-dialog__commercials" role="listbox" aria-live="polite"></div>
+                            <div class="client-dialog__commercials" role="listbox" aria-live="polite"></div>
+                        </section>
                     </div>
                     <footer class="client-dialog__footer">
                         <span class="client-dialog__status" aria-live="polite"></span>
@@ -1416,11 +1477,6 @@
                 }
 
                 assignedSection.classList.remove('client-dialog__assigned--empty');
-                const removeTemplate = (strings.assignCommercialRemove || 'Eliminar asignación de %s').trim();
-                const removeLabel = removeTemplate.includes('%s')
-                    ? removeTemplate.replace('%s', resolvedCompany)
-                    : `${removeTemplate} ${resolvedCompany}`.trim();
-
                 const itemsHtml = entries.map((entry) => {
                     const avatarHtml = entry.avatar
                         ? `<img src="${escapeAttribute(entry.avatar)}" alt="${escapeAttribute(entry.name || entry.email || strings.commercials || 'Comercial')}" class="client-dialog__assigned-avatar">`
@@ -1436,27 +1492,11 @@
                                 <span class="client-dialog__assigned-name">${escapeHtml(entry.name || entry.email || strings.commercials || 'Comercial')}</span>
                                 ${emailLine}
                             </div>
-                            <button type="button" class="client-dialog__assigned-remove" data-remove-id="${entry.id}">
-                                ${escapeHtml(removeLabel)}
-                            </button>
                         </article>
                     `;
                 }).join('');
 
                 assignedList.innerHTML = itemsHtml;
-                assignedList.querySelectorAll('[data-remove-id]').forEach((button) => {
-                    button.addEventListener('click', () => {
-                        const id = Number(button.dataset.removeId) || 0;
-                        if (!id || !selectedIds.has(id)) {
-                            return;
-                        }
-                        selectedIds.delete(id);
-                        selectedRecords.delete(id);
-                        updateSaveButton();
-                        renderAssignedList();
-                        syncCardStates();
-                    });
-                });
             }
 
             function updateCardChip(card, isSelected, isHover) {
@@ -1856,6 +1896,140 @@
             };
         }
 
+        function createSimpleDialog(options = {}) {
+            const titleKey = typeof options.titleKey === 'string' ? options.titleKey : '';
+            const titleTemplateKey = typeof options.titleTemplateKey === 'string' ? options.titleTemplateKey : '';
+            const fallbackTitle = typeof options.fallbackTitle === 'string' && options.fallbackTitle.trim() !== ''
+                ? options.fallbackTitle.trim()
+                : 'Gestión';
+            const saveLabelKey = typeof options.saveLabelKey === 'string' ? options.saveLabelKey : 'dialogSave';
+            const overlay = document.createElement('div');
+            overlay.className = 'client-dialog client-dialog--simple';
+            overlay.hidden = true;
+            overlay.setAttribute('aria-hidden', 'true');
+            const titleId = uniqueId('client-dialog-title');
+            const baseTitle = (strings[titleKey] || fallbackTitle || 'Gestión').trim() || 'Gestión';
+            const saveLabel = (strings[saveLabelKey] || strings.dialogSave || strings.assignCommercialSave || 'Guardar cambios').trim() || 'Guardar cambios';
+
+            overlay.innerHTML = `
+                <div class="client-dialog__backdrop" data-dialog-close></div>
+                <div class="client-dialog__panel client-dialog__panel--simple" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1">
+                    <header class="client-dialog__header">
+                        <h2 id="${titleId}" class="client-dialog__title">${escapeHtml(baseTitle)}</h2>
+                        <button type="button" class="client-dialog__close" data-dialog-close aria-label="${escapeHtml(strings.close || 'Cerrar')}">${iconClose}</button>
+                    </header>
+                    <div class="client-dialog__body client-dialog__body--simple"></div>
+                    <footer class="client-dialog__footer">
+                        <span class="client-dialog__status" aria-live="polite"></span>
+                        <button type="button" class="client-dialog__save" disabled>
+                            <span class="client-dialog__save-label">${escapeHtml(saveLabel)}</span>
+                            <span class="client-dialog__spinner" aria-hidden="true"></span>
+                        </button>
+                    </footer>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            const panel = overlay.querySelector('.client-dialog__panel');
+            const titleEl = overlay.querySelector('.client-dialog__title');
+            const saveButton = overlay.querySelector('.client-dialog__save');
+            const statusEl = overlay.querySelector('.client-dialog__status');
+            const closeControls = overlay.querySelectorAll('[data-dialog-close]');
+
+            let previousActiveElement = null;
+
+            function formatTitle(context) {
+                const subject = context && typeof context === 'object' && typeof context.subject === 'string'
+                    ? context.subject.trim()
+                    : '';
+                const template = typeof strings[titleTemplateKey] === 'string' ? strings[titleTemplateKey].trim() : '';
+                const fallback = (strings[titleKey] || baseTitle || fallbackTitle).trim() || fallbackTitle;
+
+                if (template !== '' && subject !== '' && template.includes('%s')) {
+                    return template.replace('%s', subject);
+                }
+
+                if (fallback.includes('%s') && subject !== '') {
+                    return fallback.replace('%s', subject);
+                }
+
+                return fallback;
+            }
+
+            function setStatus(message = '', variant = '') {
+                if (!statusEl) {
+                    return;
+                }
+                statusEl.textContent = message;
+                if (variant) {
+                    statusEl.dataset.variant = variant;
+                } else {
+                    delete statusEl.dataset.variant;
+                }
+            }
+
+            function close() {
+                overlay.classList.remove('is-open');
+                overlay.setAttribute('aria-hidden', 'true');
+                overlay.hidden = true;
+                document.removeEventListener('keydown', handleKeydown);
+                if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+                    previousActiveElement.focus();
+                }
+            }
+
+            function handleKeydown(event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    close();
+                }
+            }
+
+            function open(context = {}) {
+                previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                const titleText = formatTitle(context);
+
+                if (titleEl) {
+                    titleEl.textContent = titleText;
+                }
+
+                setStatus('');
+
+                overlay.hidden = false;
+                overlay.classList.add('is-open');
+                overlay.setAttribute('aria-hidden', 'false');
+                document.addEventListener('keydown', handleKeydown);
+
+                window.requestAnimationFrame(() => {
+                    if (panel && typeof panel.focus === 'function') {
+                        panel.focus({ preventScroll: true });
+                    }
+                });
+            }
+
+            closeControls.forEach((element) => {
+                element.addEventListener('click', close);
+            });
+
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay) {
+                    close();
+                }
+            });
+
+            if (saveButton) {
+                saveButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                });
+            }
+
+            return {
+                open,
+                close,
+            };
+        }
+
 
         function initDetailInteractions(container, item) {
             if (!container) {
@@ -1891,6 +2065,24 @@
                             refreshActiveDetail(item);
                             updateRowCommercialSummary(item);
                         },
+                    });
+                });
+            }
+
+            const manageOffersButton = container.querySelector('[data-manage-offers]');
+            if (manageOffersButton && offersDialog && typeof offersDialog.open === 'function') {
+                manageOffersButton.addEventListener('click', () => {
+                    offersDialog.open({
+                        subject: getCompanyLabelFromItem(item),
+                    });
+                });
+            }
+
+            const manageSepaButton = container.querySelector('[data-manage-sepa]');
+            if (manageSepaButton && sepaDialog && typeof sepaDialog.open === 'function') {
+                manageSepaButton.addEventListener('click', () => {
+                    sepaDialog.open({
+                        subject: getCompanyLabelFromItem(item),
                     });
                 });
             }
