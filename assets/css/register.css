@@ -25,9 +25,9 @@
   --text-primary: rgba(226, 232, 240, 0.96);
   --text-secondary: rgba(148, 163, 184, 0.78);
   --text-tertiary: rgba(148, 163, 184, 0.6);
-  --bg-light: rgba(26, 28, 34, 0.96);
-  --border: rgba(82, 96, 120, 0.42);
-  --shadow: 0 28px 60px -30px rgba(0, 0, 0, 0.78);
+  --bg-light: #111c2f;
+  --border: rgba(148, 163, 184, 0.32);
+  --shadow: 0 28px 60px -30px rgba(15, 23, 42, 0.65);
   --success: #22c55e;
   --error: #ef4444;
 }
@@ -59,6 +59,7 @@ footer.footer {
   left: 0;
   width: 100%;
   z-index: 10;
+  background: transparent;
 }
 
 footer.footer .footer__wrapper {
@@ -515,6 +516,15 @@ footer.footer .footer__wrapper {
   color: var(--text-primary);
 }
 
+:root[data-theme='dark'] .register-page .form-input:focus ~ .form-label,
+:root[data-theme='dark'] .register-page .form-input:not(:placeholder-shown) ~ .form-label,
+:root[data-theme='dark'] .register-page .form-select:focus ~ .form-label,
+:root[data-theme='dark'] .register-page .form-select:not([value=""]) ~ .form-label,
+:root[data-theme='dark'] .register-page .form-textarea:focus ~ .form-label,
+:root[data-theme='dark'] .register-page .form-textarea:not(:placeholder-shown) ~ .form-label {
+  background: var(--bg-light);
+}
+
 .register-page .form-input:focus ~ .form-label,
 .register-page .form-select:focus ~ .form-label,
 .register-page .form-textarea:focus ~ .form-label {
@@ -544,42 +554,46 @@ footer.footer .footer__wrapper {
   padding: 1.5rem 0.25rem;
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  background: var(--bg-light);
+  background-color: #f8fafc;
   cursor: pointer;
   transition: var(--transition);
   text-align: center;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
+  box-shadow: 0 10px 24px -18px rgba(var(--go-color-000000-rgb), 0.22);
 }
 
-.register-page .channel-btn:hover {
+.register-page .channel-btn:hover,
+.register-page .channel-btn:focus-visible {
   border-color: rgba(59, 130, 246, 0.35);
   color: var(--primary);
+  box-shadow: 0 14px 30px -18px rgba(var(--go-color-000000-rgb), 0.25);
 }
 
 .register-page .channel-btn.active {
   border-color: var(--primary);
   background-color: var(--primary);
   color: var(--go-color-ffffff);
+  box-shadow: 0 16px 32px -18px rgba(59, 130, 246, 0.4);
 }
 
 :root[data-theme='dark'] .register-page .channel-btn {
-  background: rgba(148, 163, 184, 0.14);
+  background-color: var(--bg-light);
   border-color: rgba(148, 163, 184, 0.32);
-  color: rgba(226, 232, 240, 0.95);
+  color: var(--text-primary);
   box-shadow: none;
 }
 
 :root[data-theme='dark'] .register-page .channel-btn:hover,
 :root[data-theme='dark'] .register-page .channel-btn:focus-visible {
-  background: rgba(148, 163, 184, 0.24);
-  border-color: rgba(226, 232, 240, 0.45);
-  color: #f8fafc;
+  border-color: rgba(226, 232, 240, 0.4);
+  color: rgba(226, 232, 240, 0.95);
+  box-shadow: 0 12px 28px -20px rgba(0, 0, 0, 0.45);
 }
 
 :root[data-theme='dark'] .register-page .channel-btn.active {
   background: var(--primary-color);
   border-color: var(--primary-color);
-  color: var(--text-inverse);
+  color: #f8fafc;
   box-shadow: 0 12px 26px -18px rgba(37, 99, 235, 0.55);
 }
 
@@ -752,7 +766,7 @@ footer.footer .footer__wrapper {
   gap: var(--spacing-2, 1rem);
   padding: var(--spacing-3, 1.5rem) var(--spacing-2, 1rem);
   border-top: 1px solid var(--border-color, var(--go-color-e2e8f0));
-  background-color: var(--go-color-ffffff);
+  background-color: transparent;
 }
 
 .register-page .btn {
