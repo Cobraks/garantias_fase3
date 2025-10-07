@@ -130,63 +130,63 @@ body.scrolled .container {
 }
 
 .clients-page {
-    --client-surface: #ffffff;
-    --client-surface-alt: var(--go-color-f8fafc);
-    --client-panel-border: var(--go-color-e2e8f0);
-    --client-panel-border-strong: var(--go-color-cbd5e1);
+    --client-surface: var(--surface);
+    --client-surface-alt: var(--surface-soft);
+    --client-panel-border: var(--border-color);
+    --client-panel-border-strong: var(--border-color-strong);
     --client-panel-shadow: 0 24px 48px rgba(var(--go-color-0f172a-rgb), 0.12);
     --client-card-shadow: 0 10px 24px rgba(var(--go-color-0f172a-rgb), 0.08);
-    --client-accent: var(--go-color-2563eb);
+    --client-accent: var(--primary-color);
     --client-accent-rgb: var(--go-color-2563eb-rgb);
-    --client-accent-strong: var(--go-color-1d4ed8);
-    --client-accent-soft: rgba(var(--go-color-2563eb-rgb), 0.12);
-    --client-badge-text: var(--go-color-1d4ed8);
-    --client-tag-muted-bg: var(--go-color-e2e8f0);
+    --client-accent-strong: var(--primary-color-hover);
+    --client-accent-soft: var(--primary-color-soft);
+    --client-badge-text: var(--primary-color-hover);
+    --client-tag-muted-bg: var(--surface-alt);
     --client-tag-muted-text: var(--go-color-475569);
-    --client-contact-bg: var(--go-color-f8fafc);
-    --client-contact-border: var(--go-color-e2e8f0);
+    --client-contact-bg: var(--surface-soft);
+    --client-contact-border: var(--border-color);
     --client-contact-note: var(--text-secondary);
-    --client-avatar-border: var(--go-color-cbd5e1);
-    --client-action-bg: var(--go-color-f8fafc);
-    --client-action-border: var(--go-color-e2e8f0);
-    --client-action-hover-bg: var(--go-color-e2e8f0);
-    --client-action-hover-border: var(--go-color-cbd5e1);
-    --client-action-text: var(--go-color-0f172a);
-    --client-stat-border: var(--go-color-e2e8f0);
+    --client-avatar-border: var(--border-color-strong);
+    --client-action-bg: var(--surface);
+    --client-action-border: var(--border-color);
+    --client-action-hover-bg: var(--surface-alt);
+    --client-action-hover-border: var(--border-color-strong);
+    --client-action-text: var(--go-color-475569);
+    --client-stat-border: var(--border-color);
     --client-stat-label: var(--go-color-475569);
     --client-admin-text: var(--client-action-text);
-    --client-overlay: #000000c4;
+    --client-overlay: rgba(var(--go-color-0f172a-rgb), 0.65);
     --client-overlay-blur: blur(2px);
     --client-dialog-shadow: 0 32px 60px rgba(var(--go-color-0f172a-rgb), 0.18);
 }
 
 :root[data-theme='dark'] .clients-page {
-    --client-surface: #1f2937;
-    --client-surface-alt: #273447;
-    --client-panel-border: rgba(148, 163, 184, 0.28);
-    --client-panel-border-strong: rgba(191, 219, 254, 0.35);
+    --client-surface: var(--surface);
+    --client-surface-alt: var(--surface-alt);
+    --client-panel-border: rgba(148, 163, 184, 0.32);
+    --client-panel-border-strong: rgba(191, 219, 254, 0.45);
     --client-panel-shadow: 0 36px 72px rgba(0, 0, 0, 0.65);
     --client-card-shadow: 0 18px 36px rgba(0, 0, 0, 0.55);
-    --client-accent: #60a5fa;
-    --client-accent-rgb: 96 165 250;
-    --client-accent-strong: #3f83f8;
-    --client-accent-soft: rgba(96, 165, 250, 0.25);
+    --client-accent: var(--primary-color);
+    --client-accent-rgb: var(--go-color-2563eb-rgb);
+    --client-accent-strong: var(--primary-color-strong);
+    --client-accent-soft: var(--primary-color-soft);
     --client-badge-text: rgba(191, 219, 254, 0.92);
     --client-tag-muted-bg: rgba(71, 85, 105, 0.45);
     --client-tag-muted-text: rgba(226, 232, 240, 0.88);
-    --client-contact-bg: rgba(148, 163, 184, 0.16);
-    --client-contact-border: rgba(148, 163, 184, 0.4);
+    --client-contact-bg: rgba(148, 163, 184, 0.14);
+    --client-contact-border: rgba(148, 163, 184, 0.32);
     --client-contact-note: rgba(226, 232, 240, 0.72);
     --client-avatar-border: rgba(191, 219, 254, 0.65);
-    --client-action-bg: rgba(148, 163, 184, 0.18);
-    --client-action-border: rgba(148, 163, 184, 0.45);
-    --client-action-hover-bg: rgba(148, 163, 184, 0.32);
-    --client-action-hover-border: rgba(191, 219, 254, 0.55);
-    --client-action-text: rgba(248, 250, 252, 0.96);
+    --client-action-bg: rgba(148, 163, 184, 0.14);
+    --client-action-border: rgba(148, 163, 184, 0.32);
+    --client-action-hover-bg: rgba(148, 163, 184, 0.28);
+    --client-action-hover-border: rgba(226, 232, 240, 0.45);
+    --client-action-text: rgba(226, 232, 240, 0.95);
     --client-stat-border: rgba(148, 163, 184, 0.35);
     --client-stat-label: rgba(203, 213, 225, 0.82);
     --client-admin-text: rgba(248, 250, 252, 0.96);
-    --client-overlay: #000000d0;
+    --client-overlay: rgba(0, 0, 0, 0.82);
     --client-overlay-blur: blur(2px);
     --client-dialog-shadow: 0 40px 80px rgba(0, 0, 0, 0.75);
 }
@@ -196,7 +196,7 @@ body.scrolled .container {
 
 .guarantees-list__search-container,
 .guarantees-list__filter {
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color-strong);
     border-radius: 8px;
     padding: 10px 16px;
     font-size: 0.875rem;
@@ -215,6 +215,11 @@ body.scrolled .container {
     outline: none;
     border-color: var(--primary-color);
     /* box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.2); */
+}
+
+.guarantees-list__search-container:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 1px rgba(var(--go-color-2563eb-rgb), 0.08);
 }
 
 
@@ -2002,9 +2007,18 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .guarantees-table thead th {
-    background: #1c1d24;
-    color: var(--go-color-ffffff);
-    border-color: rgba(148, 163, 184, 0.35);
+    background: var(--surface-alt);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+:root[data-theme='dark'] .guarantees-table tr:nth-child(2n) {
+    background: transparent;
+}
+
+:root[data-theme='dark'] tr.guarantees-table__row:nth-child(even):not(.selected) td,
+:root[data-theme='dark'] .guarantees-table tbody tr:nth-child(even):not(.selected) td {
+    background: transparent;
 }
 
 :root[data-theme='dark'] .client-detail {
@@ -2053,8 +2067,14 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: rgba(226, 232, 240, 0.78);
 }
 
+:root[data-theme='dark'] .client-dialog__description {
+    background: rgba(46, 48, 56, 0.95);
+    border-left-color: var(--primary-color);
+}
+
 :root[data-theme='dark'] .client-detail__registration {
-    background: linear-gradient(135deg, rgba(96, 165, 250, 0.45), rgba(59, 130, 246, 0.75));
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.38), rgba(59, 130, 246, 0.68));
+    color: rgba(248, 250, 252, 0.96);
 }
 
 
@@ -2102,14 +2122,24 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .client-detail__loading-spinner {
-    border-color: rgba(148, 163, 184, 0.45);
-    border-top-color: var(--client-accent);
+    border-color: rgba(var(--go-color-ef4444-rgb), 0.35);
+    border-top-color: var(--danger-color);
 }
 
+:root[data-theme='dark'] .guarantee-detail .fast-actions__link,
 :root[data-theme='dark'] .client-detail__contact-actions .fast-actions__link {
-    background: var(--client-action-bg);
-    border-color: var(--client-action-border);
-    color: var(--client-action-text);
+    background: rgba(148, 163, 184, 0.14);
+    border-color: rgba(148, 163, 184, 0.32);
+    color: rgba(226, 232, 240, 0.95);
+}
+
+:root[data-theme='dark'] .guarantee-detail .fast-actions__link:hover,
+:root[data-theme='dark'] .guarantee-detail .fast-actions__link:focus-visible,
+:root[data-theme='dark'] .client-detail__contact-actions .fast-actions__link:hover,
+:root[data-theme='dark'] .client-detail__contact-actions .fast-actions__link:focus-visible {
+    background: rgba(148, 163, 184, 0.28);
+    border-color: rgba(226, 232, 240, 0.45);
+    color: #f8fafc;
 }
 
 :root[data-theme='dark'] .client-detail__workshop-details .client-detail__item,
@@ -2150,19 +2180,55 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .client-detail__commercial-media {
-    background: linear-gradient(135deg, rgba(var(--client-accent-rgb), 0.3), rgba(var(--client-accent-rgb), 0.5));
+    background: rgba(var(--client-accent-rgb), 0.2);
     color: var(--client-action-text);
-    box-shadow: inset 0 0 0 2px rgba(var(--client-accent-rgb), 0.35);
+    box-shadow: inset 0 0 0 1px rgba(var(--client-accent-rgb), 0.35);
 }
 
 :root[data-theme='dark'] .client-detail__commercial-action {
-    background: linear-gradient(135deg, var(--client-accent), var(--client-accent-strong));
-    box-shadow: 0 18px 32px rgba(var(--client-accent-rgb), 0.35);
+    background: var(--client-action-bg);
+    border-color: var(--client-action-border);
+    color: var(--client-action-text);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme='dark'] .client-detail__commercial-action:hover,
+:root[data-theme='dark'] .client-detail__commercial-action:focus-visible {
+    background: var(--client-action-hover-bg);
+    border-color: var(--client-action-hover-border);
+    color: var(--client-action-text);
+    box-shadow: 0 18px 32px rgba(0, 0, 0, 0.45);
 }
 
 :root[data-theme='dark'] .client-detail__status {
     background: rgba(59, 130, 246, 0.18);
     color: rgba(191, 219, 254, 0.9);
+}
+
+:root[data-theme='dark'] .detail__docs-btn {
+    background: rgba(148, 163, 184, 0.14);
+    border-color: rgba(148, 163, 184, 0.32);
+    color: rgba(226, 232, 240, 0.95);
+}
+
+:root[data-theme='dark'] .detail__docs-btn:hover,
+:root[data-theme='dark'] .detail__docs-btn:focus-visible {
+    background: rgba(148, 163, 184, 0.28);
+    border-color: rgba(226, 232, 240, 0.45);
+    color: #f8fafc;
+}
+
+:root[data-theme='dark'] .detail__docs-btn.detail__docs-btn--add {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--text-inverse);
+}
+
+:root[data-theme='dark'] .detail__docs-btn.detail__docs-btn--add:hover,
+:root[data-theme='dark'] .detail__docs-btn.detail__docs-btn--add:focus-visible {
+    background: var(--primary-color-hover);
+    border-color: var(--primary-color-hover);
+    color: var(--text-inverse);
 }
 
 :root[data-theme='dark'] .client-detail__status--warning {
@@ -2274,11 +2340,6 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: rgba(248, 250, 252, 0.96);
 }
 
-:root[data-theme='dark'] .client-dialog__assigned-card {
-    background: var(--client-surface-alt);
-    border-color: var(--client-panel-border);
-}
-
 :root[data-theme='dark'] .client-dialog__assigned-title {
     color: rgba(226, 232, 240, 0.72);
 }
@@ -2297,17 +2358,24 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: rgba(191, 219, 254, 0.78);
 }
 
-:root[data-theme='dark'] .client-dialog__assigned-remove {
-    background: var(--client-action-bg);
-    border-color: var(--client-action-border);
+:root[data-theme='dark'] .client-dialog__section {
+    background: var(--client-surface);
+    border-color: var(--client-panel-border);
+}
+
+:root[data-theme='dark'] .client-dialog__assigned-card {
     color: var(--client-action-text);
 }
 
-:root[data-theme='dark'] .client-dialog__assigned-remove:hover,
-:root[data-theme='dark'] .client-dialog__assigned-remove:focus-visible {
-    background: var(--client-action-hover-bg);
-    border-color: var(--client-action-hover-border);
-    color: var(--client-action-text);
+:root[data-theme='dark'] .client-dialog__assigned-card:hover,
+:root[data-theme='dark'] .client-dialog__assigned-card:focus-visible {
+    box-shadow: none;
+}
+
+:root[data-theme='dark'] .client-dialog__assigned-chip {
+    background: rgba(148, 163, 184, 0.22);
+    border-color: rgba(226, 232, 240, 0.45);
+    color: rgba(226, 232, 240, 0.95);
 }
 
 :root[data-theme='dark'] .client-dialog__footer {
@@ -2320,7 +2388,13 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .client-dialog__save {
-    background: linear-gradient(135deg, var(--client-accent), var(--client-accent-strong));
+    background: var(--primary-color);
+    color: var(--text-inverse);
+}
+
+:root[data-theme='dark'] .client-dialog__save:not(:disabled):hover,
+:root[data-theme='dark'] .client-dialog__save:not(:disabled):focus-visible {
+    background: var(--primary-color-hover);
 }
 
 :root[data-theme='dark'] .guarantee-detail {
@@ -2583,11 +2657,11 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 .client-detail__loading-spinner {
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 50%;
-    border: 3px solid var(--client-action-border);
-    border-top-color: var(--client-accent);
+    border: 3px solid rgba(var(--go-color-ef4444-rgb), 0.28);
+    border-top-color: var(--danger-color);
     display: inline-flex;
     animation: go-spin 0.9s linear infinite;
 }
@@ -3197,7 +3271,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 .client-detail a {
-    color: var(--go-color-1d4ed8);
+    color: var(--primary-color);
     font-weight: 500;
     text-decoration: none;
     transition: color 0.2s ease, box-shadow 0.2s ease;
@@ -3205,15 +3279,25 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .client-detail a:hover,
 .client-detail a:focus-visible {
-    color: var(--go-color-1e3a8a);
-    text-decoration: underline;
+    color: var(--primary-color-hover);
+    text-decoration: none;
+}
+
+:root[data-theme='dark'] .client-detail a {
+    color: var(--client-action-text);
+}
+
+:root[data-theme='dark'] .client-detail a:hover,
+:root[data-theme='dark'] .client-detail a:focus-visible {
+    color: var(--client-action-text);
+    text-decoration: none;
 }
 
 .client-detail button {
     appearance: none;
     border: none;
     border-radius: 999px;
-    background: linear-gradient(135deg, var(--go-color-111827), var(--go-color-1f2937));
+    background: var(--primary-color);
     color: var(--text-inverse);
     font-weight: 600;
     font-size: 0.9rem;
@@ -3226,9 +3310,26 @@ tr.guarantees-table__row:not(.selected):hover td,
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
+:root[data-theme='dark'] .client-detail button {
+    color: rgba(248, 250, 252, 0.96);
+}
+
+:root[data-theme='dark'] .client-detail__action--secondary {
+    background: var(--client-surface);
+    border-color: var(--client-panel-border);
+    color: var(--client-action-text);
+}
+
+:root[data-theme='dark'] .client-detail__action--secondary:hover,
+:root[data-theme='dark'] .client-detail__action--secondary:focus-visible {
+    background: rgba(148, 163, 184, 0.18);
+    border-color: rgba(148, 163, 184, 0.4);
+    color: rgba(226, 232, 240, 0.95);
+}
+
 .client-detail button:hover,
 .client-detail button:focus-visible {
-    background: linear-gradient(135deg, var(--go-color-0f172a), var(--go-color-111827));
+    background: var(--primary-color-hover);
     transform: translateY(-1px);
     box-shadow: 0 10px 20px rgba(var(--go-color-0f172a-rgb), 0.18);
 }
@@ -3240,11 +3341,29 @@ tr.guarantees-table__row:not(.selected):hover td,
     gap: 0.75rem;
 }
 
+.client-detail__actions--inline {
+    margin-top: var(--spacing-2);
+}
+
 .client-detail__action {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     padding-inline: 1.2rem;
+}
+
+.client-detail__action--secondary {
+    background: var(--surface);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    box-shadow: none;
+}
+
+.client-detail__action--secondary:hover,
+.client-detail__action--secondary:focus-visible {
+    background: var(--surface-alt);
+    color: var(--text-color);
+    box-shadow: none;
 }
 
 .client-detail__action svg {
@@ -3438,6 +3557,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     font-weight: 600;
     font-size: 0.85rem;
     text-decoration: none;
+    box-shadow: 0 4px 10px rgba(var(--go-color-0f172a-rgb), 0.08);
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -3446,12 +3566,12 @@ tr.guarantees-table__row:not(.selected):hover td,
     background: var(--client-action-hover-bg);
     border-color: var(--client-action-hover-border);
     color: var(--client-action-text);
-    box-shadow: 0 10px 22px rgba(var(--client-accent-rgb), 0.18);
+    box-shadow: 0 10px 22px rgba(var(--go-color-0f172a-rgb), 0.12);
     text-decoration: none;
 }
 
 .client-detail__commercial-action:focus-visible {
-    outline: 2px solid rgba(var(--client-accent-rgb), 0.45);
+    outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
 }
 
@@ -3617,33 +3737,69 @@ tr.guarantees-table__row:not(.selected):hover td,
     gap: var(--spacing-3);
 }
 
+.client-dialog__section {
+    border: 1px solid var(--client-panel-border);
+    border-radius: 1rem;
+    background: var(--client-contact-bg);
+    padding: var(--spacing-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.client-dialog__section--directory {
+    gap: var(--spacing-3);
+}
+
+.client-dialog__section--assigned {
+    gap: var(--spacing-2);
+}
+
+.client-dialog__panel--simple {
+    max-width: 420px;
+}
+
+.client-dialog__body--simple {
+    display: none;
+}
+
+.client-dialog--simple .client-dialog__footer {
+    justify-content: flex-end;
+}
+
+.client-dialog--simple .client-dialog__status {
+    display: none;
+}
+
 .client-dialog__intro {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    flex-direction: column;
     gap: var(--spacing-2);
 }
 
 .client-dialog__description {
-    font-size: 0.95rem;
-    color: var(--go-color-475569);
     margin: 0;
-    line-height: 1.5;
-    flex: 1 1 340px;
-    min-width: 240px;
+    padding: 0.85rem 1rem;
+    border-left: 3px solid var(--primary-color);
+    border-radius: 0.75rem;
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    font-weight: 500;
 }
 
 .client-dialog__search {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-top: 0;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--client-contact-border);
+    margin: 0;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid var(--border-color-strong);
     border-radius: 0.75rem;
     background: var(--client-contact-bg);
-    flex: 0 1 320px;
-    max-width: 320px;
+    flex: 0 0 auto;
+    width: min(100%, 320px);
 }
 
 .client-dialog__search-icon {
@@ -3658,6 +3814,23 @@ tr.guarantees-table__row:not(.selected):hover td,
     font-size: 0.95rem;
     color: var(--text-color);
     padding: 0;
+}
+
+@media (min-width: 640px) {
+    .client-dialog__intro {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-3);
+    }
+
+    .client-dialog__description {
+        flex: 1 1 auto;
+    }
+
+    .client-dialog__search {
+        width: min(100%, 360px);
+    }
 }
 
 .client-dialog__search-input:focus {
@@ -3678,20 +3851,21 @@ tr.guarantees-table__row:not(.selected):hover td,
     font-style: italic;
 }
 
-.client-dialog__assigned {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-2);
-    margin-top: var(--spacing-3);
+.client-dialog__assigned .client-dialog__section-title {
+    margin-bottom: 0;
 }
 
-.client-dialog__assigned-title {
+.client-dialog__section-title {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--go-color-475569);
+    color: var(--text-secondary);
+}
+
+.client-dialog__assigned-title {
+    color: var(--text-secondary);
 }
 
 .client-dialog__assigned--empty .client-dialog__assigned-title {
@@ -3702,26 +3876,43 @@ tr.guarantees-table__row:not(.selected):hover td,
     display: grid;
     gap: var(--spacing-2);
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: var(--spacing-1);
+    align-content: start;
+    justify-items: stretch;
+    align-items: start;
 }
 
 .client-dialog__assigned-empty {
     margin: 0;
     font-size: 0.85rem;
-    color: var(--client-contact-note);
-    padding: 0.85rem 1rem;
-    border-radius: 0.75rem;
-    border: 1px dashed var(--client-action-border);
-    background: var(--client-contact-bg);
+    color: var(--text-secondary);
+    padding: 1rem;
+    border-radius: 0.85rem;
+    border: 1px dashed var(--card-border);
+    background: var(--surface-alt);
+    text-align: center;
 }
 
 .client-dialog__assigned-card {
     display: flex;
     align-items: center;
     gap: var(--spacing-2);
-    padding: 0.75rem 1rem;
+    padding: 0.85rem 1rem;
     border-radius: 0.85rem;
     border: 1px solid var(--client-action-border);
-    background: var(--client-contact-bg);
+    background: var(--client-action-bg);
+    transition: border-color 0.2s ease, background 0.2s ease;
+    cursor: default;
+    position: relative;
+}
+
+.client-dialog__assigned-card:hover,
+.client-dialog__assigned-card:focus-visible {
+    border-color: var(--client-action-border);
+    background: var(--client-action-bg);
+    box-shadow: none;
+    transform: none;
+    outline: none;
 }
 
 .client-dialog__assigned-media {
@@ -3747,14 +3938,30 @@ tr.guarantees-table__row:not(.selected):hover td,
     border: 2px solid var(--client-avatar-border);
 }
 
+.client-dialog__assigned-chip {
+    margin-left: auto;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--client-action-border);
+    background: var(--client-action-bg);
+    color: var(--client-action-text);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
 .client-dialog__commercials {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: 1fr;
     gap: var(--spacing-2);
     padding-right: 0.25rem;
     overflow-y: auto;
-    flex: 1;
-    min-height: 0;
+    align-content: start;
+    align-items: start;
+    justify-items: stretch;
+    grid-auto-rows: minmax(auto, max-content);
+    max-height: min(420px, 55vh);
 }
 
 .client-dialog__commercials::-webkit-scrollbar {
@@ -3777,6 +3984,18 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: var(--client-contact-note);
     background: var(--client-contact-bg);
     text-align: center;
+}
+
+@media (min-width: 640px) {
+    .client-dialog__commercials {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .client-dialog__commercials {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }
 
 .client-dialog__card {
@@ -3911,6 +4130,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     flex-direction: column;
     gap: 0.15rem;
     min-width: 0;
+    flex: 1 1 160px;
 }
 
 .client-dialog__assigned-name {
@@ -3923,34 +4143,6 @@ tr.guarantees-table__row:not(.selected):hover td,
     font-size: 0.85rem;
     color: var(--client-contact-note);
     word-break: break-word;
-}
-
-.client-dialog__assigned-remove {
-    margin-left: auto;
-    border: 1px solid var(--client-action-border);
-    background: var(--client-action-bg);
-    color: var(--client-action-text);
-    border-radius: 999px;
-    padding: 0.4rem 1rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-    font-family: inherit;
-}
-
-.client-dialog__assigned-remove:hover,
-.client-dialog__assigned-remove:focus-visible {
-    background: var(--client-action-hover-bg);
-    border-color: var(--client-action-hover-border);
-    color: var(--client-action-text);
-    box-shadow: 0 8px 18px rgba(var(--client-accent-rgb), 0.12);
-}
-
-.client-dialog__assigned-remove:focus-visible {
-    outline: 2px solid rgba(var(--client-accent-rgb), 0.32);
-    outline-offset: 2px;
-    text-decoration: none;
 }
 
 
@@ -4085,7 +4277,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     padding: 0.65rem 1.5rem;
     border-radius: 999px;
     border: none;
-    background: linear-gradient(135deg, var(--client-accent-strong), var(--client-accent));
+    background: var(--primary-color);
     color: var(--text-inverse);
     font-weight: 600;
     display: inline-flex;
@@ -4105,8 +4297,8 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .client-dialog__save:not(:disabled):hover,
 .client-dialog__save:not(:disabled):focus-visible {
-    background: linear-gradient(135deg, var(--client-accent), var(--client-accent-strong));
-    box-shadow: 0 12px 28px rgba(var(--client-accent-rgb), 0.18);
+    background: var(--primary-color-hover);
+    box-shadow: 0 12px 28px rgba(var(--go-color-0f172a-rgb), 0.12);
     outline: none;
 }
 
@@ -4126,5 +4318,20 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .client-dialog__save.is-loading .client-dialog__spinner {
     display: inline-flex;
+}
+
+:root[data-theme='dark'] .guarantees-list__search-container {
+    background: rgba(148, 163, 184, 0.12);
+    border-color: rgba(148, 163, 184, 0.32);
+}
+
+:root[data-theme='dark'] .guarantees-list__search-container:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 1px rgba(var(--go-color-2563eb-rgb), 0.22);
+}
+
+:root[data-theme='dark'] .guarantees-list__search {
+    background: transparent;
+    color: var(--text-color);
 }
 
