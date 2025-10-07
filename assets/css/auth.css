@@ -54,7 +54,7 @@
 }
 
 .login-page .form-panel__inner {
-  width: min(100%, 420px);
+  width: min(100%, 520px);
   margin-inline: auto;
   display: flex;
   flex-direction: column;
@@ -102,6 +102,28 @@
 .login-page .auth-form .form-input:focus {
   border-color: var(--auth-accent);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+}
+
+.login-page .form-label {
+  background-color: var(--auth-surface-contrast);
+  color: var(--auth-field-text);
+  padding: 0 0.35rem;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+:root[data-theme='dark'] .login-page .auth-form .form-input {
+  background-color: var(--auth-field-bg);
+  border-color: var(--auth-field-border);
+  color: var(--auth-field-text);
+}
+
+:root[data-theme='dark'] .login-page .auth-form .form-input:focus {
+  box-shadow: 0 0 0 2px rgba(91, 123, 255, 0.3);
+}
+
+:root[data-theme='dark'] .login-page .form-label {
+  background-color: var(--auth-surface-contrast);
+  color: var(--auth-field-text);
 }
 
 

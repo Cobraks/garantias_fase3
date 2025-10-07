@@ -9,9 +9,13 @@
             min-height: 0;
             display: flex;
             flex-direction: column;
-            background: #f1f5f9;
-            color: #1f2937;
+            background: var(--auth-surface);
+            color: var(--auth-field-text);
             font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        :root[data-theme='dark'] body.body--auth {
+            color-scheme: dark;
         }
 
         .container.container--auth {
@@ -47,7 +51,6 @@
         footer.footer .footer__wrapper {
             height: 36px;
             margin: 0 auto;
-            max-width: 600px;
             width: 100%;
             padding-block: calc(var(--spacing-1, 1rem) * 0.75);
             padding-inline: clamp(1.5rem, 5vw, 3rem);
@@ -63,11 +66,12 @@
 
         .login-card {
             position: relative;
-            background: #ffffff;
+            background: var(--auth-surface-contrast);
             border-radius: 22px;
             padding: clamp(2.75rem, 6vw, 3.5rem);
             padding-top: clamp(3.25rem, 7vw, 4rem);
             box-shadow: 0 22px 45px -24px rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--auth-field-border);
             display: flex;
             flex-direction: column;
             gap: 0;
@@ -84,10 +88,10 @@
             gap: 0.5rem;
             padding: 0.5rem 1.25rem;
             border-radius: 999px;
-            background: #ffffff;
-            border: 1px solid rgba(15, 23, 42, 0.1);
-            box-shadow: 0 18px 34px -22px rgba(15, 23, 42, 0.35);
-            color: #000000;
+            background: var(--auth-surface-contrast);
+            border: 1px solid var(--auth-field-border);
+            box-shadow: 0 18px 34px -26px rgba(15, 23, 42, 0.32);
+            color: var(--auth-field-text);
             font-size: 0.78rem;
             font-weight: 600;
             text-transform: uppercase;

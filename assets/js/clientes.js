@@ -814,6 +814,10 @@
                     ? `<p class="client-detail__commercial-contact">${escapeHtml(email)}</p>`
                     : '';
 
+                const fallbackContact = email === '' && phone !== ''
+                    ? `<p class="client-detail__commercial-contact">${escapeHtml(phone)}</p>`
+                    : '';
+
                 const emailAction = email !== ''
                     ? `<a class="client-detail__commercial-action" href="mailto:${escapeAttribute(email)}">${iconEmail}<span>${escapeHtml(email)}</span></a>`
                     : '';
@@ -830,9 +834,9 @@
                         <div class="client-detail__commercial-media">${avatarHtml}</div>
                         <div class="client-detail__commercial-body">
                             <span class="client-detail__commercial-name">${escapeHtml(name)}</span>
-                            ${emailLine}
-                            ${actions !== '' ? `<div class="client-detail__commercial-actions">${actions}</div>` : ''}
+                            ${emailLine || fallbackContact}
                         </div>
+                        ${actions !== '' ? `<div class="client-detail__commercial-actions">${actions}</div>` : ''}
                     </li>
                 `;
             });
@@ -1257,11 +1261,10 @@
                             <h3 class="client-dialog__section-title client-dialog__assigned-title"></h3>
                             <div class="client-dialog__assigned-list"></div>
                         </section>
-                        <section class="client-dialog__section client-dialog__section--directory" aria-live="polite">
-                            <h3 class="client-dialog__section-title">${escapeHtml(strings.assignCommercial || 'Seleccionar comercial')}</h3>
-                            <div class="client-dialog__intro">
-                                <p class="client-dialog__description">${escapeHtml(strings.assignCommercialDescription || 'Selecciona el comercial que gestionará a este cliente.')}</p>
-                                <div class="client-dialog__search">
+                <section class="client-dialog__section client-dialog__section--directory" aria-live="polite">
+                    <h3 class="client-dialog__section-title">${escapeHtml(strings.assignCommercial || 'Seleccionar comercial')}</h3>
+                    <div class="client-dialog__intro">
+                        <div class="client-dialog__search">
                                     <span class="client-dialog__search-icon" aria-hidden="true">${iconSearch}</span>
                                     <input type="search" class="client-dialog__search-input" placeholder="${escapeHtml(strings.assignCommercialSearchPlaceholder || 'Buscar comercial por nombre o email…')}" aria-label="${escapeHtml(strings.assignCommercialSearchPlaceholder || 'Buscar comercial')}">
                                 </div>
@@ -1282,7 +1285,6 @@
 
             const panel = overlay.querySelector('.client-dialog__panel');
             const titleEl = overlay.querySelector('.client-dialog__title');
-            const descriptionEl = overlay.querySelector('.client-dialog__description');
             const searchInput = overlay.querySelector('.client-dialog__search-input');
             const commercialContainer = overlay.querySelector('.client-dialog__commercials');
             const saveButton = overlay.querySelector('.client-dialog__save');
@@ -1303,6 +1305,24 @@
             let searchTimer = null;
             let searchTerm = '';
             let filteredItems = [];
+            let closeTimer = null;
+            let closeTransitionHandler = null;
+
+            function clearCloseTransition() {
+                if (closeTransitionHandler) {
+                    overlay.removeEventListener('transitionend', closeTransitionHandler);
+                    closeTransitionHandler = null;
+                }
+                if (closeTimer !== null) {
+                    window.clearTimeout(closeTimer);
+                    closeTimer = null;
+                }
+            }
+
+            function hideOverlayAfterTransition() {
+                clearCloseTransition();
+                overlay.hidden = true;
+            }
 
             function resolveCompanyLabel(context) {
                 const fallback = (strings.client || 'este cliente');
@@ -1765,9 +1785,16 @@
             }
 
             function close() {
+                clearCloseTransition();
                 overlay.classList.remove('is-open');
                 overlay.setAttribute('aria-hidden', 'true');
-                overlay.hidden = true;
+                closeTransitionHandler = (event) => {
+                    if (event.target === overlay) {
+                        hideOverlayAfterTransition();
+                    }
+                };
+                overlay.addEventListener('transitionend', closeTransitionHandler);
+                closeTimer = window.setTimeout(hideOverlayAfterTransition, 320);
                 document.removeEventListener('keydown', handleKeydown);
                 setStatus('');
                 isSaving = false;
@@ -1827,12 +1854,6 @@
                         : `${template} ${resolvedCompany}`.trim();
                 }
 
-                if (descriptionEl) {
-                    const template = (strings.assignCommercialDescription || 'Selecciona el comercial que gestionará a %s.').trim();
-                    descriptionEl.textContent = template.includes('%s')
-                        ? template.replace('%s', resolvedCompany)
-                        : template;
-                }
 
                 selectedIds = new Set(Array.isArray(context.assignedIds)
                     ? context.assignedIds.map((value) => Number(value) || 0).filter((value) => value > 0)
@@ -1859,13 +1880,17 @@
                 updateSaveButton();
                 setStatus('');
 
+                clearCloseTransition();
+                overlay.classList.remove('is-open');
                 overlay.hidden = false;
-                overlay.classList.add('is-open');
                 overlay.setAttribute('aria-hidden', 'false');
                 document.addEventListener('keydown', handleKeydown);
                 window.requestAnimationFrame(() => {
+                    overlay.classList.add('is-open');
                     if (panel && typeof panel.focus === 'function') {
-                        panel.focus({ preventScroll: true });
+                        window.requestAnimationFrame(() => {
+                            panel.focus({ preventScroll: true });
+                        });
                     }
                 });
 
