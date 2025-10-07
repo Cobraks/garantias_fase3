@@ -818,13 +818,19 @@
                     ? `<p class="client-detail__commercial-contact">${escapeHtml(phone)}</p>`
                     : '';
 
+                const emailIcon = iconEmail !== ''
+                    ? `<span class="client-detail__commercial-icon" aria-hidden="true">${iconEmail}</span>`
+                    : '';
                 const emailAction = email !== ''
-                    ? `<a class="client-detail__commercial-action" href="mailto:${escapeAttribute(email)}">${iconEmail}<span>${escapeHtml(email)}</span></a>`
+                    ? `<a class="client-detail__commercial-action" href="mailto:${escapeAttribute(email)}">${emailIcon}<span>${escapeHtml(email)}</span></a>`
                     : '';
 
                 const phoneSanitized = phone.replace(/[^0-9+]/g, '');
+                const phoneIcon = iconPhone !== ''
+                    ? `<span class="client-detail__commercial-icon" aria-hidden="true">${iconPhone}</span>`
+                    : '';
                 const phoneAction = phone !== ''
-                    ? `<a class="client-detail__commercial-action" href="tel:${escapeAttribute(phoneSanitized)}">${iconPhone}<span>${escapeHtml(phone)}</span></a>`
+                    ? `<a class="client-detail__commercial-action" href="tel:${escapeAttribute(phoneSanitized)}">${phoneIcon}<span>${escapeHtml(phone)}</span></a>`
                     : '';
 
                 const actions = [emailAction, phoneAction].filter((action) => action !== '').join('\n');
@@ -1115,11 +1121,13 @@
             const loginEmailLine = loginEmail !== ''
                 ? `<p class="client-detail__meta-line client-detail__login-email">${escapeHtml(loginEmail)}</p>`
                 : '';
-            const addressLines = joinNonEmpty([
-                address.street || '',
+            const addressParts = [
+                typeof address.street === 'string' ? address.street.trim() : '',
                 joinNonEmpty([address.zip || '', address.city || ''], ' '),
                 joinNonEmpty([address.state || '', address.country || ''], ' '),
-            ], '<br>');
+            ];
+            const addressLines = joinNonEmpty(addressParts, ', ');
+            const addressHtml = addressLines !== '' ? escapeHtml(addressLines) : '';
 
             const sepaVariant = sepa.variant ? ` client-detail__status--${escapeHtml(sepa.variant)}` : '';
             const sepaMessage = sepa.label || strings.sepaEmpty || 'Sin información del mandato';
@@ -1214,7 +1222,7 @@
                             </div>
                             <div class="client-detail__item client-detail__item--direccion">
                                 <dt>${escapeHtml(strings.address || 'Dirección')}</dt>
-                                <dd>${addressLines || '<span class="client-detail__empty">—</span>'}</dd>
+                                <dd>${addressHtml || '<span class="client-detail__empty">—</span>'}</dd>
                             </div>
                         </dl>
                     </section>

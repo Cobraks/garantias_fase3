@@ -24,7 +24,7 @@ export const AVAILABLE_DOCS = [
                 routeType: "condicionado",
                 listLabel: "Condicionado",
                 successLabel: "Descargar condicionado",
-                icon: "download",
+                icon: "pdf",
         },
 ];
 
