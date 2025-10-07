@@ -1257,11 +1257,10 @@
                             <h3 class="client-dialog__section-title client-dialog__assigned-title"></h3>
                             <div class="client-dialog__assigned-list"></div>
                         </section>
-                        <section class="client-dialog__section client-dialog__section--directory" aria-live="polite">
-                            <h3 class="client-dialog__section-title">${escapeHtml(strings.assignCommercial || 'Seleccionar comercial')}</h3>
-                            <div class="client-dialog__intro">
-                                <p class="client-dialog__description">${escapeHtml(strings.assignCommercialDescription || 'Selecciona el comercial que gestionará a este cliente.')}</p>
-                                <div class="client-dialog__search">
+                <section class="client-dialog__section client-dialog__section--directory" aria-live="polite">
+                    <h3 class="client-dialog__section-title">${escapeHtml(strings.assignCommercial || 'Seleccionar comercial')}</h3>
+                    <div class="client-dialog__intro">
+                        <div class="client-dialog__search">
                                     <span class="client-dialog__search-icon" aria-hidden="true">${iconSearch}</span>
                                     <input type="search" class="client-dialog__search-input" placeholder="${escapeHtml(strings.assignCommercialSearchPlaceholder || 'Buscar comercial por nombre o email…')}" aria-label="${escapeHtml(strings.assignCommercialSearchPlaceholder || 'Buscar comercial')}">
                                 </div>
@@ -1282,7 +1281,6 @@
 
             const panel = overlay.querySelector('.client-dialog__panel');
             const titleEl = overlay.querySelector('.client-dialog__title');
-            const descriptionEl = overlay.querySelector('.client-dialog__description');
             const searchInput = overlay.querySelector('.client-dialog__search-input');
             const commercialContainer = overlay.querySelector('.client-dialog__commercials');
             const saveButton = overlay.querySelector('.client-dialog__save');
@@ -1827,12 +1825,6 @@
                         : `${template} ${resolvedCompany}`.trim();
                 }
 
-                if (descriptionEl) {
-                    const template = (strings.assignCommercialDescription || 'Selecciona el comercial que gestionará a %s.').trim();
-                    descriptionEl.textContent = template.includes('%s')
-                        ? template.replace('%s', resolvedCompany)
-                        : template;
-                }
 
                 selectedIds = new Set(Array.isArray(context.assignedIds)
                     ? context.assignedIds.map((value) => Number(value) || 0).filter((value) => value > 0)

@@ -2377,9 +2377,15 @@ const ADD_DOC_KEY = "add-document";
         data.email_vendedor ?? rowData.email_vendedor,
         skeletons
     );
-    const vendorDetailsHref = escapeAttr(
-        data.vendedor_url ?? rowData.vendedor_url ?? "#"
-    );
+    let vendorDetailsHrefRaw = data.vendor_profile_url ?? data.vendedor_url ?? rowData.vendedor_url ?? "";
+    if ((!vendorDetailsHrefRaw || vendorDetailsHrefRaw === "#") && data.vendor_slug) {
+        const clientsBase = (goConfig.pages && goConfig.pages.clientes) || "";
+        if (clientsBase) {
+            const base = clientsBase.replace(/\/+$/, "");
+            vendorDetailsHrefRaw = `${base}/${data.vendor_slug}/`;
+        }
+    }
+    const vendorDetailsHref = escapeAttr(vendorDetailsHrefRaw && vendorDetailsHrefRaw !== "#" ? vendorDetailsHrefRaw : "#");
     const fuelRaw = (
         data.combustible ?? rowData.combustible ?? ""
     )

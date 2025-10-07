@@ -110,7 +110,8 @@ if (! empty($is_add_guarantee)) {
             },
             pages: {
                 misGarantias: "<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>",
-                nuevaGarantia: "<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>"
+                nuevaGarantia: "<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>",
+                clientes: "<?php echo esc_url(trailingslashit(home_url('/garantias-online/clientes/'))); ?>"
             },
             documents: {
                 reclamacion: "<?php echo esc_url($reclamation_url); ?>"
