@@ -54,7 +54,7 @@
 }
 
 .login-page .form-panel__inner {
-  width: min(100%, 420px);
+  width: min(100%, 520px);
   margin-inline: auto;
   display: flex;
   flex-direction: column;

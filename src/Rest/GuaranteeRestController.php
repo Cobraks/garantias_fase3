@@ -2539,6 +2539,22 @@ class GuaranteeRestController
             : 'registration';
         $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
         $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
+        $vendor_slug = '';
+        $vendor_profile_url = '';
+        if ($vendor_id) {
+            $vendor_user = get_user_by('id', $vendor_id);
+            if ($vendor_user instanceof \WP_User) {
+                $vendor_slug = sanitize_user(
+                    $vendor_user->user_nicename !== ''
+                        ? $vendor_user->user_nicename
+                        : $vendor_user->user_login,
+                    true
+                );
+                if ($vendor_slug !== '') {
+                    $vendor_profile_url = trailingslashit(home_url('/garantias-online/clientes/' . $vendor_slug));
+                }
+            }
+        }
 
         $cobro_realizado = get_post_meta($id, 'garantia_contratada_estado_cobro_cobro_realizado', true);
         $iban_vendedor = $vendor_id
@@ -2616,6 +2632,8 @@ class GuaranteeRestController
             'email_vendedor_source' => $email_source,
             'avatar_vendedor' => $avatar_vendedor ?: '',
             'vendedor_url' => $vendedor_url,
+            'vendor_slug' => $vendor_slug,
+            'vendor_profile_url' => $vendor_profile_url,
             'condicionado_url' => '',
             'cobertura_url' => '',
             'certificate_url' => '',

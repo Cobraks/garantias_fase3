@@ -475,7 +475,7 @@
   --surface-popover-shadow: 0 32px 68px -34px rgba(0, 0, 0, 0.78),
     0 20px 52px -30px rgba(13, 15, 20, 0.62);
   --table-row-hover-bg: #2d3444;
-  --table-row-zebra-bg: #181c25;
+  --table-row-zebra-bg: #212329;
   --table-row-selected-bg: rgba(255, 255, 255, 0.78);
   --table-row-selected-text: rgba(8, 10, 15, 0.92);
   --border-color: rgba(172, 182, 202, 0.3);
@@ -1013,7 +1013,6 @@ text-decoration: none;
     -ms-border-radius: var(--spacing-2);
     -o-border-radius: var(--spacing-2);
     margin-top: var(--spacing-3);
-    min-height: var(--alturaHeader);
 }
 
 .footer__brand {
@@ -1329,16 +1328,16 @@ display: block;
 }
 
 :root[data-theme='dark'] .top-bar__menu li.button-item--nueva-garantia a {
-  background: #f97316;
-  border-color: #fb923c;
-  color: #0f172a;
-  box-shadow: 0 18px 36px -20px rgba(249, 115, 22, 0.65);
+  background: #0b005a82;
+  border-color: #321dd2;
+  color: #fff;
+  box-shadow: none;
 }
 
 :root[data-theme='dark'] .top-bar__menu li.button-item--nueva-garantia a:hover {
-  background: #fb923c;
-  border-color: #fdba74;
-  color: #111827;
+  background: rgba(27, 14, 140, 0.62);
+  border-color: #4330f0;
+  color: #fff;
 }
 
 :root[data-theme='dark'] .hamburger-line {
