@@ -3174,7 +3174,13 @@ function initRowSelection() {
                             : `${url}?download=1`;
                     dl.href = dlUrl;
                     const downloadText = btn.dataset.docDownload || "Descargar documento";
-                    dl.textContent = downloadText;
+                    const downloadLabel = dl.querySelector(".pdf-modal__download-text");
+                    if (downloadLabel) {
+                        downloadLabel.textContent = downloadText;
+                    } else {
+                        dl.textContent = downloadText;
+                    }
+                    dl.setAttribute("aria-label", downloadText);
                     if (btn.dataset.docFilename) {
                             dl.download = btn.dataset.docFilename;
                     } else {
