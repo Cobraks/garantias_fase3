@@ -1,7 +1,7 @@
       :root {
         --wizard-connector-idle: var(--step-inactive, #d1d5db);
-        --wizard-connector-active: var(--primary-color);
-        --wizard-connector-complete: var(--primary-color-strong, var(--primary-color));
+        --wizard-connector-active: var(--go-color-000000, #000000);
+        --wizard-connector-complete: var(--go-color-000000, #000000);
       }
 
       :root[data-theme='dark'] {
