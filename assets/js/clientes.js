@@ -835,8 +835,8 @@
                         <div class="client-detail__commercial-body">
                             <span class="client-detail__commercial-name">${escapeHtml(name)}</span>
                             ${emailLine || fallbackContact}
+                            ${actions !== '' ? `<div class="client-detail__commercial-actions">${actions}</div>` : ''}
                         </div>
-                        ${actions !== '' ? `<div class="client-detail__commercial-actions">${actions}</div>` : ''}
                     </li>
                 `;
             });
@@ -1146,30 +1146,27 @@
             const hasCommercials = Array.isArray(item.commercials) && item.commercials.length > 0;
             const assignButton = canAssignCommercials
                 ? `
-                    <div class="client-detail__actions">
                         <button type="button" class="client-detail__action" data-assign-commercial>
                             ${iconPersonAdd}
                             <span>${escapeHtml((hasCommercials ? strings.manageCommercials : strings.assignCommercial) || (hasCommercials ? 'Gestionar comerciales' : 'Asignar comercial'))}</span>
                         </button>
-                    </div>
                 `
                 : '';
             const manageOffersButton = `
-                <div class="client-detail__actions client-detail__actions--inline">
-                    <button type="button" class="client-detail__action" data-manage-offers>
-                        ${iconManageOffers}
-                        <span>${escapeHtml(strings.manageOffers || 'Gestionar ofertas')}</span>
-                    </button>
-                </div>
+                        <button type="button" class="client-detail__action" data-manage-offers>
+                            ${iconManageOffers}
+                            <span>${escapeHtml(strings.manageOffers || 'Gestionar ofertas')}</span>
+                        </button>
             `;
             const manageSepaButton = `
-                <div class="client-detail__actions client-detail__actions--inline">
-                    <button type="button" class="client-detail__action" data-manage-sepa>
-                        ${iconManageSepa}
-                        <span>${escapeHtml(strings.manageSepa || 'Gestionar SEPA')}</span>
-                    </button>
-                </div>
+                        <button type="button" class="client-detail__action" data-manage-sepa>
+                            ${iconManageSepa}
+                            <span>${escapeHtml(strings.manageSepa || 'Gestionar SEPA')}</span>
+                        </button>
             `;
+            const assignButtonHtml = assignButton ? assignButton.trim() : '';
+            const manageOffersButtonHtml = manageOffersButton.trim();
+            const manageSepaButtonHtml = manageSepaButton.trim();
 
             return `
                 <div class="client-detail">
@@ -1215,29 +1212,35 @@
                                 <dt>${escapeHtml(strings.taxId || 'CIF/NIF')}</dt>
                                 <dd>${formatDefinitionValue(company.tax_id || '')}</dd>
                             </div>
-                            <div class="client-detail__item">
+                            <div class="client-detail__item client-detail__item--direccion">
                                 <dt>${escapeHtml(strings.address || 'Dirección')}</dt>
                                 <dd>${addressLines || '<span class="client-detail__empty">—</span>'}</dd>
                             </div>
                         </dl>
                     </section>
                     <section class="client-detail__section">
-                        <h4 class="client-detail__section-title">${escapeHtml(strings.commercials || 'Comercial')}</h4>
+                        <div class="client-detail__section-header">
+                            <h4 class="client-detail__section-title">${escapeHtml(strings.commercials || 'Comercial')}</h4>
+                            ${assignButtonHtml}
+                        </div>
                         ${renderCommercialsList(item.commercials)}
-                        ${assignButton}
                     </section>
                     ${workshopSection}
                     ${preferencesSection}
                     <section class="client-detail__section">
-                        <h4 class="client-detail__section-title">${escapeHtml(strings.offers || 'Ofertas activas')}</h4>
+                        <div class="client-detail__section-header">
+                            <h4 class="client-detail__section-title">${escapeHtml(strings.offers || 'Ofertas activas')}</h4>
+                            ${manageOffersButtonHtml}
+                        </div>
                         ${renderOffersList(item.offers)}
-                        ${manageOffersButton}
                     </section>
                     <section class="client-detail__section">
-                        <h4 class="client-detail__section-title">${escapeHtml(strings.sepaStatus || 'Estado SEPA')}</h4>
+                        <div class="client-detail__section-header">
+                            <h4 class="client-detail__section-title">${escapeHtml(strings.sepaStatus || 'Estado SEPA')}</h4>
+                            ${manageSepaButtonHtml}
+                        </div>
                         <p class="client-detail__status${sepaVariant}">${escapeHtml(sepaMessage)}</p>
                         ${sepaDetails}
-                        ${manageSepaButton}
                     </section>
                     ${adminLinkHtml}
                 </div>
