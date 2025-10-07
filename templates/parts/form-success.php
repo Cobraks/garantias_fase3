@@ -36,36 +36,16 @@ use GarantiasOnline360VO\Svg;
                         <th scope="row">Cantidad</th>
                         <td data-copy-cell data-tooltip="Copiar cantidad"><span class="form-success__copy-target" data-amount data-toast="Cantidad copiada al portapapeles."></span><button class="form-success__copy" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
                     </tr>
-                    <tr data-copy-row>
-                        <th scope="row">Justificante</th>
-                        <td data-copy-cell data-tooltip="Copiar dirección">
-                            Envía el justificante de ingreso a
-                            <span
-                                class="form-success__copy-target"
-                                data-email
-                                data-copy-value="garantias@460vo.es"
-                                data-toast="Dirección copiada al portapapeles"
-                            >
-                                <a
-                                    href="mailto:garantias@460vo.es"
-                                    data-email-link
-                                    data-email-base="garantias@460vo.es"
-                                >garantias@460vo.es</a>
-                            </span>
-                            <button
-                                class="form-success__copy"
-                                data-copy="[data-email]"
-                                data-label="Copiar dirección"
-                                data-done="Dirección copiada"
-                                data-toast="Dirección copiada al portapapeles"
-                                aria-label="Copiar dirección"
-                            >
-                                <?php echo Svg::icon('copy', 'form-success__copy-icon'); ?>
-                            </button>
-                        </td>
-                    </tr>
                 </tbody>
             </table>
+            <p class="form-success__transfer-instructions">
+                Puedes remitir el justificante desde tu panel de gestión de garantías o enviarlo por correo electrónico a
+                <a
+                    href="mailto:garantias@460vo.es"
+                    data-email-link
+                    data-email-base="garantias@460vo.es"
+                >garantias@460vo.es</a>.
+            </p>
             <div class="form-success__toast" aria-hidden="true"></div>
         </div>
     </div>
@@ -75,15 +55,8 @@ use GarantiasOnline360VO\Svg;
         <span class="form-success__loading-spinner" aria-hidden="true"></span>
     </div>
     <div class="form-success__docs" hidden>
+        <p class="form-success__docs-message" hidden></p>
         <a href="#" class="document-card" data-doc="certificate" hidden>
-            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-            <span class="document-card__title"></span>
-        </a>
-        <a href="#" class="document-card" data-doc="cobertura" hidden>
-            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-            <span class="document-card__title"></span>
-        </a>
-        <a href="#" class="document-card" data-doc="condicionado" hidden>
             <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
             <span class="document-card__title"></span>
         </a>
