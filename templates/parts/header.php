@@ -176,7 +176,19 @@ $home_destination = $is_admin_user
                     )); ?>" defer></script>
 </head>
 
-<body class="<?php echo $is_auth_template ? 'body--auth' : ''; ?>">
+    <?php
+    $body_classes = [];
+    if ($is_auth_template) {
+        $body_classes[] = 'body--auth';
+    }
+    if (! empty($is_clients_page)) {
+        $body_classes[] = 'body--clients';
+    }
+    if (! empty($is_list_page)) {
+        $body_classes[] = 'body--guarantees';
+    }
+    ?>
+<body class="<?php echo esc_attr(implode(' ', $body_classes)); ?>">
     <?php if (! $is_auth_template) : ?>
     <header class="top-bar" style="view-transition-name: header">
         <div class="top-bar__wrapper">
@@ -394,6 +406,9 @@ $home_destination = $is_admin_user
     if (! empty($is_clients_page)) {
         $container_classes[] = 'clients-page';
     }
+    if (! empty($is_list_page)) {
+        $container_classes[] = 'guarantees-page';
+    }
 
     $main_grid_classes = ['main-grid'];
     if ($is_auth_template) {
@@ -401,6 +416,9 @@ $home_destination = $is_admin_user
     }
     if (! empty($is_clients_page)) {
         $main_grid_classes[] = 'clients-page';
+    }
+    if (! empty($is_list_page)) {
+        $main_grid_classes[] = 'guarantees-page';
     }
     ?>
     <div class="<?php echo esc_attr(implode(' ', $container_classes)); ?>">

@@ -16,29 +16,35 @@ if (! empty($is_add_guarantee)) {
 </div> <!-- /.container -->
 <footer class="footer" style="view-transition-name: footer">
     <div class="footer__wrapper">
-        <p class="footer__text"><?php echo '©'  . esc_html(date('Y')) . ' ' . '<span class="text--red">360</span>VO '; ?></p>
-        <?php if (! empty($is_auth_page)) : ?>
-            <button
-                type="button"
-                class="footer__theme-toggle"
-                role="switch"
-                aria-checked="false"
-                data-theme-toggle
-                data-theme-label-off="<?php esc_attr_e('Activar modo oscuro', 'garantias-online-360vo'); ?>"
-                data-theme-label-on="<?php esc_attr_e('Activar modo claro', 'garantias-online-360vo'); ?>"
-                data-theme-status-off="<?php esc_attr_e('Desactivado', 'garantias-online-360vo'); ?>"
-                data-theme-status-on="<?php esc_attr_e('Activado', 'garantias-online-360vo'); ?>"
-                aria-label="<?php esc_attr_e('Activar modo oscuro', 'garantias-online-360vo'); ?>"
-            >
-                <span class="footer__theme-icon" aria-hidden="true">
-                    <?php echo Svg::icon('sun', 'footer__theme-icon-sun'); ?>
-                    <?php echo Svg::icon('moon', 'footer__theme-icon-moon'); ?>
-                </span>
-                <span class="footer__theme-switch" aria-hidden="true">
-                    <span class="footer__theme-thumb"></span>
-                </span>
-            </button>
-        <?php endif; ?>
+        <div class="footer__brand">
+            <p class="footer__text"><?php echo '©'  . esc_html(date('Y')) . ' ' . '<span class="text--red">360</span>VO '; ?></p>
+            <?php $show_footer_theme_toggle = ! is_user_logged_in(); ?>
+            <?php if (! empty($is_auth_page)) {
+                $show_footer_theme_toggle = true;
+            } ?>
+            <?php if ($show_footer_theme_toggle) : ?>
+                <button
+                    type="button"
+                    class="footer__theme-toggle"
+                    role="switch"
+                    aria-checked="false"
+                    data-theme-toggle
+                    data-theme-label-off="<?php esc_attr_e('Activar modo oscuro', 'garantias-online-360vo'); ?>"
+                    data-theme-label-on="<?php esc_attr_e('Activar modo claro', 'garantias-online-360vo'); ?>"
+                    data-theme-status-off="<?php esc_attr_e('Desactivado', 'garantias-online-360vo'); ?>"
+                    data-theme-status-on="<?php esc_attr_e('Activado', 'garantias-online-360vo'); ?>"
+                    aria-label="<?php esc_attr_e('Activar modo oscuro', 'garantias-online-360vo'); ?>"
+                >
+                    <span class="footer__theme-icon" aria-hidden="true">
+                        <?php echo Svg::icon('sun', 'footer__theme-icon-sun'); ?>
+                        <?php echo Svg::icon('moon', 'footer__theme-icon-moon'); ?>
+                    </span>
+                    <span class="footer__theme-switch" aria-hidden="true">
+                        <span class="footer__theme-thumb"></span>
+                    </span>
+                </button>
+            <?php endif; ?>
+        </div>
         <?php if (! empty($is_add_guarantee) && $example_data_enabled) : ?>
             <button id="rellenar_ejemplo" class="btn"><?php esc_html_e('Rellenar datos ejemplo', 'garantias-online-360vo'); ?></button>
         <?php endif; ?>
@@ -212,6 +218,13 @@ if (! empty($is_add_guarantee)) {
             'assignCommercialSelectAction' => __('Seleccionar', 'garantias-online-360vo'),
             'assignCommercialSelectedAction' => __('Seleccionado', 'garantias-online-360vo'),
             'assignCommercialRemoveAction' => __('Quitar', 'garantias-online-360vo'),
+            'manageOffers'         => __('Gestionar ofertas', 'garantias-online-360vo'),
+            'manageOffersTitle'    => __('Gestionar ofertas', 'garantias-online-360vo'),
+            'manageOffersTitleTemplate' => __('Gestionar ofertas de %s', 'garantias-online-360vo'),
+            'manageSepa'           => __('Gestionar SEPA', 'garantias-online-360vo'),
+            'manageSepaTitle'      => __('Gestionar SEPA', 'garantias-online-360vo'),
+            'manageSepaTitleTemplate' => __('Gestionar SEPA de %s', 'garantias-online-360vo'),
+            'dialogSave'           => __('Guardar cambios', 'garantias-online-360vo'),
             'close'                => __('Cerrar', 'garantias-online-360vo'),
         ],
         'icons' => [
@@ -222,6 +235,8 @@ if (! empty($is_add_guarantee)) {
             'personAdd' => Svg::icon('person_add'),
             'close' => Svg::icon('cerrar'),
             'search' => Svg::icon('search'),
+            'manageOffers' => Svg::icon('manage_offers'),
+            'manageSepa' => Svg::icon('payment'),
         ],
     ];
     ?>
