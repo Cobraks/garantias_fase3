@@ -515,6 +515,13 @@ footer.footer .footer__wrapper {
   color: var(--text-primary);
 }
 
+:root[data-theme='dark'] .register-page .form-input:not(:placeholder-shown) ~ .form-label,
+:root[data-theme='dark'] .register-page .form-select:not([value=""]) ~ .form-label,
+:root[data-theme='dark'] .register-page .form-textarea:not(:placeholder-shown) ~ .form-label {
+  background: rgba(26, 28, 34, 0.96);
+  color: rgba(226, 232, 240, 0.92);
+}
+
 .register-page .form-input:focus ~ .form-label,
 .register-page .form-select:focus ~ .form-label,
 .register-page .form-textarea:focus ~ .form-label {
@@ -544,7 +551,7 @@ footer.footer .footer__wrapper {
   padding: 1.5rem 0.25rem;
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  background-color: #ffffff;
+  background-color: rgba(var(--go-color-2563eb-rgb), 0.05);
   cursor: pointer;
   transition: var(--transition);
   text-align: center;
@@ -567,17 +574,17 @@ footer.footer .footer__wrapper {
 }
 
 :root[data-theme='dark'] .register-page .channel-btn {
-  background-color: var(--bg-light);
+  background-color: rgba(129, 140, 248, 0.18);
   border-color: rgba(148, 163, 184, 0.32);
-  color: var(--text-primary);
+  color: rgba(226, 232, 240, 0.92);
   box-shadow: none;
 }
 
 :root[data-theme='dark'] .register-page .channel-btn:hover,
 :root[data-theme='dark'] .register-page .channel-btn:focus-visible {
-  border-color: rgba(226, 232, 240, 0.4);
-  color: rgba(226, 232, 240, 0.95);
-  box-shadow: 0 12px 28px -20px rgba(0, 0, 0, 0.45);
+  border-color: rgba(226, 232, 240, 0.45);
+  color: rgba(248, 250, 252, 0.98);
+  box-shadow: 0 12px 28px -20px rgba(79, 70, 229, 0.35);
 }
 
 :root[data-theme='dark'] .register-page .channel-btn.active {
@@ -756,7 +763,7 @@ footer.footer .footer__wrapper {
   gap: var(--spacing-2, 1rem);
   padding: var(--spacing-3, 1.5rem) var(--spacing-2, 1rem);
   border-top: 1px solid var(--border-color, var(--go-color-e2e8f0));
-  background-color: var(--go-color-ffffff);
+  background-color: transparent;
 }
 
 .register-page .btn {
@@ -785,6 +792,16 @@ footer.footer .footer__wrapper {
 
 .register-page .btn-primary:hover {
   background-color: var(--primary-dark);
+}
+
+:root[data-theme='dark'] .register-page .btn-primary {
+  color: #fff;
+}
+
+:root[data-theme='dark'] .register-page .btn-primary:disabled,
+:root[data-theme='dark'] .register-page .btn-primary[disabled] {
+  background-color: rgba(148, 163, 184, 0.18);
+  color: rgba(226, 232, 240, 0.7);
 }
 
 .register-page .btn-secondary {

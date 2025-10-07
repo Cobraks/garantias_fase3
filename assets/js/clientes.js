@@ -818,13 +818,20 @@
                     ? `<p class="client-detail__commercial-contact">${escapeHtml(phone)}</p>`
                     : '';
 
+                const emailIconHtml = iconEmail !== ''
+                    ? `<span class="client-detail__commercial-action-icon" aria-hidden="true">${iconEmail}</span>`
+                    : '';
+                const phoneIconHtml = iconPhone !== ''
+                    ? `<span class="client-detail__commercial-action-icon" aria-hidden="true">${iconPhone}</span>`
+                    : '';
+
                 const emailAction = email !== ''
-                    ? `<a class="client-detail__commercial-action" href="mailto:${escapeAttribute(email)}">${iconEmail}<span>${escapeHtml(email)}</span></a>`
+                    ? `<a class="client-detail__commercial-action" href="mailto:${escapeAttribute(email)}">${emailIconHtml}<span>${escapeHtml(email)}</span></a>`
                     : '';
 
                 const phoneSanitized = phone.replace(/[^0-9+]/g, '');
                 const phoneAction = phone !== ''
-                    ? `<a class="client-detail__commercial-action" href="tel:${escapeAttribute(phoneSanitized)}">${iconPhone}<span>${escapeHtml(phone)}</span></a>`
+                    ? `<a class="client-detail__commercial-action" href="tel:${escapeAttribute(phoneSanitized)}">${phoneIconHtml}<span>${escapeHtml(phone)}</span></a>`
                     : '';
 
                 const actions = [emailAction, phoneAction].filter((action) => action !== '').join('\n');
