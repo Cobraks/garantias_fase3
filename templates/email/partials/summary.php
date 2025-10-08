@@ -46,6 +46,8 @@ if (! empty($dates['from']) && ! empty($dates['to'])) {
 } elseif (! empty($dates['to'])) {
     $coverage = $dates['to'];
 }
+$duration_label = isset($dates['duration']) ? trim((string) $dates['duration']) : '';
+$customer_email = sanitize_email($customer['email'] ?? '');
 ?>
 <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-top:16px;">
     <tbody>
@@ -56,7 +58,7 @@ if (! empty($dates['from']) && ! empty($dates['to'])) {
             </td>
         </tr>
         <tr>
-            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Modalidad', 'garantias-online-360vo'); ?></th>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Cobertura', 'garantias-online-360vo'); ?></th>
             <td style="padding:4px 0; font-size:14px; color:#111;">
                 <?php echo esc_html($plan ?: '-'); ?>
             </td>
@@ -74,17 +76,20 @@ if (! empty($dates['from']) && ! empty($dates['to'])) {
             </td>
         </tr>
         <tr>
-            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Cobertura', 'garantias-online-360vo'); ?></th>
+            <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Validez', 'garantias-online-360vo'); ?></th>
             <td style="padding:4px 0; font-size:14px; color:#111;">
                 <?php echo esc_html($coverage ?: '-'); ?>
+                <?php if ($duration_label !== '') : ?>
+                    <span style="color:#4b5563;">(<?php echo esc_html($duration_label); ?>)</span>
+                <?php endif; ?>
             </td>
         </tr>
         <tr>
             <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Cliente', 'garantias-online-360vo'); ?></th>
             <td style="padding:4px 0; font-size:14px; color:#111;">
                 <?php echo esc_html(($customer['name'] ?? '') ?: '-'); ?>
-                <?php if (! empty($customer['email'])) : ?>
-                    <span style="color:#888;">(<?php echo esc_html($customer['email']); ?>)</span>
+                <?php if ($customer_email !== '') : ?>
+                    <span style="color:#888;">(<a href="mailto:<?php echo esc_attr($customer_email); ?>" style="color:#e2001b; text-decoration:underline;"><?php echo esc_html($customer_email); ?></a>)</span>
                 <?php endif; ?>
             </td>
         </tr>
@@ -115,7 +120,7 @@ if (! empty($dates['from']) && ! empty($dates['to'])) {
             <td style="padding:4px 0; font-size:14px; color:#111;">
                 <?php echo esc_html($vendor_contact !== '' ? $vendor_contact : '-'); ?>
                 <?php if ($vendor_contact_email !== '') : ?>
-                    <span style="color:#888;">(<?php echo esc_html($vendor_contact_email); ?>)</span>
+                    <span style="color:#888;">(<a href="mailto:<?php echo esc_attr($vendor_contact_email); ?>" style="color:#e2001b; text-decoration:underline;"><?php echo esc_html($vendor_contact_email); ?></a>)</span>
                 <?php endif; ?>
             </td>
         </tr>
@@ -124,7 +129,7 @@ if (! empty($dates['from']) && ! empty($dates['to'])) {
         <tr>
             <th align="left" style="text-transform:uppercase; font-size:12px; color:#666; padding:4px 0;"><?php esc_html_e('Enlace', 'garantias-online-360vo'); ?></th>
             <td style="padding:4px 0; font-size:14px; color:#111;">
-                <a href="<?php echo esc_url($permalink); ?>" style="color:#e2001b; text-decoration:none;">
+                <a href="<?php echo esc_url($permalink); ?>" style="color:#e2001b; text-decoration:underline;">
                     <?php esc_html_e('Abrir en Mis Garantías', 'garantias-online-360vo'); ?>
                 </a>
             </td>
