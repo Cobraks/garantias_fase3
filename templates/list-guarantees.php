@@ -79,8 +79,12 @@ $show_channel_col = ! $is_professional;
             <button
                 type="button"
                 class="guarantees-list__reset-btn"
-                data-reset-filters>
-                <?php esc_html_e('Reiniciar filtros', 'garantias-online-360vo'); ?>
+                data-reset-filters
+                hidden>
+                <?php echo Svg::icon('filter_reset', 'guarantees-list__reset-icon'); ?>
+                <span class="guarantees-list__reset-label">
+                    <?php esc_html_e('Reiniciar filtros', 'garantias-online-360vo'); ?>
+                </span>
             </button>
             <?php if (! $is_professional) : ?>
                 <?php
@@ -170,6 +174,9 @@ $show_channel_col = ! $is_professional;
                     <?php echo Svg::icon('filter_funnel', 'guarantees-list__more-filters-icon'); ?>
                     <span class="guarantees-list__more-filters-label">
                         <?php esc_html_e('Más filtros', 'garantias-online-360vo'); ?>
+                    </span>
+                    <span class="guarantees-list__more-filters-caret" aria-hidden="true">
+                        <?php echo Svg::icon('arrow_drop_down'); ?>
                     </span>
                 </button>
             </div>

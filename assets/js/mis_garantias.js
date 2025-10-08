@@ -264,47 +264,87 @@ const ADD_DOC_KEY = "add-document";
                 let selectedVendorType = "";
                 let selectedPaymentMethod = "";
                 let selectedCommercial = "";
-                let selectedOrderKey = "created_desc";
+                const defaultOrderKey = orderToggle
+                        ? orderToggle.getAttribute("data-default-sort") || "created_desc"
+                        : "created_desc";
+                let selectedOrderKey = defaultOrderKey;
                 let selectedOrderBy = "created";
-                let selectedOrderDirection = "desc";
+                let selectedOrderDirection = defaultOrderKey.endsWith("_asc")
+                        ? "asc"
+                        : "desc";
                 let currentListAbort = null;
                 let rawClients = [];
                 let rawCommercials = [];
                 const orderOptions = new Map();
                 let setAdvancedOpen = () => {};
+                let baseFiltersHeight = filtersRoot ? filtersRoot.offsetHeight || 0 : 0;
+                const updateBaseFiltersHeight = () => {
+                        if (!filtersRoot) {
+                                baseFiltersHeight = 0;
+                                return;
+                        }
+                        baseFiltersHeight = filtersRoot.offsetHeight || 0;
+                };
                 const updateAdvancedHeight = () => {
-                        if (!advancedPanel || !filtersRoot) {
+                        if (!filtersRoot) {
+                                rootElement.style.setProperty(
+                                        "--go-advanced-filters-height",
+                                        "0px"
+                                );
+                                baseFiltersHeight = 0;
+                                return;
+                        }
+
+                        const isAdvancedVisible =
+                                advancedPanel && !advancedPanel.hasAttribute("hidden");
+
+                        if (!isAdvancedVisible) {
+                                updateBaseFiltersHeight();
                                 rootElement.style.setProperty(
                                         "--go-advanced-filters-height",
                                         "0px"
                                 );
                                 return;
                         }
-                        if (advancedPanel.hasAttribute("hidden")) {
-                                rootElement.style.setProperty(
-                                        "--go-advanced-filters-height",
-                                        "0px"
-                                );
-                                return;
-                        }
-                        const panelHeight = advancedPanel.offsetHeight || 0;
-                        let gapValue = 0;
-                        if (filtersRoot) {
-                                const styles = window.getComputedStyle(filtersRoot);
-                                const rawGap = styles.rowGap || styles.gap || "";
-                                const parsedGap = parseFloat(rawGap);
-                                if (!Number.isNaN(parsedGap)) {
-                                        gapValue = parsedGap;
-                                }
-                        }
-                        const total = Math.max(
-                                0,
-                                Math.round(panelHeight + gapValue)
-                        );
+
+                        const currentHeight = filtersRoot.offsetHeight || 0;
+                        const baseline = baseFiltersHeight || 0;
+                        const extra = Math.max(0, Math.round(currentHeight - baseline));
+
                         rootElement.style.setProperty(
                                 "--go-advanced-filters-height",
-                                `${total}px`
+                                `${extra}px`
                         );
+                };
+                updateBaseFiltersHeight();
+
+                const hasActiveFilters = () => {
+                        const hasSearch = Boolean((searchQuery || "").trim());
+                        if (hasSearch) {
+                                return true;
+                        }
+                        if (
+                                selectedEstado ||
+                                selectedPlan ||
+                                selectedCanal ||
+                                selectedConcesionario ||
+                                selectedVendorType ||
+                                selectedPaymentMethod ||
+                                selectedCommercial
+                        ) {
+                                return true;
+                        }
+                        if (orderToggle && selectedOrderKey !== defaultOrderKey) {
+                                return true;
+                        }
+                        return false;
+                };
+
+                const updateResetVisibility = () => {
+                        if (!resetFiltersBtn) {
+                                return;
+                        }
+                        resetFiltersBtn.hidden = !hasActiveFilters();
                 };
 
                 if (typeof ResizeObserver !== "undefined" && advancedPanel) {
@@ -319,6 +359,8 @@ const ADD_DOC_KEY = "add-document";
                 window.addEventListener("resize", () => {
                         if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
                                 updateAdvancedHeight();
+                        } else {
+                                updateBaseFiltersHeight();
                         }
                 });
 
@@ -448,6 +490,12 @@ const ADD_DOC_KEY = "add-document";
                                 concesionarioSelect.value = "";
                                 selectedConcesionario = "";
                         }
+
+                        if (!advancedPanel || advancedPanel.hasAttribute("hidden")) {
+                                updateBaseFiltersHeight();
+                        }
+
+                        updateResetVisibility();
                 }
 
                 function refreshClientsVisibility() {
@@ -477,6 +525,10 @@ const ADD_DOC_KEY = "add-document";
                         }
 
                         populateClientsSelect(shouldShow ? vendorType : "");
+                        if (!advancedPanel || advancedPanel.hasAttribute("hidden")) {
+                                updateBaseFiltersHeight();
+                        }
+                        updateResetVisibility();
                 }
 
                 function populateCommercialSelect() {
@@ -526,6 +578,7 @@ const ADD_DOC_KEY = "add-document";
                         } else {
                                 selectedCommercial = commercialSelect.value || "";
                         }
+                        updateResetVisibility();
                 }
 
                 function fetchDetail(id) {
@@ -3718,6 +3771,8 @@ function initRowSelection() {
                         if (trigger) {
                                 applyFilters();
                         }
+
+                        updateResetVisibility();
                 }
 
                 function openOrderMenu() {
@@ -3933,6 +3988,7 @@ function initRowSelection() {
                                 }
                                 syncChannelOptionVisibility(channels, vendorTypes);
                                 refreshClientsVisibility();
+                                updateResetVisibility();
                                 if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
                                         requestAnimationFrame(updateAdvancedHeight);
                                 }
@@ -3975,31 +4031,37 @@ function initRowSelection() {
                         estadoSelect.addEventListener("change", () => {
                                 selectedEstado = estadoSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
                         });
                 if (planSelect)
                         planSelect.addEventListener("change", () => {
                                 selectedPlan = planSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
                         });
                 if (paymentSelect)
                         paymentSelect.addEventListener("change", () => {
                                 selectedPaymentMethod = paymentSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
                         });
                 if (canalSelect)
                         canalSelect.addEventListener("change", () => {
                                 refreshClientsVisibility();
                                 applyFilters();
+                                updateResetVisibility();
                         });
                 if (concesionarioSelect)
                         concesionarioSelect.addEventListener("change", () => {
                                 selectedConcesionario = concesionarioSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
                         });
                 if (commercialSelect)
                         commercialSelect.addEventListener("change", () => {
                                 selectedCommercial = commercialSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
                         });
 
                 if (moreFiltersToggle && advancedPanel) {
@@ -4023,6 +4085,10 @@ function initRowSelection() {
                                         "aria-expanded",
                                         open ? "true" : "false"
                                 );
+                                moreFiltersToggle.setAttribute(
+                                        "data-open",
+                                        open ? "true" : "false"
+                                );
                                 if (filtersRoot) {
                                         if (open) {
                                                 filtersRoot.setAttribute(
@@ -4040,14 +4106,7 @@ function initRowSelection() {
                                                 ? activeLabel
                                                 : defaultLabel;
                                 }
-                                if (open) {
-                                        requestAnimationFrame(updateAdvancedHeight);
-                                } else {
-                                        rootElement.style.setProperty(
-                                                "--go-advanced-filters-height",
-                                                "0px"
-                                        );
-                                }
+                                requestAnimationFrame(updateAdvancedHeight);
                         };
 
                         moreFiltersToggle.addEventListener("click", () => {
@@ -4109,11 +4168,13 @@ function initRowSelection() {
                                 if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
                                         requestAnimationFrame(updateAdvancedHeight);
                                 } else {
+                                        updateBaseFiltersHeight();
                                         rootElement.style.setProperty(
                                                 "--go-advanced-filters-height",
                                                 "0px"
                                         );
                                 }
+                                updateResetVisibility();
                         });
                 }
 
@@ -4144,23 +4205,26 @@ function initRowSelection() {
                                 return;
                         }
                         loadPage(1, { search: searchQuery });
+                        updateResetVisibility();
                 }
 
-		input.addEventListener("input", () => {
-			const value = input.value.trim();
-			if (value.length > 0) {
-				closeIcon.classList.add("visible");
-			} else {
-				closeIcon.classList.remove("visible");
-				// SI EL INPUT QUEDA VACÍO, LIMPIA VARIABLES
-				lastValidQuery = "";
-				lastValidResults = [];
-			}
-			if (debounceTimer) clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(() => {
-				doSearch(value);
-			}, DEBOUNCE_MS);
-		});
+                input.addEventListener("input", () => {
+                        const value = input.value.trim();
+                        if (value.length > 0) {
+                                closeIcon.classList.add("visible");
+                        } else {
+                                closeIcon.classList.remove("visible");
+                                // SI EL INPUT QUEDA VACÍO, LIMPIA VARIABLES
+                                lastValidQuery = "";
+                                lastValidResults = [];
+                        }
+                        searchQuery = value;
+                        updateResetVisibility();
+                        if (debounceTimer) clearTimeout(debounceTimer);
+                        debounceTimer = setTimeout(() => {
+                                doSearch(value);
+                        }, DEBOUNCE_MS);
+                });
 
 		closeIcon.addEventListener("click", () => {
 			input.value = "";
@@ -4171,10 +4235,11 @@ function initRowSelection() {
 			searchQuery = "";
 			currentPage = 1;
 			hasMore = true;
-			lastValidQuery = "";
-			lastValidResults = [];
-			loadPage(1);
-		});
+                        lastValidQuery = "";
+                        lastValidResults = [];
+                        loadPage(1);
+                        updateResetVisibility();
+                });
 
                 new IntersectionObserver(
                         (entries) => {
