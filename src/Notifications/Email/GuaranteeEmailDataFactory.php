@@ -3,6 +3,7 @@
 namespace GarantiasOnline360VO\Notifications\Email;
 
 use GarantiasOnline360VO\Rest\GuaranteeRestController;
+use function _n;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -44,11 +45,30 @@ class GuaranteeEmailDataFactory
         $from_date_raw = sanitize_text_field($detail['desde'] ?? '');
         $to_date_raw   = sanitize_text_field($detail['hasta'] ?? '');
 
+        $duration_months = (int) get_post_meta($guarantee_id, 'garantia_contratada_meses_contratados', true);
+        $duration_label = '';
+        if ($duration_months > 0) {
+            $duration_label = sprintf(
+                _n('%d mes', '%d meses', $duration_months, 'garantias-online-360vo'),
+                $duration_months
+            );
+        } else {
+            $duration_months = $this->calculate_duration_from_dates($from_date_raw, $to_date_raw);
+            if ($duration_months > 0) {
+                $duration_label = sprintf(
+                    _n('%d mes', '%d meses', $duration_months, 'garantias-online-360vo'),
+                    $duration_months
+                );
+            }
+        }
+
         $dates = [
             'raw_from' => $from_date_raw,
             'raw_to'   => $to_date_raw,
             'from'     => $this->format_date($from_date_raw),
             'to'       => $this->format_date($to_date_raw),
+            'duration_months' => $duration_months,
+            'duration' => $duration_label,
         ];
 
         $deadline = $this->compute_payment_deadline($from_date_raw);
@@ -142,6 +162,39 @@ class GuaranteeEmailDataFactory
             ],
             'permalink'   => esc_url_raw($permalink),
         ];
+    }
+
+    private function calculate_duration_from_dates(string $from, string $to): int
+    {
+        if ($from === '' || $to === '') {
+            return 0;
+        }
+
+        $start = \DateTimeImmutable::createFromFormat('Y-m-d', $from);
+        $end   = \DateTimeImmutable::createFromFormat('Y-m-d', $to);
+
+        if (! $start || ! $end || $end < $start) {
+            return 0;
+        }
+
+        $end_plus_one = $end->modify('+1 day');
+        if (! $end_plus_one) {
+            return 0;
+        }
+
+        $months = ((int) $end_plus_one->format('Y') - (int) $start->format('Y')) * 12;
+        $months += (int) $end_plus_one->format('n') - (int) $start->format('n');
+
+        if ($months <= 0) {
+            return 0;
+        }
+
+        $candidate = $start->modify('+' . $months . ' months');
+        if ($candidate && $candidate > $end_plus_one) {
+            $months--;
+        }
+
+        return $months > 0 ? $months : 0;
     }
 
     private function parse_number($value): ?float
