@@ -1358,7 +1358,7 @@ section.guarantees-list.sticky-active {
 }
 
 .guarantees-table tr:nth-child(2n) {
-    background: var(--table-row-zebra-bg);
+    background: var(--table-row-zebra);
 }
 
 .guarantees-table tr.selected:nth-child(2n) {
@@ -1367,7 +1367,7 @@ section.guarantees-list.sticky-active {
 
 tr.guarantees-table__row:nth-child(even):not(.selected) td,
 .guarantees-table tbody tr:nth-child(even):not(.selected) td {
-    background: var(--table-row-zebra-bg);
+    background: var(--table-row-zebra);
 }
 
 tr.guarantees-table__row:not(.selected):hover td,
@@ -2414,12 +2414,12 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .guarantees-table tr:nth-child(2n) {
-    background-color: var(--table-row-zebra-bg);
+    background-color: var(--table-row-zebra);
 }
 
 :root[data-theme='dark'] tr.guarantees-table__row:nth-child(even):not(.selected) td,
 :root[data-theme='dark'] .guarantees-table tbody tr:nth-child(even):not(.selected) td {
-    background: var(--table-row-zebra-bg);
+    background: var(--table-row-zebra);
 }
 
 :root[data-theme='dark'] tr.guarantees-table__row:nth-child(even):not(.selected):hover td,
