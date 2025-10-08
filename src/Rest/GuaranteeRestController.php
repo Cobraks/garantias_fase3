@@ -2160,6 +2160,10 @@ class GuaranteeRestController
                 'states' => ['validacion_pendiente', 'pendiente_cobro'],
                 'label'  => __('Pendientes de verificación o cobro', 'garantias-online-360vo'),
             ],
+            'sin_finalizar' => [
+                'states' => ['sin_finalizar'],
+                'label'  => __('Sin finalizar', 'garantias-online-360vo'),
+            ],
         ];
     }
 

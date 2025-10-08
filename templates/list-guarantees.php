@@ -360,14 +360,13 @@ $default_sort_label = is_array($default_sort) && ! empty($default_sort['label'])
             <section class="guarantee-admin-summary is-loading" data-admin-summary data-loaded="0" data-loading="1">
                 <header class="guarantee-admin-summary__header">
                     <div class="guarantee-admin-summary__heading">
-                        <h4 class="guarantee-admin-summary__title"><?php esc_html_e('Visión general de Garantías Online', 'garantias-online-360vo'); ?></h4>
-                        <p class="guarantee-admin-summary__subtitle" data-admin-summary-caption>
-                            <?php esc_html_e('Estamos recopilando los últimos datos…', 'garantias-online-360vo'); ?>
-                        </p>
+                        <h4 class="guarantee-admin-summary__title">
+                            <?php esc_html_e('Visión general de Garantías Online', 'garantias-online-360vo'); ?>
+                            <span class="guarantee-admin-summary__timestamp" data-admin-summary-updated>
+                                <?php esc_html_e('Actualizando datos…', 'garantias-online-360vo'); ?>
+                            </span>
+                        </h4>
                     </div>
-                    <p class="guarantee-admin-summary__timestamp" data-admin-summary-updated>
-                        <?php esc_html_e('Actualizando datos…', 'garantias-online-360vo'); ?>
-                    </p>
                 </header>
                 <div class="guarantee-admin-summary__body">
                     <article class="guarantee-admin-summary__visual">
