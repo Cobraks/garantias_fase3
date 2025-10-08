@@ -3915,6 +3915,15 @@ function initRowSelection() {
                                                 const opt = document.createElement("option");
                                                 const val = typeof est === "object" ? est.value : est;
                                                 const lbl = typeof est === "object" ? est.label : est;
+                                                if (
+                                                        isProfesional &&
+                                                        [
+                                                                "expira_pronto",
+                                                                "pendiente_cobro",
+                                                        ].includes(String(val))
+                                                ) {
+                                                        return;
+                                                }
                                                 opt.value = val;
                                                 opt.textContent = lbl;
                                                 estadoSelect.appendChild(opt);
