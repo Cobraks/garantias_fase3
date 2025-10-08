@@ -213,18 +213,41 @@ const ADD_DOC_KEY = "add-document";
                 let panel2 = document.getElementById("detail-panel-2");
                 let lastEmptyPanel = panel1;
 
-                const filterSelects = document.querySelectorAll(
-                        ".guarantees-list__filter"
+                const filtersRoot = document.querySelector(
+                        ".guarantees-list__filters"
                 );
-                const estadoSelect = filterSelects[0];
-                const planSelect = filterSelects[1];
-                const canalSelect = filterSelects[2];
-                const concesionarioSelect = filterSelects[3];
+                const estadoSelect = document.querySelector(
+                        '[data-filter="estado"]'
+                );
+                const planSelect = document.querySelector(
+                        '[data-filter="plan"]'
+                );
+                const canalSelect = document.querySelector(
+                        '[data-filter="canal"]'
+                );
+                const concesionarioSelect = document.querySelector(
+                        '[data-filter="cliente"]'
+                );
+                const paymentSelect = document.querySelector(
+                        '[data-filter="payment"]'
+                );
+                const clientsWrapper = document.querySelector(
+                        "[data-clients-wrapper]"
+                );
+                const moreFiltersToggle = document.querySelector(
+                        "[data-more-filters]"
+                );
+                const advancedPanel = document.querySelector(
+                        "[data-advanced-panel]"
+                );
                 let selectedEstado = "";
                 let selectedPlan = "";
                 let selectedCanal = "";
                 let selectedConcesionario = "";
+                let selectedVendorType = "";
+                let selectedPaymentMethod = "";
                 let currentListAbort = null;
+                let rawClients = [];
 
 		let resultMessage = document.querySelector(
 			".guarantees-list__result-message"
@@ -259,8 +282,24 @@ const ADD_DOC_KEY = "add-document";
                 const loadedIds = new Set();
                 const listCache = new Map();
 
-                function buildListCacheKey(search = "", estado = "", plan = "", canal = "", concesionario = "") {
-                        return [search, estado, plan, canal, concesionario].join("|");
+                function buildListCacheKey(
+                        search = "",
+                        estado = "",
+                        plan = "",
+                        canal = "",
+                        concesionario = "",
+                        vendorType = "",
+                        payment = ""
+                ) {
+                        return [
+                                search,
+                                estado,
+                                plan,
+                                canal,
+                                concesionario,
+                                vendorType,
+                                payment,
+                        ].join("|");
                 }
 
                 function renderFromCache(cache) {
@@ -272,6 +311,92 @@ const ADD_DOC_KEY = "add-document";
                         totalPosts = cache.totalPosts;
                         hasMore = currentPage < totalPages;
                         spinner.style.display = hasMore ? "" : "none";
+                }
+
+                function getSelectedChannelData() {
+                        if (!canalSelect) {
+                                return { channel: "", vendorType: "" };
+                        }
+                        const option = canalSelect.options[canalSelect.selectedIndex];
+                        if (!option) {
+                                return { channel: "", vendorType: "" };
+                        }
+                        const dataset = option.dataset || {};
+                        const channel = dataset.channel || option.value || "";
+                        const vendorType = dataset.vendorType || "";
+
+                        return { channel, vendorType };
+                }
+
+                function populateClientsSelect(filterType = "") {
+                        if (!concesionarioSelect) {
+                                return;
+                        }
+                        const previous = concesionarioSelect.value;
+                        concesionarioSelect
+                                .querySelectorAll("option:not(:first-child)")
+                                .forEach((opt) => opt.remove());
+
+                        if (!Array.isArray(rawClients) || rawClients.length === 0) {
+                                selectedConcesionario = "";
+                                return;
+                        }
+
+                        const filtered = rawClients.filter((client) => {
+                                if (!filterType) {
+                                        return true;
+                                }
+                                return (client.type || "") === filterType;
+                        });
+
+                        filtered.forEach((client) => {
+                                const opt = document.createElement("option");
+                                opt.value = String(client.id);
+                                opt.textContent = client.name;
+                                if (client.type) {
+                                        opt.dataset.type = client.type;
+                                }
+                                concesionarioSelect.appendChild(opt);
+                        });
+
+                        if (
+                                previous &&
+                                filtered.some((client) => String(client.id) === previous)
+                        ) {
+                                concesionarioSelect.value = previous;
+                                selectedConcesionario = previous;
+                        } else {
+                                concesionarioSelect.value = "";
+                                selectedConcesionario = "";
+                        }
+                }
+
+                function refreshClientsVisibility() {
+                        const { channel, vendorType } = getSelectedChannelData();
+                        selectedCanal = channel;
+
+                        if (!clientsWrapper) {
+                                selectedVendorType = "";
+                                return;
+                        }
+
+                        selectedVendorType = vendorType;
+                        const shouldShow = channel === "profesional";
+
+                        if (shouldShow) {
+                                clientsWrapper.hidden = false;
+                        } else {
+                                clientsWrapper.hidden = true;
+                        }
+
+                        if (!shouldShow) {
+                                selectedConcesionario = "";
+                                if (concesionarioSelect) {
+                                        concesionarioSelect.value = "";
+                                }
+                        }
+
+                        populateClientsSelect(shouldShow ? vendorType : "");
                 }
 
                 function fetchDetail(id) {
@@ -1969,12 +2094,22 @@ const ADD_DOC_KEY = "add-document";
                                 typeof options.concesionario !== "undefined"
                                         ? options.concesionario
                                         : selectedConcesionario;
+                        const vendorType =
+                                typeof options.vendorType === "string"
+                                        ? options.vendorType
+                                        : selectedVendorType;
+                        const paymentMethod =
+                                typeof options.paymentMethod === "string"
+                                        ? options.paymentMethod
+                                        : selectedPaymentMethod;
                         const cacheKey = buildListCacheKey(
                                 search,
                                 estado,
                                 plan,
                                 canal,
-                                concesionario
+                                concesionario,
+                                vendorType,
+                                paymentMethod
                         );
                         try {
                                 if (currentListAbort) currentListAbort.abort();
@@ -1990,6 +2125,10 @@ const ADD_DOC_KEY = "add-document";
                                 if (canal) params.append("canal", canal);
                                 if (concesionario)
                                         params.append("concesionario", concesionario);
+                                if (vendorType)
+                                        params.append("vendor_type", vendorType);
+                                if (paymentMethod)
+                                        params.append("payment_method", paymentMethod);
                                 let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
                                 const res = await fetch(url, {
                                         headers: { "X-WP-Nonce": restNonce },
@@ -3346,6 +3485,7 @@ function initRowSelection() {
                                         estados = [],
                                         planes = [],
                                         concesionarios = [],
+                                        payment_methods: paymentMethods = [],
                                 } = await res.json();
                                 if (estadoSelect) {
                                         estadoSelect
@@ -3371,17 +3511,26 @@ function initRowSelection() {
                                                 planSelect.appendChild(opt);
                                         });
                                 }
-                                if (concesionarioSelect) {
-                                        concesionarioSelect
+                                if (Array.isArray(concesionarios)) {
+                                        rawClients = concesionarios.map((client) => ({
+                                                id: client.id,
+                                                name: client.name,
+                                                type: client.type || "",
+                                        }));
+                                        populateClientsSelect(selectedVendorType);
+                                }
+                                if (paymentSelect) {
+                                        paymentSelect
                                                 .querySelectorAll("option:not(:first-child)")
                                                 .forEach((o) => o.remove());
-                                        concesionarios.forEach((c) => {
+                                        paymentMethods.forEach((method) => {
                                                 const opt = document.createElement("option");
-                                                opt.value = c.id;
-                                                opt.textContent = c.name;
-                                                concesionarioSelect.appendChild(opt);
+                                                opt.value = method.value;
+                                                opt.textContent = method.label;
+                                                paymentSelect.appendChild(opt);
                                         });
                                 }
+                                refreshClientsVisibility();
                         } catch (e) {
                                 console.error("❌ Error fetching filters:", e);
                         }
@@ -3397,7 +3546,9 @@ function initRowSelection() {
                                 selectedEstado,
                                 selectedPlan,
                                 selectedCanal,
-                                selectedConcesionario
+                                selectedConcesionario,
+                                selectedVendorType,
+                                selectedPaymentMethod
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
@@ -3422,9 +3573,14 @@ function initRowSelection() {
                                 selectedPlan = planSelect.value;
                                 applyFilters();
                         });
+                if (paymentSelect)
+                        paymentSelect.addEventListener("change", () => {
+                                selectedPaymentMethod = paymentSelect.value;
+                                applyFilters();
+                        });
                 if (canalSelect)
                         canalSelect.addEventListener("change", () => {
-                                selectedCanal = canalSelect.value;
+                                refreshClientsVisibility();
                                 applyFilters();
                         });
                 if (concesionarioSelect)
@@ -3433,6 +3589,53 @@ function initRowSelection() {
                                 applyFilters();
                         });
 
+                if (moreFiltersToggle && advancedPanel) {
+                        const labelNode = moreFiltersToggle.querySelector(
+                                ".guarantees-list__more-filters-label"
+                        );
+                        const defaultLabel =
+                                moreFiltersToggle.getAttribute("data-default-label") ||
+                                (labelNode ? labelNode.textContent || "" : "");
+                        const activeLabel =
+                                moreFiltersToggle.getAttribute("data-active-label") || defaultLabel;
+
+                        const setAdvancedOpen = (open) => {
+                                if (!advancedPanel) return;
+                                if (open) {
+                                        advancedPanel.removeAttribute("hidden");
+                                } else {
+                                        advancedPanel.setAttribute("hidden", "");
+                                }
+                                moreFiltersToggle.setAttribute(
+                                        "aria-expanded",
+                                        open ? "true" : "false"
+                                );
+                                if (filtersRoot) {
+                                        if (open) {
+                                                filtersRoot.setAttribute(
+                                                        "data-advanced-open",
+                                                        "true"
+                                                );
+                                        } else {
+                                                filtersRoot.removeAttribute(
+                                                        "data-advanced-open"
+                                                );
+                                        }
+                                }
+                                if (labelNode) {
+                                        labelNode.textContent = open
+                                                ? activeLabel
+                                                : defaultLabel;
+                                }
+                        };
+
+                        moreFiltersToggle.addEventListener("click", () => {
+                                const isOpen = !advancedPanel.hasAttribute("hidden");
+                                setAdvancedOpen(!isOpen);
+                        });
+                }
+
+                refreshClientsVisibility();
                 fetchFilters();
 
                 const input = document.getElementById("buscador_mis_garantias");
@@ -3449,7 +3652,9 @@ function initRowSelection() {
                                 selectedEstado,
                                 selectedPlan,
                                 selectedCanal,
-                                selectedConcesionario
+                                selectedConcesionario,
+                                selectedVendorType,
+                                selectedPaymentMethod
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
