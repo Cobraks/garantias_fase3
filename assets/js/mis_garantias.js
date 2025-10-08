@@ -14,12 +14,12 @@ const ADD_DOC_KEY = "add-document";
                 const RECEIPT_MAX_BYTES = 10 * 1024 * 1024;
                 const listContainer = document.querySelector(".guarantees-list");
                 const scrollEnd = listContainer.querySelector("#scroll-end");
-               const spinner = scrollEnd.querySelector(".spinner");
+                const spinner = scrollEnd.querySelector(".spinner");
 
-               initResizableColumns(table);
+                initResizableColumns(table);
 
-               const goConfig = window.__GO_CONFIG__ || {};
-               const restRoot =
+                const goConfig = window.__GO_CONFIG__ || {};
+                const restRoot =
                         (goConfig.rest && goConfig.rest.root) ||
                         (window.GO_REST && window.GO_REST.root) ||
                         "/wp-json/";
@@ -42,6 +42,69 @@ const ADD_DOC_KEY = "add-document";
                         userRole === "administrator" || userRole === "admin";
                 const isProfesional =
                         userRole === "go_profesional" || userRole === "profesional";
+                const ADMIN_SUMMARY_ERROR_MESSAGE =
+                        "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
+                const ADMIN_SUMMARY_DEFAULT_CONTEXT = "year";
+                const ADMIN_SUMMARY_STATE_ORDER = [
+                        "activada",
+                        "pendiente_pago",
+                        "pendiente_revision",
+                        "sin_finalizar",
+                ];
+                const ADMIN_SUMMARY_STATE_COLORS = {
+                        activada: {
+                                color: "var(--admin-summary-state-activada)",
+                                muted: "var(--admin-summary-state-activada-muted)",
+                        },
+                        pendiente_pago: {
+                                color: "var(--admin-summary-state-pendiente-pago)",
+                                muted: "var(--admin-summary-state-pendiente-pago-muted)",
+                        },
+                        pendiente_revision: {
+                                color: "var(--admin-summary-state-pendiente-revision)",
+                                muted: "var(--admin-summary-state-pendiente-revision-muted)",
+                        },
+                        sin_finalizar: {
+                                color: "var(--admin-summary-state-sin-finalizar)",
+                                muted: "var(--admin-summary-state-sin-finalizar-muted)",
+                        },
+                };
+                const ADMIN_SUMMARY_ACTION_ARROW_ICON =
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
+                const ADMIN_SUMMARY_ACTIONS = [
+                        {
+                                key: "payment",
+                                label: "Pendientes de pago",
+                                description: "Deben completarse los cobros pendientes de pago",
+                                filterValue: "pendiente_pago",
+                                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M1.92.506a.5.5 0 0 1 .434.146L3 1.293l.646-.647a.5.5 0 0 1 .708 0L5 1.293l.646-.647a.5.5 0 0 1 .708 0L7 1.293l.646-.647a.5.5 0 0 1 .708 0L9 1.293l.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .801.13l.5 1A.5.5 0 0 1 15 2v12a.5.5 0 0 1-.053.224l-.5 1a.5.5 0 0 1-.8.13L13 14.707l-.646.647a.5.5 0 0 1-.708 0L11 14.707l-.646.647a.5.5 0 0 1-.708 0L9 14.707l-.646.647a.5.5 0 0 1-.708 0L7 14.707l-.646.647a.5.5 0 0 1-.708 0L5 14.707l-.646.647a.5.5 0 0 1-.708 0L3 14.707l-.646.647a.5.5 0 0 1-.801-.13l-.5-1A.5.5 0 0 1 1 14V2a.5.5 0 0 1 .053-.224l.5-1a.5.5 0 0 1 .367-.27zm.217 1.338L2 2.118v11.764l.137.274.51-.51a.5.5 0 0 1 .707 0l.646.647.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.51.51.137-.274V2.118l-.137-.274-.51.51a.5.5 0 0 1-.707 0L12 1.707l-.646.647a.5.5 0 0 1-.708 0L10 1.707l-.646.647a.5.5 0 0 1-.708 0L8 1.707l-.646.647a.5.5 0 0 1-.708 0L6 1.707l-.646.647a.5.5 0 0 1-.708 0L4 1.707l-.646.647a.5.5 0 0 1-.708 0l-.51-.51z"/></svg>',
+                                accent: "var(--admin-summary-action-payment)",
+                        },
+                        {
+                                key: "validation",
+                                label: "Pendientes de verificar transferencia",
+                                description: "Verifica las transferencias recibidas",
+                                filterValue: "validacion_pendiente",
+                                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>',
+                                accent: "var(--admin-summary-action-validation)",
+                        },
+                        {
+                                key: "collect",
+                                label: "Pendientes de cobrar domiciliación",
+                                description: "Revisa las domiciliaciones en curso",
+                                filterValue: "pendiente_cobro",
+                                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>',
+                                accent: "var(--admin-summary-action-collect)",
+                        },
+                ];
+                const integerFormatter = new Intl.NumberFormat("es-ES");
+                const currencyFormatter = new Intl.NumberFormat("es-ES", {
+                        style: "currency",
+                        currency: "EUR",
+                });
+                let adminSummaryCache = null;
+                let adminSummaryPromise = null;
+                const numberAnimations = new WeakMap();
                 const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>';
                 const phoneIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M798-120q-125 0-247-54.5T329-329Q229-429 174.5-551T120-798q0-18 12-30t30-12h162q14 0 25 9.5t13 22.5l26 140q2 16-1 27t-11 19l-97 98q20 37 47.5 71.5T387-386q31 31 65 57.5t72 48.5l94-94q9-9 23.5-13.5T670-390l138 28q14 4 23 14.5t9 23.5v162q0 18-12 30t-30 12ZM241-600l66-66-17-94h-89q5 41 14 81t26 79Zm358 358q39 17 79.5 27t81.5 13v-88l-94-19-67 67ZM241-600Zm358 358Z"/></svg>';
                 const emailIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm320-280L160-640v400h640v-400L480-440Zm0-80 320-200H160l320 200ZM160-640v-80 480-400Z"/></svg>';
@@ -56,10 +119,13 @@ const ADD_DOC_KEY = "add-document";
                const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
                const downloadIcon = (goConfig.icons && goConfig.icons.download) || "";
                const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
-               const arrowDownIcon =
+                const arrowDownIcon =
                         (goConfig.icons && goConfig.icons.arrowDropDown) || "";
-               const arrowUpIcon =
+                const arrowUpIcon =
                         (goConfig.icons && goConfig.icons.arrowDropUp) || "";
+                const arrowLeftIcon =
+                        (goConfig.icons && goConfig.icons.arrowLeft) ||
+                        '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z"/></svg>';
 
                 let pendingConfirmContext = null;
                 const confirmModalController = setupConfirmModal(
@@ -186,6 +252,9 @@ const ADD_DOC_KEY = "add-document";
                 const misGarantiasBase =
                         (goConfig.pages && goConfig.pages.misGarantias) ||
                         "/garantias-online/mis-garantias/";
+                const newGuaranteeUrl =
+                        (goConfig.pages && goConfig.pages.nuevaGarantia) ||
+                        "/garantias-online/nueva-garantia/";
                 const SHARE_UNAVAILABLE_MESSAGE =
                         "La función de compartir no está disponible en este navegador.";
                 const saveStatus = document.createElement("div");
@@ -212,19 +281,177 @@ const ADD_DOC_KEY = "add-document";
                 let panel1 = document.getElementById("detail-panel-1");
                 let panel2 = document.getElementById("detail-panel-2");
                 let lastEmptyPanel = panel1;
-
-                const filterSelects = document.querySelectorAll(
-                        ".guarantees-list__filter"
+                const emptyTemplatesWrapper = document.querySelector(
+                        ".guarantee-detail__empty-templates"
                 );
-                const estadoSelect = filterSelects[0];
-                const planSelect = filterSelects[1];
-                const canalSelect = filterSelects[2];
-                const concesionarioSelect = filterSelects[3];
+                const emptyTemplateMap = {};
+                if (emptyTemplatesWrapper) {
+                        emptyTemplatesWrapper
+                                .querySelectorAll("[data-empty-template]")
+                                .forEach((node) => {
+                                        const key = node.getAttribute("data-empty-template");
+                                        if (key) {
+                                                emptyTemplateMap[key] = node.innerHTML.trim();
+                                        }
+                                });
+                }
+                if (isCoreAdmin && panel1 && panel1.classList.contains("active")) {
+                        initializeAdminSummary(panel1);
+                }
+                let currentEmptyMode = "awaiting";
+
+                const filtersRoot = document.querySelector(
+                        ".guarantees-list__filters"
+                );
+                const estadoSelect = document.querySelector(
+                        '[data-filter="estado"]'
+                );
+                const planSelect = document.querySelector(
+                        '[data-filter="plan"]'
+                );
+                const canalSelect = document.querySelector(
+                        '[data-filter="canal"]'
+                );
+                const concesionarioSelect = document.querySelector(
+                        '[data-filter="cliente"]'
+                );
+                const paymentSelect = document.querySelector(
+                        '[data-filter="payment"]'
+                );
+                const commercialSelect = document.querySelector(
+                        '[data-filter="commercial"]'
+                );
+                const clientsWrapper = document.querySelector(
+                        "[data-clients-wrapper]"
+                );
+                const moreFiltersToggle = document.querySelector(
+                        "[data-more-filters]"
+                );
+                const advancedPanel = document.querySelector(
+                        "[data-advanced-panel]"
+                );
+                const resetFiltersBtn = document.querySelector(
+                        "[data-reset-filters]"
+                );
+                const orderRoot = document.querySelector("[data-order-root]");
+                const orderToggle = orderRoot
+                        ? orderRoot.querySelector("[data-order-toggle]")
+                        : null;
+                const orderMenu = orderRoot
+                        ? orderRoot.querySelector("[data-order-menu]")
+                        : null;
+                const orderLabelNode = orderRoot
+                        ? orderRoot.querySelector("[data-order-label]")
+                        : null;
+                const rootElement = document.documentElement;
                 let selectedEstado = "";
                 let selectedPlan = "";
                 let selectedCanal = "";
                 let selectedConcesionario = "";
+                let selectedVendorType = "";
+                let selectedPaymentMethod = "";
+                let selectedCommercial = "";
+                const defaultOrderKey = orderToggle
+                        ? orderToggle.getAttribute("data-default-sort") || "created_desc"
+                        : "created_desc";
+                let selectedOrderKey = defaultOrderKey;
+                let selectedOrderBy = "created";
+                let selectedOrderDirection = defaultOrderKey.endsWith("_asc")
+                        ? "asc"
+                        : "desc";
                 let currentListAbort = null;
+                let rawClients = [];
+                let rawCommercials = [];
+                const orderOptions = new Map();
+                let setAdvancedOpen = () => {};
+                let baseFiltersHeight = filtersRoot ? filtersRoot.offsetHeight || 0 : 0;
+                const updateBaseFiltersHeight = () => {
+                        if (!filtersRoot) {
+                                baseFiltersHeight = 0;
+                                return;
+                        }
+                        baseFiltersHeight = filtersRoot.offsetHeight || 0;
+                };
+                const updateAdvancedHeight = () => {
+                        if (!filtersRoot) {
+                                rootElement.style.setProperty(
+                                        "--go-advanced-filters-height",
+                                        "0px"
+                                );
+                                baseFiltersHeight = 0;
+                                return;
+                        }
+
+                        const isAdvancedVisible =
+                                advancedPanel && !advancedPanel.hasAttribute("hidden");
+
+                        if (!isAdvancedVisible) {
+                                updateBaseFiltersHeight();
+                                rootElement.style.setProperty(
+                                        "--go-advanced-filters-height",
+                                        "0px"
+                                );
+                                return;
+                        }
+
+                        const currentHeight = filtersRoot.offsetHeight || 0;
+                        const baseline = baseFiltersHeight || 0;
+                        const extra = Math.max(0, Math.round(currentHeight - baseline));
+
+                        rootElement.style.setProperty(
+                                "--go-advanced-filters-height",
+                                `${extra}px`
+                        );
+                };
+                updateBaseFiltersHeight();
+
+                const hasActiveFilters = () => {
+                        const hasSearch = Boolean((searchQuery || "").trim());
+                        if (hasSearch) {
+                                return true;
+                        }
+                        if (
+                                selectedEstado ||
+                                selectedPlan ||
+                                selectedCanal ||
+                                selectedConcesionario ||
+                                selectedVendorType ||
+                                selectedPaymentMethod ||
+                                selectedCommercial
+                        ) {
+                                return true;
+                        }
+                        if (orderToggle && selectedOrderKey !== defaultOrderKey) {
+                                return true;
+                        }
+                        return false;
+                };
+
+                const updateResetVisibility = () => {
+                        if (!resetFiltersBtn) {
+                                return;
+                        }
+                        resetFiltersBtn.hidden = !hasActiveFilters();
+                };
+
+                updateResetVisibility();
+
+                if (typeof ResizeObserver !== "undefined" && advancedPanel) {
+                        const resizeObserver = new ResizeObserver(() => {
+                                if (!advancedPanel.hasAttribute("hidden")) {
+                                        updateAdvancedHeight();
+                                }
+                        });
+                        resizeObserver.observe(advancedPanel);
+                }
+
+                window.addEventListener("resize", () => {
+                        if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
+                                updateAdvancedHeight();
+                        } else {
+                                updateBaseFiltersHeight();
+                        }
+                });
 
 		let resultMessage = document.querySelector(
 			".guarantees-list__result-message"
@@ -259,8 +486,30 @@ const ADD_DOC_KEY = "add-document";
                 const loadedIds = new Set();
                 const listCache = new Map();
 
-                function buildListCacheKey(search = "", estado = "", plan = "", canal = "", concesionario = "") {
-                        return [search, estado, plan, canal, concesionario].join("|");
+                function buildListCacheKey(
+                        search = "",
+                        estado = "",
+                        plan = "",
+                        canal = "",
+                        concesionario = "",
+                        vendorType = "",
+                        payment = "",
+                        orderBy = "",
+                        orderDirection = "",
+                        commercial = ""
+                ) {
+                        return [
+                                search,
+                                estado,
+                                plan,
+                                canal,
+                                concesionario,
+                                vendorType,
+                                payment,
+                                orderBy,
+                                orderDirection,
+                                commercial,
+                        ].join("|");
                 }
 
                 function renderFromCache(cache) {
@@ -272,6 +521,156 @@ const ADD_DOC_KEY = "add-document";
                         totalPosts = cache.totalPosts;
                         hasMore = currentPage < totalPages;
                         spinner.style.display = hasMore ? "" : "none";
+                        if (!hasActiveFilters() && (cache.totalPosts || 0) === 0) {
+                                setEmptyDetailPanel("forward", "no-results");
+                        }
+                }
+
+                function getSelectedChannelData() {
+                        if (!canalSelect) {
+                                return { channel: "", vendorType: "" };
+                        }
+                        const option = canalSelect.options[canalSelect.selectedIndex];
+                        if (!option) {
+                                return { channel: "", vendorType: "" };
+                        }
+                        const dataset = option.dataset || {};
+                        const channel = dataset.channel || option.value || "";
+                        const vendorType = dataset.vendorType || "";
+
+                        return { channel, vendorType };
+                }
+
+                function populateClientsSelect(filterType = "") {
+                        if (!concesionarioSelect) {
+                                return;
+                        }
+                        const previous = concesionarioSelect.value;
+                        concesionarioSelect
+                                .querySelectorAll("option:not(:first-child)")
+                                .forEach((opt) => opt.remove());
+
+                        if (!Array.isArray(rawClients) || rawClients.length === 0) {
+                                selectedConcesionario = "";
+                                return;
+                        }
+
+                        const filtered = rawClients.filter((client) => {
+                                if (!filterType) {
+                                        return true;
+                                }
+                                return (client.type || "") === filterType;
+                        });
+
+                        filtered.forEach((client) => {
+                                const opt = document.createElement("option");
+                                opt.value = String(client.id);
+                                opt.textContent = client.name;
+                                if (client.type) {
+                                        opt.dataset.type = client.type;
+                                }
+                                concesionarioSelect.appendChild(opt);
+                        });
+
+                        if (
+                                previous &&
+                                filtered.some((client) => String(client.id) === previous)
+                        ) {
+                                concesionarioSelect.value = previous;
+                                selectedConcesionario = previous;
+                        } else {
+                                concesionarioSelect.value = "";
+                                selectedConcesionario = "";
+                        }
+
+                        if (!advancedPanel || advancedPanel.hasAttribute("hidden")) {
+                                updateBaseFiltersHeight();
+                        }
+
+                        updateResetVisibility();
+                }
+
+                function refreshClientsVisibility() {
+                        const { channel, vendorType } = getSelectedChannelData();
+                        selectedCanal = channel;
+
+                        if (!clientsWrapper) {
+                                selectedVendorType = "";
+                                return;
+                        }
+
+                        selectedVendorType = vendorType;
+                        const shouldShow =
+                                channel === "profesional" || channel === "gestoria";
+
+                        if (shouldShow) {
+                                clientsWrapper.hidden = false;
+                        } else {
+                                clientsWrapper.hidden = true;
+                        }
+
+                        if (!shouldShow) {
+                                selectedConcesionario = "";
+                                if (concesionarioSelect) {
+                                        concesionarioSelect.value = "";
+                                }
+                        }
+
+                        populateClientsSelect(shouldShow ? vendorType : "");
+                        if (!advancedPanel || advancedPanel.hasAttribute("hidden")) {
+                                updateBaseFiltersHeight();
+                        }
+                        updateResetVisibility();
+                }
+
+                function populateCommercialSelect() {
+                        if (!commercialSelect) {
+                                return;
+                        }
+                        const previous = commercialSelect.value || "";
+                        commercialSelect
+                                .querySelectorAll("option:not(:first-child)")
+                                .forEach((opt) => opt.remove());
+
+                        if (!Array.isArray(rawCommercials) || rawCommercials.length === 0) {
+                                selectedCommercial = "";
+                                commercialSelect.value = "";
+                                return;
+                        }
+
+                        let hasPrevious = false;
+                        rawCommercials.forEach((item) => {
+                                const id = item && typeof item.id !== "undefined" ? item.id : null;
+                                const name =
+                                        item && typeof item.name === "string"
+                                                ? item.name
+                                                : "";
+                                const numericId = Number.parseInt(id, 10);
+                                if (!Number.isFinite(numericId) || numericId <= 0 || !name) {
+                                        return;
+                                }
+                                const option = document.createElement("option");
+                                option.value = String(numericId);
+                                option.textContent = name;
+                                commercialSelect.appendChild(option);
+                                if (!hasPrevious && previous && String(numericId) === previous) {
+                                        hasPrevious = true;
+                                }
+                        });
+
+                        if (previous && hasPrevious) {
+                                commercialSelect.value = previous;
+                                selectedCommercial = previous;
+                        } else if (previous && !hasPrevious) {
+                                commercialSelect.value = "";
+                                if (selectedCommercial) {
+                                        selectedCommercial = "";
+                                        applyFilters();
+                                }
+                        } else {
+                                selectedCommercial = commercialSelect.value || "";
+                        }
+                        updateResetVisibility();
                 }
 
                 function fetchDetail(id) {
@@ -1884,33 +2283,764 @@ const ADD_DOC_KEY = "add-document";
                        return tr;
                }
 
-		function renderEmptyDetail() {
-			return `
-				<div class="guarantee-detail__empty">
-					<h3 class="guarantee-detail__title">Ninguna garantía seleccionada</h3>
-					<p>Haz clic en una fila para ver sus detalles aquí.</p>
-				</div>
-			`;
-		}
+                function renderEmptyRow() {
+                        const tr = document.createElement("tr");
+                        tr.className = "guarantees-table__empty-row";
+                        const td = document.createElement("td");
+                        const headerCount = table
+                                ? table.querySelectorAll("thead th").length
+                                : 1;
+                        td.colSpan = Math.max(1, headerCount);
+                        td.innerHTML =
+                                '<div class="guarantees-table__empty-message"><p>Todavía no hay garantías.</p></div>';
+                        tr.appendChild(td);
+                        return tr;
+                }
 
-		// Nuevo: mostrar el empty panel como los de detalle, solo si no está ya activo
-                function setEmptyDetailPanel(direction = "forward") {
+                function normalizeToFloat(value) {
+                        if (value === null || value === undefined) {
+                                return 0;
+                        }
+                        if (typeof value === "number") {
+                                return Number.isFinite(value) ? value : 0;
+                        }
+                        const normalized = String(value).trim();
+                        if (!normalized) {
+                                return 0;
+                        }
+                        const numeric = normalized
+                                .replace(/[^0-9,.-]/g, "")
+                                .replace(/\./g, "")
+                                .replace(/,/g, ".");
+                        const parsed = Number(numeric);
+                        return Number.isFinite(parsed) ? parsed : 0;
+                }
+
+                function normalizeToInt(value) {
+                        const number = normalizeToFloat(value);
+                        return Math.max(0, Math.round(number));
+                }
+
+                function formatIntegerValue(value) {
+                        return integerFormatter.format(normalizeToInt(value));
+                }
+
+                function formatCurrencyValue(value) {
+                        return currencyFormatter.format(normalizeToFloat(value));
+                }
+
+                function formatGuaranteeCount(value) {
+                        const count = normalizeToInt(value);
+                        const formatted = formatIntegerValue(count);
+                        return count === 1 ? `${formatted} garantía` : `${formatted} garantías`;
+                }
+
+                function animateSummaryNumber(element, target, options = {}) {
+                        if (!element) {
+                                return;
+                        }
+                        const duration = typeof options.duration === "number" ? options.duration : 500;
+                        const startValue =
+                                typeof options.start === "number"
+                                        ? options.start
+                                        : normalizeToInt(element.dataset.value || element.textContent || 0);
+                        const normalizedTarget = normalizeToInt(target);
+                        if (numberAnimations.has(element)) {
+                                cancelAnimationFrame(numberAnimations.get(element));
+                        }
+                        const startTime = performance.now();
+                        function step(now) {
+                                const progress = Math.min((now - startTime) / duration, 1);
+                                const current = Math.round(
+                                        startValue + (normalizedTarget - startValue) * progress
+                                );
+                                element.textContent = formatIntegerValue(current);
+                                if (progress < 1) {
+                                        numberAnimations.set(element, requestAnimationFrame(step));
+                                } else {
+                                        element.textContent = formatIntegerValue(normalizedTarget);
+                                        element.dataset.value = String(normalizedTarget);
+                                        numberAnimations.delete(element);
+                                }
+                        }
+                        numberAnimations.set(element, requestAnimationFrame(step));
+                }
+
+                function setAdminSummaryLoading(root, isLoading) {
+                        if (!root) {
+                                return;
+                        }
+                        const loading = Boolean(isLoading);
+                        root.classList.toggle("is-loading", loading);
+                        root.dataset.loading = loading ? "1" : "0";
+                        if (loading) {
+                                root.dataset.loaded = "0";
+                                root._adminSummaryData = null;
+                                root._adminSummaryContextData = null;
+                                root._adminSummaryHighlight = null;
+                                root.classList.remove("is-dimmed");
+                        }
+                        const error = root.querySelector("[data-admin-summary-error]");
+                        if (error) {
+                                error.hidden = true;
+                        }
+                        if (loading) {
+                                root.dataset.context = ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                                const statesList = root.querySelector("[data-admin-summary-states]");
+                                if (statesList) {
+                                        statesList.innerHTML = "";
+                                        for (let index = 0; index < 4; index += 1) {
+                                                const skeleton = document.createElement("div");
+                                                skeleton.className = "legend-item is-loading";
+                                                statesList.appendChild(skeleton);
+                                        }
+                                }
+                                const actionsList = root.querySelector("[data-admin-summary-actions]");
+                                if (actionsList) {
+                                        actionsList.innerHTML = "";
+                                        for (let index = 0; index < ADMIN_SUMMARY_ACTIONS.length; index += 1) {
+                                                const skeleton = document.createElement("li");
+                                                skeleton.className = "action-item is-loading";
+                                                actionsList.appendChild(skeleton);
+                                        }
+                                }
+                                const totalEl = root.querySelector("[data-admin-summary-total]");
+                                if (totalEl) {
+                                        totalEl.textContent = "—";
+                                        totalEl.dataset.value = "0";
+                                        totalEl.classList.remove("highlighted");
+                                        totalEl.style.color = "";
+                                }
+                                const labelEl = root.querySelector("[data-admin-summary-label]");
+                                if (labelEl) {
+                                        labelEl.textContent = labelEl.getAttribute("data-default-label") || "Total";
+                                        labelEl.dataset.contextLabel = "";
+                                        labelEl.classList.remove("highlighted");
+                                        labelEl.style.color = "";
+                                }
+                                const donut = root.querySelector("[data-admin-summary-donut]");
+                                if (donut) {
+                                        donut.style.removeProperty("--donut-fill");
+                                        donut.style.setProperty("--guarantee-summary-progress", "0");
+                                        donut.classList.remove("is-empty");
+                                }
+                        }
+                }
+
+                function showAdminSummaryError(root) {
+                        if (!root) {
+                                return;
+                        }
+                        root.classList.remove("is-loading");
+                        root.dataset.loading = "0";
+                        root.dataset.loaded = "0";
+                        root.classList.remove("is-dimmed");
+                        root._adminSummaryHighlight = null;
+                        const legend = root.querySelector("[data-admin-summary-states]");
+                        if (legend) {
+                                legend.innerHTML = "";
+                                const item = document.createElement("div");
+                                item.className = "legend-item legend-item--empty";
+                                item.textContent = ADMIN_SUMMARY_ERROR_MESSAGE;
+                                legend.appendChild(item);
+                        }
+                        const actionsList = root.querySelector("[data-admin-summary-actions]");
+                        if (actionsList) {
+                                actionsList.innerHTML = "";
+                        }
+                        const totalEl = root.querySelector("[data-admin-summary-total]");
+                        if (totalEl) {
+                                totalEl.textContent = "—";
+                                totalEl.dataset.value = "0";
+                                totalEl.classList.remove("highlighted");
+                                totalEl.style.color = "";
+                        }
+                        const labelEl = root.querySelector("[data-admin-summary-label]");
+                        if (labelEl) {
+                                labelEl.textContent = labelEl.getAttribute("data-default-label") || "Total";
+                                labelEl.dataset.contextLabel = "";
+                                labelEl.classList.remove("highlighted");
+                                labelEl.style.color = "";
+                        }
+                        const donut = root.querySelector("[data-admin-summary-donut]");
+                        if (donut) {
+                                donut.style.removeProperty("--donut-fill");
+                                donut.style.setProperty("--guarantee-summary-progress", "0");
+                                donut.classList.remove("is-empty");
+                        }
+                        const error = root.querySelector("[data-admin-summary-error]");
+                        if (error) {
+                                error.hidden = false;
+                        }
+                }
+
+                function normalizeSummaryStates(states) {
+                        if (!Array.isArray(states)) {
+                                return [];
+                        }
+                        const items = states
+                                .map((entry) => {
+                                        const value = typeof entry.value === "string" ? entry.value : "";
+                                        if (!value) {
+                                                return null;
+                                        }
+                                        const label = entry.label || value;
+                                        const count = Math.max(0, normalizeToInt(entry.count || 0));
+                                        return { value, label, count };
+                                })
+                                .filter(Boolean);
+
+                        if (items.length <= 1) {
+                                return items;
+                        }
+
+                        const orderMap = new Map(
+                                ADMIN_SUMMARY_STATE_ORDER.map((key, index) => [key, index])
+                        );
+
+                        items.sort((a, b) => {
+                                const orderA = orderMap.has(a.value) ? orderMap.get(a.value) : 99;
+                                const orderB = orderMap.has(b.value) ? orderMap.get(b.value) : 99;
+                                if (orderA !== orderB) {
+                                        return orderA - orderB;
+                                }
+                                if (b.count !== a.count) {
+                                        return b.count - a.count;
+                                }
+                                return a.label.localeCompare(b.label);
+                        });
+
+                        return items;
+                }
+
+                function buildDonutGradient(items, highlightValue = null) {
+                        if (!Array.isArray(items) || items.length === 0) {
+                                return "";
+                        }
+                        const positive = items.filter((item) => item.count > 0);
+                        if (positive.length === 0) {
+                                return "";
+                        }
+                        const total = positive.reduce((sum, item) => sum + item.count, 0);
+                        if (total <= 0) {
+                                return "";
+                        }
+                        let current = 0;
+                        const segments = [];
+                        const highlightKey = highlightValue || null;
+                        positive.forEach((item, index) => {
+                                const palette = ADMIN_SUMMARY_STATE_COLORS[item.value] || {};
+                                let color = palette.color || "var(--admin-summary-state-activada)";
+                                if (highlightKey && item.value !== highlightKey) {
+                                        color = palette.muted || color;
+                                }
+                                const fraction = item.count / total;
+                                let end = current + fraction * 360;
+                                if (index === positive.length - 1) {
+                                        end = 360;
+                                }
+                                segments.push(`${color} ${current}deg ${end}deg`);
+                                current = end;
+                        });
+                        return `conic-gradient(${segments.join(", ")})`;
+                }
+
+                function renderAdminSummaryStates(root, context = {}) {
+                        const donut = root.querySelector("[data-admin-summary-donut]");
+                        const legend = root.querySelector("[data-admin-summary-states]");
+                        const totalEl = root.querySelector("[data-admin-summary-total]");
+                        const labelEl = root.querySelector("[data-admin-summary-label]");
+                        const items = normalizeSummaryStates((context && context.states) || []);
+                        const total = items.reduce((sum, item) => sum + item.count, 0);
+
+                        const defaultLabel = labelEl
+                                ? labelEl.getAttribute("data-default-label") || "Total"
+                                : "Total";
+                        const contextLabel =
+                                context && typeof context.label === "string" ? context.label.trim() : "";
+
+                        if (labelEl) {
+                                const effectiveLabel = contextLabel || defaultLabel;
+                                labelEl.textContent = effectiveLabel;
+                                labelEl.dataset.contextLabel = effectiveLabel;
+                                labelEl.classList.remove("highlighted");
+                                labelEl.style.color = "";
+                        }
+
+                        if (totalEl) {
+                                if (typeof totalEl.dataset.value === "undefined") {
+                                        totalEl.dataset.value = "0";
+                                }
+                                totalEl.classList.remove("highlighted");
+                                totalEl.style.color = "";
+                        }
+
+                        if (donut) {
+                                if (items.length === 0 || total === 0) {
+                                        donut.classList.add("is-empty");
+                                        donut.style.removeProperty("--donut-fill");
+                                } else {
+                                        donut.classList.remove("is-empty");
+                                        const gradient = buildDonutGradient(items);
+                                        if (gradient) {
+                                                donut.style.setProperty("--donut-fill", gradient);
+                                        } else {
+                                                donut.style.removeProperty("--donut-fill");
+                                        }
+                                }
+                                donut.style.setProperty("--guarantee-summary-progress", "0");
+                        }
+
+                        if (!legend) {
+                                return;
+                        }
+                        legend.innerHTML = "";
+                        if (items.length === 0) {
+                                const item = document.createElement("div");
+                                item.className = "legend-item legend-item--empty";
+                                item.textContent = "Sin datos disponibles";
+                                legend.appendChild(item);
+                                root._adminSummaryContextData = {
+                                        items,
+                                        total,
+                                        label: contextLabel || defaultLabel,
+                                };
+                                root._adminSummaryHighlight = null;
+                                applyLegendHighlight(root, null);
+                                return;
+                        }
+                        items.forEach((item) => {
+                                const percent = total > 0 ? Math.round((item.count / total) * 100) : 0;
+                                const palette = ADMIN_SUMMARY_STATE_COLORS[item.value] || {};
+                                const node = document.createElement("div");
+                                node.className = "legend-item";
+                                if (item.value) {
+                                        node.dataset.state = item.value;
+                                }
+                                const color = palette.color || "var(--admin-summary-state-activada)";
+                                node.innerHTML = `
+                <span class="legend-color" style="background-color: ${color}"></span>
+                <div class="legend-info">
+                    <span class="legend-label">${escapeHtml(item.label)}</span>
+                    <span class="legend-value">${formatIntegerValue(percent)}%</span>
+                </div>
+            `;
+                                node.tabIndex = 0;
+                                legend.appendChild(node);
+                        });
+
+                        const legendItems = legend.querySelectorAll(".legend-item");
+                        legendItems.forEach((node) => {
+                                node.addEventListener("mouseenter", () => {
+                                        const state = node.dataset.state || null;
+                                        applyLegendHighlight(root, state);
+                                });
+                                node.addEventListener("focus", () => {
+                                        const state = node.dataset.state || null;
+                                        applyLegendHighlight(root, state);
+                                });
+                                node.addEventListener("mouseleave", () => {
+                                        applyLegendHighlight(root, null);
+                                });
+                                node.addEventListener("blur", () => {
+                                        applyLegendHighlight(root, null);
+                                });
+                        });
+                        if (!legend._adminSummaryLeaveBound) {
+                                legend.addEventListener("mouseleave", () => {
+                                        applyLegendHighlight(root, null);
+                                });
+                                legend._adminSummaryLeaveBound = true;
+                        }
+
+                        root._adminSummaryContextData = {
+                                items,
+                                total,
+                                label: contextLabel || defaultLabel,
+                        };
+                        root._adminSummaryHighlight = null;
+                        applyLegendHighlight(root, null);
+                }
+
+                function applyLegendHighlight(root, stateValue = null) {
+                        if (!root) {
+                                return;
+                        }
+                        const donut = root.querySelector("[data-admin-summary-donut]");
+                        const totalEl = root.querySelector("[data-admin-summary-total]");
+                        const labelEl = root.querySelector("[data-admin-summary-label]");
+                        const legend = root.querySelector("[data-admin-summary-states]");
+                        const contextData = root._adminSummaryContextData || {};
+                        const items = Array.isArray(contextData.items) ? contextData.items : [];
+                        const total = typeof contextData.total === "number"
+                                ? contextData.total
+                                : items.reduce((sum, item) => sum + (item.count || 0), 0);
+                        const defaultLabel = labelEl
+                                ? labelEl.getAttribute("data-default-label") || "Total"
+                                : "Total";
+                        const baseLabel = contextData.label || defaultLabel;
+                        const highlightItem = stateValue
+                                ? items.find((entry) => entry.value === stateValue)
+                                : null;
+                        const effectiveHighlight = highlightItem && highlightItem.value ? highlightItem.value : null;
+
+                        root._adminSummaryHighlight = effectiveHighlight;
+
+                        if (legend) {
+                                const nodes = legend.querySelectorAll(".legend-item");
+                                nodes.forEach((node) => {
+                                        const isActive = Boolean(effectiveHighlight) && node.dataset.state === effectiveHighlight;
+                                        node.classList.toggle("is-active", isActive);
+                                });
+                        }
+                        root.classList.toggle("is-dimmed", Boolean(effectiveHighlight));
+
+                        if (totalEl) {
+                                const targetTotal = effectiveHighlight && highlightItem
+                                        ? highlightItem.count || 0
+                                        : total;
+                                animateSummaryNumber(totalEl, targetTotal, {
+                                        duration: effectiveHighlight ? 220 : 320,
+                                });
+                                if (effectiveHighlight && highlightItem) {
+                                        const palette = ADMIN_SUMMARY_STATE_COLORS[highlightItem.value] || {};
+                                        totalEl.classList.add("highlighted");
+                                        totalEl.style.color = palette.color || "";
+                                } else {
+                                        totalEl.classList.remove("highlighted");
+                                        totalEl.style.color = "";
+                                }
+                        }
+
+                        if (labelEl) {
+                                if (effectiveHighlight && highlightItem) {
+                                        const palette = ADMIN_SUMMARY_STATE_COLORS[highlightItem.value] || {};
+                                        labelEl.textContent = highlightItem.label || baseLabel;
+                                        labelEl.classList.add("highlighted");
+                                        labelEl.style.color = palette.color || "";
+                                } else {
+                                        labelEl.textContent = baseLabel;
+                                        labelEl.classList.remove("highlighted");
+                                        labelEl.style.color = "";
+                                }
+                        }
+
+                        if (!donut) {
+                                return;
+                        }
+                        if (items.length === 0 || total === 0) {
+                                donut.classList.add("is-empty");
+                                donut.style.removeProperty("--donut-fill");
+                                donut.style.setProperty("--guarantee-summary-progress", "0");
+                                return;
+                        }
+                        donut.classList.remove("is-empty");
+                        const gradient = buildDonutGradient(items, effectiveHighlight);
+                        if (gradient) {
+                                donut.style.setProperty("--donut-fill", gradient);
+                        } else {
+                                donut.style.removeProperty("--donut-fill");
+                        }
+                        requestAnimationFrame(() => {
+                                donut.style.setProperty("--guarantee-summary-progress", "1");
+                        });
+                }
+
+                function getSummaryContextData(data, contextKey) {
+                        if (!data || typeof data !== "object") {
+                                return { states: [] };
+                        }
+                        const contexts = data.contexts && typeof data.contexts === "object" ? data.contexts : {};
+                        if (contextKey && contexts[contextKey]) {
+                                return contexts[contextKey];
+                        }
+                        if (contexts[ADMIN_SUMMARY_DEFAULT_CONTEXT]) {
+                                return contexts[ADMIN_SUMMARY_DEFAULT_CONTEXT];
+                        }
+                        const firstContext = Object.values(contexts)[0];
+                        if (firstContext) {
+                                return firstContext;
+                        }
+                        return {
+                                states: data.states || [],
+                                label: "",
+                                count: data.totals && data.totals.count ? data.totals.count : 0,
+                        };
+                }
+
+                function updateAdminSummaryContext(root, contextKey) {
+                        if (!root) {
+                                return;
+                        }
+                        const data = root._adminSummaryData || {};
+                        const contextData = getSummaryContextData(data, contextKey);
+                        const effectiveKey = contextKey && contextData ? contextKey : ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                        root.dataset.context = effectiveKey;
+
+                        const toggles = root.querySelectorAll("[data-admin-summary-context-toggle]");
+                        toggles.forEach((toggle) => {
+                                const value = toggle.value || toggle.getAttribute("value");
+                                toggle.checked = value === effectiveKey;
+                        });
+
+                        renderAdminSummaryStates(root, contextData || {});
+                }
+
+                function renderAdminSummaryActions(root, pending = {}) {
+                        const list = root.querySelector("[data-admin-summary-actions]");
+                        if (!list) {
+                                return;
+                        }
+                        list.innerHTML = "";
+                        ADMIN_SUMMARY_ACTIONS.forEach((action) => {
+                                const entry = pending[action.key] || {};
+                                const amount = normalizeToFloat(entry.amount || 0);
+                                const count = normalizeToInt(entry.count || 0);
+                                const item = document.createElement("li");
+                                item.className = "action-item";
+                                item.dataset.action = action.key;
+                                if (action.filterValue) {
+                                        item.dataset.filterValue = action.filterValue;
+                                }
+                                if (action.accent) {
+                                        item.style.setProperty("--action-accent", action.accent);
+                                }
+
+                                const amountLabel = formatCurrencyValue(amount);
+                                const countLabel = formatGuaranteeCount(count);
+                                const subtitle =
+                                        count > 0
+                                                ? `${countLabel} · ${amountLabel}`
+                                                : "Sin pendientes";
+
+                                item.innerHTML = `
+                <span class="action-icon" aria-hidden="true" style="background-color: var(--action-accent)">
+                    ${action.icon}
+                </span>
+                <div class="action-details">
+                    <span class="action-label">${escapeHtml(action.label)}</span>
+                    <span class="action-sublabel">${escapeHtml(subtitle)}</span>
+                </div>
+                <span class="action-cta" aria-hidden="true">${ADMIN_SUMMARY_ACTION_ARROW_ICON}</span>
+            `;
+
+                                if (count === 0) {
+                                        item.classList.add("is-empty");
+                                }
+
+                                item.addEventListener("click", () => {
+                                        if (!action.filterValue || !estadoSelect) {
+                                                return;
+                                        }
+                                        if (estadoSelect.value === action.filterValue) {
+                                                applyFilters();
+                                                return;
+                                        }
+                                        estadoSelect.value = action.filterValue;
+                                        selectedEstado = action.filterValue;
+                                        updateResetVisibility();
+                                        applyFilters();
+                                });
+
+                                list.appendChild(item);
+                        });
+                }
+
+                function renderAdminSummary(root, data = {}) {
+                        if (!root) {
+                                return;
+                        }
+                        root.classList.remove("is-loading");
+                        root.dataset.loading = "0";
+                        root.dataset.loaded = "1";
+                        root._adminSummaryData = data || {};
+
+                        const currentContext = root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                        updateAdminSummaryContext(root, currentContext);
+                        renderAdminSummaryActions(root, data.pending || {});
+
+                        const error = root.querySelector("[data-admin-summary-error]");
+                        if (error) {
+                                error.hidden = true;
+                        }
+                }
+
+                function fetchAdminSummary(force = false) {
+                        if (!isCoreAdmin) {
+                                return Promise.resolve({});
+                        }
+                        if (force) {
+                                adminSummaryCache = null;
+                        } else {
+                                if (adminSummaryCache) {
+                                        return Promise.resolve(adminSummaryCache);
+                                }
+                                if (adminSummaryPromise) {
+                                        return adminSummaryPromise;
+                                }
+                        }
+
+                        const headers = { Accept: "application/json" };
+                        if (restNonce) {
+                                headers["X-WP-Nonce"] = restNonce;
+                        }
+
+                        const request = fetch(`${restRoot}go/v1/guarantees/summary`, { headers })
+                                .then((response) => {
+                                        if (!response.ok) {
+                                                throw new Error(
+                                                        `Resumen de garantías no disponible (${response.status || ""})`
+                                                );
+                                        }
+                                        return response.json();
+                                })
+                                .then((payload) => {
+                                        adminSummaryCache = payload;
+                                        return payload;
+                                })
+                                .finally(() => {
+                                        adminSummaryPromise = null;
+                                });
+
+                        if (!force) {
+                                adminSummaryPromise = request;
+                        }
+
+                        return request;
+                }
+
+                function loadAdminSummary(root, options = {}) {
+                        if (!root) {
+                                return;
+                        }
+                        const force = Boolean(options.force);
+                        if (!force && root.dataset.loaded === "1" && adminSummaryCache) {
+                                renderAdminSummary(root, adminSummaryCache);
+                                return;
+                        }
+                        setAdminSummaryLoading(root, true);
+                        fetchAdminSummary(force)
+                                .then((payload) => {
+                                        renderAdminSummary(root, payload || {});
+                                })
+                                .catch((error) => {
+                                        console.error(error);
+                                        root.dataset.loaded = "0";
+                                        root.classList.remove("is-loading");
+                                        root.dataset.loading = "0";
+                                        showAdminSummaryError(root);
+                                });
+                }
+
+                function initializeAdminSummary(panel) {
+                        if (!isCoreAdmin || !panel) {
+                                return;
+                        }
+                        const root = panel.querySelector("[data-admin-summary]");
+                        if (!root) {
+                                return;
+                        }
+                        if (root.dataset.initialized === "1" && root.dataset.loaded === "1" && adminSummaryCache) {
+                                renderAdminSummary(root, adminSummaryCache);
+                                return;
+                        }
+                        const toggles = root.querySelectorAll("[data-admin-summary-context-toggle]");
+                        toggles.forEach((toggle) => {
+                                toggle.addEventListener("change", () => {
+                                        if (!toggle.checked) {
+                                                return;
+                                        }
+                                        updateAdminSummaryContext(root, toggle.value || toggle.getAttribute("value"));
+                                });
+                        });
+                        const helpButton = root.querySelector("[data-admin-summary-help]");
+                        if (helpButton) {
+                                helpButton.addEventListener("click", () => {
+                                        const event = new CustomEvent("go:summary-help", {
+                                                bubbles: true,
+                                                detail: { source: "admin-summary" },
+                                        });
+                                        root.dispatchEvent(event);
+                                });
+                        }
+                        root.dataset.initialized = "1";
+                        loadAdminSummary(root);
+                }
+
+                function renderEmptyDetail(mode = "awaiting") {
+                        const templateKey = mode === "no-results" ? "no-results" : "awaiting";
+                        if (emptyTemplateMap[templateKey]) {
+                                return emptyTemplateMap[templateKey];
+                        }
+                        if (templateKey === "no-results") {
+                                const safeUrl =
+                                        typeof newGuaranteeUrl === "string" && newGuaranteeUrl
+                                                ? newGuaranteeUrl
+                                                : "#";
+                                const iconHtml = plusIcon
+                                        ? `<span class="guarantee-detail__cta-icon" aria-hidden="true">${plusIcon}</span>`
+                                        : "";
+                                return `
+                                        <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="no-results">
+                                                <h3 class="guarantee-detail__title">Añade tu primera garantía</h3>
+                                                <p>Crea una nueva garantía para ver aquí todos sus detalles.</p>
+                                                <a class="guarantee-detail__cta" href="${safeUrl}">
+                                                        ${iconHtml}
+                                                        <span class="guarantee-detail__cta-label">Nueva Garantía</span>
+                                                </a>
+                                        </div>
+                                `;
+                        }
+                        const arrowHtml = arrowLeftIcon
+                                ? `<span class="guarantee-detail__hint-arrow" aria-hidden="true">${arrowLeftIcon}</span>`
+                                : '<span class="guarantee-detail__hint-arrow" aria-hidden="true"></span>';
+                        return `
+                                <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="awaiting">
+                                        <h3 class="guarantee-detail__title">Consulta los detalles de tus garantías</h3>
+                                        <p class="guarantee-detail__hint">
+                                                ${arrowHtml}
+                                                Haz clic en una garantía para consultar la información completa.
+                                        </p>
+                                </div>
+                        `;
+                }
+
+                // Nuevo: mostrar el empty panel como los de detalle, solo si no está ya activo
+                function setEmptyDetailPanel(direction = "forward", mode = "awaiting") {
                         clearActiveCountdown();
                         const currentActive = activePanel;
                         const nextPanel = activePanel === panel1 ? panel2 : panel1;
-                        // Si el empty ya está visible, no repetir animación
-			if (
-				nextPanel.classList.contains("active") &&
-				nextPanel.innerHTML.includes("Ninguna garantía seleccionada")
-			) {
-				return;
-			}
-                        nextPanel.innerHTML = renderEmptyDetail();
+                        const normalizedMode = mode === "no-results" ? "no-results" : "awaiting";
+                        const activeHasSameMode =
+                                normalizedMode === currentEmptyMode &&
+                                currentActive &&
+                                currentActive.classList.contains("active") &&
+                                currentActive.querySelector(
+                                        `[data-empty-detail][data-empty-mode="${normalizedMode}"]`
+                                );
+                        const nextHasSameMode =
+                                normalizedMode === currentEmptyMode &&
+                                nextPanel.classList.contains("active") &&
+                                nextPanel.querySelector(
+                                        `[data-empty-detail][data-empty-mode="${normalizedMode}"]`
+                                );
+                        // Si el empty ya está visible en el modo solicitado, no repetir animación
+                        if (activeHasSameMode || nextHasSameMode) {
+                                return;
+                        }
+                        nextPanel.innerHTML = renderEmptyDetail(normalizedMode);
+                        const emptyNode = nextPanel.querySelector("[data-empty-detail]");
+                        if (emptyNode) {
+                                emptyNode.setAttribute("data-empty-mode", normalizedMode);
+                        }
                         nextPanel.dataset.loadedId = "";
                         nextPanel.dataset.matricula = "";
                         syncPdfModalDocs(nextPanel);
-			activePanel = nextPanel;
-			inactivePanel = currentActive;
+                        if (normalizedMode === "awaiting") {
+                                initializeAdminSummary(nextPanel);
+                        }
+                        activePanel = nextPanel;
+                        inactivePanel = currentActive;
 			currentActive.classList.add(
 				direction === "forward" ? "slide-out-left" : "slide-out-right"
 			);
@@ -1927,11 +3057,16 @@ const ADD_DOC_KEY = "add-document";
 				},
 				{ once: true }
 			);
-			lastEmptyPanel = nextPanel;
-		}
+                        lastEmptyPanel = nextPanel;
+                        currentEmptyMode = normalizedMode;
+                }
 
                 function clearSelectionAndDetail(options = {}) {
                         const preserveQuery = Boolean(options.preserveQuery);
+                        const desiredMode =
+                                typeof options.emptyMode === "string"
+                                        ? options.emptyMode
+                                        : "awaiting";
                         const rows = Array.from(
                                 document.querySelectorAll(".guarantees-table__row")
                         );
@@ -1943,7 +3078,7 @@ const ADD_DOC_KEY = "add-document";
                                 pendingMatSelection = false;
                                 initialMatQuery = "";
                         }
-                        setEmptyDetailPanel("forward"); // Mantén la dirección como prefieras
+                        setEmptyDetailPanel("forward", desiredMode); // Mantén la dirección como prefieras
                 }
 
 		function setResultMessage(msg = "") {
@@ -1969,12 +3104,39 @@ const ADD_DOC_KEY = "add-document";
                                 typeof options.concesionario !== "undefined"
                                         ? options.concesionario
                                         : selectedConcesionario;
+                        const vendorType =
+                                typeof options.vendorType === "string"
+                                        ? options.vendorType
+                                        : selectedVendorType;
+                        const paymentMethod =
+                                typeof options.paymentMethod === "string"
+                                        ? options.paymentMethod
+                                        : selectedPaymentMethod;
+                        const commercial =
+                                typeof options.commercial === "string"
+                                        ? options.commercial
+                                        : options.commercial != null
+                                        ? String(options.commercial)
+                                        : selectedCommercial;
+                        const orderBy =
+                                typeof options.orderBy === "string" && options.orderBy
+                                        ? options.orderBy
+                                        : selectedOrderBy;
+                        const orderDirection =
+                                typeof options.orderDirection === "string" && options.orderDirection
+                                        ? options.orderDirection
+                                        : selectedOrderDirection;
                         const cacheKey = buildListCacheKey(
                                 search,
                                 estado,
                                 plan,
                                 canal,
-                                concesionario
+                                concesionario,
+                                vendorType,
+                                paymentMethod,
+                                orderBy,
+                                orderDirection,
+                                commercial
                         );
                         try {
                                 if (currentListAbort) currentListAbort.abort();
@@ -1990,6 +3152,16 @@ const ADD_DOC_KEY = "add-document";
                                 if (canal) params.append("canal", canal);
                                 if (concesionario)
                                         params.append("concesionario", concesionario);
+                                if (vendorType)
+                                        params.append("vendor_type", vendorType);
+                                if (paymentMethod)
+                                        params.append("payment_method", paymentMethod);
+                                if (commercial)
+                                        params.append("commercial", commercial);
+                                if (orderBy)
+                                        params.append("order_by", orderBy);
+                                if (orderDirection)
+                                        params.append("order", orderDirection);
                                 let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
                                 const res = await fetch(url, {
                                         headers: { "X-WP-Nonce": restNonce },
@@ -2104,13 +3276,28 @@ const ADD_DOC_KEY = "add-document";
 						setResultMessage(
 							`No se han encontrado garantías para <strong>"${search}"</strong>. Mostrando resultados de <strong>"${lastValidQuery}"</strong>.`
 						);
-					} else if (search && page === 1) {
-						setResultMessage(
-							`No se han encontrado garantías para <strong>"${search}"</strong>.`
-						);
-					}
-				}
-			} catch (err) {
+                                        } else if (search && page === 1) {
+                                                setResultMessage(
+                                                        `No se han encontrado garantías para <strong>"${search}"</strong>.`
+                                                );
+                                        } else if (esNuevaBusqueda && !hasActiveFilters()) {
+                                                const emptyRow = renderEmptyRow();
+                                                if (emptyRow) {
+                                                        tbody.appendChild(emptyRow);
+                                                }
+                                                setResultMessage("");
+                                                setEmptyDetailPanel("forward", "no-results");
+                                        } else if (esNuevaBusqueda) {
+                                                const emptyRow = renderEmptyRow();
+                                                if (emptyRow) {
+                                                        tbody.appendChild(emptyRow);
+                                                }
+                                                setResultMessage(
+                                                        "No se han encontrado garantías con los filtros seleccionados."
+                                                );
+                                        }
+                                }
+                        } catch (err) {
 				console.error("❌ Error en loadPage:", err);
                         } finally {
                                 isLoading = false;
@@ -2996,7 +4183,10 @@ function initRowSelection() {
 					prevSelectedRow = null;
 					prevIdx = null;
 					history.replaceState(null, "", window.location.pathname);
-					setEmptyDetailPanel(idx > prevIdx ? "forward" : "back");
+                                   setEmptyDetailPanel(
+                                           idx > prevIdx ? "forward" : "back",
+                                           "awaiting"
+                                   );
 					return;
 				}
 
@@ -3310,8 +4500,8 @@ function initRowSelection() {
                 (() => {
                         const filters = document.querySelector(".guarantees-list__filters"),
                                 header = document.querySelector(".top-bar");
-			if (filters && header) {
-				new IntersectionObserver(
+                        if (filters && header) {
+                                new IntersectionObserver(
 					([e]) => {
 						const a = !e.isIntersecting;
 						filters.classList.toggle("sticky-active", a);
@@ -3335,6 +4525,216 @@ function initRowSelection() {
                         );
                 })();
 
+                function normalizeFilterValues(items) {
+                        if (!Array.isArray(items)) {
+                                return new Set();
+                        }
+                        return new Set(
+                                items
+                                        .map((item) => {
+                                                if (typeof item === "string") {
+                                                        return item;
+                                                }
+                                                if (item && typeof item === "object") {
+                                                        return item.value || item.slug || "";
+                                                }
+                                                return "";
+                                        })
+                                        .filter(Boolean)
+                        );
+                }
+
+                function syncChannelOptionVisibility(channels = [], vendorTypes = []) {
+                        if (!canalSelect) {
+                                return;
+                        }
+
+                        const channelSet = normalizeFilterValues(channels);
+                        const vendorTypeSet = normalizeFilterValues(vendorTypes);
+                        let selectionChanged = false;
+
+                        Array.from(canalSelect.options).forEach((option) => {
+                                if (option.value === "") {
+                                        return;
+                                }
+                                const channel = option.dataset.channel || option.value || "";
+                                const vendorType = option.dataset.vendorType || "";
+                                let visible = true;
+                                if (vendorType) {
+                                        visible = vendorTypeSet.size === 0 || vendorTypeSet.has(vendorType);
+                                } else if (channel) {
+                                        visible = channelSet.size === 0 || channelSet.has(channel);
+                                }
+                                option.hidden = !visible;
+                        });
+
+                        const selectedOption = canalSelect.options[canalSelect.selectedIndex];
+                        if (selectedOption && selectedOption.hidden) {
+                                canalSelect.value = "";
+                                selectedCanal = "";
+                                selectedVendorType = "";
+                                selectionChanged = true;
+                        }
+
+                        refreshClientsVisibility();
+
+                        if (selectionChanged) {
+                                applyFilters();
+                        }
+                }
+
+                function setOrderSelection(key, { trigger = true } = {}) {
+                        if (!orderOptions.has(key)) {
+                                return;
+                        }
+                        const config = orderOptions.get(key) || {};
+                        selectedOrderKey = key;
+                        selectedOrderBy = config.orderBy || "created";
+                        selectedOrderDirection =
+                                config.direction === "asc" ? "asc" : "desc";
+
+                        if (orderLabelNode && config.label) {
+                                orderLabelNode.textContent = config.label;
+                        }
+
+                        if (orderMenu) {
+                                orderMenu
+                                        .querySelectorAll("[data-sort-key]")
+                                        .forEach((button) => {
+                                                const isActive =
+                                                        button.dataset.sortKey === key;
+                                                button.classList.toggle(
+                                                        "is-active",
+                                                        isActive
+                                                );
+                                                button.setAttribute(
+                                                        "aria-checked",
+                                                        isActive ? "true" : "false"
+                                                );
+                                        });
+                        }
+
+                        if (trigger) {
+                                applyFilters();
+                        }
+
+                        updateResetVisibility();
+                }
+
+                function openOrderMenu() {
+                        if (!orderRoot || !orderMenu || !orderToggle) {
+                                return;
+                        }
+                        orderRoot.setAttribute("data-open", "true");
+                        orderToggle.setAttribute("aria-expanded", "true");
+                        orderMenu.removeAttribute("hidden");
+                }
+
+                function closeOrderMenu() {
+                        if (!orderRoot || !orderMenu || !orderToggle) {
+                                return;
+                        }
+                        orderRoot.removeAttribute("data-open");
+                        orderToggle.setAttribute("aria-expanded", "false");
+                        orderMenu.setAttribute("hidden", "");
+                }
+
+                if (orderMenu) {
+                        const buttons = Array.from(
+                                orderMenu.querySelectorAll("[data-sort-key]")
+                        );
+                        buttons.forEach((button) => {
+                                const key = button.dataset.sortKey || "";
+                                if (!key) {
+                                        return;
+                                }
+                                const orderBy = button.dataset.orderBy || "created";
+                                const direction =
+                                        (button.dataset.orderDirection || "desc").toLowerCase() ===
+                                        "asc"
+                                                ? "asc"
+                                                : "desc";
+                                const label = (button.textContent || "").trim();
+                                orderOptions.set(key, {
+                                        orderBy,
+                                        direction,
+                                        label,
+                                });
+                        });
+
+                        let initialKey = orderToggle
+                                ? orderToggle.getAttribute("data-default-sort") || ""
+                                : "";
+                        if (!initialKey || !orderOptions.has(initialKey)) {
+                                const defaultButton = orderMenu.querySelector(
+                                        "[data-default][data-sort-key]"
+                                );
+                                if (
+                                        defaultButton &&
+                                        orderOptions.has(defaultButton.dataset.sortKey || "")
+                                ) {
+                                        initialKey = defaultButton.dataset.sortKey;
+                                }
+                        }
+                        if (!initialKey) {
+                                const first = orderOptions.keys().next();
+                                if (!first.done) {
+                                        initialKey = first.value;
+                                }
+                        }
+                        if (initialKey) {
+                                setOrderSelection(initialKey, { trigger: false });
+                        }
+
+                        buttons.forEach((button) => {
+                                button.addEventListener("click", () => {
+                                        const key = button.dataset.sortKey || "";
+                                        if (!key) {
+                                                return;
+                                        }
+                                        closeOrderMenu();
+                                        setOrderSelection(key);
+                                });
+                        });
+                }
+
+                if (orderToggle && orderMenu) {
+                        orderToggle.addEventListener("click", (event) => {
+                                event.preventDefault();
+                                const isOpen = orderRoot?.getAttribute("data-open") === "true";
+                                if (isOpen) {
+                                        closeOrderMenu();
+                                } else {
+                                        openOrderMenu();
+                                }
+                        });
+                }
+
+                if (orderRoot && orderMenu) {
+                        document.addEventListener("click", (event) => {
+                                if (orderMenu.hasAttribute("hidden")) {
+                                        return;
+                                }
+                                if (orderRoot.contains(event.target)) {
+                                        return;
+                                }
+                                closeOrderMenu();
+                        });
+
+                        document.addEventListener("keydown", (event) => {
+                                if (event.key !== "Escape") {
+                                        return;
+                                }
+                                if (orderMenu.hasAttribute("hidden")) {
+                                        return;
+                                }
+                                closeOrderMenu();
+                                if (orderToggle) {
+                                        orderToggle.focus();
+                                }
+                        });
+                }
+
                 async function fetchFilters() {
                         try {
                                 const res = await fetch(
@@ -3346,6 +4746,10 @@ function initRowSelection() {
                                         estados = [],
                                         planes = [],
                                         concesionarios = [],
+                                        payment_methods: paymentMethods = [],
+                                        channels = [],
+                                        vendor_types: vendorTypes = [],
+                                        commercials = [],
                                 } = await res.json();
                                 if (estadoSelect) {
                                         estadoSelect
@@ -3355,6 +4759,15 @@ function initRowSelection() {
                                                 const opt = document.createElement("option");
                                                 const val = typeof est === "object" ? est.value : est;
                                                 const lbl = typeof est === "object" ? est.label : est;
+                                                if (
+                                                        isProfesional &&
+                                                        [
+                                                                "expira_pronto",
+                                                                "pendiente_cobro",
+                                                        ].includes(String(val))
+                                                ) {
+                                                        return;
+                                                }
                                                 opt.value = val;
                                                 opt.textContent = lbl;
                                                 estadoSelect.appendChild(opt);
@@ -3371,16 +4784,68 @@ function initRowSelection() {
                                                 planSelect.appendChild(opt);
                                         });
                                 }
-                                if (concesionarioSelect) {
-                                        concesionarioSelect
+                                if (Array.isArray(concesionarios)) {
+                                        rawClients = concesionarios.map((client) => ({
+                                                id: client.id,
+                                                name: client.name,
+                                                type: client.type || "",
+                                        }));
+                                        populateClientsSelect(selectedVendorType);
+                                }
+                                if (Array.isArray(commercials)) {
+                                        rawCommercials = commercials
+                                                .map((commercial) => {
+                                                        const rawId =
+                                                                commercial &&
+                                                                typeof commercial.id !== "undefined"
+                                                                        ? commercial.id
+                                                                        : commercial &&
+                                                                          typeof commercial.ID !== "undefined"
+                                                                          ? commercial.ID
+                                                                          : 0;
+                                                        const id = Number.parseInt(rawId, 10);
+                                                        const primaryName =
+                                                                commercial &&
+                                                                typeof commercial.name === "string"
+                                                                        ? commercial.name
+                                                                        : "";
+                                                        const fallbackName =
+                                                                commercial &&
+                                                                typeof commercial.display_name === "string"
+                                                                        ? commercial.display_name
+                                                                        : "";
+                                                        return {
+                                                                id: Number.isFinite(id) ? id : 0,
+                                                                name: primaryName || fallbackName,
+                                                        };
+                                                })
+                                                .filter((item) => item.id > 0 && item.name);
+                                } else {
+                                        rawCommercials = [];
+                                }
+                                populateCommercialSelect();
+                                if (paymentSelect) {
+                                        paymentSelect
                                                 .querySelectorAll("option:not(:first-child)")
                                                 .forEach((o) => o.remove());
-                                        concesionarios.forEach((c) => {
+                                        paymentMethods.forEach((method) => {
                                                 const opt = document.createElement("option");
-                                                opt.value = c.id;
-                                                opt.textContent = c.name;
-                                                concesionarioSelect.appendChild(opt);
+                                                if (method && typeof method === "object") {
+                                                        opt.value = method.value;
+                                                        opt.textContent = method.label;
+                                                } else {
+                                                        const value = typeof method === "string" ? method : "";
+                                                        opt.value = value;
+                                                        opt.textContent = value;
+                                                }
+                                                paymentSelect.appendChild(opt);
                                         });
+                                }
+                                syncChannelOptionVisibility(channels, vendorTypes);
+                                refreshClientsVisibility();
+                                updateResetVisibility();
+                                if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
+                                        requestAnimationFrame(updateAdvancedHeight);
                                 }
                         } catch (e) {
                                 console.error("❌ Error fetching filters:", e);
@@ -3397,7 +4862,12 @@ function initRowSelection() {
                                 selectedEstado,
                                 selectedPlan,
                                 selectedCanal,
-                                selectedConcesionario
+                                selectedConcesionario,
+                                selectedVendorType,
+                                selectedPaymentMethod,
+                                selectedOrderBy,
+                                selectedOrderDirection,
+                                selectedCommercial
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
@@ -3416,29 +4886,152 @@ function initRowSelection() {
                         estadoSelect.addEventListener("change", () => {
                                 selectedEstado = estadoSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
                         });
                 if (planSelect)
                         planSelect.addEventListener("change", () => {
                                 selectedPlan = planSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
+                        });
+                if (paymentSelect)
+                        paymentSelect.addEventListener("change", () => {
+                                selectedPaymentMethod = paymentSelect.value;
+                                applyFilters();
+                                updateResetVisibility();
                         });
                 if (canalSelect)
                         canalSelect.addEventListener("change", () => {
-                                selectedCanal = canalSelect.value;
+                                refreshClientsVisibility();
                                 applyFilters();
+                                updateResetVisibility();
                         });
                 if (concesionarioSelect)
                         concesionarioSelect.addEventListener("change", () => {
                                 selectedConcesionario = concesionarioSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
+                        });
+                if (commercialSelect)
+                        commercialSelect.addEventListener("change", () => {
+                                selectedCommercial = commercialSelect.value;
+                                applyFilters();
+                                updateResetVisibility();
                         });
 
+                if (moreFiltersToggle && advancedPanel) {
+                        const labelNode = moreFiltersToggle.querySelector(
+                                ".guarantees-list__more-filters-label"
+                        );
+                        const defaultLabel =
+                                moreFiltersToggle.getAttribute("data-default-label") ||
+                                (labelNode ? labelNode.textContent || "" : "");
+                        const activeLabel =
+                                moreFiltersToggle.getAttribute("data-active-label") || defaultLabel;
+
+                        setAdvancedOpen = (open) => {
+                                if (!advancedPanel) return;
+                                if (open) {
+                                        advancedPanel.removeAttribute("hidden");
+                                } else {
+                                        advancedPanel.setAttribute("hidden", "");
+                                }
+                                moreFiltersToggle.setAttribute(
+                                        "aria-expanded",
+                                        open ? "true" : "false"
+                                );
+                                moreFiltersToggle.setAttribute(
+                                        "data-open",
+                                        open ? "true" : "false"
+                                );
+                                if (filtersRoot) {
+                                        if (open) {
+                                                filtersRoot.setAttribute(
+                                                        "data-advanced-open",
+                                                        "true"
+                                                );
+                                        } else {
+                                                filtersRoot.removeAttribute(
+                                                        "data-advanced-open"
+                                                );
+                                        }
+                                }
+                                if (labelNode) {
+                                        labelNode.textContent = open
+                                                ? activeLabel
+                                                : defaultLabel;
+                                }
+                                requestAnimationFrame(updateAdvancedHeight);
+                        };
+
+                        moreFiltersToggle.addEventListener("click", () => {
+                                const isOpen = !advancedPanel.hasAttribute("hidden");
+                                setAdvancedOpen(!isOpen);
+                        });
+                }
+
+                refreshClientsVisibility();
+                updateAdvancedHeight();
                 fetchFilters();
 
                 const input = document.getElementById("buscador_mis_garantias");
                 const closeIcon = document.querySelector(".guarantees-list__close-icon");
-		let debounceTimer = null;
-		const DEBOUNCE_MS = 300;
+                let debounceTimer = null;
+                const DEBOUNCE_MS = 300;
+
+                if (resetFiltersBtn) {
+                        resetFiltersBtn.addEventListener("click", () => {
+                                if (input) {
+                                        input.value = "";
+                                }
+                                if (closeIcon) {
+                                        closeIcon.classList.remove("visible");
+                                }
+                                searchQuery = "";
+                                lastValidQuery = "";
+                                lastValidResults = [];
+                                if (estadoSelect) estadoSelect.value = "";
+                                if (planSelect) planSelect.value = "";
+                                if (paymentSelect) paymentSelect.value = "";
+                                if (canalSelect) canalSelect.value = "";
+                                if (concesionarioSelect) concesionarioSelect.value = "";
+                                if (commercialSelect) commercialSelect.value = "";
+                                selectedEstado = "";
+                                selectedPlan = "";
+                                selectedCanal = "";
+                                selectedConcesionario = "";
+                                selectedVendorType = "";
+                                selectedPaymentMethod = "";
+                                selectedCommercial = "";
+                                currentPage = 1;
+                                hasMore = true;
+                                refreshClientsVisibility();
+                                if (orderToggle) {
+                                        const defaultSort =
+                                                orderToggle.getAttribute("data-default-sort") ||
+                                                "created_desc";
+                                        if (defaultSort) {
+                                                setOrderSelection(defaultSort, { trigger: false });
+                                        }
+                                } else {
+                                        selectedOrderKey = "created_desc";
+                                        selectedOrderBy = "created";
+                                        selectedOrderDirection = "desc";
+                                }
+                                setResultMessage("");
+                                applyFilters();
+                                if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
+                                        requestAnimationFrame(updateAdvancedHeight);
+                                } else {
+                                        updateBaseFiltersHeight();
+                                        rootElement.style.setProperty(
+                                                "--go-advanced-filters-height",
+                                                "0px"
+                                        );
+                                }
+                                updateResetVisibility();
+                        });
+                }
 
                 function doSearch(query) {
                         searchQuery = query;
@@ -3449,7 +5042,12 @@ function initRowSelection() {
                                 selectedEstado,
                                 selectedPlan,
                                 selectedCanal,
-                                selectedConcesionario
+                                selectedConcesionario,
+                                selectedVendorType,
+                                selectedPaymentMethod,
+                                selectedOrderBy,
+                                selectedOrderDirection,
+                                selectedCommercial
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
@@ -3462,23 +5060,26 @@ function initRowSelection() {
                                 return;
                         }
                         loadPage(1, { search: searchQuery });
+                        updateResetVisibility();
                 }
 
-		input.addEventListener("input", () => {
-			const value = input.value.trim();
-			if (value.length > 0) {
-				closeIcon.classList.add("visible");
-			} else {
-				closeIcon.classList.remove("visible");
-				// SI EL INPUT QUEDA VACÍO, LIMPIA VARIABLES
-				lastValidQuery = "";
-				lastValidResults = [];
-			}
-			if (debounceTimer) clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(() => {
-				doSearch(value);
-			}, DEBOUNCE_MS);
-		});
+                input.addEventListener("input", () => {
+                        const value = input.value.trim();
+                        if (value.length > 0) {
+                                closeIcon.classList.add("visible");
+                        } else {
+                                closeIcon.classList.remove("visible");
+                                // SI EL INPUT QUEDA VACÍO, LIMPIA VARIABLES
+                                lastValidQuery = "";
+                                lastValidResults = [];
+                        }
+                        searchQuery = value;
+                        updateResetVisibility();
+                        if (debounceTimer) clearTimeout(debounceTimer);
+                        debounceTimer = setTimeout(() => {
+                                doSearch(value);
+                        }, DEBOUNCE_MS);
+                });
 
 		closeIcon.addEventListener("click", () => {
 			input.value = "";
@@ -3489,10 +5090,11 @@ function initRowSelection() {
 			searchQuery = "";
 			currentPage = 1;
 			hasMore = true;
-			lastValidQuery = "";
-			lastValidResults = [];
-			loadPage(1);
-		});
+                        lastValidQuery = "";
+                        lastValidResults = [];
+                        loadPage(1);
+                        updateResetVisibility();
+                });
 
                 new IntersectionObserver(
                         (entries) => {
