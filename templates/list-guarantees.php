@@ -11,6 +11,7 @@ use GarantiasOnline360VO\Svg;
 
 $current_user = wp_get_current_user();
 $user_roles   = is_object($current_user) ? (array) $current_user->roles : [];
+$new_guarantee_url = home_url('/garantias-online/nueva-garantia/');
 
 $has_role = static function (string $role) use ($user_roles): bool {
     return in_array($role, $user_roles, true);
@@ -349,9 +350,15 @@ $default_sort_label = is_array($default_sort) && ! empty($default_sort['label'])
     <aside class="guarantee-detail" style="view-transition-name: resume-derecha">
         <!-- Panel 1: mensaje cuando no hay selección -->
         <div class="guarantee-detail__panel active" id="detail-panel-1">
-            <div class="guarantee-detail__empty">
-                <h3 class="guarantee-detail__title">Ninguna garantía seleccionada</h3>
-                <p>Haz clic en una fila para ver sus detalles aquí.</p>
+            <div class="guarantee-detail__empty" data-empty-detail>
+                <h3 class="guarantee-detail__title"><?php esc_html_e('Añade tu primera garantía', 'garantias-online-360vo'); ?></h3>
+                <p><?php esc_html_e('Crea una nueva garantía para ver aquí todos sus detalles.', 'garantias-online-360vo'); ?></p>
+                <a class="guarantee-detail__cta" href="<?php echo esc_url($new_guarantee_url); ?>">
+                    <span class="guarantee-detail__cta-icon" aria-hidden="true">
+                        <?php echo Svg::icon('plus'); ?>
+                    </span>
+                    <span class="guarantee-detail__cta-label"><?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?></span>
+                </a>
             </div>
         </div>
 

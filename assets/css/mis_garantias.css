@@ -4870,3 +4870,63 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: var(--text-color);
 }
 
+/* Empty state for guarantees list */
+.guarantees-table__empty-row td {
+    padding: clamp(2.5rem, 3vw, 3.5rem) var(--spacing-3);
+    text-align: center;
+    color: var(--text-secondary);
+    background: transparent;
+}
+
+.guarantees-table__empty-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.guarantees-table__empty-message p {
+    margin: 0;
+}
+
+.guarantee-detail__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin-top: var(--spacing-2);
+    padding: 0.65rem 1.15rem;
+    border-radius: 999px;
+    background: var(--go-color-2563eb);
+    color: var(--go-color-ffffff);
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.guarantee-detail__cta:hover,
+.guarantee-detail__cta:focus-visible {
+    background: var(--go-color-1d4ed8);
+    box-shadow: 0 10px 24px -16px rgba(var(--go-color-2563eb-rgb), 0.6);
+    transform: translateY(-1px);
+    color: var(--go-color-ffffff);
+}
+
+.guarantee-detail__cta:focus-visible {
+    outline: 2px solid rgba(var(--go-color-2563eb-rgb), 0.45);
+    outline-offset: 2px;
+}
+
+.guarantee-detail__cta-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+.guarantee-detail__cta-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+

@@ -186,6 +186,9 @@ const ADD_DOC_KEY = "add-document";
                 const misGarantiasBase =
                         (goConfig.pages && goConfig.pages.misGarantias) ||
                         "/garantias-online/mis-garantias/";
+                const newGuaranteeUrl =
+                        (goConfig.pages && goConfig.pages.nuevaGarantia) ||
+                        "/garantias-online/nueva-garantia/";
                 const SHARE_UNAVAILABLE_MESSAGE =
                         "La función de compartir no está disponible en este navegador.";
                 const saveStatus = document.createElement("div");
@@ -2193,14 +2196,39 @@ const ADD_DOC_KEY = "add-document";
                        return tr;
                }
 
-		function renderEmptyDetail() {
-			return `
-				<div class="guarantee-detail__empty">
-					<h3 class="guarantee-detail__title">Ninguna garantía seleccionada</h3>
-					<p>Haz clic en una fila para ver sus detalles aquí.</p>
-				</div>
-			`;
-		}
+                function renderEmptyRow() {
+                        const tr = document.createElement("tr");
+                        tr.className = "guarantees-table__empty-row";
+                        const td = document.createElement("td");
+                        const headerCount = table
+                                ? table.querySelectorAll("thead th").length
+                                : 1;
+                        td.colSpan = Math.max(1, headerCount);
+                        td.innerHTML =
+                                '<div class="guarantees-table__empty-message"><p>Todavía no hay garantías.</p></div>';
+                        tr.appendChild(td);
+                        return tr;
+                }
+
+                function renderEmptyDetail() {
+                        const safeUrl =
+                                typeof newGuaranteeUrl === "string" && newGuaranteeUrl
+                                        ? newGuaranteeUrl
+                                        : "#";
+                        const iconHtml = plusIcon
+                                ? `<span class="guarantee-detail__cta-icon" aria-hidden="true">${plusIcon}</span>`
+                                : "";
+                        return `
+                                <div class="guarantee-detail__empty" data-empty-detail>
+                                        <h3 class="guarantee-detail__title">Añade tu primera garantía</h3>
+                                        <p>Crea una nueva garantía para ver aquí todos sus detalles.</p>
+                                        <a class="guarantee-detail__cta" href="${safeUrl}">
+                                                ${iconHtml}
+                                                <span class="guarantee-detail__cta-label">Nueva Garantía</span>
+                                        </a>
+                                </div>
+                        `;
+                }
 
 		// Nuevo: mostrar el empty panel como los de detalle, solo si no está ya activo
                 function setEmptyDetailPanel(direction = "forward") {
@@ -2208,12 +2236,12 @@ const ADD_DOC_KEY = "add-document";
                         const currentActive = activePanel;
                         const nextPanel = activePanel === panel1 ? panel2 : panel1;
                         // Si el empty ya está visible, no repetir animación
-			if (
-				nextPanel.classList.contains("active") &&
-				nextPanel.innerHTML.includes("Ninguna garantía seleccionada")
-			) {
-				return;
-			}
+                        if (
+                                nextPanel.classList.contains("active") &&
+                                nextPanel.querySelector("[data-empty-detail]")
+                        ) {
+                                return;
+                        }
                         nextPanel.innerHTML = renderEmptyDetail();
                         nextPanel.dataset.loadedId = "";
                         nextPanel.dataset.matricula = "";
@@ -2450,13 +2478,27 @@ const ADD_DOC_KEY = "add-document";
 						setResultMessage(
 							`No se han encontrado garantías para <strong>"${search}"</strong>. Mostrando resultados de <strong>"${lastValidQuery}"</strong>.`
 						);
-					} else if (search && page === 1) {
-						setResultMessage(
-							`No se han encontrado garantías para <strong>"${search}"</strong>.`
-						);
-					}
-				}
-			} catch (err) {
+                                        } else if (search && page === 1) {
+                                                setResultMessage(
+                                                        `No se han encontrado garantías para <strong>"${search}"</strong>.`
+                                                );
+                                        } else if (esNuevaBusqueda && !hasActiveFilters()) {
+                                                const emptyRow = renderEmptyRow();
+                                                if (emptyRow) {
+                                                        tbody.appendChild(emptyRow);
+                                                }
+                                                setResultMessage("");
+                                        } else if (esNuevaBusqueda) {
+                                                const emptyRow = renderEmptyRow();
+                                                if (emptyRow) {
+                                                        tbody.appendChild(emptyRow);
+                                                }
+                                                setResultMessage(
+                                                        "No se han encontrado garantías con los filtros seleccionados."
+                                                );
+                                        }
+                                }
+                        } catch (err) {
 				console.error("❌ Error en loadPage:", err);
                         } finally {
                                 isLoading = false;
