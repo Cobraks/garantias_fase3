@@ -347,6 +347,8 @@ const ADD_DOC_KEY = "add-document";
                         resetFiltersBtn.hidden = !hasActiveFilters();
                 };
 
+                updateResetVisibility();
+
                 if (typeof ResizeObserver !== "undefined" && advancedPanel) {
                         const resizeObserver = new ResizeObserver(() => {
                                 if (!advancedPanel.hasAttribute("hidden")) {

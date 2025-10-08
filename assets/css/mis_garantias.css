@@ -291,7 +291,7 @@ body.scrolled .container {
 .guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn,
 .guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn:hover,
 .guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn:focus {
-    border-color: transparent;
+    border-color: rgba(var(--go-color-2563eb-rgb), 0.35);
     background: rgba(var(--go-color-2563eb-rgb), 0.12);
     color: var(--primary-color);
     box-shadow: 0 0 0 1px rgba(var(--go-color-2563eb-rgb), 0.18);
@@ -305,7 +305,7 @@ body.scrolled .container {
 :root[data-theme='dark'] .guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn,
 :root[data-theme='dark'] .guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn:hover,
 :root[data-theme='dark'] .guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn:focus {
-    border-color: transparent;
+    border-color: rgba(191, 219, 254, 0.45);
     background: rgba(191, 219, 254, 0.16);
     color: rgba(191, 219, 254, 0.95);
     box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35);
@@ -431,6 +431,11 @@ body.scrolled .container {
 
 .clients-page .guarantees-list__filters-row {
     justify-content: flex-start;
+}
+
+.clients-page .guarantees-list__filters {
+    flex-direction: row;
+    gap: 1rem;
 }
 
 .clients-page .guarantees-list__search-container {
