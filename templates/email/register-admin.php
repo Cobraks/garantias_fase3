@@ -68,7 +68,7 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
         <tr>
             <td align="center">
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:720px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
                     <tr>
                         <td style="padding:32px 28px 12px 28px;">
                             <?php
@@ -91,6 +91,17 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                             <p style="font-size:15px;margin:0 0 24px;color:#374151;line-height:1.7;">
                                 <?php esc_html_e('Estos son los datos enviados a través del formulario de alta de Garantías Online.', 'garantias-online-360vo'); ?>
                             </p>
+                            <?php if (! empty($user['profile_url'])) : ?>
+                                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 28px;">
+                                    <tr>
+                                        <td style="border-radius:999px;background:#bc0000;">
+                                            <a href="<?php echo esc_url($user['profile_url']); ?>" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px;">
+                                                <?php esc_html_e('Asignar comercial y ofertas', 'garantias-online-360vo'); ?>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            <?php endif; ?>
                             <?php if ($requires_transfer) : ?>
                                 <p style="font-size:14px;margin:0 0 18px;color:#b91c1c;line-height:1.6;font-weight:600;">
                                     <?php esc_html_e('Registro de particular: las garantías se abonarán mediante transferencia bancaria (domiciliación no disponible).', 'garantias-online-360vo'); ?>
