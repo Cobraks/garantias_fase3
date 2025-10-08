@@ -186,6 +186,9 @@ const ADD_DOC_KEY = "add-document";
                 const misGarantiasBase =
                         (goConfig.pages && goConfig.pages.misGarantias) ||
                         "/garantias-online/mis-garantias/";
+                const newGuaranteeUrl =
+                        (goConfig.pages && goConfig.pages.nuevaGarantia) ||
+                        "/garantias-online/nueva-garantia/";
                 const SHARE_UNAVAILABLE_MESSAGE =
                         "La función de compartir no está disponible en este navegador.";
                 const saveStatus = document.createElement("div");
@@ -212,19 +215,174 @@ const ADD_DOC_KEY = "add-document";
                 let panel1 = document.getElementById("detail-panel-1");
                 let panel2 = document.getElementById("detail-panel-2");
                 let lastEmptyPanel = panel1;
-
-                const filterSelects = document.querySelectorAll(
-                        ".guarantees-list__filter"
+                const emptyTemplatesWrapper = document.querySelector(
+                        ".guarantee-detail__empty-templates"
                 );
-                const estadoSelect = filterSelects[0];
-                const planSelect = filterSelects[1];
-                const canalSelect = filterSelects[2];
-                const concesionarioSelect = filterSelects[3];
+                const emptyTemplateMap = {};
+                if (emptyTemplatesWrapper) {
+                        emptyTemplatesWrapper
+                                .querySelectorAll("[data-empty-template]")
+                                .forEach((node) => {
+                                        const key = node.getAttribute("data-empty-template");
+                                        if (key) {
+                                                emptyTemplateMap[key] = node.innerHTML.trim();
+                                        }
+                                });
+                }
+                let currentEmptyMode = "awaiting";
+
+                const filtersRoot = document.querySelector(
+                        ".guarantees-list__filters"
+                );
+                const estadoSelect = document.querySelector(
+                        '[data-filter="estado"]'
+                );
+                const planSelect = document.querySelector(
+                        '[data-filter="plan"]'
+                );
+                const canalSelect = document.querySelector(
+                        '[data-filter="canal"]'
+                );
+                const concesionarioSelect = document.querySelector(
+                        '[data-filter="cliente"]'
+                );
+                const paymentSelect = document.querySelector(
+                        '[data-filter="payment"]'
+                );
+                const commercialSelect = document.querySelector(
+                        '[data-filter="commercial"]'
+                );
+                const clientsWrapper = document.querySelector(
+                        "[data-clients-wrapper]"
+                );
+                const moreFiltersToggle = document.querySelector(
+                        "[data-more-filters]"
+                );
+                const advancedPanel = document.querySelector(
+                        "[data-advanced-panel]"
+                );
+                const resetFiltersBtn = document.querySelector(
+                        "[data-reset-filters]"
+                );
+                const orderRoot = document.querySelector("[data-order-root]");
+                const orderToggle = orderRoot
+                        ? orderRoot.querySelector("[data-order-toggle]")
+                        : null;
+                const orderMenu = orderRoot
+                        ? orderRoot.querySelector("[data-order-menu]")
+                        : null;
+                const orderLabelNode = orderRoot
+                        ? orderRoot.querySelector("[data-order-label]")
+                        : null;
+                const rootElement = document.documentElement;
                 let selectedEstado = "";
                 let selectedPlan = "";
                 let selectedCanal = "";
                 let selectedConcesionario = "";
+                let selectedVendorType = "";
+                let selectedPaymentMethod = "";
+                let selectedCommercial = "";
+                const defaultOrderKey = orderToggle
+                        ? orderToggle.getAttribute("data-default-sort") || "created_desc"
+                        : "created_desc";
+                let selectedOrderKey = defaultOrderKey;
+                let selectedOrderBy = "created";
+                let selectedOrderDirection = defaultOrderKey.endsWith("_asc")
+                        ? "asc"
+                        : "desc";
                 let currentListAbort = null;
+                let rawClients = [];
+                let rawCommercials = [];
+                const orderOptions = new Map();
+                let setAdvancedOpen = () => {};
+                let baseFiltersHeight = filtersRoot ? filtersRoot.offsetHeight || 0 : 0;
+                const updateBaseFiltersHeight = () => {
+                        if (!filtersRoot) {
+                                baseFiltersHeight = 0;
+                                return;
+                        }
+                        baseFiltersHeight = filtersRoot.offsetHeight || 0;
+                };
+                const updateAdvancedHeight = () => {
+                        if (!filtersRoot) {
+                                rootElement.style.setProperty(
+                                        "--go-advanced-filters-height",
+                                        "0px"
+                                );
+                                baseFiltersHeight = 0;
+                                return;
+                        }
+
+                        const isAdvancedVisible =
+                                advancedPanel && !advancedPanel.hasAttribute("hidden");
+
+                        if (!isAdvancedVisible) {
+                                updateBaseFiltersHeight();
+                                rootElement.style.setProperty(
+                                        "--go-advanced-filters-height",
+                                        "0px"
+                                );
+                                return;
+                        }
+
+                        const currentHeight = filtersRoot.offsetHeight || 0;
+                        const baseline = baseFiltersHeight || 0;
+                        const extra = Math.max(0, Math.round(currentHeight - baseline));
+
+                        rootElement.style.setProperty(
+                                "--go-advanced-filters-height",
+                                `${extra}px`
+                        );
+                };
+                updateBaseFiltersHeight();
+
+                const hasActiveFilters = () => {
+                        const hasSearch = Boolean((searchQuery || "").trim());
+                        if (hasSearch) {
+                                return true;
+                        }
+                        if (
+                                selectedEstado ||
+                                selectedPlan ||
+                                selectedCanal ||
+                                selectedConcesionario ||
+                                selectedVendorType ||
+                                selectedPaymentMethod ||
+                                selectedCommercial
+                        ) {
+                                return true;
+                        }
+                        if (orderToggle && selectedOrderKey !== defaultOrderKey) {
+                                return true;
+                        }
+                        return false;
+                };
+
+                const updateResetVisibility = () => {
+                        if (!resetFiltersBtn) {
+                                return;
+                        }
+                        resetFiltersBtn.hidden = !hasActiveFilters();
+                };
+
+                updateResetVisibility();
+
+                if (typeof ResizeObserver !== "undefined" && advancedPanel) {
+                        const resizeObserver = new ResizeObserver(() => {
+                                if (!advancedPanel.hasAttribute("hidden")) {
+                                        updateAdvancedHeight();
+                                }
+                        });
+                        resizeObserver.observe(advancedPanel);
+                }
+
+                window.addEventListener("resize", () => {
+                        if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
+                                updateAdvancedHeight();
+                        } else {
+                                updateBaseFiltersHeight();
+                        }
+                });
 
 		let resultMessage = document.querySelector(
 			".guarantees-list__result-message"
@@ -259,8 +417,30 @@ const ADD_DOC_KEY = "add-document";
                 const loadedIds = new Set();
                 const listCache = new Map();
 
-                function buildListCacheKey(search = "", estado = "", plan = "", canal = "", concesionario = "") {
-                        return [search, estado, plan, canal, concesionario].join("|");
+                function buildListCacheKey(
+                        search = "",
+                        estado = "",
+                        plan = "",
+                        canal = "",
+                        concesionario = "",
+                        vendorType = "",
+                        payment = "",
+                        orderBy = "",
+                        orderDirection = "",
+                        commercial = ""
+                ) {
+                        return [
+                                search,
+                                estado,
+                                plan,
+                                canal,
+                                concesionario,
+                                vendorType,
+                                payment,
+                                orderBy,
+                                orderDirection,
+                                commercial,
+                        ].join("|");
                 }
 
                 function renderFromCache(cache) {
@@ -272,6 +452,156 @@ const ADD_DOC_KEY = "add-document";
                         totalPosts = cache.totalPosts;
                         hasMore = currentPage < totalPages;
                         spinner.style.display = hasMore ? "" : "none";
+                        if (!hasActiveFilters() && (cache.totalPosts || 0) === 0) {
+                                setEmptyDetailPanel("forward", "no-results");
+                        }
+                }
+
+                function getSelectedChannelData() {
+                        if (!canalSelect) {
+                                return { channel: "", vendorType: "" };
+                        }
+                        const option = canalSelect.options[canalSelect.selectedIndex];
+                        if (!option) {
+                                return { channel: "", vendorType: "" };
+                        }
+                        const dataset = option.dataset || {};
+                        const channel = dataset.channel || option.value || "";
+                        const vendorType = dataset.vendorType || "";
+
+                        return { channel, vendorType };
+                }
+
+                function populateClientsSelect(filterType = "") {
+                        if (!concesionarioSelect) {
+                                return;
+                        }
+                        const previous = concesionarioSelect.value;
+                        concesionarioSelect
+                                .querySelectorAll("option:not(:first-child)")
+                                .forEach((opt) => opt.remove());
+
+                        if (!Array.isArray(rawClients) || rawClients.length === 0) {
+                                selectedConcesionario = "";
+                                return;
+                        }
+
+                        const filtered = rawClients.filter((client) => {
+                                if (!filterType) {
+                                        return true;
+                                }
+                                return (client.type || "") === filterType;
+                        });
+
+                        filtered.forEach((client) => {
+                                const opt = document.createElement("option");
+                                opt.value = String(client.id);
+                                opt.textContent = client.name;
+                                if (client.type) {
+                                        opt.dataset.type = client.type;
+                                }
+                                concesionarioSelect.appendChild(opt);
+                        });
+
+                        if (
+                                previous &&
+                                filtered.some((client) => String(client.id) === previous)
+                        ) {
+                                concesionarioSelect.value = previous;
+                                selectedConcesionario = previous;
+                        } else {
+                                concesionarioSelect.value = "";
+                                selectedConcesionario = "";
+                        }
+
+                        if (!advancedPanel || advancedPanel.hasAttribute("hidden")) {
+                                updateBaseFiltersHeight();
+                        }
+
+                        updateResetVisibility();
+                }
+
+                function refreshClientsVisibility() {
+                        const { channel, vendorType } = getSelectedChannelData();
+                        selectedCanal = channel;
+
+                        if (!clientsWrapper) {
+                                selectedVendorType = "";
+                                return;
+                        }
+
+                        selectedVendorType = vendorType;
+                        const shouldShow =
+                                channel === "profesional" || channel === "gestoria";
+
+                        if (shouldShow) {
+                                clientsWrapper.hidden = false;
+                        } else {
+                                clientsWrapper.hidden = true;
+                        }
+
+                        if (!shouldShow) {
+                                selectedConcesionario = "";
+                                if (concesionarioSelect) {
+                                        concesionarioSelect.value = "";
+                                }
+                        }
+
+                        populateClientsSelect(shouldShow ? vendorType : "");
+                        if (!advancedPanel || advancedPanel.hasAttribute("hidden")) {
+                                updateBaseFiltersHeight();
+                        }
+                        updateResetVisibility();
+                }
+
+                function populateCommercialSelect() {
+                        if (!commercialSelect) {
+                                return;
+                        }
+                        const previous = commercialSelect.value || "";
+                        commercialSelect
+                                .querySelectorAll("option:not(:first-child)")
+                                .forEach((opt) => opt.remove());
+
+                        if (!Array.isArray(rawCommercials) || rawCommercials.length === 0) {
+                                selectedCommercial = "";
+                                commercialSelect.value = "";
+                                return;
+                        }
+
+                        let hasPrevious = false;
+                        rawCommercials.forEach((item) => {
+                                const id = item && typeof item.id !== "undefined" ? item.id : null;
+                                const name =
+                                        item && typeof item.name === "string"
+                                                ? item.name
+                                                : "";
+                                const numericId = Number.parseInt(id, 10);
+                                if (!Number.isFinite(numericId) || numericId <= 0 || !name) {
+                                        return;
+                                }
+                                const option = document.createElement("option");
+                                option.value = String(numericId);
+                                option.textContent = name;
+                                commercialSelect.appendChild(option);
+                                if (!hasPrevious && previous && String(numericId) === previous) {
+                                        hasPrevious = true;
+                                }
+                        });
+
+                        if (previous && hasPrevious) {
+                                commercialSelect.value = previous;
+                                selectedCommercial = previous;
+                        } else if (previous && !hasPrevious) {
+                                commercialSelect.value = "";
+                                if (selectedCommercial) {
+                                        selectedCommercial = "";
+                                        applyFilters();
+                                }
+                        } else {
+                                selectedCommercial = commercialSelect.value || "";
+                        }
+                        updateResetVisibility();
                 }
 
                 function fetchDetail(id) {
@@ -1884,28 +2214,80 @@ const ADD_DOC_KEY = "add-document";
                        return tr;
                }
 
-		function renderEmptyDetail() {
-			return `
-				<div class="guarantee-detail__empty">
-					<h3 class="guarantee-detail__title">Ninguna garantía seleccionada</h3>
-					<p>Haz clic en una fila para ver sus detalles aquí.</p>
-				</div>
-			`;
-		}
+                function renderEmptyRow() {
+                        const tr = document.createElement("tr");
+                        tr.className = "guarantees-table__empty-row";
+                        const td = document.createElement("td");
+                        const headerCount = table
+                                ? table.querySelectorAll("thead th").length
+                                : 1;
+                        td.colSpan = Math.max(1, headerCount);
+                        td.innerHTML =
+                                '<div class="guarantees-table__empty-message"><p>Todavía no hay garantías.</p></div>';
+                        tr.appendChild(td);
+                        return tr;
+                }
 
-		// Nuevo: mostrar el empty panel como los de detalle, solo si no está ya activo
-                function setEmptyDetailPanel(direction = "forward") {
+                function renderEmptyDetail(mode = "awaiting") {
+                        const templateKey = mode === "no-results" ? "no-results" : "awaiting";
+                        if (emptyTemplateMap[templateKey]) {
+                                return emptyTemplateMap[templateKey];
+                        }
+                        if (templateKey === "no-results") {
+                                const safeUrl =
+                                        typeof newGuaranteeUrl === "string" && newGuaranteeUrl
+                                                ? newGuaranteeUrl
+                                                : "#";
+                                const iconHtml = plusIcon
+                                        ? `<span class="guarantee-detail__cta-icon" aria-hidden="true">${plusIcon}</span>`
+                                        : "";
+                                return `
+                                        <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="no-results">
+                                                <h3 class="guarantee-detail__title">Añade tu primera garantía</h3>
+                                                <p>Crea una nueva garantía para ver aquí todos sus detalles.</p>
+                                                <a class="guarantee-detail__cta" href="${safeUrl}">
+                                                        ${iconHtml}
+                                                        <span class="guarantee-detail__cta-label">Nueva Garantía</span>
+                                                </a>
+                                        </div>
+                                `;
+                        }
+                        return `
+                                <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="awaiting">
+                                        <h3 class="guarantee-detail__title">Consulta los detalles de tus garantías</h3>
+                                        <p>Selecciona una garantía de la lista para revisar su información aquí.</p>
+                                </div>
+                        `;
+                }
+
+                // Nuevo: mostrar el empty panel como los de detalle, solo si no está ya activo
+                function setEmptyDetailPanel(direction = "forward", mode = "awaiting") {
                         clearActiveCountdown();
                         const currentActive = activePanel;
                         const nextPanel = activePanel === panel1 ? panel2 : panel1;
-                        // Si el empty ya está visible, no repetir animación
-			if (
-				nextPanel.classList.contains("active") &&
-				nextPanel.innerHTML.includes("Ninguna garantía seleccionada")
-			) {
-				return;
-			}
-                        nextPanel.innerHTML = renderEmptyDetail();
+                        const normalizedMode = mode === "no-results" ? "no-results" : "awaiting";
+                        const activeHasSameMode =
+                                normalizedMode === currentEmptyMode &&
+                                currentActive &&
+                                currentActive.classList.contains("active") &&
+                                currentActive.querySelector(
+                                        `[data-empty-detail][data-empty-mode="${normalizedMode}"]`
+                                );
+                        const nextHasSameMode =
+                                normalizedMode === currentEmptyMode &&
+                                nextPanel.classList.contains("active") &&
+                                nextPanel.querySelector(
+                                        `[data-empty-detail][data-empty-mode="${normalizedMode}"]`
+                                );
+                        // Si el empty ya está visible en el modo solicitado, no repetir animación
+                        if (activeHasSameMode || nextHasSameMode) {
+                                return;
+                        }
+                        nextPanel.innerHTML = renderEmptyDetail(normalizedMode);
+                        const emptyNode = nextPanel.querySelector("[data-empty-detail]");
+                        if (emptyNode) {
+                                emptyNode.setAttribute("data-empty-mode", normalizedMode);
+                        }
                         nextPanel.dataset.loadedId = "";
                         nextPanel.dataset.matricula = "";
                         syncPdfModalDocs(nextPanel);
@@ -1927,11 +2309,16 @@ const ADD_DOC_KEY = "add-document";
 				},
 				{ once: true }
 			);
-			lastEmptyPanel = nextPanel;
-		}
+                        lastEmptyPanel = nextPanel;
+                        currentEmptyMode = normalizedMode;
+                }
 
                 function clearSelectionAndDetail(options = {}) {
                         const preserveQuery = Boolean(options.preserveQuery);
+                        const desiredMode =
+                                typeof options.emptyMode === "string"
+                                        ? options.emptyMode
+                                        : "awaiting";
                         const rows = Array.from(
                                 document.querySelectorAll(".guarantees-table__row")
                         );
@@ -1943,7 +2330,7 @@ const ADD_DOC_KEY = "add-document";
                                 pendingMatSelection = false;
                                 initialMatQuery = "";
                         }
-                        setEmptyDetailPanel("forward"); // Mantén la dirección como prefieras
+                        setEmptyDetailPanel("forward", desiredMode); // Mantén la dirección como prefieras
                 }
 
 		function setResultMessage(msg = "") {
@@ -1969,12 +2356,39 @@ const ADD_DOC_KEY = "add-document";
                                 typeof options.concesionario !== "undefined"
                                         ? options.concesionario
                                         : selectedConcesionario;
+                        const vendorType =
+                                typeof options.vendorType === "string"
+                                        ? options.vendorType
+                                        : selectedVendorType;
+                        const paymentMethod =
+                                typeof options.paymentMethod === "string"
+                                        ? options.paymentMethod
+                                        : selectedPaymentMethod;
+                        const commercial =
+                                typeof options.commercial === "string"
+                                        ? options.commercial
+                                        : options.commercial != null
+                                        ? String(options.commercial)
+                                        : selectedCommercial;
+                        const orderBy =
+                                typeof options.orderBy === "string" && options.orderBy
+                                        ? options.orderBy
+                                        : selectedOrderBy;
+                        const orderDirection =
+                                typeof options.orderDirection === "string" && options.orderDirection
+                                        ? options.orderDirection
+                                        : selectedOrderDirection;
                         const cacheKey = buildListCacheKey(
                                 search,
                                 estado,
                                 plan,
                                 canal,
-                                concesionario
+                                concesionario,
+                                vendorType,
+                                paymentMethod,
+                                orderBy,
+                                orderDirection,
+                                commercial
                         );
                         try {
                                 if (currentListAbort) currentListAbort.abort();
@@ -1990,6 +2404,16 @@ const ADD_DOC_KEY = "add-document";
                                 if (canal) params.append("canal", canal);
                                 if (concesionario)
                                         params.append("concesionario", concesionario);
+                                if (vendorType)
+                                        params.append("vendor_type", vendorType);
+                                if (paymentMethod)
+                                        params.append("payment_method", paymentMethod);
+                                if (commercial)
+                                        params.append("commercial", commercial);
+                                if (orderBy)
+                                        params.append("order_by", orderBy);
+                                if (orderDirection)
+                                        params.append("order", orderDirection);
                                 let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
                                 const res = await fetch(url, {
                                         headers: { "X-WP-Nonce": restNonce },
@@ -2104,13 +2528,28 @@ const ADD_DOC_KEY = "add-document";
 						setResultMessage(
 							`No se han encontrado garantías para <strong>"${search}"</strong>. Mostrando resultados de <strong>"${lastValidQuery}"</strong>.`
 						);
-					} else if (search && page === 1) {
-						setResultMessage(
-							`No se han encontrado garantías para <strong>"${search}"</strong>.`
-						);
-					}
-				}
-			} catch (err) {
+                                        } else if (search && page === 1) {
+                                                setResultMessage(
+                                                        `No se han encontrado garantías para <strong>"${search}"</strong>.`
+                                                );
+                                        } else if (esNuevaBusqueda && !hasActiveFilters()) {
+                                                const emptyRow = renderEmptyRow();
+                                                if (emptyRow) {
+                                                        tbody.appendChild(emptyRow);
+                                                }
+                                                setResultMessage("");
+                                                setEmptyDetailPanel("forward", "no-results");
+                                        } else if (esNuevaBusqueda) {
+                                                const emptyRow = renderEmptyRow();
+                                                if (emptyRow) {
+                                                        tbody.appendChild(emptyRow);
+                                                }
+                                                setResultMessage(
+                                                        "No se han encontrado garantías con los filtros seleccionados."
+                                                );
+                                        }
+                                }
+                        } catch (err) {
 				console.error("❌ Error en loadPage:", err);
                         } finally {
                                 isLoading = false;
@@ -2996,7 +3435,10 @@ function initRowSelection() {
 					prevSelectedRow = null;
 					prevIdx = null;
 					history.replaceState(null, "", window.location.pathname);
-					setEmptyDetailPanel(idx > prevIdx ? "forward" : "back");
+                                   setEmptyDetailPanel(
+                                           idx > prevIdx ? "forward" : "back",
+                                           "awaiting"
+                                   );
 					return;
 				}
 
@@ -3310,8 +3752,8 @@ function initRowSelection() {
                 (() => {
                         const filters = document.querySelector(".guarantees-list__filters"),
                                 header = document.querySelector(".top-bar");
-			if (filters && header) {
-				new IntersectionObserver(
+                        if (filters && header) {
+                                new IntersectionObserver(
 					([e]) => {
 						const a = !e.isIntersecting;
 						filters.classList.toggle("sticky-active", a);
@@ -3335,6 +3777,216 @@ function initRowSelection() {
                         );
                 })();
 
+                function normalizeFilterValues(items) {
+                        if (!Array.isArray(items)) {
+                                return new Set();
+                        }
+                        return new Set(
+                                items
+                                        .map((item) => {
+                                                if (typeof item === "string") {
+                                                        return item;
+                                                }
+                                                if (item && typeof item === "object") {
+                                                        return item.value || item.slug || "";
+                                                }
+                                                return "";
+                                        })
+                                        .filter(Boolean)
+                        );
+                }
+
+                function syncChannelOptionVisibility(channels = [], vendorTypes = []) {
+                        if (!canalSelect) {
+                                return;
+                        }
+
+                        const channelSet = normalizeFilterValues(channels);
+                        const vendorTypeSet = normalizeFilterValues(vendorTypes);
+                        let selectionChanged = false;
+
+                        Array.from(canalSelect.options).forEach((option) => {
+                                if (option.value === "") {
+                                        return;
+                                }
+                                const channel = option.dataset.channel || option.value || "";
+                                const vendorType = option.dataset.vendorType || "";
+                                let visible = true;
+                                if (vendorType) {
+                                        visible = vendorTypeSet.size === 0 || vendorTypeSet.has(vendorType);
+                                } else if (channel) {
+                                        visible = channelSet.size === 0 || channelSet.has(channel);
+                                }
+                                option.hidden = !visible;
+                        });
+
+                        const selectedOption = canalSelect.options[canalSelect.selectedIndex];
+                        if (selectedOption && selectedOption.hidden) {
+                                canalSelect.value = "";
+                                selectedCanal = "";
+                                selectedVendorType = "";
+                                selectionChanged = true;
+                        }
+
+                        refreshClientsVisibility();
+
+                        if (selectionChanged) {
+                                applyFilters();
+                        }
+                }
+
+                function setOrderSelection(key, { trigger = true } = {}) {
+                        if (!orderOptions.has(key)) {
+                                return;
+                        }
+                        const config = orderOptions.get(key) || {};
+                        selectedOrderKey = key;
+                        selectedOrderBy = config.orderBy || "created";
+                        selectedOrderDirection =
+                                config.direction === "asc" ? "asc" : "desc";
+
+                        if (orderLabelNode && config.label) {
+                                orderLabelNode.textContent = config.label;
+                        }
+
+                        if (orderMenu) {
+                                orderMenu
+                                        .querySelectorAll("[data-sort-key]")
+                                        .forEach((button) => {
+                                                const isActive =
+                                                        button.dataset.sortKey === key;
+                                                button.classList.toggle(
+                                                        "is-active",
+                                                        isActive
+                                                );
+                                                button.setAttribute(
+                                                        "aria-checked",
+                                                        isActive ? "true" : "false"
+                                                );
+                                        });
+                        }
+
+                        if (trigger) {
+                                applyFilters();
+                        }
+
+                        updateResetVisibility();
+                }
+
+                function openOrderMenu() {
+                        if (!orderRoot || !orderMenu || !orderToggle) {
+                                return;
+                        }
+                        orderRoot.setAttribute("data-open", "true");
+                        orderToggle.setAttribute("aria-expanded", "true");
+                        orderMenu.removeAttribute("hidden");
+                }
+
+                function closeOrderMenu() {
+                        if (!orderRoot || !orderMenu || !orderToggle) {
+                                return;
+                        }
+                        orderRoot.removeAttribute("data-open");
+                        orderToggle.setAttribute("aria-expanded", "false");
+                        orderMenu.setAttribute("hidden", "");
+                }
+
+                if (orderMenu) {
+                        const buttons = Array.from(
+                                orderMenu.querySelectorAll("[data-sort-key]")
+                        );
+                        buttons.forEach((button) => {
+                                const key = button.dataset.sortKey || "";
+                                if (!key) {
+                                        return;
+                                }
+                                const orderBy = button.dataset.orderBy || "created";
+                                const direction =
+                                        (button.dataset.orderDirection || "desc").toLowerCase() ===
+                                        "asc"
+                                                ? "asc"
+                                                : "desc";
+                                const label = (button.textContent || "").trim();
+                                orderOptions.set(key, {
+                                        orderBy,
+                                        direction,
+                                        label,
+                                });
+                        });
+
+                        let initialKey = orderToggle
+                                ? orderToggle.getAttribute("data-default-sort") || ""
+                                : "";
+                        if (!initialKey || !orderOptions.has(initialKey)) {
+                                const defaultButton = orderMenu.querySelector(
+                                        "[data-default][data-sort-key]"
+                                );
+                                if (
+                                        defaultButton &&
+                                        orderOptions.has(defaultButton.dataset.sortKey || "")
+                                ) {
+                                        initialKey = defaultButton.dataset.sortKey;
+                                }
+                        }
+                        if (!initialKey) {
+                                const first = orderOptions.keys().next();
+                                if (!first.done) {
+                                        initialKey = first.value;
+                                }
+                        }
+                        if (initialKey) {
+                                setOrderSelection(initialKey, { trigger: false });
+                        }
+
+                        buttons.forEach((button) => {
+                                button.addEventListener("click", () => {
+                                        const key = button.dataset.sortKey || "";
+                                        if (!key) {
+                                                return;
+                                        }
+                                        closeOrderMenu();
+                                        setOrderSelection(key);
+                                });
+                        });
+                }
+
+                if (orderToggle && orderMenu) {
+                        orderToggle.addEventListener("click", (event) => {
+                                event.preventDefault();
+                                const isOpen = orderRoot?.getAttribute("data-open") === "true";
+                                if (isOpen) {
+                                        closeOrderMenu();
+                                } else {
+                                        openOrderMenu();
+                                }
+                        });
+                }
+
+                if (orderRoot && orderMenu) {
+                        document.addEventListener("click", (event) => {
+                                if (orderMenu.hasAttribute("hidden")) {
+                                        return;
+                                }
+                                if (orderRoot.contains(event.target)) {
+                                        return;
+                                }
+                                closeOrderMenu();
+                        });
+
+                        document.addEventListener("keydown", (event) => {
+                                if (event.key !== "Escape") {
+                                        return;
+                                }
+                                if (orderMenu.hasAttribute("hidden")) {
+                                        return;
+                                }
+                                closeOrderMenu();
+                                if (orderToggle) {
+                                        orderToggle.focus();
+                                }
+                        });
+                }
+
                 async function fetchFilters() {
                         try {
                                 const res = await fetch(
@@ -3346,6 +3998,10 @@ function initRowSelection() {
                                         estados = [],
                                         planes = [],
                                         concesionarios = [],
+                                        payment_methods: paymentMethods = [],
+                                        channels = [],
+                                        vendor_types: vendorTypes = [],
+                                        commercials = [],
                                 } = await res.json();
                                 if (estadoSelect) {
                                         estadoSelect
@@ -3355,6 +4011,15 @@ function initRowSelection() {
                                                 const opt = document.createElement("option");
                                                 const val = typeof est === "object" ? est.value : est;
                                                 const lbl = typeof est === "object" ? est.label : est;
+                                                if (
+                                                        isProfesional &&
+                                                        [
+                                                                "expira_pronto",
+                                                                "pendiente_cobro",
+                                                        ].includes(String(val))
+                                                ) {
+                                                        return;
+                                                }
                                                 opt.value = val;
                                                 opt.textContent = lbl;
                                                 estadoSelect.appendChild(opt);
@@ -3371,16 +4036,68 @@ function initRowSelection() {
                                                 planSelect.appendChild(opt);
                                         });
                                 }
-                                if (concesionarioSelect) {
-                                        concesionarioSelect
+                                if (Array.isArray(concesionarios)) {
+                                        rawClients = concesionarios.map((client) => ({
+                                                id: client.id,
+                                                name: client.name,
+                                                type: client.type || "",
+                                        }));
+                                        populateClientsSelect(selectedVendorType);
+                                }
+                                if (Array.isArray(commercials)) {
+                                        rawCommercials = commercials
+                                                .map((commercial) => {
+                                                        const rawId =
+                                                                commercial &&
+                                                                typeof commercial.id !== "undefined"
+                                                                        ? commercial.id
+                                                                        : commercial &&
+                                                                          typeof commercial.ID !== "undefined"
+                                                                          ? commercial.ID
+                                                                          : 0;
+                                                        const id = Number.parseInt(rawId, 10);
+                                                        const primaryName =
+                                                                commercial &&
+                                                                typeof commercial.name === "string"
+                                                                        ? commercial.name
+                                                                        : "";
+                                                        const fallbackName =
+                                                                commercial &&
+                                                                typeof commercial.display_name === "string"
+                                                                        ? commercial.display_name
+                                                                        : "";
+                                                        return {
+                                                                id: Number.isFinite(id) ? id : 0,
+                                                                name: primaryName || fallbackName,
+                                                        };
+                                                })
+                                                .filter((item) => item.id > 0 && item.name);
+                                } else {
+                                        rawCommercials = [];
+                                }
+                                populateCommercialSelect();
+                                if (paymentSelect) {
+                                        paymentSelect
                                                 .querySelectorAll("option:not(:first-child)")
                                                 .forEach((o) => o.remove());
-                                        concesionarios.forEach((c) => {
+                                        paymentMethods.forEach((method) => {
                                                 const opt = document.createElement("option");
-                                                opt.value = c.id;
-                                                opt.textContent = c.name;
-                                                concesionarioSelect.appendChild(opt);
+                                                if (method && typeof method === "object") {
+                                                        opt.value = method.value;
+                                                        opt.textContent = method.label;
+                                                } else {
+                                                        const value = typeof method === "string" ? method : "";
+                                                        opt.value = value;
+                                                        opt.textContent = value;
+                                                }
+                                                paymentSelect.appendChild(opt);
                                         });
+                                }
+                                syncChannelOptionVisibility(channels, vendorTypes);
+                                refreshClientsVisibility();
+                                updateResetVisibility();
+                                if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
+                                        requestAnimationFrame(updateAdvancedHeight);
                                 }
                         } catch (e) {
                                 console.error("❌ Error fetching filters:", e);
@@ -3397,7 +4114,12 @@ function initRowSelection() {
                                 selectedEstado,
                                 selectedPlan,
                                 selectedCanal,
-                                selectedConcesionario
+                                selectedConcesionario,
+                                selectedVendorType,
+                                selectedPaymentMethod,
+                                selectedOrderBy,
+                                selectedOrderDirection,
+                                selectedCommercial
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
@@ -3416,29 +4138,152 @@ function initRowSelection() {
                         estadoSelect.addEventListener("change", () => {
                                 selectedEstado = estadoSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
                         });
                 if (planSelect)
                         planSelect.addEventListener("change", () => {
                                 selectedPlan = planSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
+                        });
+                if (paymentSelect)
+                        paymentSelect.addEventListener("change", () => {
+                                selectedPaymentMethod = paymentSelect.value;
+                                applyFilters();
+                                updateResetVisibility();
                         });
                 if (canalSelect)
                         canalSelect.addEventListener("change", () => {
-                                selectedCanal = canalSelect.value;
+                                refreshClientsVisibility();
                                 applyFilters();
+                                updateResetVisibility();
                         });
                 if (concesionarioSelect)
                         concesionarioSelect.addEventListener("change", () => {
                                 selectedConcesionario = concesionarioSelect.value;
                                 applyFilters();
+                                updateResetVisibility();
+                        });
+                if (commercialSelect)
+                        commercialSelect.addEventListener("change", () => {
+                                selectedCommercial = commercialSelect.value;
+                                applyFilters();
+                                updateResetVisibility();
                         });
 
+                if (moreFiltersToggle && advancedPanel) {
+                        const labelNode = moreFiltersToggle.querySelector(
+                                ".guarantees-list__more-filters-label"
+                        );
+                        const defaultLabel =
+                                moreFiltersToggle.getAttribute("data-default-label") ||
+                                (labelNode ? labelNode.textContent || "" : "");
+                        const activeLabel =
+                                moreFiltersToggle.getAttribute("data-active-label") || defaultLabel;
+
+                        setAdvancedOpen = (open) => {
+                                if (!advancedPanel) return;
+                                if (open) {
+                                        advancedPanel.removeAttribute("hidden");
+                                } else {
+                                        advancedPanel.setAttribute("hidden", "");
+                                }
+                                moreFiltersToggle.setAttribute(
+                                        "aria-expanded",
+                                        open ? "true" : "false"
+                                );
+                                moreFiltersToggle.setAttribute(
+                                        "data-open",
+                                        open ? "true" : "false"
+                                );
+                                if (filtersRoot) {
+                                        if (open) {
+                                                filtersRoot.setAttribute(
+                                                        "data-advanced-open",
+                                                        "true"
+                                                );
+                                        } else {
+                                                filtersRoot.removeAttribute(
+                                                        "data-advanced-open"
+                                                );
+                                        }
+                                }
+                                if (labelNode) {
+                                        labelNode.textContent = open
+                                                ? activeLabel
+                                                : defaultLabel;
+                                }
+                                requestAnimationFrame(updateAdvancedHeight);
+                        };
+
+                        moreFiltersToggle.addEventListener("click", () => {
+                                const isOpen = !advancedPanel.hasAttribute("hidden");
+                                setAdvancedOpen(!isOpen);
+                        });
+                }
+
+                refreshClientsVisibility();
+                updateAdvancedHeight();
                 fetchFilters();
 
                 const input = document.getElementById("buscador_mis_garantias");
                 const closeIcon = document.querySelector(".guarantees-list__close-icon");
-		let debounceTimer = null;
-		const DEBOUNCE_MS = 300;
+                let debounceTimer = null;
+                const DEBOUNCE_MS = 300;
+
+                if (resetFiltersBtn) {
+                        resetFiltersBtn.addEventListener("click", () => {
+                                if (input) {
+                                        input.value = "";
+                                }
+                                if (closeIcon) {
+                                        closeIcon.classList.remove("visible");
+                                }
+                                searchQuery = "";
+                                lastValidQuery = "";
+                                lastValidResults = [];
+                                if (estadoSelect) estadoSelect.value = "";
+                                if (planSelect) planSelect.value = "";
+                                if (paymentSelect) paymentSelect.value = "";
+                                if (canalSelect) canalSelect.value = "";
+                                if (concesionarioSelect) concesionarioSelect.value = "";
+                                if (commercialSelect) commercialSelect.value = "";
+                                selectedEstado = "";
+                                selectedPlan = "";
+                                selectedCanal = "";
+                                selectedConcesionario = "";
+                                selectedVendorType = "";
+                                selectedPaymentMethod = "";
+                                selectedCommercial = "";
+                                currentPage = 1;
+                                hasMore = true;
+                                refreshClientsVisibility();
+                                if (orderToggle) {
+                                        const defaultSort =
+                                                orderToggle.getAttribute("data-default-sort") ||
+                                                "created_desc";
+                                        if (defaultSort) {
+                                                setOrderSelection(defaultSort, { trigger: false });
+                                        }
+                                } else {
+                                        selectedOrderKey = "created_desc";
+                                        selectedOrderBy = "created";
+                                        selectedOrderDirection = "desc";
+                                }
+                                setResultMessage("");
+                                applyFilters();
+                                if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
+                                        requestAnimationFrame(updateAdvancedHeight);
+                                } else {
+                                        updateBaseFiltersHeight();
+                                        rootElement.style.setProperty(
+                                                "--go-advanced-filters-height",
+                                                "0px"
+                                        );
+                                }
+                                updateResetVisibility();
+                        });
+                }
 
                 function doSearch(query) {
                         searchQuery = query;
@@ -3449,7 +4294,12 @@ function initRowSelection() {
                                 selectedEstado,
                                 selectedPlan,
                                 selectedCanal,
-                                selectedConcesionario
+                                selectedConcesionario,
+                                selectedVendorType,
+                                selectedPaymentMethod,
+                                selectedOrderBy,
+                                selectedOrderDirection,
+                                selectedCommercial
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
@@ -3462,23 +4312,26 @@ function initRowSelection() {
                                 return;
                         }
                         loadPage(1, { search: searchQuery });
+                        updateResetVisibility();
                 }
 
-		input.addEventListener("input", () => {
-			const value = input.value.trim();
-			if (value.length > 0) {
-				closeIcon.classList.add("visible");
-			} else {
-				closeIcon.classList.remove("visible");
-				// SI EL INPUT QUEDA VACÍO, LIMPIA VARIABLES
-				lastValidQuery = "";
-				lastValidResults = [];
-			}
-			if (debounceTimer) clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(() => {
-				doSearch(value);
-			}, DEBOUNCE_MS);
-		});
+                input.addEventListener("input", () => {
+                        const value = input.value.trim();
+                        if (value.length > 0) {
+                                closeIcon.classList.add("visible");
+                        } else {
+                                closeIcon.classList.remove("visible");
+                                // SI EL INPUT QUEDA VACÍO, LIMPIA VARIABLES
+                                lastValidQuery = "";
+                                lastValidResults = [];
+                        }
+                        searchQuery = value;
+                        updateResetVisibility();
+                        if (debounceTimer) clearTimeout(debounceTimer);
+                        debounceTimer = setTimeout(() => {
+                                doSearch(value);
+                        }, DEBOUNCE_MS);
+                });
 
 		closeIcon.addEventListener("click", () => {
 			input.value = "";
@@ -3489,10 +4342,11 @@ function initRowSelection() {
 			searchQuery = "";
 			currentPage = 1;
 			hasMore = true;
-			lastValidQuery = "";
-			lastValidResults = [];
-			loadPage(1);
-		});
+                        lastValidQuery = "";
+                        lastValidResults = [];
+                        loadPage(1);
+                        updateResetVisibility();
+                });
 
                 new IntersectionObserver(
                         (entries) => {
