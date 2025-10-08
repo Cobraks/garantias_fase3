@@ -350,6 +350,10 @@ body.scrolled .container {
     white-space: nowrap;
 }
 
+.guarantees-list__reset-btn[hidden] {
+    display: none !important;
+}
+
 .guarantees-list__reset-btn:hover,
 .guarantees-list__reset-btn:focus-visible {
     outline: none;
