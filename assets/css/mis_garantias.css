@@ -2355,7 +2355,7 @@ tr.guarantees-table__row:not(.selected):hover td,
         bottom: 0;
         left: 50%;
         width: 1px;
-        background: var(--neutral90);
+        background: #b1b1b1;
     }
 
     @supports (mix-blend-mode: difference) {

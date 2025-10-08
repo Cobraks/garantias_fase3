@@ -231,7 +231,7 @@
   --surface-popover-shadow: 0 20px 45px -18px rgba(var(--go-color-0f172a-rgb), 0.28),
     0 12px 30px -22px rgba(var(--go-color-0f172a-rgb), 0.22);
   --table-row-hover-bg: #e8edf6;
-  --table-row-zebra-bg: #36394087;
+  --table-row-zebra-bg: #2f2f2f33;
   --table-row-selected-bg: #000000ab;
   --table-row-selected-text: var(--go-color-ffffff);
   --logo-vo-fill: var(--go-color-111111);
