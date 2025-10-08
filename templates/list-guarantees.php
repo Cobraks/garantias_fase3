@@ -351,11 +351,13 @@ $default_sort_label = is_array($default_sort) && ! empty($default_sort['label'])
     <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="awaiting">
         <h3 class="guarantee-detail__title"><?php esc_html_e('Consulta los detalles de tus garantías', 'garantias-online-360vo'); ?></h3>
         <p class="guarantee-detail__hint">
-            <span class="guarantee-detail__hint-arrow" aria-hidden="true"></span>
+            <span class="guarantee-detail__hint-arrow" aria-hidden="true">
+                <?php echo Svg::icon('flecha_izquierda'); ?>
+            </span>
             <?php esc_html_e('Haz clic en una garantía para consultar la información completa.', 'garantias-online-360vo'); ?>
         </p>
         <?php if ($is_admin_user) : ?>
-            <section class="guarantee-admin-summary is-loading" data-admin-summary>
+            <section class="guarantee-admin-summary is-loading" data-admin-summary data-loaded="0" data-loading="1">
                 <header class="guarantee-admin-summary__header">
                     <div class="guarantee-admin-summary__heading">
                         <h4 class="guarantee-admin-summary__title"><?php esc_html_e('Visión general de Garantías Online', 'garantias-online-360vo'); ?></h4>

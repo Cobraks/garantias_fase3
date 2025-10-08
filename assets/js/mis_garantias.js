@@ -54,6 +54,11 @@ const ADD_DOC_KEY = "add-document";
                         payment: "Pendiente de pago",
                         validation: "Pendiente de verificar",
                 };
+                const ADMIN_SUMMARY_STATE_ORDER = [
+                        "activada",
+                        "pendiente_pago",
+                        "pendiente_revision",
+                ];
                 const ADMIN_SUMMARY_STATE_COLORS = {
                         activada: {
                                 color: "var(--admin-summary-state-activada)",
@@ -63,25 +68,9 @@ const ADD_DOC_KEY = "add-document";
                                 color: "var(--admin-summary-state-pendiente-pago)",
                                 soft: "var(--admin-summary-state-pendiente-pago-soft)",
                         },
-                        validacion_pendiente: {
-                                color: "var(--admin-summary-state-validacion)",
-                                soft: "var(--admin-summary-state-validacion-soft)",
-                        },
-                        sin_finalizar: {
-                                color: "var(--admin-summary-state-sin-finalizar)",
-                                soft: "var(--admin-summary-state-sin-finalizar-soft)",
-                        },
-                        expira_pronto: {
-                                color: "var(--admin-summary-state-expira-pronto)",
-                                soft: "var(--admin-summary-state-expira-pronto-soft)",
-                        },
-                        expirada: {
-                                color: "var(--admin-summary-state-expirada)",
-                                soft: "var(--admin-summary-state-expirada-soft)",
-                        },
-                        pendiente_cobro: {
-                                color: "var(--admin-summary-state-pendiente-cobro)",
-                                soft: "var(--admin-summary-state-pendiente-cobro-soft)",
+                        pendiente_revision: {
+                                color: "var(--admin-summary-state-pendiente-revision)",
+                                soft: "var(--admin-summary-state-pendiente-revision-soft)",
                         },
                 };
                 const integerFormatter = new Intl.NumberFormat("es-ES");
@@ -109,10 +98,13 @@ const ADD_DOC_KEY = "add-document";
                const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
                const downloadIcon = (goConfig.icons && goConfig.icons.download) || "";
                const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
-               const arrowDownIcon =
+                const arrowDownIcon =
                         (goConfig.icons && goConfig.icons.arrowDropDown) || "";
-               const arrowUpIcon =
+                const arrowUpIcon =
                         (goConfig.icons && goConfig.icons.arrowDropUp) || "";
+                const arrowLeftIcon =
+                        (goConfig.icons && goConfig.icons.arrowLeft) ||
+                        '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z"/></svg>';
 
                 let pendingConfirmContext = null;
                 const confirmModalController = setupConfirmModal(
@@ -2341,6 +2333,9 @@ const ADD_DOC_KEY = "add-document";
                         const loading = Boolean(isLoading);
                         root.classList.toggle("is-loading", loading);
                         root.dataset.loading = loading ? "1" : "0";
+                        if (loading) {
+                                root.dataset.loaded = "0";
+                        }
                         const caption = root.querySelector("[data-admin-summary-caption]");
                         if (caption && loading) {
                                 caption.textContent = ADMIN_SUMMARY_LOADING_MESSAGE;
@@ -2386,6 +2381,7 @@ const ADD_DOC_KEY = "add-document";
                         }
                         root.classList.remove("is-loading");
                         root.dataset.loading = "0";
+                        root.dataset.loaded = "0";
                         const caption = root.querySelector("[data-admin-summary-caption]");
                         if (caption) {
                                 caption.textContent = ADMIN_SUMMARY_ERROR_MESSAGE;
@@ -2422,32 +2418,61 @@ const ADD_DOC_KEY = "add-document";
                         if (!Array.isArray(states)) {
                                 return [];
                         }
-                        return states
+                        const items = states
                                 .map((entry) => {
                                         const value = typeof entry.value === "string" ? entry.value : "";
+                                        if (!value) {
+                                                return null;
+                                        }
                                         const label = entry.label || value;
-                                        const count = normalizeToInt(entry.count || 0);
+                                        const count = Math.max(0, normalizeToInt(entry.count || 0));
                                         return { value, label, count };
                                 })
-                                .filter((entry) => entry.count > 0);
+                                .filter(Boolean);
+
+                        if (items.length <= 1) {
+                                return items;
+                        }
+
+                        const orderMap = new Map(
+                                ADMIN_SUMMARY_STATE_ORDER.map((key, index) => [key, index])
+                        );
+
+                        items.sort((a, b) => {
+                                const orderA = orderMap.has(a.value) ? orderMap.get(a.value) : 99;
+                                const orderB = orderMap.has(b.value) ? orderMap.get(b.value) : 99;
+                                if (orderA !== orderB) {
+                                        return orderA - orderB;
+                                }
+                                if (b.count !== a.count) {
+                                        return b.count - a.count;
+                                }
+                                return a.label.localeCompare(b.label);
+                        });
+
+                        return items;
                 }
 
                 function buildDonutGradient(items) {
                         if (!Array.isArray(items) || items.length === 0) {
                                 return "";
                         }
-                        const total = items.reduce((sum, item) => sum + item.count, 0);
+                        const positive = items.filter((item) => item.count > 0);
+                        if (positive.length === 0) {
+                                return "";
+                        }
+                        const total = positive.reduce((sum, item) => sum + item.count, 0);
                         if (total <= 0) {
                                 return "";
                         }
                         let current = 0;
                         const segments = [];
-                        items.forEach((item, index) => {
+                        positive.forEach((item, index) => {
                                 const palette = ADMIN_SUMMARY_STATE_COLORS[item.value] || {};
-                                const color = palette.color || "var(--admin-summary-accent)";
+                                const color = palette.color || "var(--admin-summary-state-activada)";
                                 const fraction = item.count / total;
                                 let end = current + fraction * 360;
-                                if (index === items.length - 1) {
+                                if (index === positive.length - 1) {
                                         end = 360;
                                 }
                                 segments.push(`${color} ${current}deg ${end}deg`);
@@ -2487,13 +2512,17 @@ const ADD_DOC_KEY = "add-document";
                                 legend.appendChild(item);
                                 return;
                         }
-                        const maxCount = items.reduce((max, item) => (item.count > max ? item.count : max), 0);
-                        items.forEach((item) => {
+                        const maxCount = items.reduce(
+                                (max, item) => (item.count > max ? item.count : max),
+                                0
+                        );
+                        items.forEach((item, index) => {
                                 const li = document.createElement("li");
                                 li.className = "guarantee-admin-summary__legend-item";
                                 if (item.value) {
                                         li.dataset.state = item.value;
                                 }
+                                li.style.setProperty("--summary-order", String(index));
                                 const palette = ADMIN_SUMMARY_STATE_COLORS[item.value] || {};
                                 if (palette.color) {
                                         li.style.setProperty("--legend-color", palette.color);
@@ -2502,7 +2531,16 @@ const ADD_DOC_KEY = "add-document";
                                         li.style.setProperty("--legend-soft", palette.soft);
                                 }
                                 const percent = total > 0 ? Math.round((item.count / total) * 100) : 0;
-                                const width = maxCount > 0 ? Math.min(100, Math.max(8, Math.round((item.count / maxCount) * 100))) : 0;
+                                const width =
+                                        maxCount > 0 && item.count > 0
+                                                ? Math.min(
+                                                          100,
+                                                          Math.max(18, Math.round((item.count / maxCount) * 100))
+                                                  )
+                                                : 0;
+                                if (item.count === 0) {
+                                        li.classList.add("is-zero");
+                                }
                                 li.innerHTML = `
                 <span class="guarantee-admin-summary__legend-dot" aria-hidden="true"></span>
                 <div class="guarantee-admin-summary__legend-info">
@@ -2526,14 +2564,21 @@ const ADD_DOC_KEY = "add-document";
                         const metrics = ["collect", "payment", "validation"];
                         const amounts = metrics.map((key) => normalizeToFloat((pending[key] || {}).amount || 0));
                         const maxAmount = amounts.reduce((max, amount) => (amount > max ? amount : max), 0);
-                        metrics.forEach((key) => {
+                        metrics.forEach((key, index) => {
                                 const entry = pending[key] || {};
                                 const amount = normalizeToFloat(entry.amount || 0);
                                 const count = normalizeToInt(entry.count || 0);
                                 const li = document.createElement("li");
                                 li.className = "guarantee-admin-summary__metric";
                                 li.dataset.metric = key;
-                                const width = maxAmount > 0 ? Math.min(100, Math.max(8, Math.round((amount / maxAmount) * 100))) : 0;
+                                li.style.setProperty("--summary-order", String(index));
+                                const width =
+                                        maxAmount > 0 && amount > 0
+                                                ? Math.min(100, Math.max(18, Math.round((amount / maxAmount) * 100)))
+                                                : 0;
+                                if (amount === 0) {
+                                        li.classList.add("is-zero");
+                                }
                                 li.innerHTML = `
                 <div class="guarantee-admin-summary__metric-header">
                     <span class="guarantee-admin-summary__metric-label">${escapeHtml(ADMIN_SUMMARY_PENDING_LABELS[key])}</span>
@@ -2550,7 +2595,9 @@ const ADD_DOC_KEY = "add-document";
 
                 function renderAdminSummaryMonthChart(container, states) {
                         container.innerHTML = "";
-                        const items = normalizeSummaryStates(states).slice(0, 4);
+                        const items = normalizeSummaryStates(states)
+                                .filter((item) => item.count > 0)
+                                .slice(0, 4);
                         if (items.length === 0) {
                                 const placeholder = document.createElement("span");
                                 placeholder.className = "guarantee-admin-summary__mini-chart-placeholder";
@@ -2558,12 +2605,13 @@ const ADD_DOC_KEY = "add-document";
                                 return;
                         }
                         const total = items.reduce((sum, item) => sum + item.count, 0);
-                        items.forEach((item) => {
+                        items.forEach((item, index) => {
                                 const bar = document.createElement("div");
                                 bar.className = "guarantee-admin-summary__mini-chart-bar";
                                 if (item.value) {
                                         bar.dataset.state = item.value;
                                 }
+                                bar.style.setProperty("--summary-order", String(index));
                                 const fill = document.createElement("div");
                                 fill.className = "guarantee-admin-summary__mini-chart-fill";
                                 const palette = ADMIN_SUMMARY_STATE_COLORS[item.value] || {};
@@ -2574,10 +2622,8 @@ const ADD_DOC_KEY = "add-document";
                                         fill.style.setProperty("--legend-soft", palette.soft);
                                 }
                                 const percent = total > 0 ? Math.round((item.count / total) * 100) : 0;
-                                fill.style.setProperty(
-                                        "--fill-height",
-                                        `${Math.max(12, Math.min(100, percent))}%`
-                                );
+                                const height = total > 0 ? Math.max(18, Math.min(100, percent)) : 0;
+                                fill.style.setProperty("--fill-height", `${height}%`);
                                 const value = document.createElement("span");
                                 value.className = "guarantee-admin-summary__mini-chart-value";
                                 value.textContent = formatIntegerValue(item.count);
@@ -2619,6 +2665,12 @@ const ADD_DOC_KEY = "add-document";
                         if (chart) {
                                 renderAdminSummaryMonthChart(chart, month.states || []);
                         }
+                        const statsNodes = root.querySelectorAll(
+                                "[data-admin-summary-month-stats] .guarantee-admin-summary__stat"
+                        );
+                        statsNodes.forEach((stat, index) => {
+                                stat.style.setProperty("--summary-order", String(index + 2));
+                        });
                 }
 
                 function renderAdminSummary(root, data = {}) {
@@ -2655,6 +2707,7 @@ const ADD_DOC_KEY = "add-document";
                         if (error) {
                                 error.hidden = true;
                         }
+                        root.dataset.loaded = "1";
                 }
 
                 function fetchAdminSummary(force = false) {
@@ -2714,11 +2767,10 @@ const ADD_DOC_KEY = "add-document";
                         fetchAdminSummary(force)
                                 .then((payload) => {
                                         renderAdminSummary(root, payload || {});
-                                        root.dataset.loaded = "1";
                                 })
                                 .catch((error) => {
                                         console.error(error);
-                                        root.dataset.loaded = "";
+                                        root.dataset.loaded = "0";
                                         root.classList.remove("is-loading");
                                         root.dataset.loading = "0";
                                         showAdminSummaryError(root);
@@ -2765,11 +2817,14 @@ const ADD_DOC_KEY = "add-document";
                                         </div>
                                 `;
                         }
+                        const arrowHtml = arrowLeftIcon
+                                ? `<span class="guarantee-detail__hint-arrow" aria-hidden="true">${arrowLeftIcon}</span>`
+                                : '<span class="guarantee-detail__hint-arrow" aria-hidden="true"></span>';
                         return `
                                 <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="awaiting">
                                         <h3 class="guarantee-detail__title">Consulta los detalles de tus garantías</h3>
                                         <p class="guarantee-detail__hint">
-                                                <span class="guarantee-detail__hint-arrow" aria-hidden="true"></span>
+                                                ${arrowHtml}
                                                 Haz clic en una garantía para consultar la información completa.
                                         </p>
                                 </div>

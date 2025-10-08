@@ -2145,6 +2145,51 @@ class GuaranteeRestController
         ];
     }
 
+    private static function get_summary_state_groups(): array
+    {
+        return [
+            'activada' => [
+                'states' => ['activada'],
+                'label'  => __('Activadas', 'garantias-online-360vo'),
+            ],
+            'pendiente_pago' => [
+                'states' => ['pendiente_pago'],
+                'label'  => __('Pendientes de pago', 'garantias-online-360vo'),
+            ],
+            'pendiente_revision' => [
+                'states' => ['validacion_pendiente', 'pendiente_cobro'],
+                'label'  => __('Pendientes de verificación o cobro', 'garantias-online-360vo'),
+            ],
+        ];
+    }
+
+    private static function aggregate_summary_states(array $state_counts): array
+    {
+        $groups = self::get_summary_state_groups();
+        $summary = [];
+
+        foreach ($groups as $value => $group) {
+            $states = isset($group['states']) && is_array($group['states']) ? $group['states'] : [];
+            $label = isset($group['label']) ? (string) $group['label'] : self::humanize_state($value);
+            $count = 0;
+
+            foreach ($states as $state_key) {
+                if ($state_key === '') {
+                    continue;
+                }
+                $count += isset($state_counts[$state_key]) ? (int) $state_counts[$state_key] : 0;
+            }
+
+            $summary[] = [
+                'value' => $value,
+                'label' => $label,
+                'count' => (int) $count,
+            ];
+        }
+
+        return $summary;
+    }
+
     private static function get_summary_post_statuses(): array
     {
         return ['publish', 'pending', 'future', 'draft'];
@@ -2169,8 +2214,7 @@ class GuaranteeRestController
         ";
 
         $rows = $wpdb->get_results($wpdb->prepare($sql, array_merge([$post_type], $status_params)), ARRAY_A);
-        $labels = self::get_state_labels();
-        $summary = [];
+        $state_counts = [];
 
         if (is_array($rows)) {
             foreach ($rows as $row) {
@@ -2180,19 +2224,14 @@ class GuaranteeRestController
                     continue;
                 }
 
-                $summary[] = [
-                    'value' => $state,
-                    'label' => $labels[$state] ?? self::humanize_state($state),
-                    'count' => $count,
-                ];
+                if (! isset($state_counts[$state])) {
+                    $state_counts[$state] = 0;
+                }
+                $state_counts[$state] += $count;
             }
         }
 
-        usort($summary, static function ($a, $b) {
-            return $b['count'] <=> $a['count'];
-        });
-
-        return $summary;
+        return self::aggregate_summary_states($state_counts);
     }
 
     private static function sum_prices_for_states(array $states, array $statuses): array
@@ -2288,22 +2327,14 @@ class GuaranteeRestController
         }
 
         $amount = self::sum_price_values($amount_values);
-        $labels = self::get_state_labels();
+        $states = self::aggregate_summary_states($state_counts);
 
-        $states = [];
-        foreach ($state_counts as $state => $state_count) {
-            $states[] = [
-                'value' => $state,
-                'label' => $labels[$state] ?? self::humanize_state($state),
-                'count' => (int) $state_count,
-            ];
+        $top = null;
+        foreach ($states as $entry) {
+            if ($top === null || (isset($entry['count']) && $entry['count'] > $top['count'])) {
+                $top = $entry;
+            }
         }
-
-        usort($states, static function ($a, $b) {
-            return $b['count'] <=> $a['count'];
-        });
-
-        $top = $states[0] ?? null;
 
         return [
             'label'     => self::format_month_label($month_start),
