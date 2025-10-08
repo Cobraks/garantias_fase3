@@ -155,6 +155,7 @@ $is_admin_account = in_array('administrator', $role_keys, true);
 $is_professional_account = in_array('go_profesional', $role_keys, true);
 $is_commercial_account = in_array('go_comercial', $role_keys, true);
 $is_individual_account = in_array('go_particular', $role_keys, true);
+$is_director_account = in_array('go_director_comercial', $role_keys, true);
 if ($role_keys && function_exists('wp_roles')) {
     $roles = wp_roles();
     foreach ($role_keys as $role_key) {
@@ -168,7 +169,9 @@ $company_type_label = isset($company['type']['label'])
     : '';
 $channel_label = '';
 
-if ($is_professional_account) {
+if ($is_director_account) {
+    $channel_label = 'Director Comercial';
+} elseif ($is_professional_account) {
     $channel_label = 'Profesional';
     if ($company_type_label !== '') {
         $channel_label .= ' - ' . $company_type_label;
@@ -268,7 +271,7 @@ $sections = [
     ],
 ];
 
-if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account) {
+if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account && ! $is_director_account) {
     $sections[] = [
         'id'    => 'account-payments',
         'label' => 'Pagos',
@@ -474,9 +477,11 @@ $formatPhoneHref = static function ($phone) {
                 $has_assigned_commercials = ! empty($commercials);
                 $show_commercial_card = ! $is_admin_account
                     && ! $is_commercial_account
+                    && ! $is_director_account
                     && ($has_assigned_commercials || ! $is_individual_account);
                 $show_company_card = ! $is_admin_account
                     && ! $is_commercial_account
+                    && ! $is_director_account
                     && ! $is_individual_account;
                 ?>
                 <?php if ($show_commercial_card) : ?>
@@ -963,7 +968,7 @@ $formatPhoneHref = static function ($phone) {
             $has_generated_mandate = $pending_document || $signed_document || ($sepa_info['status'] !== null);
 
         ?>
-        <?php if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account) : ?>
+        <?php if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account && ! $is_director_account) : ?>
         <article id="account-payments" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('payment', 'account-section__icon'); ?>
@@ -1239,7 +1244,7 @@ $formatPhoneHref = static function ($phone) {
         </article>
         <?php endif; ?>
 
-        <?php if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account) : ?>
+        <?php if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account && ! $is_director_account) : ?>
         <article id="account-documents" class="account-section" tabindex="-1">
             <header class="account-section__header">
                 <?php echo Svg::icon('check_shield', 'account-section__icon'); ?>
