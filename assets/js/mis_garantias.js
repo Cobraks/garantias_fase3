@@ -231,6 +231,9 @@ const ADD_DOC_KEY = "add-document";
                 const paymentSelect = document.querySelector(
                         '[data-filter="payment"]'
                 );
+                const commercialSelect = document.querySelector(
+                        '[data-filter="commercial"]'
+                );
                 const clientsWrapper = document.querySelector(
                         "[data-clients-wrapper]"
                 );
@@ -239,6 +242,9 @@ const ADD_DOC_KEY = "add-document";
                 );
                 const advancedPanel = document.querySelector(
                         "[data-advanced-panel]"
+                );
+                const resetFiltersBtn = document.querySelector(
+                        "[data-reset-filters]"
                 );
                 const orderRoot = document.querySelector("[data-order-root]");
                 const orderToggle = orderRoot
@@ -250,18 +256,71 @@ const ADD_DOC_KEY = "add-document";
                 const orderLabelNode = orderRoot
                         ? orderRoot.querySelector("[data-order-label]")
                         : null;
+                const rootElement = document.documentElement;
                 let selectedEstado = "";
                 let selectedPlan = "";
                 let selectedCanal = "";
                 let selectedConcesionario = "";
                 let selectedVendorType = "";
                 let selectedPaymentMethod = "";
+                let selectedCommercial = "";
                 let selectedOrderKey = "created_desc";
                 let selectedOrderBy = "created";
                 let selectedOrderDirection = "desc";
                 let currentListAbort = null;
                 let rawClients = [];
+                let rawCommercials = [];
                 const orderOptions = new Map();
+                let setAdvancedOpen = () => {};
+                const updateAdvancedHeight = () => {
+                        if (!advancedPanel || !filtersRoot) {
+                                rootElement.style.setProperty(
+                                        "--go-advanced-filters-height",
+                                        "0px"
+                                );
+                                return;
+                        }
+                        if (advancedPanel.hasAttribute("hidden")) {
+                                rootElement.style.setProperty(
+                                        "--go-advanced-filters-height",
+                                        "0px"
+                                );
+                                return;
+                        }
+                        const panelHeight = advancedPanel.offsetHeight || 0;
+                        let gapValue = 0;
+                        if (filtersRoot) {
+                                const styles = window.getComputedStyle(filtersRoot);
+                                const rawGap = styles.rowGap || styles.gap || "";
+                                const parsedGap = parseFloat(rawGap);
+                                if (!Number.isNaN(parsedGap)) {
+                                        gapValue = parsedGap;
+                                }
+                        }
+                        const total = Math.max(
+                                0,
+                                Math.round(panelHeight + gapValue)
+                        );
+                        rootElement.style.setProperty(
+                                "--go-advanced-filters-height",
+                                `${total}px`
+                        );
+                };
+
+                if (typeof ResizeObserver !== "undefined" && advancedPanel) {
+                        const resizeObserver = new ResizeObserver(() => {
+                                if (!advancedPanel.hasAttribute("hidden")) {
+                                        updateAdvancedHeight();
+                                }
+                        });
+                        resizeObserver.observe(advancedPanel);
+                }
+
+                window.addEventListener("resize", () => {
+                        if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
+                                updateAdvancedHeight();
+                        }
+                });
 
 		let resultMessage = document.querySelector(
 			".guarantees-list__result-message"
@@ -305,7 +364,8 @@ const ADD_DOC_KEY = "add-document";
                         vendorType = "",
                         payment = "",
                         orderBy = "",
-                        orderDirection = ""
+                        orderDirection = "",
+                        commercial = ""
                 ) {
                         return [
                                 search,
@@ -317,6 +377,7 @@ const ADD_DOC_KEY = "add-document";
                                 payment,
                                 orderBy,
                                 orderDirection,
+                                commercial,
                         ].join("|");
                 }
 
@@ -416,6 +477,55 @@ const ADD_DOC_KEY = "add-document";
                         }
 
                         populateClientsSelect(shouldShow ? vendorType : "");
+                }
+
+                function populateCommercialSelect() {
+                        if (!commercialSelect) {
+                                return;
+                        }
+                        const previous = commercialSelect.value || "";
+                        commercialSelect
+                                .querySelectorAll("option:not(:first-child)")
+                                .forEach((opt) => opt.remove());
+
+                        if (!Array.isArray(rawCommercials) || rawCommercials.length === 0) {
+                                selectedCommercial = "";
+                                commercialSelect.value = "";
+                                return;
+                        }
+
+                        let hasPrevious = false;
+                        rawCommercials.forEach((item) => {
+                                const id = item && typeof item.id !== "undefined" ? item.id : null;
+                                const name =
+                                        item && typeof item.name === "string"
+                                                ? item.name
+                                                : "";
+                                const numericId = Number.parseInt(id, 10);
+                                if (!Number.isFinite(numericId) || numericId <= 0 || !name) {
+                                        return;
+                                }
+                                const option = document.createElement("option");
+                                option.value = String(numericId);
+                                option.textContent = name;
+                                commercialSelect.appendChild(option);
+                                if (!hasPrevious && previous && String(numericId) === previous) {
+                                        hasPrevious = true;
+                                }
+                        });
+
+                        if (previous && hasPrevious) {
+                                commercialSelect.value = previous;
+                                selectedCommercial = previous;
+                        } else if (previous && !hasPrevious) {
+                                commercialSelect.value = "";
+                                if (selectedCommercial) {
+                                        selectedCommercial = "";
+                                        applyFilters();
+                                }
+                        } else {
+                                selectedCommercial = commercialSelect.value || "";
+                        }
                 }
 
                 function fetchDetail(id) {
@@ -2121,6 +2231,12 @@ const ADD_DOC_KEY = "add-document";
                                 typeof options.paymentMethod === "string"
                                         ? options.paymentMethod
                                         : selectedPaymentMethod;
+                        const commercial =
+                                typeof options.commercial === "string"
+                                        ? options.commercial
+                                        : options.commercial != null
+                                        ? String(options.commercial)
+                                        : selectedCommercial;
                         const orderBy =
                                 typeof options.orderBy === "string" && options.orderBy
                                         ? options.orderBy
@@ -2138,7 +2254,8 @@ const ADD_DOC_KEY = "add-document";
                                 vendorType,
                                 paymentMethod,
                                 orderBy,
-                                orderDirection
+                                orderDirection,
+                                commercial
                         );
                         try {
                                 if (currentListAbort) currentListAbort.abort();
@@ -2158,6 +2275,8 @@ const ADD_DOC_KEY = "add-document";
                                         params.append("vendor_type", vendorType);
                                 if (paymentMethod)
                                         params.append("payment_method", paymentMethod);
+                                if (commercial)
+                                        params.append("commercial", commercial);
                                 if (orderBy)
                                         params.append("order_by", orderBy);
                                 if (orderDirection)
@@ -3729,6 +3848,7 @@ function initRowSelection() {
                                         payment_methods: paymentMethods = [],
                                         channels = [],
                                         vendor_types: vendorTypes = [],
+                                        commercials = [],
                                 } = await res.json();
                                 if (estadoSelect) {
                                         estadoSelect
@@ -3762,6 +3882,38 @@ function initRowSelection() {
                                         }));
                                         populateClientsSelect(selectedVendorType);
                                 }
+                                if (Array.isArray(commercials)) {
+                                        rawCommercials = commercials
+                                                .map((commercial) => {
+                                                        const rawId =
+                                                                commercial &&
+                                                                typeof commercial.id !== "undefined"
+                                                                        ? commercial.id
+                                                                        : commercial &&
+                                                                          typeof commercial.ID !== "undefined"
+                                                                          ? commercial.ID
+                                                                          : 0;
+                                                        const id = Number.parseInt(rawId, 10);
+                                                        const primaryName =
+                                                                commercial &&
+                                                                typeof commercial.name === "string"
+                                                                        ? commercial.name
+                                                                        : "";
+                                                        const fallbackName =
+                                                                commercial &&
+                                                                typeof commercial.display_name === "string"
+                                                                        ? commercial.display_name
+                                                                        : "";
+                                                        return {
+                                                                id: Number.isFinite(id) ? id : 0,
+                                                                name: primaryName || fallbackName,
+                                                        };
+                                                })
+                                                .filter((item) => item.id > 0 && item.name);
+                                } else {
+                                        rawCommercials = [];
+                                }
+                                populateCommercialSelect();
                                 if (paymentSelect) {
                                         paymentSelect
                                                 .querySelectorAll("option:not(:first-child)")
@@ -3781,6 +3933,9 @@ function initRowSelection() {
                                 }
                                 syncChannelOptionVisibility(channels, vendorTypes);
                                 refreshClientsVisibility();
+                                if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
+                                        requestAnimationFrame(updateAdvancedHeight);
+                                }
                         } catch (e) {
                                 console.error("❌ Error fetching filters:", e);
                         }
@@ -3800,7 +3955,8 @@ function initRowSelection() {
                                 selectedVendorType,
                                 selectedPaymentMethod,
                                 selectedOrderBy,
-                                selectedOrderDirection
+                                selectedOrderDirection,
+                                selectedCommercial
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
@@ -3840,6 +3996,11 @@ function initRowSelection() {
                                 selectedConcesionario = concesionarioSelect.value;
                                 applyFilters();
                         });
+                if (commercialSelect)
+                        commercialSelect.addEventListener("change", () => {
+                                selectedCommercial = commercialSelect.value;
+                                applyFilters();
+                        });
 
                 if (moreFiltersToggle && advancedPanel) {
                         const labelNode = moreFiltersToggle.querySelector(
@@ -3851,7 +4012,7 @@ function initRowSelection() {
                         const activeLabel =
                                 moreFiltersToggle.getAttribute("data-active-label") || defaultLabel;
 
-                        const setAdvancedOpen = (open) => {
+                        setAdvancedOpen = (open) => {
                                 if (!advancedPanel) return;
                                 if (open) {
                                         advancedPanel.removeAttribute("hidden");
@@ -3879,6 +4040,14 @@ function initRowSelection() {
                                                 ? activeLabel
                                                 : defaultLabel;
                                 }
+                                if (open) {
+                                        requestAnimationFrame(updateAdvancedHeight);
+                                } else {
+                                        rootElement.style.setProperty(
+                                                "--go-advanced-filters-height",
+                                                "0px"
+                                        );
+                                }
                         };
 
                         moreFiltersToggle.addEventListener("click", () => {
@@ -3888,12 +4057,65 @@ function initRowSelection() {
                 }
 
                 refreshClientsVisibility();
+                updateAdvancedHeight();
                 fetchFilters();
 
                 const input = document.getElementById("buscador_mis_garantias");
                 const closeIcon = document.querySelector(".guarantees-list__close-icon");
-		let debounceTimer = null;
-		const DEBOUNCE_MS = 300;
+                let debounceTimer = null;
+                const DEBOUNCE_MS = 300;
+
+                if (resetFiltersBtn) {
+                        resetFiltersBtn.addEventListener("click", () => {
+                                if (input) {
+                                        input.value = "";
+                                }
+                                if (closeIcon) {
+                                        closeIcon.classList.remove("visible");
+                                }
+                                searchQuery = "";
+                                lastValidQuery = "";
+                                lastValidResults = [];
+                                if (estadoSelect) estadoSelect.value = "";
+                                if (planSelect) planSelect.value = "";
+                                if (paymentSelect) paymentSelect.value = "";
+                                if (canalSelect) canalSelect.value = "";
+                                if (concesionarioSelect) concesionarioSelect.value = "";
+                                if (commercialSelect) commercialSelect.value = "";
+                                selectedEstado = "";
+                                selectedPlan = "";
+                                selectedCanal = "";
+                                selectedConcesionario = "";
+                                selectedVendorType = "";
+                                selectedPaymentMethod = "";
+                                selectedCommercial = "";
+                                currentPage = 1;
+                                hasMore = true;
+                                refreshClientsVisibility();
+                                if (orderToggle) {
+                                        const defaultSort =
+                                                orderToggle.getAttribute("data-default-sort") ||
+                                                "created_desc";
+                                        if (defaultSort) {
+                                                setOrderSelection(defaultSort, { trigger: false });
+                                        }
+                                } else {
+                                        selectedOrderKey = "created_desc";
+                                        selectedOrderBy = "created";
+                                        selectedOrderDirection = "desc";
+                                }
+                                setResultMessage("");
+                                applyFilters();
+                                if (advancedPanel && !advancedPanel.hasAttribute("hidden")) {
+                                        requestAnimationFrame(updateAdvancedHeight);
+                                } else {
+                                        rootElement.style.setProperty(
+                                                "--go-advanced-filters-height",
+                                                "0px"
+                                        );
+                                }
+                        });
+                }
 
                 function doSearch(query) {
                         searchQuery = query;
@@ -3908,7 +4130,8 @@ function initRowSelection() {
                                 selectedVendorType,
                                 selectedPaymentMethod,
                                 selectedOrderBy,
-                                selectedOrderDirection
+                                selectedOrderDirection,
+                                selectedCommercial
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();

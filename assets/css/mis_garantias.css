@@ -9,6 +9,10 @@ body {
     overflow-y: hidden;
 }
 
+:root {
+    --go-advanced-filters-height: 0px;
+}
+
 body.scrolled .top-bar {
     transform: translateY(-100%);
     transition: transform 400ms ease;
@@ -106,18 +110,27 @@ body.scrolled .container {
     display: flex;
     flex-wrap: wrap;
     gap: var(--spacing-2);
+    align-items: center;
 }
-.guarantees-list__filters-row > * {
-    flex: 1 1 200px;
-    min-width: 160px;
-    font-size: 0.9rem;
-    max-width: 100%;
+.guarantees-list__filters-row > select.guarantees-list__filter,
+.guarantees-list__filters-row > .guarantees-list__filter-wrapper {
+    flex: 0 1 auto;
+    max-width: clamp(12rem, 19vw, 16rem);
+}
+.guarantees-list__filter-wrapper {
+    flex: 0 1 auto;
+    max-width: clamp(12rem, 19vw, 16rem);
+    width: 100%;
+}
+
+.guarantees-list__filters-row > select.guarantees-list__filter {
+    width: min(100%, clamp(12rem, 19vw, 16rem));
 }
 .guarantees-list__filters-actions {
     flex: 0 0 auto;
     min-width: auto;
     display: flex;
-    align-items: stretch;
+    align-items: center;
     gap: var(--spacing-2);
     margin-left: auto;
 }
@@ -142,6 +155,7 @@ body.scrolled .container {
     color: var(--text-color);
     font-weight: 600;
     font-size: 0.875rem;
+    font-family: inherit;
     cursor: pointer;
     transition: background var(--transition-speed), color var(--transition-speed), border-color var(--transition-speed), box-shadow var(--transition-speed);
     height: 42px;
@@ -174,23 +188,9 @@ body.scrolled .container {
     box-shadow: 0 0 0 1px rgba(191, 219, 254, 0.25);
 }
 .guarantees-list__order-icon {
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 1.5rem;
+    height: 1.5rem;
     flex-shrink: 0;
-}
-.guarantees-list__order-labels {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.15rem;
-    line-height: 1.1;
-}
-.guarantees-list__order-title {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-subtle);
-    font-weight: 600;
 }
 .guarantees-list__order-current {
     font-weight: 600;
@@ -271,6 +271,7 @@ body.scrolled .container {
     color: var(--text-color);
     font-weight: 600;
     font-size: 0.875rem;
+    font-family: inherit;
     cursor: pointer;
     transition: background var(--transition-speed), color var(--transition-speed), border-color var(--transition-speed), box-shadow var(--transition-speed);
     height: 42px;
@@ -286,24 +287,72 @@ body.scrolled .container {
     background: var(--surface);
 }
 
+.guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn,
+.guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn:hover,
+.guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn:focus {
+    border: none;
+    box-shadow: none;
+}
+
 :root[data-theme='dark'] .guarantees-list__more-filters-btn {
     background: rgba(255, 255, 255, 0.04);
     border-color: rgba(148, 163, 184, 0.4);
 }
 
+:root[data-theme='dark'] .guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn,
+:root[data-theme='dark'] .guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn:hover,
+:root[data-theme='dark'] .guarantees-list__filters[data-advanced-open="true"] .guarantees-list__more-filters-btn:focus {
+    border: none;
+    box-shadow: none;
+}
+
 :root[data-theme='dark'] .guarantees-list__filters[data-advanced-open="true"] {
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
-    border-color: rgba(148, 163, 184, 0.45);
+    border: none;
 }
 
 .guarantees-list__more-filters-icon {
     display: inline-flex;
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.guarantees-list__reset-btn {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-subtle);
+    font-weight: 600;
+    font-size: 0.875rem;
+    font-family: inherit;
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color var(--transition-speed), background var(--transition-speed), border-color var(--transition-speed);
+    height: 42px;
+    white-space: nowrap;
+}
+
+.guarantees-list__reset-btn:hover,
+.guarantees-list__reset-btn:focus-visible {
+    outline: none;
+    color: var(--primary-color);
+    border-color: rgba(var(--go-color-2563eb-rgb), 0.3);
+    background: rgba(var(--go-color-2563eb-rgb), 0.08);
+}
+
+:root[data-theme='dark'] .guarantees-list__reset-btn {
+    color: rgba(226, 232, 240, 0.72);
+}
+
+:root[data-theme='dark'] .guarantees-list__reset-btn:hover,
+:root[data-theme='dark'] .guarantees-list__reset-btn:focus-visible {
+    color: rgba(191, 219, 254, 0.95);
+    border-color: rgba(191, 219, 254, 0.45);
+    background: rgba(191, 219, 254, 0.12);
 }
 
 .guarantees-list__filters[data-advanced-open="true"] {
-    border-color: var(--border-color-strong);
+    border: none;
     box-shadow: 0 8px 28px rgba(var(--go-color-0f172a-rgb), 0.08);
 }
 
@@ -320,6 +369,8 @@ body.scrolled .container {
 .guarantees-list__filters-advanced-grid {
     display: grid;
     gap: var(--spacing-2);
+    grid-template-columns: repeat(auto-fit, minmax(220px, min(100%, 260px)));
+    justify-content: flex-start;
 }
 
 @keyframes guaranteesFiltersFade {
@@ -335,8 +386,16 @@ body.scrolled .container {
 
 @media (min-width: 768px) {
     .guarantees-list__filters-advanced-grid {
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(220px, min(100%, 280px)));
     }
+}
+
+.guarantees-list__filters-advanced-grid > * {
+    justify-self: flex-start;
+}
+
+.guarantees-list__filters-advanced-grid .guarantees-list__filter {
+    width: min(100%, 18rem);
 }
 
 .guarantees-list__filter-wrapper--clients[hidden] {
@@ -417,7 +476,6 @@ body.scrolled .container {
     padding: 10px 16px;
     font-size: 0.875rem;
     color: var(--text-color);
-    min-width: 200px;
     transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
     height: 42px;
     background: var(--surface);
@@ -439,12 +497,16 @@ body.scrolled .container {
 }
 
 
- .guarantees-list__search-container {
-border-radius: 4rem;
-display: flex;
-align-items: center;
-padding-block: 0;
-padding-left: var(--spacing-1);
+.guarantees-list__search-container {
+    border-radius: 4rem;
+    display: flex;
+    align-items: center;
+    padding-block: 0;
+    padding-left: var(--spacing-1);
+    position: relative;
+    flex: 1 1 clamp(260px, 40%, 420px);
+    min-width: min(320px, 100%);
+    max-width: 420px;
 }
 
 
@@ -478,16 +540,14 @@ span.guarantees-list__search-icon {
 .guarantees-list__close-icon.visible {
     display: flex; /* o block, según tu SVG */
 }
-.guarantees-list__search-container {
-    position: relative; /* para el absolute del icono */
-}
+
 
 
 
 /* 2) LISTADO: altura calculada y scroll interno */
 section.guarantees-list {
     z-index: 99;
-    max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem);
+    max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
     overflow-y: auto;
     overflow-x: hidden;
     transition: max-height 300ms ease;
@@ -500,7 +560,7 @@ section.guarantees-list {
 
 }
 section.guarantees-list.sticky-active {
-    max-height: calc(100vh - var(--spacing-4) - 7.5rem);
+    max-height: calc(100vh - var(--spacing-4) - 7.5rem - var(--go-advanced-filters-height));
 }
 
 :root[data-theme='dark'] section.guarantees-list {
@@ -3034,7 +3094,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     left: 0;
     width: 100%;
     height: 100%;
-    max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem);
+    max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
     overflow-y: auto;
     transition: transform 300ms ease, opacity 300ms ease;
     backface-visibility: hidden;
@@ -3051,7 +3111,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 .guarantee-detail.sticky-active .guarantee-detail__panel {
-    max-height: calc(100vh - var(--spacing-4) - 7.5rem);
+    max-height: calc(100vh - var(--spacing-4) - 7.5rem - var(--go-advanced-filters-height));
 }
 
 .guarantee-detail__empty {

@@ -63,6 +63,7 @@ class GuaranteeRestController
                         'concesionario'=> ['validate_callback' => 'absint'],
                         'vendor_type'  => ['sanitize_callback' => 'sanitize_key'],
                         'payment_method' => ['sanitize_callback' => 'sanitize_key'],
+                        'commercial'   => ['validate_callback' => 'absint'],
                         'order_by'     => ['sanitize_callback' => 'sanitize_key'],
                         'order'        => ['sanitize_callback' => 'sanitize_key'],
                     ],
@@ -2677,6 +2678,7 @@ class GuaranteeRestController
         $concesionario = isset($request['concesionario']) ? absint($request['concesionario']) : 0;
         $vendor_type   = isset($request['vendor_type']) ? sanitize_key($request['vendor_type']) : '';
         $payment_method = isset($request['payment_method']) ? sanitize_key($request['payment_method']) : '';
+        $commercial    = isset($request['commercial']) ? absint($request['commercial']) : 0;
         $order_by      = isset($request['order_by']) ? sanitize_key($request['order_by']) : '';
         $order         = isset($request['order']) ? strtolower(sanitize_key($request['order'])) : '';
 
@@ -2710,6 +2712,9 @@ class GuaranteeRestController
         if ($payment_method) {
             $cache_key .= '_pm_' . md5($payment_method);
         }
+        if ($commercial) {
+            $cache_key .= '_cm_' . $commercial;
+        }
         if (! empty($sort_config['cache_suffix'])) {
             $cache_key .= $sort_config['cache_suffix'];
         }
@@ -2737,6 +2742,7 @@ class GuaranteeRestController
         // Permisos: restringe por profesional/comercial salvo admins
         $meta_query = [];
         $vendor_type_ids = [];
+        $commercial_vendor_ids = [];
         if (!current_user_can('manage_options')) {
             $user_profesional_ids = [$current_user];
             $users_asignados = get_users([
@@ -2764,6 +2770,13 @@ class GuaranteeRestController
             $vendor_type_ids = self::get_professional_ids_by_type($vendor_type);
             if (empty($vendor_type_ids)) {
                 $vendor_type_ids = [0];
+            }
+        }
+
+        if ($commercial > 0) {
+            $commercial_vendor_ids = self::get_professional_ids_by_commercial($commercial);
+            if (empty($commercial_vendor_ids)) {
+                $commercial_vendor_ids = [0];
             }
         }
 
@@ -2814,10 +2827,32 @@ class GuaranteeRestController
                 'value' => $concesionario,
             ];
         }
-        if ($vendor_type && ! empty($vendor_type_ids)) {
+        $needs_vendor_filter = false;
+        $combined_vendor_ids = [];
+
+        if ($vendor_type !== '') {
+            $needs_vendor_filter = true;
+            $combined_vendor_ids = $vendor_type_ids;
+        }
+
+        if ($commercial > 0) {
+            $needs_vendor_filter = true;
+            if (empty($combined_vendor_ids)) {
+                $combined_vendor_ids = $commercial_vendor_ids;
+            } else {
+                $combined_vendor_ids = array_values(
+                    array_intersect($combined_vendor_ids, $commercial_vendor_ids)
+                );
+            }
+        }
+
+        if ($needs_vendor_filter) {
+            if (empty($combined_vendor_ids)) {
+                $combined_vendor_ids = [0];
+            }
             $meta_query[] = [
-                'key'   => 'garantia_contratada_concesionario_empresa_profesional',
-                'value' => $vendor_type_ids,
+                'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                'value'   => $combined_vendor_ids,
                 'compare' => 'IN',
             ];
         }
@@ -3076,6 +3111,34 @@ class GuaranteeRestController
             ];
         }
 
+        $commercial_users = get_users([
+            'role'    => 'go_comercial',
+            'fields'  => ['ID', 'display_name'],
+            'orderby' => 'display_name',
+            'order'   => 'ASC',
+        ]);
+        $commercials = [];
+        foreach ($commercial_users as $user) {
+            $id = isset($user->ID) ? (int) $user->ID : 0;
+            if ($id <= 0) {
+                continue;
+            }
+            $display_name = isset($user->display_name) ? trim((string) $user->display_name) : '';
+            if ($display_name === '') {
+                $user_obj = get_userdata($id);
+                if ($user_obj instanceof WP_User) {
+                    $display_name = $user_obj->display_name ?: $user_obj->user_email;
+                }
+            }
+            if ($display_name === '') {
+                $display_name = sprintf(__('Comercial #%d', 'garantias-online-360vo'), $id);
+            }
+            $commercials[] = [
+                'id'   => $id,
+                'name' => $display_name,
+            ];
+        }
+
         $payment_methods = self::collect_payment_methods($q->posts);
 
         $channels = [];
@@ -3160,6 +3223,7 @@ class GuaranteeRestController
             'payment_methods'  => $payment_methods,
             'channels'         => $channels,
             'vendor_types'     => $vendor_types,
+            'commercials'      => $commercials,
         ]);
 
         set_transient($cache_key, $response, 300);
@@ -3244,6 +3308,36 @@ class GuaranteeRestController
         }
 
         return array_values(array_unique($matched));
+    }
+
+    private static function get_professional_ids_by_commercial(int $commercial_id): array
+    {
+        $commercial_id = absint($commercial_id);
+        if ($commercial_id <= 0) {
+            return [];
+        }
+
+        $users = get_users([
+            'role'       => 'go_profesional',
+            'fields'     => 'ID',
+            'meta_query' => [
+                [
+                    'key'     => 'ajustes_usuarios_comercial_asignado',
+                    'value'   => '"' . $commercial_id . '"',
+                    'compare' => 'LIKE',
+                ],
+            ],
+        ]);
+
+        if (empty($users)) {
+            return [];
+        }
+
+        return array_values(
+            array_unique(
+                array_map('intval', $users)
+            )
+        );
     }
 
     private static function collect_payment_methods(array $post_ids): array
