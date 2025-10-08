@@ -61,6 +61,11 @@ class GuaranteeRestController
                         'plan'         => ['validate_callback' => 'absint'],
                         'canal'        => ['sanitize_callback' => 'sanitize_text_field'],
                         'concesionario'=> ['validate_callback' => 'absint'],
+                        'vendor_type'  => ['sanitize_callback' => 'sanitize_key'],
+                        'payment_method' => ['sanitize_callback' => 'sanitize_key'],
+                        'commercial'   => ['validate_callback' => 'absint'],
+                        'order_by'     => ['sanitize_callback' => 'sanitize_key'],
+                        'order'        => ['sanitize_callback' => 'sanitize_key'],
                     ],
                 ],
             ]
@@ -2671,6 +2676,17 @@ class GuaranteeRestController
         $plan          = isset($request['plan']) ? absint($request['plan']) : 0;
         $canal         = isset($request['canal']) ? sanitize_text_field($request['canal']) : '';
         $concesionario = isset($request['concesionario']) ? absint($request['concesionario']) : 0;
+        $vendor_type   = isset($request['vendor_type']) ? sanitize_key($request['vendor_type']) : '';
+        $payment_method = isset($request['payment_method']) ? sanitize_key($request['payment_method']) : '';
+        $commercial    = isset($request['commercial']) ? absint($request['commercial']) : 0;
+        $order_by      = isset($request['order_by']) ? sanitize_key($request['order_by']) : '';
+        $order         = isset($request['order']) ? strtolower(sanitize_key($request['order'])) : '';
+
+        if (! in_array($order, ['asc', 'desc'], true)) {
+            $order = 'desc';
+        }
+
+        $sort_config = self::resolve_sort_config($order_by, $order);
 
         // ----- CACHING -----
         // Elimina search del cache_key porque si no el mismo usuario puede buscar cosas distintas y obtiene el cache anterior
@@ -2690,6 +2706,18 @@ class GuaranteeRestController
         if ($concesionario) {
             $cache_key .= '_v_' . $concesionario;
         }
+        if ($vendor_type) {
+            $cache_key .= '_vt_' . md5($vendor_type);
+        }
+        if ($payment_method) {
+            $cache_key .= '_pm_' . md5($payment_method);
+        }
+        if ($commercial) {
+            $cache_key .= '_cm_' . $commercial;
+        }
+        if (! empty($sort_config['cache_suffix'])) {
+            $cache_key .= $sort_config['cache_suffix'];
+        }
         $cache = get_transient($cache_key);
         if ($cache !== false) {
             return $cache;
@@ -2703,8 +2731,18 @@ class GuaranteeRestController
             'post_status'    => ['draft', 'publish', 'pending', 'future'],
         ];
 
+        $args['orderby'] = $sort_config['orderby'];
+        $args['order']   = $sort_config['order'];
+
+        if (! empty($sort_config['meta_key'])) {
+            $args['meta_key']  = $sort_config['meta_key'];
+            $args['meta_type'] = $sort_config['meta_type'] ?? 'CHAR';
+        }
+
         // Permisos: restringe por profesional/comercial salvo admins
         $meta_query = [];
+        $vendor_type_ids = [];
+        $commercial_vendor_ids = [];
         if (!current_user_can('manage_options')) {
             $user_profesional_ids = [$current_user];
             $users_asignados = get_users([
@@ -2726,6 +2764,20 @@ class GuaranteeRestController
                 'value'   => $user_profesional_ids,
                 'compare' => 'IN',
             ];
+        }
+
+        if ($vendor_type !== '') {
+            $vendor_type_ids = self::get_professional_ids_by_type($vendor_type);
+            if (empty($vendor_type_ids)) {
+                $vendor_type_ids = [0];
+            }
+        }
+
+        if ($commercial > 0) {
+            $commercial_vendor_ids = self::get_professional_ids_by_commercial($commercial);
+            if (empty($commercial_vendor_ids)) {
+                $commercial_vendor_ids = [0];
+            }
         }
 
         // ---- FILTROS ----
@@ -2773,6 +2825,42 @@ class GuaranteeRestController
             $meta_query[] = [
                 'key'   => 'garantia_contratada_concesionario_empresa_profesional',
                 'value' => $concesionario,
+            ];
+        }
+        $needs_vendor_filter = false;
+        $combined_vendor_ids = [];
+
+        if ($vendor_type !== '') {
+            $needs_vendor_filter = true;
+            $combined_vendor_ids = $vendor_type_ids;
+        }
+
+        if ($commercial > 0) {
+            $needs_vendor_filter = true;
+            if (empty($combined_vendor_ids)) {
+                $combined_vendor_ids = $commercial_vendor_ids;
+            } else {
+                $combined_vendor_ids = array_values(
+                    array_intersect($combined_vendor_ids, $commercial_vendor_ids)
+                );
+            }
+        }
+
+        if ($needs_vendor_filter) {
+            if (empty($combined_vendor_ids)) {
+                $combined_vendor_ids = [0];
+            }
+            $meta_query[] = [
+                'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                'value'   => $combined_vendor_ids,
+                'compare' => 'IN',
+            ];
+        }
+        if ($payment_method) {
+            $meta_query[] = [
+                'key'     => 'garantia_contratada_metodo_pago',
+                'value'   => $payment_method,
+                'compare' => 'LIKE',
             ];
         }
 
@@ -2934,6 +3022,8 @@ class GuaranteeRestController
 
         $estados = [];
         $plan_ids = [];
+        $channels_map = [];
+        $vendor_ids = [];
         foreach ($q->posts as $post_id) {
             $e = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
             if ($e) {
@@ -2942,6 +3032,18 @@ class GuaranteeRestController
             $pid = get_post_meta($post_id, 'garantia_contratada_garantia', true);
             if ($pid) {
                 $plan_ids[] = $pid;
+            }
+
+            $channel_raw = get_post_meta($post_id, 'garantia_contratada_canal_venta', true);
+            $channel_value = sanitize_key(str_replace('go_', '', self::normalize_channel_meta($channel_raw)));
+            if ($channel_value !== '') {
+                $channels_map[$channel_value] = self::resolve_channel_label($channel_value);
+            }
+
+            $vendor_raw = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
+            $vendor_id = self::normalize_vendor_meta($vendor_raw);
+            if ($vendor_id > 0) {
+                $vendor_ids[] = $vendor_id;
             }
         }
 
@@ -2986,29 +3088,295 @@ class GuaranteeRestController
 
         $users = get_users([
             'role'   => 'go_profesional',
-            'fields' => ['ID'],
+            'fields' => 'ID',
         ]);
         $concesionarios = [];
-        foreach ($users as $u) {
-            $labels = UserProfileResolver::get_vendor_labels((int) $u->ID);
+        $concesionario_map = [];
+        foreach ($users as $user_id) {
+            $labels = UserProfileResolver::get_vendor_labels((int) $user_id);
             $name = $labels['company_name'] !== ''
                 ? $labels['company_name']
-                : ($labels['personal_name'] !== '' ? $labels['personal_name'] : sprintf(__('Usuario #%d', 'garantias-online-360vo'), (int) $u->ID));
+                : ($labels['personal_name'] !== '' ? $labels['personal_name'] : sprintf(__('Usuario #%d', 'garantias-online-360vo'), (int) $user_id));
+            $type_value = $labels['company']['type']['value'] ?? '';
+            $type_label = $labels['company']['type']['label'] ?? '';
             $concesionarios[] = [
-                'id'   => (int) $u->ID,
+                'id'   => (int) $user_id,
                 'name' => $name,
+                'type' => $type_value,
+                'type_label' => $type_label,
+            ];
+            $concesionario_map[(int) $user_id] = [
+                'type'       => $type_value,
+                'type_label' => $type_label,
             ];
         }
 
+        $commercial_users = get_users([
+            'role'    => 'go_comercial',
+            'fields'  => ['ID', 'display_name'],
+            'orderby' => 'display_name',
+            'order'   => 'ASC',
+        ]);
+        $commercials = [];
+        foreach ($commercial_users as $user) {
+            $id = isset($user->ID) ? (int) $user->ID : 0;
+            if ($id <= 0) {
+                continue;
+            }
+            $display_name = isset($user->display_name) ? trim((string) $user->display_name) : '';
+            if ($display_name === '') {
+                $user_obj = get_userdata($id);
+                if ($user_obj instanceof WP_User) {
+                    $display_name = $user_obj->display_name ?: $user_obj->user_email;
+                }
+            }
+            if ($display_name === '') {
+                $display_name = sprintf(__('Comercial #%d', 'garantias-online-360vo'), $id);
+            }
+            $commercials[] = [
+                'id'   => $id,
+                'name' => $display_name,
+            ];
+        }
+
+        $payment_methods = self::collect_payment_methods($q->posts);
+
+        $channels = [];
+        $channel_priority = [
+            'particular' => 1,
+            'profesional' => 2,
+            'gestoria'    => 3,
+        ];
+        foreach ($channels_map as $value => $label) {
+            $channels[] = [
+                'value'    => $value,
+                'label'    => $label,
+                'priority' => $channel_priority[$value] ?? 99,
+            ];
+        }
+
+        usort($channels, function ($a, $b) {
+            if ($a['priority'] === $b['priority']) {
+                return strcasecmp($a['label'], $b['label']);
+            }
+            return $a['priority'] <=> $b['priority'];
+        });
+
+        $channels = array_map(function ($item) {
+            return [
+                'value' => $item['value'],
+                'label' => $item['label'],
+            ];
+        }, $channels);
+
+        $vendor_types = [];
+        $vendor_ids = array_unique(array_filter($vendor_ids));
+        $vendor_type_priority = [
+            'compraventa'          => 1,
+            'concesionario_oficial'=> 2,
+            'gestoria'             => 3,
+            'profesional'          => 4,
+        ];
+        foreach ($vendor_ids as $vendor_id) {
+            if (! isset($concesionario_map[$vendor_id])) {
+                continue;
+            }
+            $type_value = sanitize_key($concesionario_map[$vendor_id]['type'] ?? '');
+            if ($type_value === '') {
+                continue;
+            }
+            if (isset($vendor_types[$type_value])) {
+                continue;
+            }
+            $type_label = $concesionario_map[$vendor_id]['type_label'] ?? '';
+            if ($type_label === '') {
+                $type_label = self::resolve_channel_label($type_value);
+            }
+            $vendor_types[$type_value] = [
+                'value'    => $type_value,
+                'label'    => $type_label,
+                'priority' => $vendor_type_priority[$type_value] ?? 99,
+            ];
+        }
+
+        if (! empty($vendor_types)) {
+            uasort($vendor_types, function ($a, $b) {
+                if ($a['priority'] === $b['priority']) {
+                    return strcasecmp($a['label'], $b['label']);
+                }
+                return $a['priority'] <=> $b['priority'];
+            });
+            $vendor_types = array_map(function ($item) {
+                return [
+                    'value' => $item['value'],
+                    'label' => $item['label'],
+                ];
+            }, $vendor_types);
+        } else {
+            $vendor_types = [];
+        }
+
         $response = new WP_REST_Response([
-            'estados'        => $estados,
-            'planes'         => $planes,
-            'concesionarios' => $concesionarios,
+            'estados'          => $estados,
+            'planes'           => $planes,
+            'concesionarios'   => $concesionarios,
+            'payment_methods'  => $payment_methods,
+            'channels'         => $channels,
+            'vendor_types'     => $vendor_types,
+            'commercials'      => $commercials,
         ]);
 
         set_transient($cache_key, $response, 300);
 
         return $response;
+    }
+
+    private static function resolve_sort_config(string $order_by, string $order): array
+    {
+        $order = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
+
+        $config = [
+            'orderby'     => 'date',
+            'order'       => $order,
+            'cache_suffix'=> '_ob_created_or_' . strtolower($order),
+        ];
+
+        switch ($order_by) {
+            case 'valid_from':
+                $config['orderby']      = 'meta_value';
+                $config['meta_key']     = 'estado_garantia_inicio';
+                $config['meta_type']    = 'DATE';
+                $config['cache_suffix'] = '_ob_valid_from_or_' . strtolower($order);
+                break;
+            case 'valid_until':
+                $config['orderby']      = 'meta_value';
+                $config['meta_key']     = 'estado_garantia_finalizacion';
+                $config['meta_type']    = 'DATE';
+                $config['cache_suffix'] = '_ob_valid_until_or_' . strtolower($order);
+                break;
+            case 'created':
+            default:
+                // Mantiene configuración por defecto
+                break;
+        }
+
+        return $config;
+    }
+
+    private static function resolve_channel_label(string $value): string
+    {
+        $value = sanitize_key($value);
+        $map = [
+            'particular'          => __('Particular', 'garantias-online-360vo'),
+            'profesional'         => __('Profesional', 'garantias-online-360vo'),
+            'compraventa'         => __('Compraventa', 'garantias-online-360vo'),
+            'concesionario_oficial'=> __('Concesionario oficial', 'garantias-online-360vo'),
+            'gestoria'            => __('Gestoría', 'garantias-online-360vo'),
+        ];
+
+        if (isset($map[$value])) {
+            return $map[$value];
+        }
+
+        $value = str_replace(['_', '-'], ' ', $value);
+        return ucwords($value);
+    }
+
+    private static function get_professional_ids_by_type(string $type): array
+    {
+        $type = sanitize_key($type);
+        if ($type === '') {
+            return [];
+        }
+
+        $users = get_users([
+            'role'   => 'go_profesional',
+            'fields' => 'ID',
+        ]);
+
+        if (! $users) {
+            return [];
+        }
+
+        $matched = [];
+        foreach ($users as $user_id) {
+            $labels = UserProfileResolver::get_vendor_labels((int) $user_id);
+            $company = $labels['company']['type']['value'] ?? '';
+            if ($company === $type) {
+                $matched[] = (int) $user_id;
+            }
+        }
+
+        return array_values(array_unique($matched));
+    }
+
+    private static function get_professional_ids_by_commercial(int $commercial_id): array
+    {
+        $commercial_id = absint($commercial_id);
+        if ($commercial_id <= 0) {
+            return [];
+        }
+
+        $users = get_users([
+            'role'       => 'go_profesional',
+            'fields'     => 'ID',
+            'meta_query' => [
+                [
+                    'key'     => 'ajustes_usuarios_comercial_asignado',
+                    'value'   => '"' . $commercial_id . '"',
+                    'compare' => 'LIKE',
+                ],
+            ],
+        ]);
+
+        if (empty($users)) {
+            return [];
+        }
+
+        return array_values(
+            array_unique(
+                array_map('intval', $users)
+            )
+        );
+    }
+
+    private static function collect_payment_methods(array $post_ids): array
+    {
+        $choices = [
+            'domiciliacion_bancaria' => __('Domiciliación bancaria', 'garantias-online-360vo'),
+            'transferencia'         => __('Transferencia bancaria', 'garantias-online-360vo'),
+        ];
+
+        $found = [];
+        foreach ($post_ids as $post_id) {
+            $raw = get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
+            if (is_array($raw)) {
+                $value = sanitize_key($raw['value'] ?? '');
+                $label = sanitize_text_field($raw['label'] ?? '');
+            } else {
+                $value = sanitize_key((string) $raw);
+                $label = '';
+            }
+
+            if ($value === '') {
+                continue;
+            }
+
+            if ($label === '' && isset($choices[$value])) {
+                $label = $choices[$value];
+            }
+
+            if ($label === '') {
+                $label = ucwords(str_replace(['_', '-'], ' ', $value));
+            }
+
+            $found[$value] = [
+                'value' => $value,
+                'label' => $label,
+            ];
+        }
+
+        return array_values($found);
     }
 
     private static function log_payment_event(int $post_id, string $method, string $state, string $actor_type): void
