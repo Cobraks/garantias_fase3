@@ -210,6 +210,7 @@ export default function initAutosave() {
         let latestCertificateUrl = "";
         let postFinalizePromise = null;
         let loadingTimeoutId = null;
+        let latestSignatureStatus = null;
 
         const certificateState = {
                 currentSignature: null,
@@ -218,6 +219,42 @@ export default function initAutosave() {
                 lastResolvedSignature: null,
                 lastResolvedUrl: "",
         };
+
+        function resolveSignatureStatus(rawStatus = null) {
+                const source = rawStatus && typeof rawStatus === "object" ? rawStatus : {};
+                const enabled = Boolean(source.add_firma_sello);
+                const signatureUrl = typeof source.firma === "string" ? source.firma.trim() : "";
+                const sealUrl = typeof source.sello === "string" ? source.sello.trim() : "";
+                return {
+                        enabled,
+                        hasSignature: enabled && signatureUrl !== "",
+                        hasSeal: enabled && sealUrl !== "",
+                };
+        }
+
+        function updateDocsMessage(signatureStatus) {
+                if (signatureStatus === undefined) {
+                        signatureStatus = latestSignatureStatus;
+                } else {
+                        latestSignatureStatus = signatureStatus;
+                }
+                if (!successBlock) return;
+                const docsContainer = successBlock.querySelector(
+                        ".form-success__docs"
+                );
+                if (!docsContainer) return;
+                const messageEl = docsContainer.querySelector(
+                        ".form-success__docs-message"
+                );
+                if (!messageEl) return;
+                const status = signatureStatus || {};
+                const autoReady = Boolean(status.enabled && status.hasSignature && status.hasSeal);
+                const text = autoReady
+                        ? "Certificado listo para descargar y remitir a tu cliente para su firma."
+                        : "Certificado listo para descargar y firmar por el profesional y el comprador.";
+                messageEl.textContent = text;
+                messageEl.hidden = false;
+        }
 
         function refreshDocumentLinks(docLinks = {}, { reset = false, error = false } = {}) {
                 if (!successBlock) return;
@@ -313,6 +350,8 @@ export default function initAutosave() {
                                 }
                         }
                 }
+
+                updateDocsMessage();
         }
 
         function updateSuccessDocuments(docLinks = {}) {
@@ -1175,6 +1214,7 @@ export default function initAutosave() {
                                 }
                         }, 15000);
                 }
+                updateDocsMessage(extras?.signatureStatus ?? null);
                 refreshDocumentLinks(docLinks || {}, { reset: true });
                 const detailsLink = successBlock.querySelector(
                         ".form-success__details-link"
@@ -1286,28 +1326,24 @@ export default function initAutosave() {
                                         }
                                 }
 
-                                const emailTarget = transfer.querySelector("[data-email]");
-                                if (emailTarget) {
-                                        const emailAddress =
-                                                emailTarget.dataset.copyValue ||
-                                                emailTarget.textContent.trim();
-                                        if (emailAddress) {
-                                                emailTarget.dataset.copyValue = emailAddress;
-                                                const emailLink = emailTarget.querySelector(
-                                                        "[data-email-link]"
-                                                );
-                                                if (emailLink) {
-                                                        const baseSubject =
-                                                                "Justificante de transferencia Garantía";
-                                                        const subject = plate
-                                                                ? `${baseSubject} ${plate.toUpperCase()}`
-                                                                : baseSubject;
-                                                        emailLink.href = `mailto:${emailAddress}?subject=${encodeURIComponent(
-                                                                subject
-                                                        )}`;
-                                                        emailLink.textContent =
-                                                                emailLink.dataset.emailBase || emailAddress;
-                                                }
+                                const emailLink = transfer.querySelector("[data-email-link]");
+                                if (emailLink) {
+                                        const baseEmail =
+                                                emailLink.dataset.emailBase ||
+                                                emailLink.textContent.trim() ||
+                                                (emailLink.getAttribute("href") || "")
+                                                        .replace(/^mailto:/i, "")
+                                                        .trim();
+                                        if (baseEmail) {
+                                                const baseSubject =
+                                                        "Justificante de transferencia Garantía";
+                                                const subject = plate
+                                                        ? `${baseSubject} ${plate.toUpperCase()}`
+                                                        : baseSubject;
+                                                emailLink.href = `mailto:${baseEmail}?subject=${encodeURIComponent(
+                                                        subject
+                                                )}`;
+                                                emailLink.textContent = emailLink.dataset.emailBase || baseEmail;
                                         }
                                 }
                         }
@@ -1726,6 +1762,7 @@ export default function initAutosave() {
                                                 typeof json.transfer_iban === "string"
                                                         ? json.transfer_iban.trim()
                                                         : "",
+                                        signatureStatus: resolveSignatureStatus(firmaSello),
                                 };
                                 const transferDeadlineLabel = formatTransferDeadlineLabel(
                                         payload.estado_garantia?.inicio
