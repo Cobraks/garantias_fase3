@@ -61,6 +61,8 @@ class GuaranteeRestController
                         'plan'         => ['validate_callback' => 'absint'],
                         'canal'        => ['sanitize_callback' => 'sanitize_text_field'],
                         'concesionario'=> ['validate_callback' => 'absint'],
+                        'vendor_type'  => ['sanitize_callback' => 'sanitize_key'],
+                        'payment_method' => ['sanitize_callback' => 'sanitize_key'],
                     ],
                 ],
             ]
@@ -2671,6 +2673,8 @@ class GuaranteeRestController
         $plan          = isset($request['plan']) ? absint($request['plan']) : 0;
         $canal         = isset($request['canal']) ? sanitize_text_field($request['canal']) : '';
         $concesionario = isset($request['concesionario']) ? absint($request['concesionario']) : 0;
+        $vendor_type   = isset($request['vendor_type']) ? sanitize_key($request['vendor_type']) : '';
+        $payment_method = isset($request['payment_method']) ? sanitize_key($request['payment_method']) : '';
 
         // ----- CACHING -----
         // Elimina search del cache_key porque si no el mismo usuario puede buscar cosas distintas y obtiene el cache anterior
@@ -2690,6 +2694,12 @@ class GuaranteeRestController
         if ($concesionario) {
             $cache_key .= '_v_' . $concesionario;
         }
+        if ($vendor_type) {
+            $cache_key .= '_vt_' . md5($vendor_type);
+        }
+        if ($payment_method) {
+            $cache_key .= '_pm_' . md5($payment_method);
+        }
         $cache = get_transient($cache_key);
         if ($cache !== false) {
             return $cache;
@@ -2705,6 +2715,7 @@ class GuaranteeRestController
 
         // Permisos: restringe por profesional/comercial salvo admins
         $meta_query = [];
+        $vendor_type_ids = [];
         if (!current_user_can('manage_options')) {
             $user_profesional_ids = [$current_user];
             $users_asignados = get_users([
@@ -2726,6 +2737,13 @@ class GuaranteeRestController
                 'value'   => $user_profesional_ids,
                 'compare' => 'IN',
             ];
+        }
+
+        if ($vendor_type !== '') {
+            $vendor_type_ids = self::get_professional_ids_by_type($vendor_type);
+            if (empty($vendor_type_ids)) {
+                $vendor_type_ids = [0];
+            }
         }
 
         // ---- FILTROS ----
@@ -2773,6 +2791,20 @@ class GuaranteeRestController
             $meta_query[] = [
                 'key'   => 'garantia_contratada_concesionario_empresa_profesional',
                 'value' => $concesionario,
+            ];
+        }
+        if ($vendor_type && ! empty($vendor_type_ids)) {
+            $meta_query[] = [
+                'key'   => 'garantia_contratada_concesionario_empresa_profesional',
+                'value' => $vendor_type_ids,
+                'compare' => 'IN',
+            ];
+        }
+        if ($payment_method) {
+            $meta_query[] = [
+                'key'     => 'garantia_contratada_metodo_pago',
+                'value'   => $payment_method,
+                'compare' => 'LIKE',
             ];
         }
 
@@ -2986,29 +3018,101 @@ class GuaranteeRestController
 
         $users = get_users([
             'role'   => 'go_profesional',
-            'fields' => ['ID'],
+            'fields' => 'ID',
         ]);
         $concesionarios = [];
-        foreach ($users as $u) {
-            $labels = UserProfileResolver::get_vendor_labels((int) $u->ID);
+        foreach ($users as $user_id) {
+            $labels = UserProfileResolver::get_vendor_labels((int) $user_id);
             $name = $labels['company_name'] !== ''
                 ? $labels['company_name']
-                : ($labels['personal_name'] !== '' ? $labels['personal_name'] : sprintf(__('Usuario #%d', 'garantias-online-360vo'), (int) $u->ID));
+                : ($labels['personal_name'] !== '' ? $labels['personal_name'] : sprintf(__('Usuario #%d', 'garantias-online-360vo'), (int) $user_id));
             $concesionarios[] = [
-                'id'   => (int) $u->ID,
+                'id'   => (int) $user_id,
                 'name' => $name,
+                'type' => $labels['company']['type']['value'] ?? '',
+                'type_label' => $labels['company']['type']['label'] ?? '',
             ];
         }
 
+        $payment_methods = self::collect_payment_methods($q->posts);
+
         $response = new WP_REST_Response([
-            'estados'        => $estados,
-            'planes'         => $planes,
-            'concesionarios' => $concesionarios,
+            'estados'          => $estados,
+            'planes'           => $planes,
+            'concesionarios'   => $concesionarios,
+            'payment_methods'  => $payment_methods,
         ]);
 
         set_transient($cache_key, $response, 300);
 
         return $response;
+    }
+
+    private static function get_professional_ids_by_type(string $type): array
+    {
+        $type = sanitize_key($type);
+        if ($type === '') {
+            return [];
+        }
+
+        $users = get_users([
+            'role'   => 'go_profesional',
+            'fields' => 'ID',
+        ]);
+
+        if (! $users) {
+            return [];
+        }
+
+        $matched = [];
+        foreach ($users as $user_id) {
+            $labels = UserProfileResolver::get_vendor_labels((int) $user_id);
+            $company = $labels['company']['type']['value'] ?? '';
+            if ($company === $type) {
+                $matched[] = (int) $user_id;
+            }
+        }
+
+        return array_values(array_unique($matched));
+    }
+
+    private static function collect_payment_methods(array $post_ids): array
+    {
+        $choices = [
+            'domiciliacion_bancaria' => __('Domiciliación bancaria', 'garantias-online-360vo'),
+            'transferencia'         => __('Transferencia bancaria', 'garantias-online-360vo'),
+        ];
+
+        $found = [];
+        foreach ($post_ids as $post_id) {
+            $raw = get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
+            if (is_array($raw)) {
+                $value = sanitize_key($raw['value'] ?? '');
+                $label = sanitize_text_field($raw['label'] ?? '');
+            } else {
+                $value = sanitize_key((string) $raw);
+                $label = '';
+            }
+
+            if ($value === '') {
+                continue;
+            }
+
+            if ($label === '' && isset($choices[$value])) {
+                $label = $choices[$value];
+            }
+
+            if ($label === '') {
+                $label = ucwords(str_replace(['_', '-'], ' ', $value));
+            }
+
+            $found[$value] = [
+                'value' => $value,
+                'label' => $label,
+            ];
+        }
+
+        return array_values($found);
     }
 
     private static function log_payment_event(int $post_id, string $method, string $state, string $actor_type): void

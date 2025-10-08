@@ -18,38 +18,124 @@ $show_channel_col = ! $is_professional;
 
 <!-- 1. FILTROS -->
 <div class="guarantees-list__filters" style="view-transition-name: filtros">
-    <div class="guarantees-list__search-container">
-        <span class="guarantees-list__search-icon" aria-hidden="true">
-            <?php echo Svg::icon('search'); ?>
-        </span>
-        <input
-            type="text"
-            class="guarantees-list__search"
-            placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
-            aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>" id="buscador_mis_garantias">
-        <span class="guarantees-list__close-icon" aria-hidden="true">
-            <?php echo Svg::icon('cerrar'); ?>
-        </span>
+    <div class="guarantees-list__filters-row">
+        <div class="guarantees-list__search-container">
+            <span class="guarantees-list__search-icon" aria-hidden="true">
+                <?php echo Svg::icon('search'); ?>
+            </span>
+            <input
+                type="text"
+                class="guarantees-list__search"
+                placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
+                aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>" id="buscador_mis_garantias">
+            <span class="guarantees-list__close-icon" aria-hidden="true">
+                <?php echo Svg::icon('cerrar'); ?>
+            </span>
+        </div>
+
+        <select
+            class="guarantees-list__filter"
+            data-filter="estado"
+            aria-label="<?php esc_attr_e('Estado', 'garantias-online-360vo'); ?>">
+            <option value=""><?php esc_html_e('Todos los estados', 'garantias-online-360vo'); ?></option>
+        </select>
+
+        <?php if ($is_professional) : ?>
+            <select
+                class="guarantees-list__filter"
+                data-filter="canal"
+                aria-label="<?php esc_attr_e('Canal de venta', 'garantias-online-360vo'); ?>">
+                <option value="" data-channel="">
+                    <?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?>
+                </option>
+                <option value="particular" data-channel="particular">
+                    <?php esc_html_e('Particular', 'garantias-online-360vo'); ?>
+                </option>
+                <option value="profesional" data-channel="profesional" data-vendor-type="">
+                    <?php esc_html_e('Profesional', 'garantias-online-360vo'); ?>
+                </option>
+                <option value="profesional" data-channel="profesional" data-vendor-type="compraventa">
+                    <?php esc_html_e('Comercial', 'garantias-online-360vo'); ?>
+                </option>
+                <option value="profesional" data-channel="profesional" data-vendor-type="concesionario_oficial">
+                    <?php esc_html_e('Concesionario oficial', 'garantias-online-360vo'); ?>
+                </option>
+                <option value="gestoria" data-channel="gestoria">
+                    <?php esc_html_e('Gestoría', 'garantias-online-360vo'); ?>
+                </option>
+            </select>
+
+            <div class="guarantees-list__filter-wrapper guarantees-list__filter-wrapper--clients" data-clients-wrapper hidden>
+                <select
+                    class="guarantees-list__filter"
+                    data-filter="cliente"
+                    aria-label="<?php esc_attr_e('Clientes profesionales', 'garantias-online-360vo'); ?>">
+                    <option value="">
+                        <?php esc_html_e('Todos los clientes', 'garantias-online-360vo'); ?>
+                    </option>
+                </select>
+            </div>
+
+            <div class="guarantees-list__filters-more">
+                <button
+                    type="button"
+                    class="guarantees-list__more-filters-btn"
+                    data-more-filters
+                    data-default-label="<?php esc_attr_e('Más filtros', 'garantias-online-360vo'); ?>"
+                    data-active-label="<?php esc_attr_e('Ocultar filtros', 'garantias-online-360vo'); ?>"
+                    aria-expanded="false">
+                    <?php echo Svg::icon('filter_funnel', 'guarantees-list__more-filters-icon'); ?>
+                    <span class="guarantees-list__more-filters-label">
+                        <?php esc_html_e('Más filtros', 'garantias-online-360vo'); ?>
+                    </span>
+                </button>
+            </div>
+        <?php else : ?>
+            <select
+                class="guarantees-list__filter"
+                data-filter="plan"
+                aria-label="<?php esc_attr_e('Plan', 'garantias-online-360vo'); ?>">
+                <option value=""><?php esc_html_e('Todos los planes', 'garantias-online-360vo'); ?></option>
+            </select>
+
+            <select
+                class="guarantees-list__filter"
+                data-filter="canal"
+                aria-label="<?php esc_attr_e('Canal de venta', 'garantias-online-360vo'); ?>">
+                <option value=""><?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?></option>
+                <option value="Particular"><?php esc_html_e('Particular', 'garantias-online-360vo'); ?></option>
+                <option value="Profesional"><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></option>
+                <option value="Gestoría"><?php esc_html_e('Gestoría', 'garantias-online-360vo'); ?></option>
+            </select>
+
+            <select
+                class="guarantees-list__filter"
+                data-filter="cliente"
+                aria-label="<?php esc_attr_e('Concesionario', 'garantias-online-360vo'); ?>">
+                <option value=""><?php esc_html_e('Concesionario', 'garantias-online-360vo'); ?></option>
+            </select>
+        <?php endif; ?>
     </div>
 
-    <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Estado', 'garantias-online-360vo'); ?>">
-        <option value=""><?php esc_html_e('Todos los estados', 'garantias-online-360vo'); ?></option>
-    </select>
+    <?php if ($is_professional) : ?>
+        <div class="guarantees-list__filters-advanced" data-advanced-panel hidden>
+            <div class="guarantees-list__filters-advanced-grid">
+                <select
+                    class="guarantees-list__filter"
+                    data-filter="plan"
+                    aria-label="<?php esc_attr_e('Coberturas', 'garantias-online-360vo'); ?>">
+                    <option value=""><?php esc_html_e('Todas las coberturas', 'garantias-online-360vo'); ?></option>
+                </select>
 
-    <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Plan', 'garantias-online-360vo'); ?>">
-        <option value=""><?php esc_html_e('Todos los planes', 'garantias-online-360vo'); ?></option>
-    </select>
-
-    <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Canal de venta', 'garantias-online-360vo'); ?>">
-        <option value=""><?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?></option>
-        <option value="Particular"><?php esc_html_e('Particular', 'garantias-online-360vo'); ?></option>
-        <option value="Profesional"><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></option>
-        <option value="Gestoría"><?php esc_html_e('Gestoría', 'garantias-online-360vo'); ?></option>
-    </select>
-
-    <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Concesionario', 'garantias-online-360vo'); ?>">
-        <option value=""><?php esc_html_e('Concesionario', 'garantias-online-360vo'); ?></option>
-    </select>
+                <select
+                    class="guarantees-list__filter"
+                    data-filter="payment"
+                    aria-label="<?php esc_attr_e('Método de pago', 'garantias-online-360vo'); ?>">
+                    <option value=""><?php esc_html_e('Todos los métodos de pago', 'garantias-online-360vo'); ?></option>
+                </select>
+            </div>
+        </div>
+    <?php endif; ?>
 </div>
 
 <div class="guarantees-container">
