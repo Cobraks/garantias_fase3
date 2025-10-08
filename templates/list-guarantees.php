@@ -18,38 +18,190 @@ $show_channel_col = ! $is_professional;
 
 <!-- 1. FILTROS -->
 <div class="guarantees-list__filters" style="view-transition-name: filtros">
-    <div class="guarantees-list__search-container">
-        <span class="guarantees-list__search-icon" aria-hidden="true">
-            <?php echo Svg::icon('search'); ?>
-        </span>
-        <input
-            type="text"
-            class="guarantees-list__search"
-            placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
-            aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>" id="buscador_mis_garantias">
-        <span class="guarantees-list__close-icon" aria-hidden="true">
-            <?php echo Svg::icon('cerrar'); ?>
-        </span>
+    <div class="guarantees-list__filters-row">
+        <div class="guarantees-list__search-container">
+            <span class="guarantees-list__search-icon" aria-hidden="true">
+                <?php echo Svg::icon('search'); ?>
+            </span>
+            <input
+                type="text"
+                class="guarantees-list__search"
+                placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
+                aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>" id="buscador_mis_garantias">
+            <span class="guarantees-list__close-icon" aria-hidden="true">
+                <?php echo Svg::icon('cerrar'); ?>
+            </span>
+        </div>
+
+        <select
+            class="guarantees-list__filter"
+            data-filter="estado"
+            aria-label="<?php esc_attr_e('Estado', 'garantias-online-360vo'); ?>">
+            <option value=""><?php esc_html_e('Todos los estados', 'garantias-online-360vo'); ?></option>
+        </select>
+
+        <select
+            class="guarantees-list__filter"
+            data-filter="canal"
+            aria-label="<?php esc_attr_e('Canal de venta', 'garantias-online-360vo'); ?>">
+            <option value="" data-channel="">
+                <?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?>
+            </option>
+            <option value="particular" data-channel="particular">
+                <?php esc_html_e('Particular', 'garantias-online-360vo'); ?>
+            </option>
+            <option value="profesional" data-channel="profesional" data-vendor-type="">
+                <?php esc_html_e('Profesional', 'garantias-online-360vo'); ?>
+            </option>
+            <option value="profesional" data-channel="profesional" data-vendor-type="compraventa">
+                <?php esc_html_e('Compraventa', 'garantias-online-360vo'); ?>
+            </option>
+            <option value="profesional" data-channel="profesional" data-vendor-type="concesionario_oficial">
+                <?php esc_html_e('Concesionario oficial', 'garantias-online-360vo'); ?>
+            </option>
+            <option value="gestoria" data-channel="gestoria" data-vendor-type="gestoria">
+                <?php esc_html_e('Gestoría', 'garantias-online-360vo'); ?>
+            </option>
+        </select>
+
+        <div class="guarantees-list__filter-wrapper guarantees-list__filter-wrapper--clients" data-clients-wrapper hidden>
+            <select
+                class="guarantees-list__filter"
+                data-filter="cliente"
+                aria-label="<?php esc_attr_e('Empresas', 'garantias-online-360vo'); ?>">
+                <option value="">
+                    <?php esc_html_e('Todos los clientes', 'garantias-online-360vo'); ?>
+                </option>
+            </select>
+        </div>
+
+        <div class="guarantees-list__filters-actions">
+            <?php if (! $is_professional) : ?>
+                <?php
+                $sort_presets = [
+                    [
+                        'key'          => 'created_desc',
+                        'label'        => __('Alta más reciente', 'garantias-online-360vo'),
+                        'order_by'     => 'created',
+                        'order'        => 'desc',
+                        'is_default'   => true,
+                    ],
+                    [
+                        'key'      => 'created_asc',
+                        'label'    => __('Alta más antigua', 'garantias-online-360vo'),
+                        'order_by' => 'created',
+                        'order'    => 'asc',
+                    ],
+                    [
+                        'key'      => 'valid_from_desc',
+                        'label'    => __('Validez más reciente', 'garantias-online-360vo'),
+                        'order_by' => 'valid_from',
+                        'order'    => 'desc',
+                    ],
+                    [
+                        'key'      => 'valid_from_asc',
+                        'label'    => __('Validez más antigua', 'garantias-online-360vo'),
+                        'order_by' => 'valid_from',
+                        'order'    => 'asc',
+                    ],
+                    [
+                        'key'      => 'valid_until_asc',
+                        'label'    => __('Caduca antes', 'garantias-online-360vo'),
+                        'order_by' => 'valid_until',
+                        'order'    => 'asc',
+                    ],
+                    [
+                        'key'      => 'valid_until_desc',
+                        'label'    => __('Caduca más tarde', 'garantias-online-360vo'),
+                        'order_by' => 'valid_until',
+                        'order'    => 'desc',
+                    ],
+                ];
+                $default_sort = current(array_filter($sort_presets, static fn($preset) => !empty($preset['is_default'])));
+                $default_sort_key = is_array($default_sort) && ! empty($default_sort['key'])
+                    ? $default_sort['key']
+                    : 'created_desc';
+                $default_sort_label = is_array($default_sort) && ! empty($default_sort['label'])
+                    ? $default_sort['label']
+                    : __('Alta más reciente', 'garantias-online-360vo');
+                ?>
+                <div class="guarantees-list__order" data-order-root>
+                    <button
+                        type="button"
+                        class="guarantees-list__order-btn"
+                        data-order-toggle
+                        data-default-sort="<?php echo esc_attr($default_sort_key); ?>"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-controls="guarantees-order-menu">
+                        <?php echo Svg::icon('sort_lines', 'guarantees-list__order-icon'); ?>
+                        <span class="guarantees-list__order-labels">
+                            <span class="guarantees-list__order-title"><?php esc_html_e('Ordenar', 'garantias-online-360vo'); ?></span>
+                            <span class="guarantees-list__order-current" data-order-label>
+                                <?php echo esc_html($default_sort_label); ?>
+                            </span>
+                        </span>
+                        <span class="guarantees-list__order-caret" aria-hidden="true">
+                            <?php echo Svg::icon('arrow_drop_down'); ?>
+                        </span>
+                    </button>
+                    <div
+                        class="guarantees-list__order-menu"
+                        id="guarantees-order-menu"
+                        role="menu"
+                        data-order-menu
+                        hidden>
+                        <?php foreach ($sort_presets as $preset) : ?>
+                            <button
+                                type="button"
+                                class="guarantees-list__order-option<?php echo ! empty($preset['is_default']) ? ' is-active' : ''; ?>"
+                                role="menuitemradio"
+                                aria-checked="<?php echo ! empty($preset['is_default']) ? 'true' : 'false'; ?>"
+                                data-sort-key="<?php echo esc_attr($preset['key']); ?>"
+                                data-order-by="<?php echo esc_attr($preset['order_by']); ?>"
+                                data-order-direction="<?php echo esc_attr($preset['order']); ?>"
+                                <?php echo ! empty($preset['is_default']) ? 'data-default="true"' : ''; ?>>
+                                <?php echo esc_html($preset['label']); ?>
+                            </button>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <div class="guarantees-list__filters-more">
+                <button
+                    type="button"
+                    class="guarantees-list__more-filters-btn"
+                    data-more-filters
+                    data-default-label="<?php esc_attr_e('Más filtros', 'garantias-online-360vo'); ?>"
+                    data-active-label="<?php esc_attr_e('Ocultar filtros', 'garantias-online-360vo'); ?>"
+                    aria-expanded="false">
+                    <?php echo Svg::icon('filter_funnel', 'guarantees-list__more-filters-icon'); ?>
+                    <span class="guarantees-list__more-filters-label">
+                        <?php esc_html_e('Más filtros', 'garantias-online-360vo'); ?>
+                    </span>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Estado', 'garantias-online-360vo'); ?>">
-        <option value=""><?php esc_html_e('Todos los estados', 'garantias-online-360vo'); ?></option>
-    </select>
+    <div class="guarantees-list__filters-advanced" data-advanced-panel hidden>
+        <div class="guarantees-list__filters-advanced-grid">
+            <select
+                class="guarantees-list__filter"
+                data-filter="plan"
+                aria-label="<?php esc_attr_e('Coberturas', 'garantias-online-360vo'); ?>">
+                <option value=""><?php esc_html_e('Todas las coberturas', 'garantias-online-360vo'); ?></option>
+            </select>
 
-    <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Plan', 'garantias-online-360vo'); ?>">
-        <option value=""><?php esc_html_e('Todos los planes', 'garantias-online-360vo'); ?></option>
-    </select>
-
-    <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Canal de venta', 'garantias-online-360vo'); ?>">
-        <option value=""><?php esc_html_e('Canal de venta', 'garantias-online-360vo'); ?></option>
-        <option value="Particular"><?php esc_html_e('Particular', 'garantias-online-360vo'); ?></option>
-        <option value="Profesional"><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></option>
-        <option value="Gestoría"><?php esc_html_e('Gestoría', 'garantias-online-360vo'); ?></option>
-    </select>
-
-    <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Concesionario', 'garantias-online-360vo'); ?>">
-        <option value=""><?php esc_html_e('Concesionario', 'garantias-online-360vo'); ?></option>
-    </select>
+            <select
+                class="guarantees-list__filter"
+                data-filter="payment"
+                aria-label="<?php esc_attr_e('Método de pago', 'garantias-online-360vo'); ?>">
+                <option value=""><?php esc_html_e('Todos los métodos de pago', 'garantias-online-360vo'); ?></option>
+            </select>
+        </div>
+    </div>
 </div>
 
 <div class="guarantees-container">

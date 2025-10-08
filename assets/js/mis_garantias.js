@@ -213,18 +213,55 @@ const ADD_DOC_KEY = "add-document";
                 let panel2 = document.getElementById("detail-panel-2");
                 let lastEmptyPanel = panel1;
 
-                const filterSelects = document.querySelectorAll(
-                        ".guarantees-list__filter"
+                const filtersRoot = document.querySelector(
+                        ".guarantees-list__filters"
                 );
-                const estadoSelect = filterSelects[0];
-                const planSelect = filterSelects[1];
-                const canalSelect = filterSelects[2];
-                const concesionarioSelect = filterSelects[3];
+                const estadoSelect = document.querySelector(
+                        '[data-filter="estado"]'
+                );
+                const planSelect = document.querySelector(
+                        '[data-filter="plan"]'
+                );
+                const canalSelect = document.querySelector(
+                        '[data-filter="canal"]'
+                );
+                const concesionarioSelect = document.querySelector(
+                        '[data-filter="cliente"]'
+                );
+                const paymentSelect = document.querySelector(
+                        '[data-filter="payment"]'
+                );
+                const clientsWrapper = document.querySelector(
+                        "[data-clients-wrapper]"
+                );
+                const moreFiltersToggle = document.querySelector(
+                        "[data-more-filters]"
+                );
+                const advancedPanel = document.querySelector(
+                        "[data-advanced-panel]"
+                );
+                const orderRoot = document.querySelector("[data-order-root]");
+                const orderToggle = orderRoot
+                        ? orderRoot.querySelector("[data-order-toggle]")
+                        : null;
+                const orderMenu = orderRoot
+                        ? orderRoot.querySelector("[data-order-menu]")
+                        : null;
+                const orderLabelNode = orderRoot
+                        ? orderRoot.querySelector("[data-order-label]")
+                        : null;
                 let selectedEstado = "";
                 let selectedPlan = "";
                 let selectedCanal = "";
                 let selectedConcesionario = "";
+                let selectedVendorType = "";
+                let selectedPaymentMethod = "";
+                let selectedOrderKey = "created_desc";
+                let selectedOrderBy = "created";
+                let selectedOrderDirection = "desc";
                 let currentListAbort = null;
+                let rawClients = [];
+                const orderOptions = new Map();
 
 		let resultMessage = document.querySelector(
 			".guarantees-list__result-message"
@@ -259,8 +296,28 @@ const ADD_DOC_KEY = "add-document";
                 const loadedIds = new Set();
                 const listCache = new Map();
 
-                function buildListCacheKey(search = "", estado = "", plan = "", canal = "", concesionario = "") {
-                        return [search, estado, plan, canal, concesionario].join("|");
+                function buildListCacheKey(
+                        search = "",
+                        estado = "",
+                        plan = "",
+                        canal = "",
+                        concesionario = "",
+                        vendorType = "",
+                        payment = "",
+                        orderBy = "",
+                        orderDirection = ""
+                ) {
+                        return [
+                                search,
+                                estado,
+                                plan,
+                                canal,
+                                concesionario,
+                                vendorType,
+                                payment,
+                                orderBy,
+                                orderDirection,
+                        ].join("|");
                 }
 
                 function renderFromCache(cache) {
@@ -272,6 +329,93 @@ const ADD_DOC_KEY = "add-document";
                         totalPosts = cache.totalPosts;
                         hasMore = currentPage < totalPages;
                         spinner.style.display = hasMore ? "" : "none";
+                }
+
+                function getSelectedChannelData() {
+                        if (!canalSelect) {
+                                return { channel: "", vendorType: "" };
+                        }
+                        const option = canalSelect.options[canalSelect.selectedIndex];
+                        if (!option) {
+                                return { channel: "", vendorType: "" };
+                        }
+                        const dataset = option.dataset || {};
+                        const channel = dataset.channel || option.value || "";
+                        const vendorType = dataset.vendorType || "";
+
+                        return { channel, vendorType };
+                }
+
+                function populateClientsSelect(filterType = "") {
+                        if (!concesionarioSelect) {
+                                return;
+                        }
+                        const previous = concesionarioSelect.value;
+                        concesionarioSelect
+                                .querySelectorAll("option:not(:first-child)")
+                                .forEach((opt) => opt.remove());
+
+                        if (!Array.isArray(rawClients) || rawClients.length === 0) {
+                                selectedConcesionario = "";
+                                return;
+                        }
+
+                        const filtered = rawClients.filter((client) => {
+                                if (!filterType) {
+                                        return true;
+                                }
+                                return (client.type || "") === filterType;
+                        });
+
+                        filtered.forEach((client) => {
+                                const opt = document.createElement("option");
+                                opt.value = String(client.id);
+                                opt.textContent = client.name;
+                                if (client.type) {
+                                        opt.dataset.type = client.type;
+                                }
+                                concesionarioSelect.appendChild(opt);
+                        });
+
+                        if (
+                                previous &&
+                                filtered.some((client) => String(client.id) === previous)
+                        ) {
+                                concesionarioSelect.value = previous;
+                                selectedConcesionario = previous;
+                        } else {
+                                concesionarioSelect.value = "";
+                                selectedConcesionario = "";
+                        }
+                }
+
+                function refreshClientsVisibility() {
+                        const { channel, vendorType } = getSelectedChannelData();
+                        selectedCanal = channel;
+
+                        if (!clientsWrapper) {
+                                selectedVendorType = "";
+                                return;
+                        }
+
+                        selectedVendorType = vendorType;
+                        const shouldShow =
+                                channel === "profesional" || channel === "gestoria";
+
+                        if (shouldShow) {
+                                clientsWrapper.hidden = false;
+                        } else {
+                                clientsWrapper.hidden = true;
+                        }
+
+                        if (!shouldShow) {
+                                selectedConcesionario = "";
+                                if (concesionarioSelect) {
+                                        concesionarioSelect.value = "";
+                                }
+                        }
+
+                        populateClientsSelect(shouldShow ? vendorType : "");
                 }
 
                 function fetchDetail(id) {
@@ -1969,12 +2113,32 @@ const ADD_DOC_KEY = "add-document";
                                 typeof options.concesionario !== "undefined"
                                         ? options.concesionario
                                         : selectedConcesionario;
+                        const vendorType =
+                                typeof options.vendorType === "string"
+                                        ? options.vendorType
+                                        : selectedVendorType;
+                        const paymentMethod =
+                                typeof options.paymentMethod === "string"
+                                        ? options.paymentMethod
+                                        : selectedPaymentMethod;
+                        const orderBy =
+                                typeof options.orderBy === "string" && options.orderBy
+                                        ? options.orderBy
+                                        : selectedOrderBy;
+                        const orderDirection =
+                                typeof options.orderDirection === "string" && options.orderDirection
+                                        ? options.orderDirection
+                                        : selectedOrderDirection;
                         const cacheKey = buildListCacheKey(
                                 search,
                                 estado,
                                 plan,
                                 canal,
-                                concesionario
+                                concesionario,
+                                vendorType,
+                                paymentMethod,
+                                orderBy,
+                                orderDirection
                         );
                         try {
                                 if (currentListAbort) currentListAbort.abort();
@@ -1990,6 +2154,14 @@ const ADD_DOC_KEY = "add-document";
                                 if (canal) params.append("canal", canal);
                                 if (concesionario)
                                         params.append("concesionario", concesionario);
+                                if (vendorType)
+                                        params.append("vendor_type", vendorType);
+                                if (paymentMethod)
+                                        params.append("payment_method", paymentMethod);
+                                if (orderBy)
+                                        params.append("order_by", orderBy);
+                                if (orderDirection)
+                                        params.append("order", orderDirection);
                                 let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
                                 const res = await fetch(url, {
                                         headers: { "X-WP-Nonce": restNonce },
@@ -3310,8 +3482,8 @@ function initRowSelection() {
                 (() => {
                         const filters = document.querySelector(".guarantees-list__filters"),
                                 header = document.querySelector(".top-bar");
-			if (filters && header) {
-				new IntersectionObserver(
+                        if (filters && header) {
+                                new IntersectionObserver(
 					([e]) => {
 						const a = !e.isIntersecting;
 						filters.classList.toggle("sticky-active", a);
@@ -3335,6 +3507,214 @@ function initRowSelection() {
                         );
                 })();
 
+                function normalizeFilterValues(items) {
+                        if (!Array.isArray(items)) {
+                                return new Set();
+                        }
+                        return new Set(
+                                items
+                                        .map((item) => {
+                                                if (typeof item === "string") {
+                                                        return item;
+                                                }
+                                                if (item && typeof item === "object") {
+                                                        return item.value || item.slug || "";
+                                                }
+                                                return "";
+                                        })
+                                        .filter(Boolean)
+                        );
+                }
+
+                function syncChannelOptionVisibility(channels = [], vendorTypes = []) {
+                        if (!canalSelect) {
+                                return;
+                        }
+
+                        const channelSet = normalizeFilterValues(channels);
+                        const vendorTypeSet = normalizeFilterValues(vendorTypes);
+                        let selectionChanged = false;
+
+                        Array.from(canalSelect.options).forEach((option) => {
+                                if (option.value === "") {
+                                        return;
+                                }
+                                const channel = option.dataset.channel || option.value || "";
+                                const vendorType = option.dataset.vendorType || "";
+                                let visible = true;
+                                if (vendorType) {
+                                        visible = vendorTypeSet.size === 0 || vendorTypeSet.has(vendorType);
+                                } else if (channel) {
+                                        visible = channelSet.size === 0 || channelSet.has(channel);
+                                }
+                                option.hidden = !visible;
+                        });
+
+                        const selectedOption = canalSelect.options[canalSelect.selectedIndex];
+                        if (selectedOption && selectedOption.hidden) {
+                                canalSelect.value = "";
+                                selectedCanal = "";
+                                selectedVendorType = "";
+                                selectionChanged = true;
+                        }
+
+                        refreshClientsVisibility();
+
+                        if (selectionChanged) {
+                                applyFilters();
+                        }
+                }
+
+                function setOrderSelection(key, { trigger = true } = {}) {
+                        if (!orderOptions.has(key)) {
+                                return;
+                        }
+                        const config = orderOptions.get(key) || {};
+                        selectedOrderKey = key;
+                        selectedOrderBy = config.orderBy || "created";
+                        selectedOrderDirection =
+                                config.direction === "asc" ? "asc" : "desc";
+
+                        if (orderLabelNode && config.label) {
+                                orderLabelNode.textContent = config.label;
+                        }
+
+                        if (orderMenu) {
+                                orderMenu
+                                        .querySelectorAll("[data-sort-key]")
+                                        .forEach((button) => {
+                                                const isActive =
+                                                        button.dataset.sortKey === key;
+                                                button.classList.toggle(
+                                                        "is-active",
+                                                        isActive
+                                                );
+                                                button.setAttribute(
+                                                        "aria-checked",
+                                                        isActive ? "true" : "false"
+                                                );
+                                        });
+                        }
+
+                        if (trigger) {
+                                applyFilters();
+                        }
+                }
+
+                function openOrderMenu() {
+                        if (!orderRoot || !orderMenu || !orderToggle) {
+                                return;
+                        }
+                        orderRoot.setAttribute("data-open", "true");
+                        orderToggle.setAttribute("aria-expanded", "true");
+                        orderMenu.removeAttribute("hidden");
+                }
+
+                function closeOrderMenu() {
+                        if (!orderRoot || !orderMenu || !orderToggle) {
+                                return;
+                        }
+                        orderRoot.removeAttribute("data-open");
+                        orderToggle.setAttribute("aria-expanded", "false");
+                        orderMenu.setAttribute("hidden", "");
+                }
+
+                if (orderMenu) {
+                        const buttons = Array.from(
+                                orderMenu.querySelectorAll("[data-sort-key]")
+                        );
+                        buttons.forEach((button) => {
+                                const key = button.dataset.sortKey || "";
+                                if (!key) {
+                                        return;
+                                }
+                                const orderBy = button.dataset.orderBy || "created";
+                                const direction =
+                                        (button.dataset.orderDirection || "desc").toLowerCase() ===
+                                        "asc"
+                                                ? "asc"
+                                                : "desc";
+                                const label = (button.textContent || "").trim();
+                                orderOptions.set(key, {
+                                        orderBy,
+                                        direction,
+                                        label,
+                                });
+                        });
+
+                        let initialKey = orderToggle
+                                ? orderToggle.getAttribute("data-default-sort") || ""
+                                : "";
+                        if (!initialKey || !orderOptions.has(initialKey)) {
+                                const defaultButton = orderMenu.querySelector(
+                                        "[data-default][data-sort-key]"
+                                );
+                                if (
+                                        defaultButton &&
+                                        orderOptions.has(defaultButton.dataset.sortKey || "")
+                                ) {
+                                        initialKey = defaultButton.dataset.sortKey;
+                                }
+                        }
+                        if (!initialKey) {
+                                const first = orderOptions.keys().next();
+                                if (!first.done) {
+                                        initialKey = first.value;
+                                }
+                        }
+                        if (initialKey) {
+                                setOrderSelection(initialKey, { trigger: false });
+                        }
+
+                        buttons.forEach((button) => {
+                                button.addEventListener("click", () => {
+                                        const key = button.dataset.sortKey || "";
+                                        if (!key) {
+                                                return;
+                                        }
+                                        closeOrderMenu();
+                                        setOrderSelection(key);
+                                });
+                        });
+                }
+
+                if (orderToggle && orderMenu) {
+                        orderToggle.addEventListener("click", (event) => {
+                                event.preventDefault();
+                                const isOpen = orderRoot?.getAttribute("data-open") === "true";
+                                if (isOpen) {
+                                        closeOrderMenu();
+                                } else {
+                                        openOrderMenu();
+                                }
+                        });
+                }
+
+                if (orderRoot && orderMenu) {
+                        document.addEventListener("click", (event) => {
+                                if (orderMenu.hasAttribute("hidden")) {
+                                        return;
+                                }
+                                if (orderRoot.contains(event.target)) {
+                                        return;
+                                }
+                                closeOrderMenu();
+                        });
+
+                        document.addEventListener("keydown", (event) => {
+                                if (event.key !== "Escape") {
+                                        return;
+                                }
+                                if (orderMenu.hasAttribute("hidden")) {
+                                        return;
+                                }
+                                closeOrderMenu();
+                                if (orderToggle) {
+                                        orderToggle.focus();
+                                }
+                        });
+                }
+
                 async function fetchFilters() {
                         try {
                                 const res = await fetch(
@@ -3346,6 +3726,9 @@ function initRowSelection() {
                                         estados = [],
                                         planes = [],
                                         concesionarios = [],
+                                        payment_methods: paymentMethods = [],
+                                        channels = [],
+                                        vendor_types: vendorTypes = [],
                                 } = await res.json();
                                 if (estadoSelect) {
                                         estadoSelect
@@ -3371,17 +3754,33 @@ function initRowSelection() {
                                                 planSelect.appendChild(opt);
                                         });
                                 }
-                                if (concesionarioSelect) {
-                                        concesionarioSelect
+                                if (Array.isArray(concesionarios)) {
+                                        rawClients = concesionarios.map((client) => ({
+                                                id: client.id,
+                                                name: client.name,
+                                                type: client.type || "",
+                                        }));
+                                        populateClientsSelect(selectedVendorType);
+                                }
+                                if (paymentSelect) {
+                                        paymentSelect
                                                 .querySelectorAll("option:not(:first-child)")
                                                 .forEach((o) => o.remove());
-                                        concesionarios.forEach((c) => {
+                                        paymentMethods.forEach((method) => {
                                                 const opt = document.createElement("option");
-                                                opt.value = c.id;
-                                                opt.textContent = c.name;
-                                                concesionarioSelect.appendChild(opt);
+                                                if (method && typeof method === "object") {
+                                                        opt.value = method.value;
+                                                        opt.textContent = method.label;
+                                                } else {
+                                                        const value = typeof method === "string" ? method : "";
+                                                        opt.value = value;
+                                                        opt.textContent = value;
+                                                }
+                                                paymentSelect.appendChild(opt);
                                         });
                                 }
+                                syncChannelOptionVisibility(channels, vendorTypes);
+                                refreshClientsVisibility();
                         } catch (e) {
                                 console.error("❌ Error fetching filters:", e);
                         }
@@ -3397,7 +3796,11 @@ function initRowSelection() {
                                 selectedEstado,
                                 selectedPlan,
                                 selectedCanal,
-                                selectedConcesionario
+                                selectedConcesionario,
+                                selectedVendorType,
+                                selectedPaymentMethod,
+                                selectedOrderBy,
+                                selectedOrderDirection
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
@@ -3422,9 +3825,14 @@ function initRowSelection() {
                                 selectedPlan = planSelect.value;
                                 applyFilters();
                         });
+                if (paymentSelect)
+                        paymentSelect.addEventListener("change", () => {
+                                selectedPaymentMethod = paymentSelect.value;
+                                applyFilters();
+                        });
                 if (canalSelect)
                         canalSelect.addEventListener("change", () => {
-                                selectedCanal = canalSelect.value;
+                                refreshClientsVisibility();
                                 applyFilters();
                         });
                 if (concesionarioSelect)
@@ -3433,6 +3841,53 @@ function initRowSelection() {
                                 applyFilters();
                         });
 
+                if (moreFiltersToggle && advancedPanel) {
+                        const labelNode = moreFiltersToggle.querySelector(
+                                ".guarantees-list__more-filters-label"
+                        );
+                        const defaultLabel =
+                                moreFiltersToggle.getAttribute("data-default-label") ||
+                                (labelNode ? labelNode.textContent || "" : "");
+                        const activeLabel =
+                                moreFiltersToggle.getAttribute("data-active-label") || defaultLabel;
+
+                        const setAdvancedOpen = (open) => {
+                                if (!advancedPanel) return;
+                                if (open) {
+                                        advancedPanel.removeAttribute("hidden");
+                                } else {
+                                        advancedPanel.setAttribute("hidden", "");
+                                }
+                                moreFiltersToggle.setAttribute(
+                                        "aria-expanded",
+                                        open ? "true" : "false"
+                                );
+                                if (filtersRoot) {
+                                        if (open) {
+                                                filtersRoot.setAttribute(
+                                                        "data-advanced-open",
+                                                        "true"
+                                                );
+                                        } else {
+                                                filtersRoot.removeAttribute(
+                                                        "data-advanced-open"
+                                                );
+                                        }
+                                }
+                                if (labelNode) {
+                                        labelNode.textContent = open
+                                                ? activeLabel
+                                                : defaultLabel;
+                                }
+                        };
+
+                        moreFiltersToggle.addEventListener("click", () => {
+                                const isOpen = !advancedPanel.hasAttribute("hidden");
+                                setAdvancedOpen(!isOpen);
+                        });
+                }
+
+                refreshClientsVisibility();
                 fetchFilters();
 
                 const input = document.getElementById("buscador_mis_garantias");
@@ -3449,7 +3904,11 @@ function initRowSelection() {
                                 selectedEstado,
                                 selectedPlan,
                                 selectedCanal,
-                                selectedConcesionario
+                                selectedConcesionario,
+                                selectedVendorType,
+                                selectedPaymentMethod,
+                                selectedOrderBy,
+                                selectedOrderDirection
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
