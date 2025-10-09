@@ -3380,16 +3380,6 @@ const ADD_DOC_KEY = "add-document";
                                         updateAdminSummaryContext(root, toggle.value || toggle.getAttribute("value"));
                                 });
                         });
-                        const helpButton = root.querySelector("[data-admin-summary-help]");
-                        if (helpButton) {
-                                helpButton.addEventListener("click", () => {
-                                        const event = new CustomEvent("go:summary-help", {
-                                                bubbles: true,
-                                                detail: { source: "admin-summary" },
-                                        });
-                                        root.dispatchEvent(event);
-                                });
-                        }
                         const preloadNode = root.querySelector("[data-admin-summary-preload]");
                         let preloadedData = null;
                         if (preloadNode) {

@@ -194,7 +194,7 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
                 'label'       => __('Pendientes de pago', 'garantias-online-360vo'),
                 'filter'      => 'pendiente_pago',
                 'accent'      => 'var(--admin-summary-action-payment)',
-                'icon'        => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M1.92.506a.5.5 0 0 1 .434.146L3 1.293l.646-.647a.5.5 0 0 1 .708 0L5 1.293l.646-.647a.5.5 0 0 1 .708 0L7 1.293l.646-.647a.5.5 0 0 1 .708 0L9 1.293l.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .801.13l.5 1A.5.5 0 0 1 15 2v12a.5.5 0 0 1-.053.224l-.5 1a.5.5 0 0 1-.8.13L13 14.707l-.646.647a.5.5 0 0 1-.708 0L11 14.707l-.646.647a.5.5 0 0 1-.708 0L9 14.707l-.646.647a.5.5 0 0 1-.708 0L7 14.707l-.646.647a.5.5 0 0 1-.708 0L5 14.707l-.646.647a.5.5 0 0 1-.708 0L3 14.707l-.646.647a.5.5 0 0 1-.801-.13l-.5-1A.5.5 0 0 1 1 14V2a.5.5 0 0 1 .053-.224l.5-1a.5.5 0 0 1 .367-.27zm.217 1.338L2 2.118v11.764l.137.274.51-.51a.5.5 0 0 1 .707 0l.646.647.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.51.51.137-.274V2.118l-.137-.274-.51.51a.5.5 0 0 1-.707 0L12 1.707l-.646.647a.5.5 0 0 1-.708 0L10 1.707l-.646.647a.5.5 0 0 1-.708 0L8 1.707l-.646.647a.5.5 0 0 1-.708 0L6 1.707l-.646.647a.5.5 0 0 1-.708 0L4 1.707l-.646.647a.5.5 0 0 1-.708 0l-.51-.51z"/></svg>',
+                'icon'        => Svg::icon('warning'),
                 'pending'     => $pending_payment,
             ],
             [
@@ -202,15 +202,15 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
                 'label'       => __('Pendientes de verificar transferencia', 'garantias-online-360vo'),
                 'filter'      => 'validacion_pendiente',
                 'accent'      => 'var(--admin-summary-action-validation)',
-                'icon'        => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>',
+                'icon'        => Svg::icon('transfer_review'),
                 'pending'     => $pending_validation,
             ],
             [
                 'key'         => 'collect',
                 'label'       => __('Pendientes de cobrar domiciliación', 'garantias-online-360vo'),
                 'filter'      => 'pendiente_cobro',
-                'accent'      => 'var(--admin-summary-action-collect)',
-                'icon'        => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>',
+                'accent'      => 'var(--admin-summary-action-validation)',
+                'icon'        => Svg::icon('payment'),
                 'pending'     => $pending_collect,
             ],
         ];
@@ -663,9 +663,6 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
                                 <?php esc_html_e('Mensual', 'garantias-online-360vo'); ?>
                             </label>
                         </fieldset>
-                        <button type="button" class="guarantee-admin-summary__help" data-admin-summary-help aria-label="<?php esc_attr_e('Mostrar ayuda', 'garantias-online-360vo'); ?>">
-                            <?php echo Svg::icon('help'); ?>
-                        </button>
                     </div>
                 </header>
                 <div class="guarantee-admin-summary__body">
@@ -767,7 +764,7 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
                         </div>
                     </section>
                     <section class="actions-section">
-                        <h3 class="actions-section-title"><?php esc_html_e('Acciones requeridas', 'garantias-online-360vo'); ?></h3>
+                        <h3 class="actions-section-title"><?php esc_html_e('Acciones rápidas', 'garantias-online-360vo'); ?></h3>
                         <ul class="actions-list" data-admin-summary-actions>
                             <?php if ($has_admin_summary) : ?>
                                 <?php foreach ($admin_summary_actions as $action) : ?>
@@ -823,6 +820,13 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
             '<strong data-empty-loading-plate></strong>',
             '<strong data-empty-loading-plate>' . $initial_plate_markup . '</strong>',
             $empty_detail_awaiting_initial
+        );
+    } else {
+        $empty_detail_awaiting_initial = preg_replace(
+            '#<div class="guarantee-detail__loading"[^>]*>.*?</div>\s*#s',
+            '',
+            $empty_detail_awaiting_initial,
+            1
         );
     }
     ?>

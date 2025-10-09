@@ -3179,8 +3179,8 @@ tr.guarantees-table__row:not(.selected):hover td,
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    border: 3px solid rgba(var(--go-color-2563eb-rgb), 0.22);
-    border-top-color: rgba(var(--go-color-2563eb-rgb), 0.85);
+    border: 3px solid rgba(59, 130, 246, 0.22);
+    border-top-color: #3b82f6;
     display: inline-flex;
     animation: go-spin 0.9s linear infinite;
 }
@@ -3199,8 +3199,8 @@ tr.guarantees-table__row:not(.selected):hover td,
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    border: 3px solid rgba(var(--go-color-2563eb-rgb), 0.22);
-    border-top-color: rgba(var(--go-color-2563eb-rgb), 0.85);
+    border: 3px solid rgba(59, 130, 246, 0.22);
+    border-top-color: #3b82f6;
     display: inline-flex;
     animation: go-spin 0.9s linear infinite;
 }
@@ -3276,7 +3276,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     --admin-summary-state-sin-finalizar-muted: #d1d5db;
     --admin-summary-action-payment: #f59e0b;
     --admin-summary-action-validation: #3b82f6;
-    --admin-summary-action-collect: #6366f1;
+    --admin-summary-action-collect: #3b82f6;
     margin-top: 2rem;
     color: var(--summary-text);
     display: flex;
@@ -3315,12 +3315,10 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .guarantee-admin-summary__header {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 1rem;
     justify-content: space-between;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--summary-border);
     animation: guaranteeSummarySlideIn 0.5s ease-out 0.1s backwards;
 }
 
@@ -3329,14 +3327,15 @@ tr.guarantees-table__row:not(.selected):hover td,
     font-size: 1.25rem;
     font-weight: 600;
     letter-spacing: -0.02em;
-    flex: 1 1 100%;
+    flex: 1 1 auto;
 }
 
 .guarantee-admin-summary__controls {
     display: flex;
     align-items: center;
     gap: 1rem;
-    width: 100%;
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
 .guarantee-admin-summary__context {
@@ -3375,32 +3374,6 @@ tr.guarantees-table__row:not(.selected):hover td,
 .guarantee-admin-summary__context-label:focus-visible {
     outline: 2px solid var(--summary-accent);
     outline-offset: 2px;
-}
-
-.guarantee-admin-summary__help {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 999px;
-    border: 1px solid var(--summary-border);
-    background: var(--summary-surface-secondary);
-    color: var(--summary-muted);
-    transition: all 0.2s ease;
-    margin-left: auto;
-}
-
-.guarantee-admin-summary__help svg {
-    width: 1.25rem;
-    height: 1.25rem;
-}
-
-.guarantee-admin-summary__help:hover,
-.guarantee-admin-summary__help:focus-visible {
-    color: var(--summary-accent);
-    border-color: var(--summary-accent);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
 .guarantee-admin-summary__body {
