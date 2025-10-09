@@ -522,6 +522,12 @@ footer.footer .footer__wrapper {
   color: rgba(226, 232, 240, 0.92);
 }
 
+:root[data-theme='dark'] .register-page .form-input:focus ~ .form-label,
+:root[data-theme='dark'] .register-page .form-select:focus ~ .form-label,
+:root[data-theme='dark'] .register-page .form-textarea:focus ~ .form-label {
+  background: rgba(26, 28, 34, 0.96);
+}
+
 .register-page .form-input:focus ~ .form-label,
 .register-page .form-select:focus ~ .form-label,
 .register-page .form-textarea:focus ~ .form-label {
@@ -642,10 +648,18 @@ footer.footer .footer__wrapper {
   gap: 0.5rem;
 }
 
+:root[data-theme='dark'] .register-page .checkbox-container--terms {
+  color: rgba(226, 232, 240, 0.92);
+}
+
 .register-page .checkbox-label {
   font-size: 0.875rem;
   color: var(--text-secondary);
   margin-left: 0;
+}
+
+:root[data-theme='dark'] .register-page .checkbox-label {
+  color: rgba(226, 232, 240, 0.92);
 }
 
 .register-page .checkbox-label a {
@@ -740,7 +754,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .checkbox-container--terms {
-  margin-top: 0;
+  margin-top: 1.75rem;
 }
 
 .register-page .checkbox-container--terms.error {
@@ -763,7 +777,7 @@ footer.footer .footer__wrapper {
   gap: var(--spacing-2, 1rem);
   padding: var(--spacing-3, 1.5rem) var(--spacing-2, 1rem);
   border-top: 1px solid var(--border-color, var(--go-color-e2e8f0));
-  background-color: transparent;
+  background: none;
 }
 
 .register-page .btn {
@@ -800,8 +814,9 @@ footer.footer .footer__wrapper {
 
 :root[data-theme='dark'] .register-page .btn-primary:disabled,
 :root[data-theme='dark'] .register-page .btn-primary[disabled] {
-  background-color: rgba(148, 163, 184, 0.18);
-  color: rgba(226, 232, 240, 0.7);
+  background-color: rgba(148, 163, 184, 0.3);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: rgba(226, 232, 240, 0.85);
 }
 
 .register-page .btn-secondary {
@@ -1013,6 +1028,24 @@ footer.footer .footer__wrapper {
   color: var(--primary);
 }
 
+.register-page .verification-message {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.register-page .verification-message--error {
+  color: var(--error);
+}
+
+.register-page .verification-message--success {
+  color: var(--success);
+}
+
+.register-page .verification-message--info {
+  color: var(--primary);
+}
+
 .register-page .verification-hint {
   font-size: 0.85rem;
   color: var(--text-secondary);
@@ -1034,6 +1067,16 @@ footer.footer .footer__wrapper {
 
 .register-page .verification-success .btn {
   margin-top: 0.5rem;
+  background-color: var(--primary);
+  color: var(--go-color-ffffff);
+  text-decoration: none;
+}
+
+.register-page .verification-success .btn:hover,
+.register-page .verification-success .btn:focus {
+  background-color: var(--primary-dark);
+  color: var(--go-color-ffffff);
+  text-decoration: none;
 }
 
 .register-page .section-title {
