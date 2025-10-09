@@ -2388,6 +2388,7 @@ const ADD_DOC_KEY = "add-document";
                         }
                         if (loading) {
                                 root.dataset.context = ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                                setVisualizationHighlight(root, null);
                                 const statesList = root.querySelector("[data-admin-summary-states]");
                                 if (statesList) {
                                         statesList.innerHTML = "";
@@ -2446,6 +2447,7 @@ const ADD_DOC_KEY = "add-document";
                                 item.textContent = ADMIN_SUMMARY_ERROR_MESSAGE;
                                 legend.appendChild(item);
                         }
+                        setVisualizationHighlight(root, null);
                         const actionsList = root.querySelector("[data-admin-summary-actions]");
                         if (actionsList) {
                                 actionsList.innerHTML = "";
@@ -2640,6 +2642,23 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
+                function setVisualizationHighlight(root, highlightValue) {
+                        if (!root) {
+                                return;
+                        }
+                        const visualization = root.querySelector(".visualization-section");
+                        if (!visualization) {
+                                return;
+                        }
+                        if (highlightValue) {
+                                visualization.classList.add("is-dimmed");
+                                visualization.dataset.highlight = highlightValue;
+                        } else {
+                                visualization.classList.remove("is-dimmed");
+                                delete visualization.dataset.highlight;
+                        }
+                }
+
                 function sanitizeLegendState(root, value) {
                         if (!root || !value) {
                                 return null;
@@ -2809,9 +2828,12 @@ const ADD_DOC_KEY = "add-document";
                                 nodes.forEach((node) => {
                                         const isActive = Boolean(effectiveHighlight) && node.dataset.state === effectiveHighlight;
                                         node.classList.toggle("is-active", isActive);
+                                        node.classList.toggle("is-highlighted", isActive);
+                                        node.classList.toggle("highlighted", isActive);
                                 });
                         }
                         root.classList.toggle("is-dimmed", Boolean(effectiveHighlight));
+                        setVisualizationHighlight(root, effectiveHighlight);
 
                         if (totalEl) {
                                 const targetTotal = effectiveHighlight && highlightItem

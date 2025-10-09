@@ -3477,6 +3477,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     align-items: center;
     gap: 12px;
     cursor: pointer;
+    opacity: 1;
     transition: opacity 0.3s ease, transform 0.2s ease;
 }
 
@@ -3528,11 +3529,18 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: var(--summary-muted);
 }
 
-.guarantee-admin-summary.is-dimmed .legend-item:not(.is-active) {
+.legend-item.highlighted,
+.legend-item.is-active {
+    opacity: 1;
+    transform: scale(1.02);
+}
+
+.visualization-section.is-dimmed .legend-item:not(.highlighted):not(.is-active) {
     opacity: var(--summary-dimmed-opacity);
 }
 
-.guarantee-admin-summary.is-dimmed .legend-item.is-active {
+.visualization-section.is-dimmed .legend-item.highlighted,
+.visualization-section.is-dimmed .legend-item.is-active {
     opacity: 1;
     transform: scale(1.02);
 }

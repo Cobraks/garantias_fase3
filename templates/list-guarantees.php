@@ -490,7 +490,7 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
                 '--segment-2-color' => 'transparent',
                 '--segment-3-color' => 'transparent',
                 '--segment-4-color' => 'transparent',
-                '--p'               => $has_admin_summary ? '1' : '0',
+                '--p'               => '0',
             ];
 
             $donut_is_empty = true;
