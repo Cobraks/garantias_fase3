@@ -131,9 +131,8 @@ body.scrolled .container {
     min-width: auto;
     display: flex;
     align-items: center;
-    gap: var(--spacing-1);
+    gap: var(--spacing-2);
     margin-left: auto;
-    flex-wrap: wrap;
 }
 .guarantees-list__filters-actions > .guarantees-list__order,
 .guarantees-list__filters-actions > .guarantees-list__reset-btn,
@@ -207,7 +206,6 @@ body.scrolled .container {
     flex-shrink: 0;
 }
 .guarantees-list__order-current {
-    font-weight: 600;
     color: inherit;
 }
 .guarantees-list__order-caret svg {
@@ -2549,8 +2547,8 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .client-detail__loading-spinner {
-    border-color: rgba(148, 163, 184, 0.35);
-    border-top-color: rgba(226, 232, 240, 0.95);
+    border-color: rgba(148, 163, 184, 0.45);
+    border-top-color: #f87171;
 }
 
 :root[data-theme='dark'] .client-detail__sepa-table tbody tr:nth-child(even) th,
@@ -3113,61 +3111,6 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 
 
-.skeleton {
-    display: inline-block;
-    background: linear-gradient(90deg, var(--go-color-f4f4f4) 25%, var(--go-color-eaeaea) 50%, var(--go-color-f4f4f4) 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading 1.2s infinite linear;
-    border-radius: 0.25em;
-    min-height: 1.2em;
-}
-.skeleton--bastidor { min-width: 16ch; width: 18ch; }
-.skeleton--matricula,
-.skeleton--primera_matriculacion { min-width: 7ch; width: 8ch; }
-.skeleton--precio,
-.skeleton--precio_venta { min-width: 6ch; width: 7ch; }
-.skeleton--tipo { min-width: 8ch; width: 9ch; }
-.skeleton--plan,
-.skeleton--canal_venta,
-.skeleton--canal_venta_summary { min-width: 10ch; width: 12ch; }
-.skeleton--canal_venta_summary {
-    border-radius: 999px;
-}
-.vendor-card__badge .skeleton--canal_venta_summary {
-    display: inline-block;
-    width: 100%;
-    min-height: 1.2em;
-    background: linear-gradient(90deg, #1f2937 25%, #0f172a 50%, #1f2937 75%);
-    background-size: 200% 100%;
-}
-:root[data-theme='dark'] .vendor-card__badge .skeleton--canal_venta_summary {
-    background: linear-gradient(90deg, rgba(59, 130, 246, 0.4) 25%, rgba(96, 165, 250, 0.75) 50%, rgba(59, 130, 246, 0.4) 75%);
-}
-.skeleton--nombre,
-.skeleton--nombre_comprador,
-.skeleton--concesionario,
-.skeleton--concesionario_personal { min-width: 12ch; width: 14ch; }
-.skeleton--dni,
-.skeleton--dni_comprador { min-width: 10ch; width: 11ch; }
-.skeleton--telefono,
-.skeleton--telefono_comprador { min-width: 10ch; width: 12ch; }
-.skeleton--email,
-.skeleton--email_comprador { min-width: 15ch; width: 18ch; }
-.skeleton--direccion,
-.skeleton--direccion_comprador,
-.skeleton--localidad_comprador,
-.skeleton--provincia_comprador { min-width: 15ch; width: 20ch; }
-.skeleton--kilometros { min-width: 5ch; width: 8ch; }
-.skeleton--potencia, .skeleton--cilindrada { min-width: 5ch; width: 6ch; }
-.skeleton--codigo_postal_comprador { min-width: 6ch; width: 7ch; }
-.skeleton--desde_fmt,
-.skeleton--hasta_fmt { min-width: 11ch; width: 12ch; }
-.skeleton--estado { min-width: 8ch; width: 9ch; }
-
-@keyframes skeleton-loading {
-    0% { background-position: 200% 0 }
-    100% { background-position: -200% 0 }
-}
 
 
 
@@ -3226,8 +3169,8 @@ tr.guarantees-table__row:not(.selected):hover td,
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    border: 3px solid #2563eb;
-    border-top-color: #1d4ed8;
+    border: 3px solid #d1d5db;
+    border-top-color: #ef4444;
     display: inline-flex;
     animation: go-spin 0.9s linear infinite;
 }
@@ -3458,10 +3401,6 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .kpi-trend.negative {
     color: #ef4444;
-}
-
-.guarantee-admin-summary.is-dimmed .kpi-card {
-    opacity: var(--summary-dimmed-opacity);
 }
 
 .visualization-section {

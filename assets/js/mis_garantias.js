@@ -88,7 +88,7 @@ const ADD_DOC_KEY = "add-document";
                                 label: "Pendientes de pago",
                                 description: "Deben completarse los cobros pendientes de pago",
                                 filterValue: "pendiente_pago",
-                                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M1.92.506a.5.5 0 0 1 .434.146L3 1.293l.646-.647a.5.5 0 0 1 .708 0L5 1.293l.646-.647a.5.5 0 0 1 .708 0L7 1.293l.646-.647a.5.5 0 0 1 .708 0L9 1.293l.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .801.13l.5 1A.5.5 0 0 1 15 2v12a.5.5 0 0 1-.053.224l-.5 1a.5.5 0 0 1-.8.13L13 14.707l-.646.647a.5.5 0 0 1-.708 0L11 14.707l-.646.647a.5.5 0 0 1-.708 0L9 14.707l-.646.647a.5.5 0 0 1-.708 0L7 14.707l-.646.647a.5.5 0 0 1-.708 0L5 14.707l-.646.647a.5.5 0 0 1-.708 0L3 14.707l-.646.647a.5.5 0 0 1-.801-.13l-.5-1A.5.5 0 0 1 1 14V2a.5.5 0 0 1 .053-.224l.5-1a.5.5 0 0 1 .367-.27zm.217 1.338L2 2.118v11.764l.137.274.51-.51a.5.5 0 0 1 .707 0l.646.647.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.51.51.137-.274V2.118l-.137-.274-.51.51a.5.5 0 0 1-.707 0L12 1.707l-.646.647a.5.5 0 0 1-.708 0L10 1.707l-.646.647a.5.5 0 0 1-.708 0L8 1.707l-.646.647a.5.5 0 0 1-.708 0L6 1.707l-.646.647a.5.5 0 0 1-.708 0L4 1.707l-.646.647a.5.5 0 0 1-.708 0l-.51-.51z"/></svg>',
+                                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/></svg>',
                                 accent: "var(--admin-summary-action-payment)",
                         },
                         {
@@ -96,7 +96,7 @@ const ADD_DOC_KEY = "add-document";
                                 label: "Pendientes de verificar transferencia",
                                 description: "Verifica las transferencias recibidas",
                                 filterValue: "validacion_pendiente",
-                                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>',
+                                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M200-800v241-1 400-640 200-200Zm80 400h140q9-23 22-43t30-37H280v80Zm0 160h127q-5-20-6.5-40t.5-40H280v80ZM200-80q-33 0-56.5-23.5T120-160v-640q0-33 23.5-56.5T200-880h320l240 240v100q-19-8-39-12.5t-41-6.5v-41H480v-200H200v640h241q16 24 36 44.5T521-80H200Zm460-120q42 0 71-29t29-71q0-42-29-71t-71-29q-42 0-71 29t-29 71q0 42 29 71t71 29ZM864-40 756-148q-21 14-45.5 21t-50.5 7q-75 0-127.5-52.5T480-300q0-75 52.5-127.5T660-480q75 0 127.5 52.5T840-300q0 26-7 50.5T812-204L920-96l-56 56Z"/></svg>',
                                 accent: "var(--admin-summary-action-validation)",
                         },
                         {
@@ -104,34 +104,9 @@ const ADD_DOC_KEY = "add-document";
                                 label: "Pendientes de cobrar domiciliación",
                                 description: "Revisa las domiciliaciones en curso",
                                 filterValue: "pendiente_cobro",
-                                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>',
+                                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>',
                                 accent: "var(--admin-summary-action-collect)",
                         },
-                ];
-                const DETAIL_SKELETON_FIELD_CANDIDATES = [
-                        "plan",
-                        "precio",
-                        "tipo",
-                        "kilometros",
-                        "primera_matriculacion",
-                        "bastidor",
-                        "precio_venta",
-                        "combustible",
-                        "cambio",
-                        "potencia",
-                        "cilindrada",
-                        "canal_venta",
-                        "canal_venta_summary",
-                        "concesionario",
-                        "concesionario_personal",
-                        "nombre_comprador",
-                        "dni_comprador",
-                        "telefono_comprador",
-                        "email_comprador",
-                        "direccion_comprador",
-                        "localidad_comprador",
-                        "provincia_comprador",
-                        "codigo_postal_comprador",
                 ];
                 const integerFormatter = new Intl.NumberFormat("es-ES");
                 const currencyFormatter = new Intl.NumberFormat("es-ES", {
@@ -1172,7 +1147,7 @@ const ADD_DOC_KEY = "add-document";
                                         return detailRes.json().then((json) => {
                                                 const data = normalizeDetailData(json);
                                                 detailCache.set(id, data);
-                                                panel.innerHTML = renderFullDetail(data, rowData, []);
+                                                panel.innerHTML = renderFullDetail(data, rowData);
                                                 setupTransferCountdown(panel);
                                                 panel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
@@ -1318,8 +1293,7 @@ const ADD_DOC_KEY = "add-document";
                                         const rowData = row ? buildRowData(row) : {};
                                         panel.innerHTML = renderFullDetail(
                                                 data,
-                                                rowData,
-                                                []
+                                                rowData
                                         );
                                         panel.dataset.matricula =
                                                 data.matricula || rowData.matricula || "";
@@ -3673,14 +3647,13 @@ const ADD_DOC_KEY = "add-document";
                                                                 const dataDetalle = detailCache.get(id);
                                                                 nextPanel.innerHTML = renderFullDetail(
                                                                         dataDetalle,
-                                                                        rowData,
-                                                                        []
+                                                                        rowData
                                                                 );
                                                                 setupTransferCountdown(nextPanel);
                                                                 nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
                                                                 syncPdfModalDocs(nextPanel);
                                                         } else {
-                                                                nextPanel.innerHTML = renderDetailSkeleton(rowData);
+                                                                nextPanel.innerHTML = renderFullDetail({}, rowData);
                                                                 nextPanel.dataset.matricula = rowData.matricula || "";
                                                                 nextPanel.dataset.plan = rowData.plan || "";
                                                                 syncPdfModalDocs(nextPanel);
@@ -3689,8 +3662,7 @@ const ADD_DOC_KEY = "add-document";
                                                                                 if (nextPanel.dataset.loadedId === String(id)) {
                                                                                         nextPanel.innerHTML = renderFullDetail(
                                                                                                 dataDetalle,
-                                                                                                rowData,
-                                                                                                []
+                                                                                                rowData
                                                                                         );
                                                                                         setupTransferCountdown(nextPanel);
                                                                                         nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
@@ -3807,14 +3779,14 @@ const ADD_DOC_KEY = "add-document";
                                 const rowData = buildRowData(row);
                                 const currentActive = activePanel;
                                 const nextPanel = activePanel === panel1 ? panel2 : panel1;
-                                nextPanel.innerHTML = renderDetailSkeleton(rowData);
+                                nextPanel.innerHTML = renderFullDetail({}, rowData);
                                 nextPanel.dataset.matricula = rowData.matricula || "";
                                 nextPanel.dataset.plan = rowData.plan || "";
                                 syncPdfModalDocs(nextPanel);
                                 fetchDetail(id)
                                         .then((detailData) => {
                                                 if (nextPanel.dataset.loadedId === String(id)) {
-                                                        nextPanel.innerHTML = renderFullDetail(detailData, rowData, []);
+                                                        nextPanel.innerHTML = renderFullDetail(detailData, rowData);
                                                         setupTransferCountdown(nextPanel);
                                                         nextPanel.dataset.matricula = detailData.matricula || rowData.matricula || "";
                                                         syncPdfModalDocs(nextPanel);
@@ -3913,15 +3885,19 @@ const ADD_DOC_KEY = "add-document";
                         };
                 }
 
-                function renderFastActions(
-                        telefono,
-                        email,
-                        skeletons = [],
-                        telField = "telefono_vendedor",
-                        emailField = "email_vendedor"
-                ) {
-                        const tel = skeletons.includes(telField) ? "" : telefono ?? "";
-                        const mail = skeletons.includes(emailField) ? "" : email ?? "";
+                function renderFastActions(telefono, email) {
+                        const normalize = (value) => {
+                                if (value === undefined || value === null) {
+                                        return "";
+                                }
+                                const str = String(value).trim();
+                                if (!str || str === "-") {
+                                        return "";
+                                }
+                                return str;
+                        };
+                        const tel = normalize(telefono);
+                        const mail = normalize(email);
                         const telHtml = tel
                                 ? `<li class="fast-actions__item"><a href="tel:${tel}" class="fast-actions__link"><span class="fast-actions__icon">${phoneIcon}</span><span class="fast-actions__label">${tel}</span></a></li>`
                                 : "";
@@ -3932,38 +3908,7 @@ const ADD_DOC_KEY = "add-document";
                         return content ? `<ul class="fast-actions">${content}</ul>` : "";
                 }
 
-                function computeDetailSkeletonFields(rowData = {}) {
-                        const skeletons = [];
-                        DETAIL_SKELETON_FIELD_CANDIDATES.forEach((field) => {
-                                const value = rowData[field];
-                                if (value === undefined || value === null) {
-                                        skeletons.push(field);
-                                        return;
-                                }
-                                let normalized = "";
-                                if (typeof value === "string") {
-                                        normalized = value.trim();
-                                } else if (typeof value === "number") {
-                                        normalized = Number.isFinite(value)
-                                                ? String(value)
-                                                : "";
-                                } else {
-                                        normalized = String(value).trim();
-                                }
-                                if (!normalized || normalized === "-") {
-                                        skeletons.push(field);
-                                }
-                        });
-                        return skeletons;
-                }
-
-                function renderDetailSkeleton(rowData = {}) {
-                        const baseData = { ...rowData };
-                        const skeletons = computeDetailSkeletonFields(baseData);
-                        return renderFullDetail(baseData, baseData, skeletons);
-                }
-
-                function renderFullDetail(data, rowData, skeletons = []) {
+                function renderFullDetail(data = {}, rowData = {}) {
     const getFieldText = (val) =>
         val && typeof val === "object" && "label" in val
             ? val.label
@@ -3974,18 +3919,44 @@ const ADD_DOC_KEY = "add-document";
             .replace(/"/g, "&quot;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
-    const skeleton = (field, fallback = "-") =>
-        skeletons.includes(field)
-            ? `<span class="skeleton skeleton--${field}"></span>`
-            : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
+    const pickField = (field, fallback = "-") => {
+        const sources = [data, rowData];
+        for (const source of sources) {
+            if (!source || !(field in source)) {
+                continue;
+            }
+            const raw = getFieldText(source[field]);
+            if (raw === undefined || raw === null) {
+                continue;
+            }
+            if (typeof raw === "string") {
+                const trimmed = raw.trim();
+                if (!trimmed || trimmed === "-" || trimmed === "#") {
+                    continue;
+                }
+                return raw;
+            }
+            return raw;
+        }
+        return fallback;
+    };
 
-    const mesesTotales = getDurationMeses(data.desde, data.hasta);
-    const mesesRestantes = getRestantesMeses(data.hasta);
+    const mesesTotales = getDurationMeses(
+        data.desde ?? rowData.desde,
+        data.hasta ?? rowData.hasta
+    );
+    const mesesRestantes = getRestantesMeses(data.hasta ?? rowData.hasta);
 
-    const estadoValue =
-        (data.estado && data.estado.value) ||
-        rowData.estadoclase ||
+    const estadoData =
+        data.estado ??
+        rowData.estado ??
+        data.estadoclase ??
+        rowData.estadoclase ??
         "pendiente-pago";
+    const estadoValue =
+        estadoData && typeof estadoData === "object" && "value" in estadoData
+            ? estadoData.value
+            : estadoData;
     const estadoClase = normalizeEstadoClase(estadoValue);
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
@@ -4007,7 +3978,7 @@ const ADD_DOC_KEY = "add-document";
         .map((val) => (typeof val === "string" ? val.trim() : ""))
         .find((val) => val) || "";
 
-    const planName = skeleton("plan", "-");
+    const planName = pickField("plan", "-");
     const planParts = [];
     if (planName && planName !== "-") {
         planParts.push(planName);
@@ -4016,23 +3987,23 @@ const ADD_DOC_KEY = "add-document";
         planParts.push(`${mesesTotales} meses`);
     }
     const planPrimaryLabel = planParts.length > 0 ? planParts.join(" ") : planName || "-";
-    const planPriceRaw = skeleton("precio", "");
+    const planPriceRaw = pickField("precio", "");
     const planPrice = planPriceRaw && planPriceRaw !== "-" ? `${planPriceRaw} €` : "";
     const planTitleHtml = `<h3 class="guarantee-detail__plan-title">` +
         `<span class="guarantee-detail__plan-name">${planPrimaryLabel}</span>` +
         `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
         `</h3>`;
-    const vendorChannelSummaryRaw = skeleton("canal_venta_summary", "");
+    const vendorChannelSummaryRaw = pickField("canal_venta_summary", "");
     const vendorChannelSummarySource =
         vendorChannelSummaryRaw !== ""
             ? vendorChannelSummaryRaw
-            : skeleton("canal_venta", "-");
+            : pickField("canal_venta", "-");
     const vendorChannelSummary =
-        vendorChannelSummarySource && !vendorChannelSummarySource.includes("skeleton")
+        vendorChannelSummarySource && vendorChannelSummarySource !== "-"
             ? extractVendorType(vendorChannelSummarySource) || vendorChannelSummarySource
             : vendorChannelSummarySource;
-    const vendorCompanyName = skeleton("concesionario", "-");
-    const vendorContactRaw = skeleton("concesionario_personal", "");
+    const vendorCompanyName = pickField("concesionario", "-");
+    const vendorContactRaw = pickField("concesionario_personal", "");
     const vendorContactName =
         vendorContactRaw !== "" ? vendorContactRaw : vendorCompanyName;
     const vendorAvatarUrl =
@@ -4044,8 +4015,7 @@ const ADD_DOC_KEY = "add-document";
         : `<div class="vendor-card__avatar-wrapper vendor-card__avatar-wrapper--icon"><span class="vendor-card__avatar vendor-card__avatar--icon">${userIcon}</span></div>`;
     const vendorActionsHtml = renderFastActions(
         data.telefono_vendedor ?? rowData.telefono_vendedor,
-        data.email_vendedor ?? rowData.email_vendedor,
-        skeletons
+        data.email_vendedor ?? rowData.email_vendedor
     );
     let vendorDetailsHrefRaw = data.vendor_profile_url ?? data.vendedor_url ?? rowData.vendedor_url ?? "";
     if ((!vendorDetailsHrefRaw || vendorDetailsHrefRaw === "#") && data.vendor_slug) {
@@ -4130,7 +4100,9 @@ const ADD_DOC_KEY = "add-document";
         "codigo_postal_comprador",
     ];
     const hasGuaranteeInfo =
-        isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
+        isFilled(pickField("plan", "")) &&
+        isFilled(pickField("desde_fmt", "")) &&
+        isFilled(pickField("hasta_fmt", ""));
     const hasDocs = docsData.length > 0;
     const docsButtonsHtml = docsData
         .map(
@@ -4186,7 +4158,7 @@ const ADD_DOC_KEY = "add-document";
     } else {
         docsListHtml = `<p class="detail__alert-section">Documentación no disponible</p>`;
     }
-    const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
+    const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
     const showChannelSection = isAdmin;
     const showActions = isAdmin;
 
@@ -4219,14 +4191,14 @@ const ADD_DOC_KEY = "add-document";
         return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
-                        <h2>Garantía ${skeleton("matricula")}</h2>
+                        <h2>Garantía ${pickField("matricula")}</h2>
                         ${hasGuaranteeInfo
                             ? `${planTitleHtml}
-                        <div><p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
+                        <div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}
                                 <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p></div>`
                             : ""}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
-                        <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
+                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
@@ -4263,22 +4235,22 @@ const ADD_DOC_KEY = "add-document";
                 <section class="detail__section">
                         <h3>Datos del vehículo</h3>
                         <ul>
-                                <li><strong>Marca/Modelo:</strong> ${skeleton("marca_modelo")}</li>
-                                <li><strong>Tipo:</strong> ${skeleton("tipo", "-")}</li>
-                                <li><strong>Kilómetros:</strong> ${skeleton("kilometros", "-")} km</li>
-                                <li><strong>1ª Matriculación:</strong> ${skeleton("primera_matriculacion", "-")}</li>
-                                <li><strong>Matrícula:</strong> ${skeleton("matricula")}</li>
-                                <li><strong>Nº Bastidor:</strong> ${skeleton("bastidor", "-")}</li>
-                                <li><strong>Precio venta:</strong> ${skeleton("precio_venta", "-")} €</li>
+                                <li><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
+                                <li><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
+                                <li><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
+                                <li><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
+                                <li><strong>Matrícula:</strong> ${pickField("matricula")}</li>
+                                <li><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
+                                <li><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
                         </ul>
                 </section>
                 <section class="detail__section">
                         <h3>Detalles técnicos</h3>
                         <ul>
-                                <li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
-                                <li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
-                                <li><strong>Potencia:</strong> ${skeleton("potencia", "-")} ${potenciaUnidad}</li>
-                                <li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")} CC</li>
+                                <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
+                                <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
+                                <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
                 </section>
                 <section class="detail__section detail__section--docs">
@@ -4289,22 +4261,19 @@ const ADD_DOC_KEY = "add-document";
                         <h3>Datos del cliente</h3>
                         ${hasBuyerInfo
                             ? `<ul>
-                                <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
-                                <li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
-                                <li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
-                                <li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
-                                <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
-                                <li><strong>Localidad:</strong> ${skeleton("localidad_comprador", "-")}</li>
-                                <li><strong>Provincia:</strong> ${skeleton("provincia_comprador", "-")}</li>
+                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
+                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
+                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
+                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
+                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
+                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
+                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
                         
-                                <li><strong>Código Postal:</strong> ${skeleton("codigo_postal_comprador", "-")}</li>
+                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
                         </ul>
                         ${renderFastActions(
                                 data.telefono_comprador ?? rowData.telefono_comprador,
-                                data.email_comprador ?? rowData.email_comprador,
-                                skeletons,
-                                "telefono_comprador",
-                                "email_comprador"
+                                data.email_comprador ?? rowData.email_comprador
                         )}`
                             : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
@@ -4434,8 +4403,8 @@ const ADD_DOC_KEY = "add-document";
 
     const paymentHtml = (() => {
         if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
-            const concepto = `Garantía ${skeleton("matricula")}`;
-            const cantidad = `${skeleton("precio", "0")} €`;
+            const concepto = `Garantía ${pickField("matricula")}`;
+            const cantidad = `${pickField("precio", "0")} €`;
             const iban =
                 data.iban_vendedor ||
                 rowData.iban_vendedor ||
@@ -4453,8 +4422,8 @@ const ADD_DOC_KEY = "add-document";
                         </section>`;
         }
         if ((isPendientePago || isValidacionPendiente) && metodoPago === "transferencia") {
-            const concepto = `Garantía ${skeleton("matricula")}`;
-            const cantidad = `${skeleton("precio", "0")} €`;
+            const concepto = `Garantía ${pickField("matricula")}`;
+            const cantidad = `${pickField("precio", "0")} €`;
             const ibanRow = transferIban
                 ? `<tr data-copy-row><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
                 : "";
@@ -4505,13 +4474,13 @@ const ADD_DOC_KEY = "add-document";
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
-                        <h2>Garantía ${skeleton("matricula")}</h2>
+                        <h2>Garantía ${pickField("matricula")}</h2>
                         ${planTitleHtml}
                         <div>
-                                <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
+                                <p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}
                                 <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p>
                         </div>
-                        <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
+                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
                 ${paymentHtml}
                 ${showChannelSection
@@ -4549,22 +4518,22 @@ const ADD_DOC_KEY = "add-document";
                 <section class="detail__section">
                         <h3>Datos del vehículo</h3>
                         <ul>
-                                <li><strong>Marca/Modelo:</strong> ${skeleton("marca_modelo")}</li>
-                                <li><strong>Tipo:</strong> ${skeleton("tipo", "-")}</li>
-                                <li><strong>Kilómetros:</strong> ${skeleton("kilometros", "-")} km</li>
-                                <li><strong>1ª Matriculación:</strong> ${skeleton("primera_matriculacion", "-")}</li>
-                                <li><strong>Matrícula:</strong> ${skeleton("matricula")}</li>
-                                <li><strong>Nº Bastidor:</strong> ${skeleton("bastidor", "-")}</li>
-                                <li><strong>Precio venta:</strong> ${skeleton("precio_venta", "-")} €</li>
+                                <li><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
+                                <li><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
+                                <li><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
+                                <li><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
+                                <li><strong>Matrícula:</strong> ${pickField("matricula")}</li>
+                                <li><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
+                                <li><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
                         </ul>
                 </section>
                 <section class="detail__section">
                         <h3>Detalles técnicos</h3>
                         <ul>
-                                <li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
-                                <li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
-                                <li><strong>Potencia:</strong> ${skeleton("potencia", "-")} ${potenciaUnidad}</li>
-                                <li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")} CC</li>
+                                <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
+                                <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
+                                <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
                 </section>
                 <section class="detail__section detail__section--docs">
@@ -4574,19 +4543,18 @@ const ADD_DOC_KEY = "add-document";
                 <section class="detail__section detail__section--datos_cliente">
                         <h3>Datos del cliente</h3>
                         <ul>
-                                <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
-                                <li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
-                                <li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
-                                <li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
-                                <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
-                                <li><strong>Localidad:</strong> ${skeleton("localidad_comprador", "-")}</li>
-                                <li><strong>Provincia:</strong> ${skeleton("provincia_comprador", "-")}</li>
-                                <li><strong>Código Postal:</strong> ${skeleton("codigo_postal_comprador", "-")}</li>
+                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
+                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
+                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
+                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
+                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
+                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
+                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
+                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
                         </ul>
                         ${renderFastActions(
                                 data.telefono_comprador ?? rowData.telefono_comprador,
                                 data.email_comprador ?? rowData.email_comprador,
-                                skeletons,
                                 "telefono_comprador",
                                 "email_comprador"
                         )}
@@ -4690,13 +4658,13 @@ function initRowSelection() {
 
                                 if (detailCache.has(id)) {
                                         const data = detailCache.get(id);
-                                        nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                        nextPanel.innerHTML = renderFullDetail(data, rowData);
                                         setupTransferCountdown(nextPanel);
                                         nextPanel.dataset.matricula = data.matricula || rowData.matricula || "";
                                         nextPanel.dataset.plan = data.plan || rowData.plan || "";
                                         syncPdfModalDocs(nextPanel);
                                 } else {
-                                        nextPanel.innerHTML = renderDetailSkeleton(rowData);
+                                        nextPanel.innerHTML = renderFullDetail({}, rowData);
                                         nextPanel.dataset.matricula = rowData.matricula || "";
                                         nextPanel.dataset.plan = rowData.plan || "";
                                         syncPdfModalDocs(nextPanel);
@@ -4726,7 +4694,7 @@ function initRowSelection() {
                                         try {
                                                 const data = await fetchDetail(id);
                                                 if (nextPanel.dataset.loadedId === String(id)) {
-                                                        nextPanel.innerHTML = renderFullDetail(data, rowData, []);
+                                                        nextPanel.innerHTML = renderFullDetail(data, rowData);
                                                         setupTransferCountdown(nextPanel);
                                                         nextPanel.dataset.matricula = data.matricula || rowData.matricula || "";
                                                         nextPanel.dataset.plan = data.plan || rowData.plan || "";
