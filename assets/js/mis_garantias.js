@@ -75,7 +75,7 @@ const ADD_DOC_KEY = "add-document";
                 const ADMIN_SUMMARY_ACTIONS = [
                         {
                                 key: "payment",
-                                label: "Pendientes de pago",
+                                label: "Pend. Pago",
                                 description: "Deben completarse los cobros pendientes de pago",
                                 filterValue: "pendiente_pago",
                                 icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M1.92.506a.5.5 0 0 1 .434.146L3 1.293l.646-.647a.5.5 0 0 1 .708 0L5 1.293l.646-.647a.5.5 0 0 1 .708 0L7 1.293l.646-.647a.5.5 0 0 1 .708 0L9 1.293l.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .801.13l.5 1A.5.5 0 0 1 15 2v12a.5.5 0 0 1-.053.224l-.5 1a.5.5 0 0 1-.8.13L13 14.707l-.646.647a.5.5 0 0 1-.708 0L11 14.707l-.646.647a.5.5 0 0 1-.708 0L9 14.707l-.646.647a.5.5 0 0 1-.708 0L7 14.707l-.646.647a.5.5 0 0 1-.708 0L5 14.707l-.646.647a.5.5 0 0 1-.708 0L3 14.707l-.646.647a.5.5 0 0 1-.801-.13l-.5-1A.5.5 0 0 1 1 14V2a.5.5 0 0 1 .053-.224l.5-1a.5.5 0 0 1 .367-.27zm.217 1.338L2 2.118v11.764l.137.274.51-.51a.5.5 0 0 1 .707 0l.646.647.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.51.51.137-.274V2.118l-.137-.274-.51.51a.5.5 0 0 1-.707 0L12 1.707l-.646.647a.5.5 0 0 1-.708 0L10 1.707l-.646.647a.5.5 0 0 1-.708 0L8 1.707l-.646.647a.5.5 0 0 1-.708 0L6 1.707l-.646.647a.5.5 0 0 1-.708 0L4 1.707l-.646.647a.5.5 0 0 1-.708 0l-.51-.51z"/></svg>',
@@ -2490,7 +2490,7 @@ const ADD_DOC_KEY = "add-document";
                                         const count = Math.max(0, normalizeToInt(entry.count || 0));
                                         return { value, label, count };
                                 })
-                                .filter(Boolean);
+                                .filter((entry) => entry && entry.count > 0);
 
                         if (items.length <= 1) {
                                 return items;
@@ -2515,16 +2515,33 @@ const ADD_DOC_KEY = "add-document";
                         return items;
                 }
 
+                function getDonutBaseColor(donut) {
+                        if (!donut) {
+                                return "#10b981";
+                        }
+                        const styles = window.getComputedStyle ? getComputedStyle(donut) : null;
+                        if (!styles) {
+                                return "#10b981";
+                        }
+                        const baseColor = (styles.getPropertyValue("--donut-base-color") || "").trim();
+                        if (baseColor) {
+                                return baseColor;
+                        }
+                        const fallback = (styles.getPropertyValue("--admin-summary-state-activada") || "").trim();
+                        return fallback || "#10b981";
+                }
+
                 function resetDonutChart(donut) {
                         if (!donut) {
                                 return;
                         }
+                        const baseColor = getDonutBaseColor(donut);
                         donut._adminSummarySegments = [];
                         donut._adminSummaryTotal = 0;
                         donut.style.setProperty("--segment-0-end", "0%");
                         for (let index = 1; index <= 4; index += 1) {
                                 donut.style.setProperty(`--segment-${index}-end`, index === 4 ? "100%" : "0%");
-                                donut.style.setProperty(`--segment-${index}-color`, "transparent");
+                                donut.style.setProperty(`--segment-${index}-color`, baseColor);
                         }
                         donut.style.setProperty("--p", "0");
                         donut.classList.add("is-empty");
@@ -2550,6 +2567,7 @@ const ADD_DOC_KEY = "add-document";
                                 resetDonutChart(donut);
                                 return;
                         }
+                        const baseColor = getDonutBaseColor(donut);
                         donut.classList.remove("is-empty");
                         donut.style.setProperty("--segment-0-end", "0%");
                         let cumulative = 0;
@@ -2571,6 +2589,7 @@ const ADD_DOC_KEY = "add-document";
                         });
                         for (let index = positive.length + 1; index <= 4; index += 1) {
                                 donut.style.setProperty(`--segment-${index}-end`, "100%");
+                                donut.style.setProperty(`--segment-${index}-color`, baseColor);
                         }
                         updateDonutColors(donut, null);
                         donut.style.setProperty("--p", "0");
@@ -2583,17 +2602,18 @@ const ADD_DOC_KEY = "add-document";
                         if (!donut) {
                                 return;
                         }
+                        const baseColor = getDonutBaseColor(donut);
                         const segments = Array.isArray(donut._adminSummarySegments)
                                 ? donut._adminSummarySegments
                                 : [];
                         if (segments.length === 0) {
                                 for (let index = 1; index <= 4; index += 1) {
-                                        donut.style.setProperty(`--segment-${index}-color`, "transparent");
+                                        donut.style.setProperty(`--segment-${index}-color`, baseColor);
                                 }
-                        ADMIN_SUMMARY_STATE_VALUES.forEach((value) => {
-                                donut.classList.remove(`dimmed-${value}`);
-                        });
-                        donut.classList.remove("is-highlighted");
+                                ADMIN_SUMMARY_STATE_VALUES.forEach((value) => {
+                                        donut.classList.remove(`dimmed-${value}`);
+                                });
+                                donut.classList.remove("is-highlighted");
                         donut.style.removeProperty("--donut-highlight-color");
                         donut.style.removeProperty("--donut-highlight-muted");
                                 return;
@@ -2634,11 +2654,11 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 donut.style.setProperty(
                                         `--segment-${index + 1}-color`,
-                                        color || "transparent"
+                                        color || baseColor
                                 );
                         });
                         for (let index = segments.length + 1; index <= 4; index += 1) {
-                                donut.style.setProperty(`--segment-${index}-color`, "transparent");
+                                donut.style.setProperty(`--segment-${index}-color`, baseColor);
                         }
                 }
 
@@ -2746,6 +2766,10 @@ const ADD_DOC_KEY = "add-document";
                         legendItems.forEach((node) => {
                                 const handleEnter = () => {
                                         const state = node.dataset.state || null;
+                                        const locked = root._adminSummaryLockedHighlight || null;
+                                        if (locked && locked !== state) {
+                                                return;
+                                        }
                                         applyLegendHighlight(root, state);
                                 };
                                 const handleLeave = () => {
