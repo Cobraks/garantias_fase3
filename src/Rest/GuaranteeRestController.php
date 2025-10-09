@@ -2193,11 +2193,13 @@ class GuaranteeRestController
         $count = 0;
         $amount_values = [];
         $state_counts = [];
+        $state_amounts = [];
 
         if (is_array($rows)) {
             foreach ($rows as $row) {
                 $count++;
-                $amount_values[] = $row['price'] ?? '';
+                $normalized_price = self::normalize_price_amount($row['price'] ?? '');
+                $amount_values[] = $normalized_price;
                 $state = isset($row['state']) ? (string) $row['state'] : '';
                 if ($state === '') {
                     continue;
@@ -2206,17 +2208,23 @@ class GuaranteeRestController
                     $state_counts[$state] = 0;
                 }
                 $state_counts[$state]++;
+                if (! isset($state_amounts[$state])) {
+                    $state_amounts[$state] = 0.0;
+                }
+                $state_amounts[$state] += $normalized_price;
             }
         }
 
         $amount = self::sum_price_values($amount_values);
         $states = self::aggregate_summary_states($state_counts);
+        $amounts = self::aggregate_summary_state_amounts($state_amounts);
 
         return [
             'label'  => $year_start->format('Y'),
             'count'  => $count,
             'amount' => $amount,
             'states' => $states,
+            'amounts' => $amounts,
         ];
     }
 
@@ -2389,11 +2397,13 @@ class GuaranteeRestController
         $count = 0;
         $amount_values = [];
         $state_counts = [];
+        $state_amounts = [];
 
         if (is_array($rows)) {
             foreach ($rows as $row) {
                 $count++;
-                $amount_values[] = $row['price'] ?? '';
+                $normalized_price = self::normalize_price_amount($row['price'] ?? '');
+                $amount_values[] = $normalized_price;
                 $state = isset($row['state']) ? (string) $row['state'] : '';
                 if ($state === '') {
                     continue;
@@ -2402,11 +2412,16 @@ class GuaranteeRestController
                     $state_counts[$state] = 0;
                 }
                 $state_counts[$state]++;
+                if (! isset($state_amounts[$state])) {
+                    $state_amounts[$state] = 0.0;
+                }
+                $state_amounts[$state] += $normalized_price;
             }
         }
 
         $amount = self::sum_price_values($amount_values);
         $states = self::aggregate_summary_states($state_counts);
+        $amounts = self::aggregate_summary_state_amounts($state_amounts);
 
         $top = null;
         foreach ($states as $entry) {
@@ -2420,8 +2435,34 @@ class GuaranteeRestController
             'count'     => $count,
             'amount'    => $amount,
             'states'    => $states,
+            'amounts'   => $amounts,
             'top_state' => $top,
         ];
+    }
+
+    private static function aggregate_summary_state_amounts(array $state_amounts): array
+    {
+        $groups = self::get_summary_state_groups();
+        $summary = [];
+
+        foreach ($groups as $value => $group) {
+            $states = isset($group['states']) && is_array($group['states']) ? $group['states'] : [];
+            $amount = 0.0;
+
+            foreach ($states as $state_key) {
+                if ($state_key === '') {
+                    continue;
+                }
+                $amount += isset($state_amounts[$state_key]) ? (float) $state_amounts[$state_key] : 0.0;
+            }
+
+            $summary[] = [
+                'value'  => $value,
+                'amount' => round($amount, 2),
+            ];
+        }
+
+        return $summary;
     }
 
     private static function sum_price_values($values): float
