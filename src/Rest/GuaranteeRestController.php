@@ -2229,11 +2229,11 @@ class GuaranteeRestController
             ],
             'pendiente_pago' => [
                 'states' => ['pendiente_pago'],
-                'label'  => __('Pendientes de pago', 'garantias-online-360vo'),
+                'label'  => __('Pend. Pago', 'garantias-online-360vo'),
             ],
             'pendiente_revision' => [
                 'states' => ['validacion_pendiente', 'pendiente_cobro'],
-                'label'  => __('Requieren acción', 'garantias-online-360vo'),
+                'label'  => __('Verificar/cobrar', 'garantias-online-360vo'),
             ],
             'sin_finalizar' => [
                 'states' => ['sin_finalizar'],

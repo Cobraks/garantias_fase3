@@ -3192,7 +3192,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     padding: 0.6rem 1.05rem;
     border-radius: 999px;
     background: rgba(37, 99, 235, 0.1);
-    color: var(--text-secondary);
+    color: var(--primary-color-strong);
     font-size: 0.95rem;
     line-height: 1.4;
     margin: 0;
@@ -3306,6 +3306,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     display: flex;
     align-items: center;
     gap: 1rem;
+    width: 100%;
 }
 
 .guarantee-admin-summary__context {
@@ -3538,8 +3539,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 .visualization-section.is-dimmed .legend-item:not(.highlighted):not(.is-active) {
-    opacity: 0 !important;
-    transform: scale(0.98) !important;
+    opacity: 0.2 !important;
 }
 
 .visualization-section.is-dimmed .legend-item.highlighted,
@@ -3675,6 +3675,10 @@ tr.guarantees-table__row:not(.selected):hover td,
 .guarantee-admin-summary[data-loaded="1"] .legend-item,
 .guarantee-admin-summary[data-loaded="1"] .action-item {
     animation: guaranteeSummaryFadeIn 0.45s ease forwards;
+}
+
+.guarantee-admin-summary[data-loaded="1"] .legend-item {
+    transition: all ease 0.3s;
 }
 
 .legend-item.is-loading::after,

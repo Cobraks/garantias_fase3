@@ -140,8 +140,8 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
 
         $state_labels = [
             'activada'           => __('Activadas', 'garantias-online-360vo'),
-            'pendiente_pago'     => __('Pendientes de pago', 'garantias-online-360vo'),
-            'pendiente_revision' => __('Requieren acción', 'garantias-online-360vo'),
+            'pendiente_pago'     => __('Pend. Pago', 'garantias-online-360vo'),
+            'pendiente_revision' => __('Verificar/cobrar', 'garantias-online-360vo'),
             'sin_finalizar'      => __('Sin finalizar', 'garantias-online-360vo'),
         ];
 
