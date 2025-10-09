@@ -32,6 +32,27 @@ console.log("GO360 script cargado");
                 }
         };
 
+        const broadcastThemeChange = (theme) => {
+                if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") {
+                        return;
+                }
+
+                let event;
+                if (typeof window.CustomEvent === "function") {
+                        event = new CustomEvent("go:theme-change", { detail: { theme } });
+                } else if (
+                        typeof document !== "undefined" &&
+                        typeof document.createEvent === "function"
+                ) {
+                        event = document.createEvent("CustomEvent");
+                        event.initCustomEvent("go:theme-change", false, false, { theme });
+                }
+
+                if (event) {
+                        window.dispatchEvent(event);
+                }
+        };
+
         const initialTheme = getStoredTheme() || (prefersDark.matches ? "dark" : "light");
         applyThemeAttribute(initialTheme);
 
@@ -58,6 +79,7 @@ console.log("GO360 script cargado");
                 };
 
                 updateThemeToggle(initialTheme);
+                broadcastThemeChange(initialTheme);
 
                 if (themeToggle) {
                         themeToggle.addEventListener("click", () => {
@@ -66,6 +88,7 @@ console.log("GO360 script cargado");
                                 applyThemeAttribute(nextTheme);
                                 updateThemeToggle(nextTheme);
                                 setStoredTheme(nextTheme);
+                                broadcastThemeChange(nextTheme);
                         });
                 }
 
@@ -76,6 +99,7 @@ console.log("GO360 script cargado");
                         const nextTheme = event.matches ? "dark" : "light";
                         applyThemeAttribute(nextTheme);
                         updateThemeToggle(nextTheme);
+                        broadcastThemeChange(nextTheme);
                 };
 
                 if (typeof prefersDark.addEventListener === "function") {

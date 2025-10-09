@@ -79,10 +79,12 @@
     const verifyBtn = document.getElementById('verify-btn');
     const resendBtn = document.getElementById('resend-code-btn');
     const resendCountdown = document.getElementById('resend-countdown');
-    const verificationFeedback = document.getElementById('verification-feedback');
+    const verificationMessage = document.getElementById('verification-message');
     const verificationSuccess = document.getElementById('verification-success');
     const verificationExpiry = document.getElementById('verification-expiry');
     const verificationCodeField = document.getElementById('verification_code');
+    const verificationInputContainer = document.getElementById('verification-input');
+    const verificationActions = document.getElementById('verification-actions');
     const registerError = document.getElementById('register-error');
     const termsContainer = document.getElementById('terms-container');
     const termsError = document.getElementById('terms-error');
@@ -245,16 +247,18 @@
     };
 
     const showVerificationMessage = (message, type = 'info') => {
-      if (!verificationFeedback) return;
-      if (!message) {
-        verificationFeedback.textContent = '';
-        verificationFeedback.hidden = true;
-        verificationFeedback.className = 'verification-feedback';
+      if (!verificationMessage) {
         return;
       }
-      verificationFeedback.textContent = message;
-      verificationFeedback.className = `verification-feedback verification-feedback--${type}`;
-      verificationFeedback.hidden = false;
+      if (!message) {
+        verificationMessage.textContent = '';
+        verificationMessage.hidden = true;
+        verificationMessage.className = 'verification-message';
+        return;
+      }
+      verificationMessage.textContent = message;
+      verificationMessage.className = `verification-message verification-message--${type}`;
+      verificationMessage.hidden = false;
     };
 
     const updateVerificationExpiry = () => {
@@ -417,6 +421,12 @@
           verificationCodeField.focus();
         }
       }
+      if (verificationInputContainer) {
+        verificationInputContainer.hidden = false;
+      }
+      if (verificationActions) {
+        verificationActions.hidden = false;
+      }
       unlockVerifyButton();
       if (state.verification.resendAvailableAt) {
         const remaining = Math.round((state.verification.resendAvailableAt - Date.now()) / 1000);
@@ -447,10 +457,16 @@
     };
 
     const completeVerification = (message = 'Cuenta verificada correctamente.') => {
-      showVerificationMessage(message, 'success');
       if (verificationSuccess) {
         verificationSuccess.hidden = false;
       }
+      if (verificationInputContainer) {
+        verificationInputContainer.hidden = true;
+      }
+      if (verificationActions) {
+        verificationActions.hidden = true;
+      }
+      showVerificationMessage('');
       if (verificationCodeField) {
         verificationCodeField.value = '';
         verificationCodeField.setAttribute('disabled', 'disabled');

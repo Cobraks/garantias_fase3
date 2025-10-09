@@ -626,16 +626,15 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                     <div class="verification-container">
                         <div class="verification-icon">✓</div>
                         <h2 class="verification-title">¡Cuenta creada con éxito!</h2>
-                        <p class="verification-text">Hemos enviado un código de verificación a <strong id="email-sent">juan@autosolutions.es</strong>. Introduce el código para activar tu cuenta. <span id="verification-expiry">Caduca en 24&nbsp;horas.</span></p>
+                        <p class="verification-text">Te hemos enviado un código de verificación a <strong id="email-sent">juan@autosolutions.es</strong>. Introduce el código en esta pantalla para activar tu cuenta. <span id="verification-expiry">Caduca en 24&nbsp;horas.</span></p>
+                        <p class="verification-message" id="verification-message" role="status" aria-live="assertive" hidden></p>
 
-                        <div class="verification-feedback" id="verification-feedback" role="alert" hidden></div>
-
-                        <div class="input-container input-container--verification">
+                        <div class="input-container input-container--verification" id="verification-input">
                             <input type="text" id="verification_code" class="form-input" placeholder=" " inputmode="numeric" autocomplete="one-time-code" required>
                             <label for="verification_code" class="form-label">Código de verificación</label>
                         </div>
 
-                        <div class="verification-actions">
+                        <div class="verification-actions" id="verification-actions">
                             <button type="button" class="btn btn-primary" id="verify-btn">Verificar cuenta</button>
                             <button type="button" class="btn btn-link" id="resend-code-btn">Reenviar código</button>
                         </div>
@@ -643,7 +642,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
 
                         <div class="verification-success" id="verification-success" hidden>
                             <p>Cuenta verificada. Ya puedes acceder a tu área de usuario.</p>
-                            <a href="<?php echo esc_url(home_url('/garantias-online/')); ?>" class="btn btn-secondary">Entrar a Mis garantías</a>
+                            <a href="<?php echo esc_url(home_url('/garantias-online/')); ?>" class="btn btn-primary verification-success__cta">Entrar a Mis garantías</a>
                         </div>
                     </div>
                 </div>
