@@ -39,6 +39,8 @@ const ADD_DOC_KEY = "add-document";
                                 "go_comercial",
                                 "go_director_comercial",
                         ].includes(normalizedRole);
+                const canUploadDocuments =
+                        ["administrator", "admin", "go_garantias"].includes(normalizedRole);
                 const isCoreAdmin =
                         normalizedRole === "administrator" || normalizedRole === "admin";
                 const isDirector = normalizedRole === "go_director_comercial";
@@ -4121,7 +4123,7 @@ const ADD_DOC_KEY = "add-document";
         )
         .join("");
 
-    const addDocButtonHtml = isAdmin
+    const addDocButtonHtml = canUploadDocuments
         ? `<li class="detail__docs-item detail__docs-item--add">` +
           `<button type="button" class="detail__docs-btn detail__docs-btn--add detail__docs-add" data-doc-key="${ADD_DOC_KEY}" data-doc-action="add" aria-label="Añadir documento">` +
           `<span class="detail__docs-icon detail__docs-icon--add">${plusIcon || "+"}</span>` +
@@ -4131,7 +4133,7 @@ const ADD_DOC_KEY = "add-document";
         : "";
 
     let docsListHtml = "";
-    if (hasDocs || isAdmin) {
+    if (hasDocs || canUploadDocuments) {
         docsListHtml = `<ul class="detail__docs-list">${docsButtonsHtml}${addDocButtonHtml}</ul>`;
         if (!hasDocs) {
             docsListHtml = `<p class="detail__alert-section">Documentación no disponible</p>${docsListHtml}`;
