@@ -301,6 +301,56 @@ const ADD_DOC_KEY = "add-document";
                 }
                 let currentEmptyMode = "awaiting";
 
+                function configureAwaitingEmpty(node, plate = "") {
+                        if (!node) {
+                                return;
+                        }
+                        const loading = node.querySelector("[data-empty-loading]");
+                        const hint = node.querySelector("[data-empty-hint]");
+                        const plateTarget = node.querySelector("[data-empty-loading-plate]");
+                        const normalizedPlate = typeof plate === "string" ? plate.trim() : "";
+                        const formattedPlate = normalizedPlate
+                                ? normalizedPlate.toLocaleUpperCase("es-ES")
+                                : "";
+
+                        if (plateTarget) {
+                                plateTarget.textContent = formattedPlate;
+                        }
+
+                        if (loading) {
+                                if (formattedPlate) {
+                                        loading.removeAttribute("hidden");
+                                } else {
+                                        loading.setAttribute("hidden", "");
+                                }
+                        }
+
+                        if (hint) {
+                                if (formattedPlate) {
+                                        hint.setAttribute("hidden", "");
+                                } else {
+                                        hint.removeAttribute("hidden");
+                                }
+                        }
+                }
+
+                function updateAwaitingPlaceholder(targetPanel) {
+                        const panel = targetPanel || activePanel;
+                        if (!panel) {
+                                return;
+                        }
+                        const emptyNode = panel.querySelector(
+                                '[data-empty-detail][data-empty-mode="awaiting"]'
+                        );
+                        if (!emptyNode) {
+                                return;
+                        }
+                        configureAwaitingEmpty(
+                                emptyNode,
+                                pendingMatSelection ? initialMatQuery : ""
+                        );
+                }
+
                 const filtersRoot = document.querySelector(
                         ".guarantees-list__filters"
                 );
@@ -482,6 +532,9 @@ const ADD_DOC_KEY = "add-document";
                 const urlMat = new URLSearchParams(window.location.search).get("matricula");
                 let pendingMatSelection = Boolean(urlMat);
                 let initialMatQuery = typeof urlMat === "string" ? urlMat.trim() : "";
+                if (panel1) {
+                        updateAwaitingPlaceholder(panel1);
+                }
                 const detailCache = new Map();
                 const detailPromises = new Map();
                 const loadedIds = new Set();
@@ -3429,6 +3482,7 @@ const ADD_DOC_KEY = "add-document";
                         nextPanel.dataset.matricula = "";
                         syncPdfModalDocs(nextPanel);
                         if (normalizedMode === "awaiting") {
+                                updateAwaitingPlaceholder(nextPanel);
                                 initializeAdminSummary(nextPanel);
                         }
                         activePanel = nextPanel;
@@ -3702,6 +3756,7 @@ const ADD_DOC_KEY = "add-document";
                         if (!trimmedPlate) {
                                 pendingMatSelection = false;
                                 initialMatQuery = "";
+                                updateAwaitingPlaceholder();
                                 return;
                         }
                         try {
@@ -3718,6 +3773,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (data.length === 0) {
                                         pendingMatSelection = false;
                                         initialMatQuery = "";
+                                        updateAwaitingPlaceholder();
                                         return;
                                 }
                                 const item = data[0];
@@ -3773,6 +3829,7 @@ const ADD_DOC_KEY = "add-document";
                                 console.error("❌ Error preloadByPlate:", e);
                                 pendingMatSelection = false;
                                 initialMatQuery = "";
+                                updateAwaitingPlaceholder();
                         }
                 }
 

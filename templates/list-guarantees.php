@@ -123,6 +123,18 @@ $format_summary_guarantees = static function ($count) use ($format_summary_numbe
     return sprintf($pluralized, $formatted);
 };
 
+$initial_plate_query   = '';
+$initial_plate_display = '';
+if (isset($_GET['matricula'])) {
+    $initial_plate_query = sanitize_text_field(wp_unslash((string) $_GET['matricula']));
+    $initial_plate_query = trim($initial_plate_query);
+    if ($initial_plate_query !== '') {
+        $initial_plate_display = function_exists('mb_strtoupper')
+            ? mb_strtoupper($initial_plate_query, 'UTF-8')
+            : strtoupper($initial_plate_query);
+    }
+}
+
 if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeRestController::can_view_summary()) {
     $admin_summary_data = GuaranteeRestController::get_admin_summary_data();
 
@@ -460,7 +472,14 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
     <!-- 3. DETALLE: dos paneles -->
     <?php ob_start(); ?>
     <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="awaiting">
-        <p class="guarantee-detail__hint">
+        <div class="guarantee-detail__loading" data-empty-loading hidden>
+            <span class="guarantee-detail__loading-spinner" aria-hidden="true"></span>
+            <p class="guarantee-detail__loading-text">
+                <?php esc_html_e('Cargando datos de garantía', 'garantias-online-360vo'); ?>
+                <strong data-empty-loading-plate></strong>.
+            </p>
+        </div>
+        <p class="guarantee-detail__hint" data-empty-hint>
             <span class="guarantee-detail__hint-arrow" aria-hidden="true">
                 <?php echo Svg::icon('flecha_izquierda'); ?>
             </span>
@@ -563,14 +582,21 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
             $summary_month_count  = isset($summary_month['count']) ? (int) $summary_month['count'] : 0;
             $summary_year_count   = isset($summary_year['count']) ? (int) $summary_year['count'] : 0;
 
+            $summary_month_label_formatted = '';
+            if ($summary_month_label !== '') {
+                $summary_month_label_formatted = function_exists('mb_strtolower')
+                    ? mb_strtolower($summary_month_label, 'UTF-8')
+                    : strtolower($summary_month_label);
+            }
+
             $kpi_amount_label_month = $summary_month_label !== ''
                 ? sprintf(__('Valor mensual (%s)', 'garantias-online-360vo'), $summary_month_label)
                 : __('Valor mensual', 'garantias-online-360vo');
             $kpi_amount_label_year = $summary_year_label !== ''
                 ? sprintf(__('Valor acumulado (%s)', 'garantias-online-360vo'), $summary_year_label)
                 : __('Valor acumulado', 'garantias-online-360vo');
-            $kpi_count_label_month = $summary_month_label !== ''
-                ? sprintf(__('Garantías este mes (%s)', 'garantias-online-360vo'), $summary_month_label)
+            $kpi_count_label_month = $summary_month_label_formatted !== ''
+                ? sprintf(__('Garantías %s', 'garantias-online-360vo'), $summary_month_label_formatted)
                 : __('Garantías este mes', 'garantias-online-360vo');
             $kpi_count_label_year = $summary_year_label !== ''
                 ? sprintf(__('Total garantías (%s)', 'garantias-online-360vo'), $summary_year_label)
@@ -581,8 +607,8 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
             $kpi_count_trend_month  = __('-5.2% vs mes ant.', 'garantias-online-360vo');
             $kpi_count_trend_year   = __('-5.2% vs mes ant.', 'garantias-online-360vo');
 
-            $kpi_trend_up_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 0 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>';
-            $kpi_trend_down_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>';
+            $kpi_trend_up_icon = Svg::icon('trend_up', 'kpi-trend-icon__svg');
+            $kpi_trend_down_icon = Svg::icon('trend_down', 'kpi-trend-icon__svg');
 
             $initial_amount_value = $admin_summary_context_key === 'year' ? $summary_year_amount : $summary_month_amount;
             $initial_count_value  = $admin_summary_context_key === 'year' ? $summary_year_count : $summary_month_count;
@@ -602,7 +628,7 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
             $kpi_amount_trend_default = $kpi_amount_trend_month;
             $kpi_count_trend_default  = $kpi_count_trend_month;
 
-            $action_arrow_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
+            $action_arrow_icon = Svg::icon('arrow_small_right');
             ?>
             <section
                 class="guarantee-admin-summary<?php echo $has_admin_summary ? '' : ' is-loading'; ?>"
@@ -785,7 +811,21 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
             </section>
         <?php endif; ?>
     </div>
-    <?php $empty_detail_awaiting = ob_get_clean(); ?>
+    <?php $empty_detail_awaiting_template = ob_get_clean(); ?>
+
+    <?php
+    $empty_detail_awaiting_initial = $empty_detail_awaiting_template;
+    if ($initial_plate_display !== '') {
+        $initial_plate_markup = esc_html($initial_plate_display);
+        $empty_detail_awaiting_initial = str_replace(' data-empty-loading hidden', ' data-empty-loading', $empty_detail_awaiting_initial);
+        $empty_detail_awaiting_initial = str_replace(' data-empty-hint', ' data-empty-hint hidden', $empty_detail_awaiting_initial);
+        $empty_detail_awaiting_initial = str_replace(
+            '<strong data-empty-loading-plate></strong>',
+            '<strong data-empty-loading-plate>' . $initial_plate_markup . '</strong>',
+            $empty_detail_awaiting_initial
+        );
+    }
+    ?>
 
     <?php ob_start(); ?>
     <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="no-results">
@@ -802,7 +842,7 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
     <aside class="guarantee-detail" style="view-transition-name: resume-derecha">
         <!-- Panel 1: mensaje cuando no hay selección -->
         <div class="guarantee-detail__panel active" id="detail-panel-1">
-            <?php echo $empty_detail_awaiting; ?>
+            <?php echo $empty_detail_awaiting_initial; ?>
         </div>
 
         <!-- Panel 2: se rellenará desde JS -->
@@ -810,7 +850,7 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
     </aside>
 
     <div class="guarantee-detail__empty-templates" hidden>
-        <div data-empty-template="awaiting"><?php echo $empty_detail_awaiting; ?></div>
+        <div data-empty-template="awaiting"><?php echo $empty_detail_awaiting_template; ?></div>
         <div data-empty-template="no-results"><?php echo $empty_detail_no_results; ?></div>
     </div>
 
