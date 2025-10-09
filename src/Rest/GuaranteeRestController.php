@@ -2215,6 +2215,21 @@ class GuaranteeRestController
             }
         }
 
+        $pending_collect = self::collect_pending_direct_debit_summary($statuses, [
+            'start_date' => $year_start->format('Y-m-d H:i:s'),
+            'end_date'   => $year_end->format('Y-m-d H:i:s'),
+        ]);
+        if ($pending_collect['count'] > 0) {
+            $state_counts['pendiente_cobro'] = ($state_counts['pendiente_cobro'] ?? 0) + $pending_collect['count'];
+            if (isset($state_counts['activada'])) {
+                $state_counts['activada'] = max(0, $state_counts['activada'] - $pending_collect['count']);
+            }
+            $state_amounts['pendiente_cobro'] = ($state_amounts['pendiente_cobro'] ?? 0.0) + $pending_collect['amount'];
+            if (isset($state_amounts['activada'])) {
+                $state_amounts['activada'] = max(0.0, $state_amounts['activada'] - $pending_collect['amount']);
+            }
+        }
+
         $amount = self::sum_price_values($amount_values);
         $states = self::aggregate_summary_states($state_counts);
         $amounts = self::aggregate_summary_state_amounts($state_amounts);
@@ -2318,7 +2333,75 @@ class GuaranteeRestController
             }
         }
 
+        $pending_collect = self::collect_pending_direct_debit_summary($statuses);
+        if ($pending_collect['count'] > 0) {
+            $state_counts['pendiente_cobro'] = ($state_counts['pendiente_cobro'] ?? 0) + $pending_collect['count'];
+            if (isset($state_counts['activada'])) {
+                $state_counts['activada'] = max(0, $state_counts['activada'] - $pending_collect['count']);
+            }
+        }
+
         return self::aggregate_summary_states($state_counts);
+    }
+
+    private static function collect_pending_direct_debit_summary(array $statuses, array $options = []): array
+    {
+        global $wpdb;
+
+        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
+        list($status_clause, $status_params) = self::build_in_clause($statuses);
+
+        $date_clause = '';
+        $date_params = [];
+
+        if (! empty($options['start_date'])) {
+            $date_clause .= ' AND p.post_date >= %s';
+            $date_params[] = $options['start_date'];
+        }
+
+        if (! empty($options['end_date'])) {
+            $date_clause .= ' AND p.post_date <= %s';
+            $date_params[] = $options['end_date'];
+        }
+
+        $sql = "
+            SELECT COALESCE(MAX(price.meta_value), '') AS price
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} state
+                ON state.post_id = p.ID
+                AND state.meta_key = 'estado_garantia_estado_contratacion'
+            INNER JOIN {$wpdb->postmeta} payment
+                ON payment.post_id = p.ID
+                AND payment.meta_key = 'garantia_contratada_metodo_pago'
+            LEFT JOIN {$wpdb->postmeta} collected
+                ON collected.post_id = p.ID
+                AND collected.meta_key = 'garantia_contratada_estado_cobro_cobro_realizado'
+            LEFT JOIN {$wpdb->postmeta} price
+                ON price.post_id = p.ID
+                AND price.meta_key = 'garantia_contratada_precio'
+            WHERE p.post_type = %s
+              AND p.post_status IN ($status_clause)
+              AND state.meta_value = 'activada'
+              AND payment.meta_value = 'domiciliacion_bancaria'
+              AND (
+                    collected.post_id IS NULL
+                    OR collected.meta_value = ''
+                    OR CAST(collected.meta_value AS UNSIGNED) = 0
+                )
+              {$date_clause}
+            GROUP BY p.ID
+        ";
+
+        $params = array_merge([$post_type], $status_params, $date_params);
+        $values = $wpdb->get_col($wpdb->prepare($sql, $params));
+
+        $count = is_array($values) ? count($values) : 0;
+        $amount = self::sum_price_values($values);
+
+        return [
+            'count'  => $count,
+            'amount' => $amount,
+        ];
     }
 
     private static function sum_prices_for_states(array $states, array $statuses): array
@@ -2329,29 +2412,49 @@ class GuaranteeRestController
             return ['amount' => 0.0, 'count' => 0];
         }
 
-        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
-        list($status_clause, $status_params) = self::build_in_clause($statuses);
-        list($state_clause, $state_params) = self::build_in_clause($states);
+        $normalized_states = array_values(array_unique(array_filter(array_map('strval', $states))));
+        $include_pending_collect = in_array('pendiente_cobro', $normalized_states, true);
+        $normalized_states = array_values(array_filter(
+            $normalized_states,
+            static function ($state) {
+                return $state !== 'pendiente_cobro';
+            }
+        ));
 
-        $sql = "
-            SELECT price.meta_value AS price
-            FROM {$wpdb->posts} p
-            INNER JOIN {$wpdb->postmeta} state
-                ON state.post_id = p.ID
-                AND state.meta_key = 'estado_garantia_estado_contratacion'
-            INNER JOIN {$wpdb->postmeta} price
-                ON price.post_id = p.ID
-                AND price.meta_key = 'garantia_contratada_precio'
-            WHERE p.post_type = %s
-              AND p.post_status IN ($status_clause)
-              AND state.meta_value IN ($state_clause)
-        ";
+        $amount = 0.0;
+        $count = 0;
 
-        $params = array_merge([$post_type], $status_params, $state_params);
-        $values = $wpdb->get_col($wpdb->prepare($sql, $params));
+        if (! empty($normalized_states)) {
+            $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
+            list($status_clause, $status_params) = self::build_in_clause($statuses);
+            list($state_clause, $state_params) = self::build_in_clause($normalized_states);
 
-        $count = is_array($values) ? count($values) : 0;
-        $amount = self::sum_price_values($values);
+            $sql = "
+                SELECT price.meta_value AS price
+                FROM {$wpdb->posts} p
+                INNER JOIN {$wpdb->postmeta} state
+                    ON state.post_id = p.ID
+                    AND state.meta_key = 'estado_garantia_estado_contratacion'
+                INNER JOIN {$wpdb->postmeta} price
+                    ON price.post_id = p.ID
+                    AND price.meta_key = 'garantia_contratada_precio'
+                WHERE p.post_type = %s
+                  AND p.post_status IN ($status_clause)
+                  AND state.meta_value IN ($state_clause)
+            ";
+
+            $params = array_merge([$post_type], $status_params, $state_params);
+            $values = $wpdb->get_col($wpdb->prepare($sql, $params));
+
+            $count += is_array($values) ? count($values) : 0;
+            $amount += self::sum_price_values($values);
+        }
+
+        if ($include_pending_collect) {
+            $pending = self::collect_pending_direct_debit_summary($statuses);
+            $count += $pending['count'];
+            $amount += $pending['amount'];
+        }
 
         return [
             'amount' => $amount,
@@ -2416,6 +2519,21 @@ class GuaranteeRestController
                     $state_amounts[$state] = 0.0;
                 }
                 $state_amounts[$state] += $normalized_price;
+            }
+        }
+
+        $pending_collect = self::collect_pending_direct_debit_summary($statuses, [
+            'start_date' => $month_start->format('Y-m-d H:i:s'),
+            'end_date'   => $month_end->format('Y-m-d H:i:s'),
+        ]);
+        if ($pending_collect['count'] > 0) {
+            $state_counts['pendiente_cobro'] = ($state_counts['pendiente_cobro'] ?? 0) + $pending_collect['count'];
+            if (isset($state_counts['activada'])) {
+                $state_counts['activada'] = max(0, $state_counts['activada'] - $pending_collect['count']);
+            }
+            $state_amounts['pendiente_cobro'] = ($state_amounts['pendiente_cobro'] ?? 0.0) + $pending_collect['amount'];
+            if (isset($state_amounts['activada'])) {
+                $state_amounts['activada'] = max(0.0, $state_amounts['activada'] - $pending_collect['amount']);
             }
         }
 
@@ -3274,27 +3392,38 @@ class GuaranteeRestController
         }
 
         // ---- FILTROS ----
-        if ($estado === 'pendiente_cobro') {
+        $pending_collect_meta_query = [
+            'relation' => 'AND',
+            [
+                'key'   => 'garantia_contratada_metodo_pago',
+                'value' => 'domiciliacion_bancaria',
+            ],
+            [
+                'relation' => 'OR',
+                [
+                    'key'     => 'garantia_contratada_estado_cobro_cobro_realizado',
+                    'value'   => 0,
+                    'compare' => '=',
+                    'type'    => 'NUMERIC',
+                ],
+                [
+                    'key'     => 'garantia_contratada_estado_cobro_cobro_realizado',
+                    'compare' => 'NOT EXISTS',
+                ],
+            ],
+        ];
+
+        if ($estado === 'pendiente_revision') {
             $meta_query[] = [
-                'relation' => 'AND',
+                'relation' => 'OR',
                 [
-                    'key'   => 'garantia_contratada_metodo_pago',
-                    'value' => 'domiciliacion_bancaria',
+                    'key'   => 'estado_garantia_estado_contratacion',
+                    'value' => 'validacion_pendiente',
                 ],
-                [
-                    'relation' => 'OR',
-                    [
-                        'key'     => 'garantia_contratada_estado_cobro_cobro_realizado',
-                        'value'   => 0,
-                        'compare' => '=',
-                        'type'    => 'NUMERIC',
-                    ],
-                    [
-                        'key'     => 'garantia_contratada_estado_cobro_cobro_realizado',
-                        'compare' => 'NOT EXISTS',
-                    ],
-                ],
+                $pending_collect_meta_query,
             ];
+        } elseif ($estado === 'pendiente_cobro') {
+            $meta_query[] = $pending_collect_meta_query;
         } elseif ($estado) {
             $meta_query[] = [
                 'key'   => 'estado_garantia_estado_contratacion',
@@ -3556,6 +3685,21 @@ class GuaranteeRestController
                 'label' => $estado_labels[$e] ?? $e,
             ];
         }, $estados);
+
+        $has_revision_option = false;
+        foreach ($estados as $entry) {
+            if (isset($entry['value']) && $entry['value'] === 'pendiente_revision') {
+                $has_revision_option = true;
+                break;
+            }
+        }
+
+        if (! $has_revision_option) {
+            $estados[] = [
+                'value' => 'pendiente_revision',
+                'label' => __('Verificar/cobrar', 'garantias-online-360vo'),
+            ];
+        }
 
         if (current_user_can('manage_options')) {
             $estados[] = [
