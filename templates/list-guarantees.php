@@ -140,8 +140,8 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
 
         $state_labels = [
             'activada'           => __('Activadas', 'garantias-online-360vo'),
-            'pendiente_pago'     => __('Pendientes de pago', 'garantias-online-360vo'),
-            'pendiente_revision' => __('Requieren acción', 'garantias-online-360vo'),
+            'pendiente_pago'     => __('Pend. Pago', 'garantias-online-360vo'),
+            'pendiente_revision' => __('Verificar/cobrar', 'garantias-online-360vo'),
             'sin_finalizar'      => __('Sin finalizar', 'garantias-online-360vo'),
         ];
 
@@ -533,8 +533,13 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
 
             $legend_items = [];
             foreach ($admin_summary_states as $entry) {
-                $value   = isset($entry['value']) ? (string) $entry['value'] : '';
-                $count   = isset($entry['count']) ? (int) $entry['count'] : 0;
+                $value = isset($entry['value']) ? (string) $entry['value'] : '';
+                $count = isset($entry['count']) ? (int) $entry['count'] : 0;
+
+                if ($value === '' || $count <= 0) {
+                    continue;
+                }
+
                 $label   = isset($entry['label']) ? (string) $entry['label'] : '';
                 $percent = $admin_summary_total > 0 ? round(($count / $admin_summary_total) * 100) : 0;
                 $legend_items[] = [
@@ -545,6 +550,57 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
                     'color'   => $state_color_vars[$value] ?? 'transparent',
                 ];
             }
+
+            $summary_contexts   = isset($admin_summary_data['contexts']) && is_array($admin_summary_data['contexts'])
+                ? $admin_summary_data['contexts']
+                : [];
+            $summary_month      = $summary_contexts['month'] ?? ($admin_summary_data['month'] ?? []);
+            $summary_year       = $summary_contexts['year'] ?? ($admin_summary_data['year'] ?? []);
+            $summary_month_label = isset($summary_month['label']) ? (string) $summary_month['label'] : '';
+            $summary_year_label  = isset($summary_year['label']) ? (string) $summary_year['label'] : '';
+            $summary_month_amount = isset($summary_month['amount']) ? (float) $summary_month['amount'] : 0.0;
+            $summary_year_amount  = isset($summary_year['amount']) ? (float) $summary_year['amount'] : 0.0;
+            $summary_month_count  = isset($summary_month['count']) ? (int) $summary_month['count'] : 0;
+            $summary_year_count   = isset($summary_year['count']) ? (int) $summary_year['count'] : 0;
+
+            $kpi_amount_label_month = $summary_month_label !== ''
+                ? sprintf(__('Valor mensual (%s)', 'garantias-online-360vo'), $summary_month_label)
+                : __('Valor mensual', 'garantias-online-360vo');
+            $kpi_amount_label_year = $summary_year_label !== ''
+                ? sprintf(__('Valor acumulado (%s)', 'garantias-online-360vo'), $summary_year_label)
+                : __('Valor acumulado', 'garantias-online-360vo');
+            $kpi_count_label_month = $summary_month_label !== ''
+                ? sprintf(__('Garantías este mes (%s)', 'garantias-online-360vo'), $summary_month_label)
+                : __('Garantías este mes', 'garantias-online-360vo');
+            $kpi_count_label_year = $summary_year_label !== ''
+                ? sprintf(__('Total garantías (%s)', 'garantias-online-360vo'), $summary_year_label)
+                : __('Total garantías', 'garantias-online-360vo');
+
+            $kpi_amount_trend_month = __('5.2% vs mes ant.', 'garantias-online-360vo');
+            $kpi_amount_trend_year  = __('12.5% vs año ant.', 'garantias-online-360vo');
+            $kpi_count_trend_month  = __('-5.2% vs mes ant.', 'garantias-online-360vo');
+            $kpi_count_trend_year   = __('-5.2% vs mes ant.', 'garantias-online-360vo');
+
+            $kpi_trend_up_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 0 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>';
+            $kpi_trend_down_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>';
+
+            $initial_amount_value = $admin_summary_context_key === 'year' ? $summary_year_amount : $summary_month_amount;
+            $initial_count_value  = $admin_summary_context_key === 'year' ? $summary_year_count : $summary_month_count;
+
+            $initial_amount_label = $admin_summary_context_key === 'year' ? $kpi_amount_label_year : $kpi_amount_label_month;
+            $initial_count_label  = $admin_summary_context_key === 'year' ? $kpi_count_label_year : $kpi_count_label_month;
+
+            $initial_amount_trend = $admin_summary_context_key === 'year' ? $kpi_amount_trend_year : $kpi_amount_trend_month;
+            $initial_count_trend  = $admin_summary_context_key === 'year' ? $kpi_count_trend_year : $kpi_count_trend_month;
+
+            $initial_amount_trend_class = 'positive';
+            $initial_count_trend_class  = 'negative';
+
+            $kpi_amount_label_default = $kpi_amount_label_month;
+            $kpi_count_label_default  = $kpi_count_label_month;
+
+            $kpi_amount_trend_default = $kpi_amount_trend_month;
+            $kpi_count_trend_default  = $kpi_count_trend_month;
 
             $action_arrow_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
             ?>
@@ -587,6 +643,73 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
                     </div>
                 </header>
                 <div class="guarantee-admin-summary__body">
+                    <section class="guarantee-admin-summary__metrics" data-admin-summary-metrics>
+                        <div
+                            class="kpi-grid">
+                            <article
+                                class="kpi-card"
+                                data-admin-summary-metric="amount"
+                                data-label-default="<?php echo esc_attr($kpi_amount_label_default); ?>"
+                                data-label-month="<?php echo esc_attr($kpi_amount_label_month); ?>"
+                                data-label-year="<?php echo esc_attr($kpi_amount_label_year); ?>"
+                                data-trend-default="<?php echo esc_attr($kpi_amount_trend_default); ?>"
+                                data-trend-month="<?php echo esc_attr($kpi_amount_trend_month); ?>"
+                                data-trend-year="<?php echo esc_attr($kpi_amount_trend_year); ?>"
+                                data-trend-default-direction="positive"
+                                data-trend-month-direction="positive"
+                                data-trend-year-direction="positive">
+                                <div class="kpi-label">
+                                    <span class="kpi-label-icon" aria-hidden="true">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>
+                                    </span>
+                                    <span class="kpi-label-text" data-admin-summary-metric-label><?php echo esc_html($initial_amount_label); ?></span>
+                                </div>
+                                <div
+                                    class="kpi-value is-currency"
+                                    data-admin-summary-metric-value
+                                    data-format="currency"
+                                    data-value="<?php echo esc_attr(number_format($initial_amount_value, 2, '.', '')); ?>">
+                                    <?php echo $has_admin_summary ? esc_html($format_summary_currency($initial_amount_value)) : esc_html($format_summary_currency(0)); ?>
+                                </div>
+                                <div class="kpi-trend <?php echo esc_attr($initial_amount_trend_class); ?>" data-admin-summary-metric-trend>
+                                    <span class="kpi-trend-icon kpi-trend-icon--up" aria-hidden="true"><?php echo $kpi_trend_up_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+                                    <span class="kpi-trend-icon kpi-trend-icon--down" aria-hidden="true"><?php echo $kpi_trend_down_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+                                    <span class="kpi-trend-text" data-admin-summary-metric-trend-text><?php echo esc_html($initial_amount_trend); ?></span>
+                                </div>
+                            </article>
+                            <article
+                                class="kpi-card"
+                                data-admin-summary-metric="count"
+                                data-label-default="<?php echo esc_attr($kpi_count_label_default); ?>"
+                                data-label-month="<?php echo esc_attr($kpi_count_label_month); ?>"
+                                data-label-year="<?php echo esc_attr($kpi_count_label_year); ?>"
+                                data-trend-default="<?php echo esc_attr($kpi_count_trend_default); ?>"
+                                data-trend-month="<?php echo esc_attr($kpi_count_trend_month); ?>"
+                                data-trend-year="<?php echo esc_attr($kpi_count_trend_year); ?>"
+                                data-trend-default-direction="negative"
+                                data-trend-month-direction="negative"
+                                data-trend-year-direction="negative">
+                                <div class="kpi-label">
+                                    <span class="kpi-label-icon" aria-hidden="true">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="currentColor"><path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></svg>
+                                    </span>
+                                    <span class="kpi-label-text" data-admin-summary-metric-label><?php echo esc_html($initial_count_label); ?></span>
+                                </div>
+                                <div
+                                    class="kpi-value"
+                                    data-admin-summary-metric-value
+                                    data-format="integer"
+                                    data-value="<?php echo esc_attr((string) $initial_count_value); ?>">
+                                    <?php echo $has_admin_summary ? esc_html(number_format_i18n($initial_count_value)) : esc_html(number_format_i18n(0)); ?>
+                                </div>
+                                <div class="kpi-trend <?php echo esc_attr($initial_count_trend_class); ?>" data-admin-summary-metric-trend>
+                                    <span class="kpi-trend-icon kpi-trend-icon--up" aria-hidden="true"><?php echo $kpi_trend_up_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+                                    <span class="kpi-trend-icon kpi-trend-icon--down" aria-hidden="true"><?php echo $kpi_trend_down_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+                                    <span class="kpi-trend-text" data-admin-summary-metric-trend-text><?php echo esc_html($initial_count_trend); ?></span>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
                     <section class="visualization-section">
                         <div class="donut-chart<?php echo $donut_is_empty ? ' is-empty' : ''; ?>" data-admin-summary-donut style="<?php echo esc_attr($donut_style_attr); ?>">
                             <div class="chart-center">
