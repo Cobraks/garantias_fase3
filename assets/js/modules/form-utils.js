@@ -130,11 +130,48 @@ export function eurosString(valor) {
 }
 
 export function parseNumericFormValue(val) {
-	if (typeof val === "number") return val;
-	if (!val && val !== 0) return 0;
-	return Number(
-		String(val).replace(/\./g, "").replace(/,/g, ".").replace(/\s/g, "")
-	);
+        if (typeof val === "number") return val;
+        if (val === null || val === undefined) return 0;
+
+        let str = String(val).trim();
+        if (!str) return 0;
+
+        // Elimina espacios y separadores no numéricos comunes (salvo signo y separadores decimales)
+        str = str.replace(/\s/g, "");
+
+        const lastComma = str.lastIndexOf(",");
+        const lastDot = str.lastIndexOf(".");
+        let decimalSeparator = null;
+
+        if (lastComma !== -1 && lastDot !== -1) {
+                decimalSeparator = lastComma > lastDot ? "," : ".";
+        } else if (lastComma !== -1) {
+                const decimalsLength = str.length - lastComma - 1;
+                decimalSeparator = decimalsLength === 3 && lastComma > 0 ? null : ",";
+        } else if (lastDot !== -1) {
+                const decimalsLength = str.length - lastDot - 1;
+                decimalSeparator = decimalsLength === 3 && lastDot > 0 ? null : ".";
+        }
+
+        const thousandSeparator = decimalSeparator === "," ? "." : ",";
+
+        if (decimalSeparator) {
+                const thousandRegex = new RegExp(`\\${thousandSeparator}`, "g");
+                str = str.replace(thousandRegex, "");
+                if (decimalSeparator !== ".") {
+                        const decimalRegex = new RegExp(`\\${decimalSeparator}`, "g");
+                        str = str.replace(decimalRegex, ".");
+                }
+        } else {
+                // No se detectó separador decimal; elimina ambos separadores comunes como miles.
+                str = str.replace(/[.,]/g, "");
+        }
+
+        // Elimina cualquier carácter que no sea dígito o signo negativo.
+        str = str.replace(/[^0-9.-]/g, "");
+
+        const parsed = Number(str);
+        return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 export function getAntiguedadFromDate(fechaISO) {
