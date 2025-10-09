@@ -3114,6 +3114,19 @@ tr.guarantees-table__row:not(.selected):hover td,
 .skeleton--plan,
 .skeleton--canal_venta,
 .skeleton--canal_venta_summary { min-width: 10ch; width: 12ch; }
+.skeleton--canal_venta_summary {
+    border-radius: 999px;
+}
+.vendor-card__badge .skeleton--canal_venta_summary {
+    display: inline-block;
+    width: 100%;
+    min-height: 1.2em;
+    background: linear-gradient(90deg, #1f2937 25%, #0f172a 50%, #1f2937 75%);
+    background-size: 200% 100%;
+}
+:root[data-theme='dark'] .vendor-card__badge .skeleton--canal_venta_summary {
+    background: linear-gradient(90deg, rgba(59, 130, 246, 0.4) 25%, rgba(96, 165, 250, 0.75) 50%, rgba(59, 130, 246, 0.4) 75%);
+}
 .skeleton--nombre,
 .skeleton--nombre_comprador,
 .skeleton--concesionario,
@@ -3197,8 +3210,8 @@ tr.guarantees-table__row:not(.selected):hover td,
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    border: 3px solid rgba(var(--go-color-2563eb-rgb), 0.22);
-    border-top-color: rgba(var(--go-color-2563eb-rgb), 0.85);
+    border: 3px solid rgba(37, 99, 235, 0.22);
+    border-top-color: rgba(37, 99, 235, 0.85);
     display: inline-flex;
     animation: go-spin 0.9s linear infinite;
 }

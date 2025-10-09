@@ -3637,7 +3637,28 @@ const ADD_DOC_KEY = "add-document";
                                                 tbody.appendChild(renderRow(item));
                                                 loadedIds.add(item.id);
                                         }
-					setResultMessage("");
+                                        if (pendingMatSelection && initialMatQuery) {
+                                                const normalizedPlate = initialMatQuery
+                                                        .toString()
+                                                        .replace(/\s+/g, "")
+                                                        .toUpperCase();
+                                                const rows = Array.from(
+                                                        document.querySelectorAll(".guarantees-table__row")
+                                                );
+                                                const match = rows.find((row) =>
+                                                        (row.dataset.matricula || "")
+                                                                .toString()
+                                                                .replace(/\s+/g, "")
+                                                                .toUpperCase() === normalizedPlate
+                                                );
+                                                if (match) {
+                                                        rows.forEach((r) => r.classList.remove("selected"));
+                                                        match.classList.add("selected");
+                                                        prevSelectedRow = match;
+                                                        prevIdx = rows.indexOf(match);
+                                                }
+                                        }
+                                        setResultMessage("");
 					// AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
 					if (data.length === 1 && search && search.length > 0) {
 						const row = tbody.querySelector(".guarantees-table__row");
