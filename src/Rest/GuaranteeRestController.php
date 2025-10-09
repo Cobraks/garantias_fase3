@@ -2233,7 +2233,7 @@ class GuaranteeRestController
             ],
             'pendiente_revision' => [
                 'states' => ['validacion_pendiente', 'pendiente_cobro'],
-                'label'  => __('Requieren acción', 'garantias-online-360vo'),
+                'label'  => __('En revisión', 'garantias-online-360vo'),
             ],
             'sin_finalizar' => [
                 'states' => ['sin_finalizar'],

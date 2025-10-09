@@ -3237,13 +3237,13 @@ tr.guarantees-table__row:not(.selected):hover td,
     --summary-accent-soft: #eef2ff;
     --summary-dimmed-opacity: 0.3;
     --admin-summary-state-activada: #10b981;
-    --admin-summary-state-activada-muted: rgba(16, 185, 129, 0.28);
+    --admin-summary-state-activada-muted: #bbf7d0;
     --admin-summary-state-pendiente-pago: #f59e0b;
-    --admin-summary-state-pendiente-pago-muted: rgba(245, 158, 11, 0.3);
+    --admin-summary-state-pendiente-pago-muted: #fde68a;
     --admin-summary-state-pendiente-revision: #3b82f6;
-    --admin-summary-state-pendiente-revision-muted: rgba(59, 130, 246, 0.3);
+    --admin-summary-state-pendiente-revision-muted: #bfdbfe;
     --admin-summary-state-sin-finalizar: #6b7280;
-    --admin-summary-state-sin-finalizar-muted: rgba(107, 114, 128, 0.32);
+    --admin-summary-state-sin-finalizar-muted: #d1d5db;
     --admin-summary-action-payment: #f59e0b;
     --admin-summary-action-validation: #3b82f6;
     --admin-summary-action-collect: #6366f1;
@@ -3531,18 +3531,16 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: var(--summary-muted);
 }
 
-.legend-item.highlighted,
-.legend-item.is-active {
+.legend-item.is-highlighted {
     opacity: 1;
     transform: scale(1.02);
 }
 
-.visualization-section.is-dimmed .legend-item:not(.highlighted):not(.is-active) {
+.visualization-section.is-dimmed .legend-item {
     opacity: var(--summary-dimmed-opacity);
 }
 
-.visualization-section.is-dimmed .legend-item.highlighted,
-.visualization-section.is-dimmed .legend-item.is-active {
+.visualization-section.is-dimmed .legend-item.is-highlighted {
     opacity: 1;
     transform: scale(1.02);
 }
@@ -3703,10 +3701,10 @@ tr.guarantees-table__row:not(.selected):hover td,
     --summary-accent: #818cf8;
     --summary-accent-soft: rgba(129, 140, 248, 0.16);
     --summary-dimmed-opacity: 0.35;
-    --admin-summary-state-activada-muted: rgba(16, 185, 129, 0.48);
-    --admin-summary-state-pendiente-pago-muted: rgba(245, 158, 11, 0.48);
-    --admin-summary-state-pendiente-revision-muted: rgba(59, 130, 246, 0.5);
-    --admin-summary-state-sin-finalizar-muted: rgba(107, 114, 128, 0.5);
+    --admin-summary-state-activada-muted: #14532d;
+    --admin-summary-state-pendiente-pago-muted: #92400e;
+    --admin-summary-state-pendiente-revision-muted: #1e3a8a;
+    --admin-summary-state-sin-finalizar-muted: #374151;
 }
 
 :root[data-theme='dark'] .visualization-section {

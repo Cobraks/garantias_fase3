@@ -2868,12 +2868,9 @@ const ADD_DOC_KEY = "add-document";
                                 const nodes = legend.querySelectorAll(".legend-item");
                                 nodes.forEach((node) => {
                                         const isActive = Boolean(effectiveHighlight) && node.dataset.state === effectiveHighlight;
-                                        node.classList.toggle("is-active", isActive);
                                         node.classList.toggle("is-highlighted", isActive);
-                                        node.classList.toggle("highlighted", isActive);
                                 });
                         }
-                        root.classList.toggle("is-dimmed", Boolean(effectiveHighlight));
                         setVisualizationHighlight(root, effectiveHighlight);
 
                         if (totalEl) {
@@ -2954,7 +2951,7 @@ const ADD_DOC_KEY = "add-document";
                         });
 
                         renderAdminSummaryStates(root, contextData || {});
-                        scheduleDonutReplay(root);
+                        scheduleDonutReplay(root, { immediate: true });
                 }
 
                 function renderAdminSummaryActions(root, pending = {}) {
