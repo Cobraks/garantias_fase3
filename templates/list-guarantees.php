@@ -546,6 +546,37 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
                 ];
             }
 
+            $context_amount_entries = isset($admin_summary_default['amounts']) && is_array($admin_summary_default['amounts'])
+                ? $admin_summary_default['amounts']
+                : [];
+            $context_amounts = [];
+            foreach ($context_amount_entries as $amount_entry) {
+                $amount_key = isset($amount_entry['value']) ? (string) $amount_entry['value'] : '';
+                if ($amount_key === '') {
+                    continue;
+                }
+                $context_amounts[$amount_key] = isset($amount_entry['amount']) ? (float) $amount_entry['amount'] : 0.0;
+            }
+
+            $summary_active_amount = $context_amounts['activada'] ?? 0.0;
+
+            $summary_amount_label = $admin_summary_context_key === 'year'
+                ? __('Valor acumulado', 'garantias-online-360vo')
+                : ($admin_summary_label !== ''
+                    ? sprintf(__('Valor mensual (%s)', 'garantias-online-360vo'), $admin_summary_label)
+                    : __('Valor mensual', 'garantias-online-360vo'));
+
+            $summary_count_label = $admin_summary_context_key === 'year'
+                ? __('Total garantías', 'garantias-online-360vo')
+                : __('Garantías este mes', 'garantias-online-360vo');
+
+            $summary_active_amount_label = $has_admin_summary
+                ? $format_summary_currency($summary_active_amount)
+                : '—';
+            $summary_total_label = $has_admin_summary
+                ? $format_summary_number($admin_summary_total)
+                : '—';
+
             $action_arrow_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
             ?>
             <section
@@ -556,37 +587,68 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
                 data-loading="<?php echo $has_admin_summary ? '0' : '1'; ?>">
                 <header class="guarantee-admin-summary__header">
                     <h4 class="guarantee-admin-summary__title"><?php esc_html_e('Resumen de Garantías', 'garantias-online-360vo'); ?></h4>
-                    <div class="guarantee-admin-summary__controls">
-                        <fieldset class="guarantee-admin-summary__context" data-admin-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
-                            <input
-                                class="guarantee-admin-summary__context-input"
-                                type="radio"
-                                name="<?php echo esc_attr($summary_context_base); ?>"
-                                id="<?php echo esc_attr($summary_global_id); ?>"
-                                value="year"
-                                data-admin-summary-context-toggle
-                                <?php checked($admin_summary_context_key, 'year'); ?>>
-                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_global_id); ?>">
-                                <?php esc_html_e('Global', 'garantias-online-360vo'); ?>
-                            </label>
-                            <input
-                                class="guarantee-admin-summary__context-input"
-                                type="radio"
-                                name="<?php echo esc_attr($summary_context_base); ?>"
-                                id="<?php echo esc_attr($summary_month_id); ?>"
-                                value="month"
-                                data-admin-summary-context-toggle
-                                <?php checked($admin_summary_context_key, 'month'); ?>>
-                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_month_id); ?>">
-                                <?php esc_html_e('Mensual', 'garantias-online-360vo'); ?>
-                            </label>
-                        </fieldset>
-                        <button type="button" class="guarantee-admin-summary__help" data-admin-summary-help aria-label="<?php esc_attr_e('Mostrar ayuda', 'garantias-online-360vo'); ?>">
-                            <?php echo Svg::icon('help'); ?>
-                        </button>
-                    </div>
+                    <fieldset class="guarantee-admin-summary__context" data-admin-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
+                        <input
+                            class="guarantee-admin-summary__context-input"
+                            type="radio"
+                            name="<?php echo esc_attr($summary_context_base); ?>"
+                            id="<?php echo esc_attr($summary_global_id); ?>"
+                            value="year"
+                            data-admin-summary-context-toggle
+                            <?php checked($admin_summary_context_key, 'year'); ?>>
+                        <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_global_id); ?>">
+                            <?php esc_html_e('Global', 'garantias-online-360vo'); ?>
+                        </label>
+                        <input
+                            class="guarantee-admin-summary__context-input"
+                            type="radio"
+                            name="<?php echo esc_attr($summary_context_base); ?>"
+                            id="<?php echo esc_attr($summary_month_id); ?>"
+                            value="month"
+                            data-admin-summary-context-toggle
+                            <?php checked($admin_summary_context_key, 'month'); ?>>
+                        <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_month_id); ?>">
+                            <?php esc_html_e('Mensual', 'garantias-online-360vo'); ?>
+                        </label>
+                    </fieldset>
                 </header>
                 <div class="guarantee-admin-summary__body">
+                    <section class="kpi-grid" data-admin-summary-kpis>
+                        <article class="kpi-card" data-admin-summary-kpi="amount">
+                            <div class="kpi-label">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>
+                                <span data-admin-summary-kpi-label><?php echo esc_html($summary_amount_label); ?></span>
+                            </div>
+                            <div
+                                class="kpi-value is-currency"
+                                data-admin-summary-kpi-value
+                                data-format="currency"
+                                data-value="<?php echo esc_attr($summary_active_amount); ?>">
+                                <?php echo esc_html($summary_active_amount_label); ?>
+                            </div>
+                            <div class="kpi-trend positive" data-admin-summary-kpi-trend data-trend-type="amount">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>
+                                <span>5.2% vs mes ant.</span>
+                            </div>
+                        </article>
+                        <article class="kpi-card" data-admin-summary-kpi="count">
+                            <div class="kpi-label">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)"><path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></svg>
+                                <span data-admin-summary-kpi-label><?php echo esc_html($summary_count_label); ?></span>
+                            </div>
+                            <div
+                                class="kpi-value"
+                                data-admin-summary-kpi-value
+                                data-format="integer"
+                                data-value="<?php echo esc_attr($admin_summary_total); ?>">
+                                <?php echo esc_html($summary_total_label); ?>
+                            </div>
+                            <div class="kpi-trend negative" data-admin-summary-kpi-trend data-trend-type="count">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>
+                                <span>-5.2% vs mes ant.</span>
+                            </div>
+                        </article>
+                    </section>
                     <section class="visualization-section">
                         <div class="donut-chart<?php echo $donut_is_empty ? ' is-empty' : ''; ?>" data-admin-summary-donut style="<?php echo esc_attr($donut_style_attr); ?>">
                             <div class="chart-center">
