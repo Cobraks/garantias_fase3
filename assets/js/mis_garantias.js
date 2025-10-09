@@ -301,6 +301,56 @@ const ADD_DOC_KEY = "add-document";
                 }
                 let currentEmptyMode = "awaiting";
 
+                function configureAwaitingEmpty(node, plate = "") {
+                        if (!node) {
+                                return;
+                        }
+                        const loading = node.querySelector("[data-empty-loading]");
+                        const hint = node.querySelector("[data-empty-hint]");
+                        const plateTarget = node.querySelector("[data-empty-loading-plate]");
+                        const normalizedPlate = typeof plate === "string" ? plate.trim() : "";
+                        const formattedPlate = normalizedPlate
+                                ? normalizedPlate.toLocaleUpperCase("es-ES")
+                                : "";
+
+                        if (plateTarget) {
+                                plateTarget.textContent = formattedPlate;
+                        }
+
+                        if (loading) {
+                                if (formattedPlate) {
+                                        loading.removeAttribute("hidden");
+                                } else {
+                                        loading.setAttribute("hidden", "");
+                                }
+                        }
+
+                        if (hint) {
+                                if (formattedPlate) {
+                                        hint.setAttribute("hidden", "");
+                                } else {
+                                        hint.removeAttribute("hidden");
+                                }
+                        }
+                }
+
+                function updateAwaitingPlaceholder(targetPanel) {
+                        const panel = targetPanel || activePanel;
+                        if (!panel) {
+                                return;
+                        }
+                        const emptyNode = panel.querySelector(
+                                '[data-empty-detail][data-empty-mode="awaiting"]'
+                        );
+                        if (!emptyNode) {
+                                return;
+                        }
+                        configureAwaitingEmpty(
+                                emptyNode,
+                                pendingMatSelection ? initialMatQuery : ""
+                        );
+                }
+
                 const filtersRoot = document.querySelector(
                         ".guarantees-list__filters"
                 );
@@ -482,6 +532,9 @@ const ADD_DOC_KEY = "add-document";
                 const urlMat = new URLSearchParams(window.location.search).get("matricula");
                 let pendingMatSelection = Boolean(urlMat);
                 let initialMatQuery = typeof urlMat === "string" ? urlMat.trim() : "";
+                if (panel1) {
+                        updateAwaitingPlaceholder(panel1);
+                }
                 const detailCache = new Map();
                 const detailPromises = new Map();
                 const loadedIds = new Set();
@@ -2336,35 +2389,175 @@ const ADD_DOC_KEY = "add-document";
                         return count === 1 ? `${formatted} garantía` : `${formatted} garantías`;
                 }
 
-                function animateSummaryNumber(element, target, options = {}) {
+                function animateSummaryValue(element, target, options = {}) {
                         if (!element) {
                                 return;
                         }
+                        const format = options.format === "currency" ? "currency" : "integer";
                         const duration = typeof options.duration === "number" ? options.duration : 500;
                         const startValue =
                                 typeof options.start === "number"
                                         ? options.start
-                                        : normalizeToInt(element.dataset.value || element.textContent || 0);
-                        const normalizedTarget = normalizeToInt(target);
+                                        : normalizeToFloat(element.dataset.value || element.textContent || 0);
+                        const normalizedTarget = normalizeToFloat(target);
                         if (numberAnimations.has(element)) {
                                 cancelAnimationFrame(numberAnimations.get(element));
                         }
                         const startTime = performance.now();
                         function step(now) {
                                 const progress = Math.min((now - startTime) / duration, 1);
-                                const current = Math.round(
-                                        startValue + (normalizedTarget - startValue) * progress
-                                );
-                                element.textContent = formatIntegerValue(current);
+                                const current = startValue + (normalizedTarget - startValue) * progress;
+                                if (format === "currency") {
+                                        element.textContent = formatCurrencyValue(current);
+                                } else {
+                                        element.textContent = formatIntegerValue(current);
+                                }
                                 if (progress < 1) {
                                         numberAnimations.set(element, requestAnimationFrame(step));
                                 } else {
-                                        element.textContent = formatIntegerValue(normalizedTarget);
-                                        element.dataset.value = String(normalizedTarget);
+                                        if (format === "currency") {
+                                                element.textContent = formatCurrencyValue(normalizedTarget);
+                                                element.dataset.value = normalizedTarget.toFixed(2);
+                                        } else {
+                                                const rounded = Math.round(normalizedTarget);
+                                                element.textContent = formatIntegerValue(rounded);
+                                                element.dataset.value = String(rounded);
+                                        }
                                         numberAnimations.delete(element);
                                 }
                         }
                         numberAnimations.set(element, requestAnimationFrame(step));
+                }
+
+                function animateSummaryNumber(element, target, options = {}) {
+                        animateSummaryValue(element, target, { ...options, format: "integer" });
+                }
+
+                function getMetricDatasetSuffix(contextKey) {
+                        if (!contextKey) {
+                                return "";
+                        }
+                        return String(contextKey)
+                                .split(/[^a-zA-Z0-9]+/)
+                                .filter(Boolean)
+                                .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+                                .join("");
+                }
+
+                function getMetricCopy(card, contextKey) {
+                        if (!card) {
+                                return { label: "", trend: "", direction: "" };
+                        }
+                        const suffix = getMetricDatasetSuffix(contextKey);
+                        const labelKey = suffix ? `label${suffix}` : "";
+                        const trendKey = suffix ? `trend${suffix}` : "";
+                        const directionKey = suffix ? `trend${suffix}Direction` : "";
+                        const label =
+                                (labelKey && card.dataset[labelKey]) ||
+                                card.dataset.labelDefault ||
+                                card.dataset.label ||
+                                "";
+                        const trend =
+                                (trendKey && card.dataset[trendKey]) ||
+                                card.dataset.trendDefault ||
+                                card.dataset.trend ||
+                                "";
+                        const direction =
+                                (directionKey && card.dataset[directionKey]) ||
+                                card.dataset.trendDefaultDirection ||
+                                card.dataset.trendDirection ||
+                                "";
+                        return { label, trend, direction };
+                }
+
+                function updateMetricCard(card, config = {}) {
+                        if (!card) {
+                                return;
+                        }
+                        const format = config.format === "currency" ? "currency" : "integer";
+                        const value =
+                                format === "currency"
+                                        ? normalizeToFloat(config.value || 0)
+                                        : normalizeToInt(config.value || 0);
+                        const copy = getMetricCopy(card, config.contextKey);
+                        const labelEl = card.querySelector("[data-admin-summary-metric-label]");
+                        if (labelEl) {
+                                labelEl.textContent = copy.label || "";
+                        }
+                        const valueEl = card.querySelector("[data-admin-summary-metric-value]");
+                        if (valueEl) {
+                                valueEl.dataset.format = format;
+                                if (config.instant) {
+                                        if (format === "currency") {
+                                                valueEl.textContent = formatCurrencyValue(value);
+                                                valueEl.dataset.value = value.toFixed(2);
+                                        } else {
+                                                valueEl.textContent = formatIntegerValue(value);
+                                                valueEl.dataset.value = String(value);
+                                        }
+                                } else {
+                                        animateSummaryValue(valueEl, value, {
+                                                format,
+                                                duration:
+                                                        typeof config.duration === "number"
+                                                                ? config.duration
+                                                                : format === "currency"
+                                                                ? 520
+                                                                : 420,
+                                        });
+                                }
+                        }
+                        const trendEl = card.querySelector("[data-admin-summary-metric-trend]");
+                        if (trendEl) {
+                                trendEl.classList.remove("positive", "negative");
+                                if (copy.direction === "positive") {
+                                        trendEl.classList.add("positive");
+                                } else if (copy.direction === "negative") {
+                                        trendEl.classList.add("negative");
+                                }
+                                const trendText = trendEl.querySelector(
+                                        "[data-admin-summary-metric-trend-text]"
+                                );
+                                if (trendText) {
+                                        trendText.textContent = copy.trend || "";
+                                }
+                        }
+                }
+
+                function renderAdminSummaryMetrics(
+                        root,
+                        context = {},
+                        contextKey = ADMIN_SUMMARY_DEFAULT_CONTEXT
+                ) {
+                        if (!root) {
+                                return;
+                        }
+                        const effectiveKey = contextKey || ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                        const amountCard = root.querySelector('[data-admin-summary-metric="amount"]');
+                        const countCard = root.querySelector('[data-admin-summary-metric="count"]');
+                        const amountValue =
+                                context && typeof context.amount !== "undefined"
+                                        ? context.amount
+                                        : 0;
+                        const countValue =
+                                context && typeof context.count !== "undefined"
+                                        ? context.count
+                                        : Array.isArray(context.states)
+                                        ? context.states.reduce(
+                                                  (sum, item) => sum + normalizeToInt(item && item.count ? item.count : 0),
+                                                  0
+                                          )
+                                        : 0;
+                        updateMetricCard(amountCard, {
+                                value: amountValue,
+                                format: "currency",
+                                contextKey: effectiveKey,
+                        });
+                        updateMetricCard(countCard, {
+                                value: countValue,
+                                format: "integer",
+                                contextKey: effectiveKey,
+                        });
                 }
 
                 function setAdminSummaryLoading(root, isLoading) {
@@ -2426,6 +2619,46 @@ const ADD_DOC_KEY = "add-document";
                                         resetDonutChart(donut);
                                         donut.classList.remove("is-empty");
                                 }
+                                const metricsContext = root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                                const metricCards = root.querySelectorAll("[data-admin-summary-metric]");
+                                metricCards.forEach((card) => {
+                                        const copy = getMetricCopy(card, metricsContext);
+                                        const labelEl = card.querySelector(
+                                                "[data-admin-summary-metric-label]"
+                                        );
+                                        if (labelEl) {
+                                                labelEl.textContent = copy.label || "";
+                                        }
+                                        const valueEl = card.querySelector(
+                                                "[data-admin-summary-metric-value]"
+                                        );
+                                        if (valueEl) {
+                                                const format = (valueEl.dataset.format || "").toLowerCase();
+                                                const isCurrency = format === "currency";
+                                                valueEl.dataset.format = isCurrency ? "currency" : "integer";
+                                                valueEl.dataset.value = isCurrency ? "0.00" : "0";
+                                                valueEl.textContent = isCurrency
+                                                        ? formatCurrencyValue(0)
+                                                        : formatIntegerValue(0);
+                                        }
+                                        const trendEl = card.querySelector(
+                                                "[data-admin-summary-metric-trend]"
+                                        );
+                                        if (trendEl) {
+                                                trendEl.classList.remove("positive", "negative");
+                                                if (copy.direction === "positive") {
+                                                        trendEl.classList.add("positive");
+                                                } else if (copy.direction === "negative") {
+                                                        trendEl.classList.add("negative");
+                                                }
+                                                const trendText = trendEl.querySelector(
+                                                        "[data-admin-summary-metric-trend-text]"
+                                                );
+                                                if (trendText) {
+                                                        trendText.textContent = copy.trend || "";
+                                                }
+                                        }
+                                });
                         }
                 }
 
@@ -2470,6 +2703,38 @@ const ADD_DOC_KEY = "add-document";
                         if (donut) {
                                 resetDonutChart(donut);
                         }
+                        const metricsContext = root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                        const metricCards = root.querySelectorAll("[data-admin-summary-metric]");
+                        metricCards.forEach((card) => {
+                                const copy = getMetricCopy(card, metricsContext);
+                                const labelEl = card.querySelector("[data-admin-summary-metric-label]");
+                                if (labelEl) {
+                                        labelEl.textContent = copy.label || "";
+                                }
+                                const valueEl = card.querySelector("[data-admin-summary-metric-value]");
+                                if (valueEl) {
+                                        const format = (valueEl.dataset.format || "").toLowerCase();
+                                        const isCurrency = format === "currency";
+                                        valueEl.dataset.format = isCurrency ? "currency" : "integer";
+                                        valueEl.dataset.value = isCurrency ? "0.00" : "0";
+                                        valueEl.textContent = "—";
+                                }
+                                const trendEl = card.querySelector("[data-admin-summary-metric-trend]");
+                                if (trendEl) {
+                                        trendEl.classList.remove("positive", "negative");
+                                        if (copy.direction === "positive") {
+                                                trendEl.classList.add("positive");
+                                        } else if (copy.direction === "negative") {
+                                                trendEl.classList.add("negative");
+                                        }
+                                        const trendText = trendEl.querySelector(
+                                                "[data-admin-summary-metric-trend-text]"
+                                        );
+                                        if (trendText) {
+                                                trendText.textContent = copy.trend || "";
+                                        }
+                                }
+                        });
                         const error = root.querySelector("[data-admin-summary-error]");
                         if (error) {
                                 error.hidden = false;
@@ -2490,7 +2755,7 @@ const ADD_DOC_KEY = "add-document";
                                         const count = Math.max(0, normalizeToInt(entry.count || 0));
                                         return { value, label, count };
                                 })
-                                .filter(Boolean);
+                                .filter((entry) => entry && entry.count > 0);
 
                         if (items.length <= 1) {
                                 return items;
@@ -2515,16 +2780,33 @@ const ADD_DOC_KEY = "add-document";
                         return items;
                 }
 
+                function getDonutBaseColor(donut) {
+                        if (!donut) {
+                                return "#10b981";
+                        }
+                        const styles = window.getComputedStyle ? getComputedStyle(donut) : null;
+                        if (!styles) {
+                                return "#10b981";
+                        }
+                        const baseColor = (styles.getPropertyValue("--donut-base-color") || "").trim();
+                        if (baseColor) {
+                                return baseColor;
+                        }
+                        const fallback = (styles.getPropertyValue("--admin-summary-state-activada") || "").trim();
+                        return fallback || "#10b981";
+                }
+
                 function resetDonutChart(donut) {
                         if (!donut) {
                                 return;
                         }
+                        const baseColor = getDonutBaseColor(donut);
                         donut._adminSummarySegments = [];
                         donut._adminSummaryTotal = 0;
                         donut.style.setProperty("--segment-0-end", "0%");
                         for (let index = 1; index <= 4; index += 1) {
                                 donut.style.setProperty(`--segment-${index}-end`, index === 4 ? "100%" : "0%");
-                                donut.style.setProperty(`--segment-${index}-color`, "transparent");
+                                donut.style.setProperty(`--segment-${index}-color`, baseColor);
                         }
                         donut.style.setProperty("--p", "0");
                         donut.classList.add("is-empty");
@@ -2550,6 +2832,7 @@ const ADD_DOC_KEY = "add-document";
                                 resetDonutChart(donut);
                                 return;
                         }
+                        const baseColor = getDonutBaseColor(donut);
                         donut.classList.remove("is-empty");
                         donut.style.setProperty("--segment-0-end", "0%");
                         let cumulative = 0;
@@ -2571,6 +2854,7 @@ const ADD_DOC_KEY = "add-document";
                         });
                         for (let index = positive.length + 1; index <= 4; index += 1) {
                                 donut.style.setProperty(`--segment-${index}-end`, "100%");
+                                donut.style.setProperty(`--segment-${index}-color`, baseColor);
                         }
                         updateDonutColors(donut, null);
                         donut.style.setProperty("--p", "0");
@@ -2583,17 +2867,18 @@ const ADD_DOC_KEY = "add-document";
                         if (!donut) {
                                 return;
                         }
+                        const baseColor = getDonutBaseColor(donut);
                         const segments = Array.isArray(donut._adminSummarySegments)
                                 ? donut._adminSummarySegments
                                 : [];
                         if (segments.length === 0) {
                                 for (let index = 1; index <= 4; index += 1) {
-                                        donut.style.setProperty(`--segment-${index}-color`, "transparent");
+                                        donut.style.setProperty(`--segment-${index}-color`, baseColor);
                                 }
-                        ADMIN_SUMMARY_STATE_VALUES.forEach((value) => {
-                                donut.classList.remove(`dimmed-${value}`);
-                        });
-                        donut.classList.remove("is-highlighted");
+                                ADMIN_SUMMARY_STATE_VALUES.forEach((value) => {
+                                        donut.classList.remove(`dimmed-${value}`);
+                                });
+                                donut.classList.remove("is-highlighted");
                         donut.style.removeProperty("--donut-highlight-color");
                         donut.style.removeProperty("--donut-highlight-muted");
                                 return;
@@ -2634,11 +2919,11 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 donut.style.setProperty(
                                         `--segment-${index + 1}-color`,
-                                        color || "transparent"
+                                        color || baseColor
                                 );
                         });
                         for (let index = segments.length + 1; index <= 4; index += 1) {
-                                donut.style.setProperty(`--segment-${index}-color`, "transparent");
+                                donut.style.setProperty(`--segment-${index}-color`, baseColor);
                         }
                 }
 
@@ -2746,6 +3031,10 @@ const ADD_DOC_KEY = "add-document";
                         legendItems.forEach((node) => {
                                 const handleEnter = () => {
                                         const state = node.dataset.state || null;
+                                        const locked = root._adminSummaryLockedHighlight || null;
+                                        if (locked && locked !== state) {
+                                                return;
+                                        }
                                         applyLegendHighlight(root, state);
                                 };
                                 const handleLeave = () => {
@@ -2783,6 +3072,14 @@ const ADD_DOC_KEY = "add-document";
                                 items,
                                 total,
                                 label: contextLabel || defaultLabel,
+                                amount:
+                                        context && typeof context.amount !== "undefined"
+                                                ? normalizeToFloat(context.amount)
+                                                : 0,
+                                count:
+                                        context && typeof context.count !== "undefined"
+                                                ? normalizeToInt(context.count)
+                                                : total,
                         };
                         root._adminSummaryLockedHighlight = sanitizeLegendState(
                                 root,
@@ -2912,6 +3209,7 @@ const ADD_DOC_KEY = "add-document";
                                 toggle.checked = value === effectiveKey;
                         });
 
+                        renderAdminSummaryMetrics(root, contextData || {}, effectiveKey);
                         renderAdminSummaryStates(root, contextData || {});
                 }
 
@@ -3082,16 +3380,6 @@ const ADD_DOC_KEY = "add-document";
                                         updateAdminSummaryContext(root, toggle.value || toggle.getAttribute("value"));
                                 });
                         });
-                        const helpButton = root.querySelector("[data-admin-summary-help]");
-                        if (helpButton) {
-                                helpButton.addEventListener("click", () => {
-                                        const event = new CustomEvent("go:summary-help", {
-                                                bubbles: true,
-                                                detail: { source: "admin-summary" },
-                                        });
-                                        root.dispatchEvent(event);
-                                });
-                        }
                         const preloadNode = root.querySelector("[data-admin-summary-preload]");
                         let preloadedData = null;
                         if (preloadNode) {
@@ -3184,6 +3472,7 @@ const ADD_DOC_KEY = "add-document";
                         nextPanel.dataset.matricula = "";
                         syncPdfModalDocs(nextPanel);
                         if (normalizedMode === "awaiting") {
+                                updateAwaitingPlaceholder(nextPanel);
                                 initializeAdminSummary(nextPanel);
                         }
                         activePanel = nextPanel;
@@ -3379,8 +3668,7 @@ const ADD_DOC_KEY = "add-document";
                                                                 nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
                                                                 syncPdfModalDocs(nextPanel);
                                                         } else {
-                                                                nextPanel.classList.add("loading");
-                                                                nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                                                nextPanel.innerHTML = renderDetailSkeleton(rowData);
                                                                 fetchDetail(id)
                                                                         .then((dataDetalle) => {
                                                                                 if (nextPanel.dataset.loadedId === String(id)) {
@@ -3394,10 +3682,7 @@ const ADD_DOC_KEY = "add-document";
                                                                                         syncPdfModalDocs(nextPanel);
                                                                                 }
                                                                         })
-                                                                        .catch(() => {})
-                                                                        .finally(() => {
-                                                                                nextPanel.classList.remove("loading");
-                                                                        });
+                                                                        .catch(() => {});
                                                         }
                                                         nextPanel.dataset.loadedId = id;
                                                         activePanel = nextPanel;
@@ -3457,6 +3742,7 @@ const ADD_DOC_KEY = "add-document";
                         if (!trimmedPlate) {
                                 pendingMatSelection = false;
                                 initialMatQuery = "";
+                                updateAwaitingPlaceholder();
                                 return;
                         }
                         try {
@@ -3473,6 +3759,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (data.length === 0) {
                                         pendingMatSelection = false;
                                         initialMatQuery = "";
+                                        updateAwaitingPlaceholder();
                                         return;
                                 }
                                 const item = data[0];
@@ -3504,8 +3791,7 @@ const ADD_DOC_KEY = "add-document";
                                 const rowData = buildRowData(row);
                                 const currentActive = activePanel;
                                 const nextPanel = activePanel === panel1 ? panel2 : panel1;
-                                nextPanel.classList.add("loading");
-                                nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                nextPanel.innerHTML = renderDetailSkeleton(rowData);
                                 fetchDetail(id)
                                         .then((detailData) => {
                                                 if (nextPanel.dataset.loadedId === String(id)) {
@@ -3515,10 +3801,7 @@ const ADD_DOC_KEY = "add-document";
                                                         syncPdfModalDocs(nextPanel);
                                                 }
                                         })
-                                        .catch(() => {})
-                                        .finally(() => {
-                                                nextPanel.classList.remove("loading");
-                                        });
+                                        .catch(() => {});
                                 nextPanel.dataset.loadedId = id;
                                 activePanel = nextPanel;
                                 inactivePanel = currentActive;
@@ -3528,6 +3811,7 @@ const ADD_DOC_KEY = "add-document";
                                 console.error("❌ Error preloadByPlate:", e);
                                 pendingMatSelection = false;
                                 initialMatQuery = "";
+                                updateAwaitingPlaceholder();
                         }
                 }
 
@@ -3625,6 +3909,66 @@ const ADD_DOC_KEY = "add-document";
                                 : "";
                         const content = `${telHtml}${mailHtml}`;
                         return content ? `<ul class="fast-actions">${content}</ul>` : "";
+                }
+
+                const DETAIL_SKELETON_FIELDS = [
+                        "plan",
+                        "desde_fmt",
+                        "hasta_fmt",
+                        "estado",
+                        "matricula",
+                        "marca_modelo",
+                        "tipo",
+                        "kilometros",
+                        "primera_matriculacion",
+                        "bastidor",
+                        "precio_venta",
+                        "combustible",
+                        "cambio",
+                        "potencia",
+                        "cilindrada",
+                        "precio",
+                        "nombre_comprador",
+                        "dni_comprador",
+                        "telefono_comprador",
+                        "email_comprador",
+                        "direccion_comprador",
+                        "localidad_comprador",
+                        "provincia_comprador",
+                        "codigo_postal_comprador",
+                ];
+
+                function renderDetailSkeleton(rowData = {}) {
+                        const baseRow = rowData && typeof rowData === "object" ? rowData : {};
+                        const stateLabel =
+                                typeof baseRow.estado === "string"
+                                        ? baseRow.estado
+                                        : typeof baseRow.estado_label === "string"
+                                        ? baseRow.estado_label
+                                        : "";
+                        const stateValue =
+                                typeof baseRow.estadoclase === "string"
+                                        ? baseRow.estadoclase
+                                        : stateLabel;
+                        const skeletonData = {
+                                ...baseRow,
+                                estado:
+                                        baseRow && typeof baseRow.estado === "object"
+                                                ? baseRow.estado
+                                                : {
+                                                        value: stateValue || "",
+                                                        label: stateLabel,
+                                                },
+                                documents: Array.isArray(baseRow.documents)
+                                        ? baseRow.documents
+                                        : [],
+                        };
+
+                        return renderFullDetail(
+                                skeletonData,
+                                baseRow,
+                                DETAIL_SKELETON_FIELDS
+                        );
                 }
 
                 function renderFullDetail(data, rowData, skeletons = []) {
@@ -4360,8 +4704,7 @@ function initRowSelection() {
                                         nextPanel.dataset.plan = data.plan || rowData.plan || "";
                                         syncPdfModalDocs(nextPanel);
                                 } else {
-                                        nextPanel.classList.add("loading");
-                                        nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                        nextPanel.innerHTML = renderDetailSkeleton(rowData);
                                 }
                                 nextPanel.dataset.loadedId = id;
 
@@ -4396,8 +4739,6 @@ function initRowSelection() {
                                                 }
                                         } catch (e) {
                                                 console.error("❌ Error fetch detalle:", e);
-                                        } finally {
-                                                nextPanel.classList.remove("loading");
                                         }
                                 }
                         });
@@ -5252,15 +5593,13 @@ function initRowSelection() {
                         { root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }
                 ).observe(scrollEnd);
 
+                const initialPlateToPreload = initialMatQuery;
+                if (initialPlateToPreload) {
+                        preloadByPlate(initialPlateToPreload);
+                }
                 const initialLoadPromise = loadPage(1);
-                if (initialMatQuery) {
-                        initialLoadPromise
-                                .catch(() => {})
-                                .finally(() => {
-                                        if (initialMatQuery) {
-                                                preloadByPlate(initialMatQuery);
-                                        }
-                                });
+                if (initialPlateToPreload) {
+                        initialLoadPromise.catch(() => {});
                 }
         });
 })();
