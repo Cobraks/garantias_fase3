@@ -2197,10 +2197,12 @@ class GuaranteeRestController
         if (is_array($rows)) {
             foreach ($rows as $row) {
                 $count++;
-                $amount_values[] = $row['price'] ?? '';
                 $state = isset($row['state']) ? (string) $row['state'] : '';
                 if ($state === '') {
                     continue;
+                }
+                if ($state === 'activada') {
+                    $amount_values[] = $row['price'] ?? '';
                 }
                 if (! isset($state_counts[$state])) {
                     $state_counts[$state] = 0;
@@ -2229,11 +2231,11 @@ class GuaranteeRestController
             ],
             'pendiente_pago' => [
                 'states' => ['pendiente_pago'],
-                'label'  => __('Pendientes de pago', 'garantias-online-360vo'),
+                'label'  => __('Pend. Pago', 'garantias-online-360vo'),
             ],
             'pendiente_revision' => [
                 'states' => ['validacion_pendiente', 'pendiente_cobro'],
-                'label'  => __('Requieren acción', 'garantias-online-360vo'),
+                'label'  => __('Verificar/cobrar', 'garantias-online-360vo'),
             ],
             'sin_finalizar' => [
                 'states' => ['sin_finalizar'],
@@ -2393,10 +2395,12 @@ class GuaranteeRestController
         if (is_array($rows)) {
             foreach ($rows as $row) {
                 $count++;
-                $amount_values[] = $row['price'] ?? '';
                 $state = isset($row['state']) ? (string) $row['state'] : '';
                 if ($state === '') {
                     continue;
+                }
+                if ($state === 'activada') {
+                    $amount_values[] = $row['price'] ?? '';
                 }
                 if (! isset($state_counts[$state])) {
                     $state_counts[$state] = 0;
