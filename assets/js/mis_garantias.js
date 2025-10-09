@@ -30,6 +30,7 @@ const ADD_DOC_KEY = "add-document";
                 const userRole =
                         (goConfig.user && goConfig.user.role) ||
                         "user";
+                const normalizedRole = String(userRole || "").toLowerCase();
                 const isAdmin =
                         [
                                 "administrator",
@@ -37,11 +38,15 @@ const ADD_DOC_KEY = "add-document";
                                 "go_garantias",
                                 "go_comercial",
                                 "go_director_comercial",
-                        ].includes(userRole);
+                        ].includes(normalizedRole);
                 const isCoreAdmin =
-                        userRole === "administrator" || userRole === "admin";
+                        normalizedRole === "administrator" || normalizedRole === "admin";
+                const isDirector = normalizedRole === "go_director_comercial";
                 const isProfesional =
-                        userRole === "go_profesional" || userRole === "profesional";
+                        normalizedRole === "go_profesional" || normalizedRole === "profesional";
+                const canManageDetailActions =
+                        ["administrator", "admin", "go_garantias"].includes(normalizedRole);
+                const canViewAdminSummary = isCoreAdmin || isDirector;
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
                 const ADMIN_SUMMARY_DEFAULT_CONTEXT = "month";
@@ -306,7 +311,7 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                 });
                 }
-                if (isCoreAdmin && panel1 && panel1.classList.contains("active")) {
+                if (canViewAdminSummary && panel1 && panel1.classList.contains("active")) {
                         initializeAdminSummary(panel1);
                 }
                 let currentEmptyMode = "awaiting";
@@ -3218,7 +3223,7 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 function fetchAdminSummary(force = false) {
-                        if (!isCoreAdmin) {
+                        if (!canViewAdminSummary) {
                                 return Promise.resolve({});
                         }
                         if (force) {
@@ -3285,7 +3290,7 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 function initializeAdminSummary(panel) {
-                        if (!isCoreAdmin || !panel) {
+                        if (!canViewAdminSummary || !panel) {
                                 return;
                         }
                         const root = panel.querySelector("[data-admin-summary]");
@@ -4136,7 +4141,7 @@ const ADD_DOC_KEY = "add-document";
     }
     const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
     const showChannelSection = isAdmin;
-    const showActions = isAdmin;
+    const showActions = canManageDetailActions;
 
     const sinFinalButtons = [];
     if (showActions || isProfesional) {
@@ -4258,7 +4263,7 @@ const ADD_DOC_KEY = "add-document";
     }
 
     const adminPendingDomiciliacion =
-        isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado;
+        canManageDetailActions && metodoPago.startsWith("domiciliacion") && !cobroRealizado;
     const deadlineInfo = getTransferDeadlineInfo(data, rowData);
     const transferDeadlineMs = deadlineInfo.deadlineMs;
     const hasTransferDeadline = Number.isFinite(transferDeadlineMs);
