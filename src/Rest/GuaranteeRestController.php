@@ -2364,7 +2364,11 @@ class GuaranteeRestController
             $date_params[] = $options['end_date'];
         }
 
-        list($payment_clause, $payment_params) = self::build_in_clause(self::get_direct_debit_payment_slugs());
+        list($payment_clause, $payment_params) = self::build_like_clause('payment.meta_value', self::get_direct_debit_payment_patterns());
+
+        if ($payment_clause === '') {
+            return ['count' => 0, 'amount' => 0.0];
+        }
 
         $sql = "
             SELECT COALESCE(MAX(price.meta_value), '') AS price
@@ -2384,7 +2388,7 @@ class GuaranteeRestController
             WHERE p.post_type = %s
               AND p.post_status IN ($status_clause)
               AND state.meta_value = 'activada'
-              AND payment.meta_value IN ($payment_clause)
+              AND {$payment_clause}
               AND (
                     collected.post_id IS NULL
                     OR collected.meta_value = ''
@@ -2641,6 +2645,74 @@ class GuaranteeRestController
         }
 
         return $slugs;
+    }
+
+    private static function get_direct_debit_payment_patterns(): array
+    {
+        static $patterns = null;
+
+        if ($patterns === null) {
+            $slugs = self::get_direct_debit_payment_slugs();
+            $extras = ['domiciliacion', 'domiciliación'];
+            $patterns = array_values(array_unique(array_filter(array_merge($slugs, $extras), static function ($pattern) {
+                return is_string($pattern) && $pattern !== '';
+            })));
+        }
+
+        return $patterns;
+    }
+
+    private static function build_like_clause(string $column, array $needles): array
+    {
+        global $wpdb;
+
+        $needles = array_values(array_unique(array_filter(array_map('strval', $needles))));
+        if (empty($needles)) {
+            return ['', []];
+        }
+
+        $parts = [];
+        $params = [];
+
+        foreach ($needles as $needle) {
+            if ($needle === '') {
+                continue;
+            }
+            $parts[]  = sprintf('%s LIKE %%s', $column);
+            $params[] = '%' . $wpdb->esc_like($needle) . '%';
+        }
+
+        if (empty($parts)) {
+            return ['', []];
+        }
+
+        $clause = '(' . implode(' OR ', $parts) . ')';
+
+        return [$clause, $params];
+    }
+
+    private static function build_direct_debit_payment_meta_query(): array
+    {
+        $patterns = self::get_direct_debit_payment_patterns();
+        $clauses  = [];
+
+        foreach ($patterns as $pattern) {
+            $clauses[] = [
+                'key'     => 'garantia_contratada_metodo_pago',
+                'value'   => $pattern,
+                'compare' => 'LIKE',
+            ];
+        }
+
+        if (empty($clauses)) {
+            return [
+                'key'     => 'garantia_contratada_metodo_pago',
+                'value'   => 'domiciliacion',
+                'compare' => 'LIKE',
+            ];
+        }
+
+        return array_merge(['relation' => 'OR'], $clauses);
     }
 
     private static function get_state_labels(): array
@@ -3411,11 +3483,7 @@ class GuaranteeRestController
         // ---- FILTROS ----
         $pending_collect_meta_query = [
             'relation' => 'AND',
-            [
-                'key'   => 'garantia_contratada_metodo_pago',
-                'value' => self::get_direct_debit_payment_slugs(),
-                'compare' => 'IN',
-            ],
+            self::build_direct_debit_payment_meta_query(),
             [
                 'relation' => 'OR',
                 [
