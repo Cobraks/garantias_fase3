@@ -45,12 +45,13 @@ const ADD_DOC_KEY = "add-document";
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
                 const ADMIN_SUMMARY_DEFAULT_CONTEXT = "month";
-                const ADMIN_SUMMARY_STATE_ORDER = [
+                const ADMIN_SUMMARY_STATE_VALUES = [
                         "activada",
                         "pendiente_pago",
                         "pendiente_revision",
                         "sin_finalizar",
                 ];
+                const ADMIN_SUMMARY_STATE_ORDER = [...ADMIN_SUMMARY_STATE_VALUES];
                 const ADMIN_SUMMARY_STATE_COLORS = {
                         activada: {
                                 color: "var(--admin-summary-state-activada)",
@@ -2378,6 +2379,7 @@ const ADD_DOC_KEY = "add-document";
                                 root._adminSummaryData = null;
                                 root._adminSummaryContextData = null;
                                 root._adminSummaryHighlight = null;
+                                root._adminSummaryLockedHighlight = null;
                                 root.classList.remove("is-dimmed");
                         }
                         const error = root.querySelector("[data-admin-summary-error]");
@@ -2435,6 +2437,7 @@ const ADD_DOC_KEY = "add-document";
                         root.dataset.loaded = "0";
                         root.classList.remove("is-dimmed");
                         root._adminSummaryHighlight = null;
+                        root._adminSummaryLockedHighlight = null;
                         const legend = root.querySelector("[data-admin-summary-states]");
                         if (legend) {
                                 legend.innerHTML = "";
@@ -2523,6 +2526,12 @@ const ADD_DOC_KEY = "add-document";
                         }
                         donut.style.setProperty("--p", "0");
                         donut.classList.add("is-empty");
+                        donut.classList.remove("is-highlighted");
+                        ADMIN_SUMMARY_STATE_VALUES.forEach((value) => {
+                                donut.classList.remove(`dimmed-${value}`);
+                        });
+                        donut.style.removeProperty("--donut-highlight-color");
+                        donut.style.removeProperty("--donut-highlight-muted");
                 }
 
                 function configureDonutSegments(donut, items) {
@@ -2579,12 +2588,48 @@ const ADD_DOC_KEY = "add-document";
                                 for (let index = 1; index <= 4; index += 1) {
                                         donut.style.setProperty(`--segment-${index}-color`, "transparent");
                                 }
+                        ADMIN_SUMMARY_STATE_VALUES.forEach((value) => {
+                                donut.classList.remove(`dimmed-${value}`);
+                        });
+                        donut.classList.remove("is-highlighted");
+                        donut.style.removeProperty("--donut-highlight-color");
+                        donut.style.removeProperty("--donut-highlight-muted");
                                 return;
                         }
+                        const highlightSegment = highlightValue
+                                ? segments.find((segment) => segment.value === highlightValue)
+                                : null;
+                        const highlightColor = highlightSegment ? highlightSegment.color : null;
+                        const highlightMuted = highlightSegment
+                                ? highlightSegment.muted || highlightSegment.color
+                                : null;
+                        ADMIN_SUMMARY_STATE_VALUES.forEach((value) => {
+                                donut.classList.toggle(
+                                        `dimmed-${value}`,
+                                        Boolean(highlightSegment) && value === highlightValue
+                                );
+                        });
+                        donut.classList.toggle("is-highlighted", Boolean(highlightSegment));
+                        if (highlightSegment) {
+                                donut.style.setProperty(
+                                        "--donut-highlight-color",
+                                        highlightColor || "transparent"
+                                );
+                                donut.style.setProperty(
+                                        "--donut-highlight-muted",
+                                        highlightMuted || highlightColor || "transparent"
+                                );
+                        } else {
+                                donut.style.removeProperty("--donut-highlight-color");
+                                donut.style.removeProperty("--donut-highlight-muted");
+                        }
                         segments.forEach((segment, index) => {
-                                const color = highlightValue && segment.value !== highlightValue
-                                        ? segment.muted
-                                        : segment.color;
+                                let color = segment.color;
+                                if (highlightSegment) {
+                                        color = segment.value === highlightValue
+                                                ? highlightColor
+                                                : highlightMuted;
+                                }
                                 donut.style.setProperty(
                                         `--segment-${index + 1}-color`,
                                         color || "transparent"
@@ -2593,6 +2638,16 @@ const ADD_DOC_KEY = "add-document";
                         for (let index = segments.length + 1; index <= 4; index += 1) {
                                 donut.style.setProperty(`--segment-${index}-color`, "transparent");
                         }
+                }
+
+                function sanitizeLegendState(root, value) {
+                        if (!root || !value) {
+                                return null;
+                        }
+                        const contextData = root._adminSummaryContextData || {};
+                        const items = Array.isArray(contextData.items) ? contextData.items : [];
+                        const match = items.find((entry) => entry.value === value);
+                        return match && match.value ? match.value : null;
                 }
 
                 function renderAdminSummaryStates(root, context = {}) {
@@ -2644,6 +2699,7 @@ const ADD_DOC_KEY = "add-document";
                                         label: contextLabel || defaultLabel,
                                 };
                                 root._adminSummaryHighlight = null;
+                                root._adminSummaryLockedHighlight = null;
                                 applyLegendHighlight(root, null);
                                 return;
                         }
@@ -2669,24 +2725,37 @@ const ADD_DOC_KEY = "add-document";
 
                         const legendItems = legend.querySelectorAll(".legend-item");
                         legendItems.forEach((node) => {
-                                node.addEventListener("mouseenter", () => {
+                                const handleEnter = () => {
                                         const state = node.dataset.state || null;
                                         applyLegendHighlight(root, state);
-                                });
-                                node.addEventListener("focus", () => {
+                                };
+                                const handleLeave = () => {
+                                        const locked = root._adminSummaryLockedHighlight || null;
+                                        applyLegendHighlight(root, locked);
+                                };
+                                node.addEventListener("mouseenter", handleEnter);
+                                node.addEventListener("focus", handleEnter);
+                                node.addEventListener("mouseleave", handleLeave);
+                                node.addEventListener("blur", handleLeave);
+                                node.addEventListener("click", (event) => {
+                                        event.preventDefault();
                                         const state = node.dataset.state || null;
-                                        applyLegendHighlight(root, state);
+                                        const locked = root._adminSummaryLockedHighlight || null;
+                                        const next = locked === state ? null : state;
+                                        root._adminSummaryLockedHighlight = sanitizeLegendState(root, next);
+                                        applyLegendHighlight(root, root._adminSummaryLockedHighlight || null);
                                 });
-                                node.addEventListener("mouseleave", () => {
-                                        applyLegendHighlight(root, null);
-                                });
-                                node.addEventListener("blur", () => {
-                                        applyLegendHighlight(root, null);
+                                node.addEventListener("keydown", (event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                node.click();
+                                        }
                                 });
                         });
                         if (!legend._adminSummaryLeaveBound) {
                                 legend.addEventListener("mouseleave", () => {
-                                        applyLegendHighlight(root, null);
+                                        const locked = root._adminSummaryLockedHighlight || null;
+                                        applyLegendHighlight(root, locked);
                                 });
                                 legend._adminSummaryLeaveBound = true;
                         }
@@ -2696,8 +2765,12 @@ const ADD_DOC_KEY = "add-document";
                                 total,
                                 label: contextLabel || defaultLabel,
                         };
+                        root._adminSummaryLockedHighlight = sanitizeLegendState(
+                                root,
+                                root._adminSummaryLockedHighlight || null
+                        );
                         root._adminSummaryHighlight = null;
-                        applyLegendHighlight(root, null);
+                        applyLegendHighlight(root, root._adminSummaryLockedHighlight || null);
                 }
 
                 function applyLegendHighlight(root, stateValue = null) {
@@ -2717,12 +2790,19 @@ const ADD_DOC_KEY = "add-document";
                                 ? labelEl.getAttribute("data-default-label") || "Total"
                                 : "Total";
                         const baseLabel = contextData.label || defaultLabel;
-                        const highlightItem = stateValue
-                                ? items.find((entry) => entry.value === stateValue)
+                        const sanitizedValue = sanitizeLegendState(root, stateValue);
+                        const highlightItem = sanitizedValue
+                                ? items.find((entry) => entry.value === sanitizedValue)
                                 : null;
                         const effectiveHighlight = highlightItem && highlightItem.value ? highlightItem.value : null;
 
                         root._adminSummaryHighlight = effectiveHighlight;
+                        if (!effectiveHighlight) {
+                                root._adminSummaryLockedHighlight = sanitizeLegendState(
+                                        root,
+                                        root._adminSummaryLockedHighlight || null
+                                );
+                        }
 
                         if (legend) {
                                 const nodes = legend.querySelectorAll(".legend-item");

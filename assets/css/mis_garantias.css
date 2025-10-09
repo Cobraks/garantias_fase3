@@ -3403,6 +3403,8 @@ tr.guarantees-table__row:not(.selected):hover td,
     --segment-2-color: transparent;
     --segment-3-color: transparent;
     --segment-4-color: transparent;
+    --donut-highlight-color: transparent;
+    --donut-highlight-muted: transparent;
     width: 150px;
     height: 150px;
     border-radius: 50%;
