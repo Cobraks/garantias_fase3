@@ -2590,6 +2590,26 @@ const ADD_DOC_KEY = "add-document";
                         });
                 }
 
+                function scheduleDonutReplay(root, { immediate = false } = {}) {
+                        if (!root) {
+                                return;
+                        }
+                        const donut = root.querySelector
+                                ? root.querySelector("[data-admin-summary-donut]")
+                                : null;
+                        if (!donut) {
+                                return;
+                        }
+                        const trigger = () => playDonutAnimation(donut);
+                        if (immediate) {
+                                trigger();
+                                return;
+                        }
+                        requestAnimationFrame(() => {
+                                requestAnimationFrame(trigger);
+                        });
+                }
+
                 function updateDonutColors(donut, highlightValue) {
                         if (!donut) {
                                 return;
@@ -2810,6 +2830,7 @@ const ADD_DOC_KEY = "add-document";
                         );
                         root._adminSummaryHighlight = null;
                         applyLegendHighlight(root, root._adminSummaryLockedHighlight || null);
+                        scheduleDonutReplay(root, { immediate: true });
                 }
 
                 function applyLegendHighlight(root, stateValue = null) {
@@ -2933,6 +2954,7 @@ const ADD_DOC_KEY = "add-document";
                         });
 
                         renderAdminSummaryStates(root, contextData || {});
+                        scheduleDonutReplay(root);
                 }
 
                 function renderAdminSummaryActions(root, pending = {}) {
@@ -3211,10 +3233,16 @@ const ADD_DOC_KEY = "add-document";
 			currentActive.classList.add(
 				direction === "forward" ? "slide-out-left" : "slide-out-right"
 			);
-			nextPanel.classList.add(
-				direction === "forward" ? "slide-in-right" : "slide-in-left"
-			);
-			nextPanel.classList.add("active");
+                        nextPanel.classList.add(
+                                direction === "forward" ? "slide-in-right" : "slide-in-left"
+                        );
+                        nextPanel.classList.add("active");
+                        if (normalizedMode === "awaiting") {
+                                requestAnimationFrame(() => {
+                                        const summaryRoot = nextPanel.querySelector("[data-admin-summary]");
+                                        scheduleDonutReplay(summaryRoot || nextPanel);
+                                });
+                        }
 			currentActive.classList.remove("active");
 			currentActive.addEventListener(
 				"animationend",
