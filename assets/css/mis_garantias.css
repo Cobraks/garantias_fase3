@@ -1614,7 +1614,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     width: 16px;
     height: 16px;
     border: 2px solid #ffffff;
-    border-top-color: rgba(255, 255, 255, 0.25);
+    border-top-color:  rgba(255, 255, 255, 0.25);
     border-radius: 50%;
     animation: go-spin 1s linear infinite;
 }
@@ -3126,12 +3126,12 @@ tr.guarantees-table__row:not(.selected):hover td,
     height: 100%;
     max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
     overflow-y: auto;
-    overflow-x: hidden;
     transition: transform 300ms ease, opacity 300ms ease;
     backface-visibility: hidden;
     will-change: transform, opacity;
     border-radius: 1rem;
     background: var(--surface);
+    overflow-x: hidden;
 }
 
 .guarantee-detail__panel.loading {

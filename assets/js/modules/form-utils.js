@@ -27,10 +27,10 @@ export function logDebug(...args) {
 // 1. Límites y constantes globales
 // ===============================
 export const numericLimits = {
-        kilometros: { min: 0, max: Infinity },
-        precio_venta: { min: 0, max: 999999 },
-        cilindrada: { min: 0, max: 9000 },
-        potencia: { min: 0, max: 3000 },
+	kilometros: { min: 0, max: Infinity },
+	precio_venta: { min: 0, max: 999999 },
+	cilindrada: { min: 0, max: 9000 },
+	potencia: { min: 0, max: 3000 },
 };
 
 export const IVA_PORCENTAJE = 21;
@@ -130,100 +130,100 @@ export function eurosString(valor) {
 }
 
 export function parseNumericFormValue(val) {
-        if (typeof val === "number") return val;
-        if (val === null || val === undefined) return 0;
+	if (typeof val === "number") return val;
+	if (val === null || val === undefined) return 0;
 
-        let str = String(val).trim();
-        if (!str) return 0;
+	let str = String(val).trim();
+	if (!str) return 0;
 
-        // Elimina espacios y separadores no numéricos comunes (salvo signo y separadores decimales)
-        str = str.replace(/\s/g, "");
+	// Elimina espacios y separadores no numéricos comunes (salvo signo y separadores decimales)
+	str = str.replace(/\s/g, "");
 
-        const lastComma = str.lastIndexOf(",");
-        const lastDot = str.lastIndexOf(".");
-        let decimalSeparator = null;
+	const lastComma = str.lastIndexOf(",");
+	const lastDot = str.lastIndexOf(".");
+	let decimalSeparator = null;
 
-        if (lastComma !== -1 && lastDot !== -1) {
-                decimalSeparator = lastComma > lastDot ? "," : ".";
-        } else if (lastComma !== -1) {
-                const decimalsLength = str.length - lastComma - 1;
-                decimalSeparator = decimalsLength === 3 && lastComma > 0 ? null : ",";
-        } else if (lastDot !== -1) {
-                const decimalsLength = str.length - lastDot - 1;
-                decimalSeparator = decimalsLength === 3 && lastDot > 0 ? null : ".";
-        }
+	if (lastComma !== -1 && lastDot !== -1) {
+		decimalSeparator = lastComma > lastDot ? "," : ".";
+	} else if (lastComma !== -1) {
+		const decimalsLength = str.length - lastComma - 1;
+		decimalSeparator = decimalsLength === 3 && lastComma > 0 ? null : ",";
+	} else if (lastDot !== -1) {
+		const decimalsLength = str.length - lastDot - 1;
+		decimalSeparator = decimalsLength === 3 && lastDot > 0 ? null : ".";
+	}
 
-        const thousandSeparator = decimalSeparator === "," ? "." : ",";
+	const thousandSeparator = decimalSeparator === "," ? "." : ",";
 
-        if (decimalSeparator) {
-                const thousandRegex = new RegExp(`\\${thousandSeparator}`, "g");
-                str = str.replace(thousandRegex, "");
-                if (decimalSeparator !== ".") {
-                        const decimalRegex = new RegExp(`\\${decimalSeparator}`, "g");
-                        str = str.replace(decimalRegex, ".");
-                }
-        } else {
-                // No se detectó separador decimal; elimina ambos separadores comunes como miles.
-                str = str.replace(/[.,]/g, "");
-        }
+	if (decimalSeparator) {
+		const thousandRegex = new RegExp(`\\${thousandSeparator}`, "g");
+		str = str.replace(thousandRegex, "");
+		if (decimalSeparator !== ".") {
+			const decimalRegex = new RegExp(`\\${decimalSeparator}`, "g");
+			str = str.replace(decimalRegex, ".");
+		}
+	} else {
+		// No se detectó separador decimal; elimina ambos separadores comunes como miles.
+		str = str.replace(/[.,]/g, "");
+	}
 
-        // Elimina cualquier carácter que no sea dígito o signo negativo.
-        str = str.replace(/[^0-9.-]/g, "");
+	// Elimina cualquier carácter que no sea dígito o signo negativo.
+	str = str.replace(/[^0-9.-]/g, "");
 
-        const parsed = Number(str);
-        return Number.isNaN(parsed) ? 0 : parsed;
+	const parsed = Number(str);
+	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 export function getAntiguedadFromDate(fechaISO) {
-        if (!fechaISO) return null;
-        const partes = typeof fechaISO === "string" ? fechaISO.split("-") : null;
-        let fecha = null;
-        if (
-                Array.isArray(partes) &&
-                partes.length >= 3 &&
-                partes.every((p) => /^\d+$/.test(p))
-        ) {
-                const [anio, mes, dia] = partes.map((p) => Number.parseInt(p, 10));
-                fecha = new Date(anio, (mes || 1) - 1, dia || 1);
-        } else {
-                fecha = new Date(fechaISO);
-        }
-        if (isNaN(fecha.getTime())) return null;
+	if (!fechaISO) return null;
+	const partes = typeof fechaISO === "string" ? fechaISO.split("-") : null;
+	let fecha = null;
+	if (
+		Array.isArray(partes) &&
+		partes.length >= 3 &&
+		partes.every((p) => /^\d+$/.test(p))
+	) {
+		const [anio, mes, dia] = partes.map((p) => Number.parseInt(p, 10));
+		fecha = new Date(anio, (mes || 1) - 1, dia || 1);
+	} else {
+		fecha = new Date(fechaISO);
+	}
+	if (isNaN(fecha.getTime())) return null;
 
-        const hoy = new Date();
-        const fechaMatriculacion = new Date(
-                fecha.getFullYear(),
-                fecha.getMonth(),
-                fecha.getDate()
-        );
+	const hoy = new Date();
+	const fechaMatriculacion = new Date(
+		fecha.getFullYear(),
+		fecha.getMonth(),
+		fecha.getDate()
+	);
 
-        if (hoy < fechaMatriculacion) return 0;
+	if (hoy < fechaMatriculacion) return 0;
 
-        let anos = hoy.getFullYear() - fechaMatriculacion.getFullYear();
-        let meses = hoy.getMonth() - fechaMatriculacion.getMonth();
-        let dias = hoy.getDate() - fechaMatriculacion.getDate();
-        let baseDias = 0;
+	let anos = hoy.getFullYear() - fechaMatriculacion.getFullYear();
+	let meses = hoy.getMonth() - fechaMatriculacion.getMonth();
+	let dias = hoy.getDate() - fechaMatriculacion.getDate();
+	let baseDias = 0;
 
-        if (dias < 0) {
-                const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
-                baseDias = mesAnterior.getDate();
-                dias += baseDias;
-                meses -= 1;
-        } else {
-                baseDias = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
-        }
+	if (dias < 0) {
+		const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+		baseDias = mesAnterior.getDate();
+		dias += baseDias;
+		meses -= 1;
+	} else {
+		baseDias = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+	}
 
-        if (meses < 0) {
-                meses += 12;
-                anos -= 1;
-        }
+	if (meses < 0) {
+		meses += 12;
+		anos -= 1;
+	}
 
-        const mesesTotales = anos * 12 + meses;
-        const fraccionMes = baseDias > 0 ? dias / baseDias : 0;
-        const antiguedad = (mesesTotales + fraccionMes) / 12;
+	const mesesTotales = anos * 12 + meses;
+	const fraccionMes = baseDias > 0 ? dias / baseDias : 0;
+	const antiguedad = (mesesTotales + fraccionMes) / 12;
 
-        const normalizado = antiguedad < 0 ? 0 : antiguedad;
-        return Number(normalizado.toFixed(6));
+	const normalizado = antiguedad < 0 ? 0 : antiguedad;
+	return Number(normalizado.toFixed(6));
 }
 
 // ===============================
@@ -265,30 +265,30 @@ export function clearInfoMessage(input) {
 }
 
 export function formatNumber(input) {
-        if (!input) return;
-        let value = input.value.replace(/\./g, "").replace(/[^\d]/g, "");
-        if (value) {
-                value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-                input.value = value;
-                logDebug(`formatNumber(${input.id}): ${value}`);
-        }
+	if (!input) return;
+	let value = input.value.replace(/\./g, "").replace(/[^\d]/g, "");
+	if (value) {
+		value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+		input.value = value;
+		logDebug(`formatNumber(${input.id}): ${value}`);
+	}
 }
 
 export function formatCurrency(input, keepTrailingComma = false) {
-        if (!input) return;
-        let value = input.value.replace(/\./g, "").replace(/[^0-9,]/g, "");
-        const endsWithComma = value.endsWith(",");
-        const parts = value.split(",");
-        const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        const decPart = parts.slice(1).join("");
-        if (decPart) {
-                input.value = `${intPart},${decPart}`;
-        } else if (keepTrailingComma && endsWithComma) {
-                input.value = `${intPart},`;
-        } else {
-                input.value = intPart;
-        }
-        logDebug(`formatCurrency(${input.id}): ${input.value}`);
+	if (!input) return;
+	let value = input.value.replace(/\./g, "").replace(/[^0-9,]/g, "");
+	const endsWithComma = value.endsWith(",");
+	const parts = value.split(",");
+	const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+	const decPart = parts.slice(1).join("");
+	if (decPart) {
+		input.value = `${intPart},${decPart}`;
+	} else if (keepTrailingComma && endsWithComma) {
+		input.value = `${intPart},`;
+	} else {
+		input.value = intPart;
+	}
+	logDebug(`formatCurrency(${input.id}): ${input.value}`);
 }
 
 // ===============================
@@ -531,7 +531,7 @@ export function isPotentiallyValidMatricula(value) {
 	if (/^\d{0,4}$/.test(value)) {
 		return true;
 	}
-        if (/^\d{4}[BCDFGHJKLMNPRSTVWXYZ]{0,3}$/i.test(value)) {
+	if (/^\d{4}[BCDFGHJKLMNPRSTVWXYZ]{0,3}$/i.test(value)) {
 		return true;
 	}
 	// Clásica
@@ -554,7 +554,7 @@ export function isPotentiallyValidMatricula(value) {
 		if (/^\d{1,4}$/.test(rest)) return true;
 		if (!/^\d{4}/.test(rest.slice(0, 4))) continue;
 		const tail = rest.slice(4);
-                if (/^[BCDFGHJKLMNPRSTVWXYZ]{1,2}$/i.test(tail)) return true;
+		if (/^[BCDFGHJKLMNPRSTVWXYZ]{1,2}$/i.test(tail)) return true;
 	}
 	return false;
 }
@@ -566,7 +566,7 @@ export function validateMatriculaField(input, showError, isHardCheck = false) {
 	input.value = value;
 
 	// Moderna completa: 4 dígitos + 3 letras válidas
-        const modernFullRegex = /^\d{4}[BCDFGHJKLMNPRSTVWXYZ]{3}$/i;
+	const modernFullRegex = /^\d{4}[BCDFGHJKLMNPRSTVWXYZ]{3}$/i;
 
 	if (!isHardCheck) {
 		// Caracteres no permitidos
@@ -671,12 +671,12 @@ export function validateMatriculaField(input, showError, isHardCheck = false) {
 				);
 			return false;
 		}
-                if (!(/[AEIOU]/.test(letter1) || /[BCDFGHJKLMNPRSTVWXYZ]/.test(letter1))) {
+		if (!(/[AEIOU]/.test(letter1) || /[BCDFGHJKLMNPRSTVWXYZ]/.test(letter1))) {
 			if (showError)
 				setError(input, `Error en la parte numérica de la matrícula clásica.`);
 			return false;
 		}
-                if (!(letter2 === "U" || /[BCDFGHJKLMNPRSTVWXYZ]/.test(letter2))) {
+		if (!(letter2 === "U" || /[BCDFGHJKLMNPRSTVWXYZ]/.test(letter2))) {
 			if (showError)
 				setError(input, `La última letra no puede ser A, E, I, O ni un número`);
 			return false;
