@@ -28,6 +28,7 @@ class GuaranteeRestController
     const TRANSFER_RECEIPT_HASH_META = '_go360_transfer_receipt_hash';
     const TRANSFER_RECEIPT_EXTENSION_META = '_go360_transfer_receipt_extension';
     const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
+    const SUMMARY_TRANSIENT = 'go_gsummary_admin';
     const RECEIPT_ALLOWED_MIMES = [
         'pdf'  => 'application/pdf',
         'jpg'  => 'image/jpeg',
@@ -61,6 +62,11 @@ class GuaranteeRestController
                         'plan'         => ['validate_callback' => 'absint'],
                         'canal'        => ['sanitize_callback' => 'sanitize_text_field'],
                         'concesionario'=> ['validate_callback' => 'absint'],
+                        'vendor_type'  => ['sanitize_callback' => 'sanitize_key'],
+                        'payment_method' => ['sanitize_callback' => 'sanitize_key'],
+                        'commercial'   => ['validate_callback' => 'absint'],
+                        'order_by'     => ['sanitize_callback' => 'sanitize_key'],
+                        'order'        => ['sanitize_callback' => 'sanitize_key'],
                     ],
                 ],
             ]
@@ -73,6 +79,17 @@ class GuaranteeRestController
                     'methods'             => WP_REST_Server::READABLE,
                     'callback'            => [__CLASS__, 'get_filters'],
                     'permission_callback' => [__CLASS__, 'can_list'],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/summary',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'get_summary'],
+                    'permission_callback' => [__CLASS__, 'can_view_summary'],
                 ],
             ]
         );
@@ -208,6 +225,27 @@ class GuaranteeRestController
         // Limpieza de transients al guardar/borrar garantías
         add_action('save_post_' . \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE, [__CLASS__, 'clear_list_transients'], 10, 3);
         add_action('deleted_post', [__CLASS__, 'clear_list_transients_on_delete']);
+    }
+
+    public static function get_summary($request)
+    {
+        return rest_ensure_response(self::get_admin_summary_data());
+    }
+
+    public static function get_admin_summary_data(): array
+    {
+        $cached = get_transient(self::SUMMARY_TRANSIENT);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $data = self::build_admin_summary();
+
+        if (! empty($data)) {
+            set_transient(self::SUMMARY_TRANSIENT, $data, 5 * MINUTE_IN_SECONDS);
+        }
+
+        return is_array($data) ? $data : [];
     }
 
     public static function download_document($request)
@@ -1377,6 +1415,11 @@ class GuaranteeRestController
         return is_user_logged_in();
     }
 
+    public static function can_view_summary()
+    {
+        return current_user_can('manage_options');
+    }
+
     public static function can_view($request)
     {
         if (!is_user_logged_in()) {
@@ -2067,6 +2110,420 @@ class GuaranteeRestController
         self::dispatch_contract_notice_internal($post_id, 0);
     }
 
+    private static function build_admin_summary(): array
+    {
+        global $wpdb;
+
+        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
+        $statuses  = self::get_summary_post_statuses();
+
+        list($status_clause, $status_params) = self::build_in_clause($statuses);
+
+        $total_sql = "
+            SELECT COUNT(1)
+            FROM {$wpdb->posts} p
+            WHERE p.post_type = %s
+              AND p.post_status IN ($status_clause)
+        ";
+        $total_params = array_merge([$post_type], $status_params);
+        $total = (int) $wpdb->get_var($wpdb->prepare($total_sql, $total_params));
+
+        $states = self::collect_state_distribution($statuses);
+        $pending_collect = self::sum_prices_for_states(['pendiente_cobro'], $statuses);
+        $pending_payment = self::sum_prices_for_states(['pendiente_pago'], $statuses);
+        $pending_validation = self::sum_prices_for_states(['validacion_pendiente'], $statuses);
+        $month = self::collect_month_summary($statuses);
+        $year = self::collect_year_summary($statuses);
+
+        return [
+            'totals' => [
+                'count' => $total,
+            ],
+            'states' => $states,
+            'contexts' => [
+                'year'  => $year,
+                'month' => $month,
+            ],
+            'pending' => [
+                'collect'    => $pending_collect,
+                'payment'    => $pending_payment,
+                'validation' => $pending_validation,
+            ],
+            'month'      => $month,
+            'currency'   => 'EUR',
+            'updated_at' => current_time('mysql'),
+        ];
+    }
+
+    private static function collect_year_summary(array $statuses): array
+    {
+        global $wpdb;
+
+        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
+        list($status_clause, $status_params) = self::build_in_clause($statuses);
+
+        $timezone = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
+        $now = new DateTimeImmutable('now', $timezone);
+        $year_start = $now->modify('first day of January this year')->setTime(0, 0, 0);
+        $year_end = $year_start->modify('last day of December this year')->setTime(23, 59, 59);
+
+        $sql = "
+            SELECT state.meta_value AS state, price.meta_value AS price
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} state
+                ON state.post_id = p.ID
+                AND state.meta_key = 'estado_garantia_estado_contratacion'
+            LEFT JOIN {$wpdb->postmeta} price
+                ON price.post_id = p.ID
+                AND price.meta_key = 'garantia_contratada_precio'
+            WHERE p.post_type = %s
+              AND p.post_status IN ($status_clause)
+              AND p.post_date >= %s
+              AND p.post_date <= %s
+        ";
+
+        $params = array_merge(
+            [$post_type],
+            $status_params,
+            [$year_start->format('Y-m-d H:i:s'), $year_end->format('Y-m-d H:i:s')]
+        );
+
+        $rows = $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
+
+        $count = 0;
+        $amount_values = [];
+        $state_counts = [];
+
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $count++;
+                $amount_values[] = $row['price'] ?? '';
+                $state = isset($row['state']) ? (string) $row['state'] : '';
+                if ($state === '') {
+                    continue;
+                }
+                if (! isset($state_counts[$state])) {
+                    $state_counts[$state] = 0;
+                }
+                $state_counts[$state]++;
+            }
+        }
+
+        $amount = self::sum_price_values($amount_values);
+        $states = self::aggregate_summary_states($state_counts);
+
+        return [
+            'label'  => $year_start->format('Y'),
+            'count'  => $count,
+            'amount' => $amount,
+            'states' => $states,
+        ];
+    }
+
+    private static function get_summary_state_groups(): array
+    {
+        return [
+            'activada' => [
+                'states' => ['activada'],
+                'label'  => __('Activadas', 'garantias-online-360vo'),
+            ],
+            'pendiente_pago' => [
+                'states' => ['pendiente_pago'],
+                'label'  => __('Pend. Pago', 'garantias-online-360vo'),
+            ],
+            'pendiente_revision' => [
+                'states' => ['validacion_pendiente', 'pendiente_cobro'],
+                'label'  => __('En revisión', 'garantias-online-360vo'),
+            ],
+            'sin_finalizar' => [
+                'states' => ['sin_finalizar'],
+                'label'  => __('Sin finalizar', 'garantias-online-360vo'),
+            ],
+        ];
+    }
+
+    private static function aggregate_summary_states(array $state_counts): array
+    {
+        $groups = self::get_summary_state_groups();
+        $summary = [];
+
+        foreach ($groups as $value => $group) {
+            $states = isset($group['states']) && is_array($group['states']) ? $group['states'] : [];
+            $label = isset($group['label']) ? (string) $group['label'] : self::humanize_state($value);
+            $count = 0;
+
+            foreach ($states as $state_key) {
+                if ($state_key === '') {
+                    continue;
+                }
+                $count += isset($state_counts[$state_key]) ? (int) $state_counts[$state_key] : 0;
+            }
+
+            $summary[] = [
+                'value' => $value,
+                'label' => $label,
+                'count' => (int) $count,
+            ];
+        }
+
+        return $summary;
+    }
+
+    private static function get_summary_post_statuses(): array
+    {
+        return ['publish', 'pending', 'future', 'draft'];
+    }
+
+    private static function collect_state_distribution(array $statuses): array
+    {
+        global $wpdb;
+
+        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
+        list($status_clause, $status_params) = self::build_in_clause($statuses);
+
+        $sql = "
+            SELECT state.meta_value AS state, COUNT(DISTINCT p.ID) AS total
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} state
+                ON state.post_id = p.ID
+                AND state.meta_key = 'estado_garantia_estado_contratacion'
+            WHERE p.post_type = %s
+              AND p.post_status IN ($status_clause)
+            GROUP BY state.meta_value
+        ";
+
+        $rows = $wpdb->get_results($wpdb->prepare($sql, array_merge([$post_type], $status_params)), ARRAY_A);
+        $state_counts = [];
+
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $state = isset($row['state']) ? (string) $row['state'] : '';
+                $count = isset($row['total']) ? (int) $row['total'] : 0;
+                if ($state === '' || $count <= 0) {
+                    continue;
+                }
+
+                if (! isset($state_counts[$state])) {
+                    $state_counts[$state] = 0;
+                }
+                $state_counts[$state] += $count;
+            }
+        }
+
+        return self::aggregate_summary_states($state_counts);
+    }
+
+    private static function sum_prices_for_states(array $states, array $statuses): array
+    {
+        global $wpdb;
+
+        if (empty($states)) {
+            return ['amount' => 0.0, 'count' => 0];
+        }
+
+        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
+        list($status_clause, $status_params) = self::build_in_clause($statuses);
+        list($state_clause, $state_params) = self::build_in_clause($states);
+
+        $sql = "
+            SELECT price.meta_value AS price
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} state
+                ON state.post_id = p.ID
+                AND state.meta_key = 'estado_garantia_estado_contratacion'
+            INNER JOIN {$wpdb->postmeta} price
+                ON price.post_id = p.ID
+                AND price.meta_key = 'garantia_contratada_precio'
+            WHERE p.post_type = %s
+              AND p.post_status IN ($status_clause)
+              AND state.meta_value IN ($state_clause)
+        ";
+
+        $params = array_merge([$post_type], $status_params, $state_params);
+        $values = $wpdb->get_col($wpdb->prepare($sql, $params));
+
+        $count = is_array($values) ? count($values) : 0;
+        $amount = self::sum_price_values($values);
+
+        return [
+            'amount' => $amount,
+            'count'  => $count,
+        ];
+    }
+
+    private static function collect_month_summary(array $statuses): array
+    {
+        global $wpdb;
+
+        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
+        list($status_clause, $status_params) = self::build_in_clause($statuses);
+
+        $timezone = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
+        $now = new DateTimeImmutable('now', $timezone);
+        $month_start = $now->modify('first day of this month')->setTime(0, 0, 0);
+        $month_end = $month_start->modify('last day of this month')->setTime(23, 59, 59);
+
+        $sql = "
+            SELECT state.meta_value AS state, price.meta_value AS price
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} state
+                ON state.post_id = p.ID
+                AND state.meta_key = 'estado_garantia_estado_contratacion'
+            LEFT JOIN {$wpdb->postmeta} price
+                ON price.post_id = p.ID
+                AND price.meta_key = 'garantia_contratada_precio'
+            WHERE p.post_type = %s
+              AND p.post_status IN ($status_clause)
+              AND p.post_date >= %s
+              AND p.post_date <= %s
+        ";
+
+        $params = array_merge(
+            [$post_type],
+            $status_params,
+            [$month_start->format('Y-m-d H:i:s'), $month_end->format('Y-m-d H:i:s')]
+        );
+
+        $rows = $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
+
+        $count = 0;
+        $amount_values = [];
+        $state_counts = [];
+
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $count++;
+                $amount_values[] = $row['price'] ?? '';
+                $state = isset($row['state']) ? (string) $row['state'] : '';
+                if ($state === '') {
+                    continue;
+                }
+                if (! isset($state_counts[$state])) {
+                    $state_counts[$state] = 0;
+                }
+                $state_counts[$state]++;
+            }
+        }
+
+        $amount = self::sum_price_values($amount_values);
+        $states = self::aggregate_summary_states($state_counts);
+
+        $top = null;
+        foreach ($states as $entry) {
+            if ($top === null || (isset($entry['count']) && $entry['count'] > $top['count'])) {
+                $top = $entry;
+            }
+        }
+
+        return [
+            'label'     => self::format_month_label($month_start),
+            'count'     => $count,
+            'amount'    => $amount,
+            'states'    => $states,
+            'top_state' => $top,
+        ];
+    }
+
+    private static function sum_price_values($values): float
+    {
+        if (! is_array($values) || empty($values)) {
+            return 0.0;
+        }
+
+        $total = 0.0;
+        foreach ($values as $value) {
+            $total += self::normalize_price_amount($value);
+        }
+
+        return round($total, 2);
+    }
+
+    private static function normalize_price_amount($value): float
+    {
+        if ($value === null) {
+            return 0.0;
+        }
+
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        if (! is_string($value)) {
+            $value = (string) $value;
+        }
+
+        $clean = preg_replace('/[^0-9,.-]/', '', $value);
+        if (! is_string($clean) || $clean === '' || $clean === '-' || $clean === '.' || $clean === ',') {
+            return 0.0;
+        }
+
+        $clean = str_replace('.', '', $clean);
+        $clean = str_replace(',', '.', $clean);
+
+        if (! is_numeric($clean)) {
+            return 0.0;
+        }
+
+        return (float) $clean;
+    }
+
+    private static function get_state_labels(): array
+    {
+        return [
+            'pendiente_pago'        => __('Pendiente de pago', 'garantias-online-360vo'),
+            'validacion_pendiente'  => __('Validación pendiente', 'garantias-online-360vo'),
+            'sin_finalizar'         => __('Sin finalizar', 'garantias-online-360vo'),
+            'activada'              => __('Activada', 'garantias-online-360vo'),
+            'expirada'              => __('Expirada', 'garantias-online-360vo'),
+            'expira_pronto'         => __('Expira pronto', 'garantias-online-360vo'),
+            'pendiente_cobro'       => __('Pendiente de domiciliación', 'garantias-online-360vo'),
+        ];
+    }
+
+    private static function humanize_state(string $state): string
+    {
+        $state = trim(str_replace('_', ' ', $state));
+        if ($state === '') {
+            return __('Sin estado', 'garantias-online-360vo');
+        }
+
+        if (function_exists('mb_convert_case')) {
+            return mb_convert_case($state, MB_CASE_TITLE, 'UTF-8');
+        }
+
+        return ucwords($state);
+    }
+
+    private static function format_month_label(DateTimeImmutable $date): string
+    {
+        $timestamp = $date->getTimestamp();
+        $label = wp_date('F Y', $timestamp);
+        if (! is_string($label) || $label === '') {
+            return '';
+        }
+
+        if (function_exists('mb_convert_case')) {
+            return mb_convert_case($label, MB_CASE_TITLE, 'UTF-8');
+        }
+
+        return ucwords($label);
+    }
+
+    private static function build_in_clause(array $values): array
+    {
+        $filtered = array_values(array_filter(array_map('strval', $values), static function ($value) {
+            return $value !== '';
+        }));
+
+        if (empty($filtered)) {
+            return ['%s', ['']];
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($filtered), '%s'));
+
+        return [$placeholders, $filtered];
+    }
+
     private static function get_modalidad_document_url($plan_id, $field_key, array $context = [])
     {
         static $cache = [];
@@ -2671,6 +3128,17 @@ class GuaranteeRestController
         $plan          = isset($request['plan']) ? absint($request['plan']) : 0;
         $canal         = isset($request['canal']) ? sanitize_text_field($request['canal']) : '';
         $concesionario = isset($request['concesionario']) ? absint($request['concesionario']) : 0;
+        $vendor_type   = isset($request['vendor_type']) ? sanitize_key($request['vendor_type']) : '';
+        $payment_method = isset($request['payment_method']) ? sanitize_key($request['payment_method']) : '';
+        $commercial    = isset($request['commercial']) ? absint($request['commercial']) : 0;
+        $order_by      = isset($request['order_by']) ? sanitize_key($request['order_by']) : '';
+        $order         = isset($request['order']) ? strtolower(sanitize_key($request['order'])) : '';
+
+        if (! in_array($order, ['asc', 'desc'], true)) {
+            $order = 'desc';
+        }
+
+        $sort_config = self::resolve_sort_config($order_by, $order);
 
         // ----- CACHING -----
         // Elimina search del cache_key porque si no el mismo usuario puede buscar cosas distintas y obtiene el cache anterior
@@ -2690,6 +3158,18 @@ class GuaranteeRestController
         if ($concesionario) {
             $cache_key .= '_v_' . $concesionario;
         }
+        if ($vendor_type) {
+            $cache_key .= '_vt_' . md5($vendor_type);
+        }
+        if ($payment_method) {
+            $cache_key .= '_pm_' . md5($payment_method);
+        }
+        if ($commercial) {
+            $cache_key .= '_cm_' . $commercial;
+        }
+        if (! empty($sort_config['cache_suffix'])) {
+            $cache_key .= $sort_config['cache_suffix'];
+        }
         $cache = get_transient($cache_key);
         if ($cache !== false) {
             return $cache;
@@ -2703,8 +3183,18 @@ class GuaranteeRestController
             'post_status'    => ['draft', 'publish', 'pending', 'future'],
         ];
 
+        $args['orderby'] = $sort_config['orderby'];
+        $args['order']   = $sort_config['order'];
+
+        if (! empty($sort_config['meta_key'])) {
+            $args['meta_key']  = $sort_config['meta_key'];
+            $args['meta_type'] = $sort_config['meta_type'] ?? 'CHAR';
+        }
+
         // Permisos: restringe por profesional/comercial salvo admins
         $meta_query = [];
+        $vendor_type_ids = [];
+        $commercial_vendor_ids = [];
         if (!current_user_can('manage_options')) {
             $user_profesional_ids = [$current_user];
             $users_asignados = get_users([
@@ -2726,6 +3216,20 @@ class GuaranteeRestController
                 'value'   => $user_profesional_ids,
                 'compare' => 'IN',
             ];
+        }
+
+        if ($vendor_type !== '') {
+            $vendor_type_ids = self::get_professional_ids_by_type($vendor_type);
+            if (empty($vendor_type_ids)) {
+                $vendor_type_ids = [0];
+            }
+        }
+
+        if ($commercial > 0) {
+            $commercial_vendor_ids = self::get_professional_ids_by_commercial($commercial);
+            if (empty($commercial_vendor_ids)) {
+                $commercial_vendor_ids = [0];
+            }
         }
 
         // ---- FILTROS ----
@@ -2773,6 +3277,42 @@ class GuaranteeRestController
             $meta_query[] = [
                 'key'   => 'garantia_contratada_concesionario_empresa_profesional',
                 'value' => $concesionario,
+            ];
+        }
+        $needs_vendor_filter = false;
+        $combined_vendor_ids = [];
+
+        if ($vendor_type !== '') {
+            $needs_vendor_filter = true;
+            $combined_vendor_ids = $vendor_type_ids;
+        }
+
+        if ($commercial > 0) {
+            $needs_vendor_filter = true;
+            if (empty($combined_vendor_ids)) {
+                $combined_vendor_ids = $commercial_vendor_ids;
+            } else {
+                $combined_vendor_ids = array_values(
+                    array_intersect($combined_vendor_ids, $commercial_vendor_ids)
+                );
+            }
+        }
+
+        if ($needs_vendor_filter) {
+            if (empty($combined_vendor_ids)) {
+                $combined_vendor_ids = [0];
+            }
+            $meta_query[] = [
+                'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                'value'   => $combined_vendor_ids,
+                'compare' => 'IN',
+            ];
+        }
+        if ($payment_method) {
+            $meta_query[] = [
+                'key'     => 'garantia_contratada_metodo_pago',
+                'value'   => $payment_method,
+                'compare' => 'LIKE',
             ];
         }
 
@@ -2934,6 +3474,8 @@ class GuaranteeRestController
 
         $estados = [];
         $plan_ids = [];
+        $channels_map = [];
+        $vendor_ids = [];
         foreach ($q->posts as $post_id) {
             $e = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
             if ($e) {
@@ -2942,6 +3484,18 @@ class GuaranteeRestController
             $pid = get_post_meta($post_id, 'garantia_contratada_garantia', true);
             if ($pid) {
                 $plan_ids[] = $pid;
+            }
+
+            $channel_raw = get_post_meta($post_id, 'garantia_contratada_canal_venta', true);
+            $channel_value = sanitize_key(str_replace('go_', '', self::normalize_channel_meta($channel_raw)));
+            if ($channel_value !== '') {
+                $channels_map[$channel_value] = self::resolve_channel_label($channel_value);
+            }
+
+            $vendor_raw = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
+            $vendor_id = self::normalize_vendor_meta($vendor_raw);
+            if ($vendor_id > 0) {
+                $vendor_ids[] = $vendor_id;
             }
         }
 
@@ -2986,29 +3540,295 @@ class GuaranteeRestController
 
         $users = get_users([
             'role'   => 'go_profesional',
-            'fields' => ['ID'],
+            'fields' => 'ID',
         ]);
         $concesionarios = [];
-        foreach ($users as $u) {
-            $labels = UserProfileResolver::get_vendor_labels((int) $u->ID);
+        $concesionario_map = [];
+        foreach ($users as $user_id) {
+            $labels = UserProfileResolver::get_vendor_labels((int) $user_id);
             $name = $labels['company_name'] !== ''
                 ? $labels['company_name']
-                : ($labels['personal_name'] !== '' ? $labels['personal_name'] : sprintf(__('Usuario #%d', 'garantias-online-360vo'), (int) $u->ID));
+                : ($labels['personal_name'] !== '' ? $labels['personal_name'] : sprintf(__('Usuario #%d', 'garantias-online-360vo'), (int) $user_id));
+            $type_value = $labels['company']['type']['value'] ?? '';
+            $type_label = $labels['company']['type']['label'] ?? '';
             $concesionarios[] = [
-                'id'   => (int) $u->ID,
+                'id'   => (int) $user_id,
                 'name' => $name,
+                'type' => $type_value,
+                'type_label' => $type_label,
+            ];
+            $concesionario_map[(int) $user_id] = [
+                'type'       => $type_value,
+                'type_label' => $type_label,
             ];
         }
 
+        $commercial_users = get_users([
+            'role'    => 'go_comercial',
+            'fields'  => ['ID', 'display_name'],
+            'orderby' => 'display_name',
+            'order'   => 'ASC',
+        ]);
+        $commercials = [];
+        foreach ($commercial_users as $user) {
+            $id = isset($user->ID) ? (int) $user->ID : 0;
+            if ($id <= 0) {
+                continue;
+            }
+            $display_name = isset($user->display_name) ? trim((string) $user->display_name) : '';
+            if ($display_name === '') {
+                $user_obj = get_userdata($id);
+                if ($user_obj instanceof WP_User) {
+                    $display_name = $user_obj->display_name ?: $user_obj->user_email;
+                }
+            }
+            if ($display_name === '') {
+                $display_name = sprintf(__('Comercial #%d', 'garantias-online-360vo'), $id);
+            }
+            $commercials[] = [
+                'id'   => $id,
+                'name' => $display_name,
+            ];
+        }
+
+        $payment_methods = self::collect_payment_methods($q->posts);
+
+        $channels = [];
+        $channel_priority = [
+            'particular' => 1,
+            'profesional' => 2,
+            'gestoria'    => 3,
+        ];
+        foreach ($channels_map as $value => $label) {
+            $channels[] = [
+                'value'    => $value,
+                'label'    => $label,
+                'priority' => $channel_priority[$value] ?? 99,
+            ];
+        }
+
+        usort($channels, function ($a, $b) {
+            if ($a['priority'] === $b['priority']) {
+                return strcasecmp($a['label'], $b['label']);
+            }
+            return $a['priority'] <=> $b['priority'];
+        });
+
+        $channels = array_map(function ($item) {
+            return [
+                'value' => $item['value'],
+                'label' => $item['label'],
+            ];
+        }, $channels);
+
+        $vendor_types = [];
+        $vendor_ids = array_unique(array_filter($vendor_ids));
+        $vendor_type_priority = [
+            'compraventa'          => 1,
+            'concesionario_oficial'=> 2,
+            'gestoria'             => 3,
+            'profesional'          => 4,
+        ];
+        foreach ($vendor_ids as $vendor_id) {
+            if (! isset($concesionario_map[$vendor_id])) {
+                continue;
+            }
+            $type_value = sanitize_key($concesionario_map[$vendor_id]['type'] ?? '');
+            if ($type_value === '') {
+                continue;
+            }
+            if (isset($vendor_types[$type_value])) {
+                continue;
+            }
+            $type_label = $concesionario_map[$vendor_id]['type_label'] ?? '';
+            if ($type_label === '') {
+                $type_label = self::resolve_channel_label($type_value);
+            }
+            $vendor_types[$type_value] = [
+                'value'    => $type_value,
+                'label'    => $type_label,
+                'priority' => $vendor_type_priority[$type_value] ?? 99,
+            ];
+        }
+
+        if (! empty($vendor_types)) {
+            uasort($vendor_types, function ($a, $b) {
+                if ($a['priority'] === $b['priority']) {
+                    return strcasecmp($a['label'], $b['label']);
+                }
+                return $a['priority'] <=> $b['priority'];
+            });
+            $vendor_types = array_map(function ($item) {
+                return [
+                    'value' => $item['value'],
+                    'label' => $item['label'],
+                ];
+            }, $vendor_types);
+        } else {
+            $vendor_types = [];
+        }
+
         $response = new WP_REST_Response([
-            'estados'        => $estados,
-            'planes'         => $planes,
-            'concesionarios' => $concesionarios,
+            'estados'          => $estados,
+            'planes'           => $planes,
+            'concesionarios'   => $concesionarios,
+            'payment_methods'  => $payment_methods,
+            'channels'         => $channels,
+            'vendor_types'     => $vendor_types,
+            'commercials'      => $commercials,
         ]);
 
         set_transient($cache_key, $response, 300);
 
         return $response;
+    }
+
+    private static function resolve_sort_config(string $order_by, string $order): array
+    {
+        $order = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
+
+        $config = [
+            'orderby'     => 'date',
+            'order'       => $order,
+            'cache_suffix'=> '_ob_created_or_' . strtolower($order),
+        ];
+
+        switch ($order_by) {
+            case 'valid_from':
+                $config['orderby']      = 'meta_value';
+                $config['meta_key']     = 'estado_garantia_inicio';
+                $config['meta_type']    = 'DATE';
+                $config['cache_suffix'] = '_ob_valid_from_or_' . strtolower($order);
+                break;
+            case 'valid_until':
+                $config['orderby']      = 'meta_value';
+                $config['meta_key']     = 'estado_garantia_finalizacion';
+                $config['meta_type']    = 'DATE';
+                $config['cache_suffix'] = '_ob_valid_until_or_' . strtolower($order);
+                break;
+            case 'created':
+            default:
+                // Mantiene configuración por defecto
+                break;
+        }
+
+        return $config;
+    }
+
+    private static function resolve_channel_label(string $value): string
+    {
+        $value = sanitize_key($value);
+        $map = [
+            'particular'          => __('Particular', 'garantias-online-360vo'),
+            'profesional'         => __('Profesional', 'garantias-online-360vo'),
+            'compraventa'         => __('Compraventa', 'garantias-online-360vo'),
+            'concesionario_oficial'=> __('Concesionario oficial', 'garantias-online-360vo'),
+            'gestoria'            => __('Gestoría', 'garantias-online-360vo'),
+        ];
+
+        if (isset($map[$value])) {
+            return $map[$value];
+        }
+
+        $value = str_replace(['_', '-'], ' ', $value);
+        return ucwords($value);
+    }
+
+    private static function get_professional_ids_by_type(string $type): array
+    {
+        $type = sanitize_key($type);
+        if ($type === '') {
+            return [];
+        }
+
+        $users = get_users([
+            'role'   => 'go_profesional',
+            'fields' => 'ID',
+        ]);
+
+        if (! $users) {
+            return [];
+        }
+
+        $matched = [];
+        foreach ($users as $user_id) {
+            $labels = UserProfileResolver::get_vendor_labels((int) $user_id);
+            $company = $labels['company']['type']['value'] ?? '';
+            if ($company === $type) {
+                $matched[] = (int) $user_id;
+            }
+        }
+
+        return array_values(array_unique($matched));
+    }
+
+    private static function get_professional_ids_by_commercial(int $commercial_id): array
+    {
+        $commercial_id = absint($commercial_id);
+        if ($commercial_id <= 0) {
+            return [];
+        }
+
+        $users = get_users([
+            'role'       => 'go_profesional',
+            'fields'     => 'ID',
+            'meta_query' => [
+                [
+                    'key'     => 'ajustes_usuarios_comercial_asignado',
+                    'value'   => '"' . $commercial_id . '"',
+                    'compare' => 'LIKE',
+                ],
+            ],
+        ]);
+
+        if (empty($users)) {
+            return [];
+        }
+
+        return array_values(
+            array_unique(
+                array_map('intval', $users)
+            )
+        );
+    }
+
+    private static function collect_payment_methods(array $post_ids): array
+    {
+        $choices = [
+            'domiciliacion_bancaria' => __('Domiciliación bancaria', 'garantias-online-360vo'),
+            'transferencia'         => __('Transferencia bancaria', 'garantias-online-360vo'),
+        ];
+
+        $found = [];
+        foreach ($post_ids as $post_id) {
+            $raw = get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
+            if (is_array($raw)) {
+                $value = sanitize_key($raw['value'] ?? '');
+                $label = sanitize_text_field($raw['label'] ?? '');
+            } else {
+                $value = sanitize_key((string) $raw);
+                $label = '';
+            }
+
+            if ($value === '') {
+                continue;
+            }
+
+            if ($label === '' && isset($choices[$value])) {
+                $label = $choices[$value];
+            }
+
+            if ($label === '') {
+                $label = ucwords(str_replace(['_', '-'], ' ', $value));
+            }
+
+            $found[$value] = [
+                'value' => $value,
+                'label' => $label,
+            ];
+        }
+
+        return array_values($found);
     }
 
     private static function log_payment_event(int $post_id, string $method, string $state, string $actor_type): void
@@ -3069,6 +3889,7 @@ class GuaranteeRestController
                 $pattern
             ));
         }
+        delete_transient(self::SUMMARY_TRANSIENT);
     }
     public static function clear_list_transients_on_delete($post_id)
     {

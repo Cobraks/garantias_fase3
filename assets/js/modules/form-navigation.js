@@ -17,11 +17,20 @@ import {
 
 // === Helpers de UI: colores y conectores ===
 function updateConnectors() {
+        const tabs = FormCache.tabs;
+        if (!Array.isArray(tabs) || tabs.length === 0) {
+                return;
+        }
+
+        const completionState = Array.isArray(FormCache.tabCompletion)
+                ? FormCache.tabCompletion
+                : [];
+
         document
                 .querySelectorAll(".tabs__connector .connector")
                 .forEach((connector, i) => {
-                        const leftTab = FormCache.tabs[i];
-                        const rightTab = FormCache.tabs[i + 1];
+                        const leftTab = tabs[i];
+                        const rightTab = tabs[i + 1];
                         const styles = getComputedStyle(document.documentElement);
                         const idleColor = styles.getPropertyValue("--wizard-connector-idle").trim() ||
                                 styles.getPropertyValue("--step-inactive").trim() ||
@@ -31,15 +40,20 @@ function updateConnectors() {
                                 styles.getPropertyValue("--primary-color").trim() ||
                                 "#2563eb";
                         const completedColor = styles.getPropertyValue("--wizard-connector-complete").trim() || activeColor;
-                        const leftColor = leftTab.classList.contains("completed")
+                        const leftIsCompleted = leftTab?.classList?.contains("completed");
+                        const leftIsActiveAndComplete =
+                                leftTab?.classList?.contains("active") && completionState[i];
+                        const leftColor = leftIsCompleted
                                 ? completedColor
-                                : leftTab.classList.contains("active") && FormCache.tabCompletion[i]
+                                : leftIsActiveAndComplete
                                 ? activeColor
                                 : idleColor;
-                        const rightColor = rightTab?.classList.contains("completed")
+                        const rightIsCompleted = rightTab?.classList?.contains("completed");
+                        const rightIsActiveAndComplete =
+                                rightTab?.classList?.contains("active") && completionState[i + 1];
+                        const rightColor = rightIsCompleted
                                 ? completedColor
-                                : rightTab?.classList.contains("active") &&
-                                  FormCache.tabCompletion[i + 1]
+                                : rightIsActiveAndComplete
                                 ? activeColor
                                 : idleColor;
                         if (connector && leftColor && rightColor) {
@@ -48,7 +62,13 @@ function updateConnectors() {
                                                 ? leftColor
                                                 : `linear-gradient(to right, ${leftColor}, ${rightColor})`;
 			}
-		});
+                });
+}
+
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+        window.addEventListener("go:theme-change", () => {
+                updateConnectors();
+        });
 }
 
 function markTabAsCompleted(index) {
