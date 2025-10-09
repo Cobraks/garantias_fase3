@@ -106,6 +106,8 @@ $admin_summary_label       = '';
 $admin_summary_pending     = [];
 $admin_summary_actions     = [];
 $admin_summary_json        = '';
+$can_view_summary          = false;
+$show_kpi_grid             = $is_admin_user;
 
 $format_summary_number = static function ($value): string {
     return number_format_i18n((int) $value);
@@ -123,7 +125,11 @@ $format_summary_guarantees = static function ($count) use ($format_summary_numbe
     return sprintf($pluralized, $formatted);
 };
 
-if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeRestController::can_view_summary()) {
+if (($is_admin_user || $is_director)
+    && class_exists(GuaranteeRestController::class)
+    && GuaranteeRestController::can_view_summary()
+) {
+    $can_view_summary = true;
     $admin_summary_data = GuaranteeRestController::get_admin_summary_data();
 
     if (is_array($admin_summary_data) && ! empty($admin_summary_data)) {
@@ -466,7 +472,7 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
             </span>
             <?php esc_html_e('Haz clic en una garantía para consultar la información completa.', 'garantias-online-360vo'); ?>
         </p>
-        <?php if ($is_admin_user) : ?>
+        <?php if ($can_view_summary) : ?>
             <?php
             $summary_context_base = uniqid('summary-context-');
             $summary_global_id    = $summary_context_base . '-global';
@@ -613,42 +619,44 @@ if ($is_admin_user && class_exists(GuaranteeRestController::class) && GuaranteeR
                     </fieldset>
                 </header>
                 <div class="guarantee-admin-summary__body">
-                    <section class="kpi-grid" data-admin-summary-kpis>
-                        <article class="kpi-card" data-admin-summary-kpi="amount">
-                            <div class="kpi-label">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>
-                                <span data-admin-summary-kpi-label><?php echo esc_html($summary_amount_label); ?></span>
-                            </div>
-                            <div
-                                class="kpi-value is-currency"
-                                data-admin-summary-kpi-value
-                                data-format="currency"
-                                data-value="<?php echo esc_attr($summary_active_amount); ?>">
-                                <?php echo esc_html($summary_active_amount_label); ?>
-                            </div>
-                            <div class="kpi-trend positive" data-admin-summary-kpi-trend data-trend-type="amount">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>
-                                <span>5.2% vs mes ant.</span>
-                            </div>
-                        </article>
-                        <article class="kpi-card" data-admin-summary-kpi="count">
-                            <div class="kpi-label">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)"><path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></svg>
-                                <span data-admin-summary-kpi-label><?php echo esc_html($summary_count_label); ?></span>
-                            </div>
-                            <div
-                                class="kpi-value"
-                                data-admin-summary-kpi-value
-                                data-format="integer"
-                                data-value="<?php echo esc_attr($admin_summary_total); ?>">
-                                <?php echo esc_html($summary_total_label); ?>
-                            </div>
-                            <div class="kpi-trend negative" data-admin-summary-kpi-trend data-trend-type="count">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>
-                                <span>-5.2% vs mes ant.</span>
-                            </div>
-                        </article>
-                    </section>
+                    <?php if ($show_kpi_grid) : ?>
+                        <section class="kpi-grid" data-admin-summary-kpis>
+                            <article class="kpi-card" data-admin-summary-kpi="amount">
+                                <div class="kpi-label">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>
+                                    <span data-admin-summary-kpi-label><?php echo esc_html($summary_amount_label); ?></span>
+                                </div>
+                                <div
+                                    class="kpi-value is-currency"
+                                    data-admin-summary-kpi-value
+                                    data-format="currency"
+                                    data-value="<?php echo esc_attr($summary_active_amount); ?>">
+                                    <?php echo esc_html($summary_active_amount_label); ?>
+                                </div>
+                                <div class="kpi-trend positive" data-admin-summary-kpi-trend data-trend-type="amount">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>
+                                    <span>5.2% vs mes ant.</span>
+                                </div>
+                            </article>
+                            <article class="kpi-card" data-admin-summary-kpi="count">
+                                <div class="kpi-label">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)"><path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></svg>
+                                    <span data-admin-summary-kpi-label><?php echo esc_html($summary_count_label); ?></span>
+                                </div>
+                                <div
+                                    class="kpi-value"
+                                    data-admin-summary-kpi-value
+                                    data-format="integer"
+                                    data-value="<?php echo esc_attr($admin_summary_total); ?>">
+                                    <?php echo esc_html($summary_total_label); ?>
+                                </div>
+                                <div class="kpi-trend negative" data-admin-summary-kpi-trend data-trend-type="count">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>
+                                    <span>-5.2% vs mes ant.</span>
+                                </div>
+                            </article>
+                        </section>
+                    <?php endif; ?>
                     <section class="visualization-section">
                         <div class="donut-chart<?php echo $donut_is_empty ? ' is-empty' : ''; ?>" data-admin-summary-donut style="<?php echo esc_attr($donut_style_attr); ?>">
                             <div class="chart-center">

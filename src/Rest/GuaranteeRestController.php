@@ -1417,7 +1417,26 @@ class GuaranteeRestController
 
     public static function can_view_summary()
     {
-        return current_user_can('manage_options');
+        if (!is_user_logged_in()) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $current_user = wp_get_current_user();
+        if (! $current_user instanceof \WP_User) {
+            return false;
+        }
+
+        $roles = (array) $current_user->roles;
+
+        if (in_array('go_director_comercial', $roles, true)) {
+            return true;
+        }
+
+        return false;
     }
 
     public static function can_view($request)
@@ -1433,7 +1452,8 @@ class GuaranteeRestController
         if (
             current_user_can('manage_options') ||
             in_array('go_garantias', (array) $current_user->roles, true) ||
-            in_array('go_comercial', (array) $current_user->roles, true)
+            in_array('go_comercial', (array) $current_user->roles, true) ||
+            in_array('go_director_comercial', (array) $current_user->roles, true)
         ) {
             return true;
         }
@@ -3369,6 +3389,10 @@ class GuaranteeRestController
     public static function get_items($request)
     {
         $current_user  = get_current_user_id();
+        $current_user_obj = wp_get_current_user();
+        $current_user_roles = $current_user_obj instanceof \WP_User ? (array) $current_user_obj->roles : [];
+        $is_director = in_array('go_director_comercial', $current_user_roles, true);
+        $is_garantias_role = in_array('go_garantias', $current_user_roles, true);
         $page          = absint($request['page']);
         $per_page      = absint($request['per_page']);
         $search        = isset($request['search']) ? sanitize_text_field($request['search']) : '';
@@ -3443,7 +3467,7 @@ class GuaranteeRestController
         $meta_query = [];
         $vendor_type_ids = [];
         $commercial_vendor_ids = [];
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
             $user_profesional_ids = [$current_user];
             $users_asignados = get_users([
                 'role'    => 'go_profesional',
