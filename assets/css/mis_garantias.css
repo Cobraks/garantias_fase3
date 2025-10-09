@@ -3299,14 +3299,8 @@ tr.guarantees-table__row:not(.selected):hover td,
     font-size: 1.25rem;
     font-weight: 600;
     letter-spacing: -0.02em;
-    flex: 1 1 100%;
-}
-
-.guarantee-admin-summary__controls {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .guarantee-admin-summary__context {
@@ -3347,38 +3341,78 @@ tr.guarantees-table__row:not(.selected):hover td,
     outline-offset: 2px;
 }
 
-.guarantee-admin-summary__help {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 999px;
-    border: 1px solid var(--summary-border);
-    background: var(--summary-surface-secondary);
-    color: var(--summary-muted);
-    transition: all 0.2s ease;
-    margin-left: auto;
-}
-
-.guarantee-admin-summary__help svg {
-    width: 1.25rem;
-    height: 1.25rem;
-}
-
-.guarantee-admin-summary__help:hover,
-.guarantee-admin-summary__help:focus-visible {
-    color: var(--summary-accent);
-    border-color: var(--summary-accent);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
-
 .guarantee-admin-summary__body {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
     animation: guaranteeSummaryFadeIn 0.5s ease-out 0.2s backwards;
     overflow: hidden;
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.kpi-card {
+    background-color: var(--summary-surface-secondary);
+    border-radius: 12px;
+    padding: 1rem;
+    border: 1px solid var(--summary-border);
+    animation: guaranteeSummarySlideIn 0.5s ease-out backwards;
+    position: relative;
+    overflow: hidden;
+    transition: opacity 0.3s ease;
+}
+
+.kpi-card:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.kpi-label {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    color: var(--summary-muted);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.kpi-label svg {
+    margin-right: 0.5rem;
+}
+
+.kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--summary-text);
+}
+
+.kpi-trend {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    color: var(--summary-muted);
+    transition: color 0.3s ease;
+}
+
+.kpi-trend svg {
+    margin-right: 0.25rem;
+}
+
+.kpi-trend.positive {
+    color: var(--admin-summary-state-activada);
+}
+
+.kpi-trend.negative {
+    color: #ef4444;
+}
+
+.guarantee-admin-summary.is-dimmed .kpi-card {
+    opacity: var(--summary-dimmed-opacity);
 }
 
 .visualization-section {
