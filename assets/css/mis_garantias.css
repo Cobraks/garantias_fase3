@@ -3672,11 +3672,6 @@ tr.guarantees-table__row:not(.selected):hover td,
     opacity: 0;
 }
 
-.guarantee-admin-summary[data-loaded="1"] .legend-item,
-.guarantee-admin-summary[data-loaded="1"] .action-item {
-    animation: guaranteeSummaryFadeIn 0.45s ease forwards;
-}
-
 .guarantee-admin-summary[data-loaded="1"] .legend-item {
     transition: all ease 0.3s;
 }
