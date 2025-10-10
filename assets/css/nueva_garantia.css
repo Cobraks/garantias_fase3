@@ -1334,6 +1334,23 @@ background: var(--go-color-00c0ff);
   gap: 0;
 }
 
+.form__plan--premium .form__plan-conditions,
+.form__plan--premium .form__plan-conditions-title,
+.form__plan--premium .form__plan-conditions-subtitle,
+.form__plan--premium .form__plan-conditions-item,
+.form__plan--premium .form__plan-conditions-item-label,
+.form__plan--premium .form__plan-conditions-item-value,
+.form__plan--premium .form__plan-conditions-item-value--accent {
+  color: #ffffff;
+}
+
+.form__plan--premium .form__plan-conditions-item--accent .form__plan-conditions-item-label,
+.form__plan--premium .form__plan-conditions-item--accent .form__plan-conditions-item-value,
+.form__plan--premium .form__plan-conditions-item--color .form__plan-conditions-item-label,
+.form__plan--premium .form__plan-conditions-item--color .form__plan-conditions-item-value {
+  color: #ffffff;
+}
+
 .form__plan-conditions-title {
   font-weight: 600;
   color: var(--text-color, var(--go-color-1f2937));
@@ -1442,6 +1459,14 @@ background: var(--go-color-00c0ff);
 /* ===================================================================
    Link
    =================================================================== */
+.form__plan-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: flex-start;
+  margin-top: 1rem;
+}
+
 .form__plan-link {
   display: inline-flex;
   align-items: center;
@@ -1460,6 +1485,14 @@ background: var(--go-color-00c0ff);
   font-size: .9rem;
   border: solid 1px;
   border-color: var(--card-border);
+}
+
+.form__plan-actions .form__plan-link {
+  margin-top: 0;
+}
+
+.form__plan-actions .form__plan-button {
+  margin-top: 0;
 }
 
 .form__plan--premium .form__plan-link:hover {
@@ -1516,9 +1549,9 @@ background: var(--go-color-f5f9ff);
    Button (CTA)
    =================================================================== */
 .form__plan-button {
-display: flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
   background: transparent;
   border: 1px solid var(--card-border);
   border-radius: 8px;
@@ -1529,11 +1562,10 @@ display: flex;
   transition: all 0.2s ease;
   text-decoration: none;
   height: 42px;
-  margin-top: 1rem;
-  margin-inline: auto;
-width: 100%;
+  margin-top: 0;
+  margin-inline: 0;
+  width: auto;
   justify-content: center;
-  gap: 0;
 
 
    transition: background var(--transition), border-color var(--transition), outline var(--transition);
@@ -1649,7 +1681,6 @@ width: 100%;
 .form__plan--premium .form__plan-iva,
 .form__plan--premium .form__plan-iva-no,
 .form__plan--premium .form__plan-description {
-  background: rgba(255, 255, 255, 0.16);
   color: #f8fafc;
 }
 
