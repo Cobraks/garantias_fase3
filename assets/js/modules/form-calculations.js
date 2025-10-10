@@ -650,17 +650,23 @@ function renderSpecialLimits(descInfo, valoresForm, subtitleHtml = "") {
                 items.push({
                         label: "Límite máximo por contrato",
                         value: limiteContrato,
+                        accent: true,
                 });
         }
 
         const itemsHtml = items
                 .map(
-                        (item) => `
+                        (item) => {
+                                const valueClass = item.accent
+                                        ? "form__plan-conditions-item-value form__plan-conditions-item-value--accent"
+                                        : "form__plan-conditions-item-value";
+                                return `
                 <li class="form__plan-conditions-item">
                         <span class="form__plan-conditions-item-label">${escapeHtml(item.label)}</span>
-                        <span class="form__plan-conditions-item-value">${escapeHtml(item.value)}</span>
+                        <span class="${valueClass}">${escapeHtml(item.value)}</span>
                 </li>
-        `
+        `;
+                        }
                 )
                 .join("");
 
