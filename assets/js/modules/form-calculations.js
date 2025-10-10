@@ -355,17 +355,689 @@ function redondearEuros(valor) {
 	return Math.round(valor * 100) / 100;
 }
 function getValorInput(id) {
-	const el = document.getElementById(id);
-	return el ? el.value : "";
+        const el = document.getElementById(id);
+        return el ? el.value : "";
 }
 function getValoresModalidadCampo(campo) {
-	if (Array.isArray(campo)) {
-		return campo.map((v) => (typeof v === "string" ? v : v.value));
-	}
-	if (typeof campo === "string") return [campo];
-	if (typeof campo === "object" && campo !== null && campo.value)
-		return [campo.value];
-	return [];
+        if (Array.isArray(campo)) {
+                return campo.map((v) => (typeof v === "string" ? v : v.value));
+        }
+        if (typeof campo === "string") return [campo];
+        if (typeof campo === "object" && campo !== null && campo.value)
+                return [campo.value];
+        return [];
+}
+
+function escapeHtml(value) {
+        if (value === null || value === undefined) return "";
+        return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+}
+
+function isTruthy(value) {
+        return value === true || value === 1 || value === "1" || value === "true";
+}
+
+function getOptionValue(option) {
+        if (typeof option === "string") return option;
+        if (typeof option === "number") return String(option);
+        if (option && typeof option === "object") {
+                if (typeof option.value === "string" || typeof option.value === "number") {
+                        return String(option.value);
+                }
+        }
+        return "";
+}
+
+function getOptionLabel(option) {
+        if (option && typeof option === "object" && option.label) {
+                return String(option.label);
+        }
+        return "";
+}
+
+function formatNumber(value) {
+        const num = typeof value === "number" ? value : parseFloat(value);
+        if (!Number.isFinite(num)) return "";
+        return new Intl.NumberFormat("es-ES", {
+                maximumFractionDigits: 0,
+        }).format(num);
+}
+
+function formatEuroValue(value) {
+        if (value === null || value === undefined || value === "") return "";
+        const num = typeof value === "number" ? value : parseFloat(value);
+        if (!Number.isFinite(num)) return "";
+        const formatted = eurosString(num);
+        return `${formatted.replace(/,00$/, "")}€`;
+}
+
+function parseConditionNumber(value) {
+        if (value === null || value === undefined || value === "") return null;
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+}
+
+function renderVentajasList(descInfo) {
+        const listado = Array.isArray(descInfo?.listado_ventajas)
+                ? descInfo.listado_ventajas
+                : [];
+        if (!listado.length) return "";
+
+        const items = listado
+                .map((item) => {
+                        const texto = escapeHtml(item?.ventaja || "");
+                        if (!texto) return "";
+                        const iconType = getOptionValue(item?.icono);
+                        const iconKey = iconType === "negativo" ? "disadvantage" : "advantage";
+                        const iconHtml = getIcon(iconKey) || (iconType === "negativo" ? "×" : "✓");
+                        const iconClass =
+                                iconType === "negativo"
+                                        ? "form__plan-description-icon form__plan-description-icon--negative"
+                                        : "form__plan-description-icon form__plan-description-icon--positive";
+                        return `
+                <li class="form__plan-description-item">
+                        <span class="${iconClass}" aria-hidden="true">${iconHtml}</span>
+                        <span class="form__plan-description-text">${texto}</span>
+                </li>
+            `;
+                })
+                .filter(Boolean)
+                .join("");
+
+        if (!items) return "";
+
+        return `
+        <ul class="form__plan-description-list" role="list">
+                ${items}
+        </ul>
+    `;
+}
+
+function getLimitItemLabel(limite) {
+        const tipo = getOptionValue(limite?.limite_por);
+        if (tipo === "averia") return "Límite por avería";
+        if (tipo === "contrato") return "Límite por contrato";
+        const personalizado = typeof limite?.nombre_del_limite === "string" ? limite.nombre_del_limite.trim() : "";
+        return personalizado || "";
+}
+
+function getSpecialLimitType(limite) {
+        return getOptionValue(limite?.limite_por_condicion_especial);
+}
+
+function getSpecialLimitLabel(limite) {
+        const tipo = getSpecialLimitType(limite);
+        if (tipo === "averia") return "Límite por avería";
+        if (tipo === "contrato") return "Límite por contrato";
+        const personalizado = typeof limite?.nombre_del_limite_condicion_especial === "string"
+                ? limite.nombre_del_limite_condicion_especial.trim()
+                : "";
+        return personalizado || "";
+}
+
+function getSpecialLimitEstilo(limite) {
+        const estilo =
+                getOptionValue(limite?.estilo_limite_condicion_especial) ||
+                getOptionValue(limite?.estilo_limite);
+        return estilo;
+}
+
+function getLimitItemClassNames(limite) {
+        const classes = ["form__plan-conditions-item"];
+        const estilo = getOptionValue(limite?.estilo_limite);
+        if (estilo && estilo !== "normal") {
+                classes.push(`form__plan-conditions-item--${estilo}`);
+                if (estilo === "negrita") {
+                        classes.push("form__plan-conditions-item--accent");
+                }
+        }
+        return classes.join(" ");
+}
+
+function renderStandardLimits(descInfo, subtitleHtml = null) {
+        const limites = Array.isArray(descInfo?.limites_y_valores) ? descInfo.limites_y_valores : [];
+        const subtitle = typeof subtitleHtml === "string" ? subtitleHtml : getDescriptionSubtitleHtml(descInfo);
+
+        if (!limites.length && !subtitle) return "";
+
+        const htmlItems = limites
+                .map((limite) => {
+                        const estilo = getOptionValue(limite?.estilo_limite);
+                        const label = getLimitItemLabel(limite);
+                        const aclaracion = typeof limite?.aclaracion === "string" ? limite.aclaracion.trim() : "";
+                        const rawValue =
+                                limite?.valor_del_limite === null || limite?.valor_del_limite === undefined
+                                        ? null
+                                        : Number(limite.valor_del_limite);
+                        const hasValor = Number.isFinite(rawValue) && rawValue > 0;
+                        const valorTexto = hasValor ? formatEuroValue(rawValue) : "";
+                        const useAclaracionAsValue = !hasValor && !!aclaracion;
+
+                        if (!label && !valorTexto && !aclaracion) {
+                                return "";
+                        }
+
+                        const classes = getLimitItemClassNames(limite);
+                        let labelHtml = "";
+                        if (label) {
+                                labelHtml = escapeHtml(label);
+                                if (hasValor || useAclaracionAsValue || aclaracion) {
+                                        labelHtml += ":";
+                                        if (hasValor || useAclaracionAsValue) {
+                                                labelHtml += " ";
+                                        }
+                                }
+                                if (aclaracion && !useAclaracionAsValue) {
+                                        labelHtml += ` ${escapeHtml(aclaracion)}`;
+                                }
+                        } else if (aclaracion) {
+                                if (!useAclaracionAsValue) {
+                                        labelHtml = escapeHtml(aclaracion);
+                                }
+                        }
+
+                        const labelSpan = labelHtml
+                                ? `<span class="form__plan-conditions-item-label">${labelHtml}</span>`
+                                : "";
+                        const isAccent = estilo === "negrita";
+                        const valueClass = isAccent
+                                ? "form__plan-conditions-item-value form__plan-conditions-item-value--accent"
+                                : "form__plan-conditions-item-value";
+                        const valueContent = hasValor ? valorTexto : useAclaracionAsValue ? aclaracion : "";
+                        const valueSpan = valueContent
+                                ? `<span class="${valueClass}">${escapeHtml(valueContent)}</span>`
+                                : "";
+
+                        return `
+                <li class="${classes}">${labelSpan}${valueSpan}</li>
+        `;
+                })
+                .filter(Boolean)
+                .join("");
+
+        const listHtml = htmlItems
+                ? `
+                <ul class="form__plan-conditions-list" role="list">
+                        ${htmlItems}
+                </ul>
+        `
+                : "";
+
+        if (!listHtml) {
+                return subtitle
+                        ? `
+        <div class="form__plan-conditions">
+                ${subtitle}
+        </div>
+    `
+                        : "";
+        }
+
+        return `
+        <div class="form__plan-conditions">
+                ${subtitle}
+                ${listHtml}
+        </div>
+    `;
+}
+
+function getDescriptionSubtitleHtml(descInfo) {
+        const text = descInfo?.titulo_descripcion;
+        if (!text) return "";
+        return `<div class="form__plan-conditions-subtitle">${escapeHtml(text)}</div>`;
+}
+
+function buildRangeTextFromNumbers(desde, hasta, unidad = "") {
+        const tieneDesde = Number.isFinite(desde);
+        const tieneHasta = Number.isFinite(hasta);
+        const desdeTexto = tieneDesde ? formatNumber(desde) : "";
+        const hastaTexto = tieneHasta ? formatNumber(hasta) : "";
+
+        if (tieneDesde && tieneHasta) {
+                if (desde <= 0) {
+                        return hastaTexto ? `hasta ${hastaTexto}${unidad}` : "";
+                }
+                if (desdeTexto && hastaTexto) {
+                        return `de ${desdeTexto} hasta ${hastaTexto}${unidad}`;
+                }
+        }
+        if (tieneHasta && hastaTexto) {
+                return `hasta ${hastaTexto}${unidad}`;
+        }
+        if (tieneDesde && desdeTexto) {
+                return `desde ${desdeTexto}${unidad}`;
+        }
+        return "";
+}
+
+function normalizeRange(range) {
+        if (!range) return null;
+        const desde = parseConditionNumber(range.desde);
+        const hasta = parseConditionNumber(range.hasta);
+        const tieneDesde = Number.isFinite(desde);
+        const tieneHasta = Number.isFinite(hasta);
+        if (!tieneDesde && !tieneHasta) return null;
+        return { desde: tieneDesde ? desde : null, hasta: tieneHasta ? hasta : null };
+}
+
+function extractRangeFromEntry(entry) {
+        const desde = parseConditionNumber(entry?.desde_condicion);
+        const hasta = parseConditionNumber(entry?.hasta_condicion);
+        const tieneDesde = Number.isFinite(desde);
+        const tieneHasta = Number.isFinite(hasta);
+        if (!tieneDesde && !tieneHasta) return null;
+        return { desde: tieneDesde ? desde : null, hasta: tieneHasta ? hasta : null };
+}
+
+function getConditionHeadline(descInfo, condicion) {
+        const tipo = getOptionValue(descInfo?.tipo_de_condicion);
+        const tituloCondicion = typeof descInfo?.titulo_condicion === "string"
+                ? descInfo.titulo_condicion.trim()
+                : "";
+        const labelBase = tituloCondicion || getOptionLabel(descInfo?.tipo_de_condicion) || "";
+
+        if (tipo === "antiguedad_kilometros") {
+                const partes = [];
+                if (labelBase) partes.push(labelBase);
+
+                const rangePieces = [];
+                const kmRange = normalizeRange(condicion?.kilometrosRange || condicion?.kilometros);
+                if (kmRange) {
+                        const texto = buildRangeTextFromNumbers(kmRange.desde, kmRange.hasta, " km");
+                        if (texto) rangePieces.push(texto);
+                }
+                const antiguedadRange = normalizeRange(
+                        condicion?.antiguedadRange || condicion?.antiguedad
+                );
+                if (antiguedadRange) {
+                        const texto = buildRangeTextFromNumbers(
+                                antiguedadRange.desde,
+                                antiguedadRange.hasta,
+                                " años"
+                        );
+                        if (texto) rangePieces.push(texto);
+                }
+
+                if (!rangePieces.length && condicion) {
+                        const fallbackRange = extractRangeFromEntry(condicion);
+                        if (fallbackRange) {
+                                const texto = buildRangeTextFromNumbers(
+                                        fallbackRange.desde,
+                                        fallbackRange.hasta,
+                                        ""
+                                );
+                                if (texto) rangePieces.push(texto);
+                        }
+                }
+
+                if (rangePieces.length) {
+                        const combined = rangePieces.filter(Boolean).join(" y ");
+                        if (combined) {
+                                if (partes.length) {
+                                        const lastIndex = partes.length - 1;
+                                        partes[lastIndex] = `${partes[lastIndex]} ${combined}`;
+                                } else {
+                                        partes.push(combined);
+                                }
+                        }
+                }
+
+                return partes.map((fragment) => escapeHtml(fragment)).join(" ").trim();
+        }
+
+        if (tipo === "ninguno") {
+                return labelBase ? escapeHtml(labelBase) : "";
+        }
+
+        const rangoRef = condicion?.cilindradaRange || extractRangeFromEntry(condicion) || null;
+        const unidad = tipo === "cilindrada_cc" ? " cc" : "";
+        const rangoTexto = rangoRef
+                ? buildRangeTextFromNumbers(rangoRef.desde, rangoRef.hasta, unidad)
+                : "";
+
+        const partes = [];
+        if (labelBase) partes.push(labelBase);
+        if (rangoTexto) partes.push(rangoTexto);
+
+        return partes.map((fragment) => escapeHtml(fragment)).join(" ").trim();
+}
+
+function renderSpecialLimits(descInfo, valoresForm, subtitleHtml = "") {
+        const condiciones = Array.isArray(descInfo?.condiciones_limites)
+                ? descInfo.condiciones_limites.slice()
+                : [];
+        if (!condiciones.length) return "";
+
+        const tipoCondicion = getOptionValue(descInfo?.tipo_de_condicion) || "ninguno";
+        const normalizeFormNumber = (raw) => {
+                        if (raw === null || raw === undefined) return null;
+                        if (raw === 0) return null;
+                        if (typeof raw === "string" && raw.trim() === "") return null;
+                        const parsed = parseNumericFormValue(raw);
+                        return Number.isFinite(parsed) ? parsed : null;
+                };
+        const cilindradaValor = normalizeFormNumber(valoresForm?.cilindrada);
+        const kilometrosValor = normalizeFormNumber(valoresForm?.kilometros);
+        const antiguedadValor =
+                typeof valoresForm?.antiguedad === "number" && !Number.isNaN(valoresForm.antiguedad)
+                        ? valoresForm.antiguedad
+                        : null;
+
+        const grupos = [];
+        condiciones.forEach((cond) => {
+                const label = getSpecialLimitLabel(cond);
+                const tipo = getSpecialLimitType(cond) || "";
+                if (!label && !tipo) return;
+                const key = `${tipo}|${label}`;
+                let grupo = grupos.find((g) => g.key === key);
+                if (!grupo) {
+                        grupo = { key, label, tipo, entries: [] };
+                        grupos.push(grupo);
+                }
+                grupo.entries.push(cond);
+        });
+
+        if (!grupos.length) return "";
+
+        const sortEntries = (entries) =>
+                entries
+                        .map((entry) => ({ entry, range: extractRangeFromEntry(entry) }))
+                        .sort((a, b) => {
+                                const getSortValue = (item) => {
+                                        if (item.range && Number.isFinite(item.range.desde)) {
+                                                return item.range.desde;
+                                        }
+                                        if (item.range && Number.isFinite(item.range.hasta)) {
+                                                return item.range.hasta;
+                                        }
+                                        return Infinity;
+                                };
+                                return getSortValue(a) - getSortValue(b);
+                        });
+
+        const matchesValue = (value, range) => {
+                if (!range) return true;
+                if (range.desde !== null && range.desde !== undefined && Number.isFinite(range.desde)) {
+                        if (value < range.desde) return false;
+                }
+                if (range.hasta !== null && range.hasta !== undefined && Number.isFinite(range.hasta)) {
+                        if (value > range.hasta) return false;
+                }
+                return true;
+        };
+
+        const findBestMatch = (entries, value) => {
+                if (!entries.length) return null;
+                const ordered = sortEntries(entries);
+                if (value === null || value === undefined || Number.isNaN(value)) {
+                        return null;
+                }
+                const exact = ordered.find((item) => matchesValue(value, item.range));
+                if (exact) return exact;
+                let fallback = ordered[0];
+                for (const item of ordered) {
+                        const desde = item.range?.desde;
+                        if (Number.isFinite(desde) && value >= desde) {
+                                fallback = item;
+                        }
+                }
+                return fallback || ordered[ordered.length - 1];
+        };
+
+        const getSafestItem = (entries) => {
+                const ordered = sortEntries(entries);
+                let best = null;
+                let bestValor = null;
+                for (const item of ordered) {
+                        const valorParsed = parseConditionNumber(
+                                item.entry?.valor_limite_condicion_especial
+                        );
+                        const valorNum =
+                                typeof valorParsed === "number" && Number.isFinite(valorParsed) && valorParsed > 0
+                                        ? valorParsed
+                                        : null;
+                        if (valorNum !== null) {
+                                if (best === null || valorNum < bestValor) {
+                                        best = item;
+                                        bestValor = valorNum;
+                                }
+                        }
+                }
+                return best || ordered[0] || null;
+        };
+
+        const createCandidate = (item, dimension) => {
+                if (!item) return null;
+                const valorParsed = parseConditionNumber(item.entry?.valor_limite_condicion_especial);
+                const valorNum =
+                        typeof valorParsed === "number" && Number.isFinite(valorParsed) && valorParsed > 0
+                                ? valorParsed
+                                : null;
+                const aclaracion = typeof item.entry?.aclaracion_condicion_especial === "string"
+                        ? item.entry.aclaracion_condicion_especial.trim()
+                        : "";
+                return {
+                        entry: item.entry,
+                        range: item.range || extractRangeFromEntry(item.entry),
+                        dimension,
+                        valorNum,
+                        aclaracion,
+                        estilo: getSpecialLimitEstilo(item.entry) || "",
+                        tipo: getSpecialLimitType(item.entry) || "",
+                };
+        };
+
+        const headlineRanges = { cilindradaRange: null, kilometrosRange: null, antiguedadRange: null };
+        let headlineEntry = null;
+        const itemsHtml = grupos
+                .map((grupo) => {
+                        const entries = grupo.entries || [];
+                        const candidates = [];
+
+                        if (!entries.length) return "";
+
+                        if (tipoCondicion === "cilindrada_cc") {
+                                const match = findBestMatch(entries, cilindradaValor);
+                                const fallback = match || (entries.length
+                                        ? { entry: entries[0], range: extractRangeFromEntry(entries[0]) }
+                                        : null);
+                                const candidate = createCandidate(fallback, "cilindrada");
+                                if (candidate) {
+                                        candidates.push(candidate);
+                                        if (!headlineRanges.cilindradaRange && candidate.range) {
+                                                headlineRanges.cilindradaRange = candidate.range;
+                                        }
+                                        if (!headlineEntry) headlineEntry = candidate.entry;
+                                }
+                        } else if (tipoCondicion === "antiguedad_kilometros") {
+                                const kmEntries = entries.filter(
+                                        (entry) => getOptionValue(entry?.km_o_antiguedad) === "kilometros"
+                                );
+                                const antigEntries = entries.filter(
+                                        (entry) => getOptionValue(entry?.km_o_antiguedad) === "antiguedad"
+                                );
+                                const neutralEntries = entries.filter((entry) => {
+                                        const tipoKm = getOptionValue(entry?.km_o_antiguedad);
+                                        return !tipoKm || tipoKm === "ninguna";
+                                });
+
+                                const kmMatchRaw = kmEntries.length
+                                        ? findBestMatch(kmEntries, kilometrosValor)
+                                        : null;
+                                const kmItem = kmMatchRaw || (kilometrosValor == null ? getSafestItem(kmEntries) : null);
+                                if (kmItem) {
+                                        const candidate = createCandidate(kmItem, "kilometros");
+                                        if (candidate) {
+                                                candidates.push(candidate);
+                                                if (!headlineRanges.kilometrosRange && candidate.range) {
+                                                        headlineRanges.kilometrosRange = candidate.range;
+                                                }
+                                                if (!headlineEntry) headlineEntry = candidate.entry;
+                                        }
+                                }
+
+                                const antigMatchRaw = antigEntries.length
+                                        ? findBestMatch(antigEntries, antiguedadValor)
+                                        : null;
+                                const antigItem = antigMatchRaw || (antiguedadValor == null
+                                        ? getSafestItem(antigEntries)
+                                        : null);
+                                if (antigItem) {
+                                        const candidate = createCandidate(antigItem, "antiguedad");
+                                        if (candidate) {
+                                                candidates.push(candidate);
+                                                if (!headlineRanges.antiguedadRange && candidate.range) {
+                                                        headlineRanges.antiguedadRange = candidate.range;
+                                                }
+                                                if (!headlineEntry) headlineEntry = candidate.entry;
+                                        }
+                                }
+
+                                if (!candidates.length && neutralEntries.length) {
+                                        const neutralMatch = sortEntries(neutralEntries)[0] || null;
+                                        const candidate = createCandidate(neutralMatch, "ninguna");
+                                        if (candidate) {
+                                                candidates.push(candidate);
+                                                if (!headlineEntry) headlineEntry = candidate.entry;
+                                        }
+                                }
+                        } else {
+                                const safest = getSafestItem(entries);
+                                const candidate = createCandidate(safest, "general");
+                                if (candidate) {
+                                        candidates.push(candidate);
+                                        if (!headlineEntry) headlineEntry = candidate.entry;
+                                }
+                        }
+
+                        if (!candidates.length) return "";
+
+                        const numericCandidates = candidates.filter(
+                                (cand) => typeof cand.valorNum === "number" && Number.isFinite(cand.valorNum)
+                        );
+                        let selected = null;
+                        if (numericCandidates.length) {
+                                selected = numericCandidates.reduce((best, cand) => {
+                                        if (!best) return cand;
+                                        return cand.valorNum < best.valorNum ? cand : best;
+                                }, null);
+                        }
+                        if (!selected) {
+                                selected = candidates.find((cand) => cand.aclaracion) || candidates[0];
+                        }
+                        if (!selected) return "";
+
+                        const estilo = selected.estilo;
+                        const accent = estilo === "negrita";
+                        const labelBase = grupo.label || getSpecialLimitLabel(selected.entry) || "";
+                        const hasValor = typeof selected.valorNum === "number" && Number.isFinite(selected.valorNum);
+                        const valorTexto = hasValor ? formatEuroValue(selected.valorNum) : "";
+                        const aclaracion = selected.aclaracion;
+                        const useAclaracionAsValue = !hasValor && !!aclaracion;
+
+                        if (!labelBase && !valorTexto && !aclaracion) {
+                                return "";
+                        }
+
+                        const labelParts = [];
+                        if (labelBase) {
+                                let labelHtml = escapeHtml(labelBase);
+                                if (hasValor || useAclaracionAsValue || aclaracion) {
+                                        labelHtml += ":";
+                                        if (hasValor || useAclaracionAsValue) {
+                                                labelHtml += " ";
+                                        }
+                                }
+                                if (aclaracion && !useAclaracionAsValue) {
+                                        labelHtml += ` ${escapeHtml(aclaracion)}`;
+                                }
+                                labelParts.push(`<span class="form__plan-conditions-item-label">${labelHtml}</span>`);
+                        } else if (aclaracion && !useAclaracionAsValue) {
+                                labelParts.push(
+                                        `<span class="form__plan-conditions-item-label">${escapeHtml(aclaracion)}</span>`
+                                );
+                        }
+
+                        const valueContent = hasValor ? valorTexto : useAclaracionAsValue ? aclaracion : "";
+                        const valueClass = accent
+                                ? "form__plan-conditions-item-value form__plan-conditions-item-value--accent"
+                                : "form__plan-conditions-item-value";
+                        const valueSpan = valueContent
+                                ? `<span class="${valueClass}">${escapeHtml(valueContent)}</span>`
+                                : "";
+
+                        const classes = getLimitItemClassNames({ estilo_limite: estilo });
+
+                        return `
+                <li class="${classes}">${labelParts.join("")}${valueSpan}</li>
+        `;
+                })
+                .filter(Boolean)
+                .join("");
+
+        const headlineData = (() => {
+                if (tipoCondicion === "antiguedad_kilometros") {
+                        return {
+                                kilometrosRange: headlineRanges.kilometrosRange,
+                                antiguedadRange: headlineRanges.antiguedadRange,
+                        };
+                }
+                if (tipoCondicion === "cilindrada_cc") {
+                        if (headlineRanges.cilindradaRange) {
+                                return { cilindradaRange: headlineRanges.cilindradaRange };
+                        }
+                        return headlineEntry || null;
+                }
+                return headlineEntry || null;
+        })();
+
+        const headline = getConditionHeadline(descInfo, headlineData || headlineEntry || {});
+
+        if (!itemsHtml && !headline && !subtitleHtml) return "";
+
+        const listHtml = itemsHtml
+                ? `
+                <ul class="form__plan-conditions-list" role="list">
+                        ${itemsHtml}
+                </ul>
+        `
+                : "";
+
+        return `
+        <div class="form__plan-conditions">
+                ${headline ? `<div class="form__plan-conditions-title">${headline}</div>` : ""}
+                ${subtitleHtml}
+                ${listHtml}
+        </div>
+    `;
+}
+
+function renderPlanDescription(descInfo, valoresForm) {
+        const tipo = getOptionValue(descInfo?.tipo_descripcion) || "descripcion";
+        const subtitleHtml = getDescriptionSubtitleHtml(descInfo);
+
+        if (tipo === "listado_ventajas") {
+                const listadoHtml = renderVentajasList(descInfo);
+                if (!listadoHtml) return subtitleHtml;
+                return `${subtitleHtml}${listadoHtml}`;
+        }
+
+        if (tipo === "limites") {
+                if (isTruthy(descInfo?.condiciones_especiales)) {
+                        const especiales = renderSpecialLimits(descInfo, valoresForm, subtitleHtml);
+                        if (especiales) return especiales;
+                }
+                return renderStandardLimits(descInfo, subtitleHtml);
+        }
+
+        const descripcion = descInfo?.descripcion_garantia || "";
+        if (!descripcion && !subtitleHtml) return "";
+        return `${subtitleHtml}${descripcion}`;
 }
 
 // --------- Condiciones / comparadores ---------
@@ -1163,7 +1835,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 			const estilos = descInfo?.estilos || {};
 
 			const title = detalles.nombre_mostrar || m.title || "";
-			const description = descInfo.descripcion_garantia || "";
+                        const description = renderPlanDescription(descInfo, valoresForm);
 			const pdf = detalles.documentos?.coberturas?.url || null;
 
 			let badge = "";
