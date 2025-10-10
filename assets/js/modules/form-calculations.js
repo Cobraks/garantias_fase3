@@ -416,6 +416,12 @@ function formatEuroValue(value) {
         return `${formatted.replace(/,00$/, "")}€`;
 }
 
+function parseConditionNumber(value) {
+        if (value === null || value === undefined || value === "") return null;
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+}
+
 function renderVentajasList(descInfo) {
         const listado = Array.isArray(descInfo?.listado_ventajas)
                 ? descInfo.listado_ventajas
@@ -472,7 +478,7 @@ function getLimitDisplay(option, amount, { fallbackLabel = "" } = {}) {
         return formatted || "";
 }
 
-function renderStandardLimits(descInfo) {
+function renderStandardLimits(descInfo, subtitleHtml = null) {
         const limiteAveria = getLimitDisplay(
                 descInfo?.limite_averia,
                 descInfo?.cantidad_limite_averia,
@@ -492,41 +498,89 @@ function renderStandardLimits(descInfo) {
                 items.push({ label: "Límite por contrato", value: limiteContrato });
         }
 
-        if (!items.length) return "";
+        const subtitle = typeof subtitleHtml === "string" ? subtitleHtml : getDescriptionSubtitleHtml(descInfo);
+
+        if (!items.length && !subtitle) return "";
 
         const htmlItems = items
                 .map(
                         (item) => `
-                <div class="form__plan-limit">
-                        <span class="form__plan-limit-label">${escapeHtml(item.label)}</span>
-                        <span class="form__plan-limit-value">${escapeHtml(item.value)}</span>
-                </div>
+                <li class="form__plan-conditions-item">
+                        <span class="form__plan-conditions-item-label">${escapeHtml(item.label)}</span>
+                        <span class="form__plan-conditions-item-value">${escapeHtml(item.value)}</span>
+                </li>
         `
                 )
                 .join("");
 
+        const listHtml = htmlItems
+                ? `
+                <ul class="form__plan-conditions-list" role="list">
+                        ${htmlItems}
+                </ul>
+        `
+                : "";
+
+        if (!listHtml) {
+                return subtitle
+                        ? `
+        <div class="form__plan-conditions">
+                ${subtitle}
+        </div>
+    `
+                        : "";
+        }
+
         return `
-        <div class="form__plan-limits">
-                ${htmlItems}
+        <div class="form__plan-conditions">
+                ${subtitle}
+                ${listHtml}
         </div>
     `;
 }
 
-function getConditionHeadline(tipo, valor, label) {
-        const formattedValue = formatNumber(valor);
-        if (!formattedValue) {
-                return label ? escapeHtml(label) : "";
-        }
-        if (tipo === "cilindrada_cc") {
-                return `Motocicletas hasta ${formattedValue} cc`;
-        }
-        if (label) {
-                return `${escapeHtml(label)} ${formattedValue}`;
-        }
-        return `Hasta ${formattedValue}`;
+function getDescriptionSubtitleHtml(descInfo) {
+        const text = descInfo?.titulo_descripcion;
+        if (!text) return "";
+        return `<div class="form__plan-conditions-subtitle">${escapeHtml(text)}</div>`;
 }
 
-function renderSpecialLimits(descInfo, valoresForm) {
+function getConditionHeadline(descInfo, condicion) {
+        const tipo = getOptionValue(descInfo?.tipo_de_condicion);
+        const titulo = descInfo?.titulo_condicion ? escapeHtml(descInfo.titulo_condicion) : "";
+        const label = titulo || (getOptionLabel(descInfo?.tipo_de_condicion)
+                ? escapeHtml(getOptionLabel(descInfo?.tipo_de_condicion))
+                : "");
+
+        const desde = parseConditionNumber(condicion?.desde_condicion);
+        const hasta = parseConditionNumber(condicion?.hasta_condicion);
+        const tieneDesde = Number.isFinite(desde);
+        const tieneHasta = Number.isFinite(hasta);
+        const desdeTexto = tieneDesde ? formatNumber(desde) : "";
+        const hastaTexto = tieneHasta ? formatNumber(hasta) : "";
+        const unidad = tipo === "cilindrada_cc" ? " cc" : "";
+
+        let rango = "";
+        if (tieneDesde && tieneHasta) {
+                if (desde <= 0) {
+                        rango = hastaTexto ? `hasta ${hastaTexto}${unidad}` : "";
+                } else if (desdeTexto && hastaTexto) {
+                        rango = `de ${desdeTexto} hasta ${hastaTexto}${unidad}`;
+                }
+        } else if (tieneHasta && hastaTexto) {
+                rango = `hasta ${hastaTexto}${unidad}`;
+        } else if (tieneDesde && desdeTexto) {
+                rango = `desde ${desdeTexto}${unidad}`;
+        }
+
+        const partes = [];
+        if (label) partes.push(label);
+        if (rango) partes.push(escapeHtml(rango));
+
+        return partes.join(" ").trim();
+}
+
+function renderSpecialLimits(descInfo, valoresForm, subtitleHtml = "") {
         const condiciones = Array.isArray(descInfo?.condiciones_limites)
                 ? descInfo.condiciones_limites.slice()
                 : [];
@@ -534,9 +588,21 @@ function renderSpecialLimits(descInfo, valoresForm) {
 
         const cilindradaForm = parseNumericFormValue(valoresForm?.cilindrada ?? 0);
         condiciones.sort((a, b) => {
-                const aVal = Number(a?.valor_condicion ?? Infinity);
-                const bVal = Number(b?.valor_condicion ?? Infinity);
-                return aVal - bVal;
+                const aDesde = parseConditionNumber(a?.desde_condicion);
+                const bDesde = parseConditionNumber(b?.desde_condicion);
+
+                const aSort = Number.isFinite(aDesde)
+                        ? aDesde
+                        : Number.isFinite(parseConditionNumber(a?.hasta_condicion))
+                        ? parseConditionNumber(a?.hasta_condicion)
+                        : Infinity;
+                const bSort = Number.isFinite(bDesde)
+                        ? bDesde
+                        : Number.isFinite(parseConditionNumber(b?.hasta_condicion))
+                        ? parseConditionNumber(b?.hasta_condicion)
+                        : Infinity;
+
+                return aSort - bSort;
         });
 
         let condicionCoincidente = null;
@@ -544,8 +610,11 @@ function renderSpecialLimits(descInfo, valoresForm) {
         if (Number.isFinite(cilindradaForm) && cilindradaForm > 0) {
                 intentoCoincidencia = true;
                 condicionCoincidente = condiciones.find((cond) => {
-                        const valor = Number(cond?.valor_condicion);
-                        return Number.isFinite(valor) && cilindradaForm <= valor;
+                        const desde = parseConditionNumber(cond?.desde_condicion);
+                        const hasta = parseConditionNumber(cond?.hasta_condicion);
+                        const cumpleDesde = !Number.isFinite(desde) || cilindradaForm >= desde;
+                        const cumpleHasta = !Number.isFinite(hasta) || cilindradaForm <= hasta;
+                        return cumpleDesde && cumpleHasta;
                 });
                 if (!condicionCoincidente) {
                         condicionCoincidente = condiciones[condiciones.length - 1] || null;
@@ -558,11 +627,7 @@ function renderSpecialLimits(descInfo, valoresForm) {
         }
         if (!condicionCoincidente) return "";
 
-        const headline = getConditionHeadline(
-                getOptionValue(descInfo?.tipo_de_condicion),
-                condicionCoincidente?.valor_condicion,
-                getOptionLabel(descInfo?.tipo_de_condicion)
-        );
+        const headline = getConditionHeadline(descInfo, condicionCoincidente);
 
         const items = [];
         const averiasMecanicas = formatEuroValue(condicionCoincidente?.averias_mecanicas);
@@ -588,8 +653,6 @@ function renderSpecialLimits(descInfo, valoresForm) {
                 });
         }
 
-        if (!items.length) return "";
-
         const itemsHtml = items
                 .map(
                         (item) => `
@@ -601,32 +664,46 @@ function renderSpecialLimits(descInfo, valoresForm) {
                 )
                 .join("");
 
-        return `
-        <div class="form__plan-conditions">
-                ${headline ? `<div class="form__plan-conditions-title">${headline}</div>` : ""}
+        if (!itemsHtml && !headline && !subtitleHtml) return "";
+
+        const listHtml = itemsHtml
+                ? `
                 <ul class="form__plan-conditions-list" role="list">
                         ${itemsHtml}
                 </ul>
+        `
+                : "";
+
+        return `
+        <div class="form__plan-conditions">
+                ${headline ? `<div class="form__plan-conditions-title">${headline}</div>` : ""}
+                ${subtitleHtml}
+                ${listHtml}
         </div>
     `;
 }
 
 function renderPlanDescription(descInfo, valoresForm) {
         const tipo = getOptionValue(descInfo?.tipo_descripcion) || "descripcion";
+        const subtitleHtml = getDescriptionSubtitleHtml(descInfo);
 
         if (tipo === "listado_ventajas") {
-                return renderVentajasList(descInfo);
+                const listadoHtml = renderVentajasList(descInfo);
+                if (!listadoHtml) return subtitleHtml;
+                return `${subtitleHtml}${listadoHtml}`;
         }
 
         if (tipo === "limites") {
                 if (isTruthy(descInfo?.condiciones_especiales)) {
-                        const especiales = renderSpecialLimits(descInfo, valoresForm);
+                        const especiales = renderSpecialLimits(descInfo, valoresForm, subtitleHtml);
                         if (especiales) return especiales;
                 }
-                return renderStandardLimits(descInfo);
+                return renderStandardLimits(descInfo, subtitleHtml);
         }
 
-        return descInfo?.descripcion_garantia || "";
+        const descripcion = descInfo?.descripcion_garantia || "";
+        if (!descripcion && !subtitleHtml) return "";
+        return `${subtitleHtml}${descripcion}`;
 }
 
 // --------- Condiciones / comparadores ---------
