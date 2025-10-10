@@ -1103,6 +1103,19 @@ transform: scale(1.10);
   box-shadow: none;
 }
 
+:root[data-theme='dark'] .form__plan.form__plan--premium {
+  background: linear-gradient(138deg, #0f172a 0%, #1e3a8a 48%, #6366f1 100%);
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
+:root[data-theme='dark'] .form__plan.form__plan--premium.selected {
+  background: linear-gradient(138deg, #1e293b 0%, #312e81 45%, #818cf8 100%);
+}
+
+:root[data-theme='dark'] .form__plan.form__plan--premium:hover {
+  outline-color: #312e81;
+}
+
 :root[data-theme='dark'] .form__plan:hover {
   background: rgba(51, 65, 85, 0.88);
   border-color: rgba(148, 163, 184, 0.45);
