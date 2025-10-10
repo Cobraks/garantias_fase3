@@ -49,6 +49,7 @@ class Plugin
         add_action('init', [ActivitySubscribers::class, 'init']);
         add_action('init', [PrivateDocsManager::class, 'ensure_directory']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
+        \GarantiasOnline360VO\Rest\GuaranteeRestController::register_cache_hooks();
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\AccountRestController::class, 'register_routes']);
 

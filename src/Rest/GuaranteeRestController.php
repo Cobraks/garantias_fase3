@@ -37,6 +37,8 @@ class GuaranteeRestController
     ];
     const RECEIPT_MAX_BYTES = 10485760; // 10 MB
 
+    private static $cache_hooks_registered = false;
+
     public static function register_routes()
     {
         $default_per_page = 12;
@@ -222,6 +224,16 @@ class GuaranteeRestController
 
         add_action(self::CONTRACT_NOTICE_EVENT, [__CLASS__, 'handle_scheduled_contract_notice']);
 
+        self::register_cache_hooks();
+    }
+
+    public static function register_cache_hooks(): void
+    {
+        if (self::$cache_hooks_registered) {
+            return;
+        }
+
+        self::$cache_hooks_registered = true;
         // Limpieza de transients al guardar/borrar garantías
         add_action('save_post_' . \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE, [__CLASS__, 'clear_list_transients'], 10, 3);
         add_action('deleted_post', [__CLASS__, 'clear_list_transients_on_delete']);
