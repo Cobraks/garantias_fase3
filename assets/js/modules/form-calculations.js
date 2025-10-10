@@ -458,59 +458,81 @@ function renderVentajasList(descInfo) {
     `;
 }
 
-function getLimitDisplay(option, amount, { fallbackLabel = "" } = {}) {
-        const value = getOptionValue(option);
-        const customLabel = getOptionLabel(option) || fallbackLabel;
-        if (value === "sin_limite") {
-                return customLabel || "Sin límite";
+function getLimitItemLabel(limite) {
+        const tipo = getOptionValue(limite?.limite_por);
+        if (tipo === "averia") return "Límite por avería";
+        if (tipo === "contrato") return "Límite por contrato";
+        const personalizado = typeof limite?.nombre_del_limite === "string" ? limite.nombre_del_limite.trim() : "";
+        return personalizado || "";
+}
+
+function getLimitItemClassNames(limite, tipo = null) {
+        const classes = ["form__plan-conditions-item"];
+        const estilo = getOptionValue(limite?.estilo_limite);
+        if (estilo && estilo !== "normal") {
+                classes.push(`form__plan-conditions-item--${estilo}`);
         }
-        if (value === "valor_venal") {
-                return customLabel || "Valor venal del vehículo";
+        const tipoLimite = tipo ?? getOptionValue(limite?.limite_por);
+        if (tipoLimite === "contrato") {
+                classes.push("form__plan-conditions-item--accent");
         }
-        if (value === "introducir_limite") {
-                const formatted = formatEuroValue(amount);
-                return formatted || "";
-        }
-        if (customLabel) {
-                return customLabel;
-        }
-        const formatted = formatEuroValue(amount);
-        return formatted || "";
+        return classes.join(" ");
 }
 
 function renderStandardLimits(descInfo, subtitleHtml = null) {
-        const limiteAveria = getLimitDisplay(
-                descInfo?.limite_averia,
-                descInfo?.cantidad_limite_averia,
-                { fallbackLabel: "Sin límite" }
-        );
-        const limiteContrato = getLimitDisplay(
-                descInfo?.limite_contrato,
-                descInfo?.cantidad_limite_contrato,
-                { fallbackLabel: "Sin límite" }
-        );
-
-        const items = [];
-        if (limiteAveria) {
-                items.push({ label: "Límite por avería", value: limiteAveria });
-        }
-        if (limiteContrato) {
-                items.push({ label: "Límite por contrato", value: limiteContrato });
-        }
-
+        const limites = Array.isArray(descInfo?.limites_y_valores) ? descInfo.limites_y_valores : [];
         const subtitle = typeof subtitleHtml === "string" ? subtitleHtml : getDescriptionSubtitleHtml(descInfo);
 
-        if (!items.length && !subtitle) return "";
+        if (!limites.length && !subtitle) return "";
 
-        const htmlItems = items
-                .map(
-                        (item) => `
-                <li class="form__plan-conditions-item">
-                        <span class="form__plan-conditions-item-label">${escapeHtml(item.label)}</span>
-                        <span class="form__plan-conditions-item-value">${escapeHtml(item.value)}</span>
-                </li>
-        `
-                )
+        const htmlItems = limites
+                .map((limite) => {
+                        const tipoLimite = getOptionValue(limite?.limite_por);
+                        const label = getLimitItemLabel(limite);
+                        const aclaracion = typeof limite?.aclaracion === "string" ? limite.aclaracion.trim() : "";
+                        const rawValue =
+                                limite?.valor_del_limite === null || limite?.valor_del_limite === undefined
+                                        ? null
+                                        : Number(limite.valor_del_limite);
+                        const hasValor = Number.isFinite(rawValue) && rawValue > 0;
+                        const valorTexto = hasValor ? formatEuroValue(rawValue) : "";
+
+                        if (!label && !valorTexto && !aclaracion) {
+                                return "";
+                        }
+
+                        const classes = getLimitItemClassNames(limite, tipoLimite);
+                        let labelHtml = "";
+                        if (label) {
+                                labelHtml = escapeHtml(label);
+                                if (hasValor || aclaracion) {
+                                        labelHtml += ":";
+                                        if (hasValor && !aclaracion) {
+                                                labelHtml += " ";
+                                        }
+                                }
+                                if (aclaracion) {
+                                        labelHtml += ` ${escapeHtml(aclaracion)}`;
+                                }
+                        } else if (aclaracion) {
+                                labelHtml = escapeHtml(aclaracion);
+                        }
+
+                        const labelSpan = labelHtml
+                                ? `<span class="form__plan-conditions-item-label">${labelHtml}</span>`
+                                : "";
+                        const valueClass = tipoLimite === "contrato"
+                                ? "form__plan-conditions-item-value form__plan-conditions-item-value--accent"
+                                : "form__plan-conditions-item-value";
+                        const valueSpan = hasValor
+                                ? `<span class="${valueClass}">${escapeHtml(valorTexto)}</span>`
+                                : "";
+
+                        return `
+                <li class="${classes}">${labelSpan}${valueSpan}</li>
+        `;
+                })
+                .filter(Boolean)
                 .join("");
 
         const listHtml = htmlItems
@@ -650,24 +672,26 @@ function renderSpecialLimits(descInfo, valoresForm, subtitleHtml = "") {
                 items.push({
                         label: "Límite máximo por contrato",
                         value: limiteContrato,
-                        accent: true,
+                        className: "form__plan-conditions-item form__plan-conditions-item--accent",
+                        valueClass: "form__plan-conditions-item-value form__plan-conditions-item-value--accent",
                 });
         }
 
         const itemsHtml = items
-                .map(
-                        (item) => {
-                                const valueClass = item.accent
-                                        ? "form__plan-conditions-item-value form__plan-conditions-item-value--accent"
-                                        : "form__plan-conditions-item-value";
-                                return `
-                <li class="form__plan-conditions-item">
-                        <span class="form__plan-conditions-item-label">${escapeHtml(item.label)}</span>
-                        <span class="${valueClass}">${escapeHtml(item.value)}</span>
+                .map((item) => {
+                        const labelText = item.value ? `${escapeHtml(item.label)}: ` : escapeHtml(item.label);
+                        const className = item.className || "form__plan-conditions-item";
+                        const valueClass = item.valueClass || "form__plan-conditions-item-value";
+                        const valueSpan = item.value
+                                ? `<span class="${valueClass}">${escapeHtml(item.value)}</span>`
+                                : "";
+                        return `
+                <li class="${className}">
+                        <span class="form__plan-conditions-item-label">${labelText}</span>
+                        ${valueSpan}
                 </li>
         `;
-                        }
-                )
+                })
                 .join("");
 
         if (!itemsHtml && !headline && !subtitleHtml) return "";
