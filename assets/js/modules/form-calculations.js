@@ -355,17 +355,278 @@ function redondearEuros(valor) {
 	return Math.round(valor * 100) / 100;
 }
 function getValorInput(id) {
-	const el = document.getElementById(id);
-	return el ? el.value : "";
+        const el = document.getElementById(id);
+        return el ? el.value : "";
 }
 function getValoresModalidadCampo(campo) {
-	if (Array.isArray(campo)) {
-		return campo.map((v) => (typeof v === "string" ? v : v.value));
-	}
-	if (typeof campo === "string") return [campo];
-	if (typeof campo === "object" && campo !== null && campo.value)
-		return [campo.value];
-	return [];
+        if (Array.isArray(campo)) {
+                return campo.map((v) => (typeof v === "string" ? v : v.value));
+        }
+        if (typeof campo === "string") return [campo];
+        if (typeof campo === "object" && campo !== null && campo.value)
+                return [campo.value];
+        return [];
+}
+
+function escapeHtml(value) {
+        if (value === null || value === undefined) return "";
+        return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+}
+
+function isTruthy(value) {
+        return value === true || value === 1 || value === "1" || value === "true";
+}
+
+function getOptionValue(option) {
+        if (typeof option === "string") return option;
+        if (typeof option === "number") return String(option);
+        if (option && typeof option === "object") {
+                if (typeof option.value === "string" || typeof option.value === "number") {
+                        return String(option.value);
+                }
+        }
+        return "";
+}
+
+function getOptionLabel(option) {
+        if (option && typeof option === "object" && option.label) {
+                return String(option.label);
+        }
+        return "";
+}
+
+function formatNumber(value) {
+        const num = typeof value === "number" ? value : parseFloat(value);
+        if (!Number.isFinite(num)) return "";
+        return new Intl.NumberFormat("es-ES", {
+                maximumFractionDigits: 0,
+        }).format(num);
+}
+
+function formatEuroValue(value) {
+        if (value === null || value === undefined || value === "") return "";
+        const num = typeof value === "number" ? value : parseFloat(value);
+        if (!Number.isFinite(num)) return "";
+        const formatted = eurosString(num);
+        return `${formatted.replace(/,00$/, "")}€`;
+}
+
+function renderVentajasList(descInfo) {
+        const listado = Array.isArray(descInfo?.listado_ventajas)
+                ? descInfo.listado_ventajas
+                : [];
+        if (!listado.length) return "";
+
+        const items = listado
+                .map((item) => {
+                        const texto = escapeHtml(item?.ventaja || "");
+                        if (!texto) return "";
+                        const iconType = getOptionValue(item?.icono);
+                        const iconKey = iconType === "negativo" ? "disadvantage" : "advantage";
+                        const iconHtml = getIcon(iconKey) || (iconType === "negativo" ? "×" : "✓");
+                        const iconClass =
+                                iconType === "negativo"
+                                        ? "form__plan-description-icon form__plan-description-icon--negative"
+                                        : "form__plan-description-icon form__plan-description-icon--positive";
+                        return `
+                <li class="form__plan-description-item">
+                        <span class="${iconClass}" aria-hidden="true">${iconHtml}</span>
+                        <span class="form__plan-description-text">${texto}</span>
+                </li>
+            `;
+                })
+                .filter(Boolean)
+                .join("");
+
+        if (!items) return "";
+
+        return `
+        <ul class="form__plan-description-list" role="list">
+                ${items}
+        </ul>
+    `;
+}
+
+function getLimitDisplay(option, amount, { fallbackLabel = "" } = {}) {
+        const value = getOptionValue(option);
+        const customLabel = getOptionLabel(option) || fallbackLabel;
+        if (value === "sin_limite") {
+                return customLabel || "Sin límite";
+        }
+        if (value === "valor_venal") {
+                return customLabel || "Valor venal del vehículo";
+        }
+        if (value === "introducir_limite") {
+                const formatted = formatEuroValue(amount);
+                return formatted || "";
+        }
+        if (customLabel) {
+                return customLabel;
+        }
+        const formatted = formatEuroValue(amount);
+        return formatted || "";
+}
+
+function renderStandardLimits(descInfo) {
+        const limiteAveria = getLimitDisplay(
+                descInfo?.limite_averia,
+                descInfo?.cantidad_limite_averia,
+                { fallbackLabel: "Sin límite" }
+        );
+        const limiteContrato = getLimitDisplay(
+                descInfo?.limite_contrato,
+                descInfo?.cantidad_limite_contrato,
+                { fallbackLabel: "Sin límite" }
+        );
+
+        const items = [];
+        if (limiteAveria) {
+                items.push({ label: "Límite por avería", value: limiteAveria });
+        }
+        if (limiteContrato) {
+                items.push({ label: "Límite por contrato", value: limiteContrato });
+        }
+
+        if (!items.length) return "";
+
+        const htmlItems = items
+                .map(
+                        (item) => `
+                <div class="form__plan-limit">
+                        <span class="form__plan-limit-label">${escapeHtml(item.label)}</span>
+                        <span class="form__plan-limit-value">${escapeHtml(item.value)}</span>
+                </div>
+        `
+                )
+                .join("");
+
+        return `
+        <div class="form__plan-limits">
+                ${htmlItems}
+        </div>
+    `;
+}
+
+function getConditionHeadline(tipo, valor, label) {
+        const formattedValue = formatNumber(valor);
+        if (!formattedValue) {
+                return label ? escapeHtml(label) : "";
+        }
+        if (tipo === "cilindrada_cc") {
+                return `Motocicletas hasta ${formattedValue} cc`;
+        }
+        if (label) {
+                return `${escapeHtml(label)} ${formattedValue}`;
+        }
+        return `Hasta ${formattedValue}`;
+}
+
+function renderSpecialLimits(descInfo, valoresForm) {
+        const condiciones = Array.isArray(descInfo?.condiciones_limites)
+                ? descInfo.condiciones_limites.slice()
+                : [];
+        if (!condiciones.length) return "";
+
+        const cilindradaForm = parseNumericFormValue(valoresForm?.cilindrada ?? 0);
+        condiciones.sort((a, b) => {
+                const aVal = Number(a?.valor_condicion ?? Infinity);
+                const bVal = Number(b?.valor_condicion ?? Infinity);
+                return aVal - bVal;
+        });
+
+        let condicionCoincidente = null;
+        let intentoCoincidencia = false;
+        if (Number.isFinite(cilindradaForm) && cilindradaForm > 0) {
+                intentoCoincidencia = true;
+                condicionCoincidente = condiciones.find((cond) => {
+                        const valor = Number(cond?.valor_condicion);
+                        return Number.isFinite(valor) && cilindradaForm <= valor;
+                });
+                if (!condicionCoincidente) {
+                        condicionCoincidente = condiciones[condiciones.length - 1] || null;
+                }
+        }
+        if (!condicionCoincidente) {
+                condicionCoincidente = intentoCoincidencia
+                        ? condiciones[condiciones.length - 1] || null
+                        : condiciones[0] || null;
+        }
+        if (!condicionCoincidente) return "";
+
+        const headline = getConditionHeadline(
+                getOptionValue(descInfo?.tipo_de_condicion),
+                condicionCoincidente?.valor_condicion,
+                getOptionLabel(descInfo?.tipo_de_condicion)
+        );
+
+        const items = [];
+        const averiasMecanicas = formatEuroValue(condicionCoincidente?.averias_mecanicas);
+        const averiasElectricas = formatEuroValue(condicionCoincidente?.averias_electricas);
+        const limiteContrato = formatEuroValue(condicionCoincidente?.limite_por_contrato);
+
+        if (averiasMecanicas) {
+                items.push({
+                        label: "Averías mecánicas",
+                        value: `Hasta ${averiasMecanicas}`,
+                });
+        }
+        if (averiasElectricas) {
+                items.push({
+                        label: "Averías eléctricas o electrónicas",
+                        value: `Hasta ${averiasElectricas}`,
+                });
+        }
+        if (limiteContrato) {
+                items.push({
+                        label: "Límite máximo por contrato",
+                        value: limiteContrato,
+                });
+        }
+
+        if (!items.length) return "";
+
+        const itemsHtml = items
+                .map(
+                        (item) => `
+                <li class="form__plan-conditions-item">
+                        <span class="form__plan-conditions-item-label">${escapeHtml(item.label)}</span>
+                        <span class="form__plan-conditions-item-value">${escapeHtml(item.value)}</span>
+                </li>
+        `
+                )
+                .join("");
+
+        return `
+        <div class="form__plan-conditions">
+                ${headline ? `<div class="form__plan-conditions-title">${headline}</div>` : ""}
+                <ul class="form__plan-conditions-list" role="list">
+                        ${itemsHtml}
+                </ul>
+        </div>
+    `;
+}
+
+function renderPlanDescription(descInfo, valoresForm) {
+        const tipo = getOptionValue(descInfo?.tipo_descripcion) || "descripcion";
+
+        if (tipo === "listado_ventajas") {
+                return renderVentajasList(descInfo);
+        }
+
+        if (tipo === "limites") {
+                if (isTruthy(descInfo?.condiciones_especiales)) {
+                        const especiales = renderSpecialLimits(descInfo, valoresForm);
+                        if (especiales) return especiales;
+                }
+                return renderStandardLimits(descInfo);
+        }
+
+        return descInfo?.descripcion_garantia || "";
 }
 
 // --------- Condiciones / comparadores ---------
@@ -1163,7 +1424,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 			const estilos = descInfo?.estilos || {};
 
 			const title = detalles.nombre_mostrar || m.title || "";
-			const description = descInfo.descripcion_garantia || "";
+                        const description = renderPlanDescription(descInfo, valoresForm);
 			const pdf = detalles.documentos?.coberturas?.url || null;
 
 			let badge = "";
