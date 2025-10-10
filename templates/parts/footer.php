@@ -263,6 +263,8 @@ if (! empty($is_add_guarantee)) {
     $icon_percent_html = Svg::icon('percent');
     $icon_warning_html = Svg::icon('warning');
     $icon_check_html = Svg::icon('check');
+    $icon_advantage_html = Svg::icon('advantage');
+    $icon_disadvantage_html = Svg::icon('disadvantage');
     $icon_pdf_html = Svg::icon('pdf');
     $icon_save_html = Svg::icon('save');
     $reclamation_url = ReclamationDocument::get_url();
@@ -319,6 +321,8 @@ if (! empty($is_add_guarantee)) {
             icons: {
                 percent: `<?php echo addslashes($icon_percent_html); ?>`,
                 check: `<?php echo addslashes($icon_check_html); ?>`,
+                advantage: `<?php echo addslashes($icon_advantage_html); ?>`,
+                disadvantage: `<?php echo addslashes($icon_disadvantage_html); ?>`,
                 warning: `<?php echo addslashes($icon_warning_html); ?>`,
                 pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
                 save: `<?php echo addslashes($icon_save_html); ?>`

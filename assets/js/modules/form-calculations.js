@@ -355,17 +355,385 @@ function redondearEuros(valor) {
 	return Math.round(valor * 100) / 100;
 }
 function getValorInput(id) {
-	const el = document.getElementById(id);
-	return el ? el.value : "";
+        const el = document.getElementById(id);
+        return el ? el.value : "";
 }
 function getValoresModalidadCampo(campo) {
-	if (Array.isArray(campo)) {
-		return campo.map((v) => (typeof v === "string" ? v : v.value));
-	}
-	if (typeof campo === "string") return [campo];
-	if (typeof campo === "object" && campo !== null && campo.value)
-		return [campo.value];
-	return [];
+        if (Array.isArray(campo)) {
+                return campo.map((v) => (typeof v === "string" ? v : v.value));
+        }
+        if (typeof campo === "string") return [campo];
+        if (typeof campo === "object" && campo !== null && campo.value)
+                return [campo.value];
+        return [];
+}
+
+function escapeHtml(value) {
+        if (value === null || value === undefined) return "";
+        return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+}
+
+function isTruthy(value) {
+        return value === true || value === 1 || value === "1" || value === "true";
+}
+
+function getOptionValue(option) {
+        if (typeof option === "string") return option;
+        if (typeof option === "number") return String(option);
+        if (option && typeof option === "object") {
+                if (typeof option.value === "string" || typeof option.value === "number") {
+                        return String(option.value);
+                }
+        }
+        return "";
+}
+
+function getOptionLabel(option) {
+        if (option && typeof option === "object" && option.label) {
+                return String(option.label);
+        }
+        return "";
+}
+
+function formatNumber(value) {
+        const num = typeof value === "number" ? value : parseFloat(value);
+        if (!Number.isFinite(num)) return "";
+        return new Intl.NumberFormat("es-ES", {
+                maximumFractionDigits: 0,
+        }).format(num);
+}
+
+function formatEuroValue(value) {
+        if (value === null || value === undefined || value === "") return "";
+        const num = typeof value === "number" ? value : parseFloat(value);
+        if (!Number.isFinite(num)) return "";
+        const formatted = eurosString(num);
+        return `${formatted.replace(/,00$/, "")}€`;
+}
+
+function parseConditionNumber(value) {
+        if (value === null || value === undefined || value === "") return null;
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+}
+
+function renderVentajasList(descInfo) {
+        const listado = Array.isArray(descInfo?.listado_ventajas)
+                ? descInfo.listado_ventajas
+                : [];
+        if (!listado.length) return "";
+
+        const items = listado
+                .map((item) => {
+                        const texto = escapeHtml(item?.ventaja || "");
+                        if (!texto) return "";
+                        const iconType = getOptionValue(item?.icono);
+                        const iconKey = iconType === "negativo" ? "disadvantage" : "advantage";
+                        const iconHtml = getIcon(iconKey) || (iconType === "negativo" ? "×" : "✓");
+                        const iconClass =
+                                iconType === "negativo"
+                                        ? "form__plan-description-icon form__plan-description-icon--negative"
+                                        : "form__plan-description-icon form__plan-description-icon--positive";
+                        return `
+                <li class="form__plan-description-item">
+                        <span class="${iconClass}" aria-hidden="true">${iconHtml}</span>
+                        <span class="form__plan-description-text">${texto}</span>
+                </li>
+            `;
+                })
+                .filter(Boolean)
+                .join("");
+
+        if (!items) return "";
+
+        return `
+        <ul class="form__plan-description-list" role="list">
+                ${items}
+        </ul>
+    `;
+}
+
+function getLimitItemLabel(limite) {
+        const tipo = getOptionValue(limite?.limite_por);
+        if (tipo === "averia") return "Límite por avería";
+        if (tipo === "contrato") return "Límite por contrato";
+        const personalizado = typeof limite?.nombre_del_limite === "string" ? limite.nombre_del_limite.trim() : "";
+        return personalizado || "";
+}
+
+function getLimitItemClassNames(limite, tipo = null) {
+        const classes = ["form__plan-conditions-item"];
+        const estilo = getOptionValue(limite?.estilo_limite);
+        if (estilo && estilo !== "normal") {
+                classes.push(`form__plan-conditions-item--${estilo}`);
+        }
+        const tipoLimite = tipo ?? getOptionValue(limite?.limite_por);
+        if (tipoLimite === "contrato") {
+                classes.push("form__plan-conditions-item--accent");
+        }
+        return classes.join(" ");
+}
+
+function renderStandardLimits(descInfo, subtitleHtml = null) {
+        const limites = Array.isArray(descInfo?.limites_y_valores) ? descInfo.limites_y_valores : [];
+        const subtitle = typeof subtitleHtml === "string" ? subtitleHtml : getDescriptionSubtitleHtml(descInfo);
+
+        if (!limites.length && !subtitle) return "";
+
+        const htmlItems = limites
+                .map((limite) => {
+                        const tipoLimite = getOptionValue(limite?.limite_por);
+                        const label = getLimitItemLabel(limite);
+                        const aclaracion = typeof limite?.aclaracion === "string" ? limite.aclaracion.trim() : "";
+                        const rawValue =
+                                limite?.valor_del_limite === null || limite?.valor_del_limite === undefined
+                                        ? null
+                                        : Number(limite.valor_del_limite);
+                        const hasValor = Number.isFinite(rawValue) && rawValue > 0;
+                        const valorTexto = hasValor ? formatEuroValue(rawValue) : "";
+
+                        if (!label && !valorTexto && !aclaracion) {
+                                return "";
+                        }
+
+                        const classes = getLimitItemClassNames(limite, tipoLimite);
+                        let labelHtml = "";
+                        if (label) {
+                                labelHtml = escapeHtml(label);
+                                if (hasValor || aclaracion) {
+                                        labelHtml += ":";
+                                        if (hasValor && !aclaracion) {
+                                                labelHtml += " ";
+                                        }
+                                }
+                                if (aclaracion) {
+                                        labelHtml += ` ${escapeHtml(aclaracion)}`;
+                                }
+                        } else if (aclaracion) {
+                                labelHtml = escapeHtml(aclaracion);
+                        }
+
+                        const labelSpan = labelHtml
+                                ? `<span class="form__plan-conditions-item-label">${labelHtml}</span>`
+                                : "";
+                        const valueClass = tipoLimite === "contrato"
+                                ? "form__plan-conditions-item-value form__plan-conditions-item-value--accent"
+                                : "form__plan-conditions-item-value";
+                        const valueSpan = hasValor
+                                ? `<span class="${valueClass}">${escapeHtml(valorTexto)}</span>`
+                                : "";
+
+                        return `
+                <li class="${classes}">${labelSpan}${valueSpan}</li>
+        `;
+                })
+                .filter(Boolean)
+                .join("");
+
+        const listHtml = htmlItems
+                ? `
+                <ul class="form__plan-conditions-list" role="list">
+                        ${htmlItems}
+                </ul>
+        `
+                : "";
+
+        if (!listHtml) {
+                return subtitle
+                        ? `
+        <div class="form__plan-conditions">
+                ${subtitle}
+        </div>
+    `
+                        : "";
+        }
+
+        return `
+        <div class="form__plan-conditions">
+                ${subtitle}
+                ${listHtml}
+        </div>
+    `;
+}
+
+function getDescriptionSubtitleHtml(descInfo) {
+        const text = descInfo?.titulo_descripcion;
+        if (!text) return "";
+        return `<div class="form__plan-conditions-subtitle">${escapeHtml(text)}</div>`;
+}
+
+function getConditionHeadline(descInfo, condicion) {
+        const tipo = getOptionValue(descInfo?.tipo_de_condicion);
+        const titulo = descInfo?.titulo_condicion ? escapeHtml(descInfo.titulo_condicion) : "";
+        const label = titulo || (getOptionLabel(descInfo?.tipo_de_condicion)
+                ? escapeHtml(getOptionLabel(descInfo?.tipo_de_condicion))
+                : "");
+
+        const desde = parseConditionNumber(condicion?.desde_condicion);
+        const hasta = parseConditionNumber(condicion?.hasta_condicion);
+        const tieneDesde = Number.isFinite(desde);
+        const tieneHasta = Number.isFinite(hasta);
+        const desdeTexto = tieneDesde ? formatNumber(desde) : "";
+        const hastaTexto = tieneHasta ? formatNumber(hasta) : "";
+        const unidad = tipo === "cilindrada_cc" ? " cc" : "";
+
+        let rango = "";
+        if (tieneDesde && tieneHasta) {
+                if (desde <= 0) {
+                        rango = hastaTexto ? `hasta ${hastaTexto}${unidad}` : "";
+                } else if (desdeTexto && hastaTexto) {
+                        rango = `de ${desdeTexto} hasta ${hastaTexto}${unidad}`;
+                }
+        } else if (tieneHasta && hastaTexto) {
+                rango = `hasta ${hastaTexto}${unidad}`;
+        } else if (tieneDesde && desdeTexto) {
+                rango = `desde ${desdeTexto}${unidad}`;
+        }
+
+        const partes = [];
+        if (label) partes.push(label);
+        if (rango) partes.push(escapeHtml(rango));
+
+        return partes.join(" ").trim();
+}
+
+function renderSpecialLimits(descInfo, valoresForm, subtitleHtml = "") {
+        const condiciones = Array.isArray(descInfo?.condiciones_limites)
+                ? descInfo.condiciones_limites.slice()
+                : [];
+        if (!condiciones.length) return "";
+
+        const cilindradaForm = parseNumericFormValue(valoresForm?.cilindrada ?? 0);
+        condiciones.sort((a, b) => {
+                const aDesde = parseConditionNumber(a?.desde_condicion);
+                const bDesde = parseConditionNumber(b?.desde_condicion);
+
+                const aSort = Number.isFinite(aDesde)
+                        ? aDesde
+                        : Number.isFinite(parseConditionNumber(a?.hasta_condicion))
+                        ? parseConditionNumber(a?.hasta_condicion)
+                        : Infinity;
+                const bSort = Number.isFinite(bDesde)
+                        ? bDesde
+                        : Number.isFinite(parseConditionNumber(b?.hasta_condicion))
+                        ? parseConditionNumber(b?.hasta_condicion)
+                        : Infinity;
+
+                return aSort - bSort;
+        });
+
+        let condicionCoincidente = null;
+        let intentoCoincidencia = false;
+        if (Number.isFinite(cilindradaForm) && cilindradaForm > 0) {
+                intentoCoincidencia = true;
+                condicionCoincidente = condiciones.find((cond) => {
+                        const desde = parseConditionNumber(cond?.desde_condicion);
+                        const hasta = parseConditionNumber(cond?.hasta_condicion);
+                        const cumpleDesde = !Number.isFinite(desde) || cilindradaForm >= desde;
+                        const cumpleHasta = !Number.isFinite(hasta) || cilindradaForm <= hasta;
+                        return cumpleDesde && cumpleHasta;
+                });
+                if (!condicionCoincidente) {
+                        condicionCoincidente = condiciones[condiciones.length - 1] || null;
+                }
+        }
+        if (!condicionCoincidente) {
+                condicionCoincidente = intentoCoincidencia
+                        ? condiciones[condiciones.length - 1] || null
+                        : condiciones[0] || null;
+        }
+        if (!condicionCoincidente) return "";
+
+        const headline = getConditionHeadline(descInfo, condicionCoincidente);
+
+        const items = [];
+        const averiasMecanicas = formatEuroValue(condicionCoincidente?.averias_mecanicas);
+        const averiasElectricas = formatEuroValue(condicionCoincidente?.averias_electricas);
+        const limiteContrato = formatEuroValue(condicionCoincidente?.limite_por_contrato);
+
+        if (averiasMecanicas) {
+                items.push({
+                        label: "Averías mecánicas",
+                        value: `Hasta ${averiasMecanicas}`,
+                });
+        }
+        if (averiasElectricas) {
+                items.push({
+                        label: "Averías eléctricas o electrónicas",
+                        value: `Hasta ${averiasElectricas}`,
+                });
+        }
+        if (limiteContrato) {
+                items.push({
+                        label: "Límite máximo por contrato",
+                        value: limiteContrato,
+                        className: "form__plan-conditions-item form__plan-conditions-item--accent",
+                        valueClass: "form__plan-conditions-item-value form__plan-conditions-item-value--accent",
+                });
+        }
+
+        const itemsHtml = items
+                .map((item) => {
+                        const labelText = item.value ? `${escapeHtml(item.label)}: ` : escapeHtml(item.label);
+                        const className = item.className || "form__plan-conditions-item";
+                        const valueClass = item.valueClass || "form__plan-conditions-item-value";
+                        const valueSpan = item.value
+                                ? `<span class="${valueClass}">${escapeHtml(item.value)}</span>`
+                                : "";
+                        return `
+                <li class="${className}">
+                        <span class="form__plan-conditions-item-label">${labelText}</span>
+                        ${valueSpan}
+                </li>
+        `;
+                })
+                .join("");
+
+        if (!itemsHtml && !headline && !subtitleHtml) return "";
+
+        const listHtml = itemsHtml
+                ? `
+                <ul class="form__plan-conditions-list" role="list">
+                        ${itemsHtml}
+                </ul>
+        `
+                : "";
+
+        return `
+        <div class="form__plan-conditions">
+                ${headline ? `<div class="form__plan-conditions-title">${headline}</div>` : ""}
+                ${subtitleHtml}
+                ${listHtml}
+        </div>
+    `;
+}
+
+function renderPlanDescription(descInfo, valoresForm) {
+        const tipo = getOptionValue(descInfo?.tipo_descripcion) || "descripcion";
+        const subtitleHtml = getDescriptionSubtitleHtml(descInfo);
+
+        if (tipo === "listado_ventajas") {
+                const listadoHtml = renderVentajasList(descInfo);
+                if (!listadoHtml) return subtitleHtml;
+                return `${subtitleHtml}${listadoHtml}`;
+        }
+
+        if (tipo === "limites") {
+                if (isTruthy(descInfo?.condiciones_especiales)) {
+                        const especiales = renderSpecialLimits(descInfo, valoresForm, subtitleHtml);
+                        if (especiales) return especiales;
+                }
+                return renderStandardLimits(descInfo, subtitleHtml);
+        }
+
+        const descripcion = descInfo?.descripcion_garantia || "";
+        if (!descripcion && !subtitleHtml) return "";
+        return `${subtitleHtml}${descripcion}`;
 }
 
 // --------- Condiciones / comparadores ---------
@@ -1163,7 +1531,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 			const estilos = descInfo?.estilos || {};
 
 			const title = detalles.nombre_mostrar || m.title || "";
-			const description = descInfo.descripcion_garantia || "";
+                        const description = renderPlanDescription(descInfo, valoresForm);
 			const pdf = detalles.documentos?.coberturas?.url || null;
 
 			let badge = "";
