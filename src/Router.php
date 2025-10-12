@@ -53,7 +53,7 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
             exit;
         }
 
-        if (in_array($endpoint, ['averias', 'clientes'], true) && ! $is_admin_user) {
+        if (in_array($endpoint, ['averias', 'averia', 'clientes'], true) && ! $is_admin_user) {
             wp_safe_redirect(home_url('/garantias-online/mis-garantias/'));
             exit;
         }
@@ -69,6 +69,16 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
                 break;
             case 'averias':
                 TemplateLoader::load('averias');
+                break;
+            case 'averia':
+                $license_plate = get_query_var('license_plate');
+                $license_plate = is_string($license_plate)
+                    ? sanitize_text_field(wp_unslash($license_plate))
+                    : '';
+
+                TemplateLoader::load('averia', [
+                    'license_plate' => $license_plate,
+                ]);
                 break;
             case 'clientes':
                 TemplateLoader::load('clientes');

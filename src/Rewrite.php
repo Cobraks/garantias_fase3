@@ -11,7 +11,7 @@ class Rewrite
 
     public const SLUG                 = 'garantias-online';
     public const VAR_ENDPOINT         = 'go_endpoint';
-    public const RULES_VERSION        = 5;
+    public const RULES_VERSION        = 6;
     private const OPTION_RULES_VERSION = 'go_rewrite_rules_version';
 
     /**
@@ -48,6 +48,7 @@ class Rewrite
         $vars[] = 'key';
         $vars[] = 'login';
         $vars[] = 'client_slug';
+        $vars[] = 'license_plate';
         return $vars;
     }
 
@@ -77,6 +78,12 @@ class Rewrite
                 'top'
             );
         }
+
+        add_rewrite_rule(
+            $base . '/averias/([^/]+)/?$',
+            'index.php?' . self::VAR_ENDPOINT . '=averia&license_plate=$matches[1]',
+            'top'
+        );
 
         add_rewrite_rule(
             $base . '/clientes/([^/]+)/?$',
