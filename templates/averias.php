@@ -402,7 +402,11 @@ if ($can_use_acf && post_type_exists(GuaranteeCPT::POST_TYPE)) {
 }
 ?>
 
-<div class="guarantees-list__filters guarantees-list__filters--averias" style="view-transition-name: filtros-averias">
+<div
+    class="guarantees-list__filters guarantees-list__filters--averias"
+    data-sticky-target=".guarantees-list--averias"
+    style="view-transition-name: filtros-averias"
+>
     <div class="guarantees-list__filters-row">
         <div class="guarantees-list__search-container">
             <span class="guarantees-list__search-icon" aria-hidden="true">
@@ -553,6 +557,12 @@ if ($can_use_acf && post_type_exists(GuaranteeCPT::POST_TYPE)) {
                     </tr>
                 <?php else : ?>
                     <?php foreach ($averias_entries as $entry) : ?>
+                        <?php
+                        $detail_slug = preg_replace('/[^A-Za-z0-9]/', '', (string) ($entry['matricula'] ?? ''));
+                        $detail_url  = $detail_slug !== ''
+                            ? home_url('/garantias-online/averias/' . rawurlencode($detail_slug))
+                            : '';
+                        ?>
                         <tr
                             class="guarantees-table__row"
                             data-estado="<?php echo esc_attr($entry['estado_value']); ?>"
@@ -565,6 +575,24 @@ if ($can_use_acf && post_type_exists(GuaranteeCPT::POST_TYPE)) {
                             data-vendor-id="<?php echo esc_attr((string) $entry['vendor_id']); ?>"
                             data-cliente-tipo="<?php echo esc_attr($entry['cliente_tipo_value']); ?>"
                             data-taller-encargado="<?php echo esc_attr($entry['taller_encargado']); ?>"
+                            <?php if ($detail_url !== '') : ?>
+                                <?php
+                                $detail_plate_label = $entry['matricula_display'] !== ''
+                                    ? $entry['matricula_display']
+                                    : esc_html__('sin matrícula', 'garantias-online-360vo');
+                                $detail_plate_label = esc_attr($detail_plate_label);
+                                ?>
+                                data-expediente-url="<?php echo esc_url($detail_url); ?>"
+                                tabindex="0"
+                                role="link"
+                                aria-label="<?php
+                                    printf(
+                                        /* translators: %s: license plate */
+                                        esc_attr__('Abrir expediente de la matrícula %s', 'garantias-online-360vo'),
+                                        $detail_plate_label
+                                    );
+                                ?>"
+                            <?php endif; ?>
                         >
                             <td data-label="<?php esc_attr_e('Vehículo', 'garantias-online-360vo'); ?>">
                                 <div class="guarantees-table__vehiculo">

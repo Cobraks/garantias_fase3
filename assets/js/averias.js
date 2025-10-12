@@ -184,22 +184,34 @@
             }
         });
 
-        var filters = document.querySelector('.guarantees-list__filters--averias');
-        var listSection = document.querySelector('.guarantees-list--averias');
+        var stickyFilters = Array.prototype.slice.call(document.querySelectorAll('[data-sticky-target]'));
         var header = document.querySelector('.top-bar');
 
-        if (filters && listSection && header) {
+        if (stickyFilters.length && header) {
+            var stickyConfigs = stickyFilters.map(function (filter) {
+                var targetSelector = filter.getAttribute('data-sticky-target');
+                var target = targetSelector ? document.querySelector(targetSelector) : null;
+                return { filter: filter, target: target };
+            });
+
             var observer = new IntersectionObserver(function (entries) {
                 var entry = entries && entries.length ? entries[0] : null;
                 var shouldStick = entry ? !entry.isIntersecting : false;
-                filters.classList.toggle('sticky-active', shouldStick);
-                listSection.classList.toggle('sticky-active', shouldStick);
+
+                stickyConfigs.forEach(function (config) {
+                    config.filter.classList.toggle('sticky-active', shouldStick);
+                    if (config.target) {
+                        config.target.classList.toggle('sticky-active', shouldStick);
+                    }
+                });
+
                 requestAnimationFrame(refreshTableOverlays);
             }, { root: null, threshold: 0, rootMargin: '-50px' });
 
             observer.observe(header);
         }
 
+        var listSection = document.querySelector('.guarantees-list--averias');
         if (listSection) {
             var updateBodyScrolled = function () {
                 var scrolled = listSection.scrollTop > 10;
@@ -212,5 +224,29 @@
 
             requestAnimationFrame(updateBodyScrolled);
         }
+
+        var navigableRows = Array.prototype.slice.call(document.querySelectorAll('.guarantees-table__row[data-expediente-url]'));
+
+        navigableRows.forEach(function (row) {
+            var href = row.getAttribute('data-expediente-url');
+            if (!href) {
+                return;
+            }
+
+            row.addEventListener('click', function (event) {
+                var interactive = event.target && event.target.closest('a, button, input, label');
+                if (interactive) {
+                    return;
+                }
+                window.location.href = href;
+            });
+
+            row.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    window.location.href = href;
+                }
+            });
+        });
     });
 })();

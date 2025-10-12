@@ -3,6 +3,15 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+$is_breakdowns_page = true;
+$is_dashboard_page  = false;
+$is_auth_page       = false;
+
+\GarantiasOnline360VO\TemplateLoader::load_part(
+    'header',
+    compact('is_breakdowns_page', 'is_dashboard_page', 'is_auth_page')
+);
+
 $license_plate = isset($license_plate) ? (string) $license_plate : '';
 $license_plate = $license_plate !== '' ? strtoupper($license_plate) : '';
 
@@ -24,6 +33,8 @@ $sample_case = [
     'policy'           => 'Garantía Premium 24',
     'peritaje'         => true,
     'cover_element'    => 'Por confirmar',
+    'license_plate'    => '1234 ABC',
+    'peritaje_required'=> true,
     'workshop'         => [
         'name'        => 'Talleres Pérez S.L.',
         'contact'     => 'María Pérez',
@@ -95,604 +106,1038 @@ $empty_messages = [
     'missing'  => __('No existe ninguna garantía para la matrícula indicada.', 'garantias-online-360vo'),
     'no_state' => __('No hay expediente abierto para esta garantía. ¿Deseas abrirlo?', 'garantias-online-360vo'),
 ];
+?>
 
-?><!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title><?php esc_html_e('Avería de garantía — Gestión 360VO', 'garantias-online-360vo'); ?></title>
-    <meta name="description" content="<?php esc_attr_e('Gestión de averías de garantías de vehículos. Interfaz clara, moderna y eficiente para usuarios profesionales.', 'garantias-online-360vo'); ?>" />
-    <style>
-        :root {
-            color-scheme: dark;
-            --bg: #0f1216;
-            --panel: #161b23;
-            --panel-alt: #1b212c;
-            --panel-soft: #1f2632;
-            --border: #273042;
-            --border-soft: rgba(255, 255, 255, 0.05);
-            --text: #e9eff8;
-            --text-muted: #9fb0c6;
-            --accent: #4ea2ff;
-            --accent-strong: #71b8ff;
-            --success: #33c27f;
-            --warning: #f5b642;
-            --danger: #f06262;
-            --surface-gradient: linear-gradient(140deg, rgba(79, 157, 255, 0.08), rgba(36, 210, 190, 0.05));
-            --radius: 16px;
-            --radius-sm: 10px;
-            --shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
-            --shadow-sm: 0 12px 28px rgba(0, 0, 0, 0.22);
-            --space-xs: 8px;
-            --space-sm: 12px;
-            --space-md: 16px;
-            --space-lg: 24px;
-            --space-xl: 32px;
-            --space-xxl: 48px;
-            --tap: 48px;
-            font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: var(--bg);
-            color: var(--text);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .breakdown-app {
-            width: min(1260px, 100%);
-            margin: 0 auto;
-            padding: var(--space-xl) var(--space-lg) var(--space-xxl);
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-lg);
-        }
-
-        .breakdown-app__header {
-            background: var(--panel);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            padding: var(--space-lg);
-            box-shadow: var(--shadow);
-            display: grid;
-            gap: var(--space-md);
-        }
-
-        .breakdown-app__meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--space-sm);
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .breakdown-app__title {
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: 0.2px;
-        }
-
-        .breakdown-app__badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 6px 14px;
-            border-radius: 999px;
-            border: 1px solid var(--border);
-            background: var(--panel-alt);
-            font-weight: 600;
-            color: var(--text-muted);
-        }
-
-        .breakdown-app__badge::before {
-            content: '';
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--accent);
-        }
-
-        .breakdown-app__badge--warning::before { background: var(--warning); }
-        .breakdown-app__badge--success::before { background: var(--success); }
-        .breakdown-app__badge--danger::before { background: var(--danger); }
-
-        .breakdown-app__actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--space-sm);
-        }
-
-        .go-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            height: var(--tap);
-            padding: 0 20px;
-            border-radius: var(--radius-sm);
-            border: 1px solid transparent;
-            font-weight: 600;
-            background: var(--panel-alt);
-            color: var(--text);
-            cursor: pointer;
-            transition: background 0.12s ease, transform 0.1s ease;
-        }
-
-        .go-btn:hover { background: var(--panel-soft); }
-        .go-btn:active { transform: translateY(1px); }
-
-        .go-btn--primary { background: var(--accent); color: #041326; }
-        .go-btn--outline { background: transparent; border-color: var(--border); color: var(--text-muted); }
-        .go-btn--success { background: var(--success); color: #05140c; }
-        .go-btn--danger { background: var(--danger); color: #140808; }
-
-        .breakdown-tabs {
-            display: flex;
-            gap: var(--space-sm);
-            overflow-x: auto;
-            padding: 4px;
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 999px;
-            border: 1px solid var(--border-soft);
-        }
-
-        .breakdown-tabs__item {
-            flex: 0 0 auto;
-            padding: 10px 18px;
-            border-radius: 999px;
-            border: 1px solid transparent;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all 0.12s ease;
-        }
-
-        .breakdown-tabs__item[aria-selected="true"] {
-            background: rgba(78, 162, 255, 0.15);
-            color: var(--text);
-            border-color: rgba(78, 162, 255, 0.35);
-        }
-
-        .breakdown-layout {
-            display: grid;
-            gap: var(--space-lg);
-            grid-template-columns: 280px minmax(0, 1fr) 280px;
-        }
-
-        .breakdown-layout__main {
-            display: grid;
-            gap: var(--space-lg);
-        }
-
-        .breakdown-panel {
-            background: var(--panel);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            padding: var(--space-lg);
-            box-shadow: var(--shadow-sm);
-            display: grid;
-            gap: var(--space-md);
-        }
-
-        .breakdown-tab {
-            display: none;
-            gap: var(--space-md);
-        }
-
-        .breakdown-tab[aria-hidden="false"] {
-            display: grid;
-        }
-
-        .breakdown-panel__title {
-            margin: 0;
-            font-size: 18px;
-            letter-spacing: 0.2px;
-        }
-
-        .breakdown-stats {
-            display: grid;
-            gap: var(--space-sm);
-        }
-
-        .breakdown-stats__item {
-            background: var(--panel-alt);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border-soft);
-            padding: var(--space-sm) var(--space-md);
-        }
-
-        .breakdown-stats__label {
-            display: block;
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-        }
-
-        .breakdown-stats__value {
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        .breakdown-history {
-            display: grid;
-            gap: var(--space-md);
-        }
-
-        .breakdown-history__event {
-            border-left: 3px solid rgba(78, 162, 255, 0.4);
-            padding: var(--space-sm) var(--space-md);
-            background: var(--panel-alt);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border-soft);
-        }
-
-        .breakdown-history__meta {
-            display: flex;
-            gap: var(--space-sm);
-            flex-wrap: wrap;
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-        }
-
-        .breakdown-history__description {
-            margin: 0;
-            font-size: 15px;
-            line-height: 1.55;
-        }
-
-        .breakdown-docs {
-            display: grid;
-            gap: var(--space-sm);
-        }
-
-        .breakdown-docs__item {
-            display: grid;
-            gap: 4px;
-            padding: var(--space-sm) var(--space-md);
-            background: var(--panel-alt);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border-soft);
-        }
-
-        .breakdown-notes {
-            display: grid;
-            gap: var(--space-sm);
-        }
-
-        .breakdown-note {
-            padding: var(--space-sm) var(--space-md);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border-soft);
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .breakdown-note strong {
-            display: block;
-            margin-bottom: 4px;
-        }
-
-        .breakdown-empty {
-            margin: auto;
-            max-width: 520px;
-            text-align: center;
-            display: grid;
-            gap: var(--space-md);
-        }
-
-        .breakdown-empty__title {
-            font-size: 24px;
-            margin: 0;
-        }
-
-        .breakdown-empty__message {
-            font-size: 16px;
-            color: var(--text-muted);
-            line-height: 1.6;
-        }
-
-        @media (max-width: 1100px) {
-            .breakdown-layout {
-                grid-template-columns: minmax(0, 1fr);
-            }
-
-            .breakdown-layout__main {
-                order: 2;
-            }
-        }
-
-        @media (max-width: 720px) {
-            .breakdown-app {
-                padding: var(--space-lg) var(--space-md) var(--space-xl);
-            }
-
-            .breakdown-app__title {
-                font-size: 24px;
-            }
-
-            .go-btn {
-                width: 100%;
-            }
-
-            .breakdown-app__actions {
-                width: 100%;
-            }
-
-            .breakdown-tabs {
-                border-radius: 12px;
-            }
-        }
-
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-        }
-    </style>
-</head>
-<body>
-<?php if ($view_mode !== 'case') : ?>
-    <div class="breakdown-app">
-        <section class="breakdown-panel breakdown-empty" role="status">
-            <h1 class="breakdown-empty__title">
-                <?php echo esc_html($license_plate ?: __('Expediente no disponible', 'garantias-online-360vo')); ?>
+<div class="averia-detail" data-averia-app>
+    <div class="averia-detail__header">
+        <div class="averia-detail__heading">
+            <h1 class="averia-detail__title">
+                <?php esc_html_e('Gestión de avería', 'garantias-online-360vo'); ?>
             </h1>
-            <p class="breakdown-empty__message">
-                <?php echo esc_html($empty_messages[$view_mode] ?? ''); ?>
-            </p>
-            <div class="breakdown-app__actions" aria-label="Acciones alternativas">
-                <button type="button" class="go-btn go-btn--outline"><?php esc_html_e('Volver al listado de averías', 'garantias-online-360vo'); ?></button>
-                <button type="button" class="go-btn go-btn--primary"><?php esc_html_e('Abrir nuevo expediente', 'garantias-online-360vo'); ?></button>
+            <?php if ($license_plate !== '') : ?>
+                <p class="averia-detail__subtitle">
+                    <?php
+                    printf(
+                        /* translators: %s: license plate */
+                        esc_html__('Matrícula %s', 'garantias-online-360vo'),
+                        esc_html($license_plate)
+                    );
+                    ?>
+                </p>
+            <?php endif; ?>
+        </div>
+        <?php if ($view_mode === 'case') : ?>
+            <div class="averia-detail__badge averia-detail__badge--<?php echo esc_attr($sample_case['status_variant']); ?>">
+                <span class="averia-detail__badge-dot" aria-hidden="true"></span>
+                <?php echo esc_html($sample_case['status']); ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <?php if ($view_mode !== 'case') : ?>
+        <section class="averia-detail__empty">
+            <div class="averia-detail__empty-card">
+                <h2><?php esc_html_e('Sin expediente disponible', 'garantias-online-360vo'); ?></h2>
+                <p><?php echo esc_html($empty_messages[$view_mode] ?? ''); ?></p>
+                <a class="averia-detail__back-link" href="<?php echo esc_url(home_url('/garantias-online/averias/')); ?>">
+                    <?php esc_html_e('Volver al listado de averías', 'garantias-online-360vo'); ?>
+                </a>
             </div>
         </section>
-    </div>
-<?php else : ?>
-    <div class="breakdown-app" data-license-plate="<?php echo esc_attr($license_plate); ?>">
-        <header class="breakdown-app__header">
-            <div class="breakdown-app__meta">
-                <div>
-                    <div class="breakdown-app__title">
-                        <?php echo esc_html($license_plate ?: '1234 ABC'); ?>
-                    </div>
-                    <div class="breakdown-app__subtitle" aria-live="polite">
-                        <?php echo esc_html($sample_case['summary']); ?>
-                    </div>
-                </div>
-                <span class="breakdown-app__badge breakdown-app__badge--<?php echo esc_attr($sample_case['status_variant']); ?>">
-                    <?php echo esc_html($sample_case['status']); ?>
+    <?php else : ?>
+        <section class="averia-detail__meta">
+            <div class="averia-detail__meta-item">
+                <span class="averia-detail__meta-label"><?php esc_html_e('Expediente', 'garantias-online-360vo'); ?></span>
+                <span class="averia-detail__meta-value"><?php echo esc_html($sample_case['reference']); ?></span>
+            </div>
+            <div class="averia-detail__meta-item">
+                <span class="averia-detail__meta-label"><?php esc_html_e('Fecha de apertura', 'garantias-online-360vo'); ?></span>
+                <time datetime="2025-10-12" class="averia-detail__meta-value"><?php echo esc_html($sample_case['opened']); ?></time>
+            </div>
+            <div class="averia-detail__meta-item">
+                <span class="averia-detail__meta-label"><?php esc_html_e('Tipo de avería', 'garantias-online-360vo'); ?></span>
+                <span class="averia-detail__meta-value"><?php echo esc_html($sample_case['type']); ?></span>
+            </div>
+            <div class="averia-detail__meta-item">
+                <span class="averia-detail__meta-label"><?php esc_html_e('Peritaje', 'garantias-online-360vo'); ?></span>
+                <span class="averia-detail__meta-value">
+                    <?php echo $sample_case['peritaje'] ? esc_html__('Requerido', 'garantias-online-360vo') : esc_html__('No requerido', 'garantias-online-360vo'); ?>
                 </span>
             </div>
-            <div class="breakdown-app__actions" aria-label="Acciones principales">
-                <button type="button" class="go-btn go-btn--outline"><?php esc_html_e('Volver a averías', 'garantias-online-360vo'); ?></button>
-                <button type="button" class="go-btn go-btn--primary"><?php esc_html_e('Guardar cambios', 'garantias-online-360vo'); ?></button>
-                <button type="button" class="go-btn go-btn--success"><?php esc_html_e('Enviar actualización', 'garantias-online-360vo'); ?></button>
-                <button type="button" class="go-btn go-btn--danger"><?php esc_html_e('Cerrar expediente', 'garantias-online-360vo'); ?></button>
+        </section>
+
+        <div
+            class="guarantees-list__filters guarantees-list__filters--averia-detail"
+            data-sticky-target=".averia-detail__layout"
+            style="view-transition-name: filtros-averia-detalle"
+        >
+            <div class="guarantees-list__filters-row guarantees-list__filters-row--averia-detail">
+                <nav class="averia-tabs" role="tablist">
+                    <?php
+                    $tabs = [
+                        'historial'    => __('Historial', 'garantias-online-360vo'),
+                        'resumen'      => __('Resumen', 'garantias-online-360vo'),
+                        'taller'       => __('Taller', 'garantias-online-360vo'),
+                        'importes'     => __('Importes', 'garantias-online-360vo'),
+                        'documentacion'=> __('Documentación', 'garantias-online-360vo'),
+                    ];
+                    $first = true;
+                    foreach ($tabs as $tab_key => $tab_label) :
+                        $tab_id = 'averia-tab-' . $tab_key;
+                        ?>
+                        <button
+                            type="button"
+                            class="averia-tabs__button<?php echo $first ? ' is-active' : ''; ?>"
+                            id="<?php echo esc_attr($tab_id); ?>"
+                            role="tab"
+                            aria-selected="<?php echo $first ? 'true' : 'false'; ?>"
+                            aria-controls="averia-panel-<?php echo esc_attr($tab_key); ?>"
+                            data-tab-trigger="<?php echo esc_attr($tab_key); ?>"
+                        >
+                            <?php echo esc_html($tab_label); ?>
+                        </button>
+                        <?php
+                        $first = false;
+                    endforeach;
+                    ?>
+                </nav>
+
+                <div class="guarantees-list__filters-actions guarantees-list__filters-actions--averia-detail">
+                    <button type="button" class="averia-detail__action-btn averia-detail__action-btn--ghost">
+                        <?php esc_html_e('Guardar cambios', 'garantias-online-360vo'); ?>
+                    </button>
+                    <button type="button" class="averia-detail__action-btn">
+                        <?php esc_html_e('Enviar actualización', 'garantias-online-360vo'); ?>
+                    </button>
+                    <button type="button" class="averia-detail__action-btn averia-detail__action-btn--danger">
+                        <?php esc_html_e('Cerrar expediente', 'garantias-online-360vo'); ?>
+                    </button>
+                </div>
             </div>
-            <nav class="breakdown-tabs" role="tablist" aria-label="Secciones del expediente">
-                <button type="button" class="breakdown-tabs__item" role="tab" aria-selected="true" aria-controls="tab-historial" id="tab-historial-trigger"><?php esc_html_e('Historial', 'garantias-online-360vo'); ?></button>
-                <button type="button" class="breakdown-tabs__item" role="tab" aria-selected="false" aria-controls="tab-resumen" id="tab-resumen-trigger"><?php esc_html_e('Resumen', 'garantias-online-360vo'); ?></button>
-                <button type="button" class="breakdown-tabs__item" role="tab" aria-selected="false" aria-controls="tab-taller" id="tab-taller-trigger"><?php esc_html_e('Taller', 'garantias-online-360vo'); ?></button>
-                <button type="button" class="breakdown-tabs__item" role="tab" aria-selected="false" aria-controls="tab-importes" id="tab-importes-trigger"><?php esc_html_e('Importes', 'garantias-online-360vo'); ?></button>
-                <button type="button" class="breakdown-tabs__item" role="tab" aria-selected="false" aria-controls="tab-documentos" id="tab-documentos-trigger"><?php esc_html_e('Documentación', 'garantias-online-360vo'); ?></button>
-            </nav>
-        </header>
+        </div>
 
-        <div class="breakdown-layout">
-            <aside class="breakdown-panel breakdown-layout__sidebar" aria-labelledby="summary-heading">
-                <h2 class="breakdown-panel__title" id="summary-heading"><?php esc_html_e('Datos principales', 'garantias-online-360vo'); ?></h2>
-                <div class="breakdown-stats">
-                    <div class="breakdown-stats__item">
-                        <span class="breakdown-stats__label"><?php esc_html_e('Expediente', 'garantias-online-360vo'); ?></span>
-                        <span class="breakdown-stats__value"><?php echo esc_html($sample_case['reference']); ?></span>
-                    </div>
-                    <div class="breakdown-stats__item">
-                        <span class="breakdown-stats__label"><?php esc_html_e('Apertura', 'garantias-online-360vo'); ?></span>
-                        <span class="breakdown-stats__value"><?php echo esc_html($sample_case['opened']); ?></span>
-                    </div>
-                    <div class="breakdown-stats__item">
-                        <span class="breakdown-stats__label"><?php esc_html_e('Tipo de avería', 'garantias-online-360vo'); ?></span>
-                        <span class="breakdown-stats__value"><?php echo esc_html($sample_case['type']); ?></span>
-                    </div>
-                    <div class="breakdown-stats__item">
-                        <span class="breakdown-stats__label"><?php esc_html_e('Cobertura', 'garantias-online-360vo'); ?></span>
-                        <span class="breakdown-stats__value"><?php echo esc_html($sample_case['cover_element']); ?></span>
-                    </div>
-                    <div class="breakdown-stats__item">
-                        <span class="breakdown-stats__label"><?php esc_html_e('Km contratación', 'garantias-online-360vo'); ?></span>
-                        <span class="breakdown-stats__value"><?php echo esc_html($sample_case['kilometers_start']); ?></span>
-                    </div>
-                    <div class="breakdown-stats__item">
-                        <span class="breakdown-stats__label"><?php esc_html_e('Km entrada taller', 'garantias-online-360vo'); ?></span>
-                        <span class="breakdown-stats__value"><?php echo esc_html($sample_case['kilometers_now']); ?></span>
-                    </div>
-                </div>
-                <div class="breakdown-note">
-                    <strong><?php esc_html_e('Cliente y póliza', 'garantias-online-360vo'); ?></strong>
-                    <p><?php echo esc_html($sample_case['owner']); ?> · <?php echo esc_html($sample_case['policy']); ?></p>
-                    <p><?php echo esc_html($sample_case['vendor_manager']); ?> — <?php echo esc_html($sample_case['vendor']); ?></p>
-                </div>
-                <div class="breakdown-note">
-                    <strong><?php esc_html_e('Peritaje requerido', 'garantias-online-360vo'); ?></strong>
-                    <p><?php echo $sample_case['peritaje'] ? esc_html__('Sí, pendiente de informe final.', 'garantias-online-360vo') : esc_html__('No requerido actualmente.', 'garantias-online-360vo'); ?></p>
-                </div>
-            </aside>
+        <div class="averia-detail__layout">
+            <main class="averia-detail__content" data-averia-panels>
+                <section
+                    class="averia-panel is-active"
+                    id="averia-panel-historial"
+                    role="tabpanel"
+                    aria-labelledby="averia-tab-historial"
+                    data-panel="historial"
+                >
+                    <header class="averia-panel__header">
+                        <h2><?php esc_html_e('Historial de comunicación', 'garantias-online-360vo'); ?></h2>
+                        <p><?php esc_html_e('Centraliza llamadas, correos y eventos internos relacionados con la avería.', 'garantias-online-360vo'); ?></p>
+                    </header>
+                    <div class="averia-panel__body">
+                        <div class="averia-timeline">
+                            <?php foreach ($sample_history as $event) : ?>
+                                <article class="averia-timeline__item">
+                                    <div class="averia-timeline__marker" aria-hidden="true"></div>
+                                    <div class="averia-timeline__content">
+                                        <header class="averia-timeline__meta">
+                                            <time datetime="<?php echo esc_attr($event['date']); ?>">
+                                                <?php echo esc_html($event['date']); ?>
+                                            </time>
+                                            <span class="averia-timeline__type"><?php echo esc_html($event['type']); ?></span>
+                                            <span class="averia-timeline__actor"><?php echo esc_html($event['actor']); ?></span>
+                                        </header>
+                                        <p class="averia-timeline__description">
+                                            <?php echo esc_html($event['description']); ?>
+                                        </p>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
 
-            <section class="breakdown-layout__main" aria-live="polite">
-                <div class="breakdown-panel breakdown-tab" id="tab-historial" role="tabpanel" aria-labelledby="tab-historial-trigger" aria-hidden="false">
-                    <h2 class="breakdown-panel__title"><?php esc_html_e('Historial de comunicación', 'garantias-online-360vo'); ?></h2>
-                    <div class="breakdown-history">
-                        <?php foreach ($sample_history as $event) : ?>
-                            <article class="breakdown-history__event">
-                                <div class="breakdown-history__meta">
-                                    <span><?php echo esc_html($event['date']); ?></span>
-                                    <span>· <?php echo esc_html($event['type']); ?></span>
-                                    <span>· <?php echo esc_html($event['actor']); ?></span>
+                        <form class="averia-note-form" action="#" method="post">
+                            <fieldset>
+                                <legend><?php esc_html_e('Añadir registro', 'garantias-online-360vo'); ?></legend>
+                                <div class="averia-note-form__grid">
+                                    <label class="averia-note-form__field">
+                                        <span><?php esc_html_e('Tipo', 'garantias-online-360vo'); ?></span>
+                                        <select name="note_type" disabled>
+                                            <option><?php esc_html_e('Seleccionar…', 'garantias-online-360vo'); ?></option>
+                                        </select>
+                                    </label>
+                                    <label class="averia-note-form__field">
+                                        <span><?php esc_html_e('Fecha', 'garantias-online-360vo'); ?></span>
+                                        <input type="date" name="note_date" disabled />
+                                    </label>
                                 </div>
-                                <p class="breakdown-history__description"><?php echo esc_html($event['description']); ?></p>
-                            </article>
-                        <?php endforeach; ?>
+                                <label class="averia-note-form__field">
+                                    <span><?php esc_html_e('Resumen', 'garantias-online-360vo'); ?></span>
+                                    <textarea name="note_summary" rows="4" disabled></textarea>
+                                </label>
+                                <div class="averia-note-form__actions">
+                                    <button type="button" class="averia-detail__action-btn averia-detail__action-btn--ghost" disabled>
+                                        <?php esc_html_e('Registrar evento', 'garantias-online-360vo'); ?>
+                                    </button>
+                                </div>
+                            </fieldset>
+                        </form>
                     </div>
-                    <div class="breakdown-note">
-                        <strong><?php esc_html_e('Añadir nueva entrada', 'garantias-online-360vo'); ?></strong>
-                        <p><?php esc_html_e('Formulario pendiente de conectar. Aquí se introducirán comunicaciones, llamadas y acuerdos con el taller o cliente.', 'garantias-online-360vo'); ?></p>
-                    </div>
-                </div>
+                </section>
 
-                <div class="breakdown-panel breakdown-tab" id="tab-resumen" role="tabpanel" aria-labelledby="tab-resumen-trigger" aria-hidden="true">
-                    <h2 class="breakdown-panel__title"><?php esc_html_e('Detalle de la garantía', 'garantias-online-360vo'); ?></h2>
-                    <div class="breakdown-note">
-                        <strong><?php esc_html_e('Descripción de la avería', 'garantias-online-360vo'); ?></strong>
-                        <p><?php echo esc_html($sample_case['summary']); ?></p>
+                <section
+                    class="averia-panel"
+                    id="averia-panel-resumen"
+                    role="tabpanel"
+                    aria-labelledby="averia-tab-resumen"
+                    data-panel="resumen"
+                    hidden
+                >
+                    <header class="averia-panel__header">
+                        <h2><?php esc_html_e('Resumen del expediente', 'garantias-online-360vo'); ?></h2>
+                        <p><?php esc_html_e('Información clave del vehículo, póliza y estado actual.', 'garantias-online-360vo'); ?></p>
+                    </header>
+                    <div class="averia-panel__body averia-panel__body--grid">
+                        <article class="averia-card">
+                            <h3><?php esc_html_e('Vehículo y póliza', 'garantias-online-360vo'); ?></h3>
+                            <dl>
+                                <div>
+                                    <dt><?php esc_html_e('Matrícula', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['license_plate']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Garantía', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['policy']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Titular', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['owner']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['vendor']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Gestor comercial', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['vendor_manager']); ?></dd>
+                                </div>
+                            </dl>
+                        </article>
+                        <article class="averia-card">
+                            <h3><?php esc_html_e('Seguimiento', 'garantias-online-360vo'); ?></h3>
+                            <dl>
+                                <div>
+                                    <dt><?php esc_html_e('Estado actual', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['status']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Descripción breve', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['summary']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Elemento en cobertura', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['cover_element']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Km contratación', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['kilometers_start']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Km entrada taller', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['kilometers_now']); ?></dd>
+                                </div>
+                            </dl>
+                        </article>
                     </div>
-                    <div class="breakdown-note">
-                        <strong><?php esc_html_e('Equipo comercial', 'garantias-online-360vo'); ?></strong>
-                        <p><?php echo esc_html($sample_case['vendor_manager']); ?> — <?php echo esc_html($sample_case['vendor']); ?></p>
-                    </div>
-                    <div class="breakdown-note">
-                        <strong><?php esc_html_e('Cobertura y póliza', 'garantias-online-360vo'); ?></strong>
-                        <p><?php echo esc_html($sample_case['policy']); ?> · <?php echo esc_html($sample_case['cover_element']); ?></p>
-                    </div>
-                </div>
+                </section>
 
-                <div class="breakdown-panel breakdown-tab" id="tab-taller" role="tabpanel" aria-labelledby="tab-taller-trigger" aria-hidden="true">
-                    <h2 class="breakdown-panel__title"><?php esc_html_e('Taller asignado', 'garantias-online-360vo'); ?></h2>
-                    <div class="breakdown-stats">
-                        <div class="breakdown-stats__item">
-                            <span class="breakdown-stats__label"><?php esc_html_e('Taller', 'garantias-online-360vo'); ?></span>
-                            <span class="breakdown-stats__value"><?php echo esc_html($sample_case['workshop']['name']); ?></span>
-                        </div>
-                        <div class="breakdown-stats__item">
-                            <span class="breakdown-stats__label"><?php esc_html_e('Contacto', 'garantias-online-360vo'); ?></span>
-                            <span class="breakdown-stats__value"><?php echo esc_html($sample_case['workshop']['contact']); ?></span>
-                        </div>
-                        <div class="breakdown-stats__item">
-                            <span class="breakdown-stats__label"><?php esc_html_e('Teléfono', 'garantias-online-360vo'); ?></span>
-                            <span class="breakdown-stats__value"><?php echo esc_html($sample_case['workshop']['phone']); ?></span>
-                        </div>
-                        <div class="breakdown-stats__item">
-                            <span class="breakdown-stats__label"><?php esc_html_e('Correo', 'garantias-online-360vo'); ?></span>
-                            <span class="breakdown-stats__value"><?php echo esc_html($sample_case['workshop']['email']); ?></span>
-                        </div>
-                        <div class="breakdown-stats__item">
-                            <span class="breakdown-stats__label"><?php esc_html_e('Dirección', 'garantias-online-360vo'); ?></span>
-                            <span class="breakdown-stats__value"><?php echo esc_html($sample_case['workshop']['address']); ?></span>
-                        </div>
-                        <div class="breakdown-stats__item">
-                            <span class="breakdown-stats__label"><?php esc_html_e('Tipo de taller', 'garantias-online-360vo'); ?></span>
-                            <span class="breakdown-stats__value"><?php echo esc_html($sample_case['workshop']['type']); ?></span>
-                        </div>
+                <section
+                    class="averia-panel"
+                    id="averia-panel-taller"
+                    role="tabpanel"
+                    aria-labelledby="averia-tab-taller"
+                    data-panel="taller"
+                    hidden
+                >
+                    <header class="averia-panel__header">
+                        <h2><?php esc_html_e('Taller responsable', 'garantias-online-360vo'); ?></h2>
+                        <p><?php esc_html_e('Datos de contacto y seguimiento del taller encargado.', 'garantias-online-360vo'); ?></p>
+                    </header>
+                    <div class="averia-panel__body averia-panel__body--grid">
+                        <article class="averia-card averia-card--highlight">
+                            <dl>
+                                <div>
+                                    <dt><?php esc_html_e('Nombre', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['workshop']['name']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Contacto', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['workshop']['contact']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Teléfono', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['workshop']['phone']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Correo', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['workshop']['email']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Dirección', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['workshop']['address']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Tipo', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['workshop']['type']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('CIF/NIF', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['workshop']['tax_id']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Razón social', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['workshop']['fiscal_name']); ?></dd>
+                                </div>
+                            </dl>
+                        </article>
+                        <article class="averia-card">
+                            <h3><?php esc_html_e('Notas internas', 'garantias-online-360vo'); ?></h3>
+                            <ul class="averia-card__notes">
+                                <?php foreach ($sample_notes as $note) : ?>
+                                    <li>
+                                        <strong><?php echo esc_html($note['title']); ?>:</strong>
+                                        <span><?php echo esc_html($note['body']); ?></span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </article>
                     </div>
-                    <div class="breakdown-note">
-                        <strong><?php esc_html_e('Datos fiscales', 'garantias-online-360vo'); ?></strong>
-                        <p><?php echo esc_html($sample_case['workshop']['fiscal_name']); ?> · <?php echo esc_html($sample_case['workshop']['tax_id']); ?></p>
-                    </div>
-                </div>
+                </section>
 
-                <div class="breakdown-panel breakdown-tab" id="tab-importes" role="tabpanel" aria-labelledby="tab-importes-trigger" aria-hidden="true">
-                    <h2 class="breakdown-panel__title"><?php esc_html_e('Importes y resolución', 'garantias-online-360vo'); ?></h2>
-                    <div class="breakdown-stats">
-                        <div class="breakdown-stats__item">
-                            <span class="breakdown-stats__label"><?php esc_html_e('Presupuesto recibido', 'garantias-online-360vo'); ?></span>
-                            <span class="breakdown-stats__value"><?php echo esc_html($sample_case['financials']['budget']); ?></span>
-                        </div>
-                        <div class="breakdown-stats__item">
-                            <span class="breakdown-stats__label"><?php esc_html_e('Importe autorizado', 'garantias-online-360vo'); ?></span>
-                            <span class="breakdown-stats__value"><?php echo esc_html($sample_case['financials']['authorized']); ?></span>
-                        </div>
-                        <div class="breakdown-stats__item">
-                            <span class="breakdown-stats__label"><?php esc_html_e('Resolución', 'garantias-online-360vo'); ?></span>
-                            <span class="breakdown-stats__value"><?php echo esc_html($sample_case['financials']['resolution']); ?></span>
-                        </div>
+                <section
+                    class="averia-panel"
+                    id="averia-panel-importes"
+                    role="tabpanel"
+                    aria-labelledby="averia-tab-importes"
+                    data-panel="importes"
+                    hidden
+                >
+                    <header class="averia-panel__header">
+                        <h2><?php esc_html_e('Importes y resolución', 'garantias-online-360vo'); ?></h2>
+                        <p><?php esc_html_e('Controla el presupuesto recibido, la autorización y el estado de la resolución.', 'garantias-online-360vo'); ?></p>
+                    </header>
+                    <div class="averia-panel__body averia-panel__body--grid">
+                        <article class="averia-card">
+                            <dl>
+                                <div>
+                                    <dt><?php esc_html_e('Presupuesto recibido', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['financials']['budget']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Importe autorizado', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['financials']['authorized']); ?></dd>
+                                </div>
+                                <div>
+                                    <dt><?php esc_html_e('Resolución', 'garantias-online-360vo'); ?></dt>
+                                    <dd><?php echo esc_html($sample_case['financials']['resolution']); ?></dd>
+                                </div>
+                            </dl>
+                        </article>
+                        <article class="averia-card">
+                            <h3><?php esc_html_e('Histórico de movimientos', 'garantias-online-360vo'); ?></h3>
+                            <table class="averia-table" aria-label="Histórico de importes">
+                                <thead>
+                                    <tr>
+                                        <th scope="col"><?php esc_html_e('Fecha', 'garantias-online-360vo'); ?></th>
+                                        <th scope="col"><?php esc_html_e('Concepto', 'garantias-online-360vo'); ?></th>
+                                        <th scope="col"><?php esc_html_e('Detalle', 'garantias-online-360vo'); ?></th>
+                                        <th scope="col"><?php esc_html_e('Importe', 'garantias-online-360vo'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>12/10/2025</td>
+                                        <td><?php esc_html_e('Presupuesto', 'garantias-online-360vo'); ?></td>
+                                        <td><?php esc_html_e('Desglose del taller', 'garantias-online-360vo'); ?></td>
+                                        <td>1.200,00 €</td>
+                                    </tr>
+                                    <tr>
+                                        <td>13/10/2025</td>
+                                        <td><?php esc_html_e('Autorizado', 'garantias-online-360vo'); ?></td>
+                                        <td><?php esc_html_e('Reparación parcial', 'garantias-online-360vo'); ?></td>
+                                        <td>800,00 €</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </article>
                     </div>
-                    <div class="breakdown-note">
-                        <strong><?php esc_html_e('Próximos pasos', 'garantias-online-360vo'); ?></strong>
-                        <p><?php esc_html_e('Definir condiciones de autorización, generar resolución formal y comunicar a las partes implicadas.', 'garantias-online-360vo'); ?></p>
-                    </div>
-                </div>
+                </section>
 
-                <div class="breakdown-panel breakdown-tab" id="tab-documentos" role="tabpanel" aria-labelledby="tab-documentos-trigger" aria-hidden="true">
-                    <h2 class="breakdown-panel__title"><?php esc_html_e('Documentación vinculada', 'garantias-online-360vo'); ?></h2>
-                    <div class="breakdown-docs">
-                        <?php foreach ($sample_documents as $doc) : ?>
-                            <article class="breakdown-docs__item">
-                                <strong><?php echo esc_html($doc['label']); ?></strong>
-                                <span><?php echo esc_html($doc['type']); ?> · <?php echo esc_html($doc['size']); ?></span>
-                            </article>
-                        <?php endforeach; ?>
+                <section
+                    class="averia-panel"
+                    id="averia-panel-documentacion"
+                    role="tabpanel"
+                    aria-labelledby="averia-tab-documentacion"
+                    data-panel="documentacion"
+                    hidden
+                >
+                    <header class="averia-panel__header">
+                        <h2><?php esc_html_e('Documentación asociada', 'garantias-online-360vo'); ?></h2>
+                        <p><?php esc_html_e('Consulta los archivos compartidos con el taller, cliente y otros agentes.', 'garantias-online-360vo'); ?></p>
+                    </header>
+                    <div class="averia-panel__body averia-panel__body--grid averia-panel__body--stretch">
+                        <article class="averia-card averia-card--stretch">
+                            <h3><?php esc_html_e('Carga rápida', 'garantias-online-360vo'); ?></h3>
+                            <div class="averia-upload" role="presentation">
+                                <p><?php esc_html_e('Arrastra y suelta archivos o selecciónalos manualmente.', 'garantias-online-360vo'); ?></p>
+                                <button type="button" class="averia-detail__action-btn averia-detail__action-btn--ghost" disabled>
+                                    <?php esc_html_e('Subir documentos', 'garantias-online-360vo'); ?>
+                                </button>
+                            </div>
+                        </article>
+                        <article class="averia-card averia-card--stretch">
+                            <h3><?php esc_html_e('Adjuntos recientes', 'garantias-online-360vo'); ?></h3>
+                            <ul class="averia-documents">
+                                <?php foreach ($sample_documents as $document) : ?>
+                                    <li>
+                                        <span class="averia-documents__name"><?php echo esc_html($document['label']); ?></span>
+                                        <span class="averia-documents__meta">
+                                            <?php echo esc_html($document['type']); ?> · <?php echo esc_html($document['size']); ?>
+                                        </span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </article>
                     </div>
-                    <div class="breakdown-note">
-                        <strong><?php esc_html_e('Carga de archivos', 'garantias-online-360vo'); ?></strong>
-                        <p><?php esc_html_e('Se habilitará un componente de subida múltiple con categorías y notas individuales.', 'garantias-online-360vo'); ?></p>
-                    </div>
-                </div>
-            </section>
+                </section>
+            </main>
 
-            <aside class="breakdown-panel breakdown-layout__sidebar" role="complementary" aria-labelledby="notes-heading">
-                <h2 class="breakdown-panel__title" id="notes-heading"><?php esc_html_e('Notas internas', 'garantias-online-360vo'); ?></h2>
-                <div class="breakdown-notes">
-                    <?php foreach ($sample_notes as $note) : ?>
-                        <div class="breakdown-note">
-                            <strong><?php echo esc_html($note['title']); ?></strong>
-                            <p><?php echo esc_html($note['body']); ?></p>
+            <aside class="averia-detail__sidebar">
+                <section class="averia-summary">
+                    <h2><?php esc_html_e('Resumen rápido', 'garantias-online-360vo'); ?></h2>
+                    <dl>
+                        <div>
+                            <dt><?php esc_html_e('Estado', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['status']); ?></dd>
                         </div>
-                    <?php endforeach; ?>
-                </div>
-                <div class="breakdown-app__actions">
-                    <button type="button" class="go-btn go-btn--primary"><?php esc_html_e('Añadir nota', 'garantias-online-360vo'); ?></button>
-                    <button type="button" class="go-btn go-btn--outline"><?php esc_html_e('Compartir resumen', 'garantias-online-360vo'); ?></button>
-                </div>
+                        <div>
+                            <dt><?php esc_html_e('Expediente', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['reference']); ?></dd>
+                        </div>
+                        <div>
+                            <dt><?php esc_html_e('Última actualización', 'garantias-online-360vo'); ?></dt>
+                            <dd>13/10/2025</dd>
+                        </div>
+                        <div>
+                            <dt><?php esc_html_e('Responsable taller', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['workshop']['contact']); ?></dd>
+                        </div>
+                        <div>
+                            <dt><?php esc_html_e('Peritaje', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo $sample_case['peritaje_required'] ? esc_html__('Asignado', 'garantias-online-360vo') : esc_html__('Pendiente', 'garantias-online-360vo'); ?></dd>
+                        </div>
+                        <div>
+                            <dt><?php esc_html_e('Importe autorizado', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['financials']['authorized']); ?></dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="averia-summary averia-summary--secondary">
+                    <h2><?php esc_html_e('Próximos pasos', 'garantias-online-360vo'); ?></h2>
+                    <ul>
+                        <li><?php esc_html_e('Confirmar disponibilidad de piezas con el taller.', 'garantias-online-360vo'); ?></li>
+                        <li><?php esc_html_e('Actualizar cliente con resolución provisional.', 'garantias-online-360vo'); ?></li>
+                        <li><?php esc_html_e('Programar visita de perito si procede.', 'garantias-online-360vo'); ?></li>
+                    </ul>
+                </section>
             </aside>
         </div>
-    </div>
-    <script>
-        (function () {
-            const tabTriggers = document.querySelectorAll('.breakdown-tabs__item');
-            const panels = document.querySelectorAll('.breakdown-tab');
+    <?php endif; ?>
+</div>
 
-            if (!tabTriggers.length || !panels.length) {
-                return;
+<style>
+    .averia-detail {
+        padding: clamp(1.5rem, 3vw, 2.5rem);
+        width: min(1280px, 100%);
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: clamp(1.5rem, 3vw, 2.5rem);
+    }
+
+    .averia-detail__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .averia-detail__heading {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .averia-detail__title {
+        font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+        font-weight: 700;
+        color: var(--go-color-0f172a);
+        margin: 0;
+    }
+
+    [data-theme="dark"] .averia-detail__title,
+    body[data-theme="dark"] .averia-detail__title {
+        color: var(--go-color-dbeafe);
+    }
+
+    .averia-detail__subtitle {
+        margin: 0;
+        color: var(--go-color-475569);
+        font-size: 0.95rem;
+    }
+
+    .averia-detail__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-radius: 999px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .averia-detail__badge-dot {
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .averia-detail__badge--warning {
+        background: rgba(255, 173, 66, 0.16);
+        color: #bd6000;
+    }
+
+    .averia-detail__meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: var(--surface);
+        border-radius: 1rem;
+        box-shadow: 0 8px 24px rgba(var(--go-color-000000-rgb), 0.05);
+    }
+
+    .averia-detail__meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .averia-detail__meta-label {
+        color: var(--go-color-64748b);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .averia-detail__meta-value {
+        font-weight: 600;
+        color: var(--go-color-0f172a);
+    }
+
+    .guarantees-list__filters--averia-detail {
+        margin-bottom: 0;
+    }
+
+    .guarantees-list__filters-row--averia-detail {
+        width: 100%;
+    }
+
+    .averia-tabs {
+        display: inline-flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .averia-tabs__button {
+        border: 1px solid rgba(var(--go-color-0f172a-rgb), 0.12);
+        background: var(--surface);
+        color: var(--go-color-0f172a);
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .averia-tabs__button.is-active {
+        background: var(--go-color-1d4ed8);
+        border-color: var(--go-color-1d4ed8);
+        color: #fff;
+    }
+
+    [data-theme="dark"] .averia-tabs__button,
+    body[data-theme="dark"] .averia-tabs__button {
+        border-color: rgba(255, 255, 255, 0.12);
+        color: var(--go-color-dbeafe);
+    }
+
+    .averia-detail__action-btn {
+        border: none;
+        border-radius: 0.75rem;
+        background: var(--go-color-1d4ed8);
+        color: #fff;
+        padding: 0.55rem 1.25rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        box-shadow: 0 8px 14px rgba(var(--go-color-1f63ff-rgb), 0.18);
+    }
+
+    .averia-detail__action-btn--ghost {
+        background: rgba(var(--go-color-1d4ed8-rgb), 0.08);
+        color: var(--go-color-1d4ed8);
+        box-shadow: none;
+    }
+
+    .averia-detail__action-btn--danger {
+        background: var(--go-color-b91c1c);
+        box-shadow: 0 8px 14px rgba(var(--go-color-b91c1c), 0.25);
+    }
+
+    .averia-detail__action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+
+    .averia-detail__layout {
+        display: grid;
+        grid-template-columns: minmax(0, 2.4fr) minmax(280px, 1fr);
+        gap: clamp(1.5rem, 3vw, 2.5rem);
+        align-items: start;
+    }
+
+    .averia-detail__layout.sticky-active {
+        scroll-margin-top: 6.5rem;
+    }
+
+    @media (max-width: 1080px) {
+        .averia-detail__layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .averia-detail__content {
+        display: grid;
+        gap: clamp(1.5rem, 2.5vw, 2rem);
+    }
+
+    .averia-panel {
+        background: var(--surface);
+        border-radius: 1.25rem;
+        padding: clamp(1.5rem, 2.8vw, 2.25rem);
+        box-shadow: 0 12px 32px rgba(var(--go-color-000000-rgb), 0.06);
+    }
+
+    .averia-panel[hidden] {
+        display: none;
+    }
+
+    .averia-panel__header {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .averia-panel__header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--go-color-0f172a);
+    }
+
+    .averia-panel__header p {
+        margin: 0;
+        color: var(--go-color-475569);
+        font-size: 0.95rem;
+    }
+
+    .averia-panel__body {
+        display: flex;
+        flex-direction: column;
+        gap: 1.75rem;
+    }
+
+    .averia-panel__body--grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .averia-panel__body--stretch {
+        align-items: stretch;
+    }
+
+    .averia-panel__body--grid > .averia-card--stretch {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .averia-timeline {
+        display: grid;
+        gap: 1.25rem;
+        position: relative;
+    }
+
+    .averia-timeline::before {
+        content: '';
+        position: absolute;
+        top: 0.5rem;
+        bottom: 0.5rem;
+        left: 0.9rem;
+        width: 2px;
+        background: rgba(var(--go-color-0f172a-rgb), 0.1);
+    }
+
+    .averia-timeline__item {
+        display: grid;
+        grid-template-columns: 2rem 1fr;
+        gap: 1rem;
+        position: relative;
+    }
+
+    .averia-timeline__marker {
+        width: 1.2rem;
+        height: 1.2rem;
+        border-radius: 50%;
+        border: 3px solid var(--go-color-1d4ed8);
+        background: var(--surface);
+        position: relative;
+        z-index: 1;
+        margin-top: 0.35rem;
+    }
+
+    .averia-timeline__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        font-weight: 600;
+    }
+
+    .averia-timeline__meta time {
+        font-variant-numeric: tabular-nums;
+        color: var(--go-color-0f172a);
+    }
+
+    .averia-timeline__type,
+    .averia-timeline__actor {
+        color: var(--go-color-475569);
+        font-size: 0.95rem;
+    }
+
+    .averia-timeline__description {
+        margin: 0.35rem 0 0;
+        color: var(--go-color-1f2937);
+        line-height: 1.55;
+    }
+
+    .averia-note-form fieldset {
+        border: 1px dashed rgba(var(--go-color-0f172a-rgb), 0.15);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        display: grid;
+        gap: 1rem;
+    }
+
+    .averia-note-form__grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+    }
+
+    .averia-note-form__field {
+        display: grid;
+        gap: 0.4rem;
+    }
+
+    .averia-note-form__field > span {
+        font-weight: 600;
+        color: var(--go-color-475569);
+        font-size: 0.9rem;
+    }
+
+    .averia-note-form__field select,
+    .averia-note-form__field input,
+    .averia-note-form__field textarea {
+        border: 1px solid rgba(var(--go-color-0f172a-rgb), 0.12);
+        border-radius: 0.75rem;
+        padding: 0.65rem 0.9rem;
+        background: rgba(var(--go-color-0f172a-rgb), 0.015);
+        font-size: 0.95rem;
+        resize: vertical;
+    }
+
+    .averia-note-form__actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .averia-card {
+        background: rgba(var(--go-color-0f172a-rgb), 0.02);
+        border: 1px solid rgba(var(--go-color-0f172a-rgb), 0.08);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        display: grid;
+        gap: 1rem;
+    }
+
+    .averia-card h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+
+    .averia-card dl {
+        margin: 0;
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .averia-card dl div {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: baseline;
+    }
+
+    .averia-card dt {
+        color: var(--go-color-64748b);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .averia-card dd {
+        margin: 0;
+        font-weight: 600;
+        color: var(--go-color-0f172a);
+    }
+
+    .averia-card__notes {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 0.75rem;
+        color: var(--go-color-475569);
+    }
+
+    .averia-card__notes li {
+        display: grid;
+        gap: 0.25rem;
+    }
+
+    .averia-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    .averia-table th,
+    .averia-table td {
+        padding: 0.65rem 0.75rem;
+        border-bottom: 1px solid rgba(var(--go-color-0f172a-rgb), 0.08);
+    }
+
+    .averia-upload {
+        border: 2px dashed rgba(var(--go-color-0f172a-rgb), 0.15);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+        color: var(--go-color-475569);
+        display: grid;
+        gap: 1rem;
+    }
+
+    .averia-documents {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .averia-documents li {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        background: rgba(var(--go-color-1d4ed8-rgb), 0.05);
+        font-weight: 600;
+    }
+
+    .averia-documents__meta {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--go-color-475569);
+    }
+
+    .averia-detail__sidebar {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .averia-summary {
+        background: var(--surface);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 12px 32px rgba(var(--go-color-000000-rgb), 0.05);
+        display: grid;
+        gap: 1rem;
+    }
+
+    .averia-summary h2 {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    .averia-summary dl {
+        margin: 0;
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .averia-summary dl div {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .averia-summary dt {
+        color: var(--go-color-64748b);
+        font-size: 0.85rem;
+    }
+
+    .averia-summary dd {
+        margin: 0;
+        font-weight: 600;
+        color: var(--go-color-0f172a);
+    }
+
+    .averia-summary ul {
+        margin: 0;
+        padding-left: 1.25rem;
+        display: grid;
+        gap: 0.75rem;
+        color: var(--go-color-475569);
+    }
+
+    .averia-summary--secondary ul {
+        list-style: disc;
+    }
+
+    .averia-detail__empty {
+        display: flex;
+        justify-content: center;
+        padding: clamp(4rem, 10vw, 6rem) 0;
+    }
+
+    .averia-detail__empty-card {
+        max-width: 420px;
+        text-align: center;
+        background: var(--surface);
+        border-radius: 1.5rem;
+        padding: 2.5rem;
+        box-shadow: 0 20px 44px rgba(var(--go-color-000000-rgb), 0.08);
+        display: grid;
+        gap: 1rem;
+    }
+
+    .averia-detail__empty-card h2 {
+        margin: 0;
+        font-size: 1.35rem;
+    }
+
+    .averia-detail__back-link {
+        color: var(--go-color-1d4ed8);
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    @media (max-width: 760px) {
+        .averia-detail__header {
+            align-items: flex-start;
+        }
+
+        .averia-detail__meta {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+
+        .averia-detail__layout {
+            grid-template-columns: 1fr;
+        }
+
+        .averia-detail__sidebar {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .guarantees-table__row[data-expediente-url] {
+        cursor: pointer;
+    }
+
+    .guarantees-table__row[data-expediente-url]:hover {
+        background: rgba(var(--go-color-1d4ed8-rgb), 0.08);
+    }
+</style>
+
+<script>
+    (function () {
+        function onReady(callback) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', callback, { once: true });
+            } else {
+                callback();
             }
+        }
 
-            function activateTab(targetId) {
-                tabTriggers.forEach((trigger) => {
-                    const isActive = trigger.getAttribute('aria-controls') === targetId;
-                    trigger.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        onReady(function () {
+            var tabButtons = Array.prototype.slice.call(document.querySelectorAll('[data-tab-trigger]'));
+            var panels = Array.prototype.slice.call(document.querySelectorAll('[data-panel]'));
+
+            function activateTab(tab) {
+                var target = tab.getAttribute('data-tab-trigger');
+                tabButtons.forEach(function (button) {
+                    var isActive = button === tab;
+                    button.classList.toggle('is-active', isActive);
+                    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
                 });
 
-                panels.forEach((panel) => {
-                    const isTarget = panel.id === targetId;
-                    panel.setAttribute('aria-hidden', isTarget ? 'false' : 'true');
-                    panel.setAttribute('tabindex', isTarget ? '0' : '-1');
-                    if (isTarget) {
-                        panel.focus({ preventScroll: true });
+                panels.forEach(function (panel) {
+                    var matches = panel.getAttribute('data-panel') === target;
+                    panel.classList.toggle('is-active', matches);
+                    if (matches) {
+                        panel.removeAttribute('hidden');
+                    } else {
+                        panel.setAttribute('hidden', 'hidden');
                     }
                 });
             }
 
-            tabTriggers.forEach((trigger) => {
-                trigger.addEventListener('click', () => {
-                    const targetId = trigger.getAttribute('aria-controls');
-                    activateTab(targetId);
+            tabButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    activateTab(button);
                 });
             });
+        });
+    })();
+</script>
 
-            // Inicializa mostrando el historial como eje principal.
-            activateTab('tab-historial');
-        })();
-    </script>
-<?php endif; ?>
-</body>
-</html>
+<?php
+\GarantiasOnline360VO\TemplateLoader::load_part(
+    'footer',
+    compact('is_breakdowns_page', 'is_dashboard_page')
+);
