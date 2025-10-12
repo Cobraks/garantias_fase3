@@ -31,6 +31,7 @@ $sample_case = [
     'vendor_manager'   => 'Pepito Pérez',
     'owner'            => 'Laura García',
     'policy'           => 'Garantía Premium 24',
+    'last_update'      => '13/10/2025',
     'peritaje'         => true,
     'cover_element'    => 'Por confirmar',
     'license_plate'    => '1234 ABC',
@@ -109,30 +110,9 @@ $empty_messages = [
 ?>
 
 <div class="averia-detail" data-averia-app>
-    <div class="averia-detail__header">
-        <div class="averia-detail__heading">
-            <h1 class="averia-detail__title">
-                <?php esc_html_e('Gestión de avería', 'garantias-online-360vo'); ?>
-            </h1>
-            <?php if ($license_plate !== '') : ?>
-                <p class="averia-detail__subtitle">
-                    <?php
-                    printf(
-                        /* translators: %s: license plate */
-                        esc_html__('Matrícula %s', 'garantias-online-360vo'),
-                        esc_html($license_plate)
-                    );
-                    ?>
-                </p>
-            <?php endif; ?>
-        </div>
-        <?php if ($view_mode === 'case') : ?>
-            <div class="averia-detail__badge averia-detail__badge--<?php echo esc_attr($sample_case['status_variant']); ?>">
-                <span class="averia-detail__badge-dot" aria-hidden="true"></span>
-                <?php echo esc_html($sample_case['status']); ?>
-            </div>
-        <?php endif; ?>
-    </div>
+    <h1 class="screen-reader-text">
+        <?php esc_html_e('Gestión de avería', 'garantias-online-360vo'); ?>
+    </h1>
 
     <?php if ($view_mode !== 'case') : ?>
         <section class="averia-detail__empty">
@@ -145,34 +125,17 @@ $empty_messages = [
             </div>
         </section>
     <?php else : ?>
-        <section class="averia-detail__meta">
-            <div class="averia-detail__meta-item">
-                <span class="averia-detail__meta-label"><?php esc_html_e('Expediente', 'garantias-online-360vo'); ?></span>
-                <span class="averia-detail__meta-value"><?php echo esc_html($sample_case['reference']); ?></span>
-            </div>
-            <div class="averia-detail__meta-item">
-                <span class="averia-detail__meta-label"><?php esc_html_e('Fecha de apertura', 'garantias-online-360vo'); ?></span>
-                <time datetime="2025-10-12" class="averia-detail__meta-value"><?php echo esc_html($sample_case['opened']); ?></time>
-            </div>
-            <div class="averia-detail__meta-item">
-                <span class="averia-detail__meta-label"><?php esc_html_e('Tipo de avería', 'garantias-online-360vo'); ?></span>
-                <span class="averia-detail__meta-value"><?php echo esc_html($sample_case['type']); ?></span>
-            </div>
-            <div class="averia-detail__meta-item">
-                <span class="averia-detail__meta-label"><?php esc_html_e('Peritaje', 'garantias-online-360vo'); ?></span>
-                <span class="averia-detail__meta-value">
-                    <?php echo $sample_case['peritaje'] ? esc_html__('Requerido', 'garantias-online-360vo') : esc_html__('No requerido', 'garantias-online-360vo'); ?>
-                </span>
-            </div>
-        </section>
-
         <div
             class="guarantees-list__filters guarantees-list__filters--averia-detail"
             data-sticky-target=".averia-detail__layout"
             style="view-transition-name: filtros-averia-detalle"
         >
             <div class="guarantees-list__filters-row guarantees-list__filters-row--averia-detail">
-                <nav class="averia-tabs" role="tablist">
+                <nav
+                    class="averia-tabs"
+                    role="tablist"
+                    aria-label="<?php esc_attr_e('Secciones del expediente', 'garantias-online-360vo'); ?>"
+                >
                     <?php
                     $tabs = [
                         'historial'    => __('Historial', 'garantias-online-360vo'),
@@ -203,20 +166,74 @@ $empty_messages = [
                 </nav>
 
                 <div class="guarantees-list__filters-actions guarantees-list__filters-actions--averia-detail">
-                    <button type="button" class="averia-detail__action-btn averia-detail__action-btn--ghost">
-                        <?php esc_html_e('Guardar cambios', 'garantias-online-360vo'); ?>
-                    </button>
                     <button type="button" class="averia-detail__action-btn">
-                        <?php esc_html_e('Enviar actualización', 'garantias-online-360vo'); ?>
-                    </button>
-                    <button type="button" class="averia-detail__action-btn averia-detail__action-btn--danger">
-                        <?php esc_html_e('Cerrar expediente', 'garantias-online-360vo'); ?>
+                        <?php esc_html_e('Guardar cambios', 'garantias-online-360vo'); ?>
                     </button>
                 </div>
             </div>
         </div>
 
         <div class="averia-detail__layout">
+            <section class="averia-detail__overview" aria-labelledby="averia-overview-heading">
+                <div class="averia-detail__overview-header">
+                    <div class="averia-detail__overview-titles">
+                        <h2 id="averia-overview-heading">
+                            <?php esc_html_e('Expediente', 'garantias-online-360vo'); ?>
+                            <span><?php echo esc_html($sample_case['reference']); ?></span>
+                        </h2>
+                        <p class="averia-detail__overview-subtitle">
+                            <?php
+                            $display_plate = $sample_case['license_plate'] !== ''
+                                ? $sample_case['license_plate']
+                                : $license_plate;
+                            ?>
+                            <span class="averia-detail__overview-plate">
+                                <?php echo esc_html($display_plate !== '' ? $display_plate : '—'); ?>
+                            </span>
+                            <?php if (! empty($sample_case['policy'])) : ?>
+                                <span class="averia-detail__overview-divider" aria-hidden="true">·</span>
+                                <span class="averia-detail__overview-policy"><?php echo esc_html($sample_case['policy']); ?></span>
+                            <?php endif; ?>
+                        </p>
+                    </div>
+                    <span class="averia-detail__status averia-detail__status--<?php echo esc_attr($sample_case['status_variant']); ?>">
+                        <?php echo esc_html($sample_case['status']); ?>
+                    </span>
+                </div>
+                <dl class="averia-detail__overview-grid">
+                    <div>
+                        <dt><?php esc_html_e('Fecha de apertura', 'garantias-online-360vo'); ?></dt>
+                        <dd><?php echo esc_html($sample_case['opened']); ?></dd>
+                    </div>
+                    <div>
+                        <dt><?php esc_html_e('Tipo de avería', 'garantias-online-360vo'); ?></dt>
+                        <dd><?php echo esc_html($sample_case['type']); ?></dd>
+                    </div>
+                    <div>
+                        <dt><?php esc_html_e('Peritaje', 'garantias-online-360vo'); ?></dt>
+                        <dd>
+                            <?php echo $sample_case['peritaje_required'] ? esc_html__('Requerido', 'garantias-online-360vo') : esc_html__('No requerido', 'garantias-online-360vo'); ?>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></dt>
+                        <dd><?php echo esc_html($sample_case['vendor']); ?></dd>
+                    </div>
+                    <div>
+                        <dt><?php esc_html_e('Titular', 'garantias-online-360vo'); ?></dt>
+                        <dd><?php echo esc_html($sample_case['owner']); ?></dd>
+                    </div>
+                    <div>
+                        <dt><?php esc_html_e('Gestor comercial', 'garantias-online-360vo'); ?></dt>
+                        <dd><?php echo esc_html($sample_case['vendor_manager']); ?></dd>
+                    </div>
+                    <div>
+                        <dt><?php esc_html_e('Última actualización', 'garantias-online-360vo'); ?></dt>
+                        <dd><?php echo esc_html($sample_case['last_update']); ?></dd>
+                    </div>
+                </dl>
+            </section>
+
             <main class="averia-detail__content" data-averia-panels>
                 <section
                     class="averia-panel is-active"
@@ -520,7 +537,7 @@ $empty_messages = [
                         </div>
                         <div>
                             <dt><?php esc_html_e('Última actualización', 'garantias-online-360vo'); ?></dt>
-                            <dd>13/10/2025</dd>
+                            <dd><?php echo esc_html($sample_case['last_update']); ?></dd>
                         </div>
                         <div>
                             <dt><?php esc_html_e('Responsable taller', 'garantias-online-360vo'); ?></dt>
@@ -552,108 +569,63 @@ $empty_messages = [
 
 <style>
     .averia-detail {
-        padding: clamp(1.5rem, 3vw, 2.5rem);
-        width: min(1280px, 100%);
+        grid-column: 1 / -1;
+        padding: 0 clamp(1.5rem, 3vw, 2.75rem) clamp(2.5rem, 4vw, 3rem);
+        width: min(1380px, 100%);
         margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        gap: clamp(1.5rem, 3vw, 2.5rem);
-    }
-
-    .averia-detail__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1.5rem;
-        flex-wrap: wrap;
-    }
-
-    .averia-detail__heading {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-    }
-
-    .averia-detail__title {
-        font-size: clamp(1.5rem, 2.4vw, 2.1rem);
-        font-weight: 700;
-        color: var(--go-color-0f172a);
-        margin: 0;
-    }
-
-    [data-theme="dark"] .averia-detail__title,
-    body[data-theme="dark"] .averia-detail__title {
-        color: var(--go-color-dbeafe);
-    }
-
-    .averia-detail__subtitle {
-        margin: 0;
-        color: var(--go-color-475569);
-        font-size: 0.95rem;
-    }
-
-    .averia-detail__badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        border-radius: 999px;
-        padding: 0.5rem 1rem;
-        font-weight: 600;
-        font-size: 0.95rem;
-    }
-
-    .averia-detail__badge-dot {
-        width: 0.6rem;
-        height: 0.6rem;
-        border-radius: 50%;
-        background: currentColor;
-    }
-
-    .averia-detail__badge--warning {
-        background: rgba(255, 173, 66, 0.16);
-        color: #bd6000;
-    }
-
-    .averia-detail__meta {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 1rem;
-        padding: 1.25rem 1.5rem;
-        background: var(--surface);
-        border-radius: 1rem;
-        box-shadow: 0 8px 24px rgba(var(--go-color-000000-rgb), 0.05);
+        row-gap: 0;
+        align-content: start;
     }
 
-    .averia-detail__meta-item {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-    }
-
-    .averia-detail__meta-label {
-        color: var(--go-color-64748b);
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .averia-detail__meta-value {
-        font-weight: 600;
-        color: var(--go-color-0f172a);
+    .averia-detail .screen-reader-text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
     }
 
     .guarantees-list__filters--averia-detail {
         margin-bottom: 0;
+        position: sticky;
+        top: calc(var(--top-bar-height, 88px) + var(--spacing-2, 0.75rem));
+        z-index: 12;
+        background: var(--surface, #ffffff);
+        border-radius: 1.25rem;
+        box-shadow: 0 8px 20px rgba(var(--go-color-000000-rgb), 0.06);
+        transition: box-shadow 0.2s ease;
+    }
+
+    .guarantees-list__filters--averia-detail.sticky-active {
+        box-shadow: 0 16px 36px rgba(var(--go-color-000000-rgb), 0.12);
     }
 
     .guarantees-list__filters-row--averia-detail {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: clamp(1rem, 2.5vw, 1.75rem);
         width: 100%;
+        flex-wrap: wrap;
     }
 
     .averia-tabs {
         display: inline-flex;
         gap: 0.5rem;
         flex-wrap: wrap;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .guarantees-list__filters-actions--averia-detail {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.75rem;
     }
 
     .averia-tabs__button {
@@ -680,6 +652,152 @@ $empty_messages = [
         color: var(--go-color-dbeafe);
     }
 
+    .averia-detail__overview {
+        grid-column: 1 / -1;
+        display: grid;
+        gap: clamp(1rem, 2vw, 1.5rem);
+        padding: clamp(1.5rem, 2.8vw, 2.25rem);
+        background: var(--surface, #ffffff);
+        border-radius: 1.25rem;
+        box-shadow: 0 12px 32px rgba(var(--go-color-000000-rgb), 0.06);
+    }
+
+    .averia-detail__overview-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: clamp(1rem, 2vw, 1.5rem);
+        flex-wrap: wrap;
+    }
+
+    .averia-detail__overview-titles {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .averia-detail__overview-titles h2 {
+        margin: 0;
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: var(--go-color-0f172a, #0f172a);
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .averia-detail__overview-titles h2 span {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--go-color-475569, #475569);
+    }
+
+    .averia-detail__overview-subtitle {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--go-color-475569, #475569);
+        font-size: 0.95rem;
+        flex-wrap: wrap;
+    }
+
+    .averia-detail__overview-divider {
+        opacity: 0.35;
+    }
+
+    .averia-detail__overview-plate {
+        font-family: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-weight: 600;
+        color: var(--go-color-0f172a, #0f172a);
+        background: rgba(var(--go-color-1d4ed8-rgb, 29, 78, 216), 0.1);
+        padding: 0.25rem 0.55rem;
+        border-radius: 0.5rem;
+        letter-spacing: 0.04em;
+    }
+
+    .averia-detail__status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.85rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .averia-detail__status::before {
+        content: '';
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .averia-detail__status--warning {
+        background: rgba(255, 173, 66, 0.18);
+        color: rgb(189, 96, 0);
+    }
+
+    .averia-detail__status--danger {
+        background: rgba(227, 68, 68, 0.18);
+        color: rgb(176, 35, 35);
+    }
+
+    .averia-detail__status--info {
+        background: rgba(59, 130, 246, 0.18);
+        color: rgb(29, 78, 216);
+    }
+
+    .averia-detail__status--success {
+        background: rgba(52, 199, 89, 0.18);
+        color: rgb(30, 130, 58);
+    }
+
+    .averia-detail__overview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: clamp(1rem, 2vw, 1.75rem);
+    }
+
+    .averia-detail__overview-grid div {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .averia-detail__overview-grid dt {
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--go-color-64748b, #64748b);
+    }
+
+    .averia-detail__overview-grid dd {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.05rem;
+        color: var(--go-color-0f172a, #0f172a);
+    }
+
+    [data-theme="dark"] .averia-detail__overview-titles h2 {
+        color: var(--go-color-dbeafe);
+    }
+
+    [data-theme="dark"] .averia-detail__overview-titles h2 span,
+    [data-theme="dark"] .averia-detail__overview-subtitle {
+        color: rgba(226, 232, 240, 0.75);
+    }
+
+    [data-theme="dark"] .averia-detail__overview-plate {
+        color: var(--go-color-dbeafe);
+        background: rgba(148, 163, 184, 0.2);
+    }
+
+    [data-theme="dark"] .averia-detail__overview-grid dd {
+        color: var(--go-color-dbeafe);
+    }
+
     .averia-detail__action-btn {
         border: none;
         border-radius: 0.75rem;
@@ -698,11 +816,6 @@ $empty_messages = [
         box-shadow: none;
     }
 
-    .averia-detail__action-btn--danger {
-        background: var(--go-color-b91c1c);
-        box-shadow: 0 8px 14px rgba(var(--go-color-b91c1c), 0.25);
-    }
-
     .averia-detail__action-btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -710,14 +823,15 @@ $empty_messages = [
     }
 
     .averia-detail__layout {
+        margin-top: clamp(1.5rem, 3vw, 2.5rem);
         display: grid;
-        grid-template-columns: minmax(0, 2.4fr) minmax(280px, 1fr);
-        gap: clamp(1.5rem, 3vw, 2.5rem);
+        grid-template-columns: minmax(0, 2.8fr) minmax(320px, 1fr);
+        gap: clamp(1.75rem, 3vw, 2.75rem);
         align-items: start;
     }
 
     .averia-detail__layout.sticky-active {
-        scroll-margin-top: 6.5rem;
+        scroll-margin-top: calc(var(--top-bar-height, 88px) + 2.5rem);
     }
 
     @media (max-width: 1080px) {
@@ -1067,17 +1181,30 @@ $empty_messages = [
         text-decoration: none;
     }
 
+    @media (max-width: 860px) {
+        .guarantees-list__filters-row--averia-detail {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .guarantees-list__filters-actions--averia-detail {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .guarantees-list__filters-actions--averia-detail .averia-detail__action-btn {
+            width: 100%;
+        }
+    }
+
     @media (max-width: 760px) {
-        .averia-detail__header {
-            align-items: flex-start;
-        }
-
-        .averia-detail__meta {
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        }
-
         .averia-detail__layout {
             grid-template-columns: 1fr;
+        }
+
+        .averia-detail__overview-header {
+            flex-direction: column;
+            align-items: flex-start;
         }
 
         .averia-detail__sidebar {
