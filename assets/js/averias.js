@@ -225,6 +225,196 @@
             requestAnimationFrame(updateBodyScrolled);
         }
 
+        var modal = document.querySelector('[data-averia-modal]');
+        var contactDetailButtons = Array.prototype.slice.call(document.querySelectorAll('[data-contact-details]'));
+
+        if (modal && contactDetailButtons.length) {
+            var modalContent = modal.querySelector('[data-averia-modal-content]');
+            var modalTitle = modal.querySelector('[data-averia-modal-title]');
+            var modalSubtitle = modal.querySelector('[data-averia-modal-subtitle]');
+            var modalTag = modal.querySelector('[data-averia-modal-tag]');
+            var closeButtons = Array.prototype.slice.call(modal.querySelectorAll('[data-averia-modal-close]'));
+            var dismissTargets = Array.prototype.slice.call(modal.querySelectorAll('[data-averia-modal-dismiss]'));
+            var lastTrigger = null;
+
+            function setHiddenState(element, hidden) {
+                if (!element) {
+                    return;
+                }
+                if (hidden) {
+                    element.setAttribute('hidden', 'hidden');
+                } else {
+                    element.removeAttribute('hidden');
+                }
+            }
+
+            function closeModal() {
+                if (!modal.classList.contains('is-open')) {
+                    return;
+                }
+
+                modal.classList.remove('is-open');
+                modal.setAttribute('aria-hidden', 'true');
+                modal.setAttribute('hidden', 'hidden');
+                document.body.classList.remove('averia-modal-open');
+
+                if (modalContent) {
+                    modalContent.innerHTML = '';
+                }
+                if (modalTag) {
+                    modalTag.textContent = '';
+                    setHiddenState(modalTag, true);
+                }
+                if (modalSubtitle) {
+                    modalSubtitle.textContent = '';
+                    setHiddenState(modalSubtitle, true);
+                }
+
+                if (lastTrigger && typeof lastTrigger.setAttribute === 'function') {
+                    lastTrigger.setAttribute('aria-expanded', 'false');
+                    if (typeof lastTrigger.focus === 'function') {
+                        lastTrigger.focus();
+                    }
+                }
+
+                lastTrigger = null;
+            }
+
+            function focusFirstElement() {
+                var focusable = Array.prototype.slice.call(modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+                focusable = focusable.filter(function (element) {
+                    if (element.hasAttribute('disabled')) {
+                        return false;
+                    }
+                    if (element.getAttribute('aria-hidden') === 'true') {
+                        return false;
+                    }
+                    if (element.offsetParent === null && element !== document.activeElement) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                if (focusable.length > 0) {
+                    focusable[0].focus();
+                }
+            }
+
+            function openModal(trigger) {
+                if (!trigger) {
+                    return;
+                }
+
+                var card = trigger.closest('.averia-contact-card');
+                if (!card) {
+                    return;
+                }
+
+                var details = card.querySelector('.averia-contact-card__details');
+                if (!details || !modalContent) {
+                    return;
+                }
+
+                modalContent.innerHTML = details.innerHTML;
+
+                var label = card.getAttribute('data-contact-label') || '';
+                var title = card.getAttribute('data-contact-title') || label;
+                var subtitle = card.getAttribute('data-contact-subtitle') || '';
+
+                if (modalTag) {
+                    modalTag.textContent = label;
+                    setHiddenState(modalTag, label === '');
+                }
+                if (modalTitle) {
+                    modalTitle.textContent = title;
+                }
+                if (modalSubtitle) {
+                    modalSubtitle.textContent = subtitle;
+                    setHiddenState(modalSubtitle, subtitle === '');
+                }
+
+                modal.classList.add('is-open');
+                modal.removeAttribute('hidden');
+                modal.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('averia-modal-open');
+
+                lastTrigger = trigger;
+                trigger.setAttribute('aria-expanded', 'true');
+
+                var focusTarget = modal.querySelector('[data-averia-modal-focus]');
+                if (focusTarget && typeof focusTarget.focus === 'function') {
+                    focusTarget.focus();
+                } else {
+                    focusFirstElement();
+                }
+            }
+
+            function handleKeyDown(event) {
+                if (!modal.classList.contains('is-open')) {
+                    return;
+                }
+
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeModal();
+                    return;
+                }
+
+                if (event.key !== 'Tab') {
+                    return;
+                }
+
+                var focusable = Array.prototype.slice.call(modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+                focusable = focusable.filter(function (element) {
+                    if (element.hasAttribute('disabled')) {
+                        return false;
+                    }
+                    if (element.getAttribute('aria-hidden') === 'true') {
+                        return false;
+                    }
+                    if (element.offsetParent === null && element !== document.activeElement) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                if (!focusable.length) {
+                    event.preventDefault();
+                    return;
+                }
+
+                var first = focusable[0];
+                var last = focusable[focusable.length - 1];
+                var active = document.activeElement;
+
+                if (event.shiftKey) {
+                    if (active === first || !modal.contains(active)) {
+                        event.preventDefault();
+                        last.focus();
+                    }
+                } else if (active === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            }
+
+            contactDetailButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    openModal(button);
+                });
+            });
+
+            closeButtons.forEach(function (button) {
+                button.addEventListener('click', closeModal);
+            });
+
+            dismissTargets.forEach(function (target) {
+                target.addEventListener('click', closeModal);
+            });
+
+            document.addEventListener('keydown', handleKeyDown);
+        }
+
         var navigableRows = Array.prototype.slice.call(document.querySelectorAll('.guarantees-table__row[data-expediente-url]'));
 
         navigableRows.forEach(function (row) {

@@ -1,4 +1,6 @@
 <?php
+use GarantiasOnline360VO\Svg;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -36,15 +38,100 @@ $sample_case = [
     'peritaje_required' => true,
     'cover_element'     => 'Por confirmar',
     'license_plate'     => '1234 ABC',
+    'sales_channel'     => [
+        'company'      => 'Concesionario Guay',
+        'contact_name' => 'Pepito Pérez',
+        'avatar'       => [
+            'initials'   => 'CG',
+            'background' => '#1d4ed8',
+            'url'        => '',
+        ],
+        'phone'        => [
+            'display' => '+34 600 123 456',
+            'href'    => 'tel:+34600123456',
+        ],
+        'email'        => [
+            'display' => 'gestion@concesionarioguay.com',
+            'href'    => 'mailto:gestion@concesionarioguay.com',
+            'source'  => __('Correo de notificaciones', 'garantias-online-360vo'),
+        ],
+        'details'      => [
+            [
+                'label' => __('Número de garantías activas', 'garantias-online-360vo'),
+                'value' => '32',
+            ],
+            [
+                'label' => __('Canal de venta', 'garantias-online-360vo'),
+                'value' => __('Concesionario oficial', 'garantias-online-360vo'),
+            ],
+            [
+                'label' => __('Método de pago preferido', 'garantias-online-360vo'),
+                'value' => __('Domiciliación SEPA', 'garantias-online-360vo'),
+            ],
+            [
+                'label' => __('Gestor asignado', 'garantias-online-360vo'),
+                'value' => 'Isabel Gómez',
+            ],
+        ],
+    ],
     'workshop'          => [
         'name'        => 'Talleres Pérez S.L.',
         'contact'     => 'María Pérez',
         'phone'       => '+34 600 000 000',
+        'phone_href'  => 'tel:+34600000000',
         'email'       => 'taller@empresa.com',
+        'email_href'  => 'mailto:taller@empresa.com',
         'address'     => 'Calle de ejemplo, 12, Madrid',
         'type'        => 'Asociado',
         'tax_id'      => 'B12345678',
         'fiscal_name' => 'Talleres Pérez S.L.',
+        'details'     => [
+            [
+                'label' => __('Tipo de taller', 'garantias-online-360vo'),
+                'value' => __('Asociado', 'garantias-online-360vo'),
+            ],
+            [
+                'label' => __('CIF/NIF', 'garantias-online-360vo'),
+                'value' => 'B12345678',
+            ],
+            [
+                'label' => __('Razón social', 'garantias-online-360vo'),
+                'value' => 'Talleres Pérez S.L.',
+            ],
+            [
+                'label' => __('Dirección', 'garantias-online-360vo'),
+                'value' => 'Calle de ejemplo, 12, Madrid',
+            ],
+        ],
+    ],
+    'customer'          => [
+        'name'    => 'Laura García',
+        'phone'   => [
+            'display' => '+34 610 555 982',
+            'href'    => 'tel:+34610555982',
+        ],
+        'email'   => [
+            'display' => 'laura.garcia@email.com',
+            'href'    => 'mailto:laura.garcia@email.com',
+        ],
+        'details' => [
+            [
+                'label' => __('Documento', 'garantias-online-360vo'),
+                'value' => 'DNI 12345678A',
+            ],
+            [
+                'label' => __('Dirección', 'garantias-online-360vo'),
+                'value' => 'Av. de la Innovación, 45, Sevilla',
+            ],
+            [
+                'label' => __('Vehículo contratado', 'garantias-online-360vo'),
+                'value' => 'SUV Premium 24',
+            ],
+            [
+                'label' => __('Garantías totales', 'garantias-online-360vo'),
+                'value' => '2',
+            ],
+        ],
     ],
     'financials'        => [
         'budget'     => '1.200,00 €',
@@ -107,6 +194,45 @@ $empty_messages = [
     'missing'  => __('No existe ninguna garantía para la matrícula indicada.', 'garantias-online-360vo'),
     'no_state' => __('No hay expediente abierto para esta garantía. ¿Deseas abrirlo?', 'garantias-online-360vo'),
 ];
+
+$initials_helper = static function (string $text): string {
+    $text = trim($text);
+    if ($text === '') {
+        return '';
+    }
+
+    $parts = preg_split('/\s+/', $text);
+    $initials = '';
+
+    if (is_array($parts)) {
+        foreach ($parts as $part) {
+            $part = trim((string) $part);
+            if ($part === '') {
+                continue;
+            }
+
+            $initials .= function_exists('mb_substr')
+                ? mb_strtoupper(mb_substr($part, 0, 1))
+                : strtoupper(substr($part, 0, 1));
+
+            if (function_exists('mb_strlen')) {
+                if (mb_strlen($initials) >= 2) {
+                    break;
+                }
+            } elseif (strlen($initials) >= 2) {
+                break;
+            }
+        }
+    }
+
+    if ($initials !== '') {
+        return $initials;
+    }
+
+    return function_exists('mb_strtoupper')
+        ? mb_strtoupper(mb_substr($text, 0, 1))
+        : strtoupper(substr($text, 0, 1));
+};
 ?>
 
 <div class="averia-detail" data-averia-app>
@@ -168,6 +294,101 @@ $empty_messages = [
                 </div>
             </div>
         </div>
+
+        <?php
+        $contact_cards = [
+            [
+                'label'    => __('Canal de venta', 'garantias-online-360vo'),
+                'title'    => $sample_case['sales_channel']['company'],
+                'subtitle' => $sample_case['sales_channel']['contact_name'],
+                'avatar'   => [
+                    'initials'   => $sample_case['sales_channel']['avatar']['initials']
+                        ?: $initials_helper($sample_case['sales_channel']['company']),
+                    'background' => $sample_case['sales_channel']['avatar']['background'] ?? '#1d4ed8',
+                    'url'        => $sample_case['sales_channel']['avatar']['url'] ?? '',
+                ],
+                'phone'    => $sample_case['sales_channel']['phone'],
+                'email'    => $sample_case['sales_channel']['email'],
+                'cta'      => __('Detalles completos del cliente', 'garantias-online-360vo'),
+                'details'  => array_merge(
+                    (array) ($sample_case['sales_channel']['details'] ?? []),
+                    [
+                        [
+                            'label' => __('Correo preferente', 'garantias-online-360vo'),
+                            'value' => trim(
+                                ($sample_case['sales_channel']['email']['display'] ?? '')
+                                . (! empty($sample_case['sales_channel']['email']['source'])
+                                    ? ' — ' . $sample_case['sales_channel']['email']['source']
+                                    : '')
+                            ),
+                        ],
+                        [
+                            'label' => __('Teléfono principal', 'garantias-online-360vo'),
+                            'value' => $sample_case['sales_channel']['phone']['display'] ?? '',
+                        ],
+                    ]
+                ),
+            ],
+            [
+                'label'    => __('Taller', 'garantias-online-360vo'),
+                'title'    => $sample_case['workshop']['name'],
+                'subtitle' => $sample_case['workshop']['contact'],
+                'avatar'   => [
+                    'initials'   => $initials_helper($sample_case['workshop']['name']),
+                    'background' => '#0f766e',
+                    'url'        => '',
+                ],
+                'phone'    => [
+                    'display' => $sample_case['workshop']['phone'],
+                    'href'    => $sample_case['workshop']['phone_href'],
+                ],
+                'email'    => [
+                    'display' => $sample_case['workshop']['email'],
+                    'href'    => $sample_case['workshop']['email_href'],
+                ],
+                'cta'      => __('Detalles completos del taller', 'garantias-online-360vo'),
+                'details'  => array_merge(
+                    (array) ($sample_case['workshop']['details'] ?? []),
+                    [
+                        [
+                            'label' => __('Correo electrónico', 'garantias-online-360vo'),
+                            'value' => $sample_case['workshop']['email'],
+                        ],
+                        [
+                            'label' => __('Teléfono', 'garantias-online-360vo'),
+                            'value' => $sample_case['workshop']['phone'],
+                        ],
+                    ]
+                ),
+            ],
+            [
+                'label'    => __('Cliente final', 'garantias-online-360vo'),
+                'title'    => $sample_case['customer']['name'],
+                'subtitle' => '',
+                'avatar'   => [
+                    'initials'   => $initials_helper($sample_case['customer']['name']),
+                    'background' => '#9333ea',
+                    'url'        => '',
+                ],
+                'phone'    => $sample_case['customer']['phone'],
+                'email'    => $sample_case['customer']['email'],
+                'cta'      => __('Detalles completos del cliente final', 'garantias-online-360vo'),
+                'details'  => array_merge(
+                    (array) ($sample_case['customer']['details'] ?? []),
+                    [
+                        [
+                            'label' => __('Correo electrónico', 'garantias-online-360vo'),
+                            'value' => $sample_case['customer']['email']['display'] ?? '',
+                        ],
+                        [
+                            'label' => __('Teléfono de contacto', 'garantias-online-360vo'),
+                            'value' => $sample_case['customer']['phone']['display'] ?? '',
+                        ],
+                    ]
+                ),
+            ],
+        ];
+        ?>
 
         <div class="averia-detail__columns">
             <aside class="averia-detail__column averia-detail__column--context" aria-label="<?php esc_attr_e('Contexto del expediente', 'garantias-online-360vo'); ?>">
@@ -545,34 +766,91 @@ $empty_messages = [
             </section>
 
             <aside class="averia-detail__column averia-detail__column--support" aria-label="<?php esc_attr_e('Resumen y siguientes pasos', 'garantias-online-360vo'); ?>">
-                <section class="averia-summary-card">
-                    <h2><?php esc_html_e('Resumen rápido', 'garantias-online-360vo'); ?></h2>
-                    <dl class="averia-meta-list averia-meta-list--tight">
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Estado', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['status']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Expediente', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['reference']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Última actualización', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['last_update']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Responsable taller', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['workshop']['contact']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Peritaje', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo $sample_case['peritaje_required'] ? esc_html__('Asignado', 'garantias-online-360vo') : esc_html__('Pendiente', 'garantias-online-360vo'); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Importe autorizado', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['financials']['authorized']); ?></dd>
-                        </div>
-                    </dl>
+                <section class="averia-summary-card averia-summary-card--contacts">
+                    <h2><?php esc_html_e('Contactos clave', 'garantias-online-360vo'); ?></h2>
+                    <div class="averia-contacts">
+                        <?php foreach ($contact_cards as $contact) :
+                            $avatar          = $contact['avatar'] ?? [];
+                            $phone           = $contact['phone'] ?? [];
+                            $email           = $contact['email'] ?? [];
+                            $details         = array_filter($contact['details'] ?? [], static function ($entry) {
+                                return is_array($entry) && ($entry['value'] ?? '') !== '';
+                            });
+                            $avatar_style    = '';
+                            $avatar_has_img  = ! empty($avatar['url']);
+                            if (! empty($avatar['background'])) {
+                                $avatar_style .= 'background-color:' . esc_attr($avatar['background']) . ';';
+                            }
+                            if ($avatar_has_img) {
+                                $avatar_style .= 'background-image:url(' . esc_url($avatar['url']) . ');';
+                            }
+                            ?>
+                            <article
+                                class="averia-contact-card"
+                                data-contact-label="<?php echo esc_attr($contact['label']); ?>"
+                                data-contact-title="<?php echo esc_attr($contact['title']); ?>"
+                                data-contact-subtitle="<?php echo esc_attr($contact['subtitle']); ?>"
+                            >
+                                <header class="averia-contact-card__header">
+                                    <div
+                                        class="averia-contact-card__avatar"
+                                        data-has-image="<?php echo $avatar_has_img ? 'true' : 'false'; ?>"
+                                        <?php if ($avatar_style !== '') : ?>style="<?php echo esc_attr($avatar_style); ?>"<?php endif; ?>
+                                    >
+                                        <?php if (! $avatar_has_img && ! empty($avatar['initials'])) : ?>
+                                            <span aria-hidden="true"><?php echo esc_html($avatar['initials']); ?></span>
+                                        <?php endif; ?>
+                                        <span class="averia-contact-card__avatar-sr"><?php echo esc_html($contact['label'] . ' · ' . $contact['title']); ?></span>
+                                    </div>
+                                    <div class="averia-contact-card__identity">
+                                        <p class="averia-contact-card__label"><?php echo esc_html($contact['label']); ?></p>
+                                        <h3 class="averia-contact-card__title"><?php echo esc_html($contact['title']); ?></h3>
+                                        <?php if (! empty($contact['subtitle'])) : ?>
+                                            <p class="averia-contact-card__subtitle"><?php echo esc_html($contact['subtitle']); ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                </header>
+                                <div class="averia-contact-card__actions">
+                                    <?php if (! empty($phone['href']) && ! empty($phone['display'])) : ?>
+                                        <a class="averia-contact-card__action" href="<?php echo esc_url($phone['href']); ?>">
+                                            <?php echo Svg::icon('phone', 'averia-contact-card__action-icon'); ?>
+                                            <span><?php echo esc_html($phone['display']); ?></span>
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if (! empty($email['href']) && ! empty($email['display'])) : ?>
+                                        <a class="averia-contact-card__action" href="<?php echo esc_url($email['href']); ?>">
+                                            <?php echo Svg::icon('email', 'averia-contact-card__action-icon'); ?>
+                                            <span><?php echo esc_html($email['display']); ?></span>
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                                <footer class="averia-contact-card__footer">
+                                    <button
+                                        type="button"
+                                        class="averia-contact-card__details-trigger"
+                                        data-contact-details
+                                        aria-haspopup="dialog"
+                                        aria-expanded="false"
+                                    >
+                                        <?php echo Svg::icon('info', 'averia-contact-card__details-icon'); ?>
+                                        <span><?php echo esc_html($contact['cta']); ?></span>
+                                    </button>
+                                </footer>
+                                <?php if (! empty($details)) : ?>
+                                    <div class="averia-contact-card__details" hidden>
+                                        <dl class="averia-contact-card__details-list">
+                                            <?php foreach ($details as $detail) : ?>
+                                                <div class="averia-contact-card__details-item">
+                                                    <dt><?php echo esc_html($detail['label'] ?? ''); ?></dt>
+                                                    <dd><?php echo esc_html($detail['value'] ?? ''); ?></dd>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </dl>
+                                    </div>
+                                <?php endif; ?>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
                 </section>
 
                 <section class="averia-summary-card averia-summary-card--secondary">
@@ -593,6 +871,27 @@ $empty_messages = [
                     </ul>
                 </section>
             </aside>
+        </div>
+
+        <div class="averia-modal" data-averia-modal hidden aria-hidden="true">
+            <div class="averia-modal__overlay" data-averia-modal-dismiss></div>
+            <div class="averia-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="averia-modal-title" aria-describedby="averia-modal-body">
+                <button
+                    type="button"
+                    class="averia-modal__close"
+                    data-averia-modal-close
+                    data-averia-modal-focus
+                    aria-label="<?php esc_attr_e('Cerrar detalles del contacto', 'garantias-online-360vo'); ?>"
+                >
+                    <?php echo Svg::icon('close', 'averia-modal__close-icon'); ?>
+                </button>
+                <div class="averia-modal__header">
+                    <span class="averia-modal__tag" data-averia-modal-tag hidden></span>
+                    <h2 class="averia-modal__title" id="averia-modal-title" data-averia-modal-title></h2>
+                    <p class="averia-modal__subtitle" data-averia-modal-subtitle hidden></p>
+                </div>
+                <div class="averia-modal__body" id="averia-modal-body" data-averia-modal-content></div>
+            </div>
         </div>
     <?php endif; ?>
 </div>
