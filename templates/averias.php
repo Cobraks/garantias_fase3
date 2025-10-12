@@ -323,7 +323,12 @@ if ($can_use_acf && post_type_exists(GuaranteeCPT::POST_TYPE)) {
         $taller_responsable  = '';
 
         if ($taller_encargado === 'taller_asociado' && $vendor_id > 0) {
-            $perfil_taller = get_field('taller', 'user_' . $vendor_id);
+            $servicios_group = get_field('servicios', 'user_' . $vendor_id);
+            if (! is_array($servicios_group)) {
+                $servicios_group = [];
+            }
+
+            $perfil_taller = $servicios_group['taller'] ?? [];
             if (! is_array($perfil_taller)) {
                 $perfil_taller = [];
             }
