@@ -15,6 +15,44 @@ $is_dashboard_page  = false;
 );
 ?>
 
+<?php
+$averias_sort_presets = [
+    [
+        'key'        => 'apertura_desc',
+        'label'      => __('Fecha de apertura más reciente', 'garantias-online-360vo'),
+        'order_by'   => 'apertura',
+        'order'      => 'desc',
+        'is_default' => true,
+    ],
+    [
+        'key'      => 'apertura_asc',
+        'label'    => __('Fecha de apertura más antigua', 'garantias-online-360vo'),
+        'order_by' => 'apertura',
+        'order'    => 'asc',
+    ],
+    [
+        'key'      => 'importe_desc',
+        'label'    => __('Mayor importe autorizado', 'garantias-online-360vo'),
+        'order_by' => 'importe_autorizado',
+        'order'    => 'desc',
+    ],
+    [
+        'key'      => 'importe_asc',
+        'label'    => __('Menor importe autorizado', 'garantias-online-360vo'),
+        'order_by' => 'importe_autorizado',
+        'order'    => 'asc',
+    ],
+];
+
+$averias_default_sort = current(array_filter($averias_sort_presets, static fn($preset) => ! empty($preset['is_default'])));
+$averias_default_sort_key = is_array($averias_default_sort) && ! empty($averias_default_sort['key'])
+    ? $averias_default_sort['key']
+    : 'apertura_desc';
+$averias_default_sort_label = is_array($averias_default_sort) && ! empty($averias_default_sort['label'])
+    ? $averias_default_sort['label']
+    : __('Fecha de apertura más reciente', 'garantias-online-360vo');
+?>
+
 <div class="guarantees-list__filters guarantees-list__filters--averias" style="view-transition-name: filtros-averias">
     <div class="guarantees-list__filters-row">
         <div class="guarantees-list__search-container">
@@ -54,23 +92,68 @@ $is_dashboard_page  = false;
             <option value="climatizacion"><?php esc_html_e('Climatización', 'garantias-online-360vo'); ?></option>
         </select>
 
-        <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>" disabled>
-            <option value="">
-                <?php esc_html_e('Todos los talleres', 'garantias-online-360vo'); ?>
-            </option>
-            <option value="talleres_ruiz"><?php esc_html_e('Talleres Ruiz', 'garantias-online-360vo'); ?></option>
-            <option value="servicepoint_diesel"><?php esc_html_e('ServicePoint Diésel', 'garantias-online-360vo'); ?></option>
-            <option value="electroauto_lp"><?php esc_html_e('ElectroAuto Las Palmas', 'garantias-online-360vo'); ?></option>
-            <option value="cooltech_garage"><?php esc_html_e('CoolTech Garage', 'garantias-online-360vo'); ?></option>
-        </select>
+        <div class="guarantees-list__filter-wrapper guarantees-list__filter-wrapper--clients">
+            <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Clientes', 'garantias-online-360vo'); ?>" disabled>
+                <option value="">
+                    <?php esc_html_e('Todos los clientes', 'garantias-online-360vo'); ?>
+                </option>
+                <option value="motorsfera_valencia"><?php esc_html_e('MotorSfera Valencia', 'garantias-online-360vo'); ?></option>
+                <option value="autopremium_madrid"><?php esc_html_e('AutoPremium Madrid', 'garantias-online-360vo'); ?></option>
+                <option value="mobility_cars_bcn"><?php esc_html_e('Mobility Cars BCN', 'garantias-online-360vo'); ?></option>
+                <option value="ecodrive_canarias"><?php esc_html_e('EcoDrive Canarias', 'garantias-online-360vo'); ?></option>
+                <option value="redcar_sevilla"><?php esc_html_e('RedCar Sevilla', 'garantias-online-360vo'); ?></option>
+            </select>
+        </div>
 
         <div class="guarantees-list__filters-actions">
-            <button type="button" class="guarantees-list__reset-btn" disabled>
+            <button
+                type="button"
+                class="guarantees-list__reset-btn"
+                data-reset-filters
+                hidden>
                 <?php echo Svg::icon('filter_reset', 'guarantees-list__reset-icon'); ?>
                 <span class="guarantees-list__reset-label">
                     <?php esc_html_e('Reiniciar filtros', 'garantias-online-360vo'); ?>
                 </span>
             </button>
+            <div class="guarantees-list__order" data-order-root>
+                <button
+                    type="button"
+                    class="guarantees-list__order-btn"
+                    data-order-toggle
+                    data-default-sort="<?php echo esc_attr($averias_default_sort_key); ?>"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                    aria-controls="averias-order-menu">
+                    <?php echo Svg::icon('sort_lines', 'guarantees-list__order-icon'); ?>
+                    <span class="guarantees-list__order-current" data-order-label>
+                        <?php echo esc_html($averias_default_sort_label); ?>
+                    </span>
+                    <span class="guarantees-list__order-caret" aria-hidden="true">
+                        <?php echo Svg::icon('arrow_drop_down'); ?>
+                    </span>
+                </button>
+                <div
+                    class="guarantees-list__order-menu"
+                    id="averias-order-menu"
+                    role="menu"
+                    data-order-menu
+                    hidden>
+                    <?php foreach ($averias_sort_presets as $preset) : ?>
+                        <button
+                            type="button"
+                            class="guarantees-list__order-option<?php echo ! empty($preset['is_default']) ? ' is-active' : ''; ?>"
+                            role="menuitemradio"
+                            aria-checked="<?php echo ! empty($preset['is_default']) ? 'true' : 'false'; ?>"
+                            data-sort-key="<?php echo esc_attr($preset['key']); ?>"
+                            data-order-by="<?php echo esc_attr($preset['order_by']); ?>"
+                            data-order-direction="<?php echo esc_attr($preset['order']); ?>"
+                            <?php echo ! empty($preset['is_default']) ? 'data-default="true"' : ''; ?>>
+                            <?php echo esc_html($preset['label']); ?>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -93,13 +176,13 @@ $is_dashboard_page  = false;
                 <tr>
                     <th scope="col"><?php esc_html_e('Vehículo', 'garantias-online-360vo'); ?></th>
                     <th scope="col"><?php esc_html_e('Estado avería', 'garantias-online-360vo'); ?></th>
-                    <th scope="col"><?php esc_html_e('Fecha de apertura', 'garantias-online-360vo'); ?></th>
+                    <th scope="col"><?php esc_html_e('Apertura', 'garantias-online-360vo'); ?></th>
                     <th scope="col"><?php esc_html_e('Tipo de avería', 'garantias-online-360vo'); ?></th>
-                    <th scope="col" class="guarantees-table__header--amount"><?php esc_html_e('Presupuesto recibido', 'garantias-online-360vo'); ?></th>
-                    <th scope="col" class="guarantees-table__header--amount"><?php esc_html_e('Importe autorizado', 'garantias-online-360vo'); ?></th>
+                    <th scope="col" class="guarantees-table__header--amount"><?php esc_html_e('Ppto. Recibido', 'garantias-online-360vo'); ?></th>
+                    <th scope="col" class="guarantees-table__header--amount"><?php esc_html_e('Imp. Autorizado', 'garantias-online-360vo'); ?></th>
                     <th scope="col"><?php esc_html_e('Cliente', 'garantias-online-360vo'); ?></th>
-                    <th scope="col"><?php esc_html_e('Taller responsable', 'garantias-online-360vo'); ?></th>
-                    <th scope="col"><?php esc_html_e('Peritaje V/F', 'garantias-online-360vo'); ?></th>
+                    <th scope="col"><?php esc_html_e('Taller', 'garantias-online-360vo'); ?></th>
+                    <th scope="col"><?php esc_html_e('Peritaje', 'garantias-online-360vo'); ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -113,16 +196,16 @@ $is_dashboard_page  = false;
                     <td data-label="<?php esc_attr_e('Estado avería', 'garantias-online-360vo'); ?>">
                         <span class="averias-badge averias-badge--notificacion"><?php esc_html_e('Notificación de avería', 'garantias-online-360vo'); ?></span>
                     </td>
-                    <td data-label="<?php esc_attr_e('Fecha de apertura', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Apertura', 'garantias-online-360vo'); ?>">
                         <time datetime="2025-02-18">18/02/2025</time>
                     </td>
                     <td data-label="<?php esc_attr_e('Tipo de avería', 'garantias-online-360vo'); ?>">
                         <?php esc_html_e('Sistema eléctrico', 'garantias-online-360vo'); ?>
                     </td>
-                    <td data-label="<?php esc_attr_e('Presupuesto recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                    <td data-label="<?php esc_attr_e('Ppto. Recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
                         1.420,00&nbsp;€
                     </td>
-                    <td data-label="<?php esc_attr_e('Importe autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                    <td data-label="<?php esc_attr_e('Imp. Autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
                         1.420,00&nbsp;€
                     </td>
                     <td data-label="<?php esc_attr_e('Cliente', 'garantias-online-360vo'); ?>">
@@ -131,13 +214,13 @@ $is_dashboard_page  = false;
                             <div class="vendedor__type">Profesional Premium</div>
                         </div>
                     </td>
-                    <td data-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Taller', 'garantias-online-360vo'); ?>">
                         <div class="guarantees-table__vendedor">
                             <div class="vendedor__name">HiTech Motors</div>
                             <div class="vendedor__type">Laura Benítez</div>
                         </div>
                     </td>
-                    <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Peritaje', 'garantias-online-360vo'); ?>">
                         <label class="averias-checkbox">
                             <input type="checkbox" checked disabled>
                             <span class="averias-checkbox__control" aria-hidden="true"></span>
@@ -155,16 +238,16 @@ $is_dashboard_page  = false;
                     <td data-label="<?php esc_attr_e('Estado avería', 'garantias-online-360vo'); ?>">
                         <span class="averias-badge averias-badge--pendiente-taller"><?php esc_html_e('Pendiente de taller', 'garantias-online-360vo'); ?></span>
                     </td>
-                    <td data-label="<?php esc_attr_e('Fecha de apertura', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Apertura', 'garantias-online-360vo'); ?>">
                         <time datetime="2025-02-12">12/02/2025</time>
                     </td>
                     <td data-label="<?php esc_attr_e('Tipo de avería', 'garantias-online-360vo'); ?>">
                         <?php esc_html_e('Motor', 'garantias-online-360vo'); ?>
                     </td>
-                    <td data-label="<?php esc_attr_e('Presupuesto recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                    <td data-label="<?php esc_attr_e('Ppto. Recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
                         2.450,00&nbsp;€
                     </td>
-                    <td data-label="<?php esc_attr_e('Importe autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                    <td data-label="<?php esc_attr_e('Imp. Autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
                         1.800,00&nbsp;€
                     </td>
                     <td data-label="<?php esc_attr_e('Cliente', 'garantias-online-360vo'); ?>">
@@ -173,13 +256,13 @@ $is_dashboard_page  = false;
                             <div class="vendedor__type">Profesional Gold</div>
                         </div>
                     </td>
-                    <td data-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Taller', 'garantias-online-360vo'); ?>">
                         <div class="guarantees-table__vendedor">
                             <div class="vendedor__name">Talleres Ruiz</div>
                             <div class="vendedor__type">Marta Ruiz</div>
                         </div>
                     </td>
-                    <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Peritaje', 'garantias-online-360vo'); ?>">
                         <label class="averias-checkbox">
                             <input type="checkbox" checked disabled>
                             <span class="averias-checkbox__control" aria-hidden="true"></span>
@@ -197,16 +280,16 @@ $is_dashboard_page  = false;
                     <td data-label="<?php esc_attr_e('Estado avería', 'garantias-online-360vo'); ?>">
                         <span class="averias-badge averias-badge--espera"><?php esc_html_e('En espera de información', 'garantias-online-360vo'); ?></span>
                     </td>
-                    <td data-label="<?php esc_attr_e('Fecha de apertura', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Apertura', 'garantias-online-360vo'); ?>">
                         <time datetime="2025-01-28">28/01/2025</time>
                     </td>
                     <td data-label="<?php esc_attr_e('Tipo de avería', 'garantias-online-360vo'); ?>">
                         <?php esc_html_e('Transmisión', 'garantias-online-360vo'); ?>
                     </td>
-                    <td data-label="<?php esc_attr_e('Presupuesto recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                    <td data-label="<?php esc_attr_e('Ppto. Recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
                         3.280,00&nbsp;€
                     </td>
-                    <td data-label="<?php esc_attr_e('Importe autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                    <td data-label="<?php esc_attr_e('Imp. Autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
                         2.950,00&nbsp;€
                     </td>
                     <td data-label="<?php esc_attr_e('Cliente', 'garantias-online-360vo'); ?>">
@@ -215,13 +298,13 @@ $is_dashboard_page  = false;
                             <div class="vendedor__type">Profesional Premium</div>
                         </div>
                     </td>
-                    <td data-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Taller', 'garantias-online-360vo'); ?>">
                         <div class="guarantees-table__vendedor">
                             <div class="vendedor__name">ServicePoint Diésel</div>
                             <div class="vendedor__type">Álvaro Peña</div>
                         </div>
                     </td>
-                    <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Peritaje', 'garantias-online-360vo'); ?>">
                         <label class="averias-checkbox">
                             <input type="checkbox" disabled>
                             <span class="averias-checkbox__control" aria-hidden="true"></span>
@@ -239,16 +322,16 @@ $is_dashboard_page  = false;
                     <td data-label="<?php esc_attr_e('Estado avería', 'garantias-online-360vo'); ?>">
                         <span class="averias-badge averias-badge--cerrada"><?php esc_html_e('Cerrada', 'garantias-online-360vo'); ?></span>
                     </td>
-                    <td data-label="<?php esc_attr_e('Fecha de apertura', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Apertura', 'garantias-online-360vo'); ?>">
                         <time datetime="2024-12-19">19/12/2024</time>
                     </td>
                     <td data-label="<?php esc_attr_e('Tipo de avería', 'garantias-online-360vo'); ?>">
                         <?php esc_html_e('Sistema eléctrico', 'garantias-online-360vo'); ?>
                     </td>
-                    <td data-label="<?php esc_attr_e('Presupuesto recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                    <td data-label="<?php esc_attr_e('Ppto. Recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
                         1.150,00&nbsp;€
                     </td>
-                    <td data-label="<?php esc_attr_e('Importe autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                    <td data-label="<?php esc_attr_e('Imp. Autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
                         1.150,00&nbsp;€
                     </td>
                     <td data-label="<?php esc_attr_e('Cliente', 'garantias-online-360vo'); ?>">
@@ -257,13 +340,13 @@ $is_dashboard_page  = false;
                             <div class="vendedor__type">Profesional Estándar</div>
                         </div>
                     </td>
-                    <td data-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Taller', 'garantias-online-360vo'); ?>">
                         <div class="guarantees-table__vendedor">
                             <div class="vendedor__name">ElectroAuto Las Palmas</div>
                             <div class="vendedor__type">Noelia Martín</div>
                         </div>
                     </td>
-                    <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Peritaje', 'garantias-online-360vo'); ?>">
                         <label class="averias-checkbox">
                             <input type="checkbox" checked disabled>
                             <span class="averias-checkbox__control" aria-hidden="true"></span>
@@ -281,16 +364,16 @@ $is_dashboard_page  = false;
                     <td data-label="<?php esc_attr_e('Estado avería', 'garantias-online-360vo'); ?>">
                         <span class="averias-badge averias-badge--abierta"><?php esc_html_e('Abierta', 'garantias-online-360vo'); ?></span>
                     </td>
-                    <td data-label="<?php esc_attr_e('Fecha de apertura', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Apertura', 'garantias-online-360vo'); ?>">
                         <time datetime="2025-02-03">03/02/2025</time>
                     </td>
                     <td data-label="<?php esc_attr_e('Tipo de avería', 'garantias-online-360vo'); ?>">
                         <?php esc_html_e('Sistema de refrigeración', 'garantias-online-360vo'); ?>
                     </td>
-                    <td data-label="<?php esc_attr_e('Presupuesto recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                    <td data-label="<?php esc_attr_e('Ppto. Recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
                         980,00&nbsp;€
                     </td>
-                    <td data-label="<?php esc_attr_e('Importe autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                    <td data-label="<?php esc_attr_e('Imp. Autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
                         750,00&nbsp;€
                     </td>
                     <td data-label="<?php esc_attr_e('Cliente', 'garantias-online-360vo'); ?>">
@@ -299,13 +382,13 @@ $is_dashboard_page  = false;
                             <div class="vendedor__type">Profesional Silver</div>
                         </div>
                     </td>
-                    <td data-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Taller', 'garantias-online-360vo'); ?>">
                         <div class="guarantees-table__vendedor">
                             <div class="vendedor__name">CoolTech Garage</div>
                             <div class="vendedor__type">Sergio Vidal</div>
                         </div>
                     </td>
-                    <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
+                    <td data-label="<?php esc_attr_e('Peritaje', 'garantias-online-360vo'); ?>">
                         <label class="averias-checkbox">
                             <input type="checkbox" disabled>
                             <span class="averias-checkbox__control" aria-hidden="true"></span>
