@@ -12,26 +12,12 @@
 
 /* Estado base y overrides frente a mis_garantias */
 .body--averia-detail {
-    overflow-y: auto;
-    overflow-x: hidden;
     background: var(--background, var(--go-color-f8fafc, #f8fafc));
-}
-
-.body--averia-detail .container {
-    position: static;
-    top: auto;
-    bottom: auto;
-    display: block;
-    min-height: 100vh;
-    overflow: visible;
-    background: transparent;
+    padding-bottom: 0;
 }
 
 .body--averia-detail .main-grid {
-    display: block;
-    padding-top: calc(var(--alturaHeader) + var(--spacing-3));
-    padding-bottom: calc(var(--alturaFooter) + var(--spacing-5));
-    padding-inline: clamp(var(--spacing-2), 4vw, var(--spacing-5));
+    padding: 0;
 }
 
 .body--averia-detail footer {
@@ -52,6 +38,7 @@
     padding: 0;
     display: grid;
     gap: var(--spacing-3);
+    row-gap: 0;
     align-content: start;
 }
 
@@ -97,7 +84,7 @@
 .averia-detail__filters {
     margin-bottom: 0;
     position: sticky;
-    top: calc(var(--alturaHeader) + var(--spacing-2));
+    top: 0;
     z-index: 40;
     backdrop-filter: blur(12px);
     background: color-mix(in srgb, var(--surface) 90%, transparent);
@@ -190,7 +177,7 @@ body[data-theme="dark"] .averia-tabs__button {
 .averia-detail__columns {
     display: grid;
     gap: var(--spacing-3);
-    padding-inline: clamp(var(--spacing-1), 2vw, var(--spacing-3));
+    padding-inline: 0;
     padding-top: var(--spacing-3);
 }
 
