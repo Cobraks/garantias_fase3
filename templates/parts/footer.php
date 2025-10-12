@@ -126,6 +126,10 @@ if (! empty($is_add_guarantee)) {
     <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 <?php endif; ?>
 
+<?php if ($is_breakdowns_page ?? false) : ?>
+    <script src="<?php echo esc_url(plugins_url('assets/js/averias.js', GARANTIAS360VO__FILE__)); ?>" defer></script>
+<?php endif; ?>
+
 <?php if ($is_clients_page ?? false) : ?>
     <?php
     if (!isset($current_user) || !($current_user instanceof WP_User)) {

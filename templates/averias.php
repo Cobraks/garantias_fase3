@@ -36,6 +36,7 @@ $is_dashboard_page  = false;
             <option value="">
                 <?php esc_html_e('Todos los estados', 'garantias-online-360vo'); ?>
             </option>
+            <option value="notificacion"><?php esc_html_e('Notificación de avería', 'garantias-online-360vo'); ?></option>
             <option value="abierta"><?php esc_html_e('Abierta', 'garantias-online-360vo'); ?></option>
             <option value="pendiente_taller"><?php esc_html_e('Pendiente de taller', 'garantias-online-360vo'); ?></option>
             <option value="espera_informacion"><?php esc_html_e('En espera de información', 'garantias-online-360vo'); ?></option>
@@ -78,15 +79,15 @@ $is_dashboard_page  = false;
     <section class="guarantees-list guarantees-list--averias">
         <table class="guarantees-table guarantees-table--averias" style="view-transition-name: averias-table">
             <colgroup>
-                <col class="guarantees-table__col guarantees-table__col--vehiculo">
-                <col class="guarantees-table__col guarantees-table__col--estado">
-                <col class="guarantees-table__col guarantees-table__col--fecha">
-                <col class="guarantees-table__col guarantees-table__col--tipo">
-                <col class="guarantees-table__col guarantees-table__col--importe">
-                <col class="guarantees-table__col guarantees-table__col--importe">
-                <col class="guarantees-table__col guarantees-table__col--cliente">
-                <col class="guarantees-table__col guarantees-table__col--taller">
-                <col class="guarantees-table__col guarantees-table__col--peritaje">
+                <col class="guarantees-table__col guarantees-table__col--vehiculo" data-min-width="220" data-max-width="380" data-default-width="260">
+                <col class="guarantees-table__col guarantees-table__col--estado" data-min-width="160" data-max-width="320" data-default-width="200">
+                <col class="guarantees-table__col guarantees-table__col--fecha" data-min-width="160" data-max-width="260" data-default-width="190">
+                <col class="guarantees-table__col guarantees-table__col--tipo" data-min-width="180" data-max-width="340" data-default-width="210">
+                <col class="guarantees-table__col guarantees-table__col--importe" data-min-width="150" data-max-width="260" data-default-width="190">
+                <col class="guarantees-table__col guarantees-table__col--importe" data-min-width="150" data-max-width="260" data-default-width="190">
+                <col class="guarantees-table__col guarantees-table__col--cliente" data-min-width="210" data-max-width="360" data-default-width="240">
+                <col class="guarantees-table__col guarantees-table__col--taller" data-min-width="210" data-max-width="360" data-default-width="240">
+                <col class="guarantees-table__col guarantees-table__col--peritaje" data-min-width="140" data-max-width="200" data-default-width="150">
             </colgroup>
             <thead>
                 <tr>
@@ -102,6 +103,48 @@ $is_dashboard_page  = false;
                 </tr>
             </thead>
             <tbody>
+                <tr class="guarantees-table__row">
+                    <td data-label="<?php esc_attr_e('Vehículo', 'garantias-online-360vo'); ?>">
+                        <div class="guarantees-table__vehiculo">
+                            <div class="vehiculo__mat">4567 LRT</div>
+                            <div class="vehiculo__marca_modelo">Hyundai Tucson · 1.6 T-GDi</div>
+                        </div>
+                    </td>
+                    <td data-label="<?php esc_attr_e('Estado avería', 'garantias-online-360vo'); ?>">
+                        <span class="averias-badge averias-badge--notificacion"><?php esc_html_e('Notificación de avería', 'garantias-online-360vo'); ?></span>
+                    </td>
+                    <td data-label="<?php esc_attr_e('Fecha de apertura', 'garantias-online-360vo'); ?>">
+                        <time datetime="2025-02-18">18/02/2025</time>
+                    </td>
+                    <td data-label="<?php esc_attr_e('Tipo de avería', 'garantias-online-360vo'); ?>">
+                        <?php esc_html_e('Sistema eléctrico', 'garantias-online-360vo'); ?>
+                    </td>
+                    <td data-label="<?php esc_attr_e('Presupuesto recibido', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                        1.420,00&nbsp;€
+                    </td>
+                    <td data-label="<?php esc_attr_e('Importe autorizado', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--amount">
+                        1.420,00&nbsp;€
+                    </td>
+                    <td data-label="<?php esc_attr_e('Cliente', 'garantias-online-360vo'); ?>">
+                        <div class="guarantees-table__vendedor">
+                            <div class="vendedor__name">MotorSfera Valencia</div>
+                            <div class="vendedor__type">Profesional Premium</div>
+                        </div>
+                    </td>
+                    <td data-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>">
+                        <div class="guarantees-table__vendedor">
+                            <div class="vendedor__name">HiTech Motors</div>
+                            <div class="vendedor__type">Laura Benítez</div>
+                        </div>
+                    </td>
+                    <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
+                        <label class="averias-checkbox">
+                            <input type="checkbox" checked disabled>
+                            <span class="averias-checkbox__control" aria-hidden="true"></span>
+                            <span class="screen-reader-text"><?php esc_html_e('Peritaje verificado', 'garantias-online-360vo'); ?></span>
+                        </label>
+                    </td>
+                </tr>
                 <tr class="guarantees-table__row">
                     <td data-label="<?php esc_attr_e('Vehículo', 'garantias-online-360vo'); ?>">
                         <div class="guarantees-table__vehiculo">
@@ -133,7 +176,7 @@ $is_dashboard_page  = false;
                     <td data-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>">
                         <div class="guarantees-table__vendedor">
                             <div class="vendedor__name">Talleres Ruiz</div>
-                            <div class="vendedor__type">Responsable: Marta Ruiz</div>
+                            <div class="vendedor__type">Marta Ruiz</div>
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
@@ -175,7 +218,7 @@ $is_dashboard_page  = false;
                     <td data-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>">
                         <div class="guarantees-table__vendedor">
                             <div class="vendedor__name">ServicePoint Diésel</div>
-                            <div class="vendedor__type">Responsable: Álvaro Peña</div>
+                            <div class="vendedor__type">Álvaro Peña</div>
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
@@ -217,7 +260,7 @@ $is_dashboard_page  = false;
                     <td data-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>">
                         <div class="guarantees-table__vendedor">
                             <div class="vendedor__name">ElectroAuto Las Palmas</div>
-                            <div class="vendedor__type">Responsable: Noelia Martín</div>
+                            <div class="vendedor__type">Noelia Martín</div>
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
@@ -259,7 +302,7 @@ $is_dashboard_page  = false;
                     <td data-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>">
                         <div class="guarantees-table__vendedor">
                             <div class="vendedor__name">CoolTech Garage</div>
-                            <div class="vendedor__type">Responsable: Sergio Vidal</div>
+                            <div class="vendedor__type">Sergio Vidal</div>
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
@@ -337,9 +380,14 @@ $is_dashboard_page  = false;
         white-space: nowrap;
     }
 
-    .averias-badge--abierta {
-        background: rgba(37, 143, 227, 0.12);
-        color: rgb(37, 143, 227);
+    .averias-badge--abierta,
+    .averias-badge--notificacion {
+        background: rgba(227, 68, 68, 0.18);
+        color: rgb(176, 35, 35);
+    }
+
+    .averias-badge--notificacion {
+        font-variant-numeric: tabular-nums;
     }
 
     .averias-badge--pendiente-taller {
