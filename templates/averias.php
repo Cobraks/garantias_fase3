@@ -3,6 +3,8 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+use GarantiasOnline360VO\Svg;
+
 $is_breakdowns_page = true;
 $is_auth_page       = false;
 $is_dashboard_page  = false;
@@ -13,14 +15,79 @@ $is_dashboard_page  = false;
 );
 ?>
 
-<header class="averias-page__header">
-    <h1 class="averias-page__title"><?php esc_html_e('Averías', 'garantias-online-360vo'); ?></h1>
-    <p class="averias-page__subtitle"><?php esc_html_e('Resumen de averías gestionadas recientemente.', 'garantias-online-360vo'); ?></p>
-</header>
+<div class="guarantees-list__filters guarantees-list__filters--averias" style="view-transition-name: filtros-averias">
+    <div class="guarantees-list__filters-row">
+        <div class="guarantees-list__search-container">
+            <span class="guarantees-list__search-icon" aria-hidden="true">
+                <?php echo Svg::icon('search'); ?>
+            </span>
+            <input
+                type="text"
+                class="guarantees-list__search"
+                placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
+                aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>"
+                disabled>
+            <span class="guarantees-list__close-icon" aria-hidden="true">
+                <?php echo Svg::icon('cerrar'); ?>
+            </span>
+        </div>
+
+        <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Estado de la avería', 'garantias-online-360vo'); ?>" disabled>
+            <option value="">
+                <?php esc_html_e('Todos los estados', 'garantias-online-360vo'); ?>
+            </option>
+            <option value="abierta"><?php esc_html_e('Abierta', 'garantias-online-360vo'); ?></option>
+            <option value="pendiente_taller"><?php esc_html_e('Pendiente de taller', 'garantias-online-360vo'); ?></option>
+            <option value="espera_informacion"><?php esc_html_e('En espera de información', 'garantias-online-360vo'); ?></option>
+            <option value="cerrada"><?php esc_html_e('Cerrada', 'garantias-online-360vo'); ?></option>
+        </select>
+
+        <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Tipo de avería', 'garantias-online-360vo'); ?>" disabled>
+            <option value="">
+                <?php esc_html_e('Todos los tipos de avería', 'garantias-online-360vo'); ?>
+            </option>
+            <option value="motor"><?php esc_html_e('Motor', 'garantias-online-360vo'); ?></option>
+            <option value="transmision"><?php esc_html_e('Transmisión', 'garantias-online-360vo'); ?></option>
+            <option value="electrico"><?php esc_html_e('Sistema eléctrico', 'garantias-online-360vo'); ?></option>
+            <option value="refrigeracion"><?php esc_html_e('Sistema de refrigeración', 'garantias-online-360vo'); ?></option>
+            <option value="climatizacion"><?php esc_html_e('Climatización', 'garantias-online-360vo'); ?></option>
+        </select>
+
+        <select class="guarantees-list__filter" aria-label="<?php esc_attr_e('Taller responsable', 'garantias-online-360vo'); ?>" disabled>
+            <option value="">
+                <?php esc_html_e('Todos los talleres', 'garantias-online-360vo'); ?>
+            </option>
+            <option value="talleres_ruiz"><?php esc_html_e('Talleres Ruiz', 'garantias-online-360vo'); ?></option>
+            <option value="servicepoint_diesel"><?php esc_html_e('ServicePoint Diésel', 'garantias-online-360vo'); ?></option>
+            <option value="electroauto_lp"><?php esc_html_e('ElectroAuto Las Palmas', 'garantias-online-360vo'); ?></option>
+            <option value="cooltech_garage"><?php esc_html_e('CoolTech Garage', 'garantias-online-360vo'); ?></option>
+        </select>
+
+        <div class="guarantees-list__filters-actions">
+            <button type="button" class="guarantees-list__reset-btn" disabled>
+                <?php echo Svg::icon('filter_reset', 'guarantees-list__reset-icon'); ?>
+                <span class="guarantees-list__reset-label">
+                    <?php esc_html_e('Reiniciar filtros', 'garantias-online-360vo'); ?>
+                </span>
+            </button>
+        </div>
+    </div>
+</div>
 
 <div class="guarantees-container guarantees-container--averias">
     <section class="guarantees-list guarantees-list--averias">
-        <table class="guarantees-table" style="view-transition-name: averias-table">
+        <table class="guarantees-table guarantees-table--averias" style="view-transition-name: averias-table">
+            <colgroup>
+                <col class="guarantees-table__col guarantees-table__col--vehiculo">
+                <col class="guarantees-table__col guarantees-table__col--estado">
+                <col class="guarantees-table__col guarantees-table__col--fecha">
+                <col class="guarantees-table__col guarantees-table__col--tipo">
+                <col class="guarantees-table__col guarantees-table__col--importe">
+                <col class="guarantees-table__col guarantees-table__col--importe">
+                <col class="guarantees-table__col guarantees-table__col--cliente">
+                <col class="guarantees-table__col guarantees-table__col--taller">
+                <col class="guarantees-table__col guarantees-table__col--peritaje">
+            </colgroup>
             <thead>
                 <tr>
                     <th scope="col"><?php esc_html_e('Vehículo', 'garantias-online-360vo'); ?></th>
@@ -32,7 +99,6 @@ $is_dashboard_page  = false;
                     <th scope="col"><?php esc_html_e('Cliente', 'garantias-online-360vo'); ?></th>
                     <th scope="col"><?php esc_html_e('Taller responsable', 'garantias-online-360vo'); ?></th>
                     <th scope="col"><?php esc_html_e('Peritaje V/F', 'garantias-online-360vo'); ?></th>
-                    <th scope="col" class="guarantees-table__header--actions"><?php esc_html_e('Acciones', 'garantias-online-360vo'); ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -44,9 +110,7 @@ $is_dashboard_page  = false;
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Estado avería', 'garantias-online-360vo'); ?>">
-                        <div class="guarantees-table__estado">
-                            <span class="guarantees-list__badge guarantees-list__badge--sin-finalizar"><?php esc_html_e('Pendiente de diagnóstico', 'garantias-online-360vo'); ?></span>
-                        </div>
+                        <span class="averias-badge averias-badge--pendiente-taller"><?php esc_html_e('Pendiente de taller', 'garantias-online-360vo'); ?></span>
                     </td>
                     <td data-label="<?php esc_attr_e('Fecha de apertura', 'garantias-online-360vo'); ?>">
                         <time datetime="2025-02-12">12/02/2025</time>
@@ -73,12 +137,11 @@ $is_dashboard_page  = false;
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
-                        <div class="guarantees-table__peritaje">
-                            <span class="guarantees-list__badge guarantees-list__badge--activada"><?php esc_html_e('Verificado', 'garantias-online-360vo'); ?></span>
-                        </div>
-                    </td>
-                    <td data-label="<?php esc_attr_e('Acciones', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--actions">
-                        <a href="#" class="guarantees-table__action-btn"><?php esc_html_e('Ver expediente', 'garantias-online-360vo'); ?></a>
+                        <label class="averias-checkbox">
+                            <input type="checkbox" checked disabled>
+                            <span class="averias-checkbox__control" aria-hidden="true"></span>
+                            <span class="screen-reader-text"><?php esc_html_e('Peritaje verificado', 'garantias-online-360vo'); ?></span>
+                        </label>
                     </td>
                 </tr>
                 <tr class="guarantees-table__row">
@@ -89,9 +152,7 @@ $is_dashboard_page  = false;
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Estado avería', 'garantias-online-360vo'); ?>">
-                        <div class="guarantees-table__estado">
-                            <span class="guarantees-list__badge guarantees-list__badge--pendiente-pago"><?php esc_html_e('En aprobación', 'garantias-online-360vo'); ?></span>
-                        </div>
+                        <span class="averias-badge averias-badge--espera"><?php esc_html_e('En espera de información', 'garantias-online-360vo'); ?></span>
                     </td>
                     <td data-label="<?php esc_attr_e('Fecha de apertura', 'garantias-online-360vo'); ?>">
                         <time datetime="2025-01-28">28/01/2025</time>
@@ -118,12 +179,11 @@ $is_dashboard_page  = false;
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
-                        <div class="guarantees-table__peritaje">
-                            <span class="guarantees-list__badge guarantees-list__badge--validacion-pendiente"><?php esc_html_e('En validación', 'garantias-online-360vo'); ?></span>
-                        </div>
-                    </td>
-                    <td data-label="<?php esc_attr_e('Acciones', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--actions">
-                        <a href="#" class="guarantees-table__action-btn"><?php esc_html_e('Ver expediente', 'garantias-online-360vo'); ?></a>
+                        <label class="averias-checkbox">
+                            <input type="checkbox" disabled>
+                            <span class="averias-checkbox__control" aria-hidden="true"></span>
+                            <span class="screen-reader-text"><?php esc_html_e('Peritaje pendiente', 'garantias-online-360vo'); ?></span>
+                        </label>
                     </td>
                 </tr>
                 <tr class="guarantees-table__row">
@@ -134,9 +194,7 @@ $is_dashboard_page  = false;
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Estado avería', 'garantias-online-360vo'); ?>">
-                        <div class="guarantees-table__estado">
-                            <span class="guarantees-list__badge guarantees-list__badge--activada"><?php esc_html_e('Finalizada', 'garantias-online-360vo'); ?></span>
-                        </div>
+                        <span class="averias-badge averias-badge--cerrada"><?php esc_html_e('Cerrada', 'garantias-online-360vo'); ?></span>
                     </td>
                     <td data-label="<?php esc_attr_e('Fecha de apertura', 'garantias-online-360vo'); ?>">
                         <time datetime="2024-12-19">19/12/2024</time>
@@ -163,12 +221,11 @@ $is_dashboard_page  = false;
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
-                        <div class="guarantees-table__peritaje">
-                            <span class="guarantees-list__badge guarantees-list__badge--activada"><?php esc_html_e('Verificado', 'garantias-online-360vo'); ?></span>
-                        </div>
-                    </td>
-                    <td data-label="<?php esc_attr_e('Acciones', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--actions">
-                        <a href="#" class="guarantees-table__action-btn"><?php esc_html_e('Ver expediente', 'garantias-online-360vo'); ?></a>
+                        <label class="averias-checkbox">
+                            <input type="checkbox" checked disabled>
+                            <span class="averias-checkbox__control" aria-hidden="true"></span>
+                            <span class="screen-reader-text"><?php esc_html_e('Peritaje verificado', 'garantias-online-360vo'); ?></span>
+                        </label>
                     </td>
                 </tr>
                 <tr class="guarantees-table__row">
@@ -179,9 +236,7 @@ $is_dashboard_page  = false;
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Estado avería', 'garantias-online-360vo'); ?>">
-                        <div class="guarantees-table__estado">
-                            <span class="guarantees-list__badge guarantees-list__badge--expira-pronto"><?php esc_html_e('Pendiente de documentación', 'garantias-online-360vo'); ?></span>
-                        </div>
+                        <span class="averias-badge averias-badge--abierta"><?php esc_html_e('Abierta', 'garantias-online-360vo'); ?></span>
                     </td>
                     <td data-label="<?php esc_attr_e('Fecha de apertura', 'garantias-online-360vo'); ?>">
                         <time datetime="2025-02-03">03/02/2025</time>
@@ -208,12 +263,11 @@ $is_dashboard_page  = false;
                         </div>
                     </td>
                     <td data-label="<?php esc_attr_e('Peritaje V/F', 'garantias-online-360vo'); ?>">
-                        <div class="guarantees-table__peritaje">
-                            <span class="guarantees-list__badge guarantees-list__badge--expirada"><?php esc_html_e('Faltan documentos', 'garantias-online-360vo'); ?></span>
-                        </div>
-                    </td>
-                    <td data-label="<?php esc_attr_e('Acciones', 'garantias-online-360vo'); ?>" class="guarantees-table__cell guarantees-table__cell--actions">
-                        <a href="#" class="guarantees-table__action-btn"><?php esc_html_e('Ver expediente', 'garantias-online-360vo'); ?></a>
+                        <label class="averias-checkbox">
+                            <input type="checkbox" disabled>
+                            <span class="averias-checkbox__control" aria-hidden="true"></span>
+                            <span class="screen-reader-text"><?php esc_html_e('Peritaje pendiente', 'garantias-online-360vo'); ?></span>
+                        </label>
                     </td>
                 </tr>
             </tbody>
@@ -222,24 +276,6 @@ $is_dashboard_page  = false;
 </div>
 
 <style>
-    .averias-page__header {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-1);
-        margin-bottom: var(--spacing-3);
-    }
-
-    .averias-page__title {
-        font-size: clamp(1.75rem, 2.4vw, 2.25rem);
-        margin: 0;
-    }
-
-    .averias-page__subtitle {
-        margin: 0;
-        color: var(--text-muted);
-        font-size: 0.95rem;
-    }
-
     .guarantees-container--averias {
         grid-template-columns: 1fr;
     }
@@ -252,6 +288,36 @@ $is_dashboard_page  = false;
         background: var(--surface);
     }
 
+    .guarantees-table--averias {
+        width: 100%;
+        table-layout: auto;
+        min-width: 960px;
+    }
+
+    .guarantees-table__col {
+        width: auto;
+    }
+
+    .guarantees-table__col--vehiculo {
+        min-width: 220px;
+    }
+
+    .guarantees-table__col--estado,
+    .guarantees-table__col--fecha,
+    .guarantees-table__col--tipo,
+    .guarantees-table__col--peritaje {
+        min-width: 160px;
+    }
+
+    .guarantees-table__col--importe {
+        min-width: 150px;
+    }
+
+    .guarantees-table__col--cliente,
+    .guarantees-table__col--taller {
+        min-width: 210px;
+    }
+
     .guarantees-table__header--amount,
     .guarantees-table__cell--amount {
         text-align: right;
@@ -259,50 +325,119 @@ $is_dashboard_page  = false;
         white-space: nowrap;
     }
 
-    .guarantees-table__header--actions,
-    .guarantees-table__cell--actions {
-        text-align: right;
+    .averias-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: none;
         white-space: nowrap;
     }
 
-    .guarantees-table__cell--actions {
-        padding-right: clamp(1rem, 2vw, 1.5rem);
+    .averias-badge--abierta {
+        background: rgba(37, 143, 227, 0.12);
+        color: rgb(37, 143, 227);
     }
 
-    .guarantees-table__action-btn {
+    .averias-badge--pendiente-taller {
+        background: rgba(255, 173, 66, 0.18);
+        color: rgb(189, 96, 0);
+    }
+
+    .averias-badge--espera {
+        background: rgba(238, 201, 55, 0.18);
+        color: rgb(158, 128, 0);
+    }
+
+    .averias-badge--cerrada {
+        background: rgba(52, 199, 89, 0.18);
+        color: rgb(30, 130, 58);
+    }
+
+    .averias-checkbox {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        cursor: not-allowed;
+    }
+
+    .averias-checkbox input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .averias-checkbox__control {
+        width: 1.15rem;
+        height: 1.15rem;
+        border-radius: 0.35rem;
+        border: 2px solid var(--border-strong);
+        background: var(--surface);
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
-        padding: 0.55rem 1.25rem;
-        border-radius: 999px;
-        border: 1px solid var(--primary-color);
-        color: var(--primary-color);
-        text-decoration: none;
-        font-weight: 600;
-        transition: background-color 0.2s ease, color 0.2s ease;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
     }
 
-    .guarantees-table__action-btn:hover,
-    .guarantees-table__action-btn:focus-visible {
-        background: var(--primary-color);
-        color: var(--text-inverse);
+    .averias-checkbox input:checked + .averias-checkbox__control {
+        background: var(--success-strong, var(--primary-color));
+        border-color: var(--success-strong, var(--primary-color));
     }
 
-    .guarantees-table__peritaje {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
+    .averias-checkbox input:checked + .averias-checkbox__control::after {
+        content: '';
+        width: 0.45rem;
+        height: 0.75rem;
+        border: solid var(--text-inverse);
+        border-width: 0 0.2rem 0.2rem 0;
+        transform: rotate(45deg);
+    }
+
+    .averias-checkbox input:not(:checked) + .averias-checkbox__control::after {
+        content: '';
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 50%;
+        background: var(--border-strong);
+        opacity: 0.25;
+    }
+
+    .averias-checkbox input:checked + .averias-checkbox__control::after {
+        opacity: 1;
+    }
+
+    .averias-checkbox .screen-reader-text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
+    }
+
+    .guarantees-list__filters--averias {
+        margin-bottom: var(--spacing-3);
+    }
+
+    .guarantees-list__filters--averias .guarantees-list__filters-row {
+        flex-wrap: wrap;
+        gap: var(--spacing-2);
     }
 
     @media (max-width: 1024px) {
-        .guarantees-table__cell--actions {
-            text-align: left;
-            padding-right: 0;
+        .guarantees-table--averias {
+            min-width: 100%;
         }
 
-        .guarantees-table__header--actions {
-            text-align: left;
+        .guarantees-list__filters--averias .guarantees-list__filters-row {
+            flex-direction: column;
+            align-items: stretch;
         }
     }
 </style>
