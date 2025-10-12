@@ -792,7 +792,7 @@ if ($can_use_acf && post_type_exists(GuaranteeCPT::POST_TYPE)) {
     }
 
     .guarantees-list__filters--averias {
-        margin-bottom: var(--spacing-3);
+        margin-bottom: 0;
     }
 
     .guarantees-list__filters--averias .guarantees-list__filters-row {
