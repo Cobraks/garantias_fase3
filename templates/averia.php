@@ -49,6 +49,7 @@ $sample_case = [
         'phone'        => [
             'display' => '+34 600 123 456',
             'href'    => 'tel:+34600123456',
+            'source'  => __('Teléfono principal', 'garantias-online-360vo'),
         ],
         'email'        => [
             'display' => 'gestion@concesionarioguay.com',
@@ -77,10 +78,16 @@ $sample_case = [
     'workshop'          => [
         'name'        => 'Talleres Pérez S.L.',
         'contact'     => 'María Pérez',
-        'phone'       => '+34 600 000 000',
-        'phone_href'  => 'tel:+34600000000',
-        'email'       => 'taller@empresa.com',
-        'email_href'  => 'mailto:taller@empresa.com',
+        'phone'       => [
+            'display' => '+34 600 000 000',
+            'href'    => 'tel:+34600000000',
+            'source'  => __('Teléfono del taller', 'garantias-online-360vo'),
+        ],
+        'email'       => [
+            'display' => 'taller@empresa.com',
+            'href'    => 'mailto:taller@empresa.com',
+            'source'  => __('Correo del taller', 'garantias-online-360vo'),
+        ],
         'address'     => 'Calle de ejemplo, 12, Madrid',
         'type'        => 'Asociado',
         'tax_id'      => 'B12345678',
@@ -109,10 +116,12 @@ $sample_case = [
         'phone'   => [
             'display' => '+34 610 555 982',
             'href'    => 'tel:+34610555982',
+            'source'  => __('Teléfono de contacto', 'garantias-online-360vo'),
         ],
         'email'   => [
             'display' => 'laura.garcia@email.com',
             'href'    => 'mailto:laura.garcia@email.com',
+            'source'  => __('Correo personal', 'garantias-online-360vo'),
         ],
         'details' => [
             [
@@ -324,7 +333,12 @@ $initials_helper = static function (string $text): string {
                         ],
                         [
                             'label' => __('Teléfono principal', 'garantias-online-360vo'),
-                            'value' => $sample_case['sales_channel']['phone']['display'] ?? '',
+                            'value' => trim(
+                                ($sample_case['sales_channel']['phone']['display'] ?? '')
+                                . (! empty($sample_case['sales_channel']['phone']['source'])
+                                    ? ' — ' . $sample_case['sales_channel']['phone']['source']
+                                    : '')
+                            ),
                         ],
                     ]
                 ),
@@ -339,12 +353,14 @@ $initials_helper = static function (string $text): string {
                     'url'        => '',
                 ],
                 'phone'    => [
-                    'display' => $sample_case['workshop']['phone'],
-                    'href'    => $sample_case['workshop']['phone_href'],
+                    'display' => $sample_case['workshop']['phone']['display'] ?? '',
+                    'href'    => $sample_case['workshop']['phone']['href'] ?? '',
+                    'source'  => $sample_case['workshop']['phone']['source'] ?? '',
                 ],
                 'email'    => [
-                    'display' => $sample_case['workshop']['email'],
-                    'href'    => $sample_case['workshop']['email_href'],
+                    'display' => $sample_case['workshop']['email']['display'] ?? '',
+                    'href'    => $sample_case['workshop']['email']['href'] ?? '',
+                    'source'  => $sample_case['workshop']['email']['source'] ?? '',
                 ],
                 'cta'      => __('Detalles completos del taller', 'garantias-online-360vo'),
                 'details'  => array_merge(
@@ -352,11 +368,21 @@ $initials_helper = static function (string $text): string {
                     [
                         [
                             'label' => __('Correo electrónico', 'garantias-online-360vo'),
-                            'value' => $sample_case['workshop']['email'],
+                            'value' => trim(
+                                ($sample_case['workshop']['email']['display'] ?? '')
+                                . (! empty($sample_case['workshop']['email']['source'])
+                                    ? ' — ' . $sample_case['workshop']['email']['source']
+                                    : '')
+                            ),
                         ],
                         [
                             'label' => __('Teléfono', 'garantias-online-360vo'),
-                            'value' => $sample_case['workshop']['phone'],
+                            'value' => trim(
+                                ($sample_case['workshop']['phone']['display'] ?? '')
+                                . (! empty($sample_case['workshop']['phone']['source'])
+                                    ? ' — ' . $sample_case['workshop']['phone']['source']
+                                    : '')
+                            ),
                         ],
                     ]
                 ),
@@ -378,11 +404,21 @@ $initials_helper = static function (string $text): string {
                     [
                         [
                             'label' => __('Correo electrónico', 'garantias-online-360vo'),
-                            'value' => $sample_case['customer']['email']['display'] ?? '',
+                            'value' => trim(
+                                ($sample_case['customer']['email']['display'] ?? '')
+                                . (! empty($sample_case['customer']['email']['source'])
+                                    ? ' — ' . $sample_case['customer']['email']['source']
+                                    : '')
+                            ),
                         ],
                         [
                             'label' => __('Teléfono de contacto', 'garantias-online-360vo'),
-                            'value' => $sample_case['customer']['phone']['display'] ?? '',
+                            'value' => trim(
+                                ($sample_case['customer']['phone']['display'] ?? '')
+                                . (! empty($sample_case['customer']['phone']['source'])
+                                    ? ' — ' . $sample_case['customer']['phone']['source']
+                                    : '')
+                            ),
                         ],
                     ]
                 ),
@@ -836,16 +872,49 @@ $initials_helper = static function (string $text): string {
                                         <span><?php echo esc_html($contact['cta']); ?></span>
                                     </button>
                                 </footer>
-                                <?php if (! empty($details)) : ?>
+                                <?php
+                                $has_contact_links = (is_array($phone) && ! empty($phone['href']) && ! empty($phone['display']))
+                                    || (is_array($email) && ! empty($email['href']) && ! empty($email['display']));
+                                $has_details = ! empty($details);
+                                if ($has_contact_links || $has_details) :
+                                    ?>
                                     <div class="averia-contact-card__details" hidden>
-                                        <dl class="averia-contact-card__details-list">
-                                            <?php foreach ($details as $detail) : ?>
-                                                <div class="averia-contact-card__details-item">
-                                                    <dt><?php echo esc_html($detail['label'] ?? ''); ?></dt>
-                                                    <dd><?php echo esc_html($detail['value'] ?? ''); ?></dd>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </dl>
+                                        <?php if ($has_contact_links) : ?>
+                                            <div class="averia-contact-card__details-actions" role="group">
+                                                <?php if (! empty($phone['href']) && ! empty($phone['display'])) : ?>
+                                                    <a href="<?php echo esc_url($phone['href']); ?>">
+                                                        <?php echo Svg::icon('phone', 'averia-contact-card__action-icon'); ?>
+                                                        <span class="averia-contact-card__details-text">
+                                                            <span><?php echo esc_html($phone['display']); ?></span>
+                                                            <?php if (! empty($phone['source'])) : ?>
+                                                                <span class="averia-contact-card__details-hint"><?php echo esc_html($phone['source']); ?></span>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                    </a>
+                                                <?php endif; ?>
+                                                <?php if (! empty($email['href']) && ! empty($email['display'])) : ?>
+                                                    <a href="<?php echo esc_url($email['href']); ?>">
+                                                        <?php echo Svg::icon('email', 'averia-contact-card__action-icon'); ?>
+                                                        <span class="averia-contact-card__details-text">
+                                                            <span><?php echo esc_html($email['display']); ?></span>
+                                                            <?php if (! empty($email['source'])) : ?>
+                                                                <span class="averia-contact-card__details-hint"><?php echo esc_html($email['source']); ?></span>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                    </a>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($has_details) : ?>
+                                            <dl class="averia-contact-card__details-list">
+                                                <?php foreach ($details as $detail) : ?>
+                                                    <div class="averia-contact-card__details-item">
+                                                        <dt><?php echo esc_html($detail['label'] ?? ''); ?></dt>
+                                                        <dd><?php echo esc_html($detail['value'] ?? ''); ?></dd>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </dl>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endif; ?>
                             </article>
