@@ -8,6 +8,7 @@ use GarantiasOnline360VO\Support\NotificationEmailResolver;
 use GarantiasOnline360VO\Support\UserProfileResolver;
 
 $is_auth_template = ! empty($is_auth_page);
+$is_breakdown_detail_template = ! empty($is_breakdown_detail_page);
 
 // Calculamos botón de perfil y avatar
 $current_user_id = get_current_user_id();
@@ -167,6 +168,9 @@ $home_destination = $is_admin_user
     <?php if (! empty($is_list_page) || ! empty($is_clients_page) || ! empty($is_breakdowns_page)) : ?>
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
+    <?php if ($is_breakdown_detail_template) : ?>
+        <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/averias.min.css', GARANTIAS360VO__FILE__)); ?>">
+    <?php endif; ?>
     <?php if (! empty($is_account_page)) : ?>
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/account.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
@@ -186,6 +190,9 @@ $home_destination = $is_admin_user
     }
     if (! empty($is_list_page) || ! empty($is_breakdowns_page)) {
         $body_classes[] = 'body--guarantees';
+    }
+    if ($is_breakdown_detail_template) {
+        $body_classes[] = 'body--averia-detail';
     }
     ?>
 <body class="<?php echo esc_attr(implode(' ', $body_classes)); ?>">
