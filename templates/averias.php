@@ -308,9 +308,16 @@ if ($can_use_acf && post_type_exists(GuaranteeCPT::POST_TYPE)) {
             $taller_group = [];
         }
 
-        $taller_encargado = isset($taller_group['taller_encargado'])
-            ? sanitize_key((string) $taller_group['taller_encargado'])
-            : '';
+        $taller_encargado_field = $taller_group['taller_encargado'] ?? '';
+        if (is_array($taller_encargado_field)) {
+            $taller_encargado_field = isset($taller_encargado_field['value'])
+                ? (string) $taller_encargado_field['value']
+                : '';
+        } elseif (! is_string($taller_encargado_field)) {
+            $taller_encargado_field = '';
+        }
+
+        $taller_encargado = sanitize_key($taller_encargado_field);
 
         $taller_nombre       = '';
         $taller_responsable  = '';
