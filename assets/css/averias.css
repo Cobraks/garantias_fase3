@@ -82,7 +82,12 @@ body.body--averia-detail {
     background: var(--surface);
     border-radius: 1.5rem;
     text-align: center;
-    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
+    box-shadow: none;
+}
+
+[data-theme="dark"] .averia-detail__empty-card,
+body[data-theme="dark"] .averia-detail__empty-card {
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.6);
 }
 
 .averia-detail__empty-card h2 {
@@ -117,13 +122,13 @@ body.body--averia-detail {
     backdrop-filter: blur(12px);
     background: var(--surface);
     border-radius: 0 0 1.5rem 1.5rem;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    box-shadow: none;
     padding: var(--spacing-2) var(--spacing-3);
     transition: box-shadow 180ms ease, transform 180ms ease;
 }
 
 .averia-detail__filters.sticky-active {
-    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.16);
+    box-shadow: none;
     transform: translateY(-0.35rem);
 }
 
@@ -176,7 +181,6 @@ body[data-theme="dark"] .averia-detail__filters.sticky-active {
     background: var(--go-color-1d4ed8);
     border-color: var(--go-color-1d4ed8);
     color: #fff;
-    box-shadow: 0 10px 24px rgba(29, 78, 216, 0.24);
 }
 
 [data-theme="dark"] .averia-tabs__button,
@@ -204,13 +208,12 @@ body[data-theme="dark"] .averia-tabs__button {
     font-weight: 600;
     font-size: 0.95rem;
     cursor: pointer;
-    transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    transition: background 160ms ease, transform 160ms ease;
 }
 
 .averia-detail__primary-action:hover,
 .averia-detail__primary-action:focus-visible {
     background: var(--go-color-15803d, #15803d);
-    box-shadow: 0 8px 18px rgba(21, 128, 61, 0.25);
 }
 
 .averia-detail__primary-action:active {
@@ -261,9 +264,13 @@ body[data-theme="dark"] .averia-tabs__button {
     background: var(--surface);
     border-radius: 1.5rem;
     padding: var(--spacing-3);
-    box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
     display: grid;
     gap: var(--spacing-3);
+}
+
+[data-theme="dark"] .averia-card,
+body[data-theme="dark"] .averia-card {
+    box-shadow: 0 20px 44px rgba(15, 23, 42, 0.6);
 }
 
 .averia-card--context {
@@ -380,9 +387,13 @@ body[data-theme="dark"] .averia-tabs__button {
     background: var(--surface);
     border-radius: 1.75rem;
     padding: var(--spacing-3);
-    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
     display: grid;
     gap: var(--spacing-3);
+}
+
+[data-theme="dark"] .averia-panel,
+body[data-theme="dark"] .averia-panel {
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.6);
 }
 
 .averia-panel[hidden] {
@@ -452,14 +463,12 @@ body[data-theme="dark"] .averia-tabs__button {
     border-radius: 999px;
     border: 3px solid #fff;
     background: var(--go-color-1d4ed8);
-    box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.12);
 }
 
 .averia-timeline__content {
     padding: var(--spacing-2);
     border-radius: 1.1rem;
     background: color-mix(in srgb, var(--go-color-dbeafe, #dbeafe) 28%, var(--surface) 72%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 .averia-timeline__meta {
@@ -672,9 +681,13 @@ body[data-theme="dark"] .averia-tabs__button {
     border-radius: 1rem;
     background: var(--surface);
     border: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
     display: grid;
     gap: 0.4rem;
+}
+
+[data-theme="dark"] .averia-document,
+body[data-theme="dark"] .averia-document {
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.55);
 }
 
 .averia-document h3 {
@@ -693,9 +706,13 @@ body[data-theme="dark"] .averia-tabs__button {
     background: var(--surface);
     border-radius: 1.5rem;
     padding: var(--spacing-3);
-    box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
     display: grid;
     gap: var(--spacing-2);
+}
+
+[data-theme="dark"] .averia-summary-card,
+body[data-theme="dark"] .averia-summary-card {
+    box-shadow: 0 20px 44px rgba(15, 23, 42, 0.6);
 }
 
 .averia-summary-card h2 {
@@ -745,7 +762,6 @@ body[data-theme="dark"] .averia-tabs__button {
     padding: calc(var(--spacing-2) + 0.35rem) var(--spacing-2) var(--spacing-2);
     display: grid;
     gap: var(--spacing-2);
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.07);
     position: relative;
     overflow: hidden;
 }
@@ -754,13 +770,14 @@ body[data-theme="dark"] .averia-tabs__button {
 body[data-theme="dark"] .averia-contact-card {
     background: #111827;
     border-color: rgba(148, 163, 184, 0.3);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.65);
 }
 
 .averia-contact-card__header {
-    display: flex;
-    align-items: center;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
     gap: var(--spacing-2);
-    padding-right: 3.25rem;
 }
 
 .averia-contact-card__avatar {
@@ -807,12 +824,33 @@ body[data-theme="dark"] .averia-contact-card {
     gap: 0.2rem;
 }
 
+.averia-contact-card__label-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 .averia-contact-card__label {
     margin: 0;
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--go-color-94a3b8, #94a3b8);
+}
+
+.averia-contact-card__type {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--go-color-1d4ed8);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+[data-theme="dark"] .averia-contact-card__type,
+body[data-theme="dark"] .averia-contact-card__type {
+    color: var(--go-color-dbeafe, #dbeafe);
 }
 
 .averia-contact-card__title {
@@ -838,13 +876,7 @@ body[data-theme="dark"] .averia-contact-card__title {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-@media (min-width: var(--averia-breakpoint-lg)) {
-    .averia-contact-card__actions {
-        flex-wrap: nowrap;
-    }
+    flex-wrap: nowrap;
 }
 
 .averia-contact-card__action {
@@ -893,12 +925,6 @@ body[data-theme="dark"] .averia-contact-card__action:focus-visible {
     height: 1rem;
 }
 
-.averia-contact-card__footer {
-    position: absolute;
-    top: var(--spacing-2);
-    right: var(--spacing-2);
-}
-
 .averia-contact-card__details-trigger {
     display: inline-flex;
     align-items: center;
@@ -911,6 +937,9 @@ body[data-theme="dark"] .averia-contact-card__action:focus-visible {
     font-weight: 600;
     cursor: pointer;
     transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+    justify-self: end;
+    align-self: start;
+    white-space: nowrap;
 }
 
 .averia-contact-card__details-trigger:hover,
@@ -1070,9 +1099,13 @@ body[data-theme="dark"] .averia-contact-card__details-item dd {
     background: var(--surface);
     border-radius: 1.75rem;
     padding: var(--spacing-4);
-    box-shadow: 0 32px 80px rgba(15, 23, 42, 0.2);
     display: grid;
     gap: var(--spacing-3);
+}
+
+[data-theme="dark"] .averia-modal__dialog,
+body[data-theme="dark"] .averia-modal__dialog {
+    box-shadow: 0 32px 80px rgba(15, 23, 42, 0.7);
 }
 
 .averia-modal__close {

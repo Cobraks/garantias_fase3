@@ -39,6 +39,8 @@ $sample_case = [
     'cover_element'     => 'Por confirmar',
     'license_plate'     => '1234 ABC',
     'sales_channel'     => [
+        'role'        => __('Profesional', 'garantias-online-360vo'),
+        'professional_type' => __('Profesional Compraventa', 'garantias-online-360vo'),
         'company'      => 'Concesionario Guay',
         'contact_name' => 'Pepito Pérez',
         'avatar'       => [
@@ -307,9 +309,10 @@ $initials_helper = static function (string $text): string {
         <?php
         $contact_cards = [
             [
-                'label'    => __('Canal de venta', 'garantias-online-360vo'),
-                'title'    => $sample_case['sales_channel']['company'],
-                'subtitle' => $sample_case['sales_channel']['contact_name'],
+                'label'      => $sample_case['sales_channel']['role'] ?? __('Profesional', 'garantias-online-360vo'),
+                'type_label' => $sample_case['sales_channel']['professional_type'] ?? '',
+                'title'      => $sample_case['sales_channel']['company'],
+                'subtitle'   => $sample_case['sales_channel']['contact_name'],
                 'avatar'   => [
                     'initials'   => $sample_case['sales_channel']['avatar']['initials']
                         ?: $initials_helper($sample_case['sales_channel']['company']),
@@ -318,7 +321,7 @@ $initials_helper = static function (string $text): string {
                 ],
                 'phone'    => $sample_case['sales_channel']['phone'],
                 'email'    => $sample_case['sales_channel']['email'],
-                'cta'      => __('Detalles completos del cliente', 'garantias-online-360vo'),
+                'cta'      => __('Detalles profesional', 'garantias-online-360vo'),
                 'details'  => array_merge(
                     (array) ($sample_case['sales_channel']['details'] ?? []),
                     [
@@ -344,9 +347,10 @@ $initials_helper = static function (string $text): string {
                 ),
             ],
             [
-                'label'    => __('Taller', 'garantias-online-360vo'),
-                'title'    => $sample_case['workshop']['name'],
-                'subtitle' => $sample_case['workshop']['contact'],
+                'label'      => __('Taller', 'garantias-online-360vo'),
+                'type_label' => $sample_case['workshop']['type'] ?? '',
+                'title'      => $sample_case['workshop']['name'],
+                'subtitle'   => $sample_case['workshop']['contact'],
                 'avatar'   => [
                     'initials'   => $initials_helper($sample_case['workshop']['name']),
                     'background' => '#0f766e',
@@ -362,7 +366,7 @@ $initials_helper = static function (string $text): string {
                     'href'    => $sample_case['workshop']['email']['href'] ?? '',
                     'source'  => $sample_case['workshop']['email']['source'] ?? '',
                 ],
-                'cta'      => __('Detalles completos del taller', 'garantias-online-360vo'),
+                'cta'      => __('Detalles taller', 'garantias-online-360vo'),
                 'details'  => array_merge(
                     (array) ($sample_case['workshop']['details'] ?? []),
                     [
@@ -388,9 +392,10 @@ $initials_helper = static function (string $text): string {
                 ),
             ],
             [
-                'label'    => __('Cliente final', 'garantias-online-360vo'),
-                'title'    => $sample_case['customer']['name'],
-                'subtitle' => '',
+                'label'      => __('Cliente final', 'garantias-online-360vo'),
+                'type_label' => '',
+                'title'      => $sample_case['customer']['name'],
+                'subtitle'   => '',
                 'avatar'   => [
                     'initials'   => $initials_helper($sample_case['customer']['name']),
                     'background' => '#9333ea',
@@ -398,7 +403,7 @@ $initials_helper = static function (string $text): string {
                 ],
                 'phone'    => $sample_case['customer']['phone'],
                 'email'    => $sample_case['customer']['email'],
-                'cta'      => __('Detalles completos del cliente final', 'garantias-online-360vo'),
+                'cta'      => __('Detalles cliente final', 'garantias-online-360vo'),
                 'details'  => array_merge(
                     (array) ($sample_case['customer']['details'] ?? []),
                     [
@@ -809,6 +814,7 @@ $initials_helper = static function (string $text): string {
                             $avatar          = $contact['avatar'] ?? [];
                             $phone           = $contact['phone'] ?? [];
                             $email           = $contact['email'] ?? [];
+                            $type_label      = $contact['type_label'] ?? '';
                             $details         = array_filter($contact['details'] ?? [], static function ($entry) {
                                 return is_array($entry) && ($entry['value'] ?? '') !== '';
                             });
@@ -839,12 +845,27 @@ $initials_helper = static function (string $text): string {
                                         <span class="averia-contact-card__avatar-sr"><?php echo esc_html($contact['label'] . ' · ' . $contact['title']); ?></span>
                                     </div>
                                     <div class="averia-contact-card__identity">
-                                        <p class="averia-contact-card__label"><?php echo esc_html($contact['label']); ?></p>
+                                        <div class="averia-contact-card__label-row">
+                                            <p class="averia-contact-card__label"><?php echo esc_html($contact['label']); ?></p>
+                                            <?php if ($type_label !== '') : ?>
+                                                <p class="averia-contact-card__type"><?php echo esc_html($type_label); ?></p>
+                                            <?php endif; ?>
+                                        </div>
                                         <h3 class="averia-contact-card__title"><?php echo esc_html($contact['title']); ?></h3>
                                         <?php if (! empty($contact['subtitle'])) : ?>
                                             <p class="averia-contact-card__subtitle"><?php echo esc_html($contact['subtitle']); ?></p>
                                         <?php endif; ?>
                                     </div>
+                                    <button
+                                        type="button"
+                                        class="averia-contact-card__details-trigger"
+                                        data-contact-details
+                                        aria-haspopup="dialog"
+                                        aria-expanded="false"
+                                    >
+                                        <?php echo Svg::icon('info', 'averia-contact-card__details-icon'); ?>
+                                        <span><?php echo esc_html($contact['cta']); ?></span>
+                                    </button>
                                 </header>
                                 <div class="averia-contact-card__actions">
                                     <?php if (! empty($phone['href']) && ! empty($phone['display'])) : ?>
@@ -860,18 +881,6 @@ $initials_helper = static function (string $text): string {
                                         </a>
                                     <?php endif; ?>
                                 </div>
-                                <footer class="averia-contact-card__footer">
-                                    <button
-                                        type="button"
-                                        class="averia-contact-card__details-trigger"
-                                        data-contact-details
-                                        aria-haspopup="dialog"
-                                        aria-expanded="false"
-                                    >
-                                        <?php echo Svg::icon('info', 'averia-contact-card__details-icon'); ?>
-                                        <span><?php echo esc_html($contact['cta']); ?></span>
-                                    </button>
-                                </footer>
                                 <?php
                                 $has_contact_links = (is_array($phone) && ! empty($phone['href']) && ! empty($phone['display']))
                                     || (is_array($email) && ! empty($email['href']) && ! empty($email['display']));
