@@ -148,14 +148,84 @@ body[data-theme="dark"] .averia-detail__filters.sticky-active {
     flex-wrap: wrap;
     gap: var(--spacing-2);
     align-items: center;
-    justify-content: space-between;
+    width: 100%;
+}
+
+.averia-detail__filters-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.averia-detail__plate {
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: clamp(1.25rem, 3vw, 1.9rem);
+    color: var(--go-color-0f172a, #0f172a);
+}
+
+[data-theme="dark"] .averia-detail__plate,
+body[data-theme="dark"] .averia-detail__plate {
+    color: var(--go-color-dbeafe, #dbeafe);
+}
+
+.averia-detail__status select {
+    appearance: none;
+    border-radius: 0.75rem;
+    border: 1px solid var(--go-color-e2e8f0, #e2e8f0);
+    background: var(--surface);
+    color: var(--go-color-0f172a);
+    padding: 0.55rem 2.5rem 0.55rem 1rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    width: min(100%, 15rem);
+    line-height: 1.2;
+}
+
+.averia-detail__status {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1 1 12rem;
+    max-width: 100%;
+}
+
+.averia-detail__status::after {
+    content: '';
+    position: absolute;
+    inset: 0.75rem 0.75rem 0.75rem auto;
+    width: 0.65rem;
+    height: 0.65rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+[data-theme="dark"] .averia-detail__status select,
+body[data-theme="dark"] .averia-detail__status select {
+    border-color: rgba(148, 163, 184, 0.35);
+    background: #111827;
+    color: var(--go-color-dbeafe, #dbeafe);
+}
+
+.averia-detail__filters-tabs {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
 }
 
 .averia-tabs {
-    display: inline-flex;
-    flex: 1 1 auto;
+    display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+    justify-content: center;
     min-width: 0;
 }
 
@@ -163,13 +233,18 @@ body[data-theme="dark"] .averia-detail__filters.sticky-active {
     border: 1px solid var(--go-color-e2e8f0, #e2e8f0);
     background: var(--surface);
     color: var(--go-color-0f172a);
-    padding: 0.5rem 1.1rem;
-    border-radius: 999px;
+    padding: 0 1rem;
+    border-radius: 0.5rem;
     font-weight: 600;
     font-size: 0.95rem;
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
 }
 
 .averia-tabs__button:is(:hover, :focus-visible) {
@@ -189,35 +264,71 @@ body[data-theme="dark"] .averia-tabs__button {
     color: var(--go-color-dbeafe);
 }
 
-.averia-detail__filters-actions {
+.averia-detail__filters-info {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
+    flex-wrap: wrap;
+    gap: var(--spacing-1);
+    justify-content: flex-start;
+    min-width: 0;
 }
 
-.averia-detail__primary-action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.75rem;
-    border: 1px solid transparent;
-    background: var(--go-color-16a34a, #16a34a);
-    color: #fff;
-    font-weight: 600;
+.averia-detail__info-item {
+    display: grid;
+    gap: 0.1rem;
+    text-align: left;
+    min-width: 0;
+}
+
+.averia-detail__info-item span {
+    font-size: 0.75rem;
+    color: var(--go-color-64748b, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.averia-detail__info-item strong {
     font-size: 0.95rem;
-    cursor: pointer;
-    transition: background 160ms ease, transform 160ms ease;
+    font-weight: 600;
+    color: var(--go-color-0f172a, #0f172a);
 }
 
-.averia-detail__primary-action:hover,
-.averia-detail__primary-action:focus-visible {
-    background: var(--go-color-15803d, #15803d);
+[data-theme="dark"] .averia-detail__info-item span,
+body[data-theme="dark"] .averia-detail__info-item span {
+    color: rgba(226, 232, 240, 0.7);
 }
 
-.averia-detail__primary-action:active {
-    transform: translateY(1px);
+[data-theme="dark"] .averia-detail__info-item strong,
+body[data-theme="dark"] .averia-detail__info-item strong {
+    color: var(--go-color-dbeafe, #dbeafe);
+}
+
+.averia-detail__filters-meta,
+.averia-detail__filters-tabs,
+.averia-detail__filters-info {
+    flex: 1 1 100%;
+}
+
+@media (min-width: 64rem) {
+    .averia-detail__filters-meta {
+        flex: 0 0 auto;
+    }
+
+    .averia-detail__filters-tabs {
+        flex: 1 1 auto;
+    }
+
+    .averia-detail__filters-info {
+        flex: 0 0 auto;
+        justify-content: flex-end;
+    }
+
+    .averia-detail__status {
+        flex: 0 0 auto;
+    }
+
+    .averia-detail__info-item {
+        text-align: right;
+    }
 }
 
 /* Columnas principales */
@@ -380,6 +491,36 @@ body[data-theme="dark"] .averia-card {
     font-weight: 600;
     color: var(--go-color-0f172a);
     word-break: break-word;
+}
+
+.averia-meta-list__item--highlight {
+    padding: var(--spacing-2);
+    border-radius: 1.25rem;
+    background: var(--go-color-e2e8f0, #e2e8f0);
+}
+
+[data-theme="dark"] .averia-meta-list__item--highlight,
+body[data-theme="dark"] .averia-meta-list__item--highlight {
+    background: #111827;
+}
+
+.averia-meta-list__item--link a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 600;
+    color: var(--go-color-1d4ed8, #1d4ed8);
+    text-decoration: none;
+}
+
+.averia-meta-list__item--link a:hover,
+.averia-meta-list__item--link a:focus-visible {
+    text-decoration: underline;
+}
+
+[data-theme="dark"] .averia-meta-list__item--link a,
+body[data-theme="dark"] .averia-meta-list__item--link a {
+    color: var(--go-color-dbeafe, #dbeafe);
 }
 
 /* Panel central */
@@ -856,7 +997,7 @@ body[data-theme="dark"] .averia-contact-card__type {
 .averia-contact-card__title {
     margin: 0;
     font-size: 1.05rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--go-color-0f172a);
 }
 
@@ -935,6 +1076,7 @@ body[data-theme="dark"] .averia-contact-card__action:focus-visible {
     background: var(--surface);
     color: var(--go-color-0f172a);
     font-weight: 600;
+    font-family: inherit;
     cursor: pointer;
     transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
     justify-self: end;

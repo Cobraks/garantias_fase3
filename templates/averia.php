@@ -24,20 +24,25 @@ $view_mode = 'case';
 $sample_case = [
     'reference'         => 'EXP-AV-2025-00123',
     'status'            => 'Pendiente de taller',
+    'status_key'        => 'pendiente_taller',
     'status_variant'    => 'warning',
     'opened'            => '12/10/2025',
     'type'              => 'Motor',
     'summary'           => 'Pérdida de potencia y testigo de avería motor encendido.',
     'kilometers_start'  => '92.340 km',
     'kilometers_now'    => '94.210 km',
+    'kilometers_delta'  => '+2.000 km',
+    'vehicle_name'      => 'Seat Panda',
+    'vehicle_age'       => '2015 (5 años)',
     'vendor'            => 'Concesionario Guay',
     'vendor_manager'    => 'Pepito Pérez',
     'owner'             => 'Laura García',
-    'policy'            => 'Garantía Premium 24',
+    'policy'            => 'Cobertura Exclusive Camiones',
     'last_update'       => '13/10/2025',
     'peritaje_required' => true,
     'cover_element'     => 'Por confirmar',
     'license_plate'     => '1234 ABC',
+    'vehicle_details'   => '#',
     'sales_channel'     => [
         'role'        => __('Profesional', 'garantias-online-360vo'),
         'professional_type' => __('Profesional Compraventa', 'garantias-online-360vo'),
@@ -258,50 +263,83 @@ $initials_helper = static function (string $text): string {
             </div>
         </section>
     <?php else : ?>
+        <?php
+        $status_options = [
+            'notificacion_averia' => __('Notificación de avería', 'garantias-online-360vo'),
+            'abierta'             => __('Abierta', 'garantias-online-360vo'),
+            'pendiente_taller'    => __('Pendiente de taller', 'garantias-online-360vo'),
+            'espera_info'         => __('En espera de información', 'garantias-online-360vo'),
+            'cerrada'             => __('Cerrada', 'garantias-online-360vo'),
+        ];
+        $current_status_key = $sample_case['status_key'] ?? 'sin_estado';
+        ?>
         <div
             class="guarantees-list__filters guarantees-list__filters--averia-detail averia-detail__filters"
             data-sticky-target=".averia-detail__columns"
             style="view-transition-name: filtros-averia-detalle"
         >
             <div class="averia-detail__filters-row">
-                <nav
-                    class="averia-tabs"
-                    role="tablist"
-                    aria-label="<?php esc_attr_e('Secciones del expediente', 'garantias-online-360vo'); ?>"
-                >
-                    <?php
-                    $tabs = [
-                        'historial'     => __('Historial', 'garantias-online-360vo'),
-                        'resumen'       => __('Resumen', 'garantias-online-360vo'),
-                        'taller'        => __('Taller', 'garantias-online-360vo'),
-                        'importes'      => __('Importes', 'garantias-online-360vo'),
-                        'documentacion' => __('Documentación', 'garantias-online-360vo'),
-                    ];
-                    $first = true;
-                    foreach ($tabs as $tab_key => $tab_label) :
-                        $tab_id = 'averia-tab-' . $tab_key;
-                        ?>
-                        <button
-                            type="button"
-                            class="averia-tabs__button<?php echo $first ? ' is-active' : ''; ?>"
-                            id="<?php echo esc_attr($tab_id); ?>"
-                            role="tab"
-                            aria-selected="<?php echo $first ? 'true' : 'false'; ?>"
-                            aria-controls="averia-panel-<?php echo esc_attr($tab_key); ?>"
-                            data-tab-trigger="<?php echo esc_attr($tab_key); ?>"
-                        >
-                            <?php echo esc_html($tab_label); ?>
-                        </button>
-                        <?php
-                        $first = false;
-                    endforeach;
-                    ?>
-                </nav>
+                <div class="averia-detail__filters-meta">
+                    <p class="averia-detail__plate" aria-label="<?php esc_attr_e('Matrícula', 'garantias-online-360vo'); ?>">
+                        <?php echo esc_html($sample_case['license_plate'] !== '' ? $sample_case['license_plate'] : $license_plate); ?>
+                    </p>
+                    <label class="averia-detail__status" for="averia-status-select">
+                        <span class="screen-reader-text"><?php esc_html_e('Estado de la avería', 'garantias-online-360vo'); ?></span>
+                        <select id="averia-status-select" name="averia-status-select">
+                            <?php foreach ($status_options as $status_value => $status_label) : ?>
+                                <option value="<?php echo esc_attr($status_value); ?>"<?php selected($current_status_key, $status_value); ?>>
+                                    <?php echo esc_html($status_label); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                </div>
 
-                <div class="averia-detail__filters-actions">
-                    <button type="button" class="averia-detail__primary-action">
-                        <?php esc_html_e('Guardar cambios', 'garantias-online-360vo'); ?>
-                    </button>
+                <div class="averia-detail__filters-tabs">
+                    <nav
+                        class="averia-tabs"
+                        role="tablist"
+                        aria-label="<?php esc_attr_e('Secciones del expediente', 'garantias-online-360vo'); ?>"
+                    >
+                        <?php
+                        $tabs = [
+                            'historial'     => __('Historial', 'garantias-online-360vo'),
+                            'resumen'       => __('Resumen', 'garantias-online-360vo'),
+                            'taller'        => __('Taller', 'garantias-online-360vo'),
+                            'importes'      => __('Importes', 'garantias-online-360vo'),
+                            'documentacion' => __('Documentación', 'garantias-online-360vo'),
+                        ];
+                        $first = true;
+                        foreach ($tabs as $tab_key => $tab_label) :
+                            $tab_id = 'averia-tab-' . $tab_key;
+                            ?>
+                            <button
+                                type="button"
+                                class="averia-tabs__button<?php echo $first ? ' is-active' : ''; ?>"
+                                id="<?php echo esc_attr($tab_id); ?>"
+                                role="tab"
+                                aria-selected="<?php echo $first ? 'true' : 'false'; ?>"
+                                aria-controls="averia-panel-<?php echo esc_attr($tab_key); ?>"
+                                data-tab-trigger="<?php echo esc_attr($tab_key); ?>"
+                            >
+                                <?php echo esc_html($tab_label); ?>
+                            </button>
+                            <?php
+                            $first = false;
+                        endforeach;
+                        ?>
+                    </nav>
+                </div>
+
+                <div class="averia-detail__filters-info">
+                    <div class="averia-detail__info-item">
+                        <span><?php esc_html_e('Fecha de apertura', 'garantias-online-360vo'); ?></span>
+                        <strong><?php echo esc_html($sample_case['opened']); ?></strong>
+                    </div>
+                    <div class="averia-detail__info-item">
+                        <span><?php esc_html_e('Última actualización', 'garantias-online-360vo'); ?></span>
+                        <strong><?php echo esc_html($sample_case['last_update']); ?></strong>
+                    </div>
                 </div>
             </div>
         </div>
@@ -434,29 +472,9 @@ $initials_helper = static function (string $text): string {
         <div class="averia-detail__columns">
             <aside class="averia-detail__column averia-detail__column--context" aria-label="<?php esc_attr_e('Contexto del expediente', 'garantias-online-360vo'); ?>">
                 <section class="averia-card averia-card--context">
-                    <header class="averia-card__header">
-                        <p class="averia-card__eyebrow"><?php esc_html_e('Expediente', 'garantias-online-360vo'); ?></p>
-                        <h2 class="averia-card__title"><?php echo esc_html($sample_case['reference']); ?></h2>
-                        <span class="averia-status averia-status--<?php echo esc_attr($sample_case['status_variant']); ?>">
-                            <?php echo esc_html($sample_case['status']); ?>
-                        </span>
-                    </header>
                     <dl class="averia-meta-list">
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Matrícula', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['license_plate'] !== '' ? $sample_case['license_plate'] : $license_plate); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Garantía', 'garantias-online-360vo'); ?></dt>
+                        <div class="averia-meta-list__item averia-meta-list__item--highlight">
                             <dd><?php echo esc_html($sample_case['policy']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Fecha de apertura', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['opened']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Última actualización', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['last_update']); ?></dd>
                         </div>
                         <div class="averia-meta-list__item">
                             <dt><?php esc_html_e('Tipo de avería', 'garantias-online-360vo'); ?></dt>
@@ -470,31 +488,35 @@ $initials_helper = static function (string $text): string {
                 </section>
 
                 <section class="averia-card averia-card--people">
-                    <h3 class="averia-card__subtitle"><?php esc_html_e('Personas clave', 'garantias-online-360vo'); ?></h3>
+                    <h3 class="averia-card__subtitle"><?php esc_html_e('Vehículo', 'garantias-online-360vo'); ?></h3>
                     <dl class="averia-meta-list averia-meta-list--compact">
                         <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['vendor']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Titular', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['owner']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Gestor comercial', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['vendor_manager']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Elemento en cobertura', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['cover_element']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Km contratación', 'garantias-online-360vo'); ?></dt>
+                            <dt><?php esc_html_e('Kilómetros contratación', 'garantias-online-360vo'); ?></dt>
                             <dd><?php echo esc_html($sample_case['kilometers_start']); ?></dd>
                         </div>
                         <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Km entrada taller', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['kilometers_now']); ?></dd>
+                            <dt><?php esc_html_e('Kilómetros entrada taller', 'garantias-online-360vo'); ?></dt>
+                            <dd>
+                                <?php
+                                echo esc_html($sample_case['kilometers_now']);
+                                if (! empty($sample_case['kilometers_delta'])) {
+                                    echo ' (' . esc_html($sample_case['kilometers_delta']) . ')';
+                                }
+                                ?>
+                            </dd>
+                        </div>
+                        <div class="averia-meta-list__item">
+                            <dt><?php esc_html_e('Vehículo', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['vehicle_name']); ?></dd>
+                        </div>
+                        <div class="averia-meta-list__item">
+                            <dt><?php esc_html_e('Antigüedad', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['vehicle_age']); ?></dd>
+                        </div>
+                        <div class="averia-meta-list__item averia-meta-list__item--link">
+                            <a href="<?php echo esc_url($sample_case['vehicle_details']); ?>">
+                                <?php esc_html_e('Detalles del vehículo', 'garantias-online-360vo'); ?>
+                            </a>
                         </div>
                     </dl>
                 </section>
