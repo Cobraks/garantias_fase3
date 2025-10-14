@@ -1966,6 +1966,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 
                         const factorRecargos = 1 + breakdown.recargoTotal;
                         const factorAplicado = aplicaSinSuplementos ? 1 : factorRecargos;
+                        const tieneRecargos = breakdown.recargoTotal > 0;
 
                         const precioConRecargos =
                                 precioBase !== null
@@ -1996,17 +1997,31 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         const ivaSolo =
                                 precioFinal !== null ? redondearEuros(precioIVA - precioFinal) : null;
 
+                        const puedeRevertirDescuento =
+                                descuentoTotalSync > 0 &&
+                                descuentoTotalSync < 1 &&
+                                precioFinal !== null;
+                        const precioAntesDescuentosReal = puedeRevertirDescuento
+                                ? redondearEuros(precioFinal / (1 - descuentoTotalSync))
+                                : precioAntesDescuento;
+                        const precioAntesDescuentosRealIVA =
+                                precioAntesDescuentosReal !== null
+                                        ? redondearEuros(
+                                                  precioAntesDescuentosReal * (1 + IVA_PORCENTAJE / 100)
+                                          )
+                                        : null;
+
                         const precioAnteriorInfo = (() => {
-                                if (aplicaSinSuplementos && precioConRecargos !== null) {
+                                if (aplicaSinSuplementos && tieneRecargos && precioConRecargos !== null) {
                                         return {
                                                 sinIVA: precioConRecargos,
                                                 conIVA: precioConRecargosIVA,
                                         };
                                 }
-                                if (descuentoTotalSync > 0 && precioConRecargos !== null) {
+                                if (descuentoTotalSync > 0 && precioAntesDescuentosReal !== null) {
                                         return {
-                                                sinIVA: precioConRecargos,
-                                                conIVA: precioConRecargosIVA,
+                                                sinIVA: precioAntesDescuentosReal,
+                                                conIVA: precioAntesDescuentosRealIVA,
                                         };
                                 }
                                 return null;
