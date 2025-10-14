@@ -271,7 +271,17 @@ $initials_helper = static function (string $text): string {
             'espera_info'         => __('En espera de información', 'garantias-online-360vo'),
             'cerrada'             => __('Cerrada', 'garantias-online-360vo'),
         ];
-        $current_status_key = $sample_case['status_key'] ?? 'sin_estado';
+        $status_classes = [
+            'notificacion_averia' => 'is-status-critical',
+            'abierta'             => 'is-status-critical',
+            'pendiente_taller'    => 'is-status-warning',
+            'espera_info'         => 'is-status-warning',
+            'cerrada'             => 'is-status-success',
+        ];
+        $current_status_key   = $sample_case['status_key'] ?? 'sin_estado';
+        $current_status_class = $status_classes[$current_status_key] ?? 'is-status-default';
+        $opened_label         = $sample_case['opened'] ?? '';
+        $last_update_label    = $sample_case['last_update'] ?? '';
         ?>
         <div
             class="guarantees-list__filters guarantees-list__filters--averia-detail averia-detail__filters"
@@ -280,12 +290,28 @@ $initials_helper = static function (string $text): string {
         >
             <div class="averia-detail__filters-row">
                 <div class="averia-detail__filters-meta">
-                    <p class="averia-detail__plate" aria-label="<?php esc_attr_e('Matrícula', 'garantias-online-360vo'); ?>">
-                        <?php echo esc_html($sample_case['license_plate'] !== '' ? $sample_case['license_plate'] : $license_plate); ?>
-                    </p>
-                    <label class="averia-detail__status" for="averia-status-select">
+                    <div class="averia-detail__identity">
+                        <div class="averia-detail__identity-block">
+                            <span class="averia-detail__identity-label"><?php esc_html_e('Expediente nº', 'garantias-online-360vo'); ?></span>
+                            <p class="averia-detail__identity-value">
+                                <?php echo esc_html($sample_case['reference'] ?? ''); ?>
+                            </p>
+                        </div>
+                        <div class="averia-detail__identity-block">
+                            <span class="averia-detail__identity-label"><?php esc_html_e('Matrícula', 'garantias-online-360vo'); ?></span>
+                            <p class="averia-detail__plate" aria-label="<?php esc_attr_e('Matrícula del vehículo', 'garantias-online-360vo'); ?>">
+                                <?php echo esc_html(($sample_case['license_plate'] ?? '') !== '' ? $sample_case['license_plate'] : $license_plate); ?>
+                            </p>
+                        </div>
+                    </div>
+                    <label class="averia-detail__status <?php echo esc_attr($current_status_class); ?>" for="averia-status-select">
                         <span class="screen-reader-text"><?php esc_html_e('Estado de la avería', 'garantias-online-360vo'); ?></span>
-                        <select id="averia-status-select" name="averia-status-select">
+                        <span class="averia-detail__status-label"><?php esc_html_e('Estado', 'garantias-online-360vo'); ?></span>
+                        <select
+                            id="averia-status-select"
+                            name="averia-status-select"
+                            class="averia-status-select <?php echo esc_attr($current_status_class); ?>"
+                        >
                             <?php foreach ($status_options as $status_value => $status_label) : ?>
                                 <option value="<?php echo esc_attr($status_value); ?>"<?php selected($current_status_key, $status_value); ?>>
                                     <?php echo esc_html($status_label); ?>
@@ -332,13 +358,14 @@ $initials_helper = static function (string $text): string {
                 </div>
 
                 <div class="averia-detail__filters-info">
-                    <div class="averia-detail__info-item">
-                        <span><?php esc_html_e('Fecha de apertura', 'garantias-online-360vo'); ?></span>
-                        <strong><?php echo esc_html($sample_case['opened']); ?></strong>
+                    <div class="averia-detail__date">
+                        <span class="averia-detail__date-label"><?php esc_html_e('Fecha de apertura', 'garantias-online-360vo'); ?></span>
+                        <strong class="averia-detail__date-value"><?php echo esc_html($opened_label); ?></strong>
                     </div>
-                    <div class="averia-detail__info-item">
-                        <span><?php esc_html_e('Última actualización', 'garantias-online-360vo'); ?></span>
-                        <strong><?php echo esc_html($sample_case['last_update']); ?></strong>
+                    <span class="averia-detail__info-divider" aria-hidden="true">•</span>
+                    <div class="averia-detail__date">
+                        <span class="averia-detail__date-label"><?php esc_html_e('Última actualización', 'garantias-online-360vo'); ?></span>
+                        <strong class="averia-detail__date-value"><?php echo esc_html($last_update_label); ?></strong>
                     </div>
                 </div>
             </div>
@@ -467,14 +494,78 @@ $initials_helper = static function (string $text): string {
                 ),
             ],
         ];
+
+        $notes_count     = isset($sample_notes) && is_countable($sample_notes) ? count($sample_notes) : 0;
+        $documents_count = isset($sample_documents) && is_countable($sample_documents) ? count($sample_documents) : 0;
+
+        $opened_datetime      = null;
+        $last_update_datetime = null;
+        $days_open_label      = '';
+
+        if ($opened_label !== '') {
+            $opened_datetime = \DateTime::createFromFormat('d/m/Y', $opened_label) ?: null;
+        }
+
+        if ($last_update_label !== '') {
+            $last_update_datetime = \DateTime::createFromFormat('d/m/Y', $last_update_label) ?: null;
+        }
+
+        if ($opened_datetime instanceof \DateTime && $last_update_datetime instanceof \DateTime) {
+            $diff_days = max($opened_datetime->diff($last_update_datetime)->days, 0);
+            if ($diff_days === 0) {
+                $days_open_label = __('Menos de 24h', 'garantias-online-360vo');
+            } else {
+                $days_open_label = sprintf(
+                    _n('%s día', '%s días', $diff_days, 'garantias-online-360vo'),
+                    number_format_i18n($diff_days)
+                );
+            }
+        }
+
+        $insight_metrics = [];
+
+        if ($days_open_label !== '') {
+            $insight_metrics[__('Tiempo en curso', 'garantias-online-360vo')] = $days_open_label;
+        }
+
+        if ($last_update_label !== '') {
+            $insight_metrics[__('Último movimiento', 'garantias-online-360vo')] = $last_update_label;
+        }
+
+        $insight_metrics[__('Notas registradas', 'garantias-online-360vo')] = sprintf(
+            _n('%s nota', '%s notas', $notes_count, 'garantias-online-360vo'),
+            number_format_i18n($notes_count)
+        );
+
+        $insight_metrics[__('Documentos adjuntos', 'garantias-online-360vo')] = sprintf(
+            _n('%s documento', '%s documentos', $documents_count, 'garantias-online-360vo'),
+            number_format_i18n($documents_count)
+        );
+
+        $insight_metrics[__('Peritaje', 'garantias-online-360vo')] = $sample_case['peritaje_required']
+            ? __('Requerido', 'garantias-online-360vo')
+            : __('No requerido', 'garantias-online-360vo');
         ?>
 
         <div class="averia-detail__columns">
             <aside class="averia-detail__column averia-detail__column--context" aria-label="<?php esc_attr_e('Contexto del expediente', 'garantias-online-360vo'); ?>">
                 <section class="averia-card averia-card--context">
-                    <dl class="averia-meta-list">
-                        <div class="averia-meta-list__item averia-meta-list__item--highlight">
-                            <dd><?php echo esc_html($sample_case['policy']); ?></dd>
+                    <header class="averia-card__header averia-card__header--context">
+                        <p class="averia-card__eyebrow"><?php esc_html_e('Garantía vinculada', 'garantias-online-360vo'); ?></p>
+                        <h3 class="averia-card__title"><?php echo esc_html($sample_case['policy']); ?></h3>
+                        <?php if (! empty($sample_case['summary'])) : ?>
+                            <p class="averia-card__description"><?php echo esc_html($sample_case['summary']); ?></p>
+                        <?php endif; ?>
+                        <?php if (! empty($sample_case['status'])) : ?>
+                            <span class="averia-status averia-status--<?php echo esc_attr($sample_case['status_variant'] ?? 'info'); ?>">
+                                <?php echo esc_html($sample_case['status']); ?>
+                            </span>
+                        <?php endif; ?>
+                    </header>
+                    <dl class="averia-meta-list averia-meta-list--grid averia-meta-list--context">
+                        <div class="averia-meta-list__item">
+                            <dt><?php esc_html_e('Expediente', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['reference'] ?? ''); ?></dd>
                         </div>
                         <div class="averia-meta-list__item">
                             <dt><?php esc_html_e('Tipo de avería', 'garantias-online-360vo'); ?></dt>
@@ -484,12 +575,40 @@ $initials_helper = static function (string $text): string {
                             <dt><?php esc_html_e('Peritaje', 'garantias-online-360vo'); ?></dt>
                             <dd><?php echo $sample_case['peritaje_required'] ? esc_html__('Requerido', 'garantias-online-360vo') : esc_html__('No requerido', 'garantias-online-360vo'); ?></dd>
                         </div>
+                        <div class="averia-meta-list__item">
+                            <dt><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['vendor']); ?></dd>
+                        </div>
+                        <div class="averia-meta-list__item">
+                            <dt><?php esc_html_e('Gestor comercial', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['vendor_manager']); ?></dd>
+                        </div>
+                        <div class="averia-meta-list__item">
+                            <dt><?php esc_html_e('Propietario', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['owner']); ?></dd>
+                        </div>
+                        <div class="averia-meta-list__item averia-meta-list__item--full">
+                            <dt><?php esc_html_e('Elemento en cobertura', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['cover_element']); ?></dd>
+                        </div>
                     </dl>
                 </section>
 
-                <section class="averia-card averia-card--people">
-                    <h3 class="averia-card__subtitle"><?php esc_html_e('Vehículo', 'garantias-online-360vo'); ?></h3>
-                    <dl class="averia-meta-list averia-meta-list--compact">
+                <section class="averia-card averia-card--vehicle">
+                    <header class="averia-card__header">
+                        <p class="averia-card__eyebrow"><?php esc_html_e('Ficha del vehículo', 'garantias-online-360vo'); ?></p>
+                        <h3 class="averia-card__subtitle"><?php echo esc_html($sample_case['vehicle_name']); ?></h3>
+                        <p class="averia-card__description"><?php esc_html_e('Datos clave para el seguimiento del vehículo implicado.', 'garantias-online-360vo'); ?></p>
+                    </header>
+                    <dl class="averia-meta-list averia-meta-list--grid averia-meta-list--vehicle">
+                        <div class="averia-meta-list__item">
+                            <dt><?php esc_html_e('Matrícula', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html(($sample_case['license_plate'] ?? '') !== '' ? $sample_case['license_plate'] : $license_plate); ?></dd>
+                        </div>
+                        <div class="averia-meta-list__item">
+                            <dt><?php esc_html_e('Antigüedad', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['vehicle_age']); ?></dd>
+                        </div>
                         <div class="averia-meta-list__item">
                             <dt><?php esc_html_e('Kilómetros contratación', 'garantias-online-360vo'); ?></dt>
                             <dd><?php echo esc_html($sample_case['kilometers_start']); ?></dd>
@@ -506,19 +625,19 @@ $initials_helper = static function (string $text): string {
                             </dd>
                         </div>
                         <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Vehículo', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['vehicle_name']); ?></dd>
+                            <dt><?php esc_html_e('Propietario', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['owner']); ?></dd>
                         </div>
                         <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Antigüedad', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['vehicle_age']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item averia-meta-list__item--link">
-                            <a href="<?php echo esc_url($sample_case['vehicle_details']); ?>">
-                                <?php esc_html_e('Detalles del vehículo', 'garantias-online-360vo'); ?>
-                            </a>
+                            <dt><?php esc_html_e('Vendedor', 'garantias-online-360vo'); ?></dt>
+                            <dd><?php echo esc_html($sample_case['vendor']); ?></dd>
                         </div>
                     </dl>
+                    <div class="averia-card__footer">
+                        <a class="averia-card__link" href="<?php echo esc_url($sample_case['vehicle_details']); ?>">
+                            <?php esc_html_e('Ver ficha completa del vehículo', 'garantias-online-360vo'); ?>
+                        </a>
+                    </div>
                 </section>
             </aside>
 
@@ -828,147 +947,151 @@ $initials_helper = static function (string $text): string {
                 </section>
             </section>
 
-            <aside class="averia-detail__column averia-detail__column--support" aria-label="<?php esc_attr_e('Resumen y siguientes pasos', 'garantias-online-360vo'); ?>">
-                <section class="averia-summary-card averia-summary-card--contacts">
-                    <h2><?php esc_html_e('Contactos clave', 'garantias-online-360vo'); ?></h2>
-                    <div class="averia-contacts">
-                        <?php foreach ($contact_cards as $contact) :
-                            $avatar          = $contact['avatar'] ?? [];
-                            $phone           = $contact['phone'] ?? [];
-                            $email           = $contact['email'] ?? [];
-                            $type_label      = $contact['type_label'] ?? '';
-                            $details         = array_filter($contact['details'] ?? [], static function ($entry) {
-                                return is_array($entry) && ($entry['value'] ?? '') !== '';
-                            });
-                            $avatar_style    = '';
-                            $avatar_has_img  = ! empty($avatar['url']);
-                            if (! empty($avatar['background'])) {
-                                $avatar_style .= 'background-color:' . esc_attr($avatar['background']) . ';';
-                            }
-                            if ($avatar_has_img) {
-                                $avatar_style .= 'background-image:url(' . esc_url($avatar['url']) . ');';
-                            }
-                            ?>
-                            <article
-                                class="averia-contact-card"
-                                data-contact-label="<?php echo esc_attr($contact['label']); ?>"
-                                data-contact-title="<?php echo esc_attr($contact['title']); ?>"
-                                data-contact-subtitle="<?php echo esc_attr($contact['subtitle']); ?>"
-                            >
-                                <header class="averia-contact-card__header">
-                                    <div
-                                        class="averia-contact-card__avatar"
-                                        data-has-image="<?php echo $avatar_has_img ? 'true' : 'false'; ?>"
-                                        <?php if ($avatar_style !== '') : ?>style="<?php echo esc_attr($avatar_style); ?>"<?php endif; ?>
-                                    >
-                                        <?php if (! $avatar_has_img && ! empty($avatar['initials'])) : ?>
-                                            <span aria-hidden="true"><?php echo esc_html($avatar['initials']); ?></span>
-                                        <?php endif; ?>
-                                        <span class="averia-contact-card__avatar-sr"><?php echo esc_html($contact['label'] . ' · ' . $contact['title']); ?></span>
-                                    </div>
-                                    <div class="averia-contact-card__identity">
-                                        <div class="averia-contact-card__label-row">
-                                            <p class="averia-contact-card__label"><?php echo esc_html($contact['label']); ?></p>
-                                            <?php if ($type_label !== '') : ?>
-                                                <p class="averia-contact-card__type"><?php echo esc_html($type_label); ?></p>
+            <aside class="averia-detail__column averia-detail__column--support" aria-label="<?php esc_attr_e('Resumen operativo del expediente', 'garantias-online-360vo'); ?>">
+                <details class="averia-summary-card averia-summary-card--contacts averia-collapsible" open>
+                    <summary class="averia-collapsible__summary">
+                        <h2><?php esc_html_e('Contactos clave', 'garantias-online-360vo'); ?></h2>
+                        <span class="averia-collapsible__icon" aria-hidden="true"></span>
+                    </summary>
+                    <div class="averia-collapsible__content">
+                        <div class="averia-contacts">
+                            <?php foreach ($contact_cards as $contact) :
+                                $avatar          = $contact['avatar'] ?? [];
+                                $phone           = $contact['phone'] ?? [];
+                                $email           = $contact['email'] ?? [];
+                                $type_label      = $contact['type_label'] ?? '';
+                                $details         = array_filter($contact['details'] ?? [], static function ($entry) {
+                                    return is_array($entry) && ($entry['value'] ?? '') !== '';
+                                });
+                                $avatar_style    = '';
+                                $avatar_has_img  = ! empty($avatar['url']);
+                                if (! empty($avatar['background'])) {
+                                    $avatar_style .= 'background-color:' . esc_attr($avatar['background']) . ';';
+                                }
+                                if ($avatar_has_img) {
+                                    $avatar_style .= 'background-image:url(' . esc_url($avatar['url']) . ');';
+                                }
+                                ?>
+                                <article
+                                    class="averia-contact-card"
+                                    data-contact-label="<?php echo esc_attr($contact['label']); ?>"
+                                    data-contact-title="<?php echo esc_attr($contact['title']); ?>"
+                                    data-contact-subtitle="<?php echo esc_attr($contact['subtitle']); ?>"
+                                >
+                                    <header class="averia-contact-card__header">
+                                        <div
+                                            class="averia-contact-card__avatar"
+                                            data-has-image="<?php echo $avatar_has_img ? 'true' : 'false'; ?>"
+                                            <?php if ($avatar_style !== '') : ?>style="<?php echo esc_attr($avatar_style); ?>"<?php endif; ?>
+                                        >
+                                            <?php if (! $avatar_has_img && ! empty($avatar['initials'])) : ?>
+                                                <span aria-hidden="true"><?php echo esc_html($avatar['initials']); ?></span>
                                             <?php endif; ?>
+                                            <span class="averia-contact-card__avatar-sr"><?php echo esc_html($contact['label'] . ' · ' . $contact['title']); ?></span>
                                         </div>
-                                        <h3 class="averia-contact-card__title"><?php echo esc_html($contact['title']); ?></h3>
-                                        <?php if (! empty($contact['subtitle'])) : ?>
-                                            <p class="averia-contact-card__subtitle"><?php echo esc_html($contact['subtitle']); ?></p>
-                                        <?php endif; ?>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        class="averia-contact-card__details-trigger"
-                                        data-contact-details
-                                        aria-haspopup="dialog"
-                                        aria-expanded="false"
-                                    >
-                                        <?php echo Svg::icon('info', 'averia-contact-card__details-icon'); ?>
-                                        <span><?php echo esc_html($contact['cta']); ?></span>
-                                    </button>
-                                </header>
-                                <div class="averia-contact-card__actions">
-                                    <?php if (! empty($phone['href']) && ! empty($phone['display'])) : ?>
-                                        <a class="averia-contact-card__action" href="<?php echo esc_url($phone['href']); ?>">
-                                            <?php echo Svg::icon('phone', 'averia-contact-card__action-icon'); ?>
-                                            <span><?php echo esc_html($phone['display']); ?></span>
-                                        </a>
-                                    <?php endif; ?>
-                                    <?php if (! empty($email['href']) && ! empty($email['display'])) : ?>
-                                        <a class="averia-contact-card__action" href="<?php echo esc_url($email['href']); ?>">
-                                            <?php echo Svg::icon('email', 'averia-contact-card__action-icon'); ?>
-                                            <span><?php echo esc_html($email['display']); ?></span>
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-                                <?php
-                                $has_contact_links = (is_array($phone) && ! empty($phone['href']) && ! empty($phone['display']))
-                                    || (is_array($email) && ! empty($email['href']) && ! empty($email['display']));
-                                $has_details = ! empty($details);
-                                if ($has_contact_links || $has_details) :
-                                    ?>
-                                    <div class="averia-contact-card__details" hidden>
-                                        <?php if ($has_contact_links) : ?>
-                                            <div class="averia-contact-card__details-actions" role="group">
-                                                <?php if (! empty($phone['href']) && ! empty($phone['display'])) : ?>
-                                                    <a href="<?php echo esc_url($phone['href']); ?>">
-                                                        <?php echo Svg::icon('phone', 'averia-contact-card__action-icon'); ?>
-                                                        <span class="averia-contact-card__details-text">
-                                                            <span><?php echo esc_html($phone['display']); ?></span>
-                                                            <?php if (! empty($phone['source'])) : ?>
-                                                                <span class="averia-contact-card__details-hint"><?php echo esc_html($phone['source']); ?></span>
-                                                            <?php endif; ?>
-                                                        </span>
-                                                    </a>
-                                                <?php endif; ?>
-                                                <?php if (! empty($email['href']) && ! empty($email['display'])) : ?>
-                                                    <a href="<?php echo esc_url($email['href']); ?>">
-                                                        <?php echo Svg::icon('email', 'averia-contact-card__action-icon'); ?>
-                                                        <span class="averia-contact-card__details-text">
-                                                            <span><?php echo esc_html($email['display']); ?></span>
-                                                            <?php if (! empty($email['source'])) : ?>
-                                                                <span class="averia-contact-card__details-hint"><?php echo esc_html($email['source']); ?></span>
-                                                            <?php endif; ?>
-                                                        </span>
-                                                    </a>
+                                        <div class="averia-contact-card__identity">
+                                            <div class="averia-contact-card__label-row">
+                                                <p class="averia-contact-card__label"><?php echo esc_html($contact['label']); ?></p>
+                                                <?php if ($type_label !== '') : ?>
+                                                    <p class="averia-contact-card__type"><?php echo esc_html($type_label); ?></p>
                                                 <?php endif; ?>
                                             </div>
+                                            <h3 class="averia-contact-card__title"><?php echo esc_html($contact['title']); ?></h3>
+                                            <?php if (! empty($contact['subtitle'])) : ?>
+                                                <p class="averia-contact-card__subtitle"><?php echo esc_html($contact['subtitle']); ?></p>
+                                            <?php endif; ?>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="averia-contact-card__details-trigger"
+                                            data-contact-details
+                                            aria-haspopup="dialog"
+                                            aria-expanded="false"
+                                        >
+                                            <?php echo Svg::icon('info', 'averia-contact-card__details-icon'); ?>
+                                            <span><?php echo esc_html($contact['cta']); ?></span>
+                                        </button>
+                                    </header>
+                                    <div class="averia-contact-card__actions">
+                                        <?php if (! empty($phone['href']) && ! empty($phone['display'])) : ?>
+                                            <a class="averia-contact-card__action" href="<?php echo esc_url($phone['href']); ?>">
+                                                <?php echo Svg::icon('phone', 'averia-contact-card__action-icon'); ?>
+                                                <span><?php echo esc_html($phone['display']); ?></span>
+                                            </a>
                                         <?php endif; ?>
-                                        <?php if ($has_details) : ?>
-                                            <dl class="averia-contact-card__details-list">
-                                                <?php foreach ($details as $detail) : ?>
-                                                    <div class="averia-contact-card__details-item">
-                                                        <dt><?php echo esc_html($detail['label'] ?? ''); ?></dt>
-                                                        <dd><?php echo esc_html($detail['value'] ?? ''); ?></dd>
-                                                    </div>
-                                                <?php endforeach; ?>
-                                            </dl>
+                                        <?php if (! empty($email['href']) && ! empty($email['display'])) : ?>
+                                            <a class="averia-contact-card__action" href="<?php echo esc_url($email['href']); ?>">
+                                                <?php echo Svg::icon('email', 'averia-contact-card__action-icon'); ?>
+                                                <span><?php echo esc_html($email['display']); ?></span>
+                                            </a>
                                         <?php endif; ?>
                                     </div>
-                                <?php endif; ?>
-                            </article>
-                        <?php endforeach; ?>
+                                    <?php
+                                    $has_contact_links = (is_array($phone) && ! empty($phone['href']) && ! empty($phone['display']))
+                                        || (is_array($email) && ! empty($email['href']) && ! empty($email['display']));
+                                    $has_details = ! empty($details);
+                                    if ($has_contact_links || $has_details) :
+                                        ?>
+                                        <div class="averia-contact-card__details" hidden>
+                                            <?php if ($has_contact_links) : ?>
+                                                <div class="averia-contact-card__details-actions" role="group">
+                                                    <?php if (! empty($phone['href']) && ! empty($phone['display'])) : ?>
+                                                        <a href="<?php echo esc_url($phone['href']); ?>">
+                                                            <?php echo Svg::icon('phone', 'averia-contact-card__action-icon'); ?>
+                                                            <span class="averia-contact-card__details-text">
+                                                                <span><?php echo esc_html($phone['display']); ?></span>
+                                                                <?php if (! empty($phone['source'])) : ?>
+                                                                    <span class="averia-contact-card__details-hint"><?php echo esc_html($phone['source']); ?></span>
+                                                                <?php endif; ?>
+                                                            </span>
+                                                        </a>
+                                                    <?php endif; ?>
+                                                    <?php if (! empty($email['href']) && ! empty($email['display'])) : ?>
+                                                        <a href="<?php echo esc_url($email['href']); ?>">
+                                                            <?php echo Svg::icon('email', 'averia-contact-card__action-icon'); ?>
+                                                            <span class="averia-contact-card__details-text">
+                                                                <span><?php echo esc_html($email['display']); ?></span>
+                                                                <?php if (! empty($email['source'])) : ?>
+                                                                    <span class="averia-contact-card__details-hint"><?php echo esc_html($email['source']); ?></span>
+                                                                <?php endif; ?>
+                                                            </span>
+                                                        </a>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if ($has_details) : ?>
+                                                <dl class="averia-contact-card__details-list">
+                                                    <?php foreach ($details as $detail) : ?>
+                                                        <div class="averia-contact-card__details-item">
+                                                            <dt><?php echo esc_html($detail['label'] ?? ''); ?></dt>
+                                                            <dd><?php echo esc_html($detail['value'] ?? ''); ?></dd>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </dl>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
-                </section>
+                </details>
 
-                <section class="averia-summary-card averia-summary-card--secondary">
-                    <h2><?php esc_html_e('Próximos pasos', 'garantias-online-360vo'); ?></h2>
-                    <ul>
-                        <li><?php esc_html_e('Confirmar disponibilidad de piezas con el taller.', 'garantias-online-360vo'); ?></li>
-                        <li><?php esc_html_e('Actualizar cliente con resolución provisional.', 'garantias-online-360vo'); ?></li>
-                        <li><?php esc_html_e('Programar visita de perito si procede.', 'garantias-online-360vo'); ?></li>
-                    </ul>
-                </section>
-
-                <section class="averia-summary-card averia-summary-card--links">
-                    <h2><?php esc_html_e('Recursos útiles', 'garantias-online-360vo'); ?></h2>
-                    <ul>
-                        <li><a href="#" aria-disabled="true"><?php esc_html_e('Ver póliza vinculada', 'garantias-online-360vo'); ?></a></li>
-                        <li><a href="#" aria-disabled="true"><?php esc_html_e('Plantilla de resolución', 'garantias-online-360vo'); ?></a></li>
-                        <li><a href="#" aria-disabled="true"><?php esc_html_e('Contactar con soporte 360VO', 'garantias-online-360vo'); ?></a></li>
-                    </ul>
+                <section class="averia-summary-card averia-summary-card--insights">
+                    <h2><?php esc_html_e('Indicadores clave', 'garantias-online-360vo'); ?></h2>
+                    <dl class="averia-insights">
+                        <?php foreach ($insight_metrics as $metric_label => $metric_value) :
+                            $metric_value = trim((string) $metric_value);
+                            if ($metric_value === '') {
+                                continue;
+                            }
+                            ?>
+                            <div class="averia-insights__item">
+                                <dt><?php echo esc_html($metric_label); ?></dt>
+                                <dd><?php echo esc_html($metric_value); ?></dd>
+                            </div>
+                        <?php endforeach; ?>
+                    </dl>
                 </section>
             </aside>
         </div>
