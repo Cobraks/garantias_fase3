@@ -1998,19 +1998,9 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 
                         const precioAnteriorInfo = (() => {
                                 if (aplicaSinSuplementos && precioConRecargos !== null) {
-                                        const conDescuento = redondearEuros(
-                                                precioConRecargos * (1 - descuentoTotalSync)
-                                        );
-                                        const conDescuentoIVA =
-                                                conDescuento !== null
-                                                        ? redondearEuros(
-                                                                  conDescuento *
-                                                                          (1 + IVA_PORCENTAJE / 100)
-                                                          )
-                                                        : null;
                                         return {
-                                                sinIVA: conDescuento,
-                                                conIVA: conDescuentoIVA,
+                                                sinIVA: precioConRecargos,
+                                                conIVA: precioConRecargosIVA,
                                         };
                                 }
                                 if (descuentoTotalSync > 0 && precioConRecargos !== null) {
