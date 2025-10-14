@@ -38,6 +38,8 @@ $sample_case = [
     'vendor_manager'    => 'Pepito Pérez',
     'owner'             => 'Laura García',
     'policy'            => 'Cobertura Exclusive Camiones',
+    'limit_per_claim'   => '1.500,00 €',
+    'limit_per_contract'=> '12.000,00 €',
     'last_update'       => '13/10/2025',
     'peritaje_required' => true,
     'cover_element'     => 'Por confirmar',
@@ -271,17 +273,17 @@ $initials_helper = static function (string $text): string {
             'espera_info'         => __('En espera de información', 'garantias-online-360vo'),
             'cerrada'             => __('Cerrada', 'garantias-online-360vo'),
         ];
-        $status_classes = [
-            'notificacion_averia' => 'is-status-critical',
-            'abierta'             => 'is-status-critical',
-            'pendiente_taller'    => 'is-status-warning',
-            'espera_info'         => 'is-status-warning',
-            'cerrada'             => 'is-status-success',
-        ];
         $current_status_key   = $sample_case['status_key'] ?? 'sin_estado';
-        $current_status_class = $status_classes[$current_status_key] ?? 'is-status-default';
         $opened_label         = $sample_case['opened'] ?? '';
         $last_update_label    = $sample_case['last_update'] ?? '';
+        $plate_value_source   = ($sample_case['license_plate'] ?? '') !== ''
+            ? (string) $sample_case['license_plate']
+            : $license_plate;
+        $plate_compact        = strtoupper(str_replace(' ', '', (string) $plate_value_source));
+        $expediente_label     = trim((string) ($sample_case['reference'] ?? ''));
+        if ($expediente_label === '' && $plate_compact !== '') {
+            $expediente_label = 'EXP-AV-' . $plate_compact;
+        }
         ?>
         <div
             class="guarantees-list__filters guarantees-list__filters--averia-detail averia-detail__filters"
@@ -291,26 +293,19 @@ $initials_helper = static function (string $text): string {
             <div class="averia-detail__filters-row">
                 <div class="averia-detail__filters-meta">
                     <div class="averia-detail__identity">
-                        <div class="averia-detail__identity-block">
+                        <div class="averia-detail__identity-block averia-detail__identity-block--plate">
                             <span class="averia-detail__identity-label"><?php esc_html_e('Expediente nº', 'garantias-online-360vo'); ?></span>
-                            <p class="averia-detail__identity-value">
-                                <?php echo esc_html($sample_case['reference'] ?? ''); ?>
-                            </p>
-                        </div>
-                        <div class="averia-detail__identity-block">
-                            <span class="averia-detail__identity-label"><?php esc_html_e('Matrícula', 'garantias-online-360vo'); ?></span>
-                            <p class="averia-detail__plate" aria-label="<?php esc_attr_e('Matrícula del vehículo', 'garantias-online-360vo'); ?>">
-                                <?php echo esc_html(($sample_case['license_plate'] ?? '') !== '' ? $sample_case['license_plate'] : $license_plate); ?>
+                            <p class="averia-detail__identity-value averia-detail__identity-value--plate" aria-label="<?php esc_attr_e('Identificador del expediente', 'garantias-online-360vo'); ?>">
+                                <?php echo esc_html($expediente_label); ?>
                             </p>
                         </div>
                     </div>
-                    <label class="averia-detail__status <?php echo esc_attr($current_status_class); ?>" for="averia-status-select">
+                    <label class="averia-detail__status" for="averia-status-select">
                         <span class="screen-reader-text"><?php esc_html_e('Estado de la avería', 'garantias-online-360vo'); ?></span>
-                        <span class="averia-detail__status-label"><?php esc_html_e('Estado', 'garantias-online-360vo'); ?></span>
                         <select
                             id="averia-status-select"
                             name="averia-status-select"
-                            class="averia-status-select <?php echo esc_attr($current_status_class); ?>"
+                            class="averia-detail__status-select"
                         >
                             <?php foreach ($status_options as $status_value => $status_label) : ?>
                                 <option value="<?php echo esc_attr($status_value); ?>"<?php selected($current_status_key, $status_value); ?>>
@@ -552,46 +547,28 @@ $initials_helper = static function (string $text): string {
                 <section class="averia-card averia-card--context">
                     <header class="averia-card__header averia-card__header--context">
                         <p class="averia-card__eyebrow"><?php esc_html_e('Garantía vinculada', 'garantias-online-360vo'); ?></p>
-                        <h3 class="averia-card__title"><?php echo esc_html($sample_case['policy']); ?></h3>
-                        <?php if (! empty($sample_case['summary'])) : ?>
-                            <p class="averia-card__description"><?php echo esc_html($sample_case['summary']); ?></p>
-                        <?php endif; ?>
-                        <?php if (! empty($sample_case['status'])) : ?>
-                            <span class="averia-status averia-status--<?php echo esc_attr($sample_case['status_variant'] ?? 'info'); ?>">
-                                <?php echo esc_html($sample_case['status']); ?>
-                            </span>
-                        <?php endif; ?>
+                        <h3 class="averia-card__title averia-card__title--compact"><?php echo esc_html($sample_case['policy']); ?></h3>
                     </header>
-                    <dl class="averia-meta-list averia-meta-list--grid averia-meta-list--context">
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Expediente', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['reference'] ?? ''); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Tipo de avería', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['type']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Peritaje', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo $sample_case['peritaje_required'] ? esc_html__('Requerido', 'garantias-online-360vo') : esc_html__('No requerido', 'garantias-online-360vo'); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Profesional', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['vendor']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Gestor comercial', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['vendor_manager']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item">
-                            <dt><?php esc_html_e('Propietario', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['owner']); ?></dd>
-                        </div>
-                        <div class="averia-meta-list__item averia-meta-list__item--full">
-                            <dt><?php esc_html_e('Elemento en cobertura', 'garantias-online-360vo'); ?></dt>
-                            <dd><?php echo esc_html($sample_case['cover_element']); ?></dd>
-                        </div>
-                    </dl>
+                    <table class="averia-card__table" aria-label="<?php esc_attr_e('Datos de la garantía vinculada', 'garantias-online-360vo'); ?>">
+                        <tbody>
+                            <tr>
+                                <th scope="row"><?php esc_html_e('Tipo de avería', 'garantias-online-360vo'); ?></th>
+                                <td><?php echo esc_html($sample_case['type']); ?></td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><?php esc_html_e('Peritaje', 'garantias-online-360vo'); ?></th>
+                                <td><?php echo $sample_case['peritaje_required'] ? esc_html__('Requerido', 'garantias-online-360vo') : esc_html__('No requerido', 'garantias-online-360vo'); ?></td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><?php esc_html_e('Límites por avería', 'garantias-online-360vo'); ?></th>
+                                <td><?php echo esc_html($sample_case['limit_per_claim'] ?? '—'); ?></td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><?php esc_html_e('Límites por contrato', 'garantias-online-360vo'); ?></th>
+                                <td><?php echo esc_html($sample_case['limit_per_contract'] ?? '—'); ?></td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </section>
 
                 <section class="averia-card averia-card--vehicle">
