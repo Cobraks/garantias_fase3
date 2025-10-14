@@ -2303,18 +2303,19 @@
                 title.className = 'client-offer-card__title';
                 header.appendChild(title);
 
-                const meta = document.createElement('div');
-                meta.className = 'client-offer-card__meta';
-
                 const badge = document.createElement('span');
                 badge.className = 'client-offer-card__badge';
-                meta.appendChild(badge);
+                const statusGroup = document.createElement('div');
+                statusGroup.className = 'client-offer-card__status-group';
+                statusGroup.appendChild(badge);
 
                 const statusChip = document.createElement('span');
                 statusChip.className = 'client-offer-card__status';
-                meta.appendChild(statusChip);
+                statusGroup.appendChild(statusChip);
 
-                header.appendChild(meta);
+                const toolbar = document.createElement('div');
+                toolbar.className = 'client-offer-card__toolbar';
+                toolbar.appendChild(statusGroup);
 
                 const actions = document.createElement('div');
                 actions.className = 'client-offer-card__actions';
@@ -2337,7 +2338,8 @@
                 });
                 actions.appendChild(deleteButton);
 
-                header.appendChild(actions);
+                toolbar.appendChild(actions);
+                header.appendChild(toolbar);
                 card.appendChild(header);
 
                 const grid = document.createElement('div');
