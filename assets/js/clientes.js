@@ -2299,23 +2299,21 @@
                 const header = document.createElement('header');
                 header.className = 'client-offer-card__header';
 
+                const heading = document.createElement('div');
+                heading.className = 'client-offer-card__heading';
+
                 const title = document.createElement('h3');
                 title.className = 'client-offer-card__title';
-                header.appendChild(title);
+                heading.appendChild(title);
 
                 const badge = document.createElement('span');
                 badge.className = 'client-offer-card__badge';
-                const statusGroup = document.createElement('div');
-                statusGroup.className = 'client-offer-card__status-group';
-                statusGroup.appendChild(badge);
+                heading.appendChild(badge);
 
-                const statusChip = document.createElement('span');
-                statusChip.className = 'client-offer-card__status';
-                statusGroup.appendChild(statusChip);
+                header.appendChild(heading);
 
                 const toolbar = document.createElement('div');
                 toolbar.className = 'client-offer-card__toolbar';
-                toolbar.appendChild(statusGroup);
 
                 const actions = document.createElement('div');
                 actions.className = 'client-offer-card__actions';
@@ -2337,6 +2335,23 @@
                     removeOffer(index);
                 });
                 actions.appendChild(deleteButton);
+
+                const statusToggle = document.createElement('label');
+                statusToggle.className = 'client-toggle client-offer-card__toggle';
+                const statusId = uniqueId('offer-status');
+                const statusInput = document.createElement('input');
+                statusInput.type = 'checkbox';
+                statusInput.id = statusId;
+                statusInput.className = 'client-toggle__input';
+                statusInput.checked = Boolean(offer.estado);
+                const toggleTrack = document.createElement('span');
+                toggleTrack.className = 'client-toggle__track';
+                const statusText = document.createElement('span');
+                statusText.className = 'client-toggle__text';
+                statusToggle.appendChild(statusInput);
+                statusToggle.appendChild(toggleTrack);
+                statusToggle.appendChild(statusText);
+                actions.appendChild(statusToggle);
 
                 toolbar.appendChild(actions);
                 header.appendChild(toolbar);
@@ -2437,40 +2452,12 @@
                 note.textContent = strings.manageOffersSinSuplementosNote || 'No se aplicarán suplementos cuando esta oferta esté activa.';
                 grid.appendChild(note);
 
-                const statusField = document.createElement('div');
-                statusField.className = 'client-offer-card__field client-offer-card__field--status';
-                const statusLabel = document.createElement('span');
-                statusLabel.className = 'client-offer-card__label client-offer-card__label--inline';
-                statusLabel.textContent = strings.manageOffersStatusLabel || 'Oferta activa';
-                const statusControl = document.createElement('div');
-                statusControl.className = 'client-offer-card__control client-offer-card__control--switch';
-                const statusToggle = document.createElement('label');
-                statusToggle.className = 'client-toggle';
-                const statusId = uniqueId('offer-status');
-                const statusInput = document.createElement('input');
-                statusInput.type = 'checkbox';
-                statusInput.id = statusId;
-                statusInput.className = 'client-toggle__input';
-                statusInput.checked = Boolean(offer.estado);
-                const toggleTrack = document.createElement('span');
-                toggleTrack.className = 'client-toggle__track';
-                const statusText = document.createElement('span');
-                statusText.className = 'client-toggle__text';
-                statusToggle.appendChild(statusInput);
-                statusToggle.appendChild(toggleTrack);
-                statusToggle.appendChild(statusText);
-                statusControl.appendChild(statusToggle);
-                statusField.appendChild(statusLabel);
-                statusField.appendChild(statusControl);
-
                 card.appendChild(grid);
-                card.appendChild(statusField);
 
                 offer.dom = {
                     card,
                     title,
                     badge,
-                    statusChip,
                     typeSelect,
                     nameInput,
                     discountInput,
@@ -2655,12 +2642,6 @@
                 if (offer.dom.badge) {
                     offer.dom.badge.textContent = typeLabel;
                     offer.dom.badge.hidden = typeLabel === '';
-                }
-                if (offer.dom.statusChip) {
-                    const activeLabel = strings.manageOffersStatusActive || 'Activa';
-                    const inactiveLabel = strings.manageOffersStatusInactive || 'Inactiva';
-                    offer.dom.statusChip.textContent = offer.estado ? activeLabel : inactiveLabel;
-                    offer.dom.statusChip.dataset.state = offer.estado ? 'active' : 'inactive';
                 }
                 if (offer.dom.statusText) {
                     offer.dom.statusText.textContent = offer.estado
