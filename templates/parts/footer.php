@@ -277,6 +277,7 @@ if (! empty($is_add_guarantee)) {
             'search' => Svg::icon('search'),
             'manageOffers' => Svg::icon('manage_offers'),
             'manageSepa' => Svg::icon('payment'),
+            'save' => Svg::icon('save'),
         ],
     ];
     ?>

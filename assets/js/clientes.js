@@ -19,6 +19,7 @@
         const iconSearch = icons.search || '';
         const iconManageOffers = icons.manageOffers || '';
         const iconManageSepa = icons.manageSepa || '';
+        const iconSave = icons.save || '';
         const permissions = config.permissions || {};
         const canAssignCommercials = Boolean(permissions.canAssignCommercials);
         const router = config.router || {};
@@ -1940,6 +1941,8 @@
             const baseTitle = (strings.manageOffersTitle || strings.manageOffers || 'Gestionar ofertas').trim() || 'Gestionar ofertas';
             const baseSaveLabel = (strings.dialogSave || 'Guardar cambios').trim() || 'Guardar cambios';
             const savingLabel = (strings.manageOffersSaving || strings.assignCommercialSaving || 'Guardando…').trim() || 'Guardando…';
+            const saveIconMarkup = iconSave ? `<span class="client-dialog__save-icon" aria-hidden="true">${iconSave}</span>` : '';
+            const addLabel = (strings.manageOffersAdd || 'Añadir nueva oferta').trim() || 'Añadir nueva oferta';
             const overlay = document.createElement('div');
             overlay.className = 'client-dialog client-dialog--simple client-dialog--offers';
             overlay.hidden = true;
@@ -1954,10 +1957,16 @@
                     <div class="client-dialog__body client-dialog__body--simple client-dialog__body--offers"></div>
                     <footer class="client-dialog__footer">
                         <span class="client-dialog__status" aria-live="polite"></span>
-                        <button type="button" class="client-dialog__save" disabled>
-                            <span class="client-dialog__save-label">${escapeHtml(baseSaveLabel)}</span>
-                            <span class="client-dialog__spinner" aria-hidden="true"></span>
-                        </button>
+                        <div class="client-dialog__footer-actions">
+                            <button type="button" class="client-offers__add">
+                                <span class="client-offers__add-label">${escapeHtml(addLabel)}</span>
+                            </button>
+                            <button type="button" class="client-dialog__save" disabled>
+                                ${saveIconMarkup}
+                                <span class="client-dialog__save-label">${escapeHtml(baseSaveLabel)}</span>
+                                <span class="client-dialog__spinner" aria-hidden="true"></span>
+                            </button>
+                        </div>
                     </footer>
                 </div>
             `;
@@ -1968,6 +1977,7 @@
             const titleEl = overlay.querySelector('.client-dialog__title');
             const body = overlay.querySelector('.client-dialog__body--offers');
             const statusEl = overlay.querySelector('.client-dialog__status');
+            const addButton = overlay.querySelector('.client-offers__add');
             const saveButton = overlay.querySelector('.client-dialog__save');
             const saveLabelEl = saveButton ? saveButton.querySelector('.client-dialog__save-label') : null;
             const closeControls = overlay.querySelectorAll('[data-dialog-close]');
@@ -2004,6 +2014,17 @@
                 }
             }
 
+            if (addButton) {
+                addButton.addEventListener('click', () => {
+                    offers.push(createEmptyOffer());
+                    renderOffers();
+                    updateDirtyState();
+                    if (body) {
+                        body.scrollTop = body.scrollHeight;
+                    }
+                });
+            }
+
             function setStatus(message = '', variant = '') {
                 if (!statusEl) {
                     return;
@@ -2024,6 +2045,9 @@
                 saveButton.disabled = disabled;
                 saveButton.classList.toggle('is-loading', isSaving);
                 saveLabelEl.textContent = isSaving ? savingLabel : baseSaveLabel;
+                if (addButton) {
+                    addButton.disabled = isLoading || isSaving;
+                }
             }
 
             function formatTitle(context) {
@@ -2250,20 +2274,6 @@
                 }
 
                 container.appendChild(list);
-
-                const actions = document.createElement('div');
-                actions.className = 'client-offers__actions';
-                const addButton = document.createElement('button');
-                addButton.type = 'button';
-                addButton.className = 'client-offers__add';
-                addButton.textContent = strings.manageOffersAdd || 'Añadir nueva oferta';
-                addButton.addEventListener('click', () => {
-                    offers.push(createEmptyOffer());
-                    renderOffers();
-                    updateDirtyState();
-                });
-                actions.appendChild(addButton);
-                container.appendChild(actions);
 
                 body.appendChild(container);
                 refreshOfferOrdering();
