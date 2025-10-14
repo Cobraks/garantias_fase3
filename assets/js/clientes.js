@@ -51,11 +51,9 @@
         };
 
         const assignDialog = createAssignDialog();
-        const offersDialog = createSimpleDialog({
-            titleKey: 'manageOffersTitle',
-            titleTemplateKey: 'manageOffersTitleTemplate',
-            fallbackTitle: 'Gestionar ofertas',
-            saveLabelKey: 'dialogSave',
+        const offersDialog = createOffersDialog({
+            restRoot,
+            restNonce,
         });
         const sepaDialog = createSimpleDialog({
             titleKey: 'manageSepaTitle',
@@ -1933,6 +1931,1023 @@
             };
         }
 
+
+        function createOffersDialog(options = {}) {
+            const restRootUrl = typeof options.restRoot === 'string' && options.restRoot !== '' ? options.restRoot : '/wp-json/';
+            const restNonceValue = typeof options.restNonce === 'string' ? options.restNonce : '';
+            const restBase = restRootUrl.endsWith('/') ? restRootUrl : `${restRootUrl}/`;
+            const titleId = uniqueId('client-dialog-title');
+            const baseTitle = (strings.manageOffersTitle || strings.manageOffers || 'Gestionar ofertas').trim() || 'Gestionar ofertas';
+            const baseSaveLabel = (strings.dialogSave || 'Guardar cambios').trim() || 'Guardar cambios';
+            const savingLabel = (strings.manageOffersSaving || strings.assignCommercialSaving || 'Guardando…').trim() || 'Guardando…';
+            const overlay = document.createElement('div');
+            overlay.className = 'client-dialog client-dialog--simple client-dialog--offers';
+            overlay.hidden = true;
+            overlay.setAttribute('aria-hidden', 'true');
+            overlay.innerHTML = `
+                <div class="client-dialog__backdrop" data-dialog-close></div>
+                <div class="client-dialog__panel client-dialog__panel--simple client-dialog__panel--offers" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1">
+                    <header class="client-dialog__header">
+                        <h2 id="${titleId}" class="client-dialog__title">${escapeHtml(baseTitle)}</h2>
+                        <button type="button" class="client-dialog__close" data-dialog-close aria-label="${escapeHtml(strings.close || 'Cerrar')}">${iconClose}</button>
+                    </header>
+                    <div class="client-dialog__body client-dialog__body--simple client-dialog__body--offers"></div>
+                    <footer class="client-dialog__footer">
+                        <span class="client-dialog__status" aria-live="polite"></span>
+                        <button type="button" class="client-dialog__save" disabled>
+                            <span class="client-dialog__save-label">${escapeHtml(baseSaveLabel)}</span>
+                            <span class="client-dialog__spinner" aria-hidden="true"></span>
+                        </button>
+                    </footer>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            const panel = overlay.querySelector('.client-dialog__panel');
+            const titleEl = overlay.querySelector('.client-dialog__title');
+            const body = overlay.querySelector('.client-dialog__body--offers');
+            const statusEl = overlay.querySelector('.client-dialog__status');
+            const saveButton = overlay.querySelector('.client-dialog__save');
+            const saveLabelEl = saveButton ? saveButton.querySelector('.client-dialog__save-label') : null;
+            const closeControls = overlay.querySelectorAll('[data-dialog-close]');
+
+            let previousActiveElement = null;
+            let currentContext = null;
+            let offers = [];
+            let choices = { tipo_oferta: [], aplicacion: [] };
+            let modalities = [];
+            let isLoading = false;
+            let isSaving = false;
+            let dirty = false;
+            let initialSnapshot = '';
+            let offerIdCounter = 0;
+
+            const choiceMaps = {
+                tipo: new Map(),
+                scope: new Map(),
+            };
+
+            function resetState() {
+                offers = [];
+                choices = { tipo_oferta: [], aplicacion: [] };
+                modalities = [];
+                isLoading = false;
+                isSaving = false;
+                dirty = false;
+                initialSnapshot = '';
+                offerIdCounter = 0;
+                choiceMaps.tipo.clear();
+                choiceMaps.scope.clear();
+                if (body) {
+                    body.innerHTML = '';
+                }
+            }
+
+            function setStatus(message = '', variant = '') {
+                if (!statusEl) {
+                    return;
+                }
+                statusEl.textContent = message;
+                if (variant) {
+                    statusEl.dataset.variant = variant;
+                } else {
+                    delete statusEl.dataset.variant;
+                }
+            }
+
+            function updateSaveButton() {
+                if (!saveButton || !saveLabelEl) {
+                    return;
+                }
+                const disabled = isLoading || isSaving || !dirty;
+                saveButton.disabled = disabled;
+                saveButton.classList.toggle('is-loading', isSaving);
+                saveLabelEl.textContent = isSaving ? savingLabel : baseSaveLabel;
+            }
+
+            function formatTitle(context) {
+                const subject = context && typeof context === 'object' && typeof context.subject === 'string'
+                    ? context.subject.trim()
+                    : '';
+                const template = typeof strings.manageOffersTitleTemplate === 'string' ? strings.manageOffersTitleTemplate.trim() : '';
+                if (template !== '' && subject !== '' && template.includes('%s')) {
+                    return template.replace('%s', subject);
+                }
+                if (baseTitle.includes('%s') && subject !== '') {
+                    return baseTitle.replace('%s', subject);
+                }
+                return baseTitle;
+            }
+
+            function handleKeydown(event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    close();
+                }
+            }
+
+            function generateOfferId() {
+                offerIdCounter += 1;
+                return `offer-${Date.now()}-${offerIdCounter}`;
+            }
+
+            function normalizeChoices(rawChoices) {
+                const normalized = {
+                    tipo_oferta: [],
+                    aplicacion: [],
+                };
+                if (rawChoices && typeof rawChoices === 'object') {
+                    if (Array.isArray(rawChoices.tipo_oferta)) {
+                        normalized.tipo_oferta = rawChoices.tipo_oferta.filter((choice) => choice && typeof choice.value === 'string');
+                    }
+                    if (Array.isArray(rawChoices.aplicacion)) {
+                        normalized.aplicacion = rawChoices.aplicacion.filter((choice) => choice && typeof choice.value === 'string');
+                    }
+                }
+                choiceMaps.tipo.clear();
+                choiceMaps.scope.clear();
+                normalized.tipo_oferta.forEach((choice) => {
+                    const value = typeof choice.value === 'string' ? choice.value : '';
+                    const label = typeof choice.label === 'string' ? choice.label : value;
+                    if (value !== '') {
+                        choiceMaps.tipo.set(value, label);
+                    }
+                });
+                normalized.aplicacion.forEach((choice) => {
+                    const value = typeof choice.value === 'string' ? choice.value : '';
+                    const label = typeof choice.label === 'string' ? choice.label : value;
+                    if (value !== '') {
+                        choiceMaps.scope.set(value, label);
+                    }
+                });
+                return normalized;
+            }
+
+            function normalizeModalities(list) {
+                if (!Array.isArray(list)) {
+                    return [];
+                }
+                return list
+                    .map((item) => {
+                        const id = Number(item && item.id);
+                        return {
+                            id: Number.isFinite(id) ? id : 0,
+                            title: typeof item?.title === 'string' ? item.title : '',
+                            slug: typeof item?.slug === 'string' ? item.slug : '',
+                            nivel: typeof item?.nivel === 'string' ? item.nivel : '',
+                            tipo: typeof item?.tipo === 'string' ? item.tipo : '',
+                        };
+                    })
+                    .filter((item) => item.id > 0);
+            }
+
+            function normalizeOffers(rawOffers) {
+                if (!Array.isArray(rawOffers)) {
+                    return [];
+                }
+                return rawOffers.map((raw) => {
+                    const typeRaw = raw && typeof raw === 'object' ? raw.tipo_oferta : '';
+                    const scopeRaw = raw && typeof raw === 'object' ? raw.aplicacion : '';
+                    const typeValue = typeof typeRaw === 'object' && typeRaw !== null
+                        ? (typeof typeRaw.value === 'string' ? typeRaw.value : '')
+                        : (typeof typeRaw === 'string' ? typeRaw : '');
+                    const scopeValue = typeof scopeRaw === 'object' && scopeRaw !== null
+                        ? (typeof scopeRaw.value === 'string' ? scopeRaw.value : '')
+                        : (typeof scopeRaw === 'string' ? scopeRaw : '');
+                    let discount = '';
+                    if (raw && Object.prototype.hasOwnProperty.call(raw, 'porcentaje_descuento') && raw.porcentaje_descuento !== null) {
+                        const numeric = Number(raw.porcentaje_descuento);
+                        discount = Number.isFinite(numeric) ? String(numeric) : '';
+                    }
+                    const selection = [];
+                    if (Array.isArray(raw?.seleccion_modalidad)) {
+                        raw.seleccion_modalidad.forEach((value) => {
+                            const modalId = Number(value);
+                            if (Number.isFinite(modalId) && modalId > 0) {
+                                selection.push(modalId);
+                            }
+                        });
+                    }
+                    const isoDate = typeof raw?.caducidad_iso === 'string' ? raw.caducidad_iso : '';
+                    const localDate = typeof raw?.caducidad_oferta === 'string' ? raw.caducidad_oferta : '';
+                    return {
+                        uid: typeof raw?.uid === 'string' && raw.uid !== '' ? raw.uid : generateOfferId(),
+                        tipo_oferta: typeValue,
+                        nombre_oferta: typeof raw?.nombre_oferta === 'string' ? raw.nombre_oferta : '',
+                        porcentaje_descuento: discount,
+                        aplicacion: scopeValue !== '' ? scopeValue : 'todas',
+                        caducidad_iso: isoDate,
+                        caducidad_oferta: localDate,
+                        seleccion_modalidad: selection,
+                        estado: raw?.estado !== false,
+                        errors: {},
+                        dom: {},
+                    };
+                });
+            }
+
+            function createEmptyOffer() {
+                const defaultScope = choices.aplicacion.length > 0 && typeof choices.aplicacion[0].value === 'string'
+                    ? choices.aplicacion[0].value
+                    : 'todas';
+                return {
+                    uid: generateOfferId(),
+                    tipo_oferta: '',
+                    nombre_oferta: '',
+                    porcentaje_descuento: '',
+                    aplicacion: defaultScope,
+                    caducidad_iso: '',
+                    caducidad_oferta: '',
+                    seleccion_modalidad: [],
+                    estado: true,
+                    errors: {},
+                    dom: {},
+                };
+            }
+
+            function formatIsoToLocal(value) {
+                if (typeof value !== 'string' || value.trim() === '') {
+                    return '';
+                }
+                const parts = value.trim().split('-');
+                if (parts.length !== 3) {
+                    return '';
+                }
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+
+            function setInitialSnapshot() {
+                initialSnapshot = JSON.stringify(serializeOffers());
+                dirty = false;
+                updateSaveButton();
+            }
+
+            function updateDirtyState() {
+                const snapshot = JSON.stringify(serializeOffers());
+                dirty = snapshot !== initialSnapshot;
+                updateSaveButton();
+            }
+
+            function renderLoading() {
+                if (!body) {
+                    return;
+                }
+                const message = strings.manageOffersLoading || 'Cargando ofertas…';
+                body.innerHTML = `<div class="client-offers__state client-offers__state--loading"><span class="client-offers__spinner" aria-hidden="true"></span><p>${escapeHtml(message)}</p></div>`;
+            }
+
+            function renderError(message) {
+                if (!body) {
+                    return;
+                }
+                body.innerHTML = `<div class="client-offers__state client-offers__state--error"><p>${escapeHtml(message)}</p></div>`;
+                dirty = false;
+                updateSaveButton();
+            }
+
+            function refreshOfferOrdering() {
+                offers.forEach((offer, index) => {
+                    updateOfferMetadata(offer, index);
+                });
+            }
+
+            function renderOffers() {
+                if (!body) {
+                    return;
+                }
+
+                body.innerHTML = '';
+                const container = document.createElement('div');
+                container.className = 'client-offers';
+
+                const introText = typeof strings.manageOffersIntro === 'string' ? strings.manageOffersIntro.trim() : '';
+                if (introText !== '') {
+                    const intro = document.createElement('p');
+                    intro.className = 'client-offers__intro';
+                    intro.textContent = introText;
+                    container.appendChild(intro);
+                }
+
+                const list = document.createElement('div');
+                list.className = 'client-offers__list';
+
+                if (offers.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'client-offers__empty';
+                    empty.textContent = strings.manageOffersEmptyState || 'No hay ofertas configuradas para este cliente.';
+                    list.appendChild(empty);
+                } else {
+                    offers.forEach((offer, index) => {
+                        if (!offer || typeof offer !== 'object') {
+                            return;
+                        }
+                        offer.errors = offer.errors || {};
+                        offer.dom = offer.dom || {};
+                        const card = buildOfferCard(offer, index);
+                        list.appendChild(card);
+                    });
+                }
+
+                container.appendChild(list);
+
+                const actions = document.createElement('div');
+                actions.className = 'client-offers__actions';
+                const addButton = document.createElement('button');
+                addButton.type = 'button';
+                addButton.className = 'client-offers__add';
+                addButton.textContent = strings.manageOffersAdd || 'Añadir oferta';
+                addButton.addEventListener('click', () => {
+                    offers.push(createEmptyOffer());
+                    renderOffers();
+                    updateDirtyState();
+                });
+                actions.appendChild(addButton);
+                container.appendChild(actions);
+
+                body.appendChild(container);
+                refreshOfferOrdering();
+                updateSaveButton();
+            }
+
+            function createFieldElement(id, labelText, controlElement) {
+                const field = document.createElement('div');
+                field.className = 'client-offer-card__field';
+                const label = document.createElement('label');
+                label.className = 'client-offer-card__label';
+                if (id) {
+                    label.setAttribute('for', id);
+                }
+                label.textContent = labelText;
+                const control = document.createElement('div');
+                control.className = 'client-offer-card__control';
+                control.appendChild(controlElement);
+                const error = document.createElement('p');
+                error.className = 'client-offer-card__error';
+                control.appendChild(error);
+                field.appendChild(label);
+                field.appendChild(control);
+                return { field, control, error };
+            }
+
+            function buildOfferCard(offer, index) {
+                const card = document.createElement('article');
+                card.className = 'client-offer-card';
+                card.dataset.uid = offer.uid;
+                card.dataset.index = String(index);
+
+                const header = document.createElement('header');
+                header.className = 'client-offer-card__header';
+
+                const title = document.createElement('h3');
+                title.className = 'client-offer-card__title';
+                header.appendChild(title);
+
+                const meta = document.createElement('div');
+                meta.className = 'client-offer-card__meta';
+
+                const badge = document.createElement('span');
+                badge.className = 'client-offer-card__badge';
+                meta.appendChild(badge);
+
+                const statusChip = document.createElement('span');
+                statusChip.className = 'client-offer-card__status';
+                meta.appendChild(statusChip);
+
+                header.appendChild(meta);
+
+                const actions = document.createElement('div');
+                actions.className = 'client-offer-card__actions';
+
+                const duplicateButton = document.createElement('button');
+                duplicateButton.type = 'button';
+                duplicateButton.className = 'client-offer-card__action';
+                duplicateButton.textContent = strings.manageOffersDuplicate || 'Duplicar';
+                duplicateButton.addEventListener('click', () => {
+                    duplicateOffer(index);
+                });
+                actions.appendChild(duplicateButton);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'client-offer-card__action client-offer-card__action--danger';
+                deleteButton.textContent = strings.manageOffersDelete || 'Eliminar';
+                deleteButton.addEventListener('click', () => {
+                    removeOffer(index);
+                });
+                actions.appendChild(deleteButton);
+
+                header.appendChild(actions);
+                card.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = 'client-offer-card__grid';
+
+                const typeId = uniqueId('offer-type');
+                const typeSelect = document.createElement('select');
+                typeSelect.id = typeId;
+                typeSelect.className = 'client-offer-card__select';
+                const typePlaceholder = document.createElement('option');
+                typePlaceholder.value = '';
+                typePlaceholder.textContent = strings.manageOffersTypePlaceholder || 'Selecciona un tipo…';
+                typeSelect.appendChild(typePlaceholder);
+                choices.tipo_oferta.forEach((choice) => {
+                    if (!choice || typeof choice.value !== 'string') {
+                        return;
+                    }
+                    const option = document.createElement('option');
+                    option.value = choice.value;
+                    option.textContent = typeof choice.label === 'string' ? choice.label : choice.value;
+                    typeSelect.appendChild(option);
+                });
+                typeSelect.value = offer.tipo_oferta || '';
+                const typeFieldObj = createFieldElement(typeId, strings.manageOffersTypeLabel || 'Tipo de oferta', typeSelect);
+                grid.appendChild(typeFieldObj.field);
+
+                const nameId = uniqueId('offer-name');
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.id = nameId;
+                nameInput.className = 'client-offer-card__input';
+                nameInput.placeholder = strings.manageOffersNamePlaceholder || '';
+                nameInput.value = offer.nombre_oferta || '';
+                const nameFieldObj = createFieldElement(nameId, strings.manageOffersNameLabel || 'Nombre personalizado', nameInput);
+                grid.appendChild(nameFieldObj.field);
+
+                const discountId = uniqueId('offer-discount');
+                const discountInput = document.createElement('input');
+                discountInput.type = 'number';
+                discountInput.min = '0';
+                discountInput.max = '100';
+                discountInput.step = '0.5';
+                discountInput.id = discountId;
+                discountInput.className = 'client-offer-card__input';
+                discountInput.placeholder = strings.manageOffersDiscountPlaceholder || '';
+                discountInput.value = offer.porcentaje_descuento || '';
+                const discountFieldObj = createFieldElement(discountId, strings.manageOffersDiscountLabel || 'Porcentaje de descuento', discountInput);
+                grid.appendChild(discountFieldObj.field);
+
+                const scopeId = uniqueId('offer-scope');
+                const scopeSelect = document.createElement('select');
+                scopeSelect.id = scopeId;
+                scopeSelect.className = 'client-offer-card__select';
+                const scopePlaceholder = document.createElement('option');
+                scopePlaceholder.value = '';
+                scopePlaceholder.textContent = strings.manageOffersScopePlaceholder || 'Selecciona un ámbito…';
+                scopeSelect.appendChild(scopePlaceholder);
+                choices.aplicacion.forEach((choice) => {
+                    if (!choice || typeof choice.value !== 'string') {
+                        return;
+                    }
+                    const option = document.createElement('option');
+                    option.value = choice.value;
+                    option.textContent = typeof choice.label === 'string' ? choice.label : choice.value;
+                    scopeSelect.appendChild(option);
+                });
+                scopeSelect.value = offer.aplicacion || '';
+                const scopeFieldObj = createFieldElement(scopeId, strings.manageOffersScopeLabel || 'Ámbito de aplicación', scopeSelect);
+                grid.appendChild(scopeFieldObj.field);
+
+                const modalitiesId = uniqueId('offer-modalities');
+                const modalitiesContainer = document.createElement('div');
+                modalitiesContainer.className = 'client-offer-card__modalities';
+                modalitiesContainer.id = modalitiesId;
+                const modalitiesFieldObj = createFieldElement(modalitiesId, strings.manageOffersModalitiesLabel || 'Modalidades incluidas', modalitiesContainer);
+                grid.appendChild(modalitiesFieldObj.field);
+
+                const modalitiesList = document.createElement('div');
+                modalitiesList.className = 'client-offer-card__modalities-list';
+                modalitiesContainer.appendChild(modalitiesList);
+
+                const expiryId = uniqueId('offer-expiry');
+                const expiryInput = document.createElement('input');
+                expiryInput.type = 'date';
+                expiryInput.id = expiryId;
+                expiryInput.className = 'client-offer-card__input';
+                if (offer.caducidad_iso) {
+                    expiryInput.value = offer.caducidad_iso;
+                }
+                const expiryFieldObj = createFieldElement(expiryId, strings.manageOffersExpiryLabel || 'Caducidad', expiryInput);
+                grid.appendChild(expiryFieldObj.field);
+
+                const note = document.createElement('p');
+                note.className = 'client-offer-card__note';
+                note.textContent = strings.manageOffersSinSuplementosNote || 'No se aplicarán suplementos cuando esta oferta esté activa.';
+                grid.appendChild(note);
+
+                const statusField = document.createElement('div');
+                statusField.className = 'client-offer-card__field client-offer-card__field--status';
+                const statusLabel = document.createElement('span');
+                statusLabel.className = 'client-offer-card__label';
+                statusLabel.textContent = strings.manageOffersStatusLabel || 'Oferta activa';
+                const statusControl = document.createElement('div');
+                statusControl.className = 'client-offer-card__control client-offer-card__control--switch';
+                const statusToggle = document.createElement('label');
+                statusToggle.className = 'client-toggle';
+                const statusId = uniqueId('offer-status');
+                const statusInput = document.createElement('input');
+                statusInput.type = 'checkbox';
+                statusInput.id = statusId;
+                statusInput.className = 'client-toggle__input';
+                statusInput.checked = Boolean(offer.estado);
+                const toggleTrack = document.createElement('span');
+                toggleTrack.className = 'client-toggle__track';
+                const statusText = document.createElement('span');
+                statusText.className = 'client-toggle__text';
+                statusToggle.appendChild(statusInput);
+                statusToggle.appendChild(toggleTrack);
+                statusToggle.appendChild(statusText);
+                statusControl.appendChild(statusToggle);
+                statusField.appendChild(statusLabel);
+                statusField.appendChild(statusControl);
+
+                card.appendChild(grid);
+                card.appendChild(statusField);
+
+                offer.dom = {
+                    card,
+                    title,
+                    badge,
+                    statusChip,
+                    typeSelect,
+                    nameInput,
+                    discountInput,
+                    scopeSelect,
+                    modalitiesList,
+                    modalitiesField: modalitiesFieldObj.field,
+                    modalitiesContainer,
+                    expiryInput,
+                    statusInput,
+                    statusText,
+                    note,
+                    errorElements: {
+                        tipo_oferta: typeFieldObj.error,
+                        nombre_oferta: nameFieldObj.error,
+                        porcentaje_descuento: discountFieldObj.error,
+                        aplicacion: scopeFieldObj.error,
+                        seleccion_modalidad: modalitiesFieldObj.error,
+                        caducidad_iso: expiryFieldObj.error,
+                    },
+                    fieldWrappers: {
+                        tipo_oferta: typeFieldObj.field,
+                        nombre_oferta: nameFieldObj.field,
+                        porcentaje_descuento: discountFieldObj.field,
+                        aplicacion: scopeFieldObj.field,
+                        seleccion_modalidad: modalitiesFieldObj.field,
+                        caducidad_iso: expiryFieldObj.field,
+                    },
+                };
+
+                setupModalitiesList(offer);
+                syncOfferVisibility(offer);
+                applyOfferErrors(offer);
+                updateOfferMetadata(offer, index);
+
+                typeSelect.addEventListener('change', (event) => {
+                    offer.tipo_oferta = event.target.value;
+                    if (offer.tipo_oferta !== 'personalizar') {
+                        offer.nombre_oferta = offer.nombre_oferta || '';
+                    }
+                    if (offer.tipo_oferta === 'sin_suplementos') {
+                        offer.porcentaje_descuento = '';
+                        discountInput.value = '';
+                    }
+                    clearFieldError(offer, 'tipo_oferta');
+                    if (offer.tipo_oferta !== 'personalizar') {
+                        clearFieldError(offer, 'nombre_oferta');
+                    }
+                    if (offer.tipo_oferta === 'sin_suplementos') {
+                        clearFieldError(offer, 'porcentaje_descuento');
+                    }
+                    syncOfferVisibility(offer);
+                    updateOfferMetadata(offer, index);
+                    updateDirtyState();
+                });
+
+                nameInput.addEventListener('input', (event) => {
+                    offer.nombre_oferta = event.target.value;
+                    clearFieldError(offer, 'nombre_oferta');
+                    updateDirtyState();
+                });
+
+                discountInput.addEventListener('input', (event) => {
+                    offer.porcentaje_descuento = event.target.value;
+                    clearFieldError(offer, 'porcentaje_descuento');
+                    updateDirtyState();
+                });
+
+                scopeSelect.addEventListener('change', (event) => {
+                    offer.aplicacion = event.target.value;
+                    clearFieldError(offer, 'aplicacion');
+                    if (offer.aplicacion !== 'seleccion') {
+                        offer.seleccion_modalidad = [];
+                    }
+                    setupModalitiesList(offer);
+                    syncOfferVisibility(offer);
+                    updateDirtyState();
+                });
+
+                expiryInput.addEventListener('change', (event) => {
+                    offer.caducidad_iso = event.target.value;
+                    offer.caducidad_oferta = formatIsoToLocal(event.target.value);
+                    clearFieldError(offer, 'caducidad_iso');
+                    updateDirtyState();
+                });
+
+                statusInput.addEventListener('change', () => {
+                    offer.estado = statusInput.checked;
+                    updateOfferMetadata(offer, index);
+                    updateDirtyState();
+                });
+
+                return card;
+            }
+
+            function setupModalitiesList(offer) {
+                if (!offer.dom || !offer.dom.modalitiesList) {
+                    return;
+                }
+                const list = offer.dom.modalitiesList;
+                list.innerHTML = '';
+                if (!Array.isArray(modalities) || modalities.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'client-offer-card__modalities-empty';
+                    empty.textContent = strings.manageOffersModalitiesEmpty || 'No hay modalidades disponibles.';
+                    list.appendChild(empty);
+                    return;
+                }
+                const selected = Array.isArray(offer.seleccion_modalidad) ? offer.seleccion_modalidad.slice() : [];
+                modalities.forEach((modalidad) => {
+                    const item = document.createElement('label');
+                    item.className = 'client-offer-card__modalities-item';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'client-offer-card__checkbox';
+                    checkbox.value = String(modalidad.id);
+                    checkbox.checked = selected.includes(modalidad.id);
+                    const marker = document.createElement('span');
+                    marker.className = 'client-offer-card__checkbox-marker';
+                    const text = document.createElement('span');
+                    text.className = 'client-offer-card__modalities-text';
+                    const title = document.createElement('span');
+                    title.className = 'client-offer-card__modalities-name';
+                    title.textContent = modalidad.title || '';
+                    text.appendChild(title);
+                    const metaParts = [modalidad.nivel, modalidad.tipo].filter((part) => typeof part === 'string' && part.trim() !== '');
+                    if (metaParts.length > 0) {
+                        const meta = document.createElement('span');
+                        meta.className = 'client-offer-card__modalities-meta';
+                        meta.textContent = metaParts.join(' · ');
+                        text.appendChild(meta);
+                    }
+                    checkbox.addEventListener('change', (event) => {
+                        const value = parseInt(event.target.value, 10);
+                        if (event.target.checked) {
+                            if (!offer.seleccion_modalidad.includes(value)) {
+                                offer.seleccion_modalidad.push(value);
+                            }
+                        } else {
+                            offer.seleccion_modalidad = offer.seleccion_modalidad.filter((id) => id !== value);
+                        }
+                        clearFieldError(offer, 'seleccion_modalidad');
+                        updateDirtyState();
+                    });
+                    item.appendChild(checkbox);
+                    item.appendChild(marker);
+                    item.appendChild(text);
+                    list.appendChild(item);
+                });
+            }
+
+            function syncOfferVisibility(offer) {
+                if (!offer.dom) {
+                    return;
+                }
+                const isPersonalizada = offer.tipo_oferta === 'personalizar';
+                const isSinSuplementos = offer.tipo_oferta === 'sin_suplementos';
+                const isSeleccion = offer.aplicacion === 'seleccion';
+                if (offer.dom.fieldWrappers?.nombre_oferta) {
+                    offer.dom.fieldWrappers.nombre_oferta.classList.toggle('is-hidden', !isPersonalizada);
+                }
+                if (offer.dom.fieldWrappers?.porcentaje_descuento) {
+                    offer.dom.fieldWrappers.porcentaje_descuento.classList.toggle('is-hidden', isSinSuplementos);
+                }
+                if (offer.dom.modalitiesField) {
+                    offer.dom.modalitiesField.classList.toggle('is-hidden', !isSeleccion);
+                }
+                if (offer.dom.note) {
+                    offer.dom.note.hidden = !isSinSuplementos;
+                }
+            }
+
+            function updateOfferMetadata(offer, index) {
+                if (!offer.dom) {
+                    return;
+                }
+                const resolvedIndex = typeof index === 'number' ? index : offers.indexOf(offer);
+                if (offer.dom.title && resolvedIndex >= 0) {
+                    const base = strings.manageOffersCardTitle || 'Oferta';
+                    offer.dom.title.textContent = `${base} ${resolvedIndex + 1}`;
+                }
+                const typeLabel = choiceMaps.tipo.get(offer.tipo_oferta) || (offer.tipo_oferta || '');
+                if (offer.dom.badge) {
+                    offer.dom.badge.textContent = typeLabel;
+                    offer.dom.badge.hidden = typeLabel === '';
+                }
+                if (offer.dom.statusChip) {
+                    const activeLabel = strings.manageOffersStatusActive || 'Activa';
+                    const inactiveLabel = strings.manageOffersStatusInactive || 'Inactiva';
+                    offer.dom.statusChip.textContent = offer.estado ? activeLabel : inactiveLabel;
+                    offer.dom.statusChip.dataset.state = offer.estado ? 'active' : 'inactive';
+                }
+                if (offer.dom.statusText) {
+                    offer.dom.statusText.textContent = offer.estado
+                        ? (strings.manageOffersStatusActive || 'Activa')
+                        : (strings.manageOffersStatusInactive || 'Inactiva');
+                }
+                if (offer.dom.card) {
+                    offer.dom.card.classList.toggle('client-offer-card--inactive', !offer.estado);
+                    offer.dom.card.classList.toggle('client-offer-card--sin-suplementos', offer.tipo_oferta === 'sin_suplementos');
+                }
+            }
+
+            function applyOfferErrors(offer) {
+                if (!offer.dom || !offer.dom.errorElements) {
+                    return;
+                }
+                const errors = offer.errors || {};
+                Object.keys(offer.dom.errorElements).forEach((key) => {
+                    const message = typeof errors[key] === 'string' ? errors[key] : '';
+                    const errorEl = offer.dom.errorElements[key];
+                    if (errorEl) {
+                        errorEl.textContent = message;
+                    }
+                    const wrapper = offer.dom.fieldWrappers ? offer.dom.fieldWrappers[key] : null;
+                    if (wrapper) {
+                        wrapper.classList.toggle('client-offer-card__field--error', message !== '');
+                    }
+                });
+            }
+
+            function clearFieldError(offer, fieldKey) {
+                if (!offer || !offer.dom || !offer.dom.errorElements) {
+                    return;
+                }
+                if (offer.errors && offer.errors[fieldKey]) {
+                    delete offer.errors[fieldKey];
+                }
+                const errorEl = offer.dom.errorElements[fieldKey];
+                if (errorEl) {
+                    errorEl.textContent = '';
+                }
+                const wrapper = offer.dom.fieldWrappers ? offer.dom.fieldWrappers[fieldKey] : null;
+                if (wrapper) {
+                    wrapper.classList.remove('client-offer-card__field--error');
+                }
+            }
+
+            function duplicateOffer(index) {
+                const source = offers[index];
+                if (!source) {
+                    return;
+                }
+                const clone = {
+                    ...source,
+                    uid: generateOfferId(),
+                    seleccion_modalidad: Array.isArray(source.seleccion_modalidad)
+                        ? source.seleccion_modalidad.slice()
+                        : [],
+                    errors: {},
+                    dom: {},
+                };
+                offers.splice(index + 1, 0, clone);
+                renderOffers();
+                updateDirtyState();
+            }
+
+            function removeOffer(index) {
+                if (index < 0 || index >= offers.length) {
+                    return;
+                }
+                offers.splice(index, 1);
+                renderOffers();
+                updateDirtyState();
+            }
+
+            function serializeOffers() {
+                return offers.map((offer) => {
+                    const scope = offer.aplicacion || '';
+                    const nameValue = typeof offer.nombre_oferta === 'string' ? offer.nombre_oferta.trim() : '';
+                    const selected = Array.isArray(offer.seleccion_modalidad)
+                        ? offer.seleccion_modalidad
+                            .map((value) => parseInt(value, 10))
+                            .filter((value) => Number.isFinite(value) && value > 0)
+                        : [];
+                    const payload = {
+                        tipo_oferta: offer.tipo_oferta || '',
+                        nombre_oferta: nameValue,
+                        porcentaje_descuento: null,
+                        aplicacion: scope,
+                        caducidad_iso: offer.caducidad_iso || '',
+                        seleccion_modalidad: selected,
+                        estado: Boolean(offer.estado),
+                    };
+                    if (offer.tipo_oferta !== 'sin_suplementos') {
+                        const numeric = Number(offer.porcentaje_descuento);
+                        payload.porcentaje_descuento = Number.isFinite(numeric) ? numeric : '';
+                    }
+                    if (scope !== 'seleccion') {
+                        payload.seleccion_modalidad = [];
+                    }
+                    return payload;
+                });
+            }
+
+            function validateOffers() {
+                let isValid = true;
+                offers.forEach((offer) => {
+                    offer.errors = offer.errors || {};
+                    offer.errors.tipo_oferta = '';
+                    offer.errors.nombre_oferta = '';
+                    offer.errors.porcentaje_descuento = '';
+                    offer.errors.aplicacion = '';
+                    offer.errors.seleccion_modalidad = '';
+                    offer.errors.caducidad_iso = '';
+
+                    if (!offer.tipo_oferta) {
+                        offer.errors.tipo_oferta = strings.manageOffersTypeError || 'Selecciona un tipo de oferta.';
+                        isValid = false;
+                    }
+                    if (offer.tipo_oferta === 'personalizar' && (!offer.nombre_oferta || offer.nombre_oferta.trim() === '')) {
+                        offer.errors.nombre_oferta = strings.manageOffersNameError || 'Introduce un nombre para esta oferta.';
+                        isValid = false;
+                    }
+                    if (offer.tipo_oferta !== 'sin_suplementos') {
+                        const numeric = Number(offer.porcentaje_descuento);
+                        if (!Number.isFinite(numeric) || numeric <= 0 || numeric > 100) {
+                            offer.errors.porcentaje_descuento = strings.manageOffersDiscountError || 'Introduce un porcentaje entre 1 y 100.';
+                            isValid = false;
+                        }
+                    }
+                    if (!offer.aplicacion) {
+                        offer.errors.aplicacion = strings.manageOffersScopeError || 'Selecciona un ámbito de aplicación.';
+                        isValid = false;
+                    }
+                    if (offer.aplicacion === 'seleccion' && (!Array.isArray(offer.seleccion_modalidad) || offer.seleccion_modalidad.length === 0)) {
+                        offer.errors.seleccion_modalidad = strings.manageOffersModalitiesError || 'Selecciona al menos una modalidad.';
+                        isValid = false;
+                    }
+                    if (offer.caducidad_iso && !/^\d{4}-\d{2}-\d{2}$/.test(offer.caducidad_iso)) {
+                        offer.errors.caducidad_iso = strings.manageOffersExpiryError || 'Introduce una fecha válida.';
+                        isValid = false;
+                    }
+                    applyOfferErrors(offer);
+                    syncOfferVisibility(offer);
+                });
+                if (!isValid) {
+                    setStatus(strings.manageOffersValidationError || 'Revisa los campos marcados para continuar.', 'error');
+                } else {
+                    setStatus('');
+                }
+                return isValid;
+            }
+
+            async function loadOffers(userId) {
+                isLoading = true;
+                updateSaveButton();
+                renderLoading();
+                setStatus('');
+                try {
+                    const response = await fetch(`${restBase}go/v1/clientes/${userId}/offers`, {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        headers: restNonceValue ? { 'X-WP-Nonce': restNonceValue } : {},
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Request failed: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    choices = normalizeChoices(data?.choices || {});
+                    modalities = normalizeModalities(data?.modalidades || []);
+                    offers = normalizeOffers(data?.offers || []);
+                    renderOffers();
+                    setInitialSnapshot();
+                    setStatus('');
+                } catch (error) {
+                    console.error('Error loading offers', error);
+                    renderError(strings.manageOffersFetchError || 'No se han podido cargar las ofertas. Actualiza la página e inténtalo de nuevo.');
+                } finally {
+                    isLoading = false;
+                    updateSaveButton();
+                }
+            }
+
+            async function handleSave(event) {
+                event.preventDefault();
+                if (isLoading || isSaving || !dirty) {
+                    return;
+                }
+                if (!validateOffers()) {
+                    return;
+                }
+                const userId = currentContext && Number.isFinite(currentContext.userId) ? currentContext.userId : null;
+                if (!userId) {
+                    return;
+                }
+                isSaving = true;
+                updateSaveButton();
+                setStatus(strings.manageOffersSaving || 'Guardando…');
+                try {
+                    const response = await fetch(`${restBase}go/v1/clientes/${userId}/offers`, {
+                        method: 'PUT',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(restNonceValue ? { 'X-WP-Nonce': restNonceValue } : {}),
+                        },
+                        body: JSON.stringify({ offers: serializeOffers() }),
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Request failed: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    choices = normalizeChoices(data?.choices || {});
+                    modalities = normalizeModalities(data?.modalidades || []);
+                    offers = normalizeOffers(data?.offers || []);
+                    renderOffers();
+                    setInitialSnapshot();
+                    setStatus(strings.manageOffersSaved || 'Ofertas actualizadas correctamente.', 'success');
+                    if (currentContext && typeof currentContext.onComplete === 'function') {
+                        currentContext.onComplete(Array.isArray(data?.summary) ? data.summary : []);
+                    }
+                } catch (error) {
+                    console.error('Error saving offers', error);
+                    setStatus(strings.manageOffersError || 'No se ha podido guardar las ofertas. Inténtalo de nuevo.', 'error');
+                } finally {
+                    isSaving = false;
+                    updateSaveButton();
+                }
+            }
+
+            function close() {
+                overlay.classList.remove('is-open');
+                overlay.setAttribute('aria-hidden', 'true');
+                overlay.hidden = true;
+                document.removeEventListener('keydown', handleKeydown);
+                setStatus('');
+                resetState();
+                currentContext = null;
+                if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+                    previousActiveElement.focus();
+                }
+            }
+
+            function open(context = {}) {
+                previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                currentContext = context || {};
+                if (titleEl) {
+                    titleEl.textContent = formatTitle(currentContext);
+                }
+                resetState();
+                overlay.hidden = false;
+                overlay.classList.add('is-open');
+                overlay.setAttribute('aria-hidden', 'false');
+                document.addEventListener('keydown', handleKeydown);
+                window.requestAnimationFrame(() => {
+                    if (panel && typeof panel.focus === 'function') {
+                        panel.focus({ preventScroll: true });
+                    }
+                });
+                const userId = Number(context && context.id);
+                if (!Number.isFinite(userId) || userId <= 0) {
+                    renderError(strings.manageOffersFetchError || 'No se han podido cargar las ofertas. Actualiza la página e inténtalo de nuevo.');
+                    return;
+                }
+                currentContext.userId = userId;
+                renderLoading();
+                loadOffers(userId);
+            }
+
+            if (saveButton) {
+                saveButton.addEventListener('click', handleSave);
+            }
+
+            closeControls.forEach((element) => {
+                element.addEventListener('click', close);
+            });
+
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay) {
+                    close();
+                }
+            });
+
+            return {
+                open,
+                close,
+            };
+        }
+
         function createSimpleDialog(options = {}) {
             const titleKey = typeof options.titleKey === 'string' ? options.titleKey : '';
             const titleTemplateKey = typeof options.titleTemplateKey === 'string' ? options.titleTemplateKey : '';
@@ -2109,8 +3124,22 @@
             const manageOffersButton = container.querySelector('[data-manage-offers]');
             if (manageOffersButton && offersDialog && typeof offersDialog.open === 'function') {
                 manageOffersButton.addEventListener('click', () => {
+                    if (!item) {
+                        return;
+                    }
                     offersDialog.open({
+                        id: item.id,
                         subject: getCompanyLabelFromItem(item),
+                        summary: Array.isArray(item.offers) ? item.offers : [],
+                        onComplete(updatedSummary) {
+                            if (!Array.isArray(updatedSummary)) {
+                                return;
+                            }
+
+                            item.offers = updatedSummary;
+                            cache.set(String(item.id), item);
+                            refreshActiveDetail(item);
+                        },
                     });
                 });
             }
