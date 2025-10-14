@@ -130,9 +130,10 @@ export function filterOfertasPorModalidades(
 ) {
 	const now = Date.now() / 1000;
 	return (ofertas || []).filter((oferta) => {
-		if (oferta.estado === false) return false;
-		if (!oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
-			return false;
+        if (oferta.estado === false) return false;
+        const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+        if (!esSinSuplementos && !oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
+                return false;
 
 		const caducada =
 			oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
@@ -264,13 +265,13 @@ export async function updateOfertasList(
         });
         const caducadas = filterOfertasPorModalidades(ofertasData, modalidadesVisibles, {
                 incluirCaducadas: true,
-        }).filter(
-		(o) =>
-			o.timestamp_caducidad &&
-			now > o.timestamp_caducidad &&
-			o.estado !== false &&
-			o.porcentaje_descuento > 0
-	);
+        }).filter((o) => {
+                if (!o.timestamp_caducidad || o.estado === false) return false;
+                const caducada = now > o.timestamp_caducidad;
+                if (!caducada) return false;
+                if (o?.tipo_oferta === "sin_suplementos") return true;
+                return o.porcentaje_descuento > 0;
+        });
 
 	// Render
 	ul.innerHTML = "";
@@ -284,23 +285,33 @@ export async function updateOfertasList(
                 return;
         }
 
-	visibles.forEach((oferta) => {
-		const li = document.createElement("li");
-		li.className = "ofertas__item";
-		li.innerHTML = `${oferta.nombre} <span class="ofertas__percent">-${oferta.porcentaje_descuento}%</span>`;
-		ul.appendChild(li);
-	});
-	caducadas.forEach((oferta) => {
-		const li = document.createElement("li");
-		li.className = "ofertas__item ofertas__item--caducada";
-		const span = document.createElement("span");
-		span.className = "tachada";
-		span.textContent = `${oferta.nombre}: -${oferta.porcentaje_descuento}%`;
-		const vencida = document.createElement("span");
-		vencida.className = "vencida";
-		vencida.textContent = "VENCIDA";
-		li.appendChild(span);
-		li.appendChild(document.createTextNode(" "));
+        visibles.forEach((oferta) => {
+                const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+                const li = document.createElement("li");
+                li.className = "ofertas__item" + (esSinSuplementos ? " ofertas__item--sin-suplementos" : "");
+                if (esSinSuplementos) {
+                        li.textContent = oferta.nombre || "Sin suplementos";
+                } else {
+                        li.innerHTML = `${oferta.nombre} <span class="ofertas__percent">-${oferta.porcentaje_descuento}%</span>`;
+                }
+                ul.appendChild(li);
+        });
+        caducadas.forEach((oferta) => {
+                const li = document.createElement("li");
+                const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+                li.className =
+                        "ofertas__item ofertas__item--caducada" +
+                        (esSinSuplementos ? " ofertas__item--sin-suplementos" : "");
+                const span = document.createElement("span");
+                span.className = "tachada";
+                span.textContent = esSinSuplementos
+                        ? oferta.nombre || "Sin suplementos"
+                        : `${oferta.nombre}: -${oferta.porcentaje_descuento}%`;
+                const vencida = document.createElement("span");
+                vencida.className = "vencida";
+                vencida.textContent = "VENCIDA";
+                li.appendChild(span);
+                li.appendChild(document.createTextNode(" "));
 		li.appendChild(vencida);
 		ul.appendChild(li);
 	});

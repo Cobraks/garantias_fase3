@@ -77,7 +77,28 @@ class OfertasRestController
         $ofertas_clean = [];
 
         foreach ($ofertas['ofertas'] as $oferta) {
-            if (empty($oferta['estado']) || empty($oferta['porcentaje_descuento'])) continue;
+            $estado_activo = isset($oferta['estado']) ? (bool) $oferta['estado'] : false;
+            if (!$estado_activo) {
+                continue;
+            }
+
+            $etiqueta = '';
+            $tipo_value = '';
+            if (is_array($oferta['tipo_oferta'])) {
+                $etiqueta = $oferta['tipo_oferta']['label'] ?? $oferta['tipo_oferta']['value'] ?? '';
+                $tipo_value = $oferta['tipo_oferta']['value'] ?? '';
+            } else {
+                $etiqueta = $oferta['tipo_oferta'] ?? '';
+                $tipo_value = $oferta['tipo_oferta'] ?? '';
+            }
+
+            $es_sin_suplementos = ($tipo_value === 'sin_suplementos');
+            $porcentaje_raw = $oferta['porcentaje_descuento'] ?? 0;
+            $porcentaje_descuento = $porcentaje_raw === '' ? 0 : floatval($porcentaje_raw);
+
+            if (!$es_sin_suplementos && $porcentaje_descuento === 0.0) {
+                continue;
+            }
 
             $caducidad_ok = true;
             $fecha_cad = $oferta['caducidad_oferta'] ?? '';
@@ -91,15 +112,6 @@ class OfertasRestController
             }
             if (!$caducidad_ok) continue;
 
-            $etiqueta = '';
-            $tipo_value = '';
-            if (is_array($oferta['tipo_oferta'])) {
-                $etiqueta = $oferta['tipo_oferta']['label'] ?? $oferta['tipo_oferta']['value'] ?? '';
-                $tipo_value = $oferta['tipo_oferta']['value'] ?? '';
-            } else {
-                $etiqueta = $oferta['tipo_oferta'] ?? '';
-                $tipo_value = $oferta['tipo_oferta'] ?? '';
-            }
             $nombre_final = ($tipo_value === 'personalizar' && !empty($oferta['nombre_oferta']))
                 ? $oferta['nombre_oferta']
                 : $etiqueta;
@@ -119,7 +131,7 @@ class OfertasRestController
                 'tipo_oferta'          => $tipo_value,
                 'nombre'               => $nombre_final,
                 'etiqueta'             => $etiqueta,
-                'porcentaje_descuento' => floatval($oferta['porcentaje_descuento'] ?? 0),
+                'porcentaje_descuento' => $porcentaje_descuento,
                 'aplicacion'           => $oferta['aplicacion'] ?? [],
                 'seleccion_modalidad'  => $seleccion_modalidad_ids,
                 'estado'               => isset($oferta['estado']) ? (bool)$oferta['estado'] : true,
