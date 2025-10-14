@@ -232,7 +232,7 @@ if (! empty($is_add_guarantee)) {
             'manageOffersLoading'  => __('Cargando ofertas…', 'garantias-online-360vo'),
             'manageOffersFetchError' => __('No se han podido cargar las ofertas. Actualiza la página e inténtalo de nuevo.', 'garantias-online-360vo'),
             'manageOffersEmptyState' => __('No hay ofertas configuradas para este cliente.', 'garantias-online-360vo'),
-            'manageOffersAdd'      => __('Añadir oferta', 'garantias-online-360vo'),
+            'manageOffersAdd'      => __('Añadir nueva oferta', 'garantias-online-360vo'),
             'manageOffersCardTitle'=> __('Oferta', 'garantias-online-360vo'),
             'manageOffersTypeLabel'=> __('Tipo de oferta', 'garantias-online-360vo'),
             'manageOffersTypePlaceholder' => __('Selecciona un tipo…', 'garantias-online-360vo'),

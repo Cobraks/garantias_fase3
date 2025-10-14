@@ -2256,7 +2256,7 @@
                 const addButton = document.createElement('button');
                 addButton.type = 'button';
                 addButton.className = 'client-offers__add';
-                addButton.textContent = strings.manageOffersAdd || 'Añadir oferta';
+                addButton.textContent = strings.manageOffersAdd || 'Añadir nueva oferta';
                 addButton.addEventListener('click', () => {
                     offers.push(createEmptyOffer());
                     renderOffers();
@@ -2438,7 +2438,7 @@
                 const statusField = document.createElement('div');
                 statusField.className = 'client-offer-card__field client-offer-card__field--status';
                 const statusLabel = document.createElement('span');
-                statusLabel.className = 'client-offer-card__label';
+                statusLabel.className = 'client-offer-card__label client-offer-card__label--inline';
                 statusLabel.textContent = strings.manageOffersStatusLabel || 'Oferta activa';
                 const statusControl = document.createElement('div');
                 statusControl.className = 'client-offer-card__control client-offer-card__control--switch';
