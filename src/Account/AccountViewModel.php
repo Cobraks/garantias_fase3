@@ -673,12 +673,25 @@ class AccountViewModel
 
     private static function get_debtor_meta_value(int $user_id, string $key): string
     {
-        $base_key = sprintf('gestion_pagos_gestion_sepa_datos_deudor_%s', $key);
-        $candidates = array_merge([$base_key], self::alternate_debtor_meta_keys($key));
+        $candidates = array_merge(
+            [
+                sprintf('gestion_pagos_gestion_sepa_datos_deudor_%s', $key),
+                sprintf('gestion_pagos_gestion_sepa_%s', $key),
+            ],
+            self::alternate_debtor_meta_keys($key)
+        );
+
+        $seen = [];
 
         foreach ($candidates as $candidate) {
+            $candidate = (string) $candidate;
+            if ($candidate === '' || isset($seen[$candidate])) {
+                continue;
+            }
+            $seen[$candidate] = true;
+
             $value = get_user_meta($user_id, $candidate, true);
-            if ($value !== '') {
+            if ($value !== '' && $value !== null) {
                 return (string) $value;
             }
         }
@@ -706,35 +719,58 @@ class AccountViewModel
 
     private static function alternate_debtor_meta_keys(string $key): array
     {
-        $suffixes = [];
-
         switch ($key) {
             case 'numero_cuenta':
-                $suffixes = ['numero_cienta', 'iban'];
-                break;
+                return [
+                    'gestion_pagos_gestion_sepa_numero_cuenta',
+                    'gestion_pagos_gestion_sepa_numero_cienta',
+                    'gestion_pagos_gestion_sepa_iban',
+                    'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta',
+                    'gestion_pagos_gestion_sepa_datos_deudor_iban',
+                ];
             case 'codigo_postal':
-                $suffixes = ['cp', 'codigo_postal_deudor'];
-                break;
+                return [
+                    'gestion_pagos_gestion_sepa_codigo_postal',
+                    'gestion_pagos_gestion_sepa_cp',
+                    'gestion_pagos_gestion_sepa_cp_deudor',
+                    'gestion_pagos_gestion_sepa_codigo_postal_deudor',
+                    'gestion_pagos_gestion_sepa_datos_deudor_cp',
+                    'gestion_pagos_gestion_sepa_datos_deudor_codigo_postal',
+                ];
             case 'poblacion':
-                $suffixes = ['ciudad', 'localidad', 'poblacion_deudor'];
-                break;
+                return [
+                    'gestion_pagos_gestion_sepa_poblacion',
+                    'gestion_pagos_gestion_sepa_ciudad',
+                    'gestion_pagos_gestion_sepa_localidad',
+                    'gestion_pagos_gestion_sepa_poblacion_deudor',
+                    'gestion_pagos_gestion_sepa_datos_deudor_poblacion',
+                    'gestion_pagos_gestion_sepa_datos_deudor_ciudad',
+                ];
             case 'provincia':
-                $suffixes = ['region', 'provincia_deudor'];
-                break;
+                return [
+                    'gestion_pagos_gestion_sepa_provincia',
+                    'gestion_pagos_gestion_sepa_region',
+                    'gestion_pagos_gestion_sepa_provincia_deudor',
+                    'gestion_pagos_gestion_sepa_datos_deudor_provincia',
+                    'gestion_pagos_gestion_sepa_datos_deudor_region',
+                ];
             case 'pais_deudor':
-                $suffixes = ['pais', 'pais_deudor_nombre'];
-                break;
+                return [
+                    'gestion_pagos_gestion_sepa_pais_deudor',
+                    'gestion_pagos_gestion_sepa_pais',
+                    'gestion_pagos_gestion_sepa_pais_deudor_nombre',
+                    'gestion_pagos_gestion_sepa_datos_deudor_pais',
+                    'gestion_pagos_gestion_sepa_datos_deudor_pais_deudor',
+                ];
+            case 'direccion_deudor':
+                return ['gestion_pagos_gestion_sepa_direccion_deudor'];
+            case 'nombre_deudor':
+                return ['gestion_pagos_gestion_sepa_nombre_deudor'];
+            case 'swift_bic':
+                return ['gestion_pagos_gestion_sepa_swift_bic'];
             default:
-                $suffixes = [];
-                break;
+                return [];
         }
-
-        return array_map(
-            static function ($suffix) {
-                return sprintf('gestion_pagos_gestion_sepa_datos_deudor_%s', $suffix);
-            },
-            $suffixes
-        );
     }
 
     private static function parse_debtor_location(string $value): array
