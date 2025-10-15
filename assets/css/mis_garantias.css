@@ -602,7 +602,7 @@ span.guarantees-list__search-icon {
 section.guarantees-list {
     z-index: 99;
     max-height: calc(
-        100vh
+        100dvh
         - var(--alturaHeader)
         - var(--spacing-4)
         - 8.5rem
@@ -621,7 +621,7 @@ section.guarantees-list {
 }
 section.guarantees-list.sticky-active {
     max-height: calc(
-        100vh
+        100dvh
         - var(--spacing-4)
         - 7.5rem
         - var(--go-advanced-filters-height)
@@ -3136,7 +3136,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     width: 100%;
     height: 100%;
     max-height: calc(
-        100vh
+        100dvh
         - var(--alturaHeader)
         - var(--spacing-4)
         - 8.5rem
@@ -3160,7 +3160,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .guarantee-detail.sticky-active .guarantee-detail__panel {
     max-height: calc(
-        100vh
+        100dvh
         - var(--spacing-4)
         - 7.5rem
         - var(--go-advanced-filters-height)
