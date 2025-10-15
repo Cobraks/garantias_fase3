@@ -19,14 +19,15 @@ import {
         getAntiguedadFromDate,
         parseNumericFormValue,
         filtrarModalidades,
+        getOfertaSinSuplementosAplicable,
 } from "./form-calculations.js";
 import { eurosString, IVA_PORCENTAJE } from "./form-utils.js";
 
 function getValoresForm() {
-	return {
-		cilindrada: document.getElementById("cilindrada")?.value || 0,
-		potencia: document.getElementById("potencia")?.value || 0,
-		duracion: Number(document.getElementById("duracion")?.value) || 0,
+        return {
+                cilindrada: document.getElementById("cilindrada")?.value || 0,
+                potencia: document.getElementById("potencia")?.value || 0,
+                duracion: Number(document.getElementById("duracion")?.value) || 0,
                 traccion_camion: document.getElementById("traccion_camion")?.value || null,
                 combustible: document.getElementById("combustible")?.value || null,
                 cambio: document.getElementById("cambio")?.value || null,
@@ -38,11 +39,21 @@ function getValoresForm() {
 }
 
 function getSelectedPlanElement() {
-	// Fallback: si no hay seleccionado explícito, toma el primero visible
-	return (
-		document.querySelector(".form__plan.selected") ||
-		document.querySelector(".form__plan:not(.form__plan--no-selected)")
-	);
+        // Fallback: si no hay seleccionado explícito, toma el primero visible
+        return (
+                document.querySelector(".form__plan.selected") ||
+                document.querySelector(".form__plan:not(.form__plan--no-selected)")
+        );
+}
+
+function escapeHtml(value) {
+        if (value == null) return "";
+        return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
 }
 
 function describeTramo(modalidad, valoresForm) {
@@ -196,14 +207,26 @@ async function buildSummaryHTML() {
                 });
                 const descuentoTotal = 1 - multiplicador;
 
+                const ofertaSinSuplementos = await getOfertaSinSuplementosAplicable(modalidad);
+                const sinSuplementos =
+                        !!ofertaSinSuplementos && breakdown.recargoTotal > 0;
+
+                const factorRecargos = 1 + breakdown.recargoTotal;
+                const factorAplicado = sinSuplementos ? 1 : factorRecargos;
+
                 const precioConRecargos =
                         precioBase !== null
-                                ? Math.round(precioBase * (1 + breakdown.recargoTotal) * 100) / 100
+                                ? Math.round(precioBase * factorRecargos * 100) / 100
+                                : null;
+
+                const precioAntesDescuento =
+                        precioBase !== null
+                                ? Math.round(precioBase * factorAplicado * 100) / 100
                                 : null;
 
                 const precioFinal =
-                        precioConRecargos !== null
-                                ? Math.round(precioConRecargos * (1 - descuentoTotal) * 100) / 100
+                        precioAntesDescuento !== null
+                                ? Math.round(precioAntesDescuento * (1 - descuentoTotal) * 100) / 100
                                 : null;
 
                 const iva =
@@ -230,27 +253,38 @@ async function buildSummaryHTML() {
                         html += `<li class="item"><span class="concepto">${tramoTexto}</span><span class="valor">--</span></li>`;
                 }
 
-         if (breakdown.detalles && breakdown.detalles.length) {
-						breakdown.detalles.forEach((sup) => {
-							const recargoEuros =
-								precioBase !== null
-									? Math.round(precioBase * sup.porcentajeAplicado * 100) / 100
-									: null;
-							let label = sup.descripcion
-								? `Recargo: ${sup.descripcion}`
-								: "Recargo";
-							if (sup.porcentajeAplicado < sup.porcentajeOriginal) label += "*";
-							html += `<li class="item"><span class="concepto">${label}</span><span class="valor">${
-								recargoEuros !== null ? `${eurosString(recargoEuros)}€` : "--"
-							}</span></li>`;
-						});
-					}
+                if (breakdown.detalles && breakdown.detalles.length) {
+                        breakdown.detalles.forEach((sup) => {
+                                const recargoEuros =
+                                        precioBase !== null
+                                                ? Math.round(precioBase * sup.porcentajeAplicado * 100) / 100
+                                                : null;
+                                let label = sup.descripcion
+                                        ? `Recargo: ${sup.descripcion}`
+                                        : "Recargo";
+                                if (sup.porcentajeAplicado < sup.porcentajeOriginal) label += "*";
+                                const itemClasses = ["item"];
+                                if (sinSuplementos) itemClasses.push("item--sin-suplementos");
+                                html += `<li class="${itemClasses.join(" ")}"><span class="concepto">${label}</span><span class="valor">${
+                                        recargoEuros !== null ? `${eurosString(recargoEuros)}€` : "--"
+                                }</span></li>`;
+                        });
+                        if (sinSuplementos) {
+                                const etiquetaOferta =
+                                        ofertaSinSuplementos?.nombre ||
+                                        ofertaSinSuplementos?.etiqueta ||
+                                        "Sin suplementos";
+                                html += `<li class="item item--nota"><span class="concepto concepto--nota">Suplementos no aplicados por la oferta “${escapeHtml(
+                                        etiquetaOferta
+                                )}”.</span><span class="valor"></span></li>`;
+                        }
+                }
 
                 if (descuentos.length) {
                         for (const desc of descuentos) {
                                 const descuentoEuros =
-                                        precioConRecargos !== null
-                                                ? Math.round(precioConRecargos * desc.porcentaje * 100) / 100
+                                        precioAntesDescuento !== null
+                                                ? Math.round(precioAntesDescuento * desc.porcentaje * 100) / 100
                                                 : null;
                                 const nombre = desc.nombre || "";
                                 const label = `Descuento${nombre ? " " + nombre : ""}`;

@@ -43,6 +43,7 @@ class AssetCompiler
         'assets/js/mis_garantias.js',
 
         // CLIENTES (admin)
+        'assets/css/clientes.css',
         'assets/js/clientes.js',
     ];
 

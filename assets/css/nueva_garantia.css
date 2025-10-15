@@ -587,6 +587,28 @@ fieldset#finalizar.form__tab-content--active {
     font-weight: bold;
 }
 
+.form__contrato-prices li.item--sin-suplementos .concepto,
+.form__contrato-prices li.item--sin-suplementos .valor {
+    text-decoration: line-through;
+    color: var(--go-color-6b7280);
+}
+
+.form__contrato-prices li.item--nota {
+    background: var(--go-color-f3f4f6);
+    border-bottom: none;
+    padding-block: .5rem .25rem;
+}
+
+.form__contrato-prices .concepto--nota {
+    font-size: .8125rem;
+    color: var(--go-color-374151);
+    font-style: italic;
+}
+
+.form__contrato-prices li.item--nota .valor {
+    display: none;
+}
+
 
 .contratacion-summary__list {
   font-family: Roboto Mono;
@@ -916,6 +938,24 @@ border: solid 1px var(--go-color-b8e7bc);
     background: var(--go-color-fbfffb);
     padding-inline: 1rem;
     padding-right: .5rem;
+}
+
+.ofertas__item--sin-suplementos {
+    background: var(--go-color-ecfdf5);
+    border-color: var(--go-color-86efac);
+    color: var(--go-color-047857);
+    font-weight: 600;
+}
+
+.ofertas__item--caducada.ofertas__item--sin-suplementos {
+    background: var(--go-color-f3f4f6);
+    border-color: var(--go-color-d1d5db);
+    color: var(--go-color-6b7280);
+}
+
+.tachada {
+    text-decoration: line-through;
+    opacity: .75;
 }
 
 .ofertas__item--empty {
@@ -1923,12 +1963,34 @@ border-color: var(--go-color-2bc3ff);
   font-size: .875rem;
 }
 
+.form__plan-recargos--sin-suplementos {
+  background: var(--go-color-f3f4f6);
+  color: var(--go-color-374151);
+}
+
+.form__plan-recargos-value--tachado {
+  text-decoration: line-through;
+  color: inherit;
+  opacity: .7;
+}
+
 .form__plan-recargos-list,
 .form__plan-descuentos-list {
   list-style-type: none;
   font-size: .875rem;
   margin-block: 1rem;
   line-height: 1.25;
+}
+
+.form__plan-recargos-item--sin-aplicar {
+  text-decoration: line-through;
+  color: var(--go-color-6b7280);
+}
+
+.form__plan-recargos-note {
+  margin-top: .5rem;
+  font-size: .75rem;
+  color: var(--go-color-4b5563);
 }
 
 .form__plan-porcentaje-recargo {

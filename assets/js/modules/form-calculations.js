@@ -1297,9 +1297,11 @@ async function getDescuentosAplicables(
         const descuentos = [];
 
         (getCurrentOfertas() || []).forEach((oferta) => {
-		if (!oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
-			return;
-		if (oferta.estado === false) return;
+                const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+                if (esSinSuplementos) return;
+                if (!oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
+                        return;
+                if (oferta.estado === false) return;
 		const caducada =
 			oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
 		if (!incluirCaducadas && caducada) return;
@@ -1349,6 +1351,8 @@ function getDescuentosAplicablesSync(
         const now = Date.now() / 1000;
         const descuentos = [];
         ofertas.forEach((oferta) => {
+                const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+                if (esSinSuplementos) return;
                 if (!oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
                         return;
                 if (oferta.estado === false) return;
@@ -1365,43 +1369,100 @@ function getDescuentosAplicablesSync(
         return descuentos;
 }
 
+function isOfertaSinSuplementos(oferta) {
+        return oferta?.tipo_oferta === "sin_suplementos";
+}
+
+function getOfertaSinSuplementosAplicableSync(
+        modalidad,
+        { incluirCaducadas = false } = {},
+) {
+        if (!modalidad) return null;
+        const ofertas = getCurrentOfertas();
+        if (!Array.isArray(ofertas)) return null;
+        const now = Date.now() / 1000;
+        for (const oferta of ofertas) {
+                if (!isOfertaSinSuplementos(oferta)) continue;
+                if (oferta.estado === false) continue;
+                const caducada = oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
+                if (!incluirCaducadas && caducada) continue;
+                if (!ofertaAplicaAmodalidad(oferta, modalidad)) continue;
+                return oferta;
+        }
+        return null;
+}
+
+async function getOfertaSinSuplementosAplicable(
+        modalidad,
+        { incluirCaducadas = false } = {},
+) {
+        if (!modalidad) return null;
+        await ensureOfertasLoaded();
+        return getOfertaSinSuplementosAplicableSync(modalidad, { incluirCaducadas });
+}
+
+async function hasOfertaSinSuplementos(modalidad) {
+        const oferta = await getOfertaSinSuplementosAplicable(modalidad);
+        return !!oferta;
+}
+
+function hasOfertaSinSuplementosSync(modalidad) {
+        return !!getOfertaSinSuplementosAplicableSync(modalidad);
+}
+
 // --------- RENDERIZADO DE RECARGOS Y DESCUENTOS ---------
 function renderRecargosHTML({
-	precioBase,
-	breakdown,
-	precioFinal,
-	precioIVA,
-	descuentoTotal,
-	modalidad,
+        precioBase,
+        breakdown,
+        precioFinal,
+        precioIVA,
+        descuentoTotal,
+        modalidad,
+        sinSuplementos = false,
+        ofertaSinSuplementos = null,
 }) {
-	let html = `<div class="form__plan-recargos"><p class="form__plan-recargos-precios"><b>Precio base:</b> ${eurosString(
-		precioBase
-	)}€`;
+        const clases = ["form__plan-recargos"];
+        if (sinSuplementos) clases.push("form__plan-recargos--sin-suplementos");
 
-	if (breakdown.recargoTotal > 0)
-		html += ` | <b>Recargos:</b> ${Math.round(breakdown.recargoTotal * 100)}%`;
-	if (descuentoTotal > 0)
-		html += ` | <b>Descuentos:</b> ${Math.round(descuentoTotal * 100)}%`;
+        let html = `<div class="${clases.join(" ")}"><p class="form__plan-recargos-precios"><b>Precio base:</b> ${eurosString(
+                precioBase
+        )}€`;
 
-	html += ` | <b>Precio final:</b> ${eurosString(
-		precioFinal
-	)}€ | <b>Precio final + IVA:</b> ${eurosString(precioIVA)}€</p>`;
+        if (breakdown.recargoTotal > 0) {
+                const recargoPct = Math.round(breakdown.recargoTotal * 100);
+                if (sinSuplementos) {
+                        html += ` | <b>Recargos:</b> <span class="form__plan-recargos-value--tachado">${recargoPct}%</span>`;
+                } else {
+                        html += ` | <b>Recargos:</b> ${recargoPct}%`;
+                }
+        }
+        if (descuentoTotal > 0)
+                html += ` | <b>Descuentos:</b> ${Math.round(descuentoTotal * 100)}%`;
 
-	     const detalles = breakdown.detalles || [];
-				html += `<ul class="form__plan-recargos-list">`;
-				for (const sup of detalles) {
-					const pct = Math.round(sup.porcentajeAplicado * 100);
-					html += `<li class="form__plan-recargos-item">
+        html += ` | <b>Precio final:</b> ${eurosString(
+                precioFinal
+        )}€ | <b>Precio final + IVA:</b> ${eurosString(precioIVA)}€</p>`;
+
+        const detalles = breakdown.detalles || [];
+        if (detalles.length) {
+                html += `<ul class="form__plan-recargos-list">`;
+                for (const sup of detalles) {
+                        const pct = Math.round(sup.porcentajeAplicado * 100);
+                        const itemClass =
+                                "form__plan-recargos-item" +
+                                (sinSuplementos ? " form__plan-recargos-item--sin-aplicar" : "");
+                        html += `<li class="${itemClass}">
                   <span class="form__plan-porcentaje-recargo">Recargo ${pct}%:</span>
                   ${sup.descripcion || ""}
                 </li>`;
-				}
-				html += `</ul>`;
+                }
+                html += `</ul>`;
+        }
 
 // <<<<<<< i1d36g-codex/refactor-import-in-nueva_garantia.js
         const descuentosAplicadosSync = getDescuentosAplicablesSync(modalidad);
 // =======
-	// descuentos aplicados (sin await, se asume que ya están precargados cuando se renderiza admin)
+        // descuentos aplicados (sin await, se asume que ya están precargados cuando se renderiza admin)
     // const descuentosAplicadosSync = getCurrentOfertas()
 	// 	? [] // se deja vacío aquí porque la lógica de admin usa renderRecargosHTML solo si todo ya está calculado
 	// 	: [];
@@ -1420,9 +1481,16 @@ function renderRecargosHTML({
                 html += `</ul>`;
         }
 
-	const hasGrupoLimit = Object.entries(breakdown.topePorGrupo).some(
-		([grupo, tope]) => breakdown.recargosPorGrupo[grupo] === tope
-	);
+        if (sinSuplementos && detalles.length) {
+                const etiqueta = ofertaSinSuplementos?.nombre || ofertaSinSuplementos?.etiqueta || "Sin suplementos";
+                html += `<p class="form__plan-recargos-note">Suplementos no aplicados por la oferta “${escapeHtml(
+                        etiqueta
+                )}”.</p>`;
+        }
+
+        const hasGrupoLimit = Object.entries(breakdown.topePorGrupo).some(
+                ([grupo, tope]) => breakdown.recargosPorGrupo[grupo] === tope
+        );
 	const hasTotalLimit =
 		breakdown.maximoAcumulableTotal &&
 		breakdown.recargoTotal * 100 >= breakdown.maximoAcumulableTotal;
@@ -1892,45 +1960,90 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         });
                         const descuentoTotalSync = 1 - multiplicador;
 
-			const precioSinDescuento =
-				precioBase !== null
-					? redondearEuros(precioBase * (1 + breakdown.recargoTotal))
-					: null;
-			const precioSinDescuentoIVA =
-				precioSinDescuento !== null
-					? redondearEuros(precioSinDescuento * (1 + IVA_PORCENTAJE / 100))
-					: null;
+                        const ofertaSinSuplementos = getOfertaSinSuplementosAplicableSync(m);
+                        const aplicaSinSuplementos =
+                                !!ofertaSinSuplementos && breakdown.recargoTotal > 0;
 
-			const precioFinal =
-				precioBase !== null
-					? redondearEuros(
-							precioBase *
-								(1 + breakdown.recargoTotal) *
-								(1 - descuentoTotalSync)
-					  )
-					: null;
-			const precioIVA =
-				precioFinal !== null
-					? redondearEuros(precioFinal * (1 + IVA_PORCENTAJE / 100))
-					: null;
-			const ivaSolo =
-				precioFinal !== null ? redondearEuros(precioIVA - precioFinal) : null;
+                        const factorRecargos = 1 + breakdown.recargoTotal;
+                        const factorAplicado = aplicaSinSuplementos ? 1 : factorRecargos;
+                        const tieneRecargos = breakdown.recargoTotal > 0;
 
-			let recargosHTML = "";
-			if (
-				getEffectiveUserRole() === "admin" &&
-				precioBase !== null &&
-				precioFinal !== null
-			) {
-				recargosHTML = renderRecargosHTML({
-					precioBase,
-					breakdown,
-					precioFinal,
-					precioIVA,
-					descuentoTotal: descuentoTotalSync,
-					modalidad: m,
-				});
-			}
+                        const precioConRecargos =
+                                precioBase !== null
+                                        ? redondearEuros(precioBase * factorRecargos)
+                                        : null;
+                        const precioConRecargosIVA =
+                                precioConRecargos !== null
+                                        ? redondearEuros(
+                                                  precioConRecargos * (1 + IVA_PORCENTAJE / 100)
+                                          )
+                                        : null;
+
+                        const precioAntesDescuento =
+                                precioBase !== null
+                                        ? redondearEuros(precioBase * factorAplicado)
+                                        : null;
+
+                        const precioFinal =
+                                precioAntesDescuento !== null
+                                        ? redondearEuros(
+                                                  precioAntesDescuento * (1 - descuentoTotalSync)
+                                          )
+                                        : null;
+                        const precioIVA =
+                                precioFinal !== null
+                                        ? redondearEuros(precioFinal * (1 + IVA_PORCENTAJE / 100))
+                                        : null;
+                        const ivaSolo =
+                                precioFinal !== null ? redondearEuros(precioIVA - precioFinal) : null;
+
+                        const puedeRevertirDescuento =
+                                descuentoTotalSync > 0 &&
+                                descuentoTotalSync < 1 &&
+                                precioFinal !== null;
+                        const precioAntesDescuentosReal = puedeRevertirDescuento
+                                ? redondearEuros(precioFinal / (1 - descuentoTotalSync))
+                                : precioAntesDescuento;
+                        const precioAntesDescuentosRealIVA =
+                                precioAntesDescuentosReal !== null
+                                        ? redondearEuros(
+                                                  precioAntesDescuentosReal * (1 + IVA_PORCENTAJE / 100)
+                                          )
+                                        : null;
+
+                        const precioAnteriorInfo = (() => {
+                                if (aplicaSinSuplementos && tieneRecargos && precioConRecargos !== null) {
+                                        return {
+                                                sinIVA: precioConRecargos,
+                                                conIVA: precioConRecargosIVA,
+                                        };
+                                }
+                                if (descuentoTotalSync > 0 && precioAntesDescuentosReal !== null) {
+                                        return {
+                                                sinIVA: precioAntesDescuentosReal,
+                                                conIVA: precioAntesDescuentosRealIVA,
+                                        };
+                                }
+                                return null;
+                        })();
+
+                        let recargosHTML = "";
+                        if (
+                                getEffectiveUserRole() === "admin" &&
+                                precioBase !== null &&
+                                precioFinal !== null
+                        ) {
+                                recargosHTML = renderRecargosHTML({
+                                        precioBase,
+                                        breakdown,
+                                        precioFinal,
+                                        precioIVA,
+                                        descuentoTotal: descuentoTotalSync,
+                                        modalidad: m,
+                                        sinSuplementos: aplicaSinSuplementos,
+                                        ofertaSinSuplementos,
+                                });
+                        }
 
 			let buttonInner;
 			if (selected) {
@@ -1968,14 +2081,18 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                     <div class="form__plan-title">${title}</div>
                     <div class="form__plan-price-wrapper">
 						${(() => {
-							if (descuentoTotalSync > 0 && precioSinDescuento !== null) {
-								const anterior = preciosConIVA
-									? eurosString(precioSinDescuentoIVA)
-									: eurosString(precioSinDescuento);
-								return `<span class="form__plan-price-anterior">${anterior}€</span>`;
-							}
-							return "";
-						})()}
+                                                        if (precioAnteriorInfo) {
+                                                                const valorAnterior = preciosConIVA
+                                                                        ? precioAnteriorInfo.conIVA
+                                                                        : precioAnteriorInfo.sinIVA;
+                                                                if (valorAnterior != null) {
+                                                                        return `<span class="form__plan-price-anterior">${eurosString(
+                                                                                valorAnterior
+                                                                        )}€</span>`;
+                                                                }
+                                                        }
+                                                        return "";
+                                                })()}
                         <span class="plan-price-skeleton"></span>
                         <span class="form__plan-price-text">
                             <span class="plan-price-value" style="display:${
@@ -2367,6 +2484,10 @@ export {
         eurosString,
         filtrarModalidades,
         updateOfertas,
+        getOfertaSinSuplementosAplicable,
+        getOfertaSinSuplementosAplicableSync,
+        hasOfertaSinSuplementos,
+        hasOfertaSinSuplementosSync,
 };
 export default initCalculations;
 
