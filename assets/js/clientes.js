@@ -1285,7 +1285,7 @@
                     </div>
                     <footer class="client-dialog__footer">
                         <span class="client-dialog__status" aria-live="polite"></span>
-                        <button type="button" class="client-dialog__save" disabled>
+                        <button type="button" class="client-dialog__button client-dialog__save" disabled>
                             <span class="client-dialog__save-label">${escapeHtml(strings.assignCommercialSave || 'Guardar cambios')}</span>
                             <span class="client-dialog__spinner" aria-hidden="true"></span>
                         </button>
@@ -1958,10 +1958,10 @@
                     <footer class="client-dialog__footer">
                         <span class="client-dialog__status" aria-live="polite"></span>
                         <div class="client-dialog__footer-actions">
-                            <button type="button" class="client-offers__add">
+                            <button type="button" class="client-dialog__button client-dialog__button--secondary client-offers__add">
                                 <span class="client-offers__add-label">${escapeHtml(addLabel)}</span>
                             </button>
-                            <button type="button" class="client-dialog__save" disabled>
+                            <button type="button" class="client-dialog__button client-dialog__save" disabled>
                                 ${saveIconMarkup}
                                 <span class="client-dialog__save-label">${escapeHtml(baseSaveLabel)}</span>
                                 <span class="client-dialog__spinner" aria-hidden="true"></span>
@@ -2966,7 +2966,7 @@
                     <div class="client-dialog__body client-dialog__body--simple"></div>
                     <footer class="client-dialog__footer">
                         <span class="client-dialog__status" aria-live="polite"></span>
-                        <button type="button" class="client-dialog__save" disabled>
+                        <button type="button" class="client-dialog__button client-dialog__save" disabled>
                             <span class="client-dialog__save-label">${escapeHtml(saveLabel)}</span>
                             <span class="client-dialog__spinner" aria-hidden="true"></span>
                         </button>
