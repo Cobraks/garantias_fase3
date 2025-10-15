@@ -165,8 +165,12 @@ $home_destination = $is_admin_user
             window.go360Register = <?php echo wp_json_encode($register_data); ?>;
         </script>
     <?php endif; ?>
-    <?php if (! empty($is_list_page) || ! empty($is_clients_page) || ! empty($is_breakdowns_page)) : ?>
+    <?php if (! empty($is_list_page) || ! empty($is_breakdowns_page)) : ?>
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>">
+    <?php endif; ?>
+    <?php if (! empty($is_clients_page)) : ?>
+        <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>">
+        <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/clientes.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
     <?php if ($is_breakdown_detail_template) : ?>
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/averias.min.css', GARANTIAS360VO__FILE__)); ?>">
