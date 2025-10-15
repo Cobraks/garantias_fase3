@@ -76,15 +76,7 @@ body.scrolled .container {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: var(--spacing-3);
-    height: calc(
-        100dvh
-        - var(--alturaHeader)
-        - var(--alturaFooter)
-        - var(--spacing-4)
-        - 8.5rem
-        - var(--go-advanced-filters-height)
-    );
-    min-height: 0;
+    height: 100%;
     overflow: hidden;
     align-items: start;
 }
@@ -610,9 +602,8 @@ span.guarantees-list__search-icon {
 section.guarantees-list {
     z-index: 99;
     max-height: calc(
-        100dvh
+        100vh
         - var(--alturaHeader)
-        - var(--alturaFooter)
         - var(--spacing-4)
         - 8.5rem
         - var(--go-advanced-filters-height)
@@ -630,8 +621,7 @@ section.guarantees-list {
 }
 section.guarantees-list.sticky-active {
     max-height: calc(
-        100dvh
-        - var(--alturaFooter)
+        100vh
         - var(--spacing-4)
         - 7.5rem
         - var(--go-advanced-filters-height)
@@ -3146,9 +3136,8 @@ tr.guarantees-table__row:not(.selected):hover td,
     width: 100%;
     height: 100%;
     max-height: calc(
-        100dvh
+        100vh
         - var(--alturaHeader)
-        - var(--alturaFooter)
         - var(--spacing-4)
         - 8.5rem
         - var(--go-advanced-filters-height)
@@ -3171,8 +3160,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .guarantee-detail.sticky-active .guarantee-detail__panel {
     max-height: calc(
-        100dvh
-        - var(--alturaFooter)
+        100vh
         - var(--spacing-4)
         - 7.5rem
         - var(--go-advanced-filters-height)
