@@ -255,13 +255,20 @@ const specialValidators = {
 
 // === Función principal de validación ===
 export function validateField(input, showError = false, isHardCheck = false) {
+        if (!input) return true;
+
+        if (showError && isHardCheck && input.dataset.touched !== "true") {
+                input.dataset.touched = "true";
+        }
+
+        const revealError = showError && (isHardCheck || input.dataset.touched === "true");
         const id = input.id;
 
 	// Vendedor / profesional (usuario-rol) visible
 	if (id === "usuario-rol") {
 		const isVisible = input.offsetParent !== null;
                 if (isVisible && !input.value) {
-                        if (showError) {
+                        if (revealError) {
                                 const rawRole =
                                         getUserRole() || document.body.dataset.userRole || "";
                                 const normalizedRole = String(rawRole).toLowerCase();
@@ -287,13 +294,13 @@ export function validateField(input, showError = false, isHardCheck = false) {
 	// Canal de venta (admin), si está visible y vacío
 	if (id === "canal-venta") {
 		const isVisible = input.offsetParent !== null;
-		if (isVisible && !input.value) {
-			if (showError) setError(input, "Selecciona canal de venta");
-			return false;
-		}
-		clearError(input);
-		return true;
-	}
+                if (isVisible && !input.value) {
+                        if (revealError) setError(input, "Selecciona canal de venta");
+                        return false;
+                }
+                clearError(input);
+                return true;
+        }
 
         // Tracción / camión
         if (id === "traccion" || id === "traccion_camion") {
@@ -303,7 +310,7 @@ export function validateField(input, showError = false, isHardCheck = false) {
                 if (esCamion) {
                         if (id === "traccion_camion") {
                                 if (!input.value) {
-                                        if (showError) setError(input, "Este campo es obligatorio.");
+                                        if (revealError) setError(input, "Este campo es obligatorio.");
                                         return false;
                                 }
                                 clearError(input);
@@ -322,7 +329,7 @@ export function validateField(input, showError = false, isHardCheck = false) {
 
                 if (id === "traccion") {
                         if (!input.value) {
-                                if (showError) setError(input, "Este campo es obligatorio.");
+                                if (revealError) setError(input, "Este campo es obligatorio.");
                                 return false;
                         }
                         clearError(input);
@@ -336,7 +343,7 @@ export function validateField(input, showError = false, isHardCheck = false) {
 
         // Potencia / cilindrada / kilometros con límites dinámicos
         if (id === "potencia" || id === "cilindrada" || id === "kilometros") {
-                return validateWithDynamicLimit(input, showError);
+                return validateWithDynamicLimit(input, revealError);
         }
 
 	// Doble motor: solo obligatorio si el combustible lo requiere
@@ -346,23 +353,23 @@ export function validateField(input, showError = false, isHardCheck = false) {
 			combustible.toLowerCase()
 		);
 		if (requiere) {
-			if (!input.value) {
-				if (showError) setError(input, "Este campo es obligatorio.");
-				return false;
-			}
-			clearError(input);
-			return true;
-		}
+                        if (!input.value) {
+                                if (revealError) setError(input, "Este campo es obligatorio.");
+                                return false;
+                        }
+                        clearError(input);
+                        return true;
+                }
 		clearError(input);
 		return true;
 	}
 
 	// SELECT: placeholder flotado (solo visual)
-	if (input.tagName === "SELECT") {
-		const container = input.closest(".form__input-container");
-		const isDefaultOption = input.options[input.selectedIndex]?.disabled;
-		if (input.id === "provincia") {
-			container?.classList.add("has-value");
+        if (input.tagName === "SELECT") {
+                const container = input.closest(".form__input-container");
+                const isDefaultOption = input.options[input.selectedIndex]?.disabled;
+                if (input.id === "provincia") {
+                        container?.classList.add("has-value");
 		} else if (container) {
 			container.classList.toggle("has-value", !isDefaultOption);
 		}
@@ -370,20 +377,20 @@ export function validateField(input, showError = false, isHardCheck = false) {
 
 	// CHECKBOX
 	if (input.type === "checkbox") {
-		if (!input.checked) {
-			if (showError) setError(input, "Debes aceptar los términos.");
-			return false;
-		}
-		clearError(input);
-		return true;
-	}
+                if (!input.checked) {
+                        if (revealError) setError(input, "Debes aceptar los términos.");
+                        return false;
+                }
+                clearError(input);
+                return true;
+        }
 
         // Matrícula: validar formato y duplicados
         if (id === "matricula") {
-                const ok = validateMatriculaField(input, showError, isHardCheck);
+                const ok = validateMatriculaField(input, revealError, isHardCheck);
                 if (!ok) return false;
                 if (input.dataset.duplicate !== "false") {
-                        if (showError && input.dataset.duplicate === "true")
+                        if (revealError && input.dataset.duplicate === "true")
                                 setError(
                                         input,
                                         "Ya existe una garantía para este vehículo"
@@ -395,20 +402,20 @@ export function validateField(input, showError = false, isHardCheck = false) {
 
         // Validadores específicos
         if (specialValidators[id]) {
-                return specialValidators[id](input, showError, isHardCheck);
+                return specialValidators[id](input, revealError, isHardCheck);
         }
 
-	// Numéricos con límites fijos
-	if (numericLimits[id]) {
-		return validateNumeric(input, showError);
-	}
+        // Numéricos con límites fijos
+        if (numericLimits[id]) {
+                return validateNumeric(input, revealError);
+        }
 
-	// Requerido genérico
-	if (input.hasAttribute("required")) {
-		return validateRequiredField(input, showError);
-	}
+        // Requerido genérico
+        if (input.hasAttribute("required")) {
+                return validateRequiredField(input, revealError);
+        }
 
-	return true;
+        return true;
 }
 
 // === Exports auxiliares ===
@@ -416,18 +423,21 @@ export function forceDynamicFieldsValidation() {
         ["cilindrada", "potencia", "kilometros"].forEach((id) => {
                 const input = document.getElementById(id);
                 if (input) {
-                        const raw = input.value.replace(/\./g, "").trim();
-                        if (raw !== "") {
-                                validateWithDynamicLimit(input, true);
-                        } else {
+                        const shouldReveal = input.dataset.touched === "true";
+                        validateWithDynamicLimit(input, shouldReveal);
+                        if (!shouldReveal) {
                                 clearError(input);
                         }
                 }
         });
         ["combustible", "traccion", "traccion_camion"].forEach((id) => {
                 const select = document.getElementById(id);
-                if (select && select.value === "") {
-                        clearError(select);
+                if (select) {
+                        const shouldReveal = select.dataset.touched === "true";
+                        validateField(select, shouldReveal, true);
+                        if (!shouldReveal) {
+                                clearError(select);
+                        }
                 }
         });
         updateNextButtonState(false);
@@ -448,6 +458,7 @@ function setupInputValidationBehavior(input) {
         const id = input.id;
 
         const handler = debounce((e) => {
+                input.dataset.touched = "true";
                 if (id === "matricula") {
                         lastCheckedPlate = "";
                         input.dataset.duplicate = "pending";
@@ -483,7 +494,8 @@ function setupInputValidationBehavior(input) {
                         if (id === "precio_venta") formatCurrency(input);
                         else formatNumber(input);
                 }
-                validateField(input, e.isTrusted, true);
+                const shouldReveal = e.isTrusted && input.dataset.touched === "true";
+                validateField(input, shouldReveal, true);
                 FormUI.toggleClearButton(input);
                 updateNextButtonState();
                 if (id === "matricula") {
@@ -493,6 +505,15 @@ function setupInputValidationBehavior(input) {
 
         if (input.tagName === "SELECT") {
                 input.addEventListener("change", (e) => {
+                        input.dataset.touched = "true";
+                        validateField(input, e.isTrusted, true);
+                        updateNextButtonState();
+                });
+        }
+
+        if (input.type === "checkbox" || input.type === "radio") {
+                input.addEventListener("change", (e) => {
+                        input.dataset.touched = "true";
                         validateField(input, e.isTrusted, true);
                         updateNextButtonState();
                 });
