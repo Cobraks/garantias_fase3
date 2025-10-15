@@ -3,6 +3,7 @@
 namespace GarantiasOnline360VO\Rest;
 
 use GarantiasOnline360VO\Account\AccountViewModel;
+use GarantiasOnline360VO\ActivityLog\ActivityLogger;
 use GarantiasOnline360VO\GuaranteeCPT;
 use WP_Error;
 use WP_Query;
@@ -186,6 +187,9 @@ class ClientRestController
         $payload = $request->get_json_params();
         $offers  = isset($payload['offers']) && is_array($payload['offers']) ? $payload['offers'] : null;
 
+        $previous_offers = self::collect_user_offers($user_id);
+        $previous_snapshot = self::format_offers_for_log($previous_offers);
+
         if ($offers === null) {
             return new WP_Error(
                 'go_offers_invalid_payload',
@@ -350,6 +354,29 @@ class ClientRestController
             );
         }
 
+        $updated_snapshot = self::format_offers_for_log($normalized);
+
+        if ($previous_snapshot !== $updated_snapshot) {
+            $context = array_merge(
+                self::build_client_log_context($user),
+                [
+                    'offers_before'      => $previous_snapshot,
+                    'offers_after'       => $updated_snapshot,
+                    'offer_count_before' => count($previous_snapshot),
+                    'offer_count_after'  => count($updated_snapshot),
+                ]
+            );
+
+            ActivityLogger::log(
+                'client.offers_updated',
+                [
+                    'target_type' => 'user',
+                    'target_id'   => (int) $user->ID,
+                    'context'     => $context,
+                ]
+            );
+        }
+
         return new WP_REST_Response(
             self::prepare_offers_response($user_id),
             200
@@ -501,6 +528,8 @@ class ClientRestController
         $params = $request->get_json_params();
         $commercial_ids = isset($params['commercial_ids']) ? (array) $params['commercial_ids'] : [];
 
+        $previous_assignments = self::get_assigned_commercial_ids($client_id);
+
         $normalized = [];
         foreach ($commercial_ids as $value) {
             $id = (int) $value;
@@ -524,12 +553,190 @@ class ClientRestController
 
         self::reset_commercial_client_counts();
 
+        $sorted_previous = $previous_assignments;
+        $sorted_current  = $ids;
+        sort($sorted_previous);
+        sort($sorted_current);
+
+        if ($sorted_previous !== $sorted_current) {
+            $added   = array_values(array_diff($sorted_current, $sorted_previous));
+            $removed = array_values(array_diff($sorted_previous, $sorted_current));
+
+            $context = array_merge(
+                self::build_client_log_context($user),
+                [
+                    'commercials_before' => self::build_commercial_log_entries($previous_assignments),
+                    'commercials_after'  => self::build_commercial_log_entries($ids),
+                    'commercials_added'  => self::build_commercial_log_entries($added),
+                    'commercials_removed'=> self::build_commercial_log_entries($removed),
+                    'commercial_count_before' => count($previous_assignments),
+                    'commercial_count_after'  => count($ids),
+                ]
+            );
+
+            ActivityLogger::log(
+                'client.commercials_updated',
+                [
+                    'target_type' => 'user',
+                    'target_id'   => (int) $user->ID,
+                    'context'     => $context,
+                ]
+            );
+        }
+
         $account     = AccountViewModel::from_user($user);
         $commercials = self::format_commercials($account['commercials'] ?? []);
 
         return new WP_REST_Response([
             'commercials' => $commercials,
         ], 200);
+    }
+
+    private static function build_client_log_context(WP_User $user): array
+    {
+        $name = self::clean_text($user->display_name);
+        if ($name === '') {
+            $name = sanitize_user($user->user_login, true);
+        }
+
+        $roles = array_map('sanitize_key', (array) $user->roles);
+
+        return [
+            'client_id'       => (int) $user->ID,
+            'client_name'     => $name,
+            'client_email'    => sanitize_email($user->user_email),
+            'client_username' => sanitize_user($user->user_login, true),
+            'client_roles'    => array_values(array_filter($roles)),
+        ];
+    }
+
+    private static function format_offers_for_log(array $offers): array
+    {
+        $formatted = [];
+
+        foreach ($offers as $offer) {
+            if (! is_array($offer)) {
+                continue;
+            }
+
+            $type_value = '';
+            $type_label = '';
+            if (isset($offer['tipo_oferta'])) {
+                if (is_array($offer['tipo_oferta'])) {
+                    $type_value = sanitize_key($offer['tipo_oferta']['value'] ?? '');
+                    $type_label = self::clean_text($offer['tipo_oferta']['label'] ?? '');
+                } else {
+                    $type_value = sanitize_key((string) $offer['tipo_oferta']);
+                    $type_label = self::clean_text((string) $offer['tipo_oferta']);
+                }
+            }
+
+            $scope_value = '';
+            $scope_label = '';
+            if (isset($offer['aplicacion'])) {
+                if (is_array($offer['aplicacion'])) {
+                    $scope_value = sanitize_key($offer['aplicacion']['value'] ?? '');
+                    $scope_label = self::clean_text($offer['aplicacion']['label'] ?? '');
+                } else {
+                    $scope_value = sanitize_key((string) $offer['aplicacion']);
+                    $scope_label = self::clean_text((string) $offer['aplicacion']);
+                }
+            }
+
+            $selection = [];
+            if (! empty($offer['seleccion_modalidad']) && is_array($offer['seleccion_modalidad'])) {
+                foreach ($offer['seleccion_modalidad'] as $modalidad_id) {
+                    $modalidad_id = (int) $modalidad_id;
+                    if ($modalidad_id > 0) {
+                        $selection[] = $modalidad_id;
+                    }
+                }
+            }
+            sort($selection);
+            $selection = array_values(array_unique($selection));
+
+            $discount = null;
+            if (isset($offer['porcentaje_descuento']) && $offer['porcentaje_descuento'] !== '' && $offer['porcentaje_descuento'] !== null) {
+                $discount = (float) $offer['porcentaje_descuento'];
+            }
+
+            $expires = '';
+            if (isset($offer['caducidad_iso']) && $offer['caducidad_iso'] !== '') {
+                $expires = sanitize_text_field((string) $offer['caducidad_iso']);
+            } elseif (isset($offer['caducidad_oferta']) && $offer['caducidad_oferta'] !== '') {
+                $expires = sanitize_text_field((string) $offer['caducidad_oferta']);
+            }
+
+            $formatted[] = [
+                'type'      => [
+                    'value' => $type_value,
+                    'label' => $type_label,
+                ],
+                'name'      => self::clean_text($offer['nombre_oferta'] ?? ''),
+                'scope'     => [
+                    'value' => $scope_value,
+                    'label' => $scope_label,
+                ],
+                'discount'  => $discount,
+                'expires'   => $expires,
+                'selection' => $selection,
+                'active'    => isset($offer['estado']) ? (bool) $offer['estado'] : true,
+            ];
+        }
+
+        return array_values($formatted);
+    }
+
+    private static function get_assigned_commercial_ids(int $client_id): array
+    {
+        if ($client_id <= 0) {
+            return [];
+        }
+
+        $stored = get_user_meta($client_id, 'ajustes_usuarios_comercial_asignado', true);
+
+        $ids = [];
+        if (is_array($stored)) {
+            foreach ($stored as $value) {
+                $value = (int) $value;
+                if ($value > 0) {
+                    $ids[] = $value;
+                }
+            }
+        } elseif (is_numeric($stored)) {
+            $value = (int) $stored;
+            if ($value > 0) {
+                $ids[] = $value;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    private static function build_commercial_log_entries(array $commercial_ids): array
+    {
+        $entries = [];
+
+        foreach ($commercial_ids as $id) {
+            $id = (int) $id;
+            if ($id <= 0) {
+                continue;
+            }
+
+            $commercial = get_user_by('id', $id);
+            if (! $commercial instanceof WP_User) {
+                continue;
+            }
+
+            $entries[] = [
+                'id'       => $id,
+                'name'     => self::clean_text($commercial->display_name),
+                'email'    => sanitize_email($commercial->user_email),
+                'username' => sanitize_user($commercial->user_login, true),
+            ];
+        }
+
+        return array_values($entries);
     }
 
     private static function prepare_item(WP_User $user): array

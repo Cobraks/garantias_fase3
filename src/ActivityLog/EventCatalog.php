@@ -109,6 +109,18 @@ class EventCatalog
             'level'    => 'info',
             'message'  => 'Se limpiaron {{context.tokens}} códigos caducados y {{context.windows}} ventanas de reenvío.',
         ],
+        'client.offers_updated' => [
+            'label'    => 'Ofertas de cliente actualizadas',
+            'category' => 'user',
+            'level'    => 'info',
+            'message'  => '{{actor_name}} actualizó las ofertas de {{context.client_name}}.',
+        ],
+        'client.commercials_updated' => [
+            'label'    => 'Comerciales de cliente actualizados',
+            'category' => 'user',
+            'level'    => 'info',
+            'message'  => '{{actor_name}} actualizó los comerciales asignados de {{context.client_name}}.',
+        ],
         'auth.password_recovery.invalid_user' => [
             'label'    => 'Solicitud de restablecimiento sin cuenta',
             'category' => 'auth',
