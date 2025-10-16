@@ -294,12 +294,6 @@
       iban: normalizeIbanValue(sepaIbanField ? sepaIbanField.value : ''),
     });
 
-    if (enableSepaField && !sepaConfigAvailable) {
-      enableSepaField.checked = false;
-      enableSepaField.disabled = true;
-      enableSepaField.setAttribute('aria-disabled', 'true');
-    }
-
     const isStepAvailable = (stepNumber) => state.stepSequence.includes(stepNumber);
     const getStepNumberAtPosition = (position) => {
       if (!state.stepSequence.length) {

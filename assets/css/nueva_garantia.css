@@ -2498,15 +2498,15 @@ margin-top: .5rem;
     width: 1rem;
     height: 1rem;
     margin-right: 0.5rem;
-    border: 2px solid rgba(var(--go-color-2563eb-rgb), 0.2);
-    border-top-color: var(--go-color-2563eb);
+    border: 2px solid #bfdbfe;
+    border-top-color: #2563eb;
     border-radius: 50%;
     animation: btn-spin .8s linear infinite;
   }
 
   :root[data-theme='dark'] .btn.is-loading::before {
-    border: 2px solid rgba(148, 163, 184, 0.28);
-    border-top-color: var(--primary-color);
+    border: 2px solid #475569;
+    border-top-color: #38bdf8;
   }
 
   @keyframes btn-spin {
