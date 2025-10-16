@@ -973,6 +973,9 @@ class RegistrationService
         $temporary_files = [];
 
         if ($has_pending_mandate) {
+            if (! function_exists('wp_tempnam')) {
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+            }
             $binary = SepaMandateService::retrieve_document($user_id, SepaMandateService::TYPE_PENDING);
             if (is_string($binary) && $binary !== '') {
                 $filename = $pending_meta['filename'] !== '' ? $pending_meta['filename'] : 'mandato-sepa.pdf';
