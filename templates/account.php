@@ -1102,15 +1102,6 @@ $formatPhoneHref = static function ($phone) {
                                 <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
                                 <span>Estado domiciliación bancaria: <strong><?php echo esc_html__('Pendiente de firma', 'garantias-online-360vo'); ?></strong></span>
                             </p>
-                            <?php
-                                $sepa_requested_message = sprintf(
-                                    __('Mandato SEPA pendiente de firma. Descárgalo y envíalo firmado desde esta sección o a <a href="%s">garantias@360vo.es</a>.', 'garantias-online-360vo'),
-                                    esc_url('mailto:garantias@360vo.es')
-                                );
-                            ?>
-                            <p class="account-card__note account-card__note--inline">
-                                <?php echo wp_kses($sepa_requested_message, ['a' => ['href' => []]]); ?>
-                            </p>
                         <?php else : ?>
                             <label class="account-toggle">
                                 <input
@@ -1185,13 +1176,6 @@ $formatPhoneHref = static function ($phone) {
                         >
                             Completa los datos del titular y genera tu mandato SEPA. Después podrás firmarlo y subirlo desde aquí.
                         </p>
-                        <p
-                            class="account-card__intro"
-                            data-payment-state="requested"
-                            <?php echo $activation_state === 'requested' ? '' : 'hidden aria-hidden="true"'; ?>
-                        >
-                            <?php echo esc_html__('Mandato SEPA pendiente de firma.', 'garantias-online-360vo'); ?>
-                        </p>
                         <?php if ($sepa_locked) : ?>
                             <?php if ($has_sepa_values) : ?>
                                 <div
@@ -1234,36 +1218,32 @@ $formatPhoneHref = static function ($phone) {
                                 data-payment-state="requested"
                                 <?php echo $activation_state === 'requested' ? '' : 'hidden aria-hidden="true"'; ?>
                             >
-                                <p class="account-sepa-request__intro">
-                                    <?php
-                                    $sepa_request_message = sprintf(
-                                        __('Descarga tu mandato SEPA pendiente, fírmalo y devuélvelo desde aquí o por correo a <a href="%s">garantias@360vo.es</a> para activar la domiciliación bancaria.', 'garantias-online-360vo'),
-                                        esc_url('mailto:garantias@360vo.es')
-                                    );
-                                    echo wp_kses($sepa_request_message, ['a' => ['href' => []]]);
-                                    ?>
-                                </p>
                                 <div class="account-sepa-request__actions">
                                     <?php if ($pending_download_url !== '') : ?>
-                                        <a
-                                            class="account-sepa-request__download"
-                                            href="<?php echo esc_url($pending_download_url); ?>"
-                                            target="_blank"
-                                            rel="noopener"
-                                        >
-                                            <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
-                                            <span><?php echo esc_html($pending_download_label); ?></span>
-                                        </a>
-                                    <?php endif; ?>
-                                    <div class="account-sepa-request__upload">
-                                        <div class="account-upload account-upload--document">
-                                            <div
-                                                class="file-upload file-upload--document"
-                                                id="account-sepa-signed-upload"
-                                                data-default-label="<?php echo esc_attr($sepa_upload_default_label); ?>"
-                                                data-document-upload
-                                                data-document-type="sepa_signed"
+                                        <div class="account-sepa-request__action">
+                                            <p class="account-sepa-request__step"><span>1.</span> <?php echo esc_html__('Descarga el documento', 'garantias-online-360vo'); ?></p>
+                                            <a
+                                                class="account-sepa-request__download"
+                                                href="<?php echo esc_url($pending_download_url); ?>"
+                                                target="_blank"
+                                                rel="noopener"
                                             >
+                                                <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
+                                                <span><?php echo esc_html($pending_download_label); ?></span>
+                                            </a>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div class="account-sepa-request__action">
+                                        <p class="account-sepa-request__step"><span>2.</span> <?php echo esc_html__('Súbelo firmado', 'garantias-online-360vo'); ?></p>
+                                        <div class="account-sepa-request__upload">
+                                            <div class="account-upload account-upload--document">
+                                                <div
+                                                    class="file-upload file-upload--document"
+                                                    id="account-sepa-signed-upload"
+                                                    data-default-label="<?php echo esc_attr($sepa_upload_default_label); ?>"
+                                                    data-document-upload
+                                                    data-document-type="sepa_signed"
+                                                >
                                                 <div class="file-label" data-document-label><?php echo esc_html($sepa_upload_label); ?></div>
                                                 <p class="file-hint">Formato admitido: PDF (máx. 5MB)</p>
                                                 <input
