@@ -1003,7 +1003,10 @@ class RegistrationService
                 if ($tmp) {
                     $written = file_put_contents($tmp, $binary);
                     if ($written !== false) {
-                        $attachments[] = $tmp;
+                        $attachments[] = [
+                            'file' => $tmp,
+                            'name' => $filename,
+                        ];
                         $temporary_files[] = $tmp;
                     } else {
                         @unlink($tmp);

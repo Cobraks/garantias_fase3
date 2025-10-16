@@ -618,8 +618,7 @@ class AccountViewModel
         $pending_document = $sepa['documents']['pending'];
         $has_pending_request = is_array($pending_document)
             && isset($pending_document['hash'])
-            && $pending_document['hash'] !== ''
-            && $pending_document['private'] === true;
+            && $pending_document['hash'] !== '';
 
         if ($has_pending_request && $sepa['status'] !== true) {
             $sepa['requested'] = true;

@@ -540,6 +540,15 @@
   color: inherit;
   text-decoration: underline;
 }
+.account-card__note--inline {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.account-card__note--inline a {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
 
 .account-card__intro {
   margin: 0 0 1rem;
@@ -556,6 +565,21 @@
   color: var(--text-color);
   font-size: 0.9rem;
   line-height: 1.6;
+}
+.account-card__status--sepa {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.account-card__status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+}
+.account-card__status-svg {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .account-card__status--success {
@@ -1042,6 +1066,66 @@
   flex-direction: column;
   gap: var(--spacing-2);
   align-items: flex-start;
+}
+.account-sepa-request {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+.account-sepa-request__intro {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-color);
+}
+.account-sepa-request__intro a {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+.account-sepa-request__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+.account-sepa-request__download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 0.9rem;
+  background: rgba(19, 84, 122, 0.12);
+  color: var(--primary-color);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+.account-sepa-request__download:hover,
+.account-sepa-request__download:focus-visible {
+  background: rgba(19, 84, 122, 0.18);
+}
+.account-sepa-request__download-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.account-sepa-request__download-svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.account-sepa-request__upload .file-upload {
+  width: 100%;
+}
+@media (min-width: 720px) {
+  .account-sepa-request__actions {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .account-sepa-request__download {
+    align-self: flex-start;
+  }
+  .account-sepa-request__upload {
+    flex: 1;
+  }
 }
 
 .account-card--certificates {

@@ -1723,8 +1723,19 @@
         console.warn('[register] Unable to set payment checkbox', error);
       }
 
+      if (form && typeof form.getSignature === 'function') {
+        try {
+          const signatureField = form.getSignature('pdf_deudor_firma');
+          if (signatureField && typeof signatureField.disableReadOnly === 'function') {
+            signatureField.disableReadOnly();
+          }
+        } catch (error) {
+          console.warn('[register] Unable to keep signature field editable', error);
+        }
+      }
+
       const generatedAt = signatureDate.toISOString();
-      const filled = await pdfDoc.save();
+      const filled = await pdfDoc.save({ updateFieldAppearances: false });
       const blob = new Blob([filled], { type: 'application/pdf' });
       const filename = buildSepaFilename(reference);
 
