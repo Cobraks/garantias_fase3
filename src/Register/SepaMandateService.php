@@ -52,6 +52,8 @@ class SepaMandateService
             'templateName'    => $template['filename'] ?? '',
             'creditor'        => $creditor,
             'referencePrefix' => self::DEFAULT_REFERENCE_PREFIX,
+            'fontkitUrl'      => esc_url_raw(plugins_url('assets/js/fontkit.umd.min.js', GARANTIAS360VO__FILE__)),
+            'fontUrl'         => esc_url_raw(plugins_url('assets/fonts/RobotoMono-Regular.ttf', GARANTIAS360VO__FILE__)),
         ];
     }
 

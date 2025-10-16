@@ -42,6 +42,36 @@
     && sepaConfig.referencePrefix.trim() !== ''
       ? sepaConfig.referencePrefix.trim().toUpperCase()
       : 'GO';
+  const sepaFontkitUrl = typeof sepaConfig.fontkitUrl === 'string' ? sepaConfig.fontkitUrl.trim() : '';
+  const sepaFontUrl = typeof sepaConfig.fontUrl === 'string' ? sepaConfig.fontUrl.trim() : '';
+
+  const toAbsoluteUrl = (relativePath) => {
+    if (typeof relativePath !== 'string' || relativePath.trim() === '') {
+      return '';
+    }
+    try {
+      return new URL(relativePath, import.meta.url).href;
+    } catch (error) {
+      console.warn('[register] asset url resolution failed', { relativePath, error });
+      return '';
+    }
+  };
+
+  const uniqueNonEmptyStrings = (values) => {
+    const seen = new Set();
+    return values.reduce((acc, value) => {
+      if (typeof value !== 'string') {
+        return acc;
+      }
+      const trimmed = value.trim();
+      if (trimmed === '' || seen.has(trimmed)) {
+        return acc;
+      }
+      seen.add(trimmed);
+      acc.push(trimmed);
+      return acc;
+    }, []);
+  };
 
   const getRestRoot = () => {
     const base = (getRegisterConfig().rest && getRegisterConfig().rest.root)
@@ -68,6 +98,7 @@
     templateBytes: null,
     fontBytes: null,
     fontkitRegistered: false,
+    fontSource: '',
     generatedAt: undefined,
     lastError: '',
   };
@@ -1531,32 +1562,87 @@
 
       const pdfDoc = await PDFLib.PDFDocument.load(sepaMandateState.templateBytes);
 
-      if (!sepaMandateState.fontkitRegistered) {
-        try {
-          await import('../fontkit.umd.min.js');
-          if (globalThis.fontkit) {
-            sepaMandateState.fontkitRegistered = true;
+      const fontkitCandidates = uniqueNonEmptyStrings([
+        sepaFontkitUrl,
+        toAbsoluteUrl('./fontkit.umd.min.js'),
+      ]);
+      let fontkitLoaded = sepaMandateState.fontkitRegistered && typeof globalThis.fontkit !== 'undefined';
+
+      if (!fontkitLoaded) {
+        for (const candidate of fontkitCandidates) {
+          try {
+            await import(candidate);
+            if (globalThis.fontkit) {
+              sepaMandateState.fontkitRegistered = true;
+              fontkitLoaded = true;
+              break;
+            }
+          } catch (error) {
+            console.warn('[register] fontkit load failed', { url: candidate, error });
           }
-        } catch (error) {
-          console.warn('[register] fontkit load failed', error);
         }
       }
 
-      if (sepaMandateState.fontkitRegistered && globalThis.fontkit) {
-        pdfDoc.registerFontkit(globalThis.fontkit);
+      if (fontkitLoaded && globalThis.fontkit) {
+        try {
+          pdfDoc.registerFontkit(globalThis.fontkit);
+        } catch (error) {
+          console.warn('[register] fontkit register failed', error);
+        }
       }
 
       if (!sepaMandateState.fontBytes) {
-        const fontUrl = new URL('../fonts/RobotoMono-Regular.ttf', import.meta.url);
-        const fontResponse = await fetch(fontUrl);
-        if (!fontResponse.ok) {
-          throw new Error('sepa_font_fetch_failed');
+        const fontCandidates = uniqueNonEmptyStrings([
+          sepaFontUrl,
+          toAbsoluteUrl('../fonts/RobotoMono-Regular.ttf'),
+        ]);
+        for (const candidate of fontCandidates) {
+          try {
+            const fontResponse = await fetch(candidate, { credentials: 'same-origin' });
+            if (!fontResponse.ok) {
+              throw new Error(`HTTP ${fontResponse.status}`);
+            }
+            sepaMandateState.fontBytes = await fontResponse.arrayBuffer();
+            sepaMandateState.fontSource = candidate;
+            break;
+          } catch (error) {
+            console.warn('[register] sepa font fetch failed', { url: candidate, error });
+          }
         }
-        sepaMandateState.fontBytes = await fontResponse.arrayBuffer();
       }
 
-      const robotoMono = await pdfDoc.embedFont(sepaMandateState.fontBytes);
-      const robotoName = robotoMono.name;
+      let activeFont = null;
+      let appearanceFontName = '';
+
+      if (sepaMandateState.fontBytes) {
+        try {
+          activeFont = await pdfDoc.embedFont(sepaMandateState.fontBytes);
+          if (activeFont && typeof activeFont.name === 'string') {
+            appearanceFontName = activeFont.name;
+          }
+        } catch (error) {
+          console.warn('[register] sepa custom font embed failed', error);
+        }
+      }
+
+      if (!activeFont) {
+        try {
+          const fallbackName = (PDFLib.StandardFonts && PDFLib.StandardFonts.Helvetica)
+            ? PDFLib.StandardFonts.Helvetica
+            : 'Helvetica';
+          activeFont = await pdfDoc.embedStandardFont(fallbackName);
+          if (activeFont && typeof activeFont.name === 'string') {
+            appearanceFontName = activeFont.name;
+          } else {
+            appearanceFontName = typeof fallbackName === 'string' ? fallbackName : 'Helvetica';
+          }
+        } catch (error) {
+          console.error('[register] sepa fallback font embed failed', error);
+          throw new Error('sepa_font_embed_failed');
+        }
+      }
+
+      const resolvedFontName = appearanceFontName || 'Helvetica';
       const form = pdfDoc.getForm();
 
       const creditorCountry = typeof sepaCreditor.country === 'string' && sepaCreditor.country
@@ -1603,9 +1689,11 @@
           field.setText(stringValue);
           field.setFontSize(9);
           if (field.acroField && typeof field.acroField.setDefaultAppearance === 'function') {
-            field.acroField.setDefaultAppearance(`0 0 0 rg /${robotoName} 9 Tf`);
+            field.acroField.setDefaultAppearance(`0 0 0 rg /${resolvedFontName} 9 Tf`);
           }
-          field.updateAppearances(robotoMono);
+          if (typeof field.updateAppearances === 'function') {
+            field.updateAppearances(activeFont);
+          }
           if (!editableFields.has(name) && typeof field.enableReadOnly === 'function') {
             field.enableReadOnly();
           }
