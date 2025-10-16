@@ -2,7 +2,10 @@
 
 namespace GarantiasOnline360VO\Rest;
 
+use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\Support\UserProfileResolver;
+use WP_Error;
+use WP_REST_Request;
 use WP_REST_Server;
 use WP_User_Query;
 use WP_REST_Response;
@@ -59,6 +62,28 @@ class UserRestController
                         'id' => [
                             'required' => false,
                             'type' => 'integer',
+                        ],
+                    ],
+                ],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\\d+)/sepa/(?P<type>[a-z]+)',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'download_sepa_document'],
+                    'permission_callback' => [__CLASS__, 'can_download_sepa'],
+                    'args'                => [
+                        'id' => [
+                            'required' => true,
+                            'type'     => 'integer',
+                        ],
+                        'type' => [
+                            'required' => true,
+                            'type'     => 'string',
                         ],
                     ],
                 ],
@@ -193,6 +218,86 @@ class UserRestController
         }
 
         return rest_ensure_response($users);
+    }
+
+    public static function can_download_sepa($request): bool
+    {
+        if (! is_user_logged_in()) {
+            return false;
+        }
+
+        $current = wp_get_current_user();
+        if (! $current instanceof \WP_User) {
+            return false;
+        }
+
+        $target_id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($target_id <= 0) {
+            return false;
+        }
+
+        if ((int) $current->ID === $target_id) {
+            return true;
+        }
+
+        $roles = (array) $current->roles;
+        if (
+            user_can($current, 'manage_options')
+            || in_array('go_garantias', $roles, true)
+            || in_array('go_director_comercial', $roles, true)
+        ) {
+            return true;
+        }
+
+        if (in_array('go_comercial', $roles, true)) {
+            $assigned = [];
+            if (function_exists('get_field')) {
+                $assigned = get_field('ajustes_usuarios_comercial_asignado', 'user_' . $target_id);
+            }
+            if (is_array($assigned)) {
+                $assigned_ids = array_map('intval', $assigned);
+                if (in_array((int) $current->ID, $assigned_ids, true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public static function download_sepa_document(WP_REST_Request $request)
+    {
+        $user_id = (int) $request->get_param('id');
+        if ($user_id <= 0) {
+            return new WP_Error('go_sepa_user', __('Documento no disponible.', 'garantias-online-360vo'), ['status' => 404]);
+        }
+
+        $type_param = sanitize_key($request->get_param('type'));
+        $type = $type_param === SepaMandateService::TYPE_SIGNED
+            ? SepaMandateService::TYPE_SIGNED
+            : SepaMandateService::TYPE_PENDING;
+
+        $binary = SepaMandateService::retrieve_document($user_id, $type);
+        if (! is_string($binary) || $binary === '') {
+            return new WP_Error('go_sepa_missing', __('Documento no disponible.', 'garantias-online-360vo'), ['status' => 404]);
+        }
+
+        $meta = SepaMandateService::get_document_meta($user_id, $type);
+        $filename = $meta['filename'] !== '' ? $meta['filename'] : 'mandato-sepa.pdf';
+        $safe_filename = sanitize_file_name($filename);
+        if ($safe_filename === '') {
+            $safe_filename = 'mandato-sepa.pdf';
+        }
+        if (! str_contains($safe_filename, '.')) {
+            $safe_filename .= '.pdf';
+        }
+
+        $response = new WP_REST_Response($binary, 200);
+        $response->header('Content-Type', 'application/pdf');
+        $response->header('Content-Disposition', 'attachment; filename="' . $safe_filename . '"; filename*=UTF-8\'\'' . rawurlencode($safe_filename));
+        $response->header('X-Go360-Binary', '1');
+
+        return $response;
     }
 
     /**

@@ -5,19 +5,26 @@ if (! defined('ABSPATH')) {
 
 use GarantiasOnline360VO\TemplateLoader;
 use GarantiasOnline360VO\Svg;
+use GarantiasOnline360VO\Register\SepaMandateService;
 
 $is_register_page = true;
 $is_auth_page     = true;
+$sepa_config      = SepaMandateService::get_frontend_config();
+$register_config  = [
+    'rest' => [
+        'root' => esc_url_raw(rest_url('go/public/v1/')),
+    ],
+    'sepa' => $sepa_config,
+];
 TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'));
 ?>
 
 <script>
-    window.__GO_REGISTER__ = {
-        rest: {
-            root: "<?php echo esc_url(rest_url('go/public/v1/')); ?>"
-        }
-    };
+    window.__GO_REGISTER__ = <?php echo wp_json_encode($register_config, JSON_UNESCAPED_SLASHES); ?>;
 </script>
+<script
+    src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"
+    defer></script>
 
 <main class="register-page" style="view-transition-name: register">
     <div class="container">

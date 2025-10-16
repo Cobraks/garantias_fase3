@@ -2,6 +2,7 @@
 
 namespace GarantiasOnline360VO\Account;
 
+use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
 use GarantiasOnline360VO\Support\UserProfileResolver;
@@ -546,10 +547,18 @@ class AccountViewModel
                             $payment_type = self::extract_payment_label($status_group['metodo_de_pago']);
                         }
                         if (! empty($status_group['documento_sepa_firmado'])) {
-                            $sepa['documents']['signed'] = self::normalize_media($status_group['documento_sepa_firmado']);
+                            $sepa['documents']['signed'] = SepaMandateService::normalize_document(
+                                $status_group['documento_sepa_firmado'],
+                                $user_id,
+                                SepaMandateService::TYPE_SIGNED
+                            );
                         }
                         if (! empty($status_group['documento_sepa_sin_firmar'])) {
-                            $sepa['documents']['pending'] = self::normalize_media($status_group['documento_sepa_sin_firmar']);
+                            $sepa['documents']['pending'] = SepaMandateService::normalize_document(
+                                $status_group['documento_sepa_sin_firmar'],
+                                $user_id,
+                                SepaMandateService::TYPE_PENDING
+                            );
                         }
                     }
                 }
@@ -581,7 +590,11 @@ class AccountViewModel
                 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_firmado',
                 true
             );
-            $sepa['documents']['signed'] = self::normalize_media($signed_meta);
+            $sepa['documents']['signed'] = SepaMandateService::normalize_document(
+                $signed_meta,
+                $user_id,
+                SepaMandateService::TYPE_SIGNED
+            );
         }
         if (! $sepa['documents']['pending']) {
             $pending_meta = get_user_meta(
@@ -589,7 +602,11 @@ class AccountViewModel
                 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_sin_firmar',
                 true
             );
-            $sepa['documents']['pending'] = self::normalize_media($pending_meta);
+            $sepa['documents']['pending'] = SepaMandateService::normalize_document(
+                $pending_meta,
+                $user_id,
+                SepaMandateService::TYPE_PENDING
+            );
         }
 
         $selected_method = self::normalize_payment_method($payment_type);
