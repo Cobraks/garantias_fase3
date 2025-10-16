@@ -610,6 +610,26 @@ class AccountViewModel
             );
         }
 
+        $pending_document = $sepa['documents']['pending'];
+        if (
+            (! is_array($pending_document) || empty($pending_document['hash']))
+            && ($meta = SepaMandateService::get_document_meta($user_id, SepaMandateService::TYPE_PENDING))
+        ) {
+            if (! empty($meta['hash'])) {
+                $pending_document = SepaMandateService::normalize_document(
+                    [
+                        'hash'         => $meta['hash'],
+                        'filename'     => $meta['filename'],
+                        'generated_at' => $meta['generated_at'],
+                        'reference'    => $meta['reference'],
+                    ],
+                    $user_id,
+                    SepaMandateService::TYPE_PENDING
+                );
+                $sepa['documents']['pending'] = $pending_document;
+            }
+        }
+
         $selected_method = self::normalize_payment_method($payment_type);
         if ($selected_method === '') {
             $selected_method = 'domiciliacion';
