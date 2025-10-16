@@ -516,7 +516,7 @@ function setupSummaryButtons() {
                         if (
                                 typeof isCurrentTabValid === "function" &&
                                 targetTabIndex > FormCache.currentTab &&
-                                !isCurrentTabValid()
+                                !isCurrentTabValid({ focusInvalid: true })
                         ) {
                                 alert("Completa todos los campos antes de continuar.");
                                 return;

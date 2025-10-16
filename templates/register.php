@@ -591,15 +591,19 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             </div>
                         </div>
 
-                    <div class="summary-group" id="summary-sepa" hidden aria-hidden="true">
-                        <div class="summary-title">Datos para el SEPA</div>
-                        <div class="summary-item">
-                            <span class="summary-label">Titular:</span>
-                            <span class="summary-value" id="summary-sepa-name">—</span>
-                        </div>
+                        <div class="summary-group" id="summary-sepa" hidden aria-hidden="true">
+                            <div class="summary-title">Datos para el SEPA</div>
+                            <div class="summary-item">
+                                <span class="summary-label">Titular:</span>
+                                <span class="summary-value" id="summary-sepa-name">—</span>
+                            </div>
                             <div class="summary-item">
                                 <span class="summary-label">Dirección:</span>
                                 <span class="summary-value" id="summary-sepa-address">—</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Swift BIC:</span>
+                                <span class="summary-value" id="summary-sepa-swift">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">IBAN:</span>
@@ -626,7 +630,10 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                     <div class="verification-container">
                         <div class="verification-icon">✓</div>
                         <h2 class="verification-title">¡Cuenta creada con éxito!</h2>
-                        <p class="verification-text">Te hemos enviado un código de verificación a <strong id="email-sent">juan@autosolutions.es</strong>. Introduce el código en esta pantalla para activar tu cuenta. <span id="verification-expiry">Caduca en 24&nbsp;horas.</span></p>
+                        <p class="verification-text" id="verification-text">
+                            <span id="verification-instructions">Te hemos enviado un código de verificación a <strong id="email-sent">juan@autosolutions.es</strong>. Introduce el código en esta pantalla para activar tu cuenta. <span id="verification-expiry">Caduca en 24&nbsp;horas.</span></span>
+                            <span id="verification-success-text" hidden>Cuenta verificada. Ya puedes acceder a tu área de usuario.</span>
+                        </p>
                         <p class="verification-message" id="verification-message" role="status" aria-live="assertive" hidden></p>
 
                         <div class="input-container input-container--verification" id="verification-input">
@@ -641,7 +648,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                         <p class="verification-hint" id="resend-countdown" hidden></p>
 
                         <div class="verification-success" id="verification-success" hidden>
-                            <p>Cuenta verificada. Ya puedes acceder a tu área de usuario.</p>
+                            <p id="verification-success-message">Cuenta verificada. Ya puedes acceder a tu área de usuario.</p>
                             <a href="<?php echo esc_url(home_url('/garantias-online/')); ?>" class="btn btn-primary verification-success__cta">Entrar a Mis garantías</a>
                         </div>
                     </div>

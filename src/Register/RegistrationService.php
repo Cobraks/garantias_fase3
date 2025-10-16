@@ -513,17 +513,18 @@ class RegistrationService
 
             if ($data['enable_sepa']) {
                 $sepa = $data['sepa'];
-                $address_line = trim(sprintf('%s %s %s', $sepa['postal_code'], $sepa['city'], $sepa['state']));
                 $sepa_group = [
                     'gestion_sepa' => [
                         'datos_deudor' => [
-                            'nombre_deudor'         => $sepa['name'],
-                            'direccion_deudor'      => $sepa['address'],
-                            'cp_poblacion_provincia'=> $address_line,
-                            'pais_deudor'           => $sepa['country'],
-                            'swift_bic'             => $sepa['swift'],
-                            'numero_cienta'         => $sepa['iban'],
-                            'tipo_pago'             => [
+                            'nombre_deudor'    => $sepa['name'],
+                            'direccion_deudor' => $sepa['address'],
+                            'codigo_postal'    => $sepa['postal_code'],
+                            'poblacion'        => $sepa['city'],
+                            'provincia'        => $sepa['state'],
+                            'pais_deudor'      => $sepa['country'],
+                            'swift_bic'        => $sepa['swift'],
+                            'numero_cuenta'    => $sepa['iban'],
+                            'tipo_pago'        => [
                                 'value' => 'recurrente',
                                 'label' => 'Recurrente',
                             ],
@@ -583,6 +584,15 @@ class RegistrationService
             update_user_meta($user_id, 'gestion_pagos_gestion_sepa_swift_bic', $sepa['swift']);
             update_user_meta($user_id, 'gestion_pagos_gestion_sepa_numero_cuenta', $sepa['iban']);
             update_user_meta($user_id, 'gestion_pagos_gestion_sepa_tipo_pago', 'recurrente');
+
+            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_codigo_postal', $sepa['postal_code']);
+            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_poblacion', $sepa['city']);
+            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_provincia', $sepa['state']);
+            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cuenta', $sepa['iban']);
+            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', $sepa['iban']);
+            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_cp', $sepa['postal_code']);
+            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_ciudad', $sepa['city']);
+            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_region', $sepa['state']);
         }
 
         if (! empty($uploads['avatar']['id'])) {

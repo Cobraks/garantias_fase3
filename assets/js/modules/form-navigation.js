@@ -122,9 +122,9 @@ function clearPlanSelectionError() {
 
 // === Estado visual + saltos de pestaña ===
 function showTab(index) {
-	FormCache.fieldsets.forEach((fs, i) =>
-		fs.classList.toggle("form__tab-content--active", i === index)
-	);
+        FormCache.fieldsets.forEach((fs, i) =>
+                fs.classList.toggle("form__tab-content--active", i === index)
+        );
 	FormCache.tabs.forEach((tab, i) =>
 		tab.classList.toggle("active", i === index)
 	);
@@ -165,63 +165,95 @@ function showTab(index) {
         }
 }
 
+function evaluateCurrentTab({ showErrors = false, hardCheck = false, focusInvalid = false } = {}) {
+        const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
+        if (!currentFieldset) {
+                return { valid: false, invalidInputs: [] };
+        }
+
+        const inputs = currentFieldset.querySelectorAll(
+                ".form__input, .form__select, .form__checkbox"
+        );
+        let valid = true;
+        const invalidInputs = [];
+
+        inputs.forEach((input) => {
+                if (!input) return;
+                if (input.type === "hidden" || input.disabled) return;
+                const isVisible = input.offsetParent !== null;
+                if (!isVisible) {
+                        return;
+                }
+                const result = validateField(input, showErrors, hardCheck);
+                if (!result) {
+                        valid = false;
+                        invalidInputs.push(input);
+                }
+        });
+
+        if (currentFieldset.id === "seleccionar-garantia") {
+                const planSelected = Boolean(document.querySelector(".form__plan.selected"));
+                if (!planSelected) {
+                        valid = false;
+                        if (showErrors) {
+                                showPlanSelectionError();
+                        }
+                } else {
+                        clearPlanSelectionError();
+                }
+
+                const canalVenta = document.getElementById("canal-venta");
+                if (canalVenta && canalVenta.offsetParent !== null) {
+                        if (!validateField(canalVenta, showErrors, hardCheck)) {
+                                valid = false;
+                                invalidInputs.push(canalVenta);
+                        }
+                }
+
+                const usuarioRol = document.getElementById("usuario-rol");
+                if (usuarioRol && usuarioRol.offsetParent !== null) {
+                        if (!validateField(usuarioRol, showErrors, hardCheck)) {
+                                valid = false;
+                                invalidInputs.push(usuarioRol);
+                        }
+                }
+        }
+
+        if (focusInvalid && invalidInputs.length > 0) {
+                const focusTarget = invalidInputs.find(
+                        (input) => typeof input.focus === "function"
+                );
+                if (focusTarget) {
+                        focusTarget.focus({ preventScroll: false });
+                }
+        }
+
+        return { valid, invalidInputs };
+}
+
 // === Validación de la pestaña actual ===
-function isCurrentTabValid() {
-	const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
-	if (!currentFieldset) return false;
-	const inputs = currentFieldset.querySelectorAll(
-		".form__input, .form__select[required], .form__checkbox[required]"
-	);
-	let valid = true;
-	inputs.forEach((input) => {
-		if (!validateField(input, true, true)) valid = false;
-	});
-
-	if (currentFieldset.id === "seleccionar-garantia") {
-		if (!document.querySelector(".form__plan.selected")) valid = false;
-
-		const canalVenta = document.getElementById("canal-venta");
-		const usuarioRol = document.getElementById("usuario-rol");
-		if (canalVenta && canalVenta.offsetParent !== null && !canalVenta.value) {
-			validateField(canalVenta, true, true);
-			valid = false;
-		}
-		if (usuarioRol && usuarioRol.offsetParent !== null && !usuarioRol.value) {
-			validateField(usuarioRol, true, true);
-			valid = false;
-		}
-	}
-	return valid;
+function isCurrentTabValid({ focusInvalid = false } = {}) {
+        const evaluation = evaluateCurrentTab({
+                showErrors: true,
+                hardCheck: true,
+                focusInvalid,
+        });
+        updateNextButtonState(true, evaluation);
+        return evaluation.valid;
 }
 
 // === Activa/desactiva botón "Siguiente" y gestiona estado de pestañas completadas ===
-function updateNextButtonState(showErrors = false) {
-        const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
-        if (!currentFieldset) return;
-        const requiredInputs = currentFieldset.querySelectorAll(
-                ".form__input[required], .form__select[required], .form__checkbox[required]"
-        );
-        let allValid = true;
-        requiredInputs.forEach((input) => {
-                if (!validateField(input, showErrors, true)) allValid = false;
-        });
-
-	if (currentFieldset.id === "seleccionar-garantia") {
-		if (!document.querySelector(".form__plan.selected")) allValid = false;
-		const canalVenta = document.getElementById("canal-venta");
-		const usuarioRol = document.getElementById("usuario-rol");
-		if (canalVenta && canalVenta.offsetParent !== null && !canalVenta.value)
-			allValid = false;
-		if (usuarioRol && usuarioRol.offsetParent !== null && !usuarioRol.value)
-			allValid = false;
-	}
+function updateNextButtonState(showErrors = false, precomputedResult = null) {
+        const evaluation =
+                precomputedResult ||
+                evaluateCurrentTab({ showErrors, hardCheck: true, focusInvalid: false });
+        const allValid = evaluation.valid;
 
         if (FormCache.nextButton) {
                 FormCache.nextButton.classList.toggle("disabled", !allValid);
                 FormCache.nextButton.style.cursor = allValid ? "pointer" : "not-allowed";
         }
 
-        // Marcar/desmarcar pestaña completada en cache
         if (allValid && !FormCache.tabCompletion[FormCache.currentTab]) {
                 markTabAsCompleted(FormCache.currentTab);
         } else if (!allValid && FormCache.tabCompletion[FormCache.currentTab]) {
@@ -229,23 +261,38 @@ function updateNextButtonState(showErrors = false) {
         }
 
         updateConnectors();
+
+        return allValid;
 }
 
 // === Navegación por tabs y botones ===
 function setupTabNavigation() {
 	if (!FormCache.tabs) return;
 
-	FormCache.tabs.forEach((tab, index) => {
-		tab.addEventListener("click", () => {
-			if (
-				index < FormCache.currentTab || // retroceder siempre
-				(index > FormCache.currentTab && isCurrentTabValid())
-			) {
-				FormCache.currentTab = index;
-				showTab(index);
-			}
-		});
-	});
+        FormCache.tabs.forEach((tab, index) => {
+                tab.addEventListener("click", () => {
+                        if (index === FormCache.currentTab) return;
+                        if (index < FormCache.currentTab) {
+                                FormCache.currentTab = index;
+                                showTab(index);
+                                return;
+                        }
+
+                        const evaluation = evaluateCurrentTab({
+                                showErrors: true,
+                                hardCheck: true,
+                                focusInvalid: true,
+                        });
+                        const canAdvance = updateNextButtonState(true, evaluation);
+                        if (!canAdvance) {
+                                alert("Completa todos los campos antes de continuar.");
+                                return;
+                        }
+
+                        FormCache.currentTab = index;
+                        showTab(index);
+                });
+        });
 
 	if (FormCache.prevButton) {
 		FormCache.prevButton.addEventListener("click", () => {
@@ -256,23 +303,18 @@ function setupTabNavigation() {
 		});
 	}
 
-	if (FormCache.nextButton) {
-		FormCache.nextButton.addEventListener("click", () => {
-			if (document.querySelector(".form__plan.selected")) {
-				clearPlanSelectionError();
-			}
-
-			if (!isCurrentTabValid()) {
-				const currentFieldset = FormCache.fieldsets[FormCache.currentTab];
-				if (currentFieldset && currentFieldset.id === "seleccionar-garantia") {
-					if (!document.querySelector(".form__plan.selected")) {
-						showPlanSelectionError();
-					}
-					// canal-venta / usuario-rol se limpian vía validateField dentro de isCurrentTabValid
-				}
-				alert("Completa todos los campos antes de continuar.");
-				return;
-			}
+        if (FormCache.nextButton) {
+                FormCache.nextButton.addEventListener("click", () => {
+                        const evaluation = evaluateCurrentTab({
+                                showErrors: true,
+                                hardCheck: true,
+                                focusInvalid: true,
+                        });
+                        const canAdvance = updateNextButtonState(true, evaluation);
+                        if (!canAdvance) {
+                                alert("Completa todos los campos antes de continuar.");
+                                return;
+                        }
                         if (typeof showSummarySectionForTab === "function") {
                                 showSummarySectionForTab(FormCache.currentTab);
                         }

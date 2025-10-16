@@ -90,6 +90,13 @@
     const termsError = document.getElementById('terms-error');
     const termsCheckbox = document.getElementById('terms');
     const emailSent = document.getElementById('email-sent');
+    const verificationText = document.getElementById('verification-text');
+    const verificationInstructions = document.getElementById('verification-instructions');
+    const verificationSuccessText = document.getElementById('verification-success-text');
+    const verificationSuccessMessage = document.getElementById('verification-success-message');
+    const DEFAULT_VERIFICATION_SUCCESS = (verificationSuccessText && verificationSuccessText.textContent.trim())
+      || (verificationSuccessMessage && verificationSuccessMessage.textContent.trim())
+      || 'Cuenta verificada. Ya puedes acceder a tu área de usuario.';
 
     const step1Next = document.querySelector('#step-1 [data-next-step]');
     const step2Next = document.querySelector('#step-2 [data-next-step]');
@@ -169,6 +176,7 @@
       sepaGroup: document.getElementById('summary-sepa'),
       sepaName: document.getElementById('summary-sepa-name'),
       sepaAddress: document.getElementById('summary-sepa-address'),
+      sepaSwift: document.getElementById('summary-sepa-swift'),
       sepaIban: document.getElementById('summary-sepa-iban'),
     };
 
@@ -410,8 +418,21 @@
       }
       updateVerificationExpiry();
       showVerificationMessage('');
+      if (verificationText) {
+        verificationText.setAttribute('data-state', 'instructions');
+      }
+      if (verificationInstructions) {
+        verificationInstructions.hidden = false;
+      }
       if (verificationSuccess) {
         verificationSuccess.hidden = true;
+      }
+      if (verificationSuccessText) {
+        verificationSuccessText.hidden = true;
+        verificationSuccessText.textContent = DEFAULT_VERIFICATION_SUCCESS;
+      }
+      if (verificationSuccessMessage) {
+        verificationSuccessMessage.textContent = DEFAULT_VERIFICATION_SUCCESS;
       }
       if (verificationCodeField) {
         verificationCodeField.removeAttribute('disabled');
@@ -456,7 +477,21 @@
       applyVerificationState(true);
     };
 
-    const completeVerification = (message = 'Cuenta verificada correctamente.') => {
+    const completeVerification = (message = DEFAULT_VERIFICATION_SUCCESS) => {
+      const successMessage = message && message.trim() ? message.trim() : DEFAULT_VERIFICATION_SUCCESS;
+      if (verificationText) {
+        verificationText.setAttribute('data-state', 'success');
+      }
+      if (verificationInstructions) {
+        verificationInstructions.hidden = true;
+      }
+      if (verificationSuccessText) {
+        verificationSuccessText.hidden = false;
+        verificationSuccessText.textContent = successMessage;
+      }
+      if (verificationSuccessMessage) {
+        verificationSuccessMessage.textContent = successMessage;
+      }
       if (verificationSuccess) {
         verificationSuccess.hidden = false;
       }
@@ -1261,6 +1296,10 @@
           getValue('sepa_city'),
           getValue('sepa_state')
         );
+        if (summary.sepaSwift) {
+          const swiftValue = sepaSwiftField ? sepaSwiftField.value.trim() : '';
+          summary.sepaSwift.textContent = swiftValue || '—';
+        }
         const ibanValue = sepaIbanField ? sepaIbanField.value.trim() : '';
         summary.sepaIban.textContent = ibanValue ? formatIban(ibanValue) : '—';
       } else if (summary.sepaGroup) {
@@ -1269,6 +1308,9 @@
         }
         if (summary.sepaAddress) {
           summary.sepaAddress.textContent = '—';
+        }
+        if (summary.sepaSwift) {
+          summary.sepaSwift.textContent = '—';
         }
         if (summary.sepaIban) {
           summary.sepaIban.textContent = '—';

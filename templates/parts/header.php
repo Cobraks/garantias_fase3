@@ -334,6 +334,16 @@ $home_destination = $is_admin_user
                                 <?php echo Svg::icon('settings', 'profile-menu__icon'); ?>
                                 <span class="profile-menu__text"><?php esc_html_e('Mi cuenta', 'garantias-online-360vo'); ?></span>
                             </a>
+                            <?php if ($is_admin_user) : ?>
+                                <a
+                                    href="<?php echo esc_url(admin_url('edit.php?post_type=garantia')); ?>"
+                                    class="profile-menu__item"
+                                    role="menuitem"
+                                >
+                                    <?php echo Svg::icon('wordpress_icon', 'profile-menu__icon'); ?>
+                                    <span class="profile-menu__text"><?php esc_html_e('Escritorio WordPress', 'garantias-online-360vo'); ?></span>
+                                </a>
+                            <?php endif; ?>
                             <button
                                 type="button"
                                 class="profile-menu__item profile-menu__item--theme"
