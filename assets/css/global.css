@@ -523,6 +523,13 @@ body {
   transition: background-color var(--transition-speed), color var(--transition-speed);
 }
 
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 
   .screen-reader-text {
     position: absolute;

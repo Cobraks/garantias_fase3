@@ -264,11 +264,6 @@ $sections = [
         'label' => 'Perfil',
         'icon'  => Svg::icon('person', 'account-nav__icon'),
     ],
-    [
-        'id'    => 'account-notifications',
-        'label' => 'Notificaciones',
-        'icon'  => Svg::icon('email', 'account-nav__icon'),
-    ],
 ];
 
 if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account && ! $is_director_account) {
@@ -300,6 +295,12 @@ if ($is_commercial_account && ! $is_admin_account) {
         'icon'  => Svg::icon('clients', 'account-nav__icon'),
     ];
 }
+
+$sections[] = [
+    'id'    => 'account-notifications',
+    'label' => 'Notificaciones',
+    'icon'  => Svg::icon('email', 'account-nav__icon'),
+];
 
 $formatPhoneHref = static function ($phone) {
     if (! is_string($phone)) {
@@ -569,340 +570,6 @@ $formatPhoneHref = static function ($phone) {
             </div>
         </article>
 
-        <article id="account-notifications" class="account-section" tabindex="-1">
-            <header class="account-section__header">
-                <?php echo Svg::icon('email', 'account-section__icon'); ?>
-                <div class="account-section__content">
-                    <h2>Notificaciones</h2>
-                    <p>Configura cómo te avisamos por correo y desde tu dispositivo.</p>
-                </div>
-            </header>
-            <div class="account-card-grid">
-                <?php
-                $registration_email   = $user['email'] ?? '';
-                $notification_email   = $user['notification_email'] ?? $registration_email;
-                $custom_notification  = $user['custom_notification'] ?? '';
-                $same_as_registration = $user['same_as_registration'] ?? null;
-
-                if ($notification_email === '') {
-                    $notification_email = $registration_email;
-                }
-
-                $email_status = 'Actualmente enviamos avisos y certificados a <strong>'
-                    . esc_html($notification_email ?: $registration_email)
-                    . '</strong>.';
-
-                if ($same_as_registration === true || $notification_email === $registration_email) {
-                    $email_status = 'Los avisos y certificados se están enviando al correo con el que accedes: <strong>'
-                        . esc_html($registration_email)
-                        . '</strong>.';
-                } elseif ($same_as_registration === false && $custom_notification !== '') {
-                    $email_status = 'Tienes una dirección personalizada para avisos y certificados: <strong>'
-                        . esc_html($notification_email)
-                        . '</strong>.';
-                }
-                ?>
-                <?php
-                $custom_input_value = $same_as_registration === false ? $custom_notification : '';
-                ?>
-                <div class="account-card account-card--form">
-                    <h3>Avisos por correo electrónico</h3>
-                    <?php if ($is_admin_account) : ?>
-                        <form class="account-form account-form--notifications account-form--floating" action="#" method="post" novalidate>
-                            <div
-                                class="account-repeater"
-                                data-notification-repeater
-                                data-next-index="<?php echo esc_attr($admin_notification_next_index); ?>"
-                            >
-                                <div class="account-repeater__header">
-                                    <span>Correo electrónico</span>
-                                    <span>Copia oculta</span>
-                                    <span class="screen-reader-text">Acciones</span>
-                                </div>
-                                <div class="account-repeater__rows" data-repeater-rows>
-                                    <?php foreach ($admin_notification_rows as $row) : ?>
-                                        <?php
-                                        $row_index = (int) ($row['index'] ?? 0);
-                                        $email_id  = 'admin-notification-' . $row_index;
-                                        $bcc_id    = 'admin-notification-bcc-' . $row_index;
-                                        $email_value = (string) ($row['email'] ?? '');
-                                        $bcc_enabled = ! empty($row['bcc']);
-                                        ?>
-                                        <div class="account-repeater__row" data-repeater-row data-repeater-index="<?php echo esc_attr($row_index); ?>">
-                                            <div class="account-field account-field--email">
-                                                <div class="account-input-container">
-                                                    <input
-                                                        type="email"
-                                                        id="<?php echo esc_attr($email_id); ?>"
-                                                        class="account-input"
-                                                        name="admin_notifications[recipients][<?php echo esc_attr($row_index); ?>][email]"
-                                                        value="<?php echo esc_attr($email_value); ?>"
-                                                        placeholder=" "
-                                                        autocomplete="off"
-                                                        data-repeater-email
-                                                    >
-                                                    <label class="account-input__label" for="<?php echo esc_attr($email_id); ?>">Correo electrónico</label>
-                                                </div>
-                                            </div>
-                                            <div class="account-field account-field--checkbox">
-                                                <label class="account-checkbox account-checkbox--center" for="<?php echo esc_attr($bcc_id); ?>">
-                                                    <input
-                                                        type="checkbox"
-                                                        id="<?php echo esc_attr($bcc_id); ?>"
-                                                        name="admin_notifications[recipients][<?php echo esc_attr($row_index); ?>][bcc]"
-                                                        value="1"
-                                                        <?php checked($bcc_enabled); ?>
-                                                        data-repeater-bcc
-                                                    >
-                                                    <span>Enviar en copia oculta</span>
-                                                </label>
-                                            </div>
-                                            <div class="account-repeater__actions">
-                                                <button
-                                                    type="button"
-                                                    class="account-button account-button--ghost account-repeater__remove"
-                                                    data-repeater-remove
-                                                >
-                                                    <?php echo Svg::icon('close', 'account-button__icon'); ?>
-                                                    <span>Eliminar</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                                <template data-repeater-template>
-                                        <div class="account-repeater__row" data-repeater-row data-repeater-index="__index__">
-                                        <div class="account-field account-field--email">
-                                            <div class="account-input-container">
-                                                <input
-                                                    type="email"
-                                                    id="admin-notification-__index__"
-                                                    class="account-input"
-                                                    name="admin_notifications[recipients][__index__][email]"
-                                                    placeholder=" "
-                                                    autocomplete="off"
-                                                    data-repeater-email
-                                                >
-                                                <label class="account-input__label" for="admin-notification-__index__">Correo electrónico</label>
-                                            </div>
-                                        </div>
-                                        <div class="account-field account-field--checkbox">
-                                            <label class="account-checkbox account-checkbox--center" for="admin-notification-bcc-__index__">
-                                                <input
-                                                    type="checkbox"
-                                                    id="admin-notification-bcc-__index__"
-                                                    name="admin_notifications[recipients][__index__][bcc]"
-                                                    value="1"
-                                                    data-repeater-bcc
-                                                >
-                                                <span>Enviar en copia oculta</span>
-                                            </label>
-                                        </div>
-                                        <div class="account-repeater__actions">
-                                            <button
-                                                type="button"
-                                                class="account-button account-button--ghost account-repeater__remove"
-                                                data-repeater-remove
-                                            >
-                                                <?php echo Svg::icon('close', 'account-button__icon'); ?>
-                                                <span>Eliminar</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </template>
-                                <div class="account-repeater__footer">
-                                    <button
-                                        type="button"
-                                        class="account-button account-button--ghost account-repeater__add"
-                                        data-repeater-add
-                                    >
-                                        <?php echo Svg::icon('plus', 'account-button__icon'); ?>
-                                        <span>Añadir dirección de correo</span>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="account-field account-field--reply">
-                                <div class="account-input-container">
-                                    <input
-                                        type="email"
-                                        id="admin-reply-to-email"
-                                        class="account-input"
-                                        name="admin_notifications[reply_to]"
-                                        value="<?php echo esc_attr($admin_reply_to_email); ?>"
-                                        placeholder=" "
-                                        autocomplete="off"
-                                    >
-                                    <label class="account-input__label" for="admin-reply-to-email">Dirección de respuesta</label>
-                                </div>
-                            </div>
-                        </form>
-                    <?php else : ?>
-                        <p class="account-card__status">
-                            <?php echo wp_kses($email_status, ['strong' => []]); ?>
-                        </p>
-                        <form class="account-form" action="#" method="post" novalidate>
-                            <div class="account-field">
-                                <div class="account-field__label-wrapper">
-                                    <label class="account-field__label" for="account-notification-email">
-                                        Dirección alternativa para notificaciones
-                                    </label>
-                                    <button
-                                        type="button"
-                                        class="account-help__trigger"
-                                        data-account-help-trigger
-                                        aria-controls="account-notification-help"
-                                        aria-expanded="false"
-                                    >
-                                        <?php echo Svg::icon('help', 'account-help__icon'); ?>
-                                        <span class="screen-reader-text">Más información sobre la dirección alternativa</span>
-                                    </button>
-                                </div>
-                                <input
-                                    type="email"
-                                    id="account-notification-email"
-                                    name="account-notification-email"
-                                    class="account-input"
-                                    value="<?php echo esc_attr($custom_input_value); ?>"
-                                    placeholder="nombre@empresa.com"
-                                    autocomplete="off"
-                                >
-                                <div
-                                    class="account-help account-help--hidden"
-                                    id="account-notification-help"
-                                    hidden
-                                    role="region"
-                                    aria-live="polite"
-                                >
-                                    <div class="account-help__body">
-                                        <p>
-                                            Escribe la dirección donde quieres recibir avisos y certificados. El correo con el que accedes seguirá siendo el que uses para iniciar sesión.
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        class="account-help__close"
-                                        aria-label="Cerrar ayuda"
-                                        data-account-help-dismiss
-                                    >
-                                        <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    <?php endif; ?>
-                </div>
-
-                <div class="account-card account-card--notifications" data-notifications-card>
-                    <h3>Notificaciones del navegador</h3>
-                    <p class="account-card__intro">
-                        Activa las alertas del sistema para enterarte al instante de las novedades de tus garantías.
-                    </p>
-                    <div class="account-card__actions">
-                        <button type="button" class="account-button" data-notifications-request>
-                            <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
-                            Activar notificaciones
-                        </button>
-                        <p class="account-status account-status--info" data-notifications-status>
-                            Revisa los permisos disponibles en tu navegador.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </article>
-
-        <?php if ($is_commercial_account && ! $is_admin_account) : ?>
-        <article id="account-clients" class="account-section" tabindex="-1">
-            <header class="account-section__header">
-                <?php echo Svg::icon('clients', 'account-section__icon'); ?>
-                <div class="account-section__content">
-                    <h2>Clientes asignados</h2>
-                    <p><?php echo esc_html__('Consulta los profesionales que tienes asignados y contacta con ellos rápidamente.', 'garantias-online-360vo'); ?></p>
-                </div>
-            </header>
-
-            <?php if (! empty($clients)) : ?>
-                <div class="account-card-grid account-card-grid--clients">
-                    <?php foreach ($clients as $client) : ?>
-                        <?php
-                        $client_avatar = $client['profile_image']['url'] ?? '';
-                        $client_company = trim((string) ($client['company_name'] ?? ''));
-                        $client_username = trim((string) ($client['username'] ?? ''));
-                        $client_phone = trim((string) ($client['phone'] ?? ''));
-                        $client_email = sanitize_email((string) ($client['email'] ?? ''));
-                        $client_contact = trim((string) ($client['contact_name'] ?? ''));
-                        if ($client_contact !== '') {
-                            $client_avatar_alt = sprintf(__('Avatar de %s', 'garantias-online-360vo'), $client_contact);
-                        } elseif ($client_company !== '') {
-                            $client_avatar_alt = sprintf(__('Logo de %s', 'garantias-online-360vo'), $client_company);
-                        } else {
-                            $client_avatar_alt = __('Avatar de cliente', 'garantias-online-360vo');
-                        }
-                        ?>
-                        <div class="account-card account-clients__item">
-                            <div class="account-clients__header">
-                                <div class="account-clients__avatar" aria-hidden="true">
-                                    <?php if ($client_avatar) : ?>
-                                        <img
-                                            src="<?php echo esc_url($client_avatar); ?>"
-                                            alt="<?php echo esc_attr($client_avatar_alt); ?>"
-                                            loading="lazy"
-                                            width="64"
-                                            height="64"
-                                        >
-                                    <?php else : ?>
-                                        <?php echo Svg::icon('person', 'account-clients__avatar-icon'); ?>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="account-clients__identity">
-                                    <span class="account-clients__company">
-                                        <?php
-                                        $client_display_name = $client_company !== ''
-                                            ? $client_company
-                                            : ($client_contact !== '' ? $client_contact : __('Cliente sin nombre', 'garantias-online-360vo'));
-                                        echo esc_html($client_display_name);
-                                        ?>
-                                    </span>
-                                    <?php if ($client_username !== '') : ?>
-                                        <span class="account-clients__username"><?php echo esc_html($client_username); ?></span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-
-                            <?php if ($client_phone !== '' || $client_email !== '') : ?>
-                                <div class="account-clients__actions">
-                                    <?php if ($client_phone !== '') : ?>
-                                        <a
-                                            class="account-clients__action"
-                                            href="tel:<?php echo esc_attr($formatPhoneHref($client_phone)); ?>"
-                                        >
-                                            <?php echo Svg::icon('phone', 'account-clients__action-icon'); ?>
-                                            <span><?php echo esc_html($client_phone); ?></span>
-                                        </a>
-                                    <?php endif; ?>
-                                    <?php if ($client_email !== '') : ?>
-                                        <a
-                                            class="account-clients__action"
-                                            href="mailto:<?php echo esc_attr($client_email); ?>"
-                                        >
-                                            <?php echo Svg::icon('email', 'account-clients__action-icon'); ?>
-                                            <span><?php echo esc_html($client_email); ?></span>
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-                            <?php else : ?>
-                                <p class="account-clients__empty"><?php echo esc_html__('Sin datos de contacto disponibles.', 'garantias-online-360vo'); ?></p>
-                            <?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php else : ?>
-                <div class="account-card">
-                    <p class="account-card__empty"><?php echo esc_html__('Aún no tienes clientes asignados.', 'garantias-online-360vo'); ?></p>
-                </div>
-            <?php endif; ?>
-        </article>
-        <?php endif; ?>
-
         <?php
             $selected_payment_method = $payments['selected_method'] ?? 'transferencia';
             $sepa_info               = is_array($payments['sepa'] ?? null) ? $payments['sepa'] : [];
@@ -1004,6 +671,102 @@ $formatPhoneHref = static function ($phone) {
                                 <span class="screen-reader-text">Ver información sobre métodos de pago</span>
                             </button>
                         <?php endif; ?>
+
+
+
+        <?php if ($is_commercial_account && ! $is_admin_account) : ?>
+        <article id="account-clients" class="account-section" tabindex="-1">
+            <header class="account-section__header">
+                <?php echo Svg::icon('clients', 'account-section__icon'); ?>
+                <div class="account-section__content">
+                    <h2>Clientes asignados</h2>
+                    <p><?php echo esc_html__('Consulta los profesionales que tienes asignados y contacta con ellos rápidamente.', 'garantias-online-360vo'); ?></p>
+                </div>
+            </header>
+
+            <?php if (! empty($clients)) : ?>
+                <div class="account-card-grid account-card-grid--clients">
+                    <?php foreach ($clients as $client) : ?>
+                        <?php
+                        $client_avatar = $client['profile_image']['url'] ?? '';
+                        $client_company = trim((string) ($client['company_name'] ?? ''));
+                        $client_username = trim((string) ($client['username'] ?? ''));
+                        $client_phone = trim((string) ($client['phone'] ?? ''));
+                        $client_email = sanitize_email((string) ($client['email'] ?? ''));
+                        $client_contact = trim((string) ($client['contact_name'] ?? ''));
+                        if ($client_contact !== '') {
+                            $client_avatar_alt = sprintf(__('Avatar de %s', 'garantias-online-360vo'), $client_contact);
+                        } elseif ($client_company !== '') {
+                            $client_avatar_alt = sprintf(__('Logo de %s', 'garantias-online-360vo'), $client_company);
+                        } else {
+                            $client_avatar_alt = __('Avatar de cliente', 'garantias-online-360vo');
+                        }
+                        ?>
+                        <div class="account-card account-clients__item">
+                            <div class="account-clients__header">
+                                <div class="account-clients__avatar" aria-hidden="true">
+                                    <?php if ($client_avatar) : ?>
+                                        <img
+                                            src="<?php echo esc_url($client_avatar); ?>"
+                                            alt="<?php echo esc_attr($client_avatar_alt); ?>"
+                                            loading="lazy"
+                                            width="64"
+                                            height="64"
+                                        >
+                                    <?php else : ?>
+                                        <?php echo Svg::icon('person', 'account-clients__avatar-icon'); ?>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="account-clients__identity">
+                                    <span class="account-clients__company">
+                                        <?php
+                                        $client_display_name = $client_company !== ''
+                                            ? $client_company
+                                            : ($client_contact !== '' ? $client_contact : __('Cliente sin nombre', 'garantias-online-360vo'));
+                                        echo esc_html($client_display_name);
+                                        ?>
+                                    </span>
+                                    <?php if ($client_username !== '') : ?>
+                                        <span class="account-clients__username"><?php echo esc_html($client_username); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <?php if ($client_phone !== '' || $client_email !== '') : ?>
+                                <div class="account-clients__actions">
+                                    <?php if ($client_phone !== '') : ?>
+                                        <a
+                                            class="account-clients__action"
+                                            href="tel:<?php echo esc_attr($formatPhoneHref($client_phone)); ?>"
+                                        >
+                                            <?php echo Svg::icon('phone', 'account-clients__action-icon'); ?>
+                                            <span><?php echo esc_html($client_phone); ?></span>
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if ($client_email !== '') : ?>
+                                        <a
+                                            class="account-clients__action"
+                                            href="mailto:<?php echo esc_attr($client_email); ?>"
+                                        >
+                                            <?php echo Svg::icon('email', 'account-clients__action-icon'); ?>
+                                            <span><?php echo esc_html($client_email); ?></span>
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else : ?>
+                                <p class="account-clients__empty"><?php echo esc_html__('Sin datos de contacto disponibles.', 'garantias-online-360vo'); ?></p>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else : ?>
+                <div class="account-card">
+                    <p class="account-card__empty"><?php echo esc_html__('Aún no tienes clientes asignados.', 'garantias-online-360vo'); ?></p>
+                </div>
+            <?php endif; ?>
+        </article>
+        <?php endif; ?>
+
                     </div>
                     <p>
                         <?php if ($is_admin_account) : ?>
@@ -1693,6 +1456,248 @@ $formatPhoneHref = static function ($phone) {
                 </div>
             </article>
         <?php endif; ?>
+
+        <article id="account-notifications" class="account-section" tabindex="-1">
+            <header class="account-section__header">
+                <?php echo Svg::icon('email', 'account-section__icon'); ?>
+                <div class="account-section__content">
+                    <h2>Notificaciones</h2>
+                    <p>Configura cómo te avisamos por correo y desde tu dispositivo.</p>
+                </div>
+            </header>
+            <div class="account-card-grid">
+                <?php
+                $registration_email   = $user['email'] ?? '';
+                $notification_email   = $user['notification_email'] ?? $registration_email;
+                $custom_notification  = $user['custom_notification'] ?? '';
+                $same_as_registration = $user['same_as_registration'] ?? null;
+
+                if ($notification_email === '') {
+                    $notification_email = $registration_email;
+                }
+
+                $email_status = 'Actualmente enviamos avisos y certificados a <strong>'
+                    . esc_html($notification_email ?: $registration_email)
+                    . '</strong>.';
+
+                if ($same_as_registration === true || $notification_email === $registration_email) {
+                    $email_status = 'Los avisos y certificados se están enviando al correo con el que accedes: <strong>'
+                        . esc_html($registration_email)
+                        . '</strong>.';
+                } elseif ($same_as_registration === false && $custom_notification !== '') {
+                    $email_status = 'Tienes una dirección personalizada para avisos y certificados: <strong>'
+                        . esc_html($notification_email)
+                        . '</strong>.';
+                }
+                ?>
+                <?php
+                $custom_input_value = $same_as_registration === false ? $custom_notification : '';
+                ?>
+                <div class="account-card account-card--form">
+                    <h3>Avisos por correo electrónico</h3>
+                    <?php if ($is_admin_account) : ?>
+                        <form class="account-form account-form--notifications account-form--floating" action="#" method="post" novalidate>
+                            <div
+                                class="account-repeater"
+                                data-notification-repeater
+                                data-next-index="<?php echo esc_attr($admin_notification_next_index); ?>"
+                            >
+                                <div class="account-repeater__header">
+                                    <span>Correo electrónico</span>
+                                    <span>Copia oculta</span>
+                                    <span class="screen-reader-text">Acciones</span>
+                                </div>
+                                <div class="account-repeater__rows" data-repeater-rows>
+                                    <?php foreach ($admin_notification_rows as $row) : ?>
+                                        <?php
+                                        $row_index = (int) ($row['index'] ?? 0);
+                                        $email_id  = 'admin-notification-' . $row_index;
+                                        $bcc_id    = 'admin-notification-bcc-' . $row_index;
+                                        $email_value = (string) ($row['email'] ?? '');
+                                        $bcc_enabled = ! empty($row['bcc']);
+                                        ?>
+                                        <div class="account-repeater__row" data-repeater-row data-repeater-index="<?php echo esc_attr($row_index); ?>">
+                                            <div class="account-field account-field--email">
+                                                <div class="account-input-container">
+                                                    <input
+                                                        type="email"
+                                                        id="<?php echo esc_attr($email_id); ?>"
+                                                        class="account-input"
+                                                        name="admin_notifications[recipients][<?php echo esc_attr($row_index); ?>][email]"
+                                                        value="<?php echo esc_attr($email_value); ?>"
+                                                        placeholder=" "
+                                                        autocomplete="off"
+                                                        data-repeater-email
+                                                    >
+                                                    <label class="account-input__label" for="<?php echo esc_attr($email_id); ?>">Correo electrónico</label>
+                                                </div>
+                                            </div>
+                                            <div class="account-field account-field--checkbox">
+                                                <label class="account-checkbox account-checkbox--center" for="<?php echo esc_attr($bcc_id); ?>">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="<?php echo esc_attr($bcc_id); ?>"
+                                                        name="admin_notifications[recipients][<?php echo esc_attr($row_index); ?>][bcc]"
+                                                        value="1"
+                                                        <?php checked($bcc_enabled); ?>
+                                                        data-repeater-bcc
+                                                    >
+                                                    <span>Enviar en copia oculta</span>
+                                                </label>
+                                            </div>
+                                            <div class="account-repeater__actions">
+                                                <button
+                                                    type="button"
+                                                    class="account-button account-button--ghost account-repeater__remove"
+                                                    data-repeater-remove
+                                                >
+                                                    <?php echo Svg::icon('close', 'account-button__icon'); ?>
+                                                    <span>Eliminar</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <template data-repeater-template>
+                                        <div class="account-repeater__row" data-repeater-row data-repeater-index="__index__">
+                                        <div class="account-field account-field--email">
+                                            <div class="account-input-container">
+                                                <input
+                                                    type="email"
+                                                    id="admin-notification-__index__"
+                                                    class="account-input"
+                                                    name="admin_notifications[recipients][__index__][email]"
+                                                    placeholder=" "
+                                                    autocomplete="off"
+                                                    data-repeater-email
+                                                >
+                                                <label class="account-input__label" for="admin-notification-__index__">Correo electrónico</label>
+                                            </div>
+                                        </div>
+                                        <div class="account-field account-field--checkbox">
+                                            <label class="account-checkbox account-checkbox--center" for="admin-notification-bcc-__index__">
+                                                <input
+                                                    type="checkbox"
+                                                    id="admin-notification-bcc-__index__"
+                                                    name="admin_notifications[recipients][__index__][bcc]"
+                                                    value="1"
+                                                    data-repeater-bcc
+                                                >
+                                                <span>Enviar en copia oculta</span>
+                                            </label>
+                                        </div>
+                                        <div class="account-repeater__actions">
+                                            <button
+                                                type="button"
+                                                class="account-button account-button--ghost account-repeater__remove"
+                                                data-repeater-remove
+                                            >
+                                                <?php echo Svg::icon('close', 'account-button__icon'); ?>
+                                                <span>Eliminar</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div class="account-repeater__footer">
+                                    <button
+                                        type="button"
+                                        class="account-button account-button--ghost account-repeater__add"
+                                        data-repeater-add
+                                    >
+                                        <?php echo Svg::icon('plus', 'account-button__icon'); ?>
+                                        <span>Añadir dirección de correo</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="account-field account-field--reply">
+                                <div class="account-input-container">
+                                    <input
+                                        type="email"
+                                        id="admin-reply-to-email"
+                                        class="account-input"
+                                        name="admin_notifications[reply_to]"
+                                        value="<?php echo esc_attr($admin_reply_to_email); ?>"
+                                        placeholder=" "
+                                        autocomplete="off"
+                                    >
+                                    <label class="account-input__label" for="admin-reply-to-email">Dirección de respuesta</label>
+                                </div>
+                            </div>
+                        </form>
+                    <?php else : ?>
+                        <p class="account-card__status">
+                            <?php echo wp_kses($email_status, ['strong' => []]); ?>
+                        </p>
+                        <form class="account-form" action="#" method="post" novalidate>
+                            <div class="account-field">
+                                <div class="account-field__label-wrapper">
+                                    <label class="account-field__label" for="account-notification-email">
+                                        Dirección alternativa para notificaciones
+                                    </label>
+                                    <button
+                                        type="button"
+                                        class="account-help__trigger"
+                                        data-account-help-trigger
+                                        aria-controls="account-notification-help"
+                                        aria-expanded="false"
+                                    >
+                                        <?php echo Svg::icon('help', 'account-help__icon'); ?>
+                                        <span class="screen-reader-text">Más información sobre la dirección alternativa</span>
+                                    </button>
+                                </div>
+                                <input
+                                    type="email"
+                                    id="account-notification-email"
+                                    name="account-notification-email"
+                                    class="account-input"
+                                    value="<?php echo esc_attr($custom_input_value); ?>"
+                                    placeholder="nombre@empresa.com"
+                                    autocomplete="off"
+                                >
+                                <div
+                                    class="account-help account-help--hidden"
+                                    id="account-notification-help"
+                                    hidden
+                                    role="region"
+                                    aria-live="polite"
+                                >
+                                    <div class="account-help__body">
+                                        <p>
+                                            Escribe la dirección donde quieres recibir avisos y certificados. El correo con el que accedes seguirá siendo el que uses para iniciar sesión.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="account-help__close"
+                                        aria-label="Cerrar ayuda"
+                                        data-account-help-dismiss
+                                    >
+                                        <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    <?php endif; ?>
+                </div>
+
+                <div class="account-card account-card--notifications" data-notifications-card>
+                    <h3>Notificaciones del navegador</h3>
+                    <p class="account-card__intro">
+                        Activa las alertas del sistema para enterarte al instante de las novedades de tus garantías.
+                    </p>
+                    <div class="account-card__actions">
+                        <button type="button" class="account-button account-button--menu" data-notifications-request>
+                            <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
+                            Activar notificaciones
+                        </button>
+                        <p class="account-status account-status--info" data-notifications-status>
+                            Revisa los permisos disponibles en tu navegador.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </article>
+
     </section>
 </div>
 
