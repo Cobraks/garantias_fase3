@@ -1104,7 +1104,7 @@ $formatPhoneHref = static function ($phone) {
                             </p>
                             <?php
                                 $sepa_requested_message = sprintf(
-                                    __('Has solicitado la domiciliación bancaria. Descarga el mandato SEPA pendiente, fírmalo y envíalo desde esta sección o a <a href="%s">garantias@360vo.es</a>.', 'garantias-online-360vo'),
+                                    __('Mandato SEPA pendiente de firma. Descárgalo y envíalo firmado desde esta sección o a <a href="%s">garantias@360vo.es</a>.', 'garantias-online-360vo'),
                                     esc_url('mailto:garantias@360vo.es')
                                 );
                             ?>
@@ -1144,6 +1144,13 @@ $formatPhoneHref = static function ($phone) {
                                 <span class="screen-reader-text">Cómo completar la domiciliación bancaria</span>
                             </button>
                         </div>
+                        <?php
+                            $sepa_help_default_message   = esc_html__('Completa los campos del mandato y selecciona «Generar SEPA». Te enviaremos el documento listo para firmar y devolverlo a 360VO.', 'garantias-online-360vo');
+                            $sepa_help_requested_message = esc_html__('Descarga, firma y devuelve el mandato SEPA para que podamos activar la domiciliación bancaria en tu cuenta.', 'garantias-online-360vo');
+                            $sepa_help_message           = $sepa_requested && ! $sepa_locked
+                                ? $sepa_help_requested_message
+                                : $sepa_help_default_message;
+                        ?>
                         <div
                             class="account-help account-help--hidden"
                             id="account-payments-sepa-help"
@@ -1152,7 +1159,7 @@ $formatPhoneHref = static function ($phone) {
                             aria-live="polite"
                         >
                             <div class="account-help__body">
-                                <p>Completa los campos del mandato y selecciona «Generar SEPA». Te enviaremos el documento listo para firmar y devolverlo a 360VO.</p>
+                                <p><?php echo $sepa_help_message; ?></p>
                             </div>
                             <button
                                 type="button"
@@ -1183,7 +1190,7 @@ $formatPhoneHref = static function ($phone) {
                             data-payment-state="requested"
                             <?php echo $activation_state === 'requested' ? '' : 'hidden aria-hidden="true"'; ?>
                         >
-                            <?php echo esc_html__('Descarga, firma y devuelve el mandato SEPA para que podamos activar la domiciliación bancaria en tu cuenta.', 'garantias-online-360vo'); ?>
+                            <?php echo esc_html__('Mandato SEPA pendiente de firma.', 'garantias-online-360vo'); ?>
                         </p>
                         <?php if ($sepa_locked) : ?>
                             <?php if ($has_sepa_values) : ?>
@@ -1230,7 +1237,7 @@ $formatPhoneHref = static function ($phone) {
                                 <p class="account-sepa-request__intro">
                                     <?php
                                     $sepa_request_message = sprintf(
-                                        __('Estás a un paso de domiciliar tus pagos. Descarga el mandato SEPA pendiente, fírmalo y súbelo de nuevo o envíalo a <a href="%s">garantias@360vo.es</a>.', 'garantias-online-360vo'),
+                                        __('Descarga tu mandato SEPA pendiente, fírmalo y devuélvelo desde aquí o por correo a <a href="%s">garantias@360vo.es</a> para activar la domiciliación bancaria.', 'garantias-online-360vo'),
                                         esc_url('mailto:garantias@360vo.es')
                                     );
                                     echo wp_kses($sepa_request_message, ['a' => ['href' => []]]);

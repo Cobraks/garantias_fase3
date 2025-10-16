@@ -776,13 +776,10 @@
 }
 
 .account-card-grid--payments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
   align-items: stretch;
-}
-
-@media (min-width: 960px) {
-  .account-card-grid--payments {
-    grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
-  }
 }
 
 .account-card-grid--workshop {
@@ -1071,6 +1068,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  border: 1px solid var(--card-border);
+  border-radius: 1rem;
+  background: var(--neutral98);
 }
 .account-sepa-request__intro {
   margin: 0;
@@ -1091,17 +1092,20 @@
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.85rem 1.25rem;
+  padding: 1rem 1.5rem;
   border-radius: 0.9rem;
-  background: rgba(19, 84, 122, 0.12);
+  border: 1px solid var(--primary-color);
+  background: var(--surface);
   color: var(--primary-color);
   font-weight: 600;
   text-decoration: none;
-  transition: background 0.2s ease;
+  transition: color var(--transition-speed), background-color var(--transition-speed), border-color var(--transition-speed);
 }
 .account-sepa-request__download:hover,
 .account-sepa-request__download:focus-visible {
-  background: rgba(19, 84, 122, 0.18);
+  background: var(--primary-color);
+  color: var(--text-inverse);
+  border-color: var(--primary-color);
 }
 .account-sepa-request__download-icon {
   display: inline-flex;
@@ -1113,19 +1117,39 @@
   height: 1.5rem;
 }
 .account-sepa-request__upload .file-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
   width: 100%;
+  padding: var(--spacing-3);
+  border: 2px dashed var(--card-border);
+  border-radius: 1rem;
+  background: var(--neutral98);
+  text-align: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color var(--transition-speed), background-color var(--transition-speed), color var(--transition-speed);
 }
-@media (min-width: 720px) {
-  .account-sepa-request__actions {
-    flex-direction: row;
-    align-items: stretch;
-  }
-  .account-sepa-request__download {
-    align-self: flex-start;
-  }
-  .account-sepa-request__upload {
-    flex: 1;
-  }
+.account-sepa-request__upload .file-upload:hover,
+.account-sepa-request__upload .file-upload:focus-within {
+  border-color: var(--primary-color);
+  background: var(--surface);
+  color: var(--primary-color);
+}
+.account-sepa-request__upload .file-label {
+  font-weight: 600;
+}
+.account-sepa-request__upload .file-hint {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.account-sepa-request__upload .file-input {
+  display: none;
+}
+.account-sepa-request__upload {
+  width: 100%;
 }
 
 .account-card--certificates {
@@ -1372,19 +1396,18 @@
 
 .account-help {
   position: relative;
-  margin-top: 0.75rem;
-  margin-bottom: var(--spacing-3);
+  margin: 0;
   padding: 1rem 1rem 1rem 1.25rem;
   border-radius: 0.75rem;
-  border: 1px solid rgba(var(--go-color-2563eb-rgb), 0.18);
-  background: rgba(var(--go-color-2563eb-rgb), 0.08);
+  border: 1px solid var(--primary-color);
+  background: var(--neutral96);
   font-size: 0.9rem;
   color: var(--text-color);
 }
 
 .account-help--visible,
 .account-help--hidden {
-  margin-bottom: var(--spacing-3);
+  margin: 0;
 }
 
 .account-section__help {

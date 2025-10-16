@@ -1645,6 +1645,17 @@
       const resolvedFontName = appearanceFontName || 'Helvetica';
       const form = pdfDoc.getForm();
 
+      if (form && PDFLib?.PDFName && PDFLib?.PDFBool && typeof pdfDoc.catalog?.lookup === 'function') {
+        try {
+          const acroForm = pdfDoc.catalog.lookup(PDFLib.PDFName.of('AcroForm'));
+          if (acroForm && typeof acroForm.set === 'function') {
+            acroForm.set(PDFLib.PDFName.of('NeedAppearances'), PDFLib.PDFBool.True);
+          }
+        } catch (error) {
+          console.warn('[register] Unable to mark AcroForm for appearances', error);
+        }
+      }
+
       const creditorCountry = typeof sepaCreditor.country === 'string' && sepaCreditor.country
         ? sepaCreditor.country
         : 'España';
@@ -1728,6 +1739,26 @@
           const signatureField = form.getSignature('pdf_deudor_firma');
           if (signatureField && typeof signatureField.disableReadOnly === 'function') {
             signatureField.disableReadOnly();
+          }
+          if (
+            signatureField
+            && signatureField.acroField
+            && signatureField.acroField.dict
+            && PDFLib?.PDFName
+            && PDFLib?.PDFNumber
+            && typeof signatureField.acroField.dict.set === 'function'
+          ) {
+            try {
+              signatureField.acroField.dict.set(
+                PDFLib.PDFName.of('Ff'),
+                PDFLib.PDFNumber.of(0)
+              );
+              if (typeof signatureField.acroField.dict.delete === 'function') {
+                signatureField.acroField.dict.delete(PDFLib.PDFName.of('V'));
+              }
+            } catch (innerError) {
+              console.warn('[register] Unable to reset signature field flags', innerError);
+            }
           }
         } catch (error) {
           console.warn('[register] Unable to keep signature field editable', error);
