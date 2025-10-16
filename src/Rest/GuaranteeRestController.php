@@ -3294,9 +3294,29 @@ class GuaranteeRestController
         }
 
         $cobro_realizado = get_post_meta($id, 'garantia_contratada_estado_cobro_cobro_realizado', true);
-        $iban_vendedor = $vendor_id
-            ? get_user_meta($vendor_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', true)
-            : '';
+        $iban_vendedor = '';
+        if ($vendor_id) {
+            $iban_meta_keys = [
+                'gestion_pagos_gestion_sepa_datos_deudor_numero_cuenta',
+                'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta',
+                'gestion_pagos_gestion_sepa_datos_deudor_iban',
+                'gestion_pagos_gestion_sepa_numero_cuenta',
+                'gestion_pagos_gestion_sepa_numero_cienta',
+                'gestion_pagos_gestion_sepa_iban',
+            ];
+
+            foreach ($iban_meta_keys as $iban_key) {
+                $raw_value = get_user_meta($vendor_id, $iban_key, true);
+                if ($raw_value === '' || $raw_value === null) {
+                    continue;
+                }
+
+                $iban_vendedor = (string) $raw_value;
+                break;
+            }
+        }
+
+        $iban_vendedor = sanitize_text_field($iban_vendedor);
         $transfer_iban = self::get_transfer_iban();
 
         $nombre_comprador = get_post_meta($id, 'datos_cliente_nombre_y_apellidos', true);

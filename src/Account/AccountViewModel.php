@@ -521,8 +521,9 @@ class AccountViewModel
                         }
                     }
 
-                    if (! empty($debtor['cp_poblacion_provincia'])) {
-                        $location_parts = self::parse_debtor_location((string) $debtor['cp_poblacion_provincia']);
+                    $combined_location = self::resolve_debtor_array_value($debtor, 'cp_poblacion_provincia');
+                    if ($combined_location !== '') {
+                        $location_parts = self::parse_debtor_location($combined_location);
                         foreach ($location_parts as $location_key => $location_value) {
                             if ($location_value === '') {
                                 continue;
@@ -722,6 +723,7 @@ class AccountViewModel
         switch ($key) {
             case 'numero_cuenta':
                 return [
+                    'gestion_pagos_gestion_sepa_datos_deudor_numero_cuenta',
                     'gestion_pagos_gestion_sepa_numero_cuenta',
                     'gestion_pagos_gestion_sepa_numero_cienta',
                     'gestion_pagos_gestion_sepa_iban',
@@ -761,6 +763,10 @@ class AccountViewModel
                     'gestion_pagos_gestion_sepa_pais_deudor_nombre',
                     'gestion_pagos_gestion_sepa_datos_deudor_pais',
                     'gestion_pagos_gestion_sepa_datos_deudor_pais_deudor',
+                ];
+            case 'cp_poblacion_provincia':
+                return [
+                    'gestion_pagos_gestion_sepa_cp_poblacion_provincia',
                 ];
             case 'direccion_deudor':
                 return ['gestion_pagos_gestion_sepa_direccion_deudor'];
