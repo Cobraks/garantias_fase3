@@ -80,6 +80,16 @@ class SepaMandateService
             }
         }
 
+        if (! $file) {
+            $file = get_field(self::OPTION_FIELD_TEMPLATE, 'option');
+        }
+        if (! $file) {
+            $documentation = get_field(self::OPTION_GROUP_DOCUMENTATION, 'option');
+            if (is_array($documentation) && isset($documentation[self::OPTION_FIELD_TEMPLATE])) {
+                $file = $documentation[self::OPTION_FIELD_TEMPLATE];
+            }
+        }
+
         if (is_array($file)) {
             if (! empty($file['url'])) {
                 $result['url'] = esc_url_raw((string) $file['url']);
@@ -135,12 +145,18 @@ class SepaMandateService
         }
 
         $banking = get_field(self::OPTION_GROUP_BANKING, SettingsPage::SUBMENU_SLUG);
+        if (! $banking) {
+            $banking = get_field(self::OPTION_GROUP_BANKING, 'option');
+        }
         $creditor = null;
         if (is_array($banking) && isset($banking[self::OPTION_GROUP_CREDITOR])) {
             $creditor = $banking[self::OPTION_GROUP_CREDITOR];
         }
         if (! $creditor) {
             $creditor = get_field(self::OPTION_GROUP_CREDITOR, SettingsPage::SUBMENU_SLUG);
+        }
+        if (! $creditor) {
+            $creditor = get_field(self::OPTION_GROUP_CREDITOR, 'option');
         }
 
         if (is_array($creditor)) {
@@ -162,6 +178,9 @@ class SepaMandateService
         }
         if (! $payment) {
             $payment = get_field(self::OPTION_FIELD_PAYMENT, SettingsPage::SUBMENU_SLUG);
+        }
+        if (! $payment) {
+            $payment = get_field(self::OPTION_FIELD_PAYMENT, 'option');
         }
 
         if (is_array($payment)) {

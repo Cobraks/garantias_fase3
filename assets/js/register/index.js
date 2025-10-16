@@ -229,13 +229,7 @@
       verifyLockedUntil: 0,
     };
 
-    const sepaConfigAvailable = (
-      sepaTemplateUrl !== ''
-      && typeof sepaCreditor === 'object'
-      && sepaCreditor !== null
-      && typeof sepaCreditor.id === 'string'
-      && sepaCreditor.id.trim() !== ''
-    );
+    const sepaConfigAvailable = sepaTemplateUrl !== '';
 
     const getSepaPaymentType = () => {
       const raw = typeof sepaCreditor.payment_type === 'string'
@@ -741,15 +735,55 @@
         }
         const visible = isStepAvailable(stepNumber);
         if (!visible) {
+          const activeElement = document.activeElement;
+          if (activeElement && step.contains(activeElement) && typeof activeElement.blur === 'function') {
+            activeElement.blur();
+          }
           step.classList.remove('active');
           step.hidden = true;
           step.setAttribute('aria-hidden', 'true');
           return;
         }
         const isActive = stepNumber === activeNumber;
+        if (!isActive) {
+          const activeElement = document.activeElement;
+          if (activeElement && step.contains(activeElement) && typeof activeElement.blur === 'function') {
+            activeElement.blur();
+          }
+        }
         step.classList.toggle('active', isActive);
         step.hidden = !isActive;
         step.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+      });
+      window.requestAnimationFrame(() => {
+        const activeStep = document.querySelector('.form-step.active');
+        if (!activeStep) {
+          return;
+        }
+        if (activeStep.contains(document.activeElement)) {
+          return;
+        }
+        const focusSelector = 'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])';
+        const focusTarget = activeStep.querySelector(focusSelector);
+        if (focusTarget && typeof focusTarget.focus === 'function') {
+          try {
+            focusTarget.focus({ preventScroll: true });
+          } catch (error) {
+            focusTarget.focus();
+          }
+          return;
+        }
+        if (typeof activeStep.focus === 'function') {
+          activeStep.setAttribute('tabindex', '-1');
+          try {
+            activeStep.focus({ preventScroll: true });
+          } catch (error) {
+            activeStep.focus();
+          }
+          activeStep.addEventListener('blur', () => {
+            activeStep.removeAttribute('tabindex');
+          }, { once: true });
+        }
       });
     };
 
@@ -1382,7 +1416,7 @@
       }
       setVisibility(summary.sepaStatusItem, sepaActive);
       if (sepaActive && summary.sepaStatus) {
-        let sepaStatusText = 'Activada';
+        let sepaStatusText = 'Solicitado';
         switch (state.sepaMandateStatus) {
           case 'generating':
             sepaStatusText = 'Generando mandato…';
@@ -1398,12 +1432,12 @@
             break;
           case 'idle':
           default:
-            sepaStatusText = sepaConfigAvailable ? 'Activada' : 'No disponible';
+            sepaStatusText = 'Solicitado';
             break;
         }
         summary.sepaStatus.textContent = sepaStatusText;
-      } else if (summary.sepaStatus && !sepaConfigAvailable) {
-        summary.sepaStatus.textContent = 'No disponible';
+      } else if (summary.sepaStatus) {
+        summary.sepaStatus.textContent = sepaConfigAvailable ? '—' : 'No disponible';
       }
 
       if (summary.preferencesGroup) {
