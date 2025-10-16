@@ -453,6 +453,7 @@ class AccountViewModel
             'status_label'     => 'Sin información del mandato',
             'status_variant'   => 'info',
             'locked'           => false,
+            'requested'        => false,
             'documents'        => [
                 'signed'  => [],
                 'pending' => [],
@@ -612,6 +613,17 @@ class AccountViewModel
         $selected_method = self::normalize_payment_method($payment_type);
         if ($selected_method === '') {
             $selected_method = 'domiciliacion';
+        }
+
+        $pending_document = $sepa['documents']['pending'];
+        $has_pending_request = is_array($pending_document)
+            && isset($pending_document['hash'])
+            && $pending_document['hash'] !== ''
+            && $pending_document['private'] === true;
+
+        if ($has_pending_request && $sepa['status'] !== true) {
+            $sepa['requested'] = true;
+            $selected_method   = 'transferencia';
         }
 
         $sepa['locked'] = $selected_method === 'domiciliacion' && $sepa['status'] === true;

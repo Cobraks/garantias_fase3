@@ -909,15 +909,20 @@ $formatPhoneHref = static function ($phone) {
             $sepa_status_label       = $sepa_info['status_label'] ?? 'Sin información del mandato';
             $sepa_status_variant     = $sepa_info['status_variant'] ?? 'info';
             $sepa_locked             = (bool) ($sepa_info['locked'] ?? false);
+            $sepa_requested          = (bool) ($sepa_info['requested'] ?? false);
             $sepa_fields             = is_array($sepa_info['fields'] ?? null) ? $sepa_info['fields'] : [];
             $method_labels           = [
                 'domiciliacion' => 'Domiciliación bancaria',
                 'transferencia' => 'Transferencia bancaria',
             ];
             $current_method_label    = $method_labels[$selected_payment_method] ?? $method_labels['transferencia'];
-            $activation_state        = $sepa_locked
-                ? 'locked'
-                : ($selected_payment_method === 'domiciliacion' ? 'enabled' : 'disabled');
+            if ($sepa_locked) {
+                $activation_state = 'locked';
+            } elseif ($sepa_requested) {
+                $activation_state = 'requested';
+            } else {
+                $activation_state = $selected_payment_method === 'domiciliacion' ? 'enabled' : 'disabled';
+            }
             $sepa_field_lookup       = [];
 
             foreach ($sepa_fields as $field) {
@@ -963,9 +968,21 @@ $formatPhoneHref = static function ($phone) {
             }, $sepa_field_lookup));
 
             $sepa_documents = is_array($sepa_info['documents'] ?? null) ? $sepa_info['documents'] : [];
-            $pending_document = ! empty($sepa_documents['pending']);
-            $signed_document  = ! empty($sepa_documents['signed']);
-            $has_generated_mandate = $pending_document || $signed_document || ($sepa_info['status'] !== null);
+            $pending_document = is_array($sepa_documents['pending'] ?? null) ? $sepa_documents['pending'] : [];
+            $pending_document_available = isset($pending_document['hash']) && $pending_document['hash'] !== '';
+            $signed_document  = is_array($sepa_documents['signed'] ?? null) ? $sepa_documents['signed'] : [];
+            $signed_document_available = isset($signed_document['hash']) && $signed_document['hash'] !== '';
+            $pending_download_url = $pending_document_available ? esc_url($pending_document['url'] ?? '') : '';
+            $pending_download_label = $pending_document_available && ! empty($pending_document['filename'])
+                ? (string) $pending_document['filename']
+                : __('Mandato SEPA pendiente', 'garantias-online-360vo');
+            $signed_document_url = $signed_document_available ? esc_url($signed_document['url'] ?? '') : '';
+            $sepa_upload_default_label = __('Sube el mandato SEPA firmado (PDF)', 'garantias-online-360vo');
+            $sepa_upload_label = $sepa_upload_default_label;
+            if ($signed_document_available && ! empty($signed_document['filename'])) {
+                $sepa_upload_label = (string) $signed_document['filename'];
+            }
+            $has_generated_mandate = $pending_document_available || $signed_document_available || ($sepa_info['status'] !== null);
 
         ?>
         <?php if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account && ! $is_director_account) : ?>
@@ -1080,17 +1097,29 @@ $formatPhoneHref = static function ($phone) {
                         <p class="account-card__status">
                             Método de pago actual: <strong><?php echo esc_html($current_method_label); ?></strong>
                         </p>
-                        <label class="account-toggle">
-                            <input
-                                type="checkbox"
-                                class="account-toggle__input"
-                                data-payment-toggle
-                                value="1"
-                                <?php checked($activation_state !== 'disabled'); ?>
-                                <?php disabled($sepa_locked); ?>
-                            >
-                            <span class="account-toggle__label">Activar domiciliación bancaria</span>
-                        </label>
+                        <?php if ($sepa_requested) : ?>
+                            <?php
+                                $sepa_requested_message = sprintf(
+                                    __('Has solicitado activar la domiciliación bancaria. Descarga el mandato SEPA, fírmalo y envíalo desde esta sección o a <a href="%s">garantias@360vo.es</a>.', 'garantias-online-360vo'),
+                                    esc_url('mailto:garantias@360vo.es')
+                                );
+                            ?>
+                            <p class="account-card__note account-card__note--highlight">
+                                <?php echo wp_kses($sepa_requested_message, ['a' => ['href' => []]]); ?>
+                            </p>
+                        <?php else : ?>
+                            <label class="account-toggle">
+                                <input
+                                    type="checkbox"
+                                    class="account-toggle__input"
+                                    data-payment-toggle
+                                    value="1"
+                                    <?php checked($activation_state !== 'disabled'); ?>
+                                    <?php disabled($sepa_locked); ?>
+                                >
+                                <span class="account-toggle__label">Activar domiciliación bancaria</span>
+                            </label>
+                        <?php endif; ?>
                     </div>
                     <div
                         class="account-card account-card--payments-detail"
@@ -1145,6 +1174,13 @@ $formatPhoneHref = static function ($phone) {
                         >
                             Completa los datos del titular y genera tu mandato SEPA. Después podrás firmarlo y subirlo desde aquí.
                         </p>
+                        <p
+                            class="account-card__intro"
+                            data-payment-state="requested"
+                            <?php echo $activation_state === 'requested' ? '' : 'hidden aria-hidden="true"'; ?>
+                        >
+                            <?php echo esc_html__('Descarga, firma y devuelve el mandato SEPA para que podamos activar la domiciliación bancaria en tu cuenta.', 'garantias-online-360vo'); ?>
+                        </p>
                         <?php if ($sepa_locked) : ?>
                             <?php if ($has_sepa_values) : ?>
                                 <div
@@ -1181,6 +1217,95 @@ $formatPhoneHref = static function ($phone) {
                             <?php else : ?>
                                 <p class="account-card__note" data-payment-state="locked" <?php echo $activation_state === 'locked' ? '' : 'hidden'; ?>>Si necesitas actualizar los datos del mandato, contacta con tu equipo de 360VO.</p>
                             <?php endif; ?>
+                        <?php elseif ($sepa_requested) : ?>
+                            <div
+                                class="account-payments__followup"
+                                data-payment-state="requested"
+                                <?php echo $activation_state === 'requested' ? '' : 'hidden aria-hidden="true"'; ?>
+                            >
+                                <?php if ($pending_download_url !== '') : ?>
+                                    <a
+                                        class="account-button"
+                                        href="<?php echo esc_url($pending_download_url); ?>"
+                                        target="_blank"
+                                        rel="noopener"
+                                    >
+                                        <?php echo esc_html__('Descargar mandato SEPA pendiente', 'garantias-online-360vo'); ?>
+                                    </a>
+                                <?php endif; ?>
+                                <?php
+                                $sepa_upload_instructions = sprintf(
+                                    __('Firma el documento y súbelo en PDF. También puedes enviarlo a <a href="%s">garantias@360vo.es</a> para que lo revisemos.', 'garantias-online-360vo'),
+                                    esc_url('mailto:garantias@360vo.es')
+                                );
+                                ?>
+                                <p class="account-card__note account-card__note--highlight">
+                                    <?php echo wp_kses($sepa_upload_instructions, ['a' => ['href' => []]]); ?>
+                                </p>
+                                <div class="account-upload account-upload--document">
+                                    <div
+                                        class="file-upload file-upload--document"
+                                        id="account-sepa-signed-upload"
+                                        data-default-label="<?php echo esc_attr($sepa_upload_default_label); ?>"
+                                        data-document-upload
+                                        data-document-type="sepa_signed"
+                                    >
+                                        <div class="file-label" data-document-label><?php echo esc_html($sepa_upload_label); ?></div>
+                                        <p class="file-hint">Formato admitido: PDF (máx. 5MB)</p>
+                                        <input
+                                            type="file"
+                                            id="account-sepa-signed"
+                                            class="file-input"
+                                            name="account_sepa_signed"
+                                            accept=".pdf"
+                                        >
+                                        <div
+                                            class="file-preview file-preview--document"
+                                            data-document-preview
+                                            <?php echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                        >
+                                            <div
+                                                class="file-document"
+                                                data-document-body
+                                                <?php echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                            >
+                                                <span class="file-document__icon" aria-hidden="true">
+                                                    <?php echo Svg::icon('pdf', 'file-document__svg'); ?>
+                                                </span>
+                                                <div class="file-document__meta">
+                                                    <p class="file-document__name" data-document-name><?php echo esc_html($sepa_upload_label); ?></p>
+                                                    <p class="file-document__size" data-document-size hidden aria-hidden="true"></p>
+                                                    <a
+                                                        class="file-document__link"
+                                                        data-document-link
+                                                        href="<?php echo esc_url($signed_document_url); ?>"
+                                                        <?php echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                    >
+                                                        <?php echo esc_html__('Ver documento', 'garantias-online-360vo'); ?>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            <p
+                                                class="file-document__placeholder"
+                                                data-document-placeholder
+                                                <?php echo $signed_document_url !== '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                            >
+                                                <?php echo esc_html__('No se ha seleccionado ningún archivo.', 'garantias-online-360vo'); ?>
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="file-remove"
+                                            data-document-remove
+                                            <?php echo $signed_document_url === '' ? 'hidden' : ''; ?>
+                                        >
+                                            <?php echo esc_html__('Eliminar archivo', 'garantias-online-360vo'); ?>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         <?php else : ?>
                             <div
                                 class="account-form account-form--sepa"

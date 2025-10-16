@@ -529,6 +529,18 @@
   line-height: 1.5;
 }
 
+.account-card__note--highlight {
+  padding: 0.75rem 1rem;
+  border-radius: 0.85rem;
+  background: var(--neutral96);
+  border: 1px solid var(--card-border);
+}
+
+.account-card__note--highlight a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .account-card__intro {
   margin: 0 0 1rem;
   font-size: 0.95rem;

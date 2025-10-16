@@ -979,7 +979,27 @@ class RegistrationService
             $binary = SepaMandateService::retrieve_document($user_id, SepaMandateService::TYPE_PENDING);
             if (is_string($binary) && $binary !== '') {
                 $filename = $pending_meta['filename'] !== '' ? $pending_meta['filename'] : 'mandato-sepa.pdf';
-                $tmp = wp_tempnam($filename);
+                $filename = sanitize_file_name($filename);
+                if ($filename === '') {
+                    $filename = 'mandato-sepa.pdf';
+                }
+                if (pathinfo($filename, PATHINFO_EXTENSION) === '') {
+                    $filename .= '.pdf';
+                }
+
+                $tmp = '';
+                $temp_dir = trailingslashit(get_temp_dir());
+                if ($temp_dir !== '' && is_dir($temp_dir) && is_writable($temp_dir)) {
+                    $unique = wp_unique_filename($temp_dir, $filename);
+                    if ($unique !== '') {
+                        $tmp = $temp_dir . $unique;
+                    }
+                }
+
+                if ($tmp === '') {
+                    $tmp = wp_tempnam($filename);
+                }
+
                 if ($tmp) {
                     $written = file_put_contents($tmp, $binary);
                     if ($written !== false) {
