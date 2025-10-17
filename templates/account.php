@@ -3,6 +3,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Svg;
 
@@ -91,6 +92,38 @@ $document_seal       = is_array($documents['seal'] ?? null) ? $documents['seal']
 $signature_default_label   = esc_html__('+ Subir imagen de firma', 'garantias-online-360vo');
 $seal_default_label        = esc_html__('+ Subir imagen de sello', 'garantias-online-360vo');
 $procedure_default_label   = esc_html__('+ Subir procedimiento de reclamación', 'garantias-online-360vo');
+
+$mask_iban_display = static function ($value) {
+    $clean = strtoupper(preg_replace('/\s+/', '', (string) $value));
+    if ($clean === '') {
+        return '';
+    }
+
+    if (strlen($clean) <= 7) {
+        return $clean;
+    }
+
+    $prefix = substr($clean, 0, 4);
+    $suffix = substr($clean, -3);
+
+    return sprintf('%s (...) %s', $prefix, $suffix);
+};
+
+$mask_bic_display = static function ($value) {
+    $clean = strtoupper(preg_replace('/\s+/', '', (string) $value));
+    if ($clean === '') {
+        return '';
+    }
+
+    if (strlen($clean) <= 6) {
+        return $clean;
+    }
+
+    $prefix = substr($clean, 0, 4);
+    $suffix = substr($clean, -3);
+
+    return sprintf('%s***%s', $prefix, $suffix);
+};
 
 \GarantiasOnline360VO\TemplateLoader::load_part(
     'header',
@@ -575,6 +608,8 @@ $formatPhoneHref = static function ($phone) {
             $sepa_info               = is_array($payments['sepa'] ?? null) ? $payments['sepa'] : [];
             $sepa_status_label       = $sepa_info['status_label'] ?? 'Sin información del mandato';
             $sepa_status_variant     = $sepa_info['status_variant'] ?? 'info';
+            $sepa_status_code        = (string) ($sepa_info['status_code'] ?? SepaMandateService::STATUS_UNFILLED);
+            $sepa_is_active          = (bool) ($sepa_info['status'] ?? false);
             $sepa_locked             = (bool) ($sepa_info['locked'] ?? false);
             $sepa_requested          = (bool) ($sepa_info['requested'] ?? false);
             $sepa_awaiting_validation = (bool) ($sepa_info['awaiting_validation'] ?? false);
@@ -584,13 +619,15 @@ $formatPhoneHref = static function ($phone) {
                 'transferencia' => 'Transferencia bancaria',
             ];
             $current_method_label    = $method_labels[$selected_payment_method] ?? $method_labels['transferencia'];
-            if ($sepa_locked) {
+            if ($sepa_is_active || $sepa_locked) {
                 $activation_state = 'locked';
             } elseif ($sepa_requested) {
                 $activation_state = 'requested';
             } else {
                 $activation_state = $selected_payment_method === 'domiciliacion' ? 'enabled' : 'disabled';
             }
+            $sepa_show_success       = $sepa_is_active || $activation_state === 'locked';
+            $sepa_show_pending       = $sepa_requested && ! $sepa_show_success;
             $sepa_field_lookup       = [];
 
             foreach ($sepa_fields as $field) {
@@ -863,29 +900,39 @@ $formatPhoneHref = static function ($phone) {
                         <p class="account-card__status">
                             Método de pago actual: <strong><?php echo esc_html($current_method_label); ?></strong>
                         </p>
-                        <?php if ($sepa_requested && ! $sepa_locked) : ?>
-                            <p
-                                class="account-card__status account-card__status--sepa<?php echo $sepa_awaiting_validation ? ' account-card__status--sepa-success' : ''; ?>"
-                                data-sepa-status
-                                data-sepa-requested="true"
-                                data-sepa-awaiting="<?php echo $sepa_awaiting_validation ? 'true' : 'false'; ?>"
+                        <p
+                            class="account-card__status account-card__status--sepa account-card__status--sepa-success"
+                            data-sepa-success
+                            <?php echo $sepa_show_success ? '' : 'hidden aria-hidden="true"'; ?>
+                        >
+                            <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
+                            <span><?php echo esc_html__('Domiciliación bancaria activada.', 'garantias-online-360vo'); ?></span>
+                        </p>
+                        <p
+                            class="account-card__status account-card__status--sepa<?php echo $sepa_awaiting_validation ? ' account-card__status--sepa-success' : ''; ?>"
+                            data-sepa-status
+                            data-sepa-requested="<?php echo $sepa_show_pending ? 'true' : 'false'; ?>"
+                            data-sepa-awaiting="<?php echo $sepa_awaiting_validation ? 'true' : 'false'; ?>"
+                            <?php echo $sepa_show_pending ? '' : 'hidden aria-hidden="true"'; ?>
+                        >
+                            <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
+                            <span>Estado domiciliación bancaria: <strong data-sepa-status-label><?php echo esc_html($sepa_status_label); ?></strong></span>
+                        </p>
+                        <label
+                            class="account-toggle"
+                            data-sepa-toggle
+                            <?php echo (! $sepa_show_success && ! $sepa_show_pending) ? '' : 'hidden aria-hidden="true"'; ?>
+                        >
+                            <input
+                                type="checkbox"
+                                class="account-toggle__input"
+                                data-payment-toggle
+                                value="1"
+                                <?php checked($activation_state !== 'disabled'); ?>
+                                <?php disabled($sepa_locked || $sepa_show_success); ?>
                             >
-                                <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
-                                <span>Estado domiciliación bancaria: <strong data-sepa-status-label><?php echo esc_html($sepa_status_label); ?></strong></span>
-                            </p>
-                        <?php else : ?>
-                            <label class="account-toggle">
-                                <input
-                                    type="checkbox"
-                                    class="account-toggle__input"
-                                    data-payment-toggle
-                                    value="1"
-                                    <?php checked($activation_state !== 'disabled'); ?>
-                                    <?php disabled($sepa_locked); ?>
-                                >
-                                <span class="account-toggle__label">Activar domiciliación bancaria</span>
-                            </label>
-                        <?php endif; ?>
+                            <span class="account-toggle__label">Activar domiciliación bancaria</span>
+                        </label>
                     </div>
                     <div
                         class="account-card account-card--payments-detail"
@@ -963,6 +1010,7 @@ $formatPhoneHref = static function ($phone) {
                                             }
                                             $field_label = (string) ($field['label'] ?? $field_key);
                                             $field_id    = 'account-sepa-' . sanitize_title($field_key);
+                                            $field_name  = (string) ($field['name'] ?? $field_key);
                                             $field_classes = ['account-form__field', 'account-form__field--readonly'];
                                             if (in_array($field_key, $sepa_full_fields, true)) {
                                                 $field_classes[] = 'account-form__field--full';
@@ -973,10 +1021,22 @@ $formatPhoneHref = static function ($phone) {
                                             if (in_array($field_key, $sepa_quarter_fields, true)) {
                                                 $field_classes[] = 'account-form__field--quarter';
                                             }
+                                            $display_value = $value;
+                                            if ($field_name === 'numero_cuenta') {
+                                                $masked = $mask_iban_display($value);
+                                                if ($masked !== '') {
+                                                    $display_value = $masked;
+                                                }
+                                            } elseif ($field_name === 'swift_bic') {
+                                                $masked_bic = $mask_bic_display($value);
+                                                if ($masked_bic !== '') {
+                                                    $display_value = $masked_bic;
+                                                }
+                                            }
                                         ?>
                                         <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
                                             <span class="account-form__label"><?php echo esc_html($field_label); ?></span>
-                                            <span class="account-form__value" id="<?php echo esc_attr($field_id); ?>-value"><?php echo esc_html($value); ?></span>
+                                            <span class="account-form__value" id="<?php echo esc_attr($field_id); ?>-value"><?php echo esc_html($display_value); ?></span>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>

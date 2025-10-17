@@ -1232,6 +1232,7 @@
             const hasPending = hasSepaDocument(pendingDocument);
             const hasSigned = hasSepaDocument(signedDocument);
             const awaitingValidation = Boolean(sepa.awaiting_validation);
+            const isActive = Boolean(sepa.status);
             const statusLabel = typeof sepa.label === 'string' && sepa.label.trim() !== ''
                 ? sepa.label.trim()
                 : (strings.sepaEmpty || 'Sin información del mandato');
@@ -1247,6 +1248,11 @@
                     <span class="client-sepa-dialog__status-value">${escapeHtml(statusLabel)}</span>
                 </div>
             `);
+
+            const detailsHtml = renderSepaDetails(sepa);
+            if (detailsHtml) {
+                sections.push(`<div class="client-sepa-dialog__details">${detailsHtml}</div>`);
+            }
 
             const cards = [];
 
@@ -1281,17 +1287,36 @@
 
             sections.push(`<div class="client-sepa-dialog__cards">${cards.join('')}</div>`);
 
+            const actionButtons = [];
+            let actionHelp = '';
+
             if (awaitingValidation) {
-                const helpText = typeof strings.manageSepaActivateHelp === 'string'
+                actionHelp = typeof strings.manageSepaActivateHelp === 'string'
                     ? strings.manageSepaActivateHelp.trim()
                     : '';
 
+                actionButtons.push(`
+                    <button type="button" class="client-sepa-dialog__activate" data-sepa-activate>
+                        ${escapeHtml(strings.manageSepaActivate || 'Activar domiciliación bancaria')}
+                    </button>
+                `);
+            } else if (isActive) {
+                actionHelp = typeof strings.manageSepaDeactivateHelp === 'string'
+                    ? strings.manageSepaDeactivateHelp.trim()
+                    : '';
+
+                actionButtons.push(`
+                    <button type="button" class="client-sepa-dialog__deactivate" data-sepa-deactivate>
+                        ${escapeHtml(strings.manageSepaDeactivate || 'Inhabilitar domiciliación bancaria')}
+                    </button>
+                `);
+            }
+
+            if (actionButtons.length > 0) {
                 sections.push(`
                     <div class="client-sepa-dialog__actions">
-                        ${helpText !== '' ? `<p class="client-sepa-dialog__help">${escapeHtml(helpText)}</p>` : ''}
-                        <button type="button" class="client-sepa-dialog__activate" data-sepa-activate>
-                            ${escapeHtml(strings.manageSepaActivate || 'Activar domiciliación bancaria')}
-                        </button>
+                        ${actionHelp !== '' ? `<p class="client-sepa-dialog__help">${escapeHtml(actionHelp)}</p>` : ''}
+                        ${actionButtons.join('')}
                     </div>
                 `);
             }
@@ -1363,6 +1388,65 @@
                 activateButton.__goSepaHandler = handler;
                 activateButton.addEventListener('click', handler);
             }
+
+            const deactivateButton = body.querySelector('[data-sepa-deactivate]');
+            if (deactivateButton && sepaConfirmDialog && typeof sepaConfirmDialog.open === 'function') {
+                if (deactivateButton.__goSepaHandler) {
+                    deactivateButton.removeEventListener('click', deactivateButton.__goSepaHandler);
+                }
+
+                const handler = () => {
+                    if (!item) {
+                        return;
+                    }
+
+                    const reference = extractSepaReference(item.sepa || {});
+                    const actor = formatSepaActor(item);
+                    const subject = typeof currentContext.subject === 'string' ? currentContext.subject : '';
+                    const name = item.name && typeof item.name === 'object' ? item.name : {};
+                    const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+                    let subtitleHtml = '';
+
+                    if (companyName !== '' && reference !== '') {
+                        subtitleHtml = `${escapeHtml(companyName)} <strong>${escapeHtml(reference)}</strong>`;
+                    } else if (companyName !== '') {
+                        subtitleHtml = escapeHtml(companyName);
+                    } else if (reference !== '') {
+                        subtitleHtml = `<strong>${escapeHtml(reference)}</strong>`;
+                    } else if (subject !== '') {
+                        subtitleHtml = escapeHtml(subject);
+                    }
+
+                    sepaConfirmDialog.open({
+                        actor,
+                        subtitleHtml,
+                        title: strings.manageSepaDeactivateConfirmTitle || strings.manageSepaConfirmTitle || 'Confirmar SEPA',
+                        confirmLabel: strings.manageSepaDeactivateConfirmAccept || 'Inhabilitar domiciliación bancaria',
+                        loadingLabel: strings.manageSepaDeactivateConfirmLoading || 'Inhabilitando…',
+                        note: strings.manageSepaDeactivateConfirmNote || '',
+                        checkboxLabel: strings.manageSepaDeactivateConfirmCheckbox || strings.manageSepaConfirmCheckbox,
+                        message: strings.manageSepaDeactivateConfirmMessage || 'Confirmo que %s desea inhabilitar la domiciliación bancaria.',
+                        onConfirm: async ({ close, setError, setLoading }) => {
+                            try {
+                                setError('');
+                                setLoading(true);
+                                await deactivateSepaForItem(item);
+                                setLoading(false);
+                                close();
+                            } catch (error) {
+                                const message = error && typeof error.message === 'string' && error.message.trim() !== ''
+                                    ? error.message.trim()
+                                    : (strings.manageSepaDeactivateConfirmError || 'No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.');
+                                setLoading(false);
+                                setError(message);
+                            }
+                        },
+                    });
+                };
+
+                deactivateButton.__goSepaHandler = handler;
+                deactivateButton.addEventListener('click', handler);
+            }
         }
 
         async function activateSepaForItem(item) {
@@ -1392,6 +1476,58 @@
                 const message = payload && typeof payload.message === 'string' && payload.message.trim() !== ''
                     ? payload.message.trim()
                     : (strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.');
+                throw new Error(message);
+            }
+
+            if (payload && typeof payload.sepa === 'object') {
+                item.sepa = payload.sepa;
+            }
+
+            if (payload && typeof payload.payment === 'object') {
+                item.payment = payload.payment;
+            }
+
+            cache.set(String(userId), item);
+            refreshActiveDetail(item);
+
+            if (currentSepaDialogContext) {
+                currentSepaDialogContext.item = item;
+            }
+
+            if (currentSepaDialogBody) {
+                setupSepaDialogBody(currentSepaDialogBody, currentSepaDialogContext);
+            }
+
+            return payload;
+        }
+
+        async function deactivateSepaForItem(item) {
+            const userId = Number(item && item.id);
+            if (!Number.isFinite(userId) || userId <= 0) {
+                throw new Error(strings.manageSepaDeactivateConfirmError || 'No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.');
+            }
+
+            const endpoint = `${restRoot}go/v1/clientes/${userId}/sepa/deactivate`;
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': restNonce,
+                },
+                body: JSON.stringify({}),
+            });
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (error) {
+                payload = {};
+            }
+
+            if (!response.ok) {
+                const message = payload && typeof payload.message === 'string' && payload.message.trim() !== ''
+                    ? payload.message.trim()
+                    : (strings.manageSepaDeactivateConfirmError || 'No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.');
                 throw new Error(message);
             }
 
@@ -1467,7 +1603,6 @@
             const contactActions = renderContactActions(contact);
             const workshopSection = renderWorkshop(item.workshop);
             const preferencesSection = renderPreferences(item.documents || {}, item.services || {});
-            const sepaDetails = renderSepaDetails(sepa);
             const adminLink = item.links && typeof item.links.admin === 'string' ? item.links.admin.trim() : '';
             const adminLinkHtml = adminLink !== ''
                 ? `<div class="client-detail__admin"><a class="client-detail__admin-link" href="${escapeAttribute(adminLink)}" target="_blank" rel="noopener">${escapeHtml(strings.adminLink || 'Ver ficha del cliente en el panel de gestión')}</a></div>`
@@ -1569,7 +1704,6 @@
                             ${manageSepaButtonHtml}
                         </div>
                         <p class="client-detail__status${sepaVariant}">${escapeHtml(sepaMessage)}</p>
-                        ${sepaDetails}
                     </section>
                     ${adminLinkHtml}
                 </div>
@@ -3469,6 +3603,23 @@
             const checkboxLabel = modal.querySelector('.confirm-modal__checkbox-label');
             const defaultConfirmLabel = strings.manageSepaConfirmAccept || 'Activar domiciliación bancaria';
             const defaultErrorMessage = strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.';
+            const defaultTitle = strings.manageSepaConfirmTitle || 'Confirmar SEPA';
+            const defaultCheckboxLabel = strings.manageSepaConfirmCheckbox || 'He revisado esta información y confirmo la operación.';
+            const defaultLoadingLabel = strings.manageSepaConfirmLoading || 'Activando…';
+            const defaultMessageTemplate = strings.manageSepaConfirmMessage || 'Confirmo que %s nos ha enviado el mandato SEPA firmado y todos los datos son correctos.';
+            const defaultNote = strings.manageSepaConfirmNote || '';
+
+            const sanitizeText = (value, fallback) => {
+                if (typeof value === 'string') {
+                    const trimmed = value.trim();
+                    if (trimmed !== '') {
+                        return trimmed;
+                    }
+                }
+
+                return fallback;
+            };
+
             let currentContext = null;
             let previousActiveElement = null;
 
@@ -3509,15 +3660,22 @@
                 if (isLoading) {
                     confirmBtn.dataset.loading = 'true';
                     confirmBtn.disabled = true;
-                    confirmBtn.textContent = strings.manageSepaConfirmLoading || 'Activando…';
+                    confirmBtn.textContent = sanitizeText(currentContext?.loadingLabel, defaultLoadingLabel);
                 } else {
                     confirmBtn.dataset.loading = 'false';
-                    const label = currentContext && typeof currentContext.confirmLabel === 'string' && currentContext.confirmLabel.trim() !== ''
-                        ? currentContext.confirmLabel.trim()
-                        : defaultConfirmLabel;
-                    confirmBtn.textContent = label;
+                    confirmBtn.textContent = sanitizeText(currentContext?.confirmLabel, defaultConfirmLabel);
                     syncConfirmState();
                 }
+            }
+
+            function resetConfirmButton() {
+                if (!confirmBtn) {
+                    return;
+                }
+
+                confirmBtn.dataset.loading = 'false';
+                confirmBtn.textContent = defaultConfirmLabel;
+                syncConfirmState();
             }
 
             function close() {
@@ -3526,11 +3684,11 @@
                 modal.hidden = true;
                 document.removeEventListener('keydown', handleKeydown);
                 setError('');
-                setLoading(false);
                 if (checkboxInput) {
                     checkboxInput.checked = false;
                 }
                 currentContext = null;
+                resetConfirmButton();
                 if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
                     previousActiveElement.focus();
                 }
@@ -3549,22 +3707,42 @@
                 }
             }
 
-            function open(context = {}) {
-                previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-                currentContext = context || {};
-
-                if (titleEl) {
-                    titleEl.textContent = strings.manageSepaConfirmTitle || 'Confirmar SEPA';
+            function formatMessage(actor, template) {
+                if (template.includes('%s')) {
+                    const actorHtml = template.includes('<strong>%s</strong>')
+                        ? escapeHtml(actor)
+                        : `<strong>${escapeHtml(actor)}</strong>`;
+                    return template.replace('%s', actorHtml);
                 }
 
-                if (checkboxLabel && strings.manageSepaConfirmCheckbox) {
-                    checkboxLabel.textContent = strings.manageSepaConfirmCheckbox;
+                return template;
+            }
+
+            function open(context = {}) {
+                previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                currentContext = {
+                    confirmLabel: sanitizeText(context.confirmLabel, defaultConfirmLabel),
+                    loadingLabel: sanitizeText(context.loadingLabel, defaultLoadingLabel),
+                    title: sanitizeText(context.title, defaultTitle),
+                    checkboxLabel: sanitizeText(context.checkboxLabel, defaultCheckboxLabel),
+                    message: sanitizeText(context.message, defaultMessageTemplate),
+                    note: sanitizeText(context.note, defaultNote),
+                    actor: sanitizeText(context.actor, strings.manageSepaConfirmActorFallback || 'este profesional'),
+                    subtitleHtml: typeof context.subtitleHtml === 'string' ? context.subtitleHtml.trim() : '',
+                    onConfirm: typeof context.onConfirm === 'function' ? context.onConfirm : null,
+                };
+
+                if (titleEl) {
+                    titleEl.textContent = currentContext.title;
+                }
+
+                if (checkboxLabel) {
+                    checkboxLabel.textContent = currentContext.checkboxLabel;
                 }
 
                 if (subtitleEl) {
-                    const subtitleHtml = typeof currentContext.subtitleHtml === 'string' ? currentContext.subtitleHtml.trim() : '';
-                    if (subtitleHtml !== '') {
-                        subtitleEl.innerHTML = subtitleHtml;
+                    if (currentContext.subtitleHtml !== '') {
+                        subtitleEl.innerHTML = currentContext.subtitleHtml;
                         subtitleEl.hidden = false;
                     } else {
                         subtitleEl.textContent = '';
@@ -3573,41 +3751,21 @@
                 }
 
                 if (messageEl) {
-                    const actor = typeof currentContext.actor === 'string' && currentContext.actor.trim() !== ''
-                        ? currentContext.actor.trim()
-                        : (strings.manageSepaConfirmActorFallback || 'este profesional');
-                    let template = typeof strings.manageSepaConfirmMessage === 'string' && strings.manageSepaConfirmMessage.trim() !== ''
-                        ? strings.manageSepaConfirmMessage.trim()
-                        : 'Confirmo que %s nos ha enviado el mandato SEPA firmado y todos los datos son correctos.';
-
-                    if (template.includes('%s')) {
-                        const actorHtml = template.includes('<strong>%s</strong>')
-                            ? escapeHtml(actor)
-                            : `<strong>${escapeHtml(actor)}</strong>`;
-                        messageEl.innerHTML = template.replace('%s', actorHtml);
-                    } else {
-                        messageEl.textContent = template;
-                    }
+                    messageEl.innerHTML = formatMessage(currentContext.actor, currentContext.message);
                 }
 
                 if (noteEl) {
-                    const note = typeof currentContext.note === 'string' && currentContext.note.trim() !== ''
-                        ? currentContext.note.trim()
-                        : (strings.manageSepaConfirmNote || '');
-                    if (note === '') {
+                    if (currentContext.note === '') {
                         noteEl.textContent = '';
                         noteEl.hidden = true;
                     } else {
-                        noteEl.textContent = note;
+                        noteEl.textContent = currentContext.note;
                         noteEl.hidden = false;
                     }
                 }
 
-                const confirmLabel = typeof currentContext.confirmLabel === 'string' && currentContext.confirmLabel.trim() !== ''
-                    ? currentContext.confirmLabel.trim()
-                    : defaultConfirmLabel;
                 if (confirmBtn) {
-                    confirmBtn.textContent = confirmLabel;
+                    confirmBtn.textContent = currentContext.confirmLabel;
                     confirmBtn.dataset.loading = 'false';
                 }
 

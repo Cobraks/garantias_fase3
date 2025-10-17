@@ -1875,6 +1875,21 @@
     gap: 1.5rem;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
+.client-sepa-dialog__details {
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    background: var(--surface);
+    padding: 1.5rem 1.75rem;
+}
+.client-sepa-dialog__details .detail__transfer-toggle {
+    margin: 0;
+}
+.client-sepa-dialog__details .detail__transfer-toggle-summary {
+    padding: 0;
+}
+.client-sepa-dialog__details .detail__transfer-toggle-content {
+    padding: 1rem 0 0;
+}
 .client-sepa-dialog__card {
     border: 1px solid var(--border-color);
     border-radius: 1rem;
@@ -1993,6 +2008,24 @@
     background: #15803d;
     border-color: #166534;
     box-shadow: 0 16px 30px -18px rgba(22, 163, 74, 0.65);
+    outline: none;
+}
+.client-sepa-dialog__deactivate {
+    align-self: flex-start;
+    padding: 0.65rem 1.35rem;
+    border-radius: 999px;
+    border: 1px solid #fca5a5;
+    background: #dc2626;
+    color: #ffffff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.client-sepa-dialog__deactivate:hover,
+.client-sepa-dialog__deactivate:focus-visible {
+    background: #b91c1c;
+    border-color: #ef4444;
+    box-shadow: 0 16px 30px -18px rgba(220, 38, 38, 0.65);
     outline: none;
 }
 .confirm-modal {
@@ -2134,7 +2167,7 @@
     border-radius: 999px;
     border: 1px solid transparent;
     padding: 0.6rem 1.35rem;
-    font-weight: 600;
+    font-weight: 400;
     font-size: 0.95rem;
     cursor: pointer;
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;

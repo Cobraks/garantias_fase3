@@ -253,6 +253,12 @@ class EventCatalog
             'level'    => 'success',
             'message'  => 'Domiciliación bancaria activada para {{context.user_name}}.',
         ],
+        'sepa.deactivated' => [
+            'label'    => 'Domiciliación desactivada',
+            'category' => 'finance',
+            'level'    => 'warning',
+            'message'  => 'Domiciliación bancaria inhabilitada para {{context.user_name}}.',
+        ],
         'settings.updated' => [
             'label'    => 'Ajustes modificados',
             'category' => 'system',

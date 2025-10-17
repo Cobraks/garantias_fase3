@@ -695,20 +695,35 @@
                             }
 
                             const awaitingValidation = Boolean(sepaData.awaiting_validation);
+                            const sepaIsActive = Boolean(sepaData.status);
                             if (sepaController && typeof sepaController.setLocked === 'function') {
                                 sepaController.setLocked(awaitingValidation);
                             }
                             const activationCard = document.querySelector('[data-payment-activation]');
+                            const detailCard = document.querySelector('[data-payment-detail]');
                             const sepaStatusRow = activationCard
                                 ? activationCard.querySelector('[data-sepa-status]')
                                 : null;
+                            const sepaSuccessRow = activationCard
+                                ? activationCard.querySelector('[data-sepa-success]')
+                                : null;
+                            const toggleWrapper = activationCard
+                                ? activationCard.querySelector('[data-sepa-toggle]')
+                                : null;
+                            const toggleInput = activationCard
+                                ? activationCard.querySelector('[data-payment-toggle]')
+                                : null;
+
+                            if (sepaSuccessRow) {
+                                sepaSuccessRow.hidden = !sepaIsActive;
+                                sepaSuccessRow.setAttribute('aria-hidden', sepaIsActive ? 'false' : 'true');
+                            }
 
                             if (sepaStatusRow) {
-                                if (typeof sepaData.requested !== 'undefined') {
-                                    sepaStatusRow.hidden = !sepaData.requested;
-                                    sepaStatusRow.setAttribute('aria-hidden', sepaData.requested ? 'false' : 'true');
-                                    sepaStatusRow.setAttribute('data-sepa-requested', sepaData.requested ? 'true' : 'false');
-                                }
+                                const isRequested = Boolean(sepaData.requested);
+                                sepaStatusRow.hidden = !isRequested;
+                                sepaStatusRow.setAttribute('aria-hidden', isRequested ? 'false' : 'true');
+                                sepaStatusRow.setAttribute('data-sepa-requested', isRequested ? 'true' : 'false');
 
                                 sepaStatusRow.setAttribute('data-sepa-awaiting', awaitingValidation ? 'true' : 'false');
                                 sepaStatusRow.classList.toggle('account-card__status--sepa-success', awaitingValidation);
@@ -725,6 +740,43 @@
                                             : (sepaText.awaitingSignature || 'Pendiente de firma');
                                     }
                                     statusLabel.textContent = statusText;
+                                }
+                            }
+
+                            if (toggleWrapper) {
+                                const shouldHideToggle = sepaIsActive || Boolean(sepaData.requested);
+                                toggleWrapper.hidden = shouldHideToggle;
+                                toggleWrapper.setAttribute('aria-hidden', shouldHideToggle ? 'true' : 'false');
+                            }
+
+                            if (toggleInput) {
+                                const shouldDisableToggle = sepaIsActive || awaitingValidation || Boolean(sepaData.requested);
+                                if (sepaIsActive) {
+                                    toggleInput.checked = true;
+                                }
+                                toggleInput.disabled = shouldDisableToggle;
+                            }
+
+                            if (activationCard) {
+                                const selectedMethod = data.payments && typeof data.payments.selected_method === 'string'
+                                    ? data.payments.selected_method
+                                    : 'transferencia';
+                                let nextState = 'disabled';
+                                if (sepaIsActive) {
+                                    nextState = 'locked';
+                                } else if (sepaData.requested) {
+                                    nextState = 'requested';
+                                } else if (selectedMethod === 'domiciliacion') {
+                                    nextState = 'enabled';
+                                }
+
+                                activationCard.setAttribute('data-state', nextState);
+                                if (detailCard) {
+                                    detailCard.setAttribute('data-state', nextState);
+                                }
+
+                                if (typeof activationCard.__goUpdatePanels === 'function') {
+                                    activationCard.__goUpdatePanels(nextState);
                                 }
                             }
 
@@ -1212,6 +1264,8 @@
                 });
             };
 
+            paymentActivation.__goUpdatePanels = updatePanels;
+
             const setGenerated = (value) => {
                 generated = value;
                 if (detail) {
@@ -1219,6 +1273,8 @@
                 }
                 updatePanels(currentState);
             };
+
+            paymentActivation.__goSetGenerated = setGenerated;
 
             const initialState = paymentActivation.getAttribute('data-state') || 'disabled';
             currentState = initialState;
