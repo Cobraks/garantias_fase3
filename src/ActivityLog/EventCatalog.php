@@ -241,6 +241,12 @@ class EventCatalog
             'level'    => 'error',
             'message'  => 'Error en el cobro de {{context.amount}} en la garantía {{context.guarantee_label}}.',
         ],
+        'sepa.signed_uploaded' => [
+            'label'    => 'Mandato SEPA recibido',
+            'category' => 'finance',
+            'level'    => 'info',
+            'message'  => 'Mandato SEPA firmado enviado por {{context.user_name}}.',
+        ],
         'settings.updated' => [
             'label'    => 'Ajustes modificados',
             'category' => 'system',

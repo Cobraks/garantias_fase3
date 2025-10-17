@@ -1497,6 +1497,11 @@
   margin: 0;
 }
 
+#account-payments-sepa-help.account-help,
+#account-certificates-usage.account-help {
+  margin-bottom: 1rem;
+}
+
 .account-section__help {
   margin-top: var(--spacing-2);
 }

@@ -2,8 +2,16 @@
 
 namespace GarantiasOnline360VO\Rest;
 
+use GarantiasOnline360VO\Account\AccountViewModel;
+use GarantiasOnline360VO\ActivityLog\ActivityLogger;
+use GarantiasOnline360VO\Notifications\Email\EmailMessage;
+use GarantiasOnline360VO\Notifications\Email\EmailSettings;
+use GarantiasOnline360VO\Notifications\Email\Mailer;
+use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
+use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
+use GarantiasOnline360VO\Support\UserProfileResolver;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Server;
@@ -64,6 +72,7 @@ class AccountRestController
 
         $notifications_data = self::get_array_param($request, 'notifications');
         $workshop_data      = self::get_array_param($request, 'workshop');
+        $payments_data      = self::get_array_param($request, 'payments');
         $is_admin_user      = current_user_can('manage_options');
         $admin_data         = $is_admin_user ? self::get_array_param($request, 'admin') : [];
 
@@ -80,6 +89,11 @@ class AccountRestController
         $profile_image = self::update_profile_image($user_id, $request);
         if (is_wp_error($profile_image)) {
             return $profile_image;
+        }
+
+        $payments = self::update_payments($user_id, $payments_data, $request);
+        if (is_wp_error($payments)) {
+            return $payments;
         }
 
         $admin_response = null;
@@ -131,6 +145,7 @@ class AccountRestController
             ),
             'workshop'      => $workshop,
             'profile_image' => $profile_image,
+            'payments'      => $payments,
         ];
 
         if ($admin_response !== null) {
@@ -541,6 +556,364 @@ class AccountRestController
         }
 
         return self::prepare_profile_image_response($user_id, (int) $attachment_id);
+    }
+
+    /**
+     * @param array<string, mixed>|mixed $data
+     * @return array<string, mixed>|WP_Error
+     */
+    private static function update_payments(int $user_id, $data, WP_REST_Request $request)
+    {
+        $data = is_array($data) ? $data : [];
+        $sepa = isset($data['sepa']) && is_array($data['sepa']) ? $data['sepa'] : [];
+        $signed = isset($sepa['signed']) && is_array($sepa['signed']) ? $sepa['signed'] : [];
+
+        $files = $request->get_file_params();
+        $signed_file = is_array($files) ? ($files['account_sepa_signed'] ?? null) : null;
+        if (is_array($signed_file) && empty($signed_file['tmp_name'])) {
+            $signed_file = null;
+        }
+
+        $has_upload = $signed_file && (! array_key_exists('upload', $signed) || ! empty($signed['upload']));
+        $has_remove = ! empty($signed['remove']) && ! $signed_file;
+
+        if (! $has_upload && ! $has_remove) {
+            return self::build_payments_snapshot($user_id);
+        }
+
+        if ($has_upload && is_array($signed_file)) {
+            $result = self::handle_signed_upload($user_id, $signed_file);
+            if (is_wp_error($result)) {
+                return $result;
+            }
+        } elseif ($has_remove) {
+            SepaMandateService::clear_signed_mandate($user_id);
+        }
+
+        return self::build_payments_snapshot($user_id);
+    }
+
+    /**
+     * @param array<string, mixed> $file
+     * @return array<string, mixed>|WP_Error
+     */
+    private static function handle_signed_upload(int $user_id, array $file)
+    {
+        if (! isset($file['tmp_name']) || ! is_string($file['tmp_name']) || $file['tmp_name'] === '') {
+            return new WP_Error(
+                'go_account_sepa_upload',
+                __('No se ha podido procesar el mandato SEPA firmado.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        if (! empty($file['error'])) {
+            return new WP_Error(
+                'go_account_sepa_upload',
+                __('No se ha podido subir el mandato SEPA firmado.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $size = isset($file['size']) ? (int) $file['size'] : 0;
+        if ($size > 5 * 1024 * 1024) {
+            return new WP_Error(
+                'go_account_sepa_size',
+                __('El mandato SEPA firmado supera el tamaño permitido (5MB).', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        if (! function_exists('wp_check_filetype_and_ext')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        $original_name = isset($file['name']) ? (string) $file['name'] : 'mandato-sepa-firmado.pdf';
+        $check = wp_check_filetype_and_ext($file['tmp_name'], $original_name, ['pdf' => 'application/pdf']);
+        if (! is_array($check) || ($check['ext'] ?? '') !== 'pdf') {
+            return new WP_Error(
+                'go_account_sepa_type',
+                __('El mandato SEPA debe estar en formato PDF.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $binary = file_get_contents($file['tmp_name']);
+        if (! is_string($binary) || $binary === '') {
+            return new WP_Error(
+                'go_account_sepa_binary',
+                __('No se ha podido leer el mandato SEPA firmado.', 'garantias-online-360vo'),
+                ['status' => 500]
+            );
+        }
+
+        $filename = sanitize_file_name($original_name);
+        if ($filename === '') {
+            $filename = 'mandato-sepa-firmado.pdf';
+        }
+        if (pathinfo($filename, PATHINFO_EXTENSION) === '') {
+            $filename .= '.pdf';
+        } elseif (strtolower((string) pathinfo($filename, PATHINFO_EXTENSION)) !== 'pdf') {
+            $filename = sanitize_file_name(pathinfo($filename, PATHINFO_FILENAME) ?: 'mandato-sepa-firmado') . '.pdf';
+        }
+
+        $pending_meta = SepaMandateService::get_document_meta($user_id, SepaMandateService::TYPE_PENDING);
+        $context = [
+            'filename'     => $filename,
+            'generated_at' => gmdate('c'),
+        ];
+        if (! empty($pending_meta['reference'])) {
+            $context['reference'] = $pending_meta['reference'];
+        }
+
+        $stored = SepaMandateService::store_signed_mandate($user_id, $binary, $context);
+        if (is_wp_error($stored)) {
+            return $stored;
+        }
+
+        $stored['submitted_at'] = current_time('timestamp');
+
+        self::notify_admin_signed_mandate($user_id, $stored, $binary);
+        self::log_sepa_signed_upload($user_id, $stored);
+
+        return $stored;
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    private static function notify_admin_signed_mandate(int $user_id, array $document, string $binary): void
+    {
+        $delivery = self::resolve_admin_recipients();
+        if (empty($delivery['to']) && empty($delivery['bcc'])) {
+            return;
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return;
+        }
+
+        $profile = UserProfileResolver::build_from_user($user);
+        $company_name = $profile['company']['name'] ?? '';
+        $personal_name = $profile['personal_full_name'] ?? $profile['personal_name'] ?? $user->display_name;
+        $profile_url = self::build_user_profile_url($user_id);
+        $phone = get_user_meta($user_id, 'datos_usuario_telefono', true);
+        if (! is_string($phone)) {
+            $phone = '';
+        }
+
+        $filename = isset($document['filename']) ? sanitize_file_name((string) $document['filename']) : 'mandato-sepa-firmado.pdf';
+        if ($filename === '') {
+            $filename = 'mandato-sepa-firmado.pdf';
+        }
+        if (pathinfo($filename, PATHINFO_EXTENSION) === '') {
+            $filename .= '.pdf';
+        }
+
+        if (! function_exists('wp_tempnam')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        $temporary_files = [];
+        $attachments = [];
+
+        $temp_dir = trailingslashit(get_temp_dir());
+        $tmp_file = '';
+        if ($temp_dir !== '' && is_dir($temp_dir) && is_writable($temp_dir)) {
+            $unique = wp_unique_filename($temp_dir, $filename);
+            if ($unique !== '') {
+                $tmp_file = $temp_dir . $unique;
+            }
+        }
+        if ($tmp_file === '') {
+            $tmp_file = wp_tempnam($filename);
+        }
+
+        if ($tmp_file && file_put_contents($tmp_file, $binary) !== false) {
+            $attachments[] = [
+                'file' => $tmp_file,
+                'name' => $filename,
+                'type' => 'application/pdf',
+            ];
+            $temporary_files[] = $tmp_file;
+        }
+
+        $submitted_at = isset($document['submitted_at']) ? (int) $document['submitted_at'] : current_time('timestamp');
+        $reference = isset($document['reference']) ? (string) $document['reference'] : '';
+
+        $renderer = new TemplateRenderer();
+        $context = [
+            'user' => [
+                'name'        => $personal_name,
+                'email'       => $profile['email'] ?? $user->user_email,
+                'phone'       => $phone,
+                'company'     => $company_name,
+                'profile_url' => $profile_url,
+            ],
+            'document' => [
+                'filename'   => $filename,
+                'reference'  => $reference,
+                'submitted'  => $submitted_at,
+            ],
+            'signature' => EmailSettings::getSignature(),
+        ];
+
+        $body = $renderer->render('sepa-signed-admin', $context);
+        if ($body === '') {
+            foreach ($temporary_files as $file) {
+                if (is_string($file) && file_exists($file)) {
+                    @unlink($file);
+                }
+            }
+            return;
+        }
+
+        $subject_name = $company_name !== '' ? $company_name : $personal_name;
+        $subject = sprintf(
+            __('SEPA firmado recibido: %s', 'garantias-online-360vo'),
+            $subject_name !== '' ? $subject_name : __('Profesional', 'garantias-online-360vo')
+        );
+
+        $headers = [];
+        $from_header = EmailSettings::buildFromHeader('admin');
+        if ($from_header !== '') {
+            $headers[] = $from_header;
+        }
+
+        $mailer = new Mailer();
+        $message = new EmailMessage(
+            $delivery['to'] ?: [$delivery['primary']],
+            $subject,
+            $body,
+            $headers,
+            $attachments,
+            [
+                'bcc'      => $delivery['bcc'],
+                'reply_to' => $delivery['reply_to'],
+            ]
+        );
+
+        $mailer->send($message);
+
+        foreach ($temporary_files as $file) {
+            if (is_string($file) && file_exists($file)) {
+                @unlink($file);
+            }
+        }
+    }
+
+    /**
+     * @return array{primary:string,to:array<int,string>,bcc:array<int,string>,reply_to:string}
+     */
+    private static function resolve_admin_recipients(): array
+    {
+        $primary = sanitize_email((string) get_option('admin_email'));
+        $to = [];
+        $bcc = [];
+        $reply_to = '';
+
+        if (function_exists('get_field')) {
+            $settings = get_field('notificaciones', SettingsPage::SUBMENU_SLUG);
+            if (! is_array($settings)) {
+                $settings = [];
+            }
+            $notifications = $settings['notificaciones_email'] ?? get_field('notificaciones_email', SettingsPage::SUBMENU_SLUG);
+            if (! is_array($notifications)) {
+                $notifications = [];
+            }
+            $rows = $settings['direcciones_correo'] ?? ($notifications['direcciones_correo'] ?? []);
+            if (is_array($rows)) {
+                foreach ($rows as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $email = sanitize_email($row['correo'] ?? '');
+                    $type  = sanitize_key($row['destino'] ?? '');
+                    if (! is_email($email)) {
+                        continue;
+                    }
+                    if ($type === 'bcc') {
+                        $bcc[] = $email;
+                    } else {
+                        $to[] = $email;
+                    }
+                }
+            }
+            $reply_to_candidate = sanitize_email($settings['direccion_respuesta'] ?? ($notifications['direccion_respuesta'] ?? ''));
+            if (is_email($reply_to_candidate)) {
+                $reply_to = $reply_to_candidate;
+            }
+        }
+
+        if (empty($to) && is_email($primary)) {
+            $to[] = $primary;
+        }
+
+        return [
+            'primary'  => is_email($primary) ? $primary : '',
+            'to'       => array_values(array_unique(array_filter($to, 'is_email'))),
+            'bcc'      => array_values(array_unique(array_filter($bcc, 'is_email'))),
+            'reply_to' => $reply_to,
+        ];
+    }
+
+    private static function build_user_profile_url(int $user_id): string
+    {
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return '';
+        }
+
+        $slug = $user->user_nicename !== '' ? $user->user_nicename : $user->user_login;
+        $slug = sanitize_title($slug);
+        if ($slug === '') {
+            return '';
+        }
+
+        return trailingslashit(home_url('/garantias-online/clientes/' . rawurlencode($slug)));
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    private static function log_sepa_signed_upload(int $user_id, array $document): void
+    {
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return;
+        }
+
+        $profile = UserProfileResolver::build_from_user($user);
+        $context = [
+            'user_id'           => $user_id,
+            'user_name'         => $profile['personal_full_name'] ?? $profile['personal_name'] ?? $user->display_name,
+            'user_email'        => $profile['email'] ?? $user->user_email,
+            'company_name'      => $profile['company']['name'] ?? '',
+            'document_name'     => isset($document['filename']) ? (string) $document['filename'] : '',
+            'document_reference'=> isset($document['reference']) ? (string) $document['reference'] : '',
+        ];
+
+        ActivityLogger::log('sepa.signed_uploaded', [
+            'actor_id'   => $user_id,
+            'target_type'=> 'user',
+            'target_id'  => $user_id,
+            'context'    => $context,
+        ]);
+    }
+
+    private static function build_payments_snapshot(int $user_id): array
+    {
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return [];
+        }
+
+        $account = AccountViewModel::from_user($user);
+
+        return is_array($account['payments'] ?? null)
+            ? $account['payments']
+            : [];
     }
 
     private static function get_array_param(WP_REST_Request $request, string $key): array

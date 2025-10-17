@@ -388,6 +388,9 @@
             const entries = Object.entries(documentUploadStates)
                 .filter(([, state]) => Boolean(state))
                 .reduce((accumulator, [key, state]) => {
+                    if (key === 'sepa_signed') {
+                        return accumulator;
+                    }
                     if (state && state.removed) {
                         accumulator[key] = { remove: true };
                     }
@@ -424,6 +427,31 @@
             return payload;
         };
 
+        const collectPaymentsPayload = () => {
+            const sepaState = documentUploadStates.sepa_signed;
+            if (!sepaState) {
+                return null;
+            }
+
+            const signedPayload = {};
+            if (sepaState.removed) {
+                signedPayload.remove = true;
+            }
+            if (sepaState.changed) {
+                signedPayload.upload = true;
+            }
+
+            if (Object.keys(signedPayload).length === 0) {
+                return null;
+            }
+
+            return {
+                sepa: {
+                    signed: signedPayload,
+                },
+            };
+        };
+
         if (saveButton) {
             saveButton.addEventListener('click', (event) => {
                 event.preventDefault();
@@ -451,9 +479,21 @@
                 const notificationsPayload = collectNotificationsPayload();
                 const workshopPayload = collectWorkshopPayload();
                 const adminPayload = collectAdminPayload();
-                const adminDocumentFiles = Object.values(documentUploadStates)
+                const paymentsPayload = collectPaymentsPayload();
+                const adminDocumentFiles = Object.entries(documentUploadStates)
+                    .filter(([key]) => key !== 'sepa_signed')
+                    .map(([, state]) => state)
                     .filter((state) => state && state.input && state.input.files && state.input.files.length > 0);
-                const usingFormData = (profileImageFile instanceof File) || adminDocumentFiles.length > 0;
+                const sepaUploadState = documentUploadStates.sepa_signed || null;
+                const sepaHasFile = Boolean(
+                    sepaUploadState
+                    && sepaUploadState.input
+                    && sepaUploadState.input.files
+                    && sepaUploadState.input.files.length > 0
+                );
+                const usingFormData = (profileImageFile instanceof File)
+                    || adminDocumentFiles.length > 0
+                    || sepaHasFile;
 
                 const buildFormData = () => {
                     const formData = new FormData();
@@ -499,6 +539,18 @@
                     if (adminPayload) {
                         formData.append('admin', JSON.stringify(adminPayload));
                     }
+                    if (paymentsPayload) {
+                        formData.append('payments', JSON.stringify(paymentsPayload));
+                    }
+
+                    if (sepaHasFile && sepaUploadState && sepaUploadState.input) {
+                        const sepaFile = sepaUploadState.input.files && sepaUploadState.input.files[0]
+                            ? sepaUploadState.input.files[0]
+                            : null;
+                        if (sepaFile) {
+                            formData.append('account_sepa_signed', sepaFile);
+                        }
+                    }
 
                     return formData;
                 };
@@ -509,6 +561,7 @@
                         notifications: notificationsPayload,
                         workshop: workshopPayload,
                         ...(adminPayload ? { admin: adminPayload } : {}),
+                        ...(paymentsPayload ? { payments: paymentsPayload } : {}),
                     });
 
                 setSaveDisabled(true);
@@ -620,6 +673,27 @@
                                 const controller = documentUploadControllers.claim_procedure;
                                 if (controller && typeof controller.applyServerState === 'function') {
                                     controller.applyServerState(adminData.documents.claim_procedure);
+                                }
+                            }
+                        }
+
+                        if (data.payments && data.payments.sepa) {
+                            const sepaData = data.payments.sepa;
+                            if (sepaData.documents && sepaData.documents.signed) {
+                                const sepaController = documentUploadControllers.sepa_signed;
+                                if (sepaController && typeof sepaController.applyServerState === 'function') {
+                                    sepaController.applyServerState(sepaData.documents.signed);
+                                }
+                            }
+
+                            if (typeof sepaData.requested !== 'undefined') {
+                                const activationCard = document.querySelector('[data-payment-activation]');
+                                if (activationCard) {
+                                    const sepaStatusRow = activationCard.querySelector('.account-card__status--sepa');
+                                    if (sepaStatusRow) {
+                                        sepaStatusRow.hidden = !sepaData.requested;
+                                        sepaStatusRow.setAttribute('aria-hidden', sepaData.requested ? 'false' : 'true');
+                                    }
                                 }
                             }
                         }

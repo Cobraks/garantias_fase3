@@ -215,6 +215,25 @@ class SepaMandateService
     }
 
     /**
+     * @param array<string, mixed> $context
+     * @return array<string, string|bool>|WP_Error
+     */
+    public static function store_signed_mandate(int $user_id, string $binary, array $context = [])
+    {
+        return self::store_document($user_id, self::TYPE_SIGNED, $binary, $context);
+    }
+
+    public static function clear_pending_mandate(int $user_id): void
+    {
+        self::clear_document($user_id, self::TYPE_PENDING);
+    }
+
+    public static function clear_signed_mandate(int $user_id): void
+    {
+        self::clear_document($user_id, self::TYPE_SIGNED);
+    }
+
+    /**
      * Build a normalized representation of a SEPA document entry.
      *
      * @param mixed $value
@@ -463,5 +482,17 @@ class SepaMandateService
             'generated' => self::META_PENDING_GENERATED,
             'reference' => self::META_PENDING_REFERENCE,
         ];
+    }
+
+    private static function clear_document(int $user_id, string $type): void
+    {
+        $keys = self::meta_keys_for_type($type);
+
+        foreach ($keys as $meta_key) {
+            update_user_meta($user_id, $meta_key, '');
+        }
+
+        $field_key = $type === self::TYPE_SIGNED ? self::META_SIGNED_FIELD : self::META_PENDING_FIELD;
+        update_user_meta($user_id, $field_key, []);
     }
 }

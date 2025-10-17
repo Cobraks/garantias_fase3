@@ -997,7 +997,7 @@ $formatPhoneHref = static function ($phone) {
                                         </div>
                                     <?php endif; ?>
                                     <div class="account-sepa-request__action">
-                                        <p class="account-sepa-request__step"><span>2.</span> <?php echo esc_html__('Súbelo firmado', 'garantias-online-360vo'); ?></p>
+                                        <p class="account-sepa-request__step"><span>2.</span> <?php echo esc_html__('Súbelo firmado y guarda los cambios.', 'garantias-online-360vo'); ?></p>
                                         <div class="account-sepa-request__upload">
                                             <div class="account-upload account-upload--document">
                                                 <div
