@@ -59,6 +59,8 @@
         });
         let sepaDialog = null;
         let sepaConfirmDialog = null;
+        let currentSepaDialogContext = null;
+        let currentSepaDialogBody = null;
 
         if (canAssignCommercials) {
             fetchCommercialDirectory().catch(() => {});
@@ -347,6 +349,52 @@
             }
 
             return strings.client || 'este cliente';
+        }
+
+        function extractSepaReference(sepa) {
+            if (!sepa || typeof sepa !== 'object') {
+                return '';
+            }
+
+            const documents = sepa.documents && typeof sepa.documents === 'object' ? sepa.documents : {};
+            const signed = documents.signed && typeof documents.signed === 'object' ? documents.signed : {};
+            const pending = documents.pending && typeof documents.pending === 'object' ? documents.pending : {};
+
+            const signedReference = typeof signed.reference === 'string' ? signed.reference.trim() : '';
+            if (signedReference !== '') {
+                return signedReference;
+            }
+
+            const pendingReference = typeof pending.reference === 'string' ? pending.reference.trim() : '';
+            if (pendingReference !== '') {
+                return pendingReference;
+            }
+
+            return '';
+        }
+
+        function formatSepaActor(item) {
+            if (!item || typeof item !== 'object') {
+                return strings.manageSepaConfirmActorFallback || 'este profesional';
+            }
+
+            const name = item.name && typeof item.name === 'object' ? item.name : {};
+            const displayName = getDisplayName(name);
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+
+            if (displayName !== '' && companyName !== '' && displayName.toLowerCase() !== companyName.toLowerCase()) {
+                return `${displayName} (${companyName})`;
+            }
+
+            if (displayName !== '') {
+                return displayName;
+            }
+
+            if (companyName !== '') {
+                return companyName;
+            }
+
+            return strings.manageSepaConfirmActorFallback || 'este profesional';
         }
 
         function getCommercialDisplay(commercial) {
@@ -1249,6 +1297,124 @@
             }
 
             return `<div class="client-sepa-dialog">${sections.join('')}</div>`;
+        }
+
+        function setupSepaDialogBody(body, context) {
+            if (!body) {
+                return;
+            }
+
+            const currentContext = context && typeof context === 'object' ? context : {};
+            const item = currentContext.item && typeof currentContext.item === 'object' ? currentContext.item : null;
+
+            body.innerHTML = renderSepaDialog(item);
+
+            const activateButton = body.querySelector('[data-sepa-activate]');
+            if (activateButton && sepaConfirmDialog && typeof sepaConfirmDialog.open === 'function') {
+                if (activateButton.__goSepaHandler) {
+                    activateButton.removeEventListener('click', activateButton.__goSepaHandler);
+                }
+
+                const handler = () => {
+                    if (!item) {
+                        return;
+                    }
+
+                    const reference = extractSepaReference(item.sepa || {});
+                    const actor = formatSepaActor(item);
+                    const subject = typeof currentContext.subject === 'string' ? currentContext.subject : '';
+                    const name = item.name && typeof item.name === 'object' ? item.name : {};
+                    const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+                    let subtitleHtml = '';
+
+                    if (companyName !== '' && reference !== '') {
+                        subtitleHtml = `${escapeHtml(companyName)} <strong>${escapeHtml(reference)}</strong>`;
+                    } else if (companyName !== '') {
+                        subtitleHtml = escapeHtml(companyName);
+                    } else if (reference !== '') {
+                        subtitleHtml = `<strong>${escapeHtml(reference)}</strong>`;
+                    } else if (subject !== '') {
+                        subtitleHtml = escapeHtml(subject);
+                    }
+
+                    sepaConfirmDialog.open({
+                        actor,
+                        subtitleHtml,
+                        confirmLabel: strings.manageSepaConfirmAccept || 'Activar domiciliación bancaria',
+                        note: strings.manageSepaConfirmNote || '',
+                        onConfirm: async ({ close, setError, setLoading }) => {
+                            try {
+                                setError('');
+                                setLoading(true);
+                                await activateSepaForItem(item);
+                                setLoading(false);
+                                close();
+                            } catch (error) {
+                                const message = error && typeof error.message === 'string' && error.message.trim() !== ''
+                                    ? error.message.trim()
+                                    : (strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.');
+                                setLoading(false);
+                                setError(message);
+                            }
+                        },
+                    });
+                };
+
+                activateButton.__goSepaHandler = handler;
+                activateButton.addEventListener('click', handler);
+            }
+        }
+
+        async function activateSepaForItem(item) {
+            const userId = Number(item && item.id);
+            if (!Number.isFinite(userId) || userId <= 0) {
+                throw new Error(strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.');
+            }
+
+            const endpoint = `${restRoot}go/v1/clientes/${userId}/sepa/activate`;
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': restNonce,
+                },
+                body: JSON.stringify({}),
+            });
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (error) {
+                payload = {};
+            }
+
+            if (!response.ok) {
+                const message = payload && typeof payload.message === 'string' && payload.message.trim() !== ''
+                    ? payload.message.trim()
+                    : (strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.');
+                throw new Error(message);
+            }
+
+            if (payload && typeof payload.sepa === 'object') {
+                item.sepa = payload.sepa;
+            }
+
+            if (payload && typeof payload.payment === 'object') {
+                item.payment = payload.payment;
+            }
+
+            cache.set(String(userId), item);
+            refreshActiveDetail(item);
+
+            if (currentSepaDialogContext) {
+                currentSepaDialogContext.item = item;
+            }
+
+            if (currentSepaDialogBody) {
+                setupSepaDialogBody(currentSepaDialogBody, currentSepaDialogContext);
+            }
+
+            return payload;
         }
 
         function renderDetail(item) {
@@ -3285,69 +3451,233 @@
             };
         }
 
+        function setupSepaConfirmModal(modal) {
+            if (!modal) {
+                return null;
+            }
 
-        sepaConfirmDialog = createSimpleDialog({
-            titleKey: 'manageSepaConfirmTitle',
-            fallbackTitle: 'Activar domiciliación bancaria',
-            saveLabelKey: 'manageSepaConfirmAccept',
-            panelClass: 'client-dialog__panel--confirm',
-            bodyClass: 'client-dialog__body--confirm',
-            onOpen({ body, context, saveButton, footer, close }) {
-                const subject = context && typeof context.subject === 'string' ? context.subject : '';
-                const template = typeof strings.manageSepaConfirmMessage === 'string'
-                    ? strings.manageSepaConfirmMessage.trim()
-                    : '';
-                const message = subject && template.includes('%s')
-                    ? template.replace('%s', subject)
-                    : (template || '¿Quieres activar la domiciliación bancaria?');
+            const dialog = modal.querySelector('.confirm-modal__dialog');
+            const closeBtn = modal.querySelector('.confirm-modal__close');
+            const cancelBtn = modal.querySelector('.confirm-modal__btn--cancel');
+            const confirmBtn = modal.querySelector('.confirm-modal__btn--confirm');
+            const subtitleEl = modal.querySelector('.confirm-modal__subtitle');
+            const messageEl = modal.querySelector('.confirm-modal__message');
+            const noteEl = modal.querySelector('.confirm-modal__note');
+            const errorEl = modal.querySelector('.confirm-modal__error');
+            const titleEl = modal.querySelector('.confirm-modal__title');
+            const checkboxInput = modal.querySelector('.confirm-modal__checkbox-input');
+            const checkboxLabel = modal.querySelector('.confirm-modal__checkbox-label');
+            const defaultConfirmLabel = strings.manageSepaConfirmAccept || 'Activar domiciliación bancaria';
+            const defaultErrorMessage = strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.';
+            let currentContext = null;
+            let previousActiveElement = null;
 
-                if (body) {
-                    body.innerHTML = `<p>${escapeHtml(message)}</p>`;
+            function setError(message) {
+                if (!errorEl) {
+                    return;
                 }
 
-                if (saveButton) {
-                    saveButton.disabled = false;
-                    saveButton.classList.add('client-dialog__save--confirm');
-                    saveButton.onclick = (event) => {
-                        event.preventDefault();
-                        if (context && typeof context.onConfirm === 'function') {
-                            context.onConfirm();
-                        }
-                        close();
-                    };
+                const text = typeof message === 'string' ? message.trim() : '';
+                if (text === '') {
+                    errorEl.textContent = '';
+                    errorEl.hidden = true;
+                } else {
+                    errorEl.textContent = text;
+                    errorEl.hidden = false;
+                }
+            }
+
+            function syncConfirmState() {
+                if (!confirmBtn) {
+                    return;
                 }
 
-                if (footer) {
-                    let cancelButton = footer.querySelector('.client-dialog__secondary');
-                    if (!cancelButton) {
-                        cancelButton = document.createElement('button');
-                        cancelButton.type = 'button';
-                        cancelButton.className = 'client-dialog__secondary';
-                        footer.insertBefore(cancelButton, saveButton || null);
+                if (confirmBtn.dataset.loading === 'true') {
+                    confirmBtn.disabled = true;
+                    return;
+                }
+
+                const checked = checkboxInput ? checkboxInput.checked : true;
+                confirmBtn.disabled = !checked;
+            }
+
+            function setLoading(isLoading) {
+                if (!confirmBtn) {
+                    return;
+                }
+
+                if (isLoading) {
+                    confirmBtn.dataset.loading = 'true';
+                    confirmBtn.disabled = true;
+                    confirmBtn.textContent = strings.manageSepaConfirmLoading || 'Activando…';
+                } else {
+                    confirmBtn.dataset.loading = 'false';
+                    const label = currentContext && typeof currentContext.confirmLabel === 'string' && currentContext.confirmLabel.trim() !== ''
+                        ? currentContext.confirmLabel.trim()
+                        : defaultConfirmLabel;
+                    confirmBtn.textContent = label;
+                    syncConfirmState();
+                }
+            }
+
+            function close() {
+                modal.classList.remove('is-open');
+                modal.setAttribute('aria-hidden', 'true');
+                modal.hidden = true;
+                document.removeEventListener('keydown', handleKeydown);
+                setError('');
+                setLoading(false);
+                if (checkboxInput) {
+                    checkboxInput.checked = false;
+                }
+                currentContext = null;
+                if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+                    previousActiveElement.focus();
+                }
+            }
+
+            function handleOverlayClick(event) {
+                if (event.target === modal) {
+                    close();
+                }
+            }
+
+            function handleKeydown(event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    close();
+                }
+            }
+
+            function open(context = {}) {
+                previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                currentContext = context || {};
+
+                if (titleEl) {
+                    titleEl.textContent = strings.manageSepaConfirmTitle || 'Confirmar SEPA';
+                }
+
+                if (checkboxLabel && strings.manageSepaConfirmCheckbox) {
+                    checkboxLabel.textContent = strings.manageSepaConfirmCheckbox;
+                }
+
+                if (subtitleEl) {
+                    const subtitleHtml = typeof currentContext.subtitleHtml === 'string' ? currentContext.subtitleHtml.trim() : '';
+                    if (subtitleHtml !== '') {
+                        subtitleEl.innerHTML = subtitleHtml;
+                        subtitleEl.hidden = false;
+                    } else {
+                        subtitleEl.textContent = '';
+                        subtitleEl.hidden = true;
                     }
-                    cancelButton.textContent = strings.manageSepaConfirmCancel || 'Cancelar';
-                    cancelButton.onclick = (event) => {
-                        event.preventDefault();
-                        close();
-                    };
-                }
-            },
-            onClose({ saveButton, footer }) {
-                if (saveButton) {
-                    saveButton.disabled = true;
-                    saveButton.classList.remove('client-dialog__save--confirm');
-                    saveButton.onclick = null;
                 }
 
-                if (footer) {
-                    const cancelButton = footer.querySelector('.client-dialog__secondary');
-                    if (cancelButton) {
-                        cancelButton.onclick = null;
-                        cancelButton.remove();
+                if (messageEl) {
+                    const actor = typeof currentContext.actor === 'string' && currentContext.actor.trim() !== ''
+                        ? currentContext.actor.trim()
+                        : (strings.manageSepaConfirmActorFallback || 'este profesional');
+                    let template = typeof strings.manageSepaConfirmMessage === 'string' && strings.manageSepaConfirmMessage.trim() !== ''
+                        ? strings.manageSepaConfirmMessage.trim()
+                        : 'Confirmo que %s nos ha enviado el mandato SEPA firmado y todos los datos son correctos.';
+
+                    if (template.includes('%s')) {
+                        const actorHtml = template.includes('<strong>%s</strong>')
+                            ? escapeHtml(actor)
+                            : `<strong>${escapeHtml(actor)}</strong>`;
+                        messageEl.innerHTML = template.replace('%s', actorHtml);
+                    } else {
+                        messageEl.textContent = template;
                     }
                 }
-            },
-        });
+
+                if (noteEl) {
+                    const note = typeof currentContext.note === 'string' && currentContext.note.trim() !== ''
+                        ? currentContext.note.trim()
+                        : (strings.manageSepaConfirmNote || '');
+                    if (note === '') {
+                        noteEl.textContent = '';
+                        noteEl.hidden = true;
+                    } else {
+                        noteEl.textContent = note;
+                        noteEl.hidden = false;
+                    }
+                }
+
+                const confirmLabel = typeof currentContext.confirmLabel === 'string' && currentContext.confirmLabel.trim() !== ''
+                    ? currentContext.confirmLabel.trim()
+                    : defaultConfirmLabel;
+                if (confirmBtn) {
+                    confirmBtn.textContent = confirmLabel;
+                    confirmBtn.dataset.loading = 'false';
+                }
+
+                setError('');
+                setLoading(false);
+
+                if (checkboxInput) {
+                    checkboxInput.checked = false;
+                }
+
+                modal.hidden = false;
+                modal.classList.add('is-open');
+                modal.setAttribute('aria-hidden', 'false');
+                document.addEventListener('keydown', handleKeydown);
+                syncConfirmState();
+
+                window.requestAnimationFrame(() => {
+                    if (dialog && typeof dialog.focus === 'function') {
+                        dialog.focus({ preventScroll: true });
+                    }
+                });
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', close);
+            }
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    close();
+                });
+            }
+
+            if (checkboxInput) {
+                checkboxInput.addEventListener('change', syncConfirmState);
+            }
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (!currentContext || typeof currentContext.onConfirm !== 'function') {
+                        close();
+                        return;
+                    }
+
+                    setError('');
+                    setLoading(true);
+
+                    Promise.resolve(currentContext.onConfirm({
+                        close,
+                        setError,
+                        setLoading,
+                    })).catch((error) => {
+                        const message = error && typeof error.message === 'string' && error.message.trim() !== ''
+                            ? error.message.trim()
+                            : defaultErrorMessage;
+                        setLoading(false);
+                        setError(message);
+                    });
+                });
+            }
+
+            modal.addEventListener('click', handleOverlayClick);
+
+            return {
+                open,
+            };
+        }
+        sepaConfirmDialog = setupSepaConfirmModal(document.querySelector('[data-sepa-confirm-modal]'));
 
         sepaDialog = createSimpleDialog({
             titleKey: 'manageSepaTitle',
@@ -3362,19 +3692,13 @@
                     return;
                 }
 
-                body.innerHTML = renderSepaDialog(context && context.item ? context.item : null);
-
-                const activateButton = body.querySelector('[data-sepa-activate]');
-                if (activateButton && sepaConfirmDialog && typeof sepaConfirmDialog.open === 'function') {
-                    const subject = context && typeof context.subject === 'string' ? context.subject : '';
-                    const onConfirm = context && typeof context.onConfirm === 'function' ? context.onConfirm : null;
-                    activateButton.addEventListener('click', () => {
-                        sepaConfirmDialog.open({
-                            subject,
-                            onConfirm,
-                        });
-                    }, { once: true });
-                }
+                currentSepaDialogContext = context || {};
+                currentSepaDialogBody = body;
+                setupSepaDialogBody(body, currentSepaDialogContext);
+            },
+            onClose() {
+                currentSepaDialogContext = null;
+                currentSepaDialogBody = null;
             },
         });
 

@@ -645,7 +645,9 @@ $formatPhoneHref = static function ($phone) {
                 ? (string) $pending_document['filename']
                 : __('Mandato SEPA pendiente', 'garantias-online-360vo');
             $signed_document_url = $signed_document_available ? esc_url($signed_document['url'] ?? '') : '';
-            $sepa_upload_default_label = __('Sube el mandato SEPA firmado (PDF)', 'garantias-online-360vo');
+            $sepa_upload_default_label = $sepa_awaiting_validation
+                ? __('Tu documento SEPA firmado', 'garantias-online-360vo')
+                : __('Sube el mandato SEPA firmado (PDF)', 'garantias-online-360vo');
             $sepa_upload_label = $sepa_upload_default_label;
             if ($signed_document_available && ! empty($signed_document['filename'])) {
                 $sepa_upload_label = (string) $signed_document['filename'];

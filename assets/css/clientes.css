@@ -2003,6 +2003,188 @@
     box-shadow: 0 16px 30px -18px rgba(22, 163, 74, 0.65);
     outline: none;
 }
+.confirm-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(var(--go-color-0f172a-rgb), 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 16000;
+}
+
+.confirm-modal.is-open {
+    display: flex;
+}
+
+.confirm-modal[hidden] {
+    display: none !important;
+}
+
+.confirm-modal__dialog {
+    position: relative;
+    width: min(520px, calc(100vw - 2.5rem));
+    margin: 0 auto;
+    border-radius: 1.5rem;
+    background: var(--client-surface);
+    color: var(--text-color);
+    box-shadow: 0 32px 72px rgba(var(--go-color-0f172a-rgb), 0.22);
+    padding: 2.25rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+:root[data-theme='dark'] .confirm-modal__dialog {
+    background: var(--client-surface-alt);
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.55);
+}
+
+.confirm-modal__close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.5rem;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 1.75rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.confirm-modal__intro {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.confirm-modal__title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.confirm-modal__subtitle {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.confirm-modal__message {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.confirm-modal__message strong,
+.confirm-modal__message b {
+    color: var(--text-color);
+}
+
+.confirm-modal__note {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background: rgba(var(--client-accent-rgb), 0.08);
+    color: var(--client-accent);
+    border: 1px solid rgba(var(--client-accent-rgb), 0.18);
+    font-size: 0.95rem;
+}
+
+.confirm-modal__error {
+    margin: -0.5rem 0 0;
+    color: var(--danger-color, #dc2626);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.confirm-modal__checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.confirm-modal__checkbox-input {
+    width: 1.15rem;
+    height: 1.15rem;
+    accent-color: var(--client-accent);
+}
+
+.confirm-modal__checkbox-label {
+    line-height: 1.5;
+}
+
+.confirm-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.confirm-modal__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    padding: 0.6rem 1.35rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.confirm-modal__btn--cancel {
+    border-color: var(--border-color);
+    background: transparent;
+    color: var(--text-color);
+}
+
+.confirm-modal__btn--cancel:hover,
+.confirm-modal__btn--cancel:focus-visible {
+    border-color: var(--client-panel-border-strong);
+    box-shadow: 0 12px 24px -18px rgba(var(--go-color-0f172a-rgb), 0.25);
+}
+
+.confirm-modal__btn--confirm {
+    background: var(--client-accent);
+    border-color: rgba(var(--client-accent-rgb), 0.85);
+    color: #ffffff;
+}
+
+.confirm-modal__btn--confirm:hover,
+.confirm-modal__btn--confirm:focus-visible {
+    background: var(--client-accent-strong);
+    border-color: rgba(var(--client-accent-rgb), 0.95);
+    box-shadow: 0 18px 36px -20px rgba(var(--client-accent-rgb), 0.75);
+}
+
+.confirm-modal__btn[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+@media (max-width: 640px) {
+    .confirm-modal__dialog {
+        padding: 2rem 1.75rem;
+        gap: 1.25rem;
+    }
+
+    .confirm-modal__actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .confirm-modal__btn {
+        width: 100%;
+    }
+}
 .client-dialog__panel--confirm {
     width: min(420px, calc(100vw - 2.5rem));
     min-width: min(420px, calc(100vw - 2.5rem));

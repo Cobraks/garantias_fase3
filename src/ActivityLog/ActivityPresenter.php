@@ -42,6 +42,9 @@ class ActivityPresenter
             case 'sepa.signed_uploaded':
                 $lines = self::formatSepaSigned($context, $actor);
                 break;
+            case 'sepa.activated':
+                $lines = self::formatSepaActivated($context, $actor);
+                break;
             default:
                 $message = isset($item['message']) ? (string) $item['message'] : '';
                 if ($message !== '') {
@@ -224,6 +227,35 @@ class ActivityPresenter
         $lines = [
             sprintf(
                 __('Mandato SEPA firmado enviado por %s.', 'garantias-online-360vo'),
+                $name
+            ),
+        ];
+
+        if (! empty($context['document_reference'])) {
+            $lines[] = sprintf(
+                __('Referencia: %s', 'garantias-online-360vo'),
+                (string) $context['document_reference']
+            );
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     * @param array<string, mixed> $actor
+     * @return array<int, string>
+     */
+    private static function formatSepaActivated(array $context, array $actor): array
+    {
+        $name = trim((string) ($context['user_name'] ?? ($actor['name'] ?? '')));
+        if ($name === '') {
+            $name = __('Profesional', 'garantias-online-360vo');
+        }
+
+        $lines = [
+            sprintf(
+                __('Domiciliación bancaria activada para %s.', 'garantias-online-360vo'),
                 $name
             ),
         ];

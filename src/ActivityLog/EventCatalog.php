@@ -247,6 +247,12 @@ class EventCatalog
             'level'    => 'info',
             'message'  => 'Mandato SEPA firmado enviado por {{context.user_name}}.',
         ],
+        'sepa.activated' => [
+            'label'    => 'Domiciliación activada',
+            'category' => 'finance',
+            'level'    => 'success',
+            'message'  => 'Domiciliación bancaria activada para {{context.user_name}}.',
+        ],
         'settings.updated' => [
             'label'    => 'Ajustes modificados',
             'category' => 'system',
