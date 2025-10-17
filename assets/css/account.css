@@ -1212,13 +1212,22 @@
   color: #111827;
   cursor: pointer;
   transition: border-color var(--transition-speed), background-color var(--transition-speed), color var(--transition-speed);
-  box-shadow: 0 16px 34px -26px rgba(15, 23, 42, 0.45);
+  box-shadow: none;
 }
 
 .account-sepa-request__upload .file-upload:hover,
 .account-sepa-request__upload .file-upload:focus-within {
   border-color: #111827;
   background: #f3f4f6;
+  color: #111827;
+}
+
+.account-sepa-request__upload--locked .file-upload,
+.account-sepa-request__upload--locked .file-upload:hover,
+.account-sepa-request__upload--locked .file-upload:focus-within {
+  cursor: default;
+  border-color: #d1d5db;
+  background: #ffffff;
   color: #111827;
 }
 
@@ -1237,6 +1246,18 @@
 
 .account-sepa-request__upload {
   width: 100%;
+}
+
+.account-sepa-request__upload .account-upload {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.account-sepa-request__upload .account-upload--document .file-upload {
+  align-items: center;
 }
 
 .account-sepa-request__upload .file-remove {

@@ -1028,7 +1028,7 @@ $formatPhoneHref = static function ($phone) {
                                             data-sepa-step-upload
                                             <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
                                         ><span>2.</span> <?php echo esc_html__('Súbelo firmado y guarda los cambios.', 'garantias-online-360vo'); ?></p>
-                                        <div class="account-sepa-request__upload">
+                                        <div class="account-sepa-request__upload<?php echo $sepa_awaiting_validation ? ' account-sepa-request__upload--locked' : ''; ?>">
                                             <div class="account-upload account-upload--document">
                                                 <div
                                                     class="file-upload file-upload--document"
@@ -1037,14 +1037,22 @@ $formatPhoneHref = static function ($phone) {
                                                     data-document-upload
                                                     data-document-type="sepa_signed"
                                                 >
-                                                <div class="file-label" data-document-label><?php echo esc_html($sepa_upload_label); ?></div>
-                                                <p class="file-hint">Formato admitido: PDF (máx. 5MB)</p>
+                                                <div
+                                                    class="file-label"
+                                                    data-document-label
+                                                    <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
+                                                ><?php echo esc_html($sepa_upload_label); ?></div>
+                                                <p
+                                                    class="file-hint"
+                                                    <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
+                                                >Formato admitido: PDF (máx. 5MB)</p>
                                                 <input
                                                     type="file"
                                                     id="account-sepa-signed"
                                                     class="file-input"
                                                     name="account_sepa_signed"
                                                     accept=".pdf"
+                                                    <?php disabled($sepa_awaiting_validation); ?>
                                                 >
                                                 <div
                                                     class="file-preview file-preview--document"
@@ -1086,7 +1094,13 @@ $formatPhoneHref = static function ($phone) {
                                                     type="button"
                                                     class="file-remove"
                                                     data-document-remove
-                                                    <?php echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : 'aria-hidden="false"'; ?>
+                                                    <?php
+                                                    if ($sepa_awaiting_validation) {
+                                                        echo 'hidden aria-hidden="true"';
+                                                    } else {
+                                                        echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : 'aria-hidden="false"';
+                                                    }
+                                                    ?>
                                                 >
                                                     <?php echo esc_html__('Eliminar archivo', 'garantias-online-360vo'); ?>
                                                 </button>

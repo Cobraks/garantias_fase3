@@ -743,6 +743,60 @@
                                 uploadStep.hidden = awaitingValidation;
                                 uploadStep.setAttribute('aria-hidden', awaitingValidation ? 'true' : 'false');
                             }
+
+                            const uploadAction = document.querySelector('[data-sepa-upload]');
+                            if (uploadAction) {
+                                const uploadWrapper = uploadAction.querySelector('.account-sepa-request__upload');
+                                if (uploadWrapper) {
+                                    if (awaitingValidation) {
+                                        uploadWrapper.classList.add('account-sepa-request__upload--locked');
+                                    } else {
+                                        uploadWrapper.classList.remove('account-sepa-request__upload--locked');
+                                    }
+                                }
+
+                                const fileLabel = uploadAction.querySelector('[data-document-label]');
+                                if (fileLabel) {
+                                    fileLabel.hidden = awaitingValidation;
+                                    fileLabel.setAttribute('aria-hidden', awaitingValidation ? 'true' : 'false');
+                                }
+
+                                const fileHint = uploadAction.querySelector('.file-hint');
+                                if (fileHint) {
+                                    fileHint.hidden = awaitingValidation;
+                                    fileHint.setAttribute('aria-hidden', awaitingValidation ? 'true' : 'false');
+                                }
+
+                                const fileInput = uploadAction.querySelector('input[type="file"]');
+                                if (fileInput) {
+                                    if (awaitingValidation) {
+                                        fileInput.setAttribute('disabled', 'disabled');
+                                    } else {
+                                        fileInput.removeAttribute('disabled');
+                                    }
+                                }
+
+                                const removeButton = uploadAction.querySelector('[data-document-remove]');
+                                if (removeButton) {
+                                    if (awaitingValidation) {
+                                        removeButton.hidden = true;
+                                        removeButton.setAttribute('aria-hidden', 'true');
+                                    } else {
+                                        const hasServerDocument = Boolean(
+                                            sepaData
+                                            && sepaData.documents
+                                            && sepaData.documents.signed
+                                            && (
+                                                sepaData.documents.signed.url
+                                                || sepaData.documents.signed.filename
+                                                || sepaData.documents.signed.hash
+                                            )
+                                        );
+                                        removeButton.hidden = !hasServerDocument;
+                                        removeButton.setAttribute('aria-hidden', hasServerDocument ? 'false' : 'true');
+                                    }
+                                }
+                            }
                         }
 
                         setStatus(strings.success || 'Cambios guardados correctamente.', 'success');

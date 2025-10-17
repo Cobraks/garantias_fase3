@@ -13,6 +13,11 @@ $phone = trim((string) ($user['phone'] ?? ''));
 $company = trim((string) ($user['company'] ?? ''));
 $profile_url = isset($user['profile_url']) ? esc_url_raw((string) $user['profile_url']) : '';
 
+$display_name = $name !== '' ? $name : __('Profesional', 'garantias-online-360vo');
+if ($company !== '') {
+    $display_name .= ' (' . $company . ')';
+}
+
 $filename = trim((string) ($document['filename'] ?? 'mandato-sepa-firmado.pdf'));
 $reference = trim((string) ($document['reference'] ?? ''));
 $submitted = isset($document['submitted']) ? (int) $document['submitted'] : current_time('timestamp');
@@ -49,7 +54,11 @@ $badge_text = __('Mandato SEPA firmado', 'garantias-online-360vo');
                             <p style="font-size:15px;margin:0 0 24px;color:#374151;line-height:1.7;">
                                 <?php
                                 echo esc_html(
-                                    __('El profesional ha completado la subida del mandato SEPA. Revisa el documento adjunto y valida la domiciliación desde el panel de clientes.', 'garantias-online-360vo')
+                                    sprintf(
+                                        /* translators: %s: professional display name */
+                                        __('%s ha completado la subida del mandato SEPA. Revisa el documento adjunto y valida la domiciliación desde el panel de clientes.', 'garantias-online-360vo'),
+                                        $display_name
+                                    )
                                 );
                                 ?>
                             </p>
