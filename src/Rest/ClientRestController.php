@@ -1190,10 +1190,52 @@ class ClientRestController
             }
         }
 
+        $requested = isset($sepa['requested']) ? (bool) $sepa['requested'] : false;
+        $awaiting_validation = isset($sepa['awaiting_validation']) ? (bool) $sepa['awaiting_validation'] : false;
+        $locked = isset($sepa['locked']) ? (bool) $sepa['locked'] : false;
+
+        $status_value = null;
+        if (array_key_exists('status', $sepa)) {
+            if ($sepa['status'] === true) {
+                $status_value = true;
+            } elseif ($sepa['status'] === false) {
+                $status_value = false;
+            }
+        }
+
+        $documents = [
+            'pending' => [],
+            'signed'  => [],
+        ];
+
+        if (! empty($sepa['documents']) && is_array($sepa['documents'])) {
+            foreach (['pending', 'signed'] as $doc_type) {
+                if (empty($sepa['documents'][$doc_type]) || ! is_array($sepa['documents'][$doc_type])) {
+                    continue;
+                }
+
+                $doc = $sepa['documents'][$doc_type];
+                $documents[$doc_type] = [
+                    'id'           => isset($doc['id']) ? (int) $doc['id'] : 0,
+                    'url'          => esc_url_raw((string) ($doc['url'] ?? '')),
+                    'filename'     => sanitize_file_name((string) ($doc['filename'] ?? '')),
+                    'hash'         => self::clean_text($doc['hash'] ?? ''),
+                    'reference'    => self::clean_text($doc['reference'] ?? ''),
+                    'generated_at' => self::clean_text($doc['generated_at'] ?? ''),
+                    'private'      => ! empty($doc['private']),
+                ];
+            }
+        }
+
         return [
-            'label'   => $label !== '' ? $label : __('Sin información del mandato', 'garantias-online-360vo'),
-            'variant' => $variant !== '' ? $variant : 'info',
-            'fields'  => $fields,
+            'label'               => $label !== '' ? $label : __('Sin información del mandato', 'garantias-online-360vo'),
+            'variant'             => $variant !== '' ? $variant : 'info',
+            'fields'              => $fields,
+            'requested'           => $requested,
+            'awaiting_validation' => $awaiting_validation,
+            'locked'              => $locked,
+            'status'              => $status_value,
+            'documents'           => $documents,
         ];
     }
 

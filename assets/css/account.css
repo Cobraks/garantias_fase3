@@ -1226,9 +1226,25 @@
 .account-sepa-request__upload--locked .file-upload:hover,
 .account-sepa-request__upload--locked .file-upload:focus-within {
   cursor: default;
-  border-color: #d1d5db;
-  background: #ffffff;
+  border: 2px solid #d1d5db;
+  background: transparent;
   color: #111827;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 1.25rem 1.5rem;
+}
+
+.account-sepa-request__upload--locked .file-document {
+  align-items: flex-start;
+}
+
+.account-sepa-request__upload--locked .file-document__meta {
+  gap: 0.35rem;
+}
+
+.account-sepa-request__upload--locked .file-document__link {
+  align-self: flex-start;
 }
 
 .account-sepa-request__upload .file-label {

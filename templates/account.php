@@ -1000,17 +1000,12 @@ $formatPhoneHref = static function ($phone) {
                                     <?php echo esc_html__('Tu SEPA firmado está pendiente de validación.', 'garantias-online-360vo'); ?>
                                 </p>
                                 <div class="account-sepa-request__actions" data-sepa-actions>
-                                    <?php if ($pending_download_url !== '') : ?>
+                                    <?php if ($pending_download_url !== '' && ! $sepa_awaiting_validation) : ?>
                                         <div
                                             class="account-sepa-request__action"
                                             data-sepa-download
-                                            <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
                                         >
-                                            <p
-                                                class="account-sepa-request__step"
-                                                data-sepa-step-download
-                                                <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
-                                            ><span>1.</span> <?php echo esc_html__('Descarga el documento', 'garantias-online-360vo'); ?></p>
+                                            <p class="account-sepa-request__step" data-sepa-step-download><span>1.</span> <?php echo esc_html__('Descarga el documento', 'garantias-online-360vo'); ?></p>
                                             <a
                                                 class="account-sepa-request__download"
                                                 href="<?php echo esc_url($pending_download_url); ?>"
@@ -1023,11 +1018,9 @@ $formatPhoneHref = static function ($phone) {
                                         </div>
                                     <?php endif; ?>
                                     <div class="account-sepa-request__action" data-sepa-upload>
-                                        <p
-                                            class="account-sepa-request__step"
-                                            data-sepa-step-upload
-                                            <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
-                                        ><span>2.</span> <?php echo esc_html__('Súbelo firmado y guarda los cambios.', 'garantias-online-360vo'); ?></p>
+                                        <?php if (! $sepa_awaiting_validation) : ?>
+                                            <p class="account-sepa-request__step" data-sepa-step-upload><span>2.</span> <?php echo esc_html__('Súbelo firmado y guarda los cambios.', 'garantias-online-360vo'); ?></p>
+                                        <?php endif; ?>
                                         <div class="account-sepa-request__upload<?php echo $sepa_awaiting_validation ? ' account-sepa-request__upload--locked' : ''; ?>">
                                             <div class="account-upload account-upload--document">
                                                 <div
@@ -1036,74 +1029,68 @@ $formatPhoneHref = static function ($phone) {
                                                     data-default-label="<?php echo esc_attr($sepa_upload_default_label); ?>"
                                                     data-document-upload
                                                     data-document-type="sepa_signed"
+                                                    data-locked="<?php echo $sepa_awaiting_validation ? 'true' : 'false'; ?>"
                                                 >
-                                                <div
-                                                    class="file-label"
-                                                    data-document-label
-                                                    <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
-                                                ><?php echo esc_html($sepa_upload_label); ?></div>
-                                                <p
-                                                    class="file-hint"
-                                                    <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
-                                                >Formato admitido: PDF (máx. 5MB)</p>
-                                                <input
-                                                    type="file"
-                                                    id="account-sepa-signed"
-                                                    class="file-input"
-                                                    name="account_sepa_signed"
-                                                    accept=".pdf"
-                                                    <?php disabled($sepa_awaiting_validation); ?>
-                                                >
-                                                <div
-                                                    class="file-preview file-preview--document"
-                                                    data-document-preview
-                                                    <?php echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : ''; ?>
-                                                >
+                                                    <?php if (! $sepa_awaiting_validation) : ?>
+                                                        <div class="file-label" data-document-label><?php echo esc_html($sepa_upload_label); ?></div>
+                                                        <p class="file-hint">Formato admitido: PDF (máx. 5MB)</p>
+                                                    <?php endif; ?>
+                                                    <input
+                                                        type="file"
+                                                        id="account-sepa-signed"
+                                                        class="file-input"
+                                                        name="account_sepa_signed"
+                                                        accept=".pdf"
+                                                        <?php disabled($sepa_awaiting_validation); ?>
+                                                        <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
+                                                    >
                                                     <div
-                                                        class="file-document"
-                                                        data-document-body
+                                                        class="file-preview file-preview--document"
+                                                        data-document-preview
                                                         <?php echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : ''; ?>
                                                     >
-                                                        <span class="file-document__icon" aria-hidden="true">
-                                                            <?php echo Svg::icon('pdf', 'file-document__svg'); ?>
-                                                        </span>
-                                                        <div class="file-document__meta">
-                                                            <p class="file-document__name" data-document-name><?php echo esc_html($sepa_upload_label); ?></p>
-                                                            <p class="file-document__size" data-document-size hidden aria-hidden="true"></p>
-                                                            <a
-                                                                class="file-document__link"
-                                                                data-document-link
-                                                                href="<?php echo esc_url($signed_document_url); ?>"
-                                                                <?php echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : ''; ?>
-                                                                target="_blank"
-                                                                rel="noopener"
-                                                            >
-                                                                <?php echo esc_html__('Ver documento', 'garantias-online-360vo'); ?>
-                                                            </a>
+                                                        <div
+                                                            class="file-document"
+                                                            data-document-body
+                                                            <?php echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                                        >
+                                                            <span class="file-document__icon" aria-hidden="true">
+                                                                <?php echo Svg::icon('pdf', 'file-document__svg'); ?>
+                                                            </span>
+                                                            <div class="file-document__meta">
+                                                                <p class="file-document__name" data-document-name><?php echo esc_html($sepa_upload_label); ?></p>
+                                                                <p class="file-document__size" data-document-size hidden aria-hidden="true"></p>
+                                                                <a
+                                                                    class="file-document__link"
+                                                                    data-document-link
+                                                                    href="<?php echo esc_url($signed_document_url); ?>"
+                                                                    <?php echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                                                    target="_blank"
+                                                                    rel="noopener"
+                                                                >
+                                                                    <?php echo esc_html__('Ver documento', 'garantias-online-360vo'); ?>
+                                                                </a>
+                                                            </div>
                                                         </div>
+                                                        <p
+                                                            class="file-document__placeholder"
+                                                            data-document-placeholder
+                                                            <?php echo $signed_document_url !== '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                                        >
+                                                            <?php echo esc_html__('No se ha seleccionado ningún archivo.', 'garantias-online-360vo'); ?>
+                                                        </p>
                                                     </div>
-                                                    <p
-                                                        class="file-document__placeholder"
-                                                        data-document-placeholder
-                                                        <?php echo $signed_document_url !== '' ? 'hidden aria-hidden="true"' : ''; ?>
-                                                    >
-                                                        <?php echo esc_html__('No se ha seleccionado ningún archivo.', 'garantias-online-360vo'); ?>
-                                                    </p>
+                                                    <?php if (! $sepa_awaiting_validation) : ?>
+                                                        <button
+                                                            type="button"
+                                                            class="file-remove"
+                                                            data-document-remove
+                                                            <?php echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : 'aria-hidden="false"'; ?>
+                                                        >
+                                                            <?php echo esc_html__('Eliminar archivo', 'garantias-online-360vo'); ?>
+                                                        </button>
+                                                    <?php endif; ?>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    class="file-remove"
-                                                    data-document-remove
-                                                    <?php
-                                                    if ($sepa_awaiting_validation) {
-                                                        echo 'hidden aria-hidden="true"';
-                                                    } else {
-                                                        echo $signed_document_url === '' ? 'hidden aria-hidden="true"' : 'aria-hidden="false"';
-                                                    }
-                                                    ?>
-                                                >
-                                                    <?php echo esc_html__('Eliminar archivo', 'garantias-online-360vo'); ?>
-                                                </button>
                                             </div>
                                         </div>
                                     </div>
