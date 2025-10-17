@@ -25,6 +25,9 @@ class SepaMandateService
 
     private const META_PENDING_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_sin_firmar';
     private const META_SIGNED_FIELD  = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_firmado';
+    private const META_STATUS_FIELD   = 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa';
+    private const META_ACTIVATE_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_activar_sepa';
+    private const META_PAYMENT_FIELD  = 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago';
 
     private const META_PENDING_HASH      = '_go360_sepa_pending_hash';
     private const META_SIGNED_HASH       = '_go360_sepa_signed_hash';
@@ -34,6 +37,11 @@ class SepaMandateService
     private const META_SIGNED_GENERATED  = '_go360_sepa_signed_generated_at';
     private const META_PENDING_REFERENCE = '_go360_sepa_pending_reference';
     private const META_SIGNED_REFERENCE  = '_go360_sepa_signed_reference';
+
+    public const STATUS_UNFILLED           = 'sin_rellenar_sepa';
+    public const STATUS_PENDING_SIGNATURE  = 'pendiente_firma';
+    public const STATUS_PENDING_VALIDATION = 'pendiente_validacion';
+    public const STATUS_SIGNED             = 'firmado';
 
     private const DEFAULT_REFERENCE_PREFIX = 'GO';
 
@@ -55,6 +63,208 @@ class SepaMandateService
             'fontkitUrl'      => esc_url_raw(plugins_url('assets/js/fontkit.umd.min.js', GARANTIAS360VO__FILE__)),
             'fontUrl'         => esc_url_raw(plugins_url('assets/fonts/RobotoMono-Regular.ttf', GARANTIAS360VO__FILE__)),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function get_status_options(): array
+    {
+        return [
+            self::STATUS_UNFILLED           => __('Sin rellenar SEPA', 'garantias-online-360vo'),
+            self::STATUS_PENDING_SIGNATURE  => __('Pendiente de firma', 'garantias-online-360vo'),
+            self::STATUS_PENDING_VALIDATION => __('Pendiente de validación', 'garantias-online-360vo'),
+            self::STATUS_SIGNED             => __('SEPA firmado', 'garantias-online-360vo'),
+        ];
+    }
+
+    public static function status_label(string $status): string
+    {
+        $options = self::get_status_options();
+        if (isset($options[$status])) {
+            return $options[$status];
+        }
+
+        return $options[self::STATUS_UNFILLED];
+    }
+
+    public static function normalize_status(string $value): string
+    {
+        if (function_exists('remove_accents')) {
+            $value = remove_accents($value);
+        }
+
+        $normalized = strtolower(trim($value));
+        $normalized = str_replace([' ', '-'], '_', $normalized);
+        if ($normalized === '') {
+            return self::STATUS_UNFILLED;
+        }
+
+        switch ($normalized) {
+            case '1':
+            case 'true':
+            case 'firmado':
+            case self::STATUS_SIGNED:
+                return self::STATUS_SIGNED;
+            case 'pendiente_validacion':
+            case 'pending_validation':
+                return self::STATUS_PENDING_VALIDATION;
+            case 'pendiente_firma':
+            case 'pending_signature':
+                return self::STATUS_PENDING_SIGNATURE;
+            case 'sin_rellenar_sepa':
+            case 'sin_rellenar':
+            case 'unfilled':
+                return self::STATUS_UNFILLED;
+            default:
+                return self::STATUS_UNFILLED;
+        }
+    }
+
+    /**
+     * @param mixed $value
+     * @return array{value: string, label: string}
+     */
+    public static function parse_status_field($value, int $user_id = 0): array
+    {
+        $raw   = '';
+        $label = '';
+
+        if (is_array($value)) {
+            $raw   = isset($value['value']) ? (string) $value['value'] : (string) ($value['label'] ?? '');
+            $label = isset($value['label']) ? (string) $value['label'] : '';
+        } elseif (is_object($value) && isset($value->value)) {
+            $raw   = (string) $value->value;
+            $label = isset($value->label) ? (string) $value->label : '';
+        } elseif (is_bool($value)) {
+            $raw = $value ? '1' : '0';
+        } elseif (is_scalar($value)) {
+            $raw = (string) $value;
+        }
+
+        $status = self::normalize_status($raw);
+
+        if ($status === self::STATUS_UNFILLED && $raw !== '') {
+            if ($raw === '1') {
+                $status = self::STATUS_SIGNED;
+            } elseif ($raw === '0' && $user_id > 0) {
+                $signed_meta = self::get_document_meta($user_id, self::TYPE_SIGNED);
+                $pending_meta = self::get_document_meta($user_id, self::TYPE_PENDING);
+                if (! empty($signed_meta['hash'])) {
+                    $status = self::STATUS_PENDING_VALIDATION;
+                } elseif (! empty($pending_meta['hash'])) {
+                    $status = self::STATUS_PENDING_SIGNATURE;
+                }
+            }
+        }
+
+        if ($label === '') {
+            $label = self::status_label($status);
+        }
+
+        return [
+            'value' => $status,
+            'label' => $label,
+        ];
+    }
+
+    public static function build_status_payload(string $status): array
+    {
+        $normalized = self::normalize_status($status);
+
+        return [
+            'value' => $normalized,
+            'label' => self::status_label($normalized),
+        ];
+    }
+
+    public static function get_status(int $user_id): array
+    {
+        $stored = get_user_meta($user_id, self::META_STATUS_FIELD, true);
+        $payload = self::parse_status_field($stored, $user_id);
+
+        update_user_meta($user_id, self::META_STATUS_FIELD, $payload);
+
+        return $payload;
+    }
+
+    public static function set_status(int $user_id, string $status): void
+    {
+        $payload = self::build_status_payload($status);
+        update_user_meta($user_id, self::META_STATUS_FIELD, $payload);
+    }
+
+    public static function get_activation_flag(int $user_id): bool
+    {
+        $raw = get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
+        if (is_bool($raw)) {
+            return $raw;
+        }
+
+        if (is_array($raw) && isset($raw['value'])) {
+            $raw = $raw['value'];
+        }
+
+        $value = is_scalar($raw) ? (string) $raw : '';
+
+        return in_array(strtolower($value), ['1', 'true', 'yes', 'on'], true);
+    }
+
+    public static function set_activation_flag(int $user_id, bool $active): void
+    {
+        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $active ? 1 : 0);
+    }
+
+    /**
+     * @return array{value: string, label: string}
+     */
+    public static function build_payment_payload(string $method): array
+    {
+        $value = strtolower(trim($method));
+        if ($value === 'domiciliacion' || $value === 'domiciliación') {
+            return [
+                'value' => 'domiciliacion',
+                'label' => __('Domiciliación bancaria', 'garantias-online-360vo'),
+            ];
+        }
+
+        return [
+            'value' => 'transferencia',
+            'label' => __('Transferencia bancaria', 'garantias-online-360vo'),
+        ];
+    }
+
+    public static function set_payment_method(int $user_id, string $method): void
+    {
+        $payload = self::build_payment_payload($method);
+        update_user_meta($user_id, self::META_PAYMENT_FIELD, $payload);
+    }
+
+    /**
+     * @return array{value: string, label: string}
+     */
+    public static function get_payment_method(int $user_id): array
+    {
+        $stored = get_user_meta($user_id, self::META_PAYMENT_FIELD, true);
+        if (is_array($stored) && isset($stored['value'])) {
+            $value = (string) $stored['value'];
+            $label = isset($stored['label']) ? (string) $stored['label'] : '';
+
+            if ($label === '') {
+                return self::build_payment_payload($value);
+            }
+
+            return [
+                'value' => strtolower(trim($value)),
+                'label' => $label,
+            ];
+        }
+
+        if (is_scalar($stored) && (string) $stored !== '') {
+            return self::build_payment_payload((string) $stored);
+        }
+
+        return self::build_payment_payload('transferencia');
     }
 
     /**
@@ -211,7 +421,15 @@ class SepaMandateService
      */
     public static function store_pending_mandate(int $user_id, string $binary, array $context = [])
     {
-        return self::store_document($user_id, self::TYPE_PENDING, $binary, $context);
+        $stored = self::store_document($user_id, self::TYPE_PENDING, $binary, $context);
+
+        if (! is_wp_error($stored)) {
+            self::set_status($user_id, self::STATUS_PENDING_SIGNATURE);
+            self::set_activation_flag($user_id, false);
+            self::set_payment_method($user_id, 'transferencia');
+        }
+
+        return $stored;
     }
 
     /**
@@ -220,17 +438,43 @@ class SepaMandateService
      */
     public static function store_signed_mandate(int $user_id, string $binary, array $context = [])
     {
-        return self::store_document($user_id, self::TYPE_SIGNED, $binary, $context);
+        $stored = self::store_document($user_id, self::TYPE_SIGNED, $binary, $context);
+
+        if (! is_wp_error($stored)) {
+            self::set_status($user_id, self::STATUS_PENDING_VALIDATION);
+            self::set_activation_flag($user_id, false);
+            self::set_payment_method($user_id, 'transferencia');
+        }
+
+        return $stored;
     }
 
     public static function clear_pending_mandate(int $user_id): void
     {
         self::clear_document($user_id, self::TYPE_PENDING);
+        $status = self::get_status($user_id);
+        if ($status['value'] === self::STATUS_PENDING_SIGNATURE) {
+            $signed = self::get_document_meta($user_id, self::TYPE_SIGNED);
+            if (empty($signed['hash'])) {
+                self::set_status($user_id, self::STATUS_UNFILLED);
+            }
+        }
+        self::set_payment_method($user_id, 'transferencia');
+        self::set_activation_flag($user_id, false);
     }
 
     public static function clear_signed_mandate(int $user_id): void
     {
         self::clear_document($user_id, self::TYPE_SIGNED);
+        self::set_activation_flag($user_id, false);
+
+        $pending = self::get_document_meta($user_id, self::TYPE_PENDING);
+        if (! empty($pending['hash'])) {
+            self::set_status($user_id, self::STATUS_PENDING_SIGNATURE);
+        } else {
+            self::set_status($user_id, self::STATUS_UNFILLED);
+        }
+        self::set_payment_method($user_id, 'transferencia');
     }
 
     /**

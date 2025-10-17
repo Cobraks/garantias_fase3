@@ -322,16 +322,14 @@ class UserRestController
             return new \WP_REST_Response(['estado_sepa' => false], 200);
         }
 
-        // Navegar ACF group: gestion_pagos -> gestion_sepa -> estado_documentos -> estado_sepa
-        $gestion_pagos = get_field('gestion_pagos', 'user_' . $user_id);
-        $estado_sepa = false;
-        if (
-            is_array($gestion_pagos) &&
-            isset($gestion_pagos['gestion_sepa']['estado_documentos']['estado_sepa'])
-        ) {
-            $estado_sepa = (bool) $gestion_pagos['gestion_sepa']['estado_documentos']['estado_sepa'];
-        }
+        $status = SepaMandateService::get_status($user_id);
+        $active = SepaMandateService::get_activation_flag($user_id);
+        $is_active = $active && ($status['value'] === SepaMandateService::STATUS_SIGNED);
 
-        return new \WP_REST_Response(['estado_sepa' => $estado_sepa], 200);
+        return new \WP_REST_Response([
+            'estado_sepa' => $is_active,
+            'status'      => $status,
+            'activar'     => $active,
+        ], 200);
     }
 }

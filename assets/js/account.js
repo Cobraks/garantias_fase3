@@ -715,9 +715,16 @@
 
                                 const statusLabel = sepaStatusRow.querySelector('[data-sepa-status-label]');
                                 if (statusLabel) {
-                                    statusLabel.textContent = awaitingValidation
-                                        ? sepaText.awaitingValidation
-                                        : sepaText.awaitingSignature;
+                                    let statusText = '';
+                                    if (sepaData && typeof sepaData.status_label === 'string') {
+                                        statusText = sepaData.status_label.trim();
+                                    }
+                                    if (statusText === '') {
+                                        statusText = awaitingValidation
+                                            ? (sepaText.awaitingValidation || 'Pendiente de validación')
+                                            : (sepaText.awaitingSignature || 'Pendiente de firma');
+                                    }
+                                    statusLabel.textContent = statusText;
                                 }
                             }
 

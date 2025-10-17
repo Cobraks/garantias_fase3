@@ -434,8 +434,9 @@ class ClientRestController
             );
         }
 
-        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa', 1);
-        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago', 'domiciliacion');
+        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_SIGNED);
+        SepaMandateService::set_activation_flag($user_id, true);
+        SepaMandateService::set_payment_method($user_id, 'domiciliacion');
 
         $account = AccountViewModel::from_user($user);
         $payments = $account['payments'] ?? [];
@@ -1316,9 +1317,13 @@ class ClientRestController
         $requested = isset($sepa['requested']) ? (bool) $sepa['requested'] : false;
         $awaiting_validation = isset($sepa['awaiting_validation']) ? (bool) $sepa['awaiting_validation'] : false;
         $locked = isset($sepa['locked']) ? (bool) $sepa['locked'] : false;
+        $status_code = isset($sepa['status_code']) ? sanitize_key((string) $sepa['status_code']) : '';
+        $activated = isset($sepa['activated']) ? (bool) $sepa['activated'] : false;
 
         $status_value = null;
-        if (array_key_exists('status', $sepa)) {
+        if ($status_code !== '') {
+            $status_value = ($status_code === SepaMandateService::STATUS_SIGNED) && $activated;
+        } elseif (array_key_exists('status', $sepa)) {
             if ($sepa['status'] === true) {
                 $status_value = true;
             } elseif ($sepa['status'] === false) {
@@ -1358,6 +1363,8 @@ class ClientRestController
             'awaiting_validation' => $awaiting_validation,
             'locked'              => $locked,
             'status'              => $status_value,
+            'status_code'         => $status_code,
+            'activated'           => $activated,
             'documents'           => $documents,
         ];
     }

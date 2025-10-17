@@ -716,9 +716,7 @@ class RegistrationService
 
         $this->update_sepa_acf_group($user_id, $data['sepa'] ?? [], $normalized_document);
         $this->persist_sepa_meta($user_id, $data['sepa'] ?? []);
-        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa', 0);
-        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago', 'domiciliacion');
-        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_firmado', '');
+        SepaMandateService::clear_signed_mandate($user_id);
 
         return $normalized_document;
     }
@@ -779,11 +777,11 @@ class RegistrationService
             $estado = [];
         }
 
-        $estado['estado_sepa'] = false;
-        $estado['metodo_de_pago'] = [
-            'value' => 'domiciliacion',
-            'label' => __('Domiciliación bancaria', 'garantias-online-360vo'),
-        ];
+        $estado['estado_sepa'] = SepaMandateService::build_status_payload(
+            SepaMandateService::STATUS_PENDING_SIGNATURE
+        );
+        $estado['activar_sepa'] = 0;
+        $estado['metodo_de_pago'] = SepaMandateService::build_payment_payload('transferencia');
 
         if ($document !== null) {
             $estado['documento_sepa_sin_firmar'] = $document;
@@ -829,9 +827,9 @@ class RegistrationService
         update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_localidad_firma', $sepa['signature_locality'] ?? '');
         update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_tipo_pago', $sepa['payment_type'] ?? '');
 
-        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa', 0);
-        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago', 'domiciliacion');
-        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_firmado', '');
+        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_PENDING_SIGNATURE);
+        SepaMandateService::set_activation_flag($user_id, false);
+        SepaMandateService::set_payment_method($user_id, 'transferencia');
     }
 
     /**

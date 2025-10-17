@@ -864,11 +864,6 @@ $formatPhoneHref = static function ($phone) {
                             Método de pago actual: <strong><?php echo esc_html($current_method_label); ?></strong>
                         </p>
                         <?php if ($sepa_requested && ! $sepa_locked) : ?>
-                            <?php
-                                $sepa_status_text = $sepa_awaiting_validation
-                                    ? esc_html__('Pendiente de validación', 'garantias-online-360vo')
-                                    : esc_html__('Pendiente de firma', 'garantias-online-360vo');
-                            ?>
                             <p
                                 class="account-card__status account-card__status--sepa<?php echo $sepa_awaiting_validation ? ' account-card__status--sepa-success' : ''; ?>"
                                 data-sepa-status
@@ -876,7 +871,7 @@ $formatPhoneHref = static function ($phone) {
                                 data-sepa-awaiting="<?php echo $sepa_awaiting_validation ? 'true' : 'false'; ?>"
                             >
                                 <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
-                                <span>Estado domiciliación bancaria: <strong data-sepa-status-label><?php echo $sepa_status_text; ?></strong></span>
+                                <span>Estado domiciliación bancaria: <strong data-sepa-status-label><?php echo esc_html($sepa_status_label); ?></strong></span>
                             </p>
                         <?php else : ?>
                             <label class="account-toggle">

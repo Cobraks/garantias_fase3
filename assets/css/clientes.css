@@ -35,10 +35,6 @@
     --client-panel-border-strong: var(--border-color-strong);
     --client-panel-shadow: 0 24px 48px rgba(var(--go-color-0f172a-rgb), 0.12);
     --client-card-shadow: 0 10px 24px rgba(var(--go-color-0f172a-rgb), 0.08);
-    --client-accent: var(--primary-color);
-    --client-accent-rgb: var(--go-color-2563eb-rgb);
-    --client-accent-strong: var(--primary-color-hover);
-    --client-accent-soft: var(--primary-color-soft);
     --client-badge-text: var(--primary-color-hover);
     --client-tag-muted-bg: var(--surface-alt);
     --client-tag-muted-text: var(--go-color-475569);
@@ -56,10 +52,6 @@
     --client-panel-border-strong: rgba(191, 219, 254, 0.45);
     --client-panel-shadow: 0 36px 72px rgba(0, 0, 0, 0.65);
     --client-card-shadow: none;
-    --client-accent: var(--primary-color);
-    --client-accent-rgb: var(--go-color-2563eb-rgb);
-    --client-accent-strong: var(--primary-color-strong);
-    --client-accent-soft: var(--primary-color-soft);
     --client-badge-text: rgba(191, 219, 254, 0.92);
     --client-tag-muted-bg: rgba(71, 85, 105, 0.45);
     --client-tag-muted-text: rgba(226, 232, 240, 0.88);
@@ -268,9 +260,9 @@
     box-shadow: none;
 }
 :root[data-theme='dark'] .client-detail__commercial-media {
-    background: rgba(var(--client-accent-rgb), 0.2);
+    background: #1e3a8a;
     color: var(--text-color);
-    box-shadow: inset 0 0 0 1px rgba(var(--client-accent-rgb), 0.35);
+    box-shadow: inset 0 0 0 1px #2563eb;
 }
 :root[data-theme='dark'] .client-detail__status {
     background: rgba(59, 130, 246, 0.18);
@@ -327,10 +319,10 @@
 }
 :root[data-theme='dark'] .client-dialog__close:hover,
 :root[data-theme='dark'] .client-dialog__close:focus-visible {
-    background: rgba(var(--client-accent-rgb), 0.28);
-    border-color: rgba(var(--client-accent-rgb), 0.45);
+    background: #1d4ed8;
+    border-color: #1e40af;
     color: #fff;
-    box-shadow: 0 0 0 3px rgba(var(--client-accent-rgb), 0.2);
+    box-shadow: 0 0 0 3px #1e3a8a;
 }
 :root[data-theme='dark'] .client-dialog__backdrop {
     background-color: rgba(8, 10, 15, 0);
@@ -1091,9 +1083,9 @@
     justify-content: center;
     font-weight: 600;
     font-size: 1rem;
-    background: linear-gradient(135deg, rgba(var(--client-accent-rgb), 0.18), rgba(var(--client-accent-rgb), 0.32));
-    color: var(--client-accent-strong);
-    box-shadow: inset 0 0 0 2px rgba(var(--client-accent-rgb), 0.18);
+    background: linear-gradient(135deg, #e0e7ff, #bfdbfe);
+    color: var(--primary-color-hover);
+    box-shadow: inset 0 0 0 2px #bfdbfe;
 }
 .client-detail__commercial-avatar {
     width: 100%;
@@ -1289,10 +1281,10 @@
 }
 .client-dialog__close:hover,
 .client-dialog__close:focus-visible {
-    background: rgba(var(--client-accent-rgb), 0.12);
-    border-color: rgba(var(--client-accent-rgb), 0.35);
-    color: var(--client-accent);
-    box-shadow: 0 0 0 3px rgba(var(--client-accent-rgb), 0.18);
+    background: #e0e7ff;
+    border-color: #bfdbfe;
+    color: var(--primary-color);
+    box-shadow: 0 0 0 3px #bfdbfe;
 }
 .client-dialog__close svg {
     width: 1rem;
@@ -1466,7 +1458,7 @@
     justify-content: center;
     font-weight: 600;
     background: var(--client-surface-alt);
-    color: var(--client-accent);
+    color: var(--primary-color);
     border: 2px solid var(--client-avatar-border);
 }
 .client-dialog__commercials {
@@ -1564,7 +1556,7 @@
     justify-content: center;
     font-weight: 600;
     background: var(--client-surface-alt);
-    color: var(--client-accent-strong);
+    color: var(--primary-color-hover);
 }
 .client-dialog__card-body {
     display: flex;
@@ -1622,8 +1614,8 @@
     border-color: var(--border-color-strong);
 }
 .client-dialog__card.is-selected .client-dialog__card-chip {
-    background: rgba(var(--client-accent-rgb), 0.18);
-    border-color: rgba(var(--client-accent-rgb), 0.45);
+    background: #e0e7ff;
+    border-color: #2563eb;
     color: var(--text-color);
 }
 .client-dialog__card.is-selected .client-dialog__card-name {
@@ -1662,13 +1654,13 @@
 .client-dialog__result:focus-visible {
     border-color: var(--border-color-strong);
     background: var(--surface-alt);
-    box-shadow: 0 0 0 2px rgba(var(--client-accent-rgb), 0.18);
+    box-shadow: 0 0 0 2px #bfdbfe;
     outline: none;
 }
 .client-dialog__result.is-selected {
-    border-color: var(--client-accent);
-    background: rgba(var(--client-accent-rgb), 0.16);
-    box-shadow: 0 0 0 2px rgba(var(--client-accent-rgb), 0.2);
+    border-color: var(--primary-color);
+    background: #e0e7ff;
+    box-shadow: 0 0 0 2px #bfdbfe;
 }
 .client-dialog__result-media {
     flex: 0 0 auto;
@@ -1690,7 +1682,7 @@
     height: 40px;
     border-radius: 50%;
     background: var(--client-surface);
-    color: var(--client-accent);
+    color: var(--primary-color);
     border: 2px solid var(--client-avatar-border);
 }
 .client-dialog__result-body {
@@ -1726,9 +1718,9 @@
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 .client-dialog__result.is-selected .client-dialog__result-chip {
-    background: rgba(var(--client-accent-rgb), 0.16);
-    border-color: var(--client-accent);
-    color: var(--client-accent-strong);
+    background: #e0e7ff;
+    border-color: var(--primary-color);
+    color: var(--primary-color-hover);
 }
 .client-dialog__result:hover .client-dialog__result-chip,
 .client-dialog__result:focus-visible .client-dialog__result-chip {
@@ -2028,9 +2020,10 @@
     width: min(520px, calc(100vw - 2.5rem));
     margin: 0 auto;
     border-radius: 1.5rem;
-    background: var(--client-surface);
-    color: var(--text-color);
-    box-shadow: 0 32px 72px rgba(var(--go-color-0f172a-rgb), 0.22);
+    background: #ffffff;
+    color: #111827;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 32px 72px rgba(15, 23, 42, 0.22);
     padding: 2.25rem 2.5rem;
     display: flex;
     flex-direction: column;
@@ -2038,8 +2031,16 @@
 }
 
 :root[data-theme='dark'] .confirm-modal__dialog {
-    background: var(--client-surface-alt);
+    background: #1f2937;
+    color: #f8fafc;
+    border-color: #334155;
     box-shadow: 0 40px 80px rgba(0, 0, 0, 0.55);
+}
+
+:root[data-theme='dark'] .confirm-modal__note {
+    background: #1e3a8a;
+    border-color: #3b82f6;
+    color: #bfdbfe;
 }
 
 .confirm-modal__close {
@@ -2088,9 +2089,9 @@
     margin: 0;
     padding: 0.75rem 1rem;
     border-radius: 0.75rem;
-    background: rgba(var(--client-accent-rgb), 0.08);
-    color: var(--client-accent);
-    border: 1px solid rgba(var(--client-accent-rgb), 0.18);
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
     font-size: 0.95rem;
 }
 
@@ -2112,7 +2113,7 @@
 .confirm-modal__checkbox-input {
     width: 1.15rem;
     height: 1.15rem;
-    accent-color: var(--client-accent);
+    accent-color: #2563eb;
 }
 
 .confirm-modal__checkbox-label {
@@ -2140,28 +2141,31 @@
 }
 
 .confirm-modal__btn--cancel {
-    border-color: var(--border-color);
-    background: transparent;
-    color: var(--text-color);
+    border-color: #cbd5f5;
+    background: #f8fafc;
+    color: #334155;
 }
 
 .confirm-modal__btn--cancel:hover,
 .confirm-modal__btn--cancel:focus-visible {
-    border-color: var(--client-panel-border-strong);
-    box-shadow: 0 12px 24px -18px rgba(var(--go-color-0f172a-rgb), 0.25);
+    border-color: #94a3b8;
+    background: #e2e8f0;
+    color: #1f2937;
+    box-shadow: 0 12px 24px -18px rgba(15, 23, 42, 0.2);
 }
 
 .confirm-modal__btn--confirm {
-    background: var(--client-accent);
-    border-color: rgba(var(--client-accent-rgb), 0.85);
+    background: #2563eb;
+    border-color: #1d4ed8;
     color: #ffffff;
+    box-shadow: 0 18px 36px -24px rgba(37, 99, 235, 0.6);
 }
 
 .confirm-modal__btn--confirm:hover,
 .confirm-modal__btn--confirm:focus-visible {
-    background: var(--client-accent-strong);
-    border-color: rgba(var(--client-accent-rgb), 0.95);
-    box-shadow: 0 18px 36px -20px rgba(var(--client-accent-rgb), 0.75);
+    background: #1d4ed8;
+    border-color: #1e40af;
+    box-shadow: 0 20px 40px -24px rgba(29, 78, 216, 0.65);
 }
 
 .confirm-modal__btn[disabled] {
