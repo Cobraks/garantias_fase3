@@ -402,6 +402,9 @@ if (! empty($is_add_guarantee)) {
             'error'   => __('No se han podido guardar los cambios. Inténtalo de nuevo.', 'garantias-online-360vo'),
             'invalid' => __('Revisa los datos introducidos e inténtalo de nuevo.', 'garantias-online-360vo'),
             'dirty'   => __('Tienes cambios sin guardar.', 'garantias-online-360vo'),
+            'sepaAwaitingValidation' => __('Pendiente de validación', 'garantias-online-360vo'),
+            'sepaAwaitingSignature'  => __('Pendiente de firma', 'garantias-online-360vo'),
+            'sepaAwaitingMessage'    => __('Tu SEPA firmado está pendiente de validación.', 'garantias-online-360vo'),
         ],
     ];
     ?>

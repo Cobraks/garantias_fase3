@@ -125,6 +125,11 @@
         const restEndpoint = accountConfig.rest && accountConfig.rest.endpoint ? accountConfig.rest.endpoint : '';
         const restNonce = accountConfig.rest && accountConfig.rest.nonce ? accountConfig.rest.nonce : '';
         const strings = accountConfig.strings || {};
+        const sepaText = {
+            awaitingValidation: strings.sepaAwaitingValidation || 'Pendiente de validación',
+            awaitingSignature: strings.sepaAwaitingSignature || 'Pendiente de firma',
+            awaitingMessage: strings.sepaAwaitingMessage || 'Tu SEPA firmado está pendiente de validación.',
+        };
         const workshopToggle = document.querySelector('[data-workshop-toggle]');
         const workshopFieldKeys = [
             'name',
@@ -686,15 +691,57 @@
                                 }
                             }
 
-                            if (typeof sepaData.requested !== 'undefined') {
-                                const activationCard = document.querySelector('[data-payment-activation]');
-                                if (activationCard) {
-                                    const sepaStatusRow = activationCard.querySelector('.account-card__status--sepa');
-                                    if (sepaStatusRow) {
-                                        sepaStatusRow.hidden = !sepaData.requested;
-                                        sepaStatusRow.setAttribute('aria-hidden', sepaData.requested ? 'false' : 'true');
-                                    }
+                            const awaitingValidation = Boolean(sepaData.awaiting_validation);
+                            const activationCard = document.querySelector('[data-payment-activation]');
+                            const sepaStatusRow = activationCard
+                                ? activationCard.querySelector('[data-sepa-status]')
+                                : null;
+
+                            if (sepaStatusRow) {
+                                if (typeof sepaData.requested !== 'undefined') {
+                                    sepaStatusRow.hidden = !sepaData.requested;
+                                    sepaStatusRow.setAttribute('aria-hidden', sepaData.requested ? 'false' : 'true');
+                                    sepaStatusRow.setAttribute('data-sepa-requested', sepaData.requested ? 'true' : 'false');
                                 }
+
+                                sepaStatusRow.setAttribute('data-sepa-awaiting', awaitingValidation ? 'true' : 'false');
+                                sepaStatusRow.classList.toggle('account-card__status--sepa-success', awaitingValidation);
+
+                                const statusLabel = sepaStatusRow.querySelector('[data-sepa-status-label]');
+                                if (statusLabel) {
+                                    statusLabel.textContent = awaitingValidation
+                                        ? sepaText.awaitingValidation
+                                        : sepaText.awaitingSignature;
+                                }
+                            }
+
+                            const awaitingMessage = document.querySelector('[data-sepa-awaiting-message]');
+                            if (awaitingMessage) {
+                                awaitingMessage.hidden = !awaitingValidation;
+                                awaitingMessage.setAttribute('aria-hidden', awaitingValidation ? 'false' : 'true');
+                                if (awaitingValidation) {
+                                    awaitingMessage.textContent = sepaText.awaitingMessage;
+                                }
+                            }
+
+                            const downloadAction = document.querySelector('[data-sepa-download]');
+                            const hideDownload = awaitingValidation
+                                || (typeof sepaData.requested !== 'undefined' && !sepaData.requested);
+                            if (downloadAction) {
+                                downloadAction.hidden = hideDownload;
+                                downloadAction.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
+                            }
+
+                            const downloadStep = document.querySelector('[data-sepa-step-download]');
+                            if (downloadStep) {
+                                downloadStep.hidden = hideDownload;
+                                downloadStep.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
+                            }
+
+                            const uploadStep = document.querySelector('[data-sepa-step-upload]');
+                            if (uploadStep) {
+                                uploadStep.hidden = awaitingValidation;
+                                uploadStep.setAttribute('aria-hidden', awaitingValidation ? 'true' : 'false');
                             }
                         }
 
@@ -1197,6 +1244,7 @@
 
                 if (removeButton) {
                     removeButton.hidden = !state.hasDocument;
+                    removeButton.setAttribute('aria-hidden', state.hasDocument ? 'false' : 'true');
                 }
             };
 

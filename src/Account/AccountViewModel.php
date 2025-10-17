@@ -449,16 +449,17 @@ class AccountViewModel
     private static function extract_payments(string $scope, int $user_id): array
     {
         $sepa = [
-            'status'           => null,
-            'status_label'     => 'Sin información del mandato',
-            'status_variant'   => 'info',
-            'locked'           => false,
-            'requested'        => false,
-            'documents'        => [
+            'status'             => null,
+            'status_label'       => 'Sin información del mandato',
+            'status_variant'     => 'info',
+            'locked'             => false,
+            'requested'          => false,
+            'awaiting_validation' => false,
+            'documents'          => [
                 'signed'  => [],
                 'pending' => [],
             ],
-            'fields'           => [],
+            'fields'             => [],
         ];
         $payment_type = '';
 
@@ -630,6 +631,18 @@ class AccountViewModel
             }
         }
 
+        $signed_document = $sepa['documents']['signed'];
+        $has_signed_document = is_array($signed_document)
+            && (
+                (! empty($signed_document['hash']))
+                || (! empty($signed_document['url']))
+                || ((int) ($signed_document['id'] ?? 0) > 0)
+            );
+
+        if ($has_signed_document && $sepa['status'] !== true) {
+            $sepa['awaiting_validation'] = true;
+        }
+
         $selected_method = self::normalize_payment_method($payment_type);
         if ($selected_method === '') {
             $selected_method = 'domiciliacion';
@@ -640,7 +653,7 @@ class AccountViewModel
             && isset($pending_document['hash'])
             && $pending_document['hash'] !== '';
 
-        if ($has_pending_request && $sepa['status'] !== true) {
+        if (($has_pending_request || $sepa['awaiting_validation']) && $sepa['status'] !== true) {
             $sepa['requested'] = true;
             $selected_method   = 'transferencia';
         }
@@ -664,8 +677,13 @@ class AccountViewModel
             $sepa['status_label'] = 'SEPA válido y activo';
             $sepa['status_variant'] = 'success';
         } elseif ($sepa['status'] === false) {
-            $sepa['status_label'] = 'Pendiente de validar';
-            $sepa['status_variant'] = 'warning';
+            if (! empty($sepa['awaiting_validation'])) {
+                $sepa['status_label'] = 'Pendiente de validación';
+                $sepa['status_variant'] = 'success';
+            } else {
+                $sepa['status_label'] = 'Pendiente de validar';
+                $sepa['status_variant'] = 'warning';
+            }
         } else {
             $sepa['status_label'] = 'Sin información del mandato';
             $sepa['status_variant'] = 'info';

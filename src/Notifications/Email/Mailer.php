@@ -47,12 +47,28 @@ class Mailer
             $headers[] = 'Content-Type: text/html; charset=UTF-8';
         }
 
-        return wp_mail(
+        $buffer_started = false;
+        if (function_exists('ob_start')) {
+            ob_start();
+            $buffer_started = true;
+        }
+
+        $sent = wp_mail(
             $recipients,
             $message->get_subject(),
             $message->get_body(),
             $headers,
             $message->get_attachments()
         );
+
+        if ($buffer_started) {
+            $output = ob_get_clean();
+            if (is_string($output) && trim($output) !== '') {
+                $sanitized = function_exists('wp_strip_all_tags') ? wp_strip_all_tags($output) : strip_tags($output);
+                error_log('[Mailer] Unexpected output: ' . trim($sanitized));
+            }
+        }
+
+        return $sent;
     }
 }
