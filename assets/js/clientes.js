@@ -1127,7 +1127,6 @@
 
             const safeTitle = typeof title === 'string' ? title.trim() : '';
             const safeDescription = typeof description === 'string' ? description.trim() : '';
-            const statusLabel = typeof status === 'string' ? status.trim() : '';
             const docFilename = typeof document.filename === 'string' && document.filename.trim() !== ''
                 ? document.filename.trim()
                 : (strings.manageSepaDownload || 'Mandato SEPA');
@@ -1160,10 +1159,6 @@
                 ? `<a class="client-sepa-dialog__button" href="${escapeAttribute(docUrl)}" target="_blank" rel="noopener">${iconHtml}<span>${escapeHtml(buttonText)}</span></a>`
                 : '';
 
-            const statusHtml = statusLabel !== ''
-                ? `<span class="client-sepa-dialog__badge client-sepa-dialog__badge--${escapeHtml(type || 'info')}">${escapeHtml(statusLabel)}</span>`
-                : '';
-
             return `
                 <section class="client-sepa-dialog__card client-sepa-dialog__card--${escapeHtml(type || 'info')}">
                     <header class="client-sepa-dialog__card-header">
@@ -1171,7 +1166,6 @@
                             <h3>${escapeHtml(safeTitle || (strings.manageSepaPendingTitle || 'Mandato SEPA'))}</h3>
                             ${safeDescription !== '' ? `<p class="client-sepa-dialog__card-description">${escapeHtml(safeDescription)}</p>` : ''}
                         </div>
-                        ${statusHtml}
                     </header>
                     <div class="client-sepa-dialog__card-body">
                         <p class="client-sepa-dialog__filename">${escapeHtml(docFilename)}</p>

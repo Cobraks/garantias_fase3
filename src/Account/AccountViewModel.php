@@ -680,6 +680,9 @@ class AccountViewModel
             if (! empty($sepa['awaiting_validation'])) {
                 $sepa['status_label'] = 'Pendiente de validación';
                 $sepa['status_variant'] = 'success';
+            } elseif (! empty($sepa['requested'])) {
+                $sepa['status_label'] = 'Pendiente de firma';
+                $sepa['status_variant'] = 'warning';
             } else {
                 $sepa['status_label'] = 'Pendiente de validar';
                 $sepa['status_variant'] = 'warning';
