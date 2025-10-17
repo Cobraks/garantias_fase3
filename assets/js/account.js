@@ -125,6 +125,12 @@
         const restEndpoint = accountConfig.rest && accountConfig.rest.endpoint ? accountConfig.rest.endpoint : '';
         const restNonce = accountConfig.rest && accountConfig.rest.nonce ? accountConfig.rest.nonce : '';
         const strings = accountConfig.strings || {};
+        const sepaText = {
+            awaitingValidation: strings.sepaAwaitingValidation || 'Pendiente de validación',
+            awaitingSignature: strings.sepaAwaitingSignature || 'Pendiente de firma',
+            awaitingMessage: strings.sepaAwaitingMessage || 'Tu SEPA firmado está pendiente de validación.',
+            awaitingActivation: strings.sepaAwaitingActivation || 'Pendiente de domiciliación',
+        };
         const workshopToggle = document.querySelector('[data-workshop-toggle]');
         const workshopFieldKeys = [
             'name',
@@ -388,6 +394,9 @@
             const entries = Object.entries(documentUploadStates)
                 .filter(([, state]) => Boolean(state))
                 .reduce((accumulator, [key, state]) => {
+                    if (key === 'sepa_signed') {
+                        return accumulator;
+                    }
                     if (state && state.removed) {
                         accumulator[key] = { remove: true };
                     }
@@ -424,6 +433,31 @@
             return payload;
         };
 
+        const collectPaymentsPayload = () => {
+            const sepaState = documentUploadStates.sepa_signed;
+            if (!sepaState) {
+                return null;
+            }
+
+            const signedPayload = {};
+            if (sepaState.removed) {
+                signedPayload.remove = true;
+            }
+            if (sepaState.changed) {
+                signedPayload.upload = true;
+            }
+
+            if (Object.keys(signedPayload).length === 0) {
+                return null;
+            }
+
+            return {
+                sepa: {
+                    signed: signedPayload,
+                },
+            };
+        };
+
         if (saveButton) {
             saveButton.addEventListener('click', (event) => {
                 event.preventDefault();
@@ -451,9 +485,21 @@
                 const notificationsPayload = collectNotificationsPayload();
                 const workshopPayload = collectWorkshopPayload();
                 const adminPayload = collectAdminPayload();
-                const adminDocumentFiles = Object.values(documentUploadStates)
+                const paymentsPayload = collectPaymentsPayload();
+                const adminDocumentFiles = Object.entries(documentUploadStates)
+                    .filter(([key]) => key !== 'sepa_signed')
+                    .map(([, state]) => state)
                     .filter((state) => state && state.input && state.input.files && state.input.files.length > 0);
-                const usingFormData = (profileImageFile instanceof File) || adminDocumentFiles.length > 0;
+                const sepaUploadState = documentUploadStates.sepa_signed || null;
+                const sepaHasFile = Boolean(
+                    sepaUploadState
+                    && sepaUploadState.input
+                    && sepaUploadState.input.files
+                    && sepaUploadState.input.files.length > 0
+                );
+                const usingFormData = (profileImageFile instanceof File)
+                    || adminDocumentFiles.length > 0
+                    || sepaHasFile;
 
                 const buildFormData = () => {
                     const formData = new FormData();
@@ -499,6 +545,18 @@
                     if (adminPayload) {
                         formData.append('admin', JSON.stringify(adminPayload));
                     }
+                    if (paymentsPayload) {
+                        formData.append('payments', JSON.stringify(paymentsPayload));
+                    }
+
+                    if (sepaHasFile && sepaUploadState && sepaUploadState.input) {
+                        const sepaFile = sepaUploadState.input.files && sepaUploadState.input.files[0]
+                            ? sepaUploadState.input.files[0]
+                            : null;
+                        if (sepaFile) {
+                            formData.append('account_sepa_signed', sepaFile);
+                        }
+                    }
 
                     return formData;
                 };
@@ -509,6 +567,7 @@
                         notifications: notificationsPayload,
                         workshop: workshopPayload,
                         ...(adminPayload ? { admin: adminPayload } : {}),
+                        ...(paymentsPayload ? { payments: paymentsPayload } : {}),
                     });
 
                 setSaveDisabled(true);
@@ -620,6 +679,223 @@
                                 const controller = documentUploadControllers.claim_procedure;
                                 if (controller && typeof controller.applyServerState === 'function') {
                                     controller.applyServerState(adminData.documents.claim_procedure);
+                                }
+                            }
+                        }
+
+                        if (data.payments && data.payments.sepa) {
+                            const sepaData = data.payments.sepa;
+                            const sepaController = documentUploadControllers.sepa_signed;
+                            if (
+                                sepaData.documents
+                                && sepaData.documents.signed
+                                && sepaController
+                                && typeof sepaController.applyServerState === 'function'
+                            ) {
+                                sepaController.applyServerState(sepaData.documents.signed);
+                            }
+
+                            const awaitingValidation = Boolean(sepaData.awaiting_validation);
+                            const needsActivation = Boolean(sepaData.needs_activation);
+                            const sepaIsActive = Boolean(sepaData.status);
+                            if (sepaController && typeof sepaController.setLocked === 'function') {
+                                sepaController.setLocked(awaitingValidation || needsActivation);
+                            }
+                            const activationCard = document.querySelector('[data-payment-activation]');
+                            const detailCard = document.querySelector('[data-payment-detail]');
+                            const sepaStatusRow = activationCard
+                                ? activationCard.querySelector('[data-sepa-status]')
+                                : null;
+                            const sepaSuccessRow = activationCard
+                                ? activationCard.querySelector('[data-sepa-success]')
+                                : null;
+                            const toggleWrapper = activationCard
+                                ? activationCard.querySelector('[data-sepa-toggle]')
+                                : null;
+                            const toggleInput = activationCard
+                                ? activationCard.querySelector('[data-payment-toggle]')
+                                : null;
+
+                            if (sepaSuccessRow) {
+                                sepaSuccessRow.hidden = !sepaIsActive;
+                                sepaSuccessRow.setAttribute('aria-hidden', sepaIsActive ? 'false' : 'true');
+                            }
+
+                            if (sepaStatusRow) {
+                                const isRequested = Boolean(sepaData.requested) || needsActivation;
+                                sepaStatusRow.hidden = !isRequested;
+                                sepaStatusRow.setAttribute('aria-hidden', isRequested ? 'false' : 'true');
+                                sepaStatusRow.setAttribute('data-sepa-requested', sepaData.requested ? 'true' : 'false');
+                                sepaStatusRow.setAttribute('data-sepa-awaiting', awaitingValidation ? 'true' : 'false');
+                                sepaStatusRow.setAttribute('data-sepa-needs-activation', needsActivation ? 'true' : 'false');
+                                sepaStatusRow.classList.toggle('account-card__status--sepa-success', awaitingValidation);
+
+                                const statusLabel = sepaStatusRow.querySelector('[data-sepa-status-label]');
+                                if (statusLabel) {
+                                    let statusText = '';
+                                    if (sepaData && typeof sepaData.status_label === 'string') {
+                                        statusText = sepaData.status_label.trim();
+                                    }
+                                    if (statusText === '') {
+                                        if (awaitingValidation) {
+                                            statusText = sepaText.awaitingValidation || 'Pendiente de validación';
+                                        } else if (needsActivation) {
+                                            statusText = sepaText.awaitingActivation || 'Pendiente de domiciliación';
+                                        } else {
+                                            statusText = sepaText.awaitingSignature || 'Pendiente de firma';
+                                        }
+                                    }
+                                    statusLabel.textContent = statusText;
+                                }
+                            }
+
+                            if (toggleWrapper) {
+                                const shouldHideToggle = sepaIsActive || Boolean(sepaData.requested) || needsActivation;
+                                toggleWrapper.hidden = shouldHideToggle;
+                                toggleWrapper.setAttribute('aria-hidden', shouldHideToggle ? 'true' : 'false');
+                            }
+
+                            if (toggleInput) {
+                                const shouldDisableToggle = sepaIsActive || awaitingValidation || Boolean(sepaData.requested) || needsActivation;
+                                if (sepaIsActive) {
+                                    toggleInput.checked = true;
+                                }
+                                toggleInput.disabled = shouldDisableToggle;
+                            }
+
+                            if (activationCard) {
+                                const selectedMethod = data.payments && typeof data.payments.selected_method === 'string'
+                                    ? data.payments.selected_method
+                                    : 'transferencia';
+                                let nextState = 'disabled';
+                                if (sepaIsActive) {
+                                    nextState = 'locked';
+                                } else if (sepaData.requested || needsActivation) {
+                                    nextState = 'requested';
+                                } else if (selectedMethod === 'domiciliacion') {
+                                    nextState = 'enabled';
+                                }
+
+                                activationCard.setAttribute('data-state', nextState);
+                                if (detailCard) {
+                                    detailCard.setAttribute('data-state', nextState);
+                                }
+
+                                if (typeof activationCard.__goUpdatePanels === 'function') {
+                                    activationCard.__goUpdatePanels(nextState);
+                                }
+                            }
+
+                            const awaitingMessage = document.querySelector('[data-sepa-awaiting-message]');
+                            if (awaitingMessage) {
+                                awaitingMessage.hidden = !awaitingValidation;
+                                awaitingMessage.setAttribute('aria-hidden', awaitingValidation ? 'false' : 'true');
+                                if (awaitingValidation) {
+                                    awaitingMessage.textContent = sepaText.awaitingMessage;
+                                }
+                            }
+
+                            const downloadAction = document.querySelector('[data-sepa-download]');
+                            if (downloadAction) {
+                                if (awaitingValidation) {
+                                    downloadAction.remove();
+                                } else {
+                                    const hideDownload = typeof sepaData.requested !== 'undefined' && !sepaData.requested;
+                                    downloadAction.hidden = hideDownload;
+                                    downloadAction.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
+                                }
+                            }
+
+                            const downloadStep = document.querySelector('[data-sepa-step-download]');
+                            if (downloadStep) {
+                                if (awaitingValidation) {
+                                    downloadStep.remove();
+                                } else {
+                                    const hideDownload = typeof sepaData.requested !== 'undefined' && !sepaData.requested;
+                                    downloadStep.hidden = hideDownload;
+                                    downloadStep.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
+                                }
+                            }
+
+                            const uploadStep = document.querySelector('[data-sepa-step-upload]');
+                            if (uploadStep) {
+                                if (awaitingValidation) {
+                                    uploadStep.remove();
+                                } else {
+                                    uploadStep.hidden = false;
+                                    uploadStep.setAttribute('aria-hidden', 'false');
+                                }
+                            }
+
+                            const uploadAction = document.querySelector('[data-sepa-upload]');
+                            if (uploadAction) {
+                                const uploadWrapper = uploadAction.querySelector('.account-sepa-request__upload');
+                                if (uploadWrapper) {
+                                    if (awaitingValidation) {
+                                        uploadWrapper.classList.add('account-sepa-request__upload--locked');
+                                        uploadWrapper.setAttribute('data-locked', 'true');
+                                    } else {
+                                        uploadWrapper.classList.remove('account-sepa-request__upload--locked');
+                                        uploadWrapper.removeAttribute('data-locked');
+                                    }
+                                }
+
+                                const uploadContainer = uploadAction.querySelector('[data-document-upload]');
+                                if (uploadContainer) {
+                                    uploadContainer.dataset.locked = awaitingValidation ? 'true' : 'false';
+                                }
+
+                                const fileLabel = uploadAction.querySelector('[data-document-label]');
+                                if (fileLabel) {
+                                    if (awaitingValidation) {
+                                        fileLabel.remove();
+                                    } else {
+                                        fileLabel.hidden = false;
+                                        fileLabel.setAttribute('aria-hidden', 'false');
+                                    }
+                                }
+
+                                const fileHint = uploadAction.querySelector('.file-hint');
+                                if (fileHint) {
+                                    if (awaitingValidation) {
+                                        fileHint.remove();
+                                    } else {
+                                        fileHint.hidden = false;
+                                        fileHint.setAttribute('aria-hidden', 'false');
+                                    }
+                                }
+
+                                const fileInput = uploadAction.querySelector('input[type="file"]');
+                                if (fileInput) {
+                                    if (awaitingValidation) {
+                                        fileInput.setAttribute('disabled', 'disabled');
+                                        fileInput.setAttribute('hidden', '');
+                                        fileInput.setAttribute('aria-hidden', 'true');
+                                    } else {
+                                        fileInput.removeAttribute('disabled');
+                                        fileInput.removeAttribute('hidden');
+                                        fileInput.setAttribute('aria-hidden', 'false');
+                                    }
+                                }
+
+                                const removeButton = uploadAction.querySelector('[data-document-remove]');
+                                if (removeButton) {
+                                    if (awaitingValidation) {
+                                        removeButton.remove();
+                                    } else {
+                                        const hasServerDocument = Boolean(
+                                            sepaData
+                                            && sepaData.documents
+                                            && sepaData.documents.signed
+                                            && (
+                                                sepaData.documents.signed.url
+                                                || sepaData.documents.signed.filename
+                                                || sepaData.documents.signed.hash
+                                            )
+                                        );
+                                        removeButton.hidden = !hasServerDocument;
+                                        removeButton.setAttribute('aria-hidden', hasServerDocument ? 'false' : 'true');
+                                    }
                                 }
                             }
                         }
@@ -994,6 +1270,8 @@
                 });
             };
 
+            paymentActivation.__goUpdatePanels = updatePanels;
+
             const setGenerated = (value) => {
                 generated = value;
                 if (detail) {
@@ -1001,6 +1279,8 @@
                 }
                 updatePanels(currentState);
             };
+
+            paymentActivation.__goSetGenerated = setGenerated;
 
             const initialState = paymentActivation.getAttribute('data-state') || 'disabled';
             currentState = initialState;
@@ -1052,8 +1332,10 @@
             const linkElement = container.querySelector('[data-document-link]');
             const placeholder = container.querySelector('[data-document-placeholder]');
             const removeButton = container.querySelector('[data-document-remove]');
+            const hintElement = container.querySelector('.file-hint');
             const defaultLabel = container.dataset.defaultLabel || (label ? label.textContent : '') || '';
             const documentType = container.dataset.documentType || '';
+            let locked = container.dataset.locked === 'true';
 
             let initialLabel = label ? label.textContent : defaultLabel;
             let initialSize = sizeElement && !sizeElement.hasAttribute('hidden') ? sizeElement.textContent : '';
@@ -1083,8 +1365,12 @@
             };
 
             const renderState = () => {
+                container.classList.toggle('file-upload--locked', locked);
+
                 if (label) {
                     label.textContent = state.hasDocument ? state.label : defaultLabel;
+                    label.hidden = locked;
+                    label.setAttribute('aria-hidden', locked ? 'true' : 'false');
                 }
 
                 if (nameElement) {
@@ -1103,6 +1389,11 @@
                     sizeElement.textContent = showSize ? state.size : '';
                 }
 
+                if (hintElement) {
+                    hintElement.hidden = locked;
+                    hintElement.setAttribute('aria-hidden', locked ? 'true' : 'false');
+                }
+
                 if (linkElement) {
                     const hasLink = state.hasDocument && state.url !== '';
                     if (hasLink) {
@@ -1117,12 +1408,19 @@
                 }
 
                 if (placeholder) {
-                    placeholder.hidden = state.hasDocument;
-                    placeholder.setAttribute('aria-hidden', state.hasDocument ? 'true' : 'false');
+                    const hidePlaceholder = state.hasDocument || locked;
+                    placeholder.hidden = hidePlaceholder;
+                    placeholder.setAttribute('aria-hidden', hidePlaceholder ? 'true' : 'false');
                 }
 
                 if (removeButton) {
-                    removeButton.hidden = !state.hasDocument;
+                    const showRemove = state.hasDocument && !locked;
+                    removeButton.hidden = !showRemove;
+                    removeButton.setAttribute('aria-hidden', showRemove ? 'false' : 'true');
+                }
+
+                if (input) {
+                    input.disabled = locked;
                 }
             };
 
@@ -1144,6 +1442,7 @@
                     input,
                     container,
                     reason,
+                    locked,
                 };
             };
 
@@ -1182,9 +1481,22 @@
                 registerState('sync');
             };
 
+            const setLocked = (value) => {
+                const nextLocked = Boolean(value);
+                if (nextLocked === locked) {
+                    return;
+                }
+
+                locked = nextLocked;
+                container.dataset.locked = locked ? 'true' : 'false';
+                renderState();
+                registerState(locked ? 'lock' : 'unlock');
+            };
+
             if (documentType) {
                 documentUploadControllers[documentType] = {
                     applyServerState,
+                    setLocked,
                 };
             }
 
@@ -1192,6 +1504,10 @@
 
             if (container && input) {
                 container.addEventListener('click', (event) => {
+                    if (locked) {
+                        return;
+                    }
+
                     if (!input) {
                         return;
                     }
@@ -1211,6 +1527,10 @@
 
             if (removeButton) {
                 removeButton.addEventListener('click', (event) => {
+                    if (locked) {
+                        return;
+                    }
+
                     event.preventDefault();
                     revokeTemporaryUrl();
                     state.hasDocument = false;
@@ -1229,6 +1549,11 @@
 
             if (input) {
                 input.addEventListener('change', () => {
+                    if (locked) {
+                        renderState();
+                        return;
+                    }
+
                     if (!input.files || input.files.length === 0) {
                         renderState();
                         return;

@@ -241,6 +241,24 @@ class EventCatalog
             'level'    => 'error',
             'message'  => 'Error en el cobro de {{context.amount}} en la garantía {{context.guarantee_label}}.',
         ],
+        'sepa.signed_uploaded' => [
+            'label'    => 'Mandato SEPA recibido',
+            'category' => 'finance',
+            'level'    => 'info',
+            'message'  => 'Mandato SEPA firmado enviado por {{context.user_name}}.',
+        ],
+        'sepa.activated' => [
+            'label'    => 'Domiciliación activada',
+            'category' => 'finance',
+            'level'    => 'success',
+            'message'  => 'Domiciliación bancaria activada para {{context.user_name}}.',
+        ],
+        'sepa.deactivated' => [
+            'label'    => 'Domiciliación desactivada',
+            'category' => 'finance',
+            'level'    => 'warning',
+            'message'  => 'Domiciliación bancaria inhabilitada para {{context.user_name}}.',
+        ],
         'settings.updated' => [
             'label'    => 'Ajustes modificados',
             'category' => 'system',

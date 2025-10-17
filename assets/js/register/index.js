@@ -27,6 +27,51 @@
   const SWIFT_REGEX = /^[A-Za-z]{4}[A-Za-z]{2}[A-Za-z0-9]{2}([A-Za-z0-9]{3})?$/;
 
   const getRegisterConfig = () => window.__GO_REGISTER__ || {};
+  const getSepaConfig = () => {
+    const config = getRegisterConfig();
+    const raw = config && typeof config === 'object' ? config.sepa : null;
+    return raw && typeof raw === 'object' ? raw : {};
+  };
+
+  const sepaConfig = getSepaConfig();
+  const sepaTemplateUrl = typeof sepaConfig.templateUrl === 'string' ? sepaConfig.templateUrl.trim() : '';
+  const sepaCreditor = sepaConfig.creditor && typeof sepaConfig.creditor === 'object'
+    ? sepaConfig.creditor
+    : {};
+  const sepaReferencePrefix = typeof sepaConfig.referencePrefix === 'string'
+    && sepaConfig.referencePrefix.trim() !== ''
+      ? sepaConfig.referencePrefix.trim().toUpperCase()
+      : 'GO';
+  const sepaFontkitUrl = typeof sepaConfig.fontkitUrl === 'string' ? sepaConfig.fontkitUrl.trim() : '';
+  const sepaFontUrl = typeof sepaConfig.fontUrl === 'string' ? sepaConfig.fontUrl.trim() : '';
+
+  const toAbsoluteUrl = (relativePath) => {
+    if (typeof relativePath !== 'string' || relativePath.trim() === '') {
+      return '';
+    }
+    try {
+      return new URL(relativePath, import.meta.url).href;
+    } catch (error) {
+      console.warn('[register] asset url resolution failed', { relativePath, error });
+      return '';
+    }
+  };
+
+  const uniqueNonEmptyStrings = (values) => {
+    const seen = new Set();
+    return values.reduce((acc, value) => {
+      if (typeof value !== 'string') {
+        return acc;
+      }
+      const trimmed = value.trim();
+      if (trimmed === '' || seen.has(trimmed)) {
+        return acc;
+      }
+      seen.add(trimmed);
+      acc.push(trimmed);
+      return acc;
+    }, []);
+  };
 
   const getRestRoot = () => {
     const base = (getRegisterConfig().rest && getRegisterConfig().rest.root)
@@ -42,6 +87,20 @@
       window.clearTimeout(timeout);
       timeout = window.setTimeout(() => fn.apply(null, args), delay);
     };
+  };
+
+  const sepaMandateState = {
+    currentPromise: null,
+    blob: null,
+    filename: '',
+    reference: '',
+    snapshot: null,
+    templateBytes: null,
+    fontBytes: null,
+    fontkitRegistered: false,
+    fontSource: '',
+    generatedAt: undefined,
+    lastError: '',
   };
 
   const cleanDigits = (value, maxLength) => value.replace(/\D/g, '').slice(0, maxLength);
@@ -190,6 +249,8 @@
       emailCheckController: null,
       lastCheckedEmail: '',
       sepaEdited: new Set(),
+      sepaMandateStatus: 'idle',
+      sepaReference: '',
       verification: {
         token: '',
         email: '',
@@ -198,6 +259,65 @@
       },
       verifyLockedUntil: 0,
     };
+
+    const sepaConfigAvailable = sepaTemplateUrl !== '';
+
+    const getSepaPaymentType = () => {
+      const raw = typeof sepaCreditor.payment_type === 'string'
+        ? sepaCreditor.payment_type.toLowerCase()
+        : '';
+      return raw && (raw === 'recurrente' || raw === 'unico') ? raw : 'recurrente';
+    };
+
+    const shouldGenerateSepa = () => {
+      if (!sepaConfigAvailable) {
+        return false;
+      }
+      if (!enableSepaField || !enableSepaField.checked) {
+        return false;
+      }
+      if (state.selectedChannel === INDIVIDUAL_CHANNEL) {
+        return false;
+      }
+      return true;
+    };
+
+    const buildSepaFilename = (reference) => {
+      const safe = (reference || '')
+        .toString()
+        .replace(/[^A-Za-z0-9-]/g, '')
+        .toLowerCase();
+      return safe ? `mandato-sepa-${safe}.pdf` : 'mandato-sepa.pdf';
+    };
+
+    const generateReferenceValue = () => {
+      const timestamp = Date.now().toString(36).toUpperCase();
+      const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+      const raw = `${sepaReferencePrefix}-${timestamp}-${random}`
+        .replace(/[^A-Z0-9-]/g, '')
+        .slice(0, 40);
+      return raw || `${sepaReferencePrefix}-${timestamp}`;
+    };
+
+    const ensureSepaReference = () => {
+      if (!state.sepaReference) {
+        state.sepaReference = generateReferenceValue();
+      }
+      return state.sepaReference;
+    };
+
+    const normalizeIbanValue = (value) => (value || '').replace(/\s+/g, '').toUpperCase();
+
+    const getSepaSnapshot = () => ({
+      name: getValue('sepa_name'),
+      address: getValue('sepa_address'),
+      postalCode: getValue('sepa_postal_code'),
+      city: getValue('sepa_city'),
+      state: getValue('sepa_state'),
+      country: sepaCountryField ? sepaCountryField.value.trim() : '',
+      swift: sepaSwiftField ? sepaSwiftField.value.trim().toUpperCase() : '',
+      iban: normalizeIbanValue(sepaIbanField ? sepaIbanField.value : ''),
+    });
 
     const isStepAvailable = (stepNumber) => state.stepSequence.includes(stepNumber);
     const getStepNumberAtPosition = (position) => {
@@ -646,15 +766,55 @@
         }
         const visible = isStepAvailable(stepNumber);
         if (!visible) {
+          const activeElement = document.activeElement;
+          if (activeElement && step.contains(activeElement) && typeof activeElement.blur === 'function') {
+            activeElement.blur();
+          }
           step.classList.remove('active');
           step.hidden = true;
           step.setAttribute('aria-hidden', 'true');
           return;
         }
         const isActive = stepNumber === activeNumber;
+        if (!isActive) {
+          const activeElement = document.activeElement;
+          if (activeElement && step.contains(activeElement) && typeof activeElement.blur === 'function') {
+            activeElement.blur();
+          }
+        }
         step.classList.toggle('active', isActive);
         step.hidden = !isActive;
         step.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+      });
+      window.requestAnimationFrame(() => {
+        const activeStep = document.querySelector('.form-step.active');
+        if (!activeStep) {
+          return;
+        }
+        if (activeStep.contains(document.activeElement)) {
+          return;
+        }
+        const focusSelector = 'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])';
+        const focusTarget = activeStep.querySelector(focusSelector);
+        if (focusTarget && typeof focusTarget.focus === 'function') {
+          try {
+            focusTarget.focus({ preventScroll: true });
+          } catch (error) {
+            focusTarget.focus();
+          }
+          return;
+        }
+        if (typeof activeStep.focus === 'function') {
+          activeStep.setAttribute('tabindex', '-1');
+          try {
+            activeStep.focus({ preventScroll: true });
+          } catch (error) {
+            activeStep.focus();
+          }
+          activeStep.addEventListener('blur', () => {
+            activeStep.removeAttribute('tabindex');
+          }, { once: true });
+        }
       });
     };
 
@@ -1163,6 +1323,9 @@
     const markSepaEdited = (field) => {
       if (!field) return;
       state.sepaEdited.add(field.id);
+      if (shouldGenerateSepa()) {
+        invalidateSepaMandate();
+      }
     };
 
     const prefillSepaFields = () => {
@@ -1176,6 +1339,7 @@
         { target: 'sepa_city', source: 'company_city' },
         { target: 'sepa_state', source: 'company_province' },
       ];
+      let changed = false;
       entries.forEach(({ target, source, get }) => {
         const field = document.getElementById(target);
         if (!field || state.sepaEdited.has(field.id)) {
@@ -1184,8 +1348,12 @@
         const value = typeof get === 'function' ? get() : getValue(source || '');
         if (value && !field.value) {
           field.value = value;
+          changed = true;
         }
       });
+      if (changed && shouldGenerateSepa()) {
+        invalidateSepaMandate();
+      }
     };
 
     const updateSummary = () => {
@@ -1279,7 +1447,28 @@
       }
       setVisibility(summary.sepaStatusItem, sepaActive);
       if (sepaActive && summary.sepaStatus) {
-        summary.sepaStatus.textContent = 'Activada';
+        let sepaStatusText = 'Solicitado';
+        switch (state.sepaMandateStatus) {
+          case 'generating':
+            sepaStatusText = 'Generando mandato…';
+            break;
+          case 'ready':
+            sepaStatusText = 'Mandato pendiente de firma';
+            break;
+          case 'error':
+            sepaStatusText = 'Error al generar el mandato';
+            break;
+          case 'dirty':
+            sepaStatusText = 'Pendiente de generar mandato';
+            break;
+          case 'idle':
+          default:
+            sepaStatusText = 'Solicitado';
+            break;
+        }
+        summary.sepaStatus.textContent = sepaStatusText;
+      } else if (summary.sepaStatus) {
+        summary.sepaStatus.textContent = sepaConfigAvailable ? '—' : 'No disponible';
       }
 
       if (summary.preferencesGroup) {
@@ -1318,6 +1507,330 @@
       }
     };
 
+    const setSepaStatus = (status) => {
+      if (state.sepaMandateStatus !== status) {
+        state.sepaMandateStatus = status;
+        updateSummary();
+      }
+    };
+
+    const resetSepaMandateState = () => {
+      sepaMandateState.currentPromise = null;
+      sepaMandateState.blob = null;
+      sepaMandateState.filename = '';
+      sepaMandateState.snapshot = null;
+      sepaMandateState.reference = '';
+      sepaMandateState.generatedAt = undefined;
+      sepaMandateState.lastError = '';
+    };
+
+    const invalidateSepaMandate = () => {
+      resetSepaMandateState();
+      if (shouldGenerateSepa()) {
+        setSepaStatus('dirty');
+      } else {
+        state.sepaReference = '';
+        setSepaStatus('idle');
+      }
+    };
+
+    const snapshotsAreEqual = (a, b) => {
+      if (!a || !b) {
+        return false;
+      }
+      const keys = ['name', 'address', 'postalCode', 'city', 'state', 'country', 'swift', 'iban'];
+      return keys.every((key) => (a[key] || '') === (b[key] || ''));
+    };
+
+    const generateSepaMandate = async (snapshot) => {
+      if (!sepaTemplateUrl) {
+        throw new Error('sepa_template_missing');
+      }
+      if (typeof PDFLib === 'undefined' || !PDFLib.PDFDocument) {
+        throw new Error('pdf_lib_unavailable');
+      }
+
+      const reference = ensureSepaReference();
+
+      if (!sepaMandateState.templateBytes) {
+        const templateResponse = await fetch(sepaTemplateUrl, { credentials: 'same-origin' });
+        if (!templateResponse.ok) {
+          throw new Error('sepa_template_fetch_failed');
+        }
+        sepaMandateState.templateBytes = await templateResponse.arrayBuffer();
+      }
+
+      const pdfDoc = await PDFLib.PDFDocument.load(sepaMandateState.templateBytes);
+
+      const fontkitCandidates = uniqueNonEmptyStrings([
+        sepaFontkitUrl,
+        toAbsoluteUrl('./fontkit.umd.min.js'),
+      ]);
+      let fontkitLoaded = sepaMandateState.fontkitRegistered && typeof globalThis.fontkit !== 'undefined';
+
+      if (!fontkitLoaded) {
+        for (const candidate of fontkitCandidates) {
+          try {
+            await import(candidate);
+            if (globalThis.fontkit) {
+              sepaMandateState.fontkitRegistered = true;
+              fontkitLoaded = true;
+              break;
+            }
+          } catch (error) {
+            console.warn('[register] fontkit load failed', { url: candidate, error });
+          }
+        }
+      }
+
+      if (fontkitLoaded && globalThis.fontkit) {
+        try {
+          pdfDoc.registerFontkit(globalThis.fontkit);
+        } catch (error) {
+          console.warn('[register] fontkit register failed', error);
+        }
+      }
+
+      if (!sepaMandateState.fontBytes) {
+        const fontCandidates = uniqueNonEmptyStrings([
+          sepaFontUrl,
+          toAbsoluteUrl('../fonts/RobotoMono-Regular.ttf'),
+        ]);
+        for (const candidate of fontCandidates) {
+          try {
+            const fontResponse = await fetch(candidate, { credentials: 'same-origin' });
+            if (!fontResponse.ok) {
+              throw new Error(`HTTP ${fontResponse.status}`);
+            }
+            sepaMandateState.fontBytes = await fontResponse.arrayBuffer();
+            sepaMandateState.fontSource = candidate;
+            break;
+          } catch (error) {
+            console.warn('[register] sepa font fetch failed', { url: candidate, error });
+          }
+        }
+      }
+
+      let activeFont = null;
+      let appearanceFontName = '';
+
+      if (sepaMandateState.fontBytes) {
+        try {
+          activeFont = await pdfDoc.embedFont(sepaMandateState.fontBytes);
+          if (activeFont && typeof activeFont.name === 'string') {
+            appearanceFontName = activeFont.name;
+          }
+        } catch (error) {
+          console.warn('[register] sepa custom font embed failed', error);
+        }
+      }
+
+      if (!activeFont) {
+        try {
+          const fallbackName = (PDFLib.StandardFonts && PDFLib.StandardFonts.Helvetica)
+            ? PDFLib.StandardFonts.Helvetica
+            : 'Helvetica';
+          activeFont = await pdfDoc.embedStandardFont(fallbackName);
+          if (activeFont && typeof activeFont.name === 'string') {
+            appearanceFontName = activeFont.name;
+          } else {
+            appearanceFontName = typeof fallbackName === 'string' ? fallbackName : 'Helvetica';
+          }
+        } catch (error) {
+          console.error('[register] sepa fallback font embed failed', error);
+          throw new Error('sepa_font_embed_failed');
+        }
+      }
+
+      const resolvedFontName = appearanceFontName || 'Helvetica';
+      const form = pdfDoc.getForm();
+
+      if (form && PDFLib?.PDFName && PDFLib?.PDFBool && typeof pdfDoc.catalog?.lookup === 'function') {
+        try {
+          const acroForm = pdfDoc.catalog.lookup(PDFLib.PDFName.of('AcroForm'));
+          if (acroForm && typeof acroForm.set === 'function') {
+            acroForm.set(PDFLib.PDFName.of('NeedAppearances'), PDFLib.PDFBool.True);
+          }
+        } catch (error) {
+          console.warn('[register] Unable to mark AcroForm for appearances', error);
+        }
+      }
+
+      const creditorCountry = typeof sepaCreditor.country === 'string' && sepaCreditor.country
+        ? sepaCreditor.country
+        : 'España';
+      const creditorPostal = typeof sepaCreditor.postal_code === 'string' ? sepaCreditor.postal_code : '';
+      const creditorCity = typeof sepaCreditor.city === 'string' ? sepaCreditor.city : '';
+      const creditorProvince = typeof sepaCreditor.province === 'string' ? sepaCreditor.province : '';
+      const debtorCountry = snapshot.country || creditorCountry;
+      const signatureLocality = creditorProvince || snapshot.city || '';
+      const signatureDate = new Date();
+      const formattedSignatureDate = signatureDate.toLocaleDateString('es-ES');
+
+      const fieldMap = {
+        pdf_acreedor_referencia: reference,
+        pdf_acreedor_id: sepaCreditor.id || '',
+        pdf_acreedor_nombre: sepaCreditor.name || '',
+        pdf_acreedor_direccion: sepaCreditor.address || '',
+        pdf_acreedor_pais: creditorCountry,
+        pdf_acreedor_cp: creditorPostal,
+        pdf_acreedor_poblacion: creditorCity,
+        pdf_acreedor_provincia: creditorProvince,
+        pdf_deudor_nombre: snapshot.name,
+        pdf_deudor_direccion: snapshot.address,
+        pdf_deudor_pais: debtorCountry,
+        pdf_deudor_cp: snapshot.postalCode,
+        pdf_deudor_poblacion: snapshot.city,
+        pdf_deudor_provincia: snapshot.state,
+        pdf_deudor_swift: snapshot.swift,
+        pdf_deudor_iban: formatIban(snapshot.iban || ''),
+        pdf_deudor_firma_fecha: formattedSignatureDate,
+        pdf_deudor_firma_localidad: signatureLocality,
+      };
+
+      const editableFields = new Set(['pdf_deudor_firma', 'pdf_deudor_firma_fecha', 'pdf_deudor_firma_localidad']);
+
+      Object.entries(fieldMap).forEach(([name, value]) => {
+        const stringValue = value === undefined || value === null ? '' : String(value);
+        if (stringValue === '') {
+          return;
+        }
+        try {
+          const field = form.getTextField(name);
+          field.setText(stringValue);
+          field.setFontSize(9);
+          if (field.acroField && typeof field.acroField.setDefaultAppearance === 'function') {
+            field.acroField.setDefaultAppearance(`0 0 0 rg /${resolvedFontName} 9 Tf`);
+          }
+          if (typeof field.updateAppearances === 'function') {
+            field.updateAppearances(activeFont);
+          }
+          if (!editableFields.has(name) && typeof field.enableReadOnly === 'function') {
+            field.enableReadOnly();
+          }
+        } catch (error) {
+          console.warn('[register] Missing PDF field', name, error);
+        }
+      });
+
+      const paymentType = getSepaPaymentType();
+      try {
+        const recurrentField = form.getCheckBox('pdf_deudor_pago_recurrente');
+        const uniqueField = form.getCheckBox('pdf_deudor_pago_unico');
+        if (paymentType === 'unico') {
+          uniqueField.check();
+          recurrentField.uncheck();
+        } else {
+          recurrentField.check();
+          uniqueField.uncheck();
+        }
+        if (typeof recurrentField.enableReadOnly === 'function') {
+          recurrentField.enableReadOnly();
+        }
+        if (typeof uniqueField.enableReadOnly === 'function') {
+          uniqueField.enableReadOnly();
+        }
+      } catch (error) {
+        console.warn('[register] Unable to set payment checkbox', error);
+      }
+
+      if (form && typeof form.getSignature === 'function') {
+        try {
+          const signatureField = form.getSignature('pdf_deudor_firma');
+          if (signatureField && typeof signatureField.disableReadOnly === 'function') {
+            signatureField.disableReadOnly();
+          }
+          if (
+            signatureField
+            && signatureField.acroField
+            && signatureField.acroField.dict
+            && PDFLib?.PDFName
+            && PDFLib?.PDFNumber
+            && typeof signatureField.acroField.dict.set === 'function'
+          ) {
+            try {
+              signatureField.acroField.dict.set(
+                PDFLib.PDFName.of('Ff'),
+                PDFLib.PDFNumber.of(0)
+              );
+              if (typeof signatureField.acroField.dict.delete === 'function') {
+                signatureField.acroField.dict.delete(PDFLib.PDFName.of('V'));
+              }
+            } catch (innerError) {
+              console.warn('[register] Unable to reset signature field flags', innerError);
+            }
+          }
+        } catch (error) {
+          console.warn('[register] Unable to keep signature field editable', error);
+        }
+      }
+
+      const generatedAt = signatureDate.toISOString();
+      const filled = await pdfDoc.save({ updateFieldAppearances: false });
+      const blob = new Blob([filled], { type: 'application/pdf' });
+      const filename = buildSepaFilename(reference);
+
+      return { blob, filename, reference, generatedAt };
+    };
+
+    const ensureSepaMandateReady = async ({ showErrors = false } = {}) => {
+      if (!shouldGenerateSepa()) {
+        state.sepaReference = '';
+        resetSepaMandateState();
+        setSepaStatus('idle');
+        return null;
+      }
+
+      const snapshot = getSepaSnapshot();
+
+      if (
+        sepaMandateState.blob
+        && sepaMandateState.snapshot
+        && snapshotsAreEqual(sepaMandateState.snapshot, snapshot)
+      ) {
+        setSepaStatus('ready');
+        const reference = state.sepaReference || sepaMandateState.reference || ensureSepaReference();
+        return {
+          blob: sepaMandateState.blob,
+          filename: sepaMandateState.filename || buildSepaFilename(reference),
+          reference,
+          generatedAt: sepaMandateState.generatedAt || new Date().toISOString(),
+        };
+      }
+
+      if (!sepaMandateState.currentPromise) {
+        setSepaStatus('generating');
+        sepaMandateState.currentPromise = generateSepaMandate(snapshot);
+      }
+
+      try {
+        const result = await sepaMandateState.currentPromise;
+        sepaMandateState.currentPromise = null;
+        sepaMandateState.blob = result.blob;
+        sepaMandateState.filename = result.filename;
+        sepaMandateState.snapshot = snapshot;
+        sepaMandateState.reference = result.reference;
+        sepaMandateState.generatedAt = result.generatedAt;
+        sepaMandateState.lastError = '';
+        state.sepaReference = result.reference;
+        setSepaStatus('ready');
+        return result;
+      } catch (error) {
+        console.error('[register] sepa mandate error', error);
+        sepaMandateState.currentPromise = null;
+        sepaMandateState.blob = null;
+        sepaMandateState.snapshot = null;
+        sepaMandateState.reference = '';
+        sepaMandateState.generatedAt = undefined;
+        sepaMandateState.lastError = error && error.message ? error.message : 'unknown_error';
+        setSepaStatus('error');
+        if (showErrors) {
+          setRegisterError('No se ha podido generar el mandato SEPA. Revisa los datos e inténtalo de nuevo.');
+        }
+        return null;
+      }
+    };
+
     const handleChannelSelection = (channel) => {
       const previousChannel = state.selectedChannel;
       state.selectedChannel = channel;
@@ -1337,6 +1850,7 @@
       const channelChanged = previousChannel && previousChannel !== channel;
       if (channelChanged) {
         state.sepaEdited.clear();
+        invalidateSepaMandate();
       }
       if (channelChanged) {
         state.currentStep = 1;
@@ -1371,7 +1885,11 @@
           section.querySelectorAll('.file-upload').forEach((container) => {
             clearUploadError(container);
           });
+          if (checkbox === enableSepaField) {
+            invalidateSepaMandate();
+          }
         } else if (checkbox === enableSepaField) {
+          invalidateSepaMandate();
           prefillSepaFields();
         }
         updateStep2ButtonState();
@@ -1390,7 +1908,7 @@
       goToStep(2);
     };
 
-    const step2Handler = () => {
+    const step2Handler = async () => {
       if (!isStepAvailable(2)) {
         updateSummary();
         const position = state.stepSequence.indexOf(3);
@@ -1402,6 +1920,12 @@
         return;
       }
       updateSummary();
+      if (shouldGenerateSepa()) {
+        const mandate = await ensureSepaMandateReady({ showErrors: true });
+        if (!mandate) {
+          return;
+        }
+      }
       const position = state.stepSequence.indexOf(3);
       const nextStep = position >= 0 ? position + 1 : state.stepSequence.length;
       goToStep(nextStep);
@@ -1515,6 +2039,21 @@
 
       try {
         const formData = buildRegistrationPayload();
+        let sepaPayload = null;
+        if (shouldGenerateSepa()) {
+          sepaPayload = await ensureSepaMandateReady({ showErrors: true });
+          if (!sepaPayload) {
+            registerBtn.classList.remove('is-loading');
+            setButtonDisabled(registerBtn, false);
+            return;
+          }
+          formData.append('sepa_document', sepaPayload.blob, sepaPayload.filename);
+          formData.append('sepa_reference', sepaPayload.reference);
+          formData.append('sepa_generated_at', sepaPayload.generatedAt || new Date().toISOString());
+        } else {
+          formData.append('sepa_reference', '');
+        }
+        setRegisterError('');
         const response = await window.fetch(buildRestUrl('register'), {
           method: 'POST',
           body: formData,

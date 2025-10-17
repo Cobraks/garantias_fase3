@@ -264,6 +264,37 @@ if (! empty($is_add_guarantee)) {
             'manageSepa'           => __('Gestionar SEPA', 'garantias-online-360vo'),
             'manageSepaTitle'      => __('Gestionar SEPA', 'garantias-online-360vo'),
             'manageSepaTitleTemplate' => __('Gestionar SEPA de %s', 'garantias-online-360vo'),
+            'manageSepaPendingTitle' => __('Mandato pendiente de firma', 'garantias-online-360vo'),
+            'manageSepaPendingDescription' => __('Descarga el mandato generado y solicítale al profesional que lo firme.', 'garantias-online-360vo'),
+            'manageSepaSignedTitle' => __('Mandato firmado por el profesional', 'garantias-online-360vo'),
+            'manageSepaSignedDescription' => __('Revisa el documento adjunto antes de activar la domiciliación bancaria.', 'garantias-online-360vo'),
+            'manageSepaPendingStatus' => __('Pendiente de firma', 'garantias-online-360vo'),
+            'manageSepaValidationStatus' => __('Pendiente de validación', 'garantias-online-360vo'),
+            'manageSepaActivationStatus' => __('Pendiente de domiciliación', 'garantias-online-360vo'),
+            'manageSepaNoDocuments' => __('No hay documentos SEPA disponibles.', 'garantias-online-360vo'),
+            'manageSepaDownload'   => __('Descargar mandato', 'garantias-online-360vo'),
+            'manageSepaViewSigned' => __('Ver mandato firmado', 'garantias-online-360vo'),
+            'manageSepaActivate'   => __('Activar domiciliación bancaria', 'garantias-online-360vo'),
+            'manageSepaActivateHelp' => __('Confirma la activación únicamente cuando el mandato firmado sea correcto.', 'garantias-online-360vo'),
+            'manageSepaConfirmTitle' => __('Confirmar SEPA', 'garantias-online-360vo'),
+            'manageSepaConfirmMessage' => __('Confirmo que %s nos ha enviado el mandato SEPA firmado y todos los datos son correctos.', 'garantias-online-360vo'),
+            'manageSepaConfirmAccept' => __('Activar domiciliación bancaria', 'garantias-online-360vo'),
+            'manageSepaConfirmCancel' => __('Cancelar', 'garantias-online-360vo'),
+            'manageSepaConfirmNote' => __('El método de pago por domiciliación bancaria se activará.', 'garantias-online-360vo'),
+            'manageSepaConfirmError' => __('No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.', 'garantias-online-360vo'),
+            'manageSepaConfirmLoading' => __('Activando…', 'garantias-online-360vo'),
+            'manageSepaConfirmCheckbox' => __('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'),
+            'manageSepaConfirmActorFallback' => __('este profesional', 'garantias-online-360vo'),
+            'manageSepaConfirmReferenceLabel' => __('Referencia', 'garantias-online-360vo'),
+            'manageSepaDeactivate' => __('Inhabilitar domiciliación bancaria', 'garantias-online-360vo'),
+            'manageSepaDeactivateHelp' => __('Desactiva la domiciliación bancaria cuando el cliente quiera volver a gestionar los cobros manualmente.', 'garantias-online-360vo'),
+            'manageSepaDeactivateConfirmTitle' => __('Confirmar desactivación de SEPA', 'garantias-online-360vo'),
+            'manageSepaDeactivateConfirmMessage' => __('Confirmo que %s desea inhabilitar la domiciliación bancaria en su cuenta.', 'garantias-online-360vo'),
+            'manageSepaDeactivateConfirmAccept' => __('Inhabilitar domiciliación bancaria', 'garantias-online-360vo'),
+            'manageSepaDeactivateConfirmError' => __('No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.', 'garantias-online-360vo'),
+            'manageSepaDeactivateConfirmLoading' => __('Inhabilitando…', 'garantias-online-360vo'),
+            'manageSepaDeactivateConfirmCheckbox' => __('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'),
+            'manageSepaDeactivateConfirmNote' => __('El método de pago volverá a ser transferencia bancaria.', 'garantias-online-360vo'),
             'dialogSave'           => __('Guardar cambios', 'garantias-online-360vo'),
             'close'                => __('Cerrar', 'garantias-online-360vo'),
         ],
@@ -278,9 +309,47 @@ if (! empty($is_add_guarantee)) {
             'manageOffers' => Svg::icon('manage_offers'),
             'manageSepa' => Svg::icon('payment'),
             'save' => Svg::icon('save'),
+            'pdf' => Svg::icon('pdf'),
         ],
     ];
     ?>
+    <div
+        class="confirm-modal confirm-modal--clients"
+        data-sepa-confirm-modal
+        aria-hidden="true"
+        hidden
+    >
+        <div
+            class="confirm-modal__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="client-sepa-confirm-title"
+            tabindex="-1"
+        >
+            <button
+                type="button"
+                class="confirm-modal__close"
+                aria-label="<?php esc_attr_e('Cerrar confirmación', 'garantias-online-360vo'); ?>"
+            >
+                &times;
+            </button>
+            <div class="confirm-modal__intro">
+                <h2 id="client-sepa-confirm-title" class="confirm-modal__title"><?php esc_html_e('Confirmar SEPA', 'garantias-online-360vo'); ?></h2>
+                <p class="confirm-modal__subtitle"></p>
+                <p class="confirm-modal__message"></p>
+                <p class="confirm-modal__note"><?php esc_html_e('El método de pago por domiciliación bancaria se activará.', 'garantias-online-360vo'); ?></p>
+            </div>
+            <p class="confirm-modal__error" role="alert" hidden></p>
+            <label class="confirm-modal__checkbox">
+                <input type="checkbox" class="confirm-modal__checkbox-input">
+                <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
+            </label>
+            <div class="confirm-modal__actions">
+                <button type="button" class="confirm-modal__btn confirm-modal__btn--cancel"><?php esc_html_e('Cancelar', 'garantias-online-360vo'); ?></button>
+                <button type="button" class="confirm-modal__btn confirm-modal__btn--confirm" disabled><?php esc_html_e('Activar domiciliación bancaria', 'garantias-online-360vo'); ?></button>
+            </div>
+        </div>
+    </div>
     <script>
         window.__GO_CLIENTES__ = <?php echo wp_json_encode($clients_config); ?>;
     </script>
@@ -402,6 +471,10 @@ if (! empty($is_add_guarantee)) {
             'error'   => __('No se han podido guardar los cambios. Inténtalo de nuevo.', 'garantias-online-360vo'),
             'invalid' => __('Revisa los datos introducidos e inténtalo de nuevo.', 'garantias-online-360vo'),
             'dirty'   => __('Tienes cambios sin guardar.', 'garantias-online-360vo'),
+            'sepaAwaitingValidation' => __('Pendiente de validación', 'garantias-online-360vo'),
+            'sepaAwaitingSignature'  => __('Pendiente de firma', 'garantias-online-360vo'),
+            'sepaAwaitingMessage'    => __('Tu SEPA firmado está pendiente de validación.', 'garantias-online-360vo'),
+            'sepaAwaitingActivation' => __('Pendiente de domiciliación', 'garantias-online-360vo'),
         ],
     ];
     ?>

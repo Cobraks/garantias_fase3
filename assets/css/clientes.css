@@ -35,10 +35,6 @@
     --client-panel-border-strong: var(--border-color-strong);
     --client-panel-shadow: 0 24px 48px rgba(var(--go-color-0f172a-rgb), 0.12);
     --client-card-shadow: 0 10px 24px rgba(var(--go-color-0f172a-rgb), 0.08);
-    --client-accent: var(--primary-color);
-    --client-accent-rgb: var(--go-color-2563eb-rgb);
-    --client-accent-strong: var(--primary-color-hover);
-    --client-accent-soft: var(--primary-color-soft);
     --client-badge-text: var(--primary-color-hover);
     --client-tag-muted-bg: var(--surface-alt);
     --client-tag-muted-text: var(--go-color-475569);
@@ -56,10 +52,6 @@
     --client-panel-border-strong: rgba(191, 219, 254, 0.45);
     --client-panel-shadow: 0 36px 72px rgba(0, 0, 0, 0.65);
     --client-card-shadow: none;
-    --client-accent: var(--primary-color);
-    --client-accent-rgb: var(--go-color-2563eb-rgb);
-    --client-accent-strong: var(--primary-color-strong);
-    --client-accent-soft: var(--primary-color-soft);
     --client-badge-text: rgba(191, 219, 254, 0.92);
     --client-tag-muted-bg: rgba(71, 85, 105, 0.45);
     --client-tag-muted-text: rgba(226, 232, 240, 0.88);
@@ -268,9 +260,9 @@
     box-shadow: none;
 }
 :root[data-theme='dark'] .client-detail__commercial-media {
-    background: rgba(var(--client-accent-rgb), 0.2);
+    background: #1e3a8a;
     color: var(--text-color);
-    box-shadow: inset 0 0 0 1px rgba(var(--client-accent-rgb), 0.35);
+    box-shadow: inset 0 0 0 1px #2563eb;
 }
 :root[data-theme='dark'] .client-detail__status {
     background: rgba(59, 130, 246, 0.18);
@@ -327,10 +319,10 @@
 }
 :root[data-theme='dark'] .client-dialog__close:hover,
 :root[data-theme='dark'] .client-dialog__close:focus-visible {
-    background: rgba(var(--client-accent-rgb), 0.28);
-    border-color: rgba(var(--client-accent-rgb), 0.45);
+    background: #1d4ed8;
+    border-color: #1e40af;
     color: #fff;
-    box-shadow: 0 0 0 3px rgba(var(--client-accent-rgb), 0.2);
+    box-shadow: 0 0 0 3px #1e3a8a;
 }
 :root[data-theme='dark'] .client-dialog__backdrop {
     background-color: rgba(8, 10, 15, 0);
@@ -1091,9 +1083,9 @@
     justify-content: center;
     font-weight: 600;
     font-size: 1rem;
-    background: linear-gradient(135deg, rgba(var(--client-accent-rgb), 0.18), rgba(var(--client-accent-rgb), 0.32));
-    color: var(--client-accent-strong);
-    box-shadow: inset 0 0 0 2px rgba(var(--client-accent-rgb), 0.18);
+    background: linear-gradient(135deg, #e0e7ff, #bfdbfe);
+    color: var(--primary-color-hover);
+    box-shadow: inset 0 0 0 2px #bfdbfe;
 }
 .client-detail__commercial-avatar {
     width: 100%;
@@ -1289,10 +1281,10 @@
 }
 .client-dialog__close:hover,
 .client-dialog__close:focus-visible {
-    background: rgba(var(--client-accent-rgb), 0.12);
-    border-color: rgba(var(--client-accent-rgb), 0.35);
-    color: var(--client-accent);
-    box-shadow: 0 0 0 3px rgba(var(--client-accent-rgb), 0.18);
+    background: #e0e7ff;
+    border-color: #bfdbfe;
+    color: var(--primary-color);
+    box-shadow: 0 0 0 3px #bfdbfe;
 }
 .client-dialog__close svg {
     width: 1rem;
@@ -1466,7 +1458,7 @@
     justify-content: center;
     font-weight: 600;
     background: var(--client-surface-alt);
-    color: var(--client-accent);
+    color: var(--primary-color);
     border: 2px solid var(--client-avatar-border);
 }
 .client-dialog__commercials {
@@ -1564,7 +1556,7 @@
     justify-content: center;
     font-weight: 600;
     background: var(--client-surface-alt);
-    color: var(--client-accent-strong);
+    color: var(--primary-color-hover);
 }
 .client-dialog__card-body {
     display: flex;
@@ -1622,8 +1614,8 @@
     border-color: var(--border-color-strong);
 }
 .client-dialog__card.is-selected .client-dialog__card-chip {
-    background: rgba(var(--client-accent-rgb), 0.18);
-    border-color: rgba(var(--client-accent-rgb), 0.45);
+    background: #e0e7ff;
+    border-color: #2563eb;
     color: var(--text-color);
 }
 .client-dialog__card.is-selected .client-dialog__card-name {
@@ -1662,13 +1654,13 @@
 .client-dialog__result:focus-visible {
     border-color: var(--border-color-strong);
     background: var(--surface-alt);
-    box-shadow: 0 0 0 2px rgba(var(--client-accent-rgb), 0.18);
+    box-shadow: 0 0 0 2px #bfdbfe;
     outline: none;
 }
 .client-dialog__result.is-selected {
-    border-color: var(--client-accent);
-    background: rgba(var(--client-accent-rgb), 0.16);
-    box-shadow: 0 0 0 2px rgba(var(--client-accent-rgb), 0.2);
+    border-color: var(--primary-color);
+    background: #e0e7ff;
+    box-shadow: 0 0 0 2px #bfdbfe;
 }
 .client-dialog__result-media {
     flex: 0 0 auto;
@@ -1690,7 +1682,7 @@
     height: 40px;
     border-radius: 50%;
     background: var(--client-surface);
-    color: var(--client-accent);
+    color: var(--primary-color);
     border: 2px solid var(--client-avatar-border);
 }
 .client-dialog__result-body {
@@ -1726,9 +1718,9 @@
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 .client-dialog__result.is-selected .client-dialog__result-chip {
-    background: rgba(var(--client-accent-rgb), 0.16);
-    border-color: var(--client-accent);
-    color: var(--client-accent-strong);
+    background: #e0e7ff;
+    border-color: var(--primary-color);
+    color: var(--primary-color-hover);
 }
 .client-dialog__result:hover .client-dialog__result-chip,
 .client-dialog__result:focus-visible .client-dialog__result-chip {
@@ -1820,6 +1812,457 @@
 .client-dialog--offers .client-dialog__panel--offers {
     width: min(960px, calc(100vw - 2.5rem));
     min-width: min(960px, calc(100vw - 2.5rem));
+}
+.client-dialog--sepa .client-dialog__panel--simple {
+    max-width: none;
+}
+.client-dialog__panel--sepa {
+    width: min(960px, calc(100vw - 2.5rem));
+    min-width: min(960px, calc(100vw - 2.5rem));
+}
+.client-dialog__body--sepa {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    padding: 2rem 2.5rem 5.75rem;
+    background: var(--surface);
+    max-height: min(72vh, 760px);
+    overflow-y: auto;
+}
+.client-sepa-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+}
+.client-sepa-dialog__status {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+    background: var(--surface-soft);
+}
+.client-sepa-dialog__status--success {
+    border-color: rgba(34, 197, 94, 0.35);
+    background: rgba(34, 197, 94, 0.12);
+    color: var(--success-color, #16a34a);
+}
+.client-sepa-dialog__status--warning {
+    border-color: rgba(234, 179, 8, 0.35);
+    background: rgba(234, 179, 8, 0.12);
+    color: #ca8a04;
+}
+.client-sepa-dialog__status--info {
+    color: var(--text-secondary);
+}
+.client-sepa-dialog__status-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin: 0;
+}
+.client-sepa-dialog__status-value {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+.client-sepa-dialog__cards {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.client-sepa-dialog__details {
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    background: var(--surface);
+    padding: 1.5rem 1.75rem;
+}
+.client-sepa-dialog__details .detail__transfer-toggle {
+    margin: 0;
+}
+.client-sepa-dialog__details .detail__transfer-toggle-summary {
+    padding: 0;
+}
+.client-sepa-dialog__details .detail__transfer-toggle-content {
+    padding: 1rem 0 0;
+}
+.client-sepa-dialog__card {
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    background: var(--surface);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.client-sepa-dialog__card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.25rem;
+    padding: 1.5rem 1.75rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--surface-soft);
+}
+.client-sepa-dialog__card-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.client-sepa-dialog__card-heading h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text-color);
+}
+.client-sepa-dialog__card-description {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+.client-sepa-dialog__card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem 1.75rem 1.75rem;
+    flex: 1 1 auto;
+}
+.client-sepa-dialog__filename {
+    margin: 0;
+    font-weight: 600;
+    color: var(--text-color);
+}
+.client-sepa-dialog__meta {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.client-sepa-dialog__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    align-self: flex-start;
+    padding: 0.65rem 1.15rem;
+    border-radius: 0.85rem;
+    background: var(--primary-color);
+    color: #ffffff;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.client-sepa-dialog__button:hover,
+.client-sepa-dialog__button:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 32px -18px rgba(37, 99, 235, 0.65);
+    outline: none;
+}
+.client-sepa-dialog__button-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    height: 1.1rem;
+}
+.client-sepa-dialog__button-icon svg {
+    width: 100%;
+    height: 100%;
+}
+.client-sepa-dialog__empty {
+    margin: 0;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px dashed var(--border-color);
+    background: var(--surface-soft);
+    color: var(--text-secondary);
+    text-align: center;
+}
+.client-sepa-dialog__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1.5rem;
+}
+.client-sepa-dialog__help {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+.client-sepa-dialog__activate {
+    align-self: flex-start;
+    padding: 0.65rem 1.35rem;
+    border-radius: 999px;
+    border: 1px solid rgba(22, 163, 74, 0.85);
+    background: var(--success-color, #16a34a);
+    color: #ffffff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.client-sepa-dialog__activate:hover,
+.client-sepa-dialog__activate:focus-visible {
+    background: #15803d;
+    border-color: #166534;
+    box-shadow: 0 16px 30px -18px rgba(22, 163, 74, 0.65);
+    outline: none;
+}
+.client-sepa-dialog__deactivate {
+    align-self: flex-start;
+    padding: 0.65rem 1.35rem;
+    border-radius: 999px;
+    border: 1px solid #fca5a5;
+    background: #dc2626;
+    color: #ffffff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.client-sepa-dialog__deactivate:hover,
+.client-sepa-dialog__deactivate:focus-visible {
+    background: #b91c1c;
+    border-color: #ef4444;
+    box-shadow: 0 16px 30px -18px rgba(220, 38, 38, 0.65);
+    outline: none;
+}
+.confirm-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(var(--go-color-0f172a-rgb), 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 16000;
+}
+
+.confirm-modal.is-open {
+    display: flex;
+}
+
+.confirm-modal[hidden] {
+    display: none !important;
+}
+
+.confirm-modal__dialog {
+    position: relative;
+    width: min(520px, calc(100vw - 2.5rem));
+    margin: 0 auto;
+    border-radius: 1.5rem;
+    background: #ffffff;
+    color: #111827;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 32px 72px rgba(15, 23, 42, 0.22);
+    padding: 2.25rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+:root[data-theme='dark'] .confirm-modal__dialog {
+    background: #1f2937;
+    color: #f8fafc;
+    border-color: #334155;
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.55);
+}
+
+:root[data-theme='dark'] .confirm-modal__note {
+    background: #1e3a8a;
+    border-color: #3b82f6;
+    color: #bfdbfe;
+}
+
+.confirm-modal__close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.5rem;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 1.75rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.confirm-modal__intro {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.confirm-modal__title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.confirm-modal__subtitle {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.confirm-modal__message {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.confirm-modal__message strong,
+.confirm-modal__message b {
+    color: var(--text-color);
+}
+
+.confirm-modal__note {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    font-size: 0.95rem;
+}
+
+.confirm-modal__error {
+    margin: -0.5rem 0 0;
+    color: var(--danger-color, #dc2626);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.confirm-modal__checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.confirm-modal__checkbox-input {
+    width: 1.15rem;
+    height: 1.15rem;
+    accent-color: #2563eb;
+}
+
+.confirm-modal__checkbox-label {
+    line-height: 1.5;
+}
+
+.confirm-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.confirm-modal__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    padding: 0.6rem 1.35rem;
+    font-weight: 400;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.confirm-modal__btn--cancel {
+    border-color: #cbd5f5;
+    background: #f8fafc;
+    color: #334155;
+}
+
+.confirm-modal__btn--cancel:hover,
+.confirm-modal__btn--cancel:focus-visible {
+    border-color: #94a3b8;
+    background: #e2e8f0;
+    color: #1f2937;
+    box-shadow: 0 12px 24px -18px rgba(15, 23, 42, 0.2);
+}
+
+.confirm-modal__btn--confirm {
+    background: #2563eb;
+    border-color: #1d4ed8;
+    color: #ffffff;
+    box-shadow: 0 18px 36px -24px rgba(37, 99, 235, 0.6);
+}
+
+.confirm-modal__btn--confirm:hover,
+.confirm-modal__btn--confirm:focus-visible {
+    background: #1d4ed8;
+    border-color: #1e40af;
+    box-shadow: 0 20px 40px -24px rgba(29, 78, 216, 0.65);
+}
+
+.confirm-modal__btn[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+@media (max-width: 640px) {
+    .confirm-modal__dialog {
+        padding: 2rem 1.75rem;
+        gap: 1.25rem;
+    }
+
+    .confirm-modal__actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .confirm-modal__btn {
+        width: 100%;
+    }
+}
+.client-dialog__panel--confirm {
+    width: min(420px, calc(100vw - 2.5rem));
+    min-width: min(420px, calc(100vw - 2.5rem));
+}
+.client-dialog__body--confirm {
+    padding: 2rem 2.5rem 2.5rem;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-color);
+}
+.client-dialog__save--confirm {
+    background: var(--success-color, #16a34a);
+    border-color: rgba(22, 163, 74, 0.85);
+}
+.client-dialog__save--confirm:hover,
+.client-dialog__save--confirm:focus-visible {
+    background: #15803d;
+    border-color: #166534;
+    box-shadow: 0 16px 30px -18px rgba(22, 163, 74, 0.55);
+    outline: none;
+}
+.client-dialog__secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-color);
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+.client-dialog__secondary:hover,
+.client-dialog__secondary:focus-visible {
+    border-color: var(--border-color-strong);
+    background: var(--surface-alt);
+    color: var(--text-color);
+    outline: none;
 }
 .client-dialog--offers .client-dialog__body--offers {
     display: flex;

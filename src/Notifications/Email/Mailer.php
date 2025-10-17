@@ -47,12 +47,66 @@ class Mailer
             $headers[] = 'Content-Type: text/html; charset=UTF-8';
         }
 
-        return wp_mail(
+        $buffer_started = false;
+        if (function_exists('ob_start')) {
+            ob_start();
+            $buffer_started = true;
+        }
+
+        $attachments = $this->normalize_attachments($message->get_attachments());
+
+        $sent = wp_mail(
             $recipients,
             $message->get_subject(),
             $message->get_body(),
             $headers,
-            $message->get_attachments()
+            $attachments
         );
+
+        if ($buffer_started) {
+            $output = ob_get_clean();
+            if (is_string($output) && trim($output) !== '') {
+                $sanitized = function_exists('wp_strip_all_tags') ? wp_strip_all_tags($output) : strip_tags($output);
+                error_log('[Mailer] Unexpected output: ' . trim($sanitized));
+            }
+        }
+
+        return $sent;
+    }
+
+    /**
+     * @param mixed $attachments
+     * @return string[]
+     */
+    private function normalize_attachments($attachments): array
+    {
+        if (! is_array($attachments)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($attachments as $attachment) {
+            if (is_string($attachment)) {
+                $path = trim($attachment);
+                if ($path !== '') {
+                    $normalized[] = $path;
+                }
+                continue;
+            }
+
+            if (! is_array($attachment) || empty($attachment['file'])) {
+                continue;
+            }
+
+            $path = (string) $attachment['file'];
+            if ($path === '') {
+                continue;
+            }
+
+            $normalized[] = $path;
+        }
+
+        return array_values($normalized);
     }
 }

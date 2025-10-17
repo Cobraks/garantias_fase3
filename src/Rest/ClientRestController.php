@@ -5,6 +5,7 @@ namespace GarantiasOnline360VO\Rest;
 use GarantiasOnline360VO\Account\AccountViewModel;
 use GarantiasOnline360VO\ActivityLog\ActivityLogger;
 use GarantiasOnline360VO\GuaranteeCPT;
+use GarantiasOnline360VO\Register\SepaMandateService;
 use WP_Error;
 use WP_Query;
 use WP_REST_Request;
@@ -112,6 +113,40 @@ class ClientRestController
                 [
                     'methods'             => WP_REST_Server::EDITABLE,
                     'callback'            => [__CLASS__, 'update_user_offers'],
+                    'permission_callback' => [__CLASS__, 'permissions_check'],
+                    'args'                => [
+                        'id' => [
+                            'validate_callback' => 'absint',
+                        ],
+                    ],
+                ],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::REST_BASE . '/(?P<id>\d+)/sepa/activate',
+            [
+                [
+                    'methods'             => WP_REST_Server::EDITABLE,
+                    'callback'            => [__CLASS__, 'activate_sepa'],
+                    'permission_callback' => [__CLASS__, 'permissions_check'],
+                    'args'                => [
+                        'id' => [
+                            'validate_callback' => 'absint',
+                        ],
+                    ],
+                ],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::REST_BASE . '/(?P<id>\d+)/sepa/deactivate',
+            [
+                [
+                    'methods'             => WP_REST_Server::EDITABLE,
+                    'callback'            => [__CLASS__, 'deactivate_sepa'],
                     'permission_callback' => [__CLASS__, 'permissions_check'],
                     'args'                => [
                         'id' => [
@@ -379,6 +414,222 @@ class ClientRestController
 
         return new WP_REST_Response(
             self::prepare_offers_response($user_id),
+            200
+        );
+    }
+
+    public static function activate_sepa(WP_REST_Request $request)
+    {
+        if (! self::permissions_check()) {
+            return new WP_REST_Response(
+                ['message' => __('Acceso denegado', 'garantias-online-360vo')],
+                403
+            );
+        }
+
+        $user_id = (int) $request->get_param('id');
+        if ($user_id <= 0) {
+            return new WP_REST_Response(
+                ['message' => __('El cliente indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return new WP_REST_Response(
+                ['message' => __('El cliente indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        $signed_meta = SepaMandateService::get_document_meta($user_id, SepaMandateService::TYPE_SIGNED);
+        if (empty($signed_meta['hash'])) {
+            return new WP_REST_Response(
+                ['message' => __('No hay un mandato SEPA firmado para validar.', 'garantias-online-360vo')],
+                400
+            );
+        }
+
+        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_SIGNED);
+        SepaMandateService::set_activation_flag($user_id, true);
+        SepaMandateService::set_payment_method($user_id, 'domiciliacion');
+
+        $account = AccountViewModel::from_user($user);
+        $payments = $account['payments'] ?? [];
+        $sepa_details = self::format_sepa_details($payments);
+        $payment_info = self::format_payment($payments);
+
+        $account_user = is_array($account['user'] ?? null) ? $account['user'] : [];
+        $name_data = is_array($account_user['name'] ?? null) ? $account_user['name'] : [];
+        $full_name = self::clean_text($account_user['full_name'] ?? '');
+        if ($full_name === '' && ! empty($name_data)) {
+            $full_name = self::clean_text($name_data['full'] ?? '');
+            if ($full_name === '') {
+                $parts = array_filter([
+                    self::clean_text($name_data['first'] ?? ''),
+                    self::clean_text($name_data['last'] ?? ''),
+                ]);
+                if (! empty($parts)) {
+                    $full_name = trim(implode(' ', $parts));
+                }
+            }
+            if ($full_name === '') {
+                $full_name = self::clean_text($name_data['personal'] ?? '');
+            }
+        }
+        if ($full_name === '') {
+            $full_name = self::clean_text($user->display_name);
+        }
+
+        $company_data = is_array($account_user['company'] ?? null) ? $account_user['company'] : [];
+        $company_name = self::clean_text($company_data['name'] ?? '');
+        if ($company_name === '') {
+            $company_name = self::clean_text($company_data['trade_name'] ?? '');
+        }
+
+        $reference = self::clean_text($signed_meta['reference'] ?? '');
+
+        $actor_label = $full_name;
+        if ($company_name !== '' && $full_name !== '' && strcasecmp($company_name, $full_name) !== 0) {
+            $actor_label = sprintf('%s (%s)', $full_name, $company_name);
+        } elseif ($full_name === '' && $company_name !== '') {
+            $actor_label = $company_name;
+        }
+
+        $context = array_merge(
+            self::build_client_log_context($user),
+            [
+                'user_name'          => $actor_label,
+                'document_reference' => $reference,
+            ]
+        );
+
+        ActivityLogger::log(
+            'sepa.activated',
+            [
+                'target_type' => 'user',
+                'target_id'   => (int) $user->ID,
+                'context'     => $context,
+            ]
+        );
+
+        return new WP_REST_Response(
+            [
+                'message' => __('Domiciliación bancaria activada.', 'garantias-online-360vo'),
+                'sepa'    => $sepa_details,
+                'payment' => $payment_info,
+            ],
+            200
+        );
+    }
+
+    public static function deactivate_sepa(WP_REST_Request $request)
+    {
+        if (! self::permissions_check()) {
+            return new WP_REST_Response(
+                ['message' => __('Acceso denegado', 'garantias-online-360vo')],
+                403
+            );
+        }
+
+        $user_id = (int) $request->get_param('id');
+        if ($user_id <= 0) {
+            return new WP_REST_Response(
+                ['message' => __('El cliente indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return new WP_REST_Response(
+                ['message' => __('El cliente indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        $is_active = SepaMandateService::get_activation_flag($user_id);
+        if (! $is_active) {
+            return new WP_REST_Response(
+                ['message' => __('La domiciliación bancaria ya está desactivada.', 'garantias-online-360vo')],
+                400
+            );
+        }
+
+        SepaMandateService::set_activation_flag($user_id, false);
+        SepaMandateService::set_payment_method($user_id, 'transferencia');
+        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_SIGNED);
+
+        $account = AccountViewModel::from_user($user);
+        $payments = $account['payments'] ?? [];
+        $sepa_details = self::format_sepa_details($payments);
+        $payment_info = self::format_payment($payments);
+
+        $account_user = is_array($account['user'] ?? null) ? $account['user'] : [];
+        $name_data = is_array($account_user['name'] ?? null) ? $account_user['name'] : [];
+        $full_name = self::clean_text($account_user['full_name'] ?? '');
+        if ($full_name === '' && ! empty($name_data)) {
+            $full_name = self::clean_text($name_data['full'] ?? '');
+            if ($full_name === '') {
+                $parts = array_filter([
+                    self::clean_text($name_data['first'] ?? ''),
+                    self::clean_text($name_data['last'] ?? ''),
+                ]);
+                if (! empty($parts)) {
+                    $full_name = trim(implode(' ', $parts));
+                }
+            }
+            if ($full_name === '') {
+                $full_name = self::clean_text($name_data['personal'] ?? '');
+            }
+        }
+        if ($full_name === '') {
+            $full_name = self::clean_text($user->display_name);
+        }
+
+        $company_data = is_array($account_user['company'] ?? null) ? $account_user['company'] : [];
+        $company_name = self::clean_text($company_data['name'] ?? '');
+        if ($company_name === '') {
+            $company_name = self::clean_text($company_data['trade_name'] ?? '');
+        }
+
+        $reference = '';
+        $signed_meta = SepaMandateService::get_document_meta($user_id, SepaMandateService::TYPE_SIGNED);
+        if (! empty($signed_meta['reference'])) {
+            $reference = self::clean_text($signed_meta['reference']);
+        }
+
+        $actor_label = $full_name;
+        if ($company_name !== '' && $full_name !== '' && strcasecmp($company_name, $full_name) !== 0) {
+            $actor_label = sprintf('%s (%s)', $full_name, $company_name);
+        } elseif ($full_name === '' && $company_name !== '') {
+            $actor_label = $company_name;
+        }
+
+        $context = array_merge(
+            self::build_client_log_context($user),
+            [
+                'user_name'          => $actor_label,
+                'document_reference' => $reference,
+            ]
+        );
+
+        ActivityLogger::log(
+            'sepa.deactivated',
+            [
+                'target_type' => 'user',
+                'target_id'   => (int) $user->ID,
+                'context'     => $context,
+            ]
+        );
+
+        return new WP_REST_Response(
+            [
+                'message' => __('Domiciliación bancaria inhabilitada.', 'garantias-online-360vo'),
+                'sepa'    => $sepa_details,
+                'payment' => $payment_info,
+            ],
             200
         );
     }
@@ -1190,10 +1441,60 @@ class ClientRestController
             }
         }
 
+        $requested = isset($sepa['requested']) ? (bool) $sepa['requested'] : false;
+        $awaiting_validation = isset($sepa['awaiting_validation']) ? (bool) $sepa['awaiting_validation'] : false;
+        $locked = isset($sepa['locked']) ? (bool) $sepa['locked'] : false;
+        $needs_activation = isset($sepa['needs_activation']) ? (bool) $sepa['needs_activation'] : false;
+        $status_code = isset($sepa['status_code']) ? sanitize_key((string) $sepa['status_code']) : '';
+        $activated = isset($sepa['activated']) ? (bool) $sepa['activated'] : false;
+
+        $status_value = null;
+        if ($status_code !== '') {
+            $status_value = ($status_code === SepaMandateService::STATUS_SIGNED) && $activated;
+        } elseif (array_key_exists('status', $sepa)) {
+            if ($sepa['status'] === true) {
+                $status_value = true;
+            } elseif ($sepa['status'] === false) {
+                $status_value = false;
+            }
+        }
+
+        $documents = [
+            'pending' => [],
+            'signed'  => [],
+        ];
+
+        if (! empty($sepa['documents']) && is_array($sepa['documents'])) {
+            foreach (['pending', 'signed'] as $doc_type) {
+                if (empty($sepa['documents'][$doc_type]) || ! is_array($sepa['documents'][$doc_type])) {
+                    continue;
+                }
+
+                $doc = $sepa['documents'][$doc_type];
+                $documents[$doc_type] = [
+                    'id'           => isset($doc['id']) ? (int) $doc['id'] : 0,
+                    'url'          => esc_url_raw((string) ($doc['url'] ?? '')),
+                    'filename'     => sanitize_file_name((string) ($doc['filename'] ?? '')),
+                    'hash'         => self::clean_text($doc['hash'] ?? ''),
+                    'reference'    => self::clean_text($doc['reference'] ?? ''),
+                    'generated_at' => self::clean_text($doc['generated_at'] ?? ''),
+                    'private'      => ! empty($doc['private']),
+                ];
+            }
+        }
+
         return [
-            'label'   => $label !== '' ? $label : __('Sin información del mandato', 'garantias-online-360vo'),
-            'variant' => $variant !== '' ? $variant : 'info',
-            'fields'  => $fields,
+            'label'               => $label !== '' ? $label : __('Sin información del mandato', 'garantias-online-360vo'),
+            'variant'             => $variant !== '' ? $variant : 'info',
+            'fields'              => $fields,
+            'requested'           => $requested,
+            'awaiting_validation' => $awaiting_validation,
+            'locked'              => $locked,
+            'needs_activation'    => $needs_activation,
+            'status'              => $status_value,
+            'status_code'         => $status_code,
+            'activated'           => $activated,
+            'documents'           => $documents,
         ];
     }
 

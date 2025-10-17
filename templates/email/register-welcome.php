@@ -8,8 +8,9 @@ $company_name  = isset($company_name) ? (string) $company_name : '';
 $channel_label = isset($channel_label) && $channel_label !== '' ? $channel_label : __('Profesional', 'garantias-online-360vo');
 $channel_key   = isset($channel_key) ? (string) $channel_key : '';
 $account_url   = isset($account_url) && $account_url !== '' ? $account_url : home_url('/garantias-online/');
-$support_url   = isset($support_url) && $support_url !== '' ? $support_url : home_url('/garantias-online/contacto/');
+$support_url   = isset($support_url) && $support_url !== '' ? $support_url : home_url('/garantias-online/soporte/');
 $signature     = isset($signature) ? (string) $signature : '';
+$sepa_pending  = ! empty($sepa_pending);
 
 $headline = sprintf(
     /* translators: %s: channel label */
@@ -30,10 +31,13 @@ $checklist = [];
 switch ($channel_key) {
     case 'compraventa':
     case 'concesionario':
+        $sepa_item = $sepa_pending
+            ? esc_html__('Firma el documento adjunto para activar la domiciliación bancaria en tu cuenta.', 'garantias-online-360vo')
+            : esc_html__('Activa la domiciliación SEPA si vas a gestionar los cobros de forma automatizada.', 'garantias-online-360vo');
         $checklist = [
             esc_html__('Accede a "Mis garantías" para comenzar a registrar vehículos y generar certificados.', 'garantias-online-360vo'),
             esc_html__('Revisa el apartado "Perfil" para completar los datos de tu empresa y subir firma o sello si los necesitas.', 'garantias-online-360vo'),
-            esc_html__('Activa la domiciliación SEPA si vas a gestionar los cobros de forma automatizada.', 'garantias-online-360vo'),
+            $sepa_item,
         ];
         break;
     case 'agency':

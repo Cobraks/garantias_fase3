@@ -7,6 +7,7 @@ use GarantiasOnline360VO\Notifications\Email\EmailMessage;
 use GarantiasOnline360VO\Notifications\Email\EmailSettings;
 use GarantiasOnline360VO\Notifications\Email\Mailer;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
+use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\SettingsPage;
 use WP_Error;
 use WP_User;
@@ -25,6 +26,7 @@ class RegistrationService
     private const RESEND_WINDOW       = HOUR_IN_SECONDS;
     private const RESEND_COOLDOWN     = 60;
     private const MAX_IMAGE_SIZE      = 5_242_880; // 5 MB
+    private const MAX_SEPA_SIZE       = 5_242_880; // 5 MB
 
     private const CHANNELS = [
         'compraventa'  => ['label' => 'Compraventa', 'role' => 'go_profesional'],
@@ -69,6 +71,18 @@ class RegistrationService
             }
 
             $this->persist_profile($user_id, $sanitized, $uploaded);
+
+            $sepa_document = null;
+            if ($sanitized['enable_sepa']) {
+                $sepa_result = $this->persist_sepa_document($user_id, $sanitized);
+                if ($sepa_result instanceof WP_Error) {
+                    $this->cleanup_uploads($uploaded);
+                    wp_delete_user($user_id);
+                    return $sepa_result;
+                }
+                $sepa_document = $sepa_result;
+            }
+            $sanitized['sepa_pending_document'] = $sepa_document;
 
             $verification = $this->issue_verification($user_id, $sanitized['email']);
             if (is_wp_error($verification)) {
@@ -396,7 +410,10 @@ class RegistrationService
         $auto_signature = $this->to_bool($data['auto_signature'] ?? false);
         $enable_sepa    = $this->to_bool($data['enable_sepa'] ?? false);
 
-        $sepa = $this->sanitize_sepa($enable_sepa, $data);
+        $sepa_reference = SepaMandateService::sanitize_reference((string) ($data['sepa_reference'] ?? ''));
+        $sepa_generated_at = $this->sanitize_text($data['sepa_generated_at'] ?? '');
+
+        $sepa = $this->sanitize_sepa($enable_sepa, $data, $sepa_reference, $sepa_generated_at);
         if ($sepa instanceof WP_Error) {
             return $sepa;
         }
@@ -404,6 +421,7 @@ class RegistrationService
         $avatar    = $this->extract_file($files, 'avatar');
         $signature = $this->extract_file($files, 'signature');
         $stamp     = $this->extract_file($files, 'stamp');
+        $sepa_file = $this->extract_file($files, 'sepa_document');
 
         if ($auto_signature) {
             if (! $signature || ! $stamp) {
@@ -418,6 +436,23 @@ class RegistrationService
             $validation = $this->validate_image_file($file, $key);
             if ($validation instanceof WP_Error) {
                 return $validation;
+            }
+        }
+
+        if (! $enable_sepa) {
+            $sepa_file = null;
+            $sepa_reference = '';
+            $sepa_generated_at = '';
+        } else {
+            if (! $sepa_file) {
+                return new WP_Error(
+                    'go_register_sepa_document',
+                    __('No se ha podido generar el mandato SEPA. Revisa los datos e inténtalo de nuevo.', 'garantias-online-360vo')
+                );
+            }
+            $pdf_validation = $this->validate_pdf_file($sepa_file);
+            if ($pdf_validation instanceof WP_Error) {
+                return $pdf_validation;
             }
         }
 
@@ -443,6 +478,9 @@ class RegistrationService
             'avatar'       => $avatar,
             'signature'    => $signature,
             'stamp'        => $stamp,
+            'sepa_document'=> $sepa_file,
+            'sepa_reference'=> $sepa_reference,
+            'sepa_generated_at' => $sepa_generated_at,
             'ip'           => $this->detect_ip(),
         ];
 
@@ -512,26 +550,7 @@ class RegistrationService
             update_field('documentos', $documents, $scope);
 
             if ($data['enable_sepa']) {
-                $sepa = $data['sepa'];
-                $sepa_group = [
-                    'gestion_sepa' => [
-                        'datos_deudor' => [
-                            'nombre_deudor'    => $sepa['name'],
-                            'direccion_deudor' => $sepa['address'],
-                            'codigo_postal'    => $sepa['postal_code'],
-                            'poblacion'        => $sepa['city'],
-                            'provincia'        => $sepa['state'],
-                            'pais_deudor'      => $sepa['country'],
-                            'swift_bic'        => $sepa['swift'],
-                            'numero_cuenta'    => $sepa['iban'],
-                            'tipo_pago'        => [
-                                'value' => 'recurrente',
-                                'label' => 'Recurrente',
-                            ],
-                        ],
-                    ],
-                ];
-                update_field('gestion_pagos', $sepa_group, $scope);
+                $this->update_sepa_acf_group($user_id, $data['sepa']);
             }
 
             if (! empty($uploads['avatar']['id'])) {
@@ -576,23 +595,7 @@ class RegistrationService
 
         if ($data['enable_sepa']) {
             $sepa = $data['sepa'];
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_nombre_deudor', $sepa['name']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_direccion_deudor', $sepa['address']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_codigo_postal', $sepa['postal_code']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_poblacion', $sepa['city']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_provincia', $sepa['state']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_swift_bic', $sepa['swift']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_numero_cuenta', $sepa['iban']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_tipo_pago', 'recurrente');
-
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_codigo_postal', $sepa['postal_code']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_poblacion', $sepa['city']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_provincia', $sepa['state']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cuenta', $sepa['iban']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', $sepa['iban']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_cp', $sepa['postal_code']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_ciudad', $sepa['city']);
-            update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_region', $sepa['state']);
+            $this->persist_sepa_meta($user_id, $sepa);
         }
 
         if (! empty($uploads['avatar']['id'])) {
@@ -663,6 +666,170 @@ class RegistrationService
         }
 
         return $uploads;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>|WP_Error
+     */
+    private function persist_sepa_document(int $user_id, array &$data)
+    {
+        $file = $data['sepa_document'];
+        if (! is_array($file) || empty($file['tmp_name']) || ! file_exists($file['tmp_name'])) {
+            return new WP_Error('go_register_sepa_document', __('No se ha recibido el mandato SEPA generado.', 'garantias-online-360vo'));
+        }
+
+        $binary = file_get_contents($file['tmp_name']);
+        if ($binary === '' || $binary === false) {
+            return new WP_Error('go_register_sepa_read', __('No se ha podido procesar el mandato SEPA generado.', 'garantias-online-360vo'));
+        }
+
+        $context = [
+            'filename'     => isset($file['name']) ? sanitize_file_name((string) $file['name']) : 'mandato-sepa.pdf',
+            'reference'    => isset($data['sepa']['reference']) ? (string) $data['sepa']['reference'] : ($data['sepa_reference'] ?? ''),
+            'generated_at' => isset($data['sepa']['generated_at']) ? (string) $data['sepa']['generated_at'] : ($data['sepa_generated_at'] ?? ''),
+        ];
+
+        $stored = SepaMandateService::store_pending_mandate($user_id, $binary, $context);
+        if ($stored instanceof WP_Error) {
+            return $stored;
+        }
+
+        $final_reference = isset($stored['reference']) ? (string) $stored['reference'] : ($context['reference'] ?? '');
+        $final_generated = isset($stored['generated_at']) ? (string) $stored['generated_at'] : ($context['generated_at'] ?? '');
+
+        $data['sepa_reference'] = $final_reference;
+        $data['sepa_generated_at'] = $final_generated;
+        if (isset($data['sepa']) && is_array($data['sepa'])) {
+            $data['sepa']['reference'] = $final_reference;
+            $data['sepa']['generated_at'] = $final_generated;
+        }
+
+        if (! empty($file['tmp_name']) && file_exists($file['tmp_name'])) {
+            @unlink($file['tmp_name']);
+        }
+
+        $data['sepa_document'] = null;
+
+        $normalized_document = SepaMandateService::normalize_document($stored, $user_id, SepaMandateService::TYPE_PENDING);
+        $data['sepa_pending_document'] = $normalized_document;
+
+        $this->update_sepa_acf_group($user_id, $data['sepa'] ?? [], $normalized_document);
+        $this->persist_sepa_meta($user_id, $data['sepa'] ?? []);
+        SepaMandateService::clear_signed_mandate($user_id);
+
+        return $normalized_document;
+    }
+
+    /**
+     * @param array<string, mixed> $sepa
+     * @param array<string, mixed>|null $document
+     */
+    private function update_sepa_acf_group(int $user_id, array $sepa, ?array $document = null): void
+    {
+        if (! function_exists('update_field') || ! function_exists('get_field')) {
+            return;
+        }
+
+        $scope = 'user_' . $user_id;
+        $group = get_field('gestion_pagos', $scope);
+        if (! is_array($group)) {
+            $group = [];
+        }
+
+        $gestion_sepa = $group['gestion_sepa'] ?? [];
+        if (! is_array($gestion_sepa)) {
+            $gestion_sepa = [];
+        }
+
+        $debtor = $gestion_sepa['datos_deudor'] ?? [];
+        if (! is_array($debtor)) {
+            $debtor = [];
+        }
+
+        $payment_type = isset($sepa['payment_type']) ? (string) $sepa['payment_type'] : 'recurrente';
+        $payment_label = isset($sepa['payment_type_label']) ? (string) $sepa['payment_type_label'] : '';
+        if ($payment_label === '') {
+            $payment_label = $payment_type === 'unico'
+                ? __('Único', 'garantias-online-360vo')
+                : __('Recurrente', 'garantias-online-360vo');
+        }
+
+        $debtor = array_merge($debtor, [
+            'nombre_deudor'    => $sepa['name'] ?? '',
+            'direccion_deudor' => $sepa['address'] ?? '',
+            'codigo_postal'    => $sepa['postal_code'] ?? '',
+            'poblacion'        => $sepa['city'] ?? '',
+            'provincia'        => $sepa['state'] ?? '',
+            'pais_deudor'      => $sepa['country'] ?? '',
+            'swift_bic'        => $sepa['swift'] ?? '',
+            'numero_cuenta'    => $sepa['iban'] ?? '',
+            'fecha_firma'      => $sepa['signature_date'] ?? '',
+            'localidad_firma'  => $sepa['signature_locality'] ?? '',
+            'tipo_pago'        => [
+                'value' => $payment_type,
+                'label' => $payment_label,
+            ],
+        ]);
+
+        $estado = $gestion_sepa['estado_documentos'] ?? [];
+        if (! is_array($estado)) {
+            $estado = [];
+        }
+
+        $estado['estado_sepa'] = SepaMandateService::build_status_payload(
+            SepaMandateService::STATUS_PENDING_SIGNATURE
+        );
+        $estado['activar_sepa'] = 0;
+        $estado['metodo_de_pago'] = SepaMandateService::build_payment_payload('transferencia');
+
+        if ($document !== null) {
+            $estado['documento_sepa_sin_firmar'] = $document;
+            $estado['documento_sepa_firmado'] = null;
+        }
+
+        $gestion_sepa['datos_deudor'] = $debtor;
+        $gestion_sepa['estado_documentos'] = $estado;
+        $group['gestion_sepa'] = $gestion_sepa;
+
+        update_field('gestion_pagos', $group, $scope);
+    }
+
+    /**
+     * @param array<string, mixed> $sepa
+     */
+    private function persist_sepa_meta(int $user_id, array $sepa): void
+    {
+        if (empty($sepa)) {
+            return;
+        }
+
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_nombre_deudor', $sepa['name'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_direccion_deudor', $sepa['address'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_codigo_postal', $sepa['postal_code'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_poblacion', $sepa['city'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_provincia', $sepa['state'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_pais_deudor', $sepa['country'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_swift_bic', $sepa['swift'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_numero_cuenta', $sepa['iban'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_tipo_pago', $sepa['payment_type'] ?? '');
+
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_codigo_postal', $sepa['postal_code'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_poblacion', $sepa['city'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_provincia', $sepa['state'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cuenta', $sepa['iban'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_numero_cienta', $sepa['iban'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_cp', $sepa['postal_code'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_ciudad', $sepa['city'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_region', $sepa['state'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_pais_deudor', $sepa['country'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_fecha_firma', $sepa['signature_date'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_localidad_firma', $sepa['signature_locality'] ?? '');
+        update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_tipo_pago', $sepa['payment_type'] ?? '');
+
+        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_PENDING_SIGNATURE);
+        SepaMandateService::set_activation_flag($user_id, false);
+        SepaMandateService::set_payment_method($user_id, 'transferencia');
     }
 
     /**
@@ -798,6 +965,51 @@ class RegistrationService
             $company_name = (string) get_user_meta($user_id, 'datos_empresa_razon_social', true);
         }
 
+        $pending_meta = SepaMandateService::get_document_meta($user_id, SepaMandateService::TYPE_PENDING);
+        $has_pending_mandate = $pending_meta['hash'] !== '';
+        $attachments = [];
+        $temporary_files = [];
+
+        if ($has_pending_mandate) {
+            if (! function_exists('wp_tempnam')) {
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+            }
+            $binary = SepaMandateService::retrieve_document($user_id, SepaMandateService::TYPE_PENDING);
+            if (is_string($binary) && $binary !== '') {
+                $filename = $pending_meta['filename'] !== '' ? $pending_meta['filename'] : 'mandato-sepa.pdf';
+                $filename = sanitize_file_name($filename);
+                if ($filename === '') {
+                    $filename = 'mandato-sepa.pdf';
+                }
+                if (pathinfo($filename, PATHINFO_EXTENSION) === '') {
+                    $filename .= '.pdf';
+                }
+
+                $tmp = '';
+                $temp_dir = trailingslashit(get_temp_dir());
+                if ($temp_dir !== '' && is_dir($temp_dir) && is_writable($temp_dir)) {
+                    $unique = wp_unique_filename($temp_dir, $filename);
+                    if ($unique !== '') {
+                        $tmp = $temp_dir . $unique;
+                    }
+                }
+
+                if ($tmp === '') {
+                    $tmp = wp_tempnam($filename);
+                }
+
+                if ($tmp) {
+                    $written = file_put_contents($tmp, $binary);
+                    if ($written !== false) {
+                        $attachments[]   = $tmp;
+                        $temporary_files[] = $tmp;
+                    } else {
+                        @unlink($tmp);
+                    }
+                }
+            }
+        }
+
         $context = [
             'name'          => $first_name,
             'company_name'  => $company_name,
@@ -806,6 +1018,7 @@ class RegistrationService
             'account_url'   => home_url('/garantias-online/'),
             'support_url'   => home_url('/garantias-online/soporte/'),
             'signature'     => $this->get_signature_html(),
+            'sepa_pending'  => $has_pending_mandate,
         ];
 
         $body = $this->renderer->render('register-welcome', $context);
@@ -826,9 +1039,17 @@ class RegistrationService
             $metadata['reply_to'] = $reply_to;
         }
 
-        $message = new EmailMessage([$user->user_email], $subject, $body, $headers, [], $metadata);
+        $message = new EmailMessage([$user->user_email], $subject, $body, $headers, $attachments, $metadata);
 
-        return $this->mailer->send($message);
+        $sent = $this->mailer->send($message);
+
+        foreach ($temporary_files as $file) {
+            if (is_string($file) && file_exists($file)) {
+                @unlink($file);
+            }
+        }
+
+        return $sent;
     }
 
     /**
@@ -1257,7 +1478,7 @@ class RegistrationService
         ];
     }
 
-    private function sanitize_sepa(bool $enabled, array $data)
+    private function sanitize_sepa(bool $enabled, array $data, string $reference, string $generated_at)
     {
         if (! $enabled) {
             return [];
@@ -1286,15 +1507,44 @@ class RegistrationService
             return new WP_Error('go_register_sepa_iban', __('Introduce un IBAN válido.', 'garantias-online-360vo'));
         }
 
+        $creditor = SepaMandateService::get_creditor_data();
+        $payment_type = isset($creditor['payment_type']) ? sanitize_key($creditor['payment_type']) : 'recurrente';
+        if ($payment_type === '') {
+            $payment_type = 'recurrente';
+        }
+
+        $payment_label = '';
+        if (! empty($creditor['payment_type_label'])) {
+            $payment_label = sanitize_text_field((string) $creditor['payment_type_label']);
+        }
+        if ($payment_label === '') {
+            $payment_label = $payment_type === 'unico'
+                ? __('Único', 'garantias-online-360vo')
+                : __('Recurrente', 'garantias-online-360vo');
+        }
+
+        $creditor_province = isset($creditor['province']) ? $this->sanitize_text($creditor['province']) : '';
+        $signature_locality = $creditor_province !== '' ? $creditor_province : $state;
+        $signature_date_display = wp_date('d/m/Y');
+        $signature_iso = wp_date(DATE_ATOM);
+        $resolved_generated_at = $generated_at !== '' ? $generated_at : $signature_iso;
+
         return [
             'name'        => $name,
             'address'     => $address,
             'postal_code' => $postal,
             'city'        => $city,
             'state'       => $state,
-            'country'     => $country,
+            'country'     => $country !== '' ? $country : ($creditor['country'] ?? 'España'),
             'swift'       => $swift,
             'iban'        => $this->format_iban($iban),
+            'payment_type'=> $payment_type,
+            'payment_type_label' => $payment_label,
+            'reference'   => $reference,
+            'generated_at'=> $resolved_generated_at,
+            'signature_date' => $signature_date_display,
+            'signature_iso'  => $signature_iso,
+            'signature_locality' => $signature_locality,
         ];
     }
 
@@ -1311,6 +1561,25 @@ class RegistrationService
         if (empty($type['type'])) {
             return new WP_Error('go_register_upload_type', __('Formato de imagen no permitido.', 'garantias-online-360vo'));
         }
+        return true;
+    }
+
+    private function validate_pdf_file(array $file)
+    {
+        if (! isset($file['tmp_name']) || ! file_exists($file['tmp_name'])) {
+            return new WP_Error('go_register_sepa_upload', __('No se ha podido leer el mandato SEPA generado.', 'garantias-online-360vo'));
+        }
+
+        $size = isset($file['size']) ? (int) $file['size'] : filesize($file['tmp_name']);
+        if ($size > self::MAX_SEPA_SIZE) {
+            return new WP_Error('go_register_sepa_size', __('El mandato SEPA supera el tamaño máximo permitido (5MB).', 'garantias-online-360vo'));
+        }
+
+        $type = wp_check_filetype($file['name'] ?? '', ['pdf' => 'application/pdf']);
+        if (empty($type['type']) || $type['type'] !== 'application/pdf') {
+            return new WP_Error('go_register_sepa_type', __('El mandato SEPA debe ser un archivo PDF válido.', 'garantias-online-360vo'));
+        }
+
         return true;
     }
 

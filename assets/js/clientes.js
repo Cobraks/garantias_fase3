@@ -20,6 +20,7 @@
         const iconManageOffers = icons.manageOffers || '';
         const iconManageSepa = icons.manageSepa || '';
         const iconSave = icons.save || '';
+        const iconPdf = icons.pdf || '';
         const permissions = config.permissions || {};
         const canAssignCommercials = Boolean(permissions.canAssignCommercials);
         const router = config.router || {};
@@ -56,12 +57,10 @@
             restRoot,
             restNonce,
         });
-        const sepaDialog = createSimpleDialog({
-            titleKey: 'manageSepaTitle',
-            titleTemplateKey: 'manageSepaTitleTemplate',
-            fallbackTitle: 'Gestionar SEPA',
-            saveLabelKey: 'dialogSave',
-        });
+        let sepaDialog = null;
+        let sepaConfirmDialog = null;
+        let currentSepaDialogContext = null;
+        let currentSepaDialogBody = null;
 
         if (canAssignCommercials) {
             fetchCommercialDirectory().catch(() => {});
@@ -350,6 +349,52 @@
             }
 
             return strings.client || 'este cliente';
+        }
+
+        function extractSepaReference(sepa) {
+            if (!sepa || typeof sepa !== 'object') {
+                return '';
+            }
+
+            const documents = sepa.documents && typeof sepa.documents === 'object' ? sepa.documents : {};
+            const signed = documents.signed && typeof documents.signed === 'object' ? documents.signed : {};
+            const pending = documents.pending && typeof documents.pending === 'object' ? documents.pending : {};
+
+            const signedReference = typeof signed.reference === 'string' ? signed.reference.trim() : '';
+            if (signedReference !== '') {
+                return signedReference;
+            }
+
+            const pendingReference = typeof pending.reference === 'string' ? pending.reference.trim() : '';
+            if (pendingReference !== '') {
+                return pendingReference;
+            }
+
+            return '';
+        }
+
+        function formatSepaActor(item) {
+            if (!item || typeof item !== 'object') {
+                return strings.manageSepaConfirmActorFallback || 'este profesional';
+            }
+
+            const name = item.name && typeof item.name === 'object' ? item.name : {};
+            const displayName = getDisplayName(name);
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+
+            if (displayName !== '' && companyName !== '' && displayName.toLowerCase() !== companyName.toLowerCase()) {
+                return `${displayName} (${companyName})`;
+            }
+
+            if (displayName !== '') {
+                return displayName;
+            }
+
+            if (companyName !== '') {
+                return companyName;
+            }
+
+            return strings.manageSepaConfirmActorFallback || 'este profesional';
         }
 
         function getCommercialDisplay(commercial) {
@@ -1096,6 +1141,422 @@
             `;
         }
 
+        function hasSepaDocument(document) {
+            if (!document || typeof document !== 'object') {
+                return false;
+            }
+
+            if (typeof document.url === 'string' && document.url.trim() !== '') {
+                return true;
+            }
+
+            if (typeof document.hash === 'string' && document.hash.trim() !== '') {
+                return true;
+            }
+
+            if (typeof document.id === 'number' && Number.isFinite(document.id) && document.id > 0) {
+                return true;
+            }
+
+            return false;
+        }
+
+        function renderSepaDocumentCard({
+            title,
+            description,
+            status,
+            document,
+            buttonLabel,
+            type,
+        }) {
+            if (!hasSepaDocument(document)) {
+                return '';
+            }
+
+            const safeTitle = typeof title === 'string' ? title.trim() : '';
+            const safeDescription = typeof description === 'string' ? description.trim() : '';
+            const docFilename = typeof document.filename === 'string' && document.filename.trim() !== ''
+                ? document.filename.trim()
+                : (strings.manageSepaDownload || 'Mandato SEPA');
+            const docUrl = typeof document.url === 'string' ? document.url.trim() : '';
+            const docReference = typeof document.reference === 'string' ? document.reference.trim() : '';
+            const docGenerated = typeof document.generated_at === 'string' ? document.generated_at.trim() : '';
+            const metaParts = [];
+
+            if (docReference !== '') {
+                metaParts.push(escapeHtml(docReference));
+            }
+
+            if (docGenerated !== '') {
+                metaParts.push(escapeHtml(docGenerated));
+            }
+
+            const metaHtml = metaParts.length > 0
+                ? `<p class="client-sepa-dialog__meta">${metaParts.join(' · ')}</p>`
+                : '';
+
+            const buttonText = buttonLabel && buttonLabel.trim() !== ''
+                ? buttonLabel.trim()
+                : (strings.manageSepaDownload || 'Descargar mandato');
+
+            const iconHtml = iconPdf
+                ? `<span class="client-sepa-dialog__button-icon" aria-hidden="true">${iconPdf}</span>`
+                : '';
+
+            const linkHtml = docUrl !== ''
+                ? `<a class="client-sepa-dialog__button" href="${escapeAttribute(docUrl)}" target="_blank" rel="noopener">${iconHtml}<span>${escapeHtml(buttonText)}</span></a>`
+                : '';
+
+            return `
+                <section class="client-sepa-dialog__card client-sepa-dialog__card--${escapeHtml(type || 'info')}">
+                    <header class="client-sepa-dialog__card-header">
+                        <div class="client-sepa-dialog__card-heading">
+                            <h3>${escapeHtml(safeTitle || (strings.manageSepaPendingTitle || 'Mandato SEPA'))}</h3>
+                            ${safeDescription !== '' ? `<p class="client-sepa-dialog__card-description">${escapeHtml(safeDescription)}</p>` : ''}
+                        </div>
+                    </header>
+                    <div class="client-sepa-dialog__card-body">
+                        <p class="client-sepa-dialog__filename">${escapeHtml(docFilename)}</p>
+                        ${metaHtml}
+                        ${linkHtml}
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderSepaDialog(item) {
+            const sepa = item && item.sepa && typeof item.sepa === 'object' ? item.sepa : {};
+            const documents = sepa.documents && typeof sepa.documents === 'object' ? sepa.documents : {};
+            const pendingDocument = documents.pending || {};
+            const signedDocument = documents.signed || {};
+            const hasPending = hasSepaDocument(pendingDocument);
+            const hasSigned = hasSepaDocument(signedDocument);
+            const awaitingValidation = Boolean(sepa.awaiting_validation);
+            const needsActivation = Boolean(sepa.needs_activation);
+            const isActive = Boolean(sepa.status);
+            const statusLabel = typeof sepa.label === 'string' && sepa.label.trim() !== ''
+                ? sepa.label.trim()
+                : (strings.sepaEmpty || 'Sin información del mandato');
+            const statusVariant = typeof sepa.variant === 'string' && sepa.variant.trim() !== ''
+                ? sepa.variant.trim()
+                : 'info';
+
+            const sections = [];
+
+            sections.push(`
+                <div class="client-sepa-dialog__status client-sepa-dialog__status--${escapeHtml(statusVariant)}">
+                    <span class="client-sepa-dialog__status-title">${escapeHtml(strings.sepaStatus || 'Estado SEPA')}</span>
+                    <span class="client-sepa-dialog__status-value">${escapeHtml(statusLabel)}</span>
+                </div>
+            `);
+
+            const detailsHtml = renderSepaDetails(sepa);
+            if (detailsHtml) {
+                sections.push(`<div class="client-sepa-dialog__details">${detailsHtml}</div>`);
+            }
+
+            const cards = [];
+
+            if (hasPending) {
+                cards.push(renderSepaDocumentCard({
+                    title: strings.manageSepaPendingTitle || 'Mandato pendiente de firma',
+                    description: strings.manageSepaPendingDescription || '',
+                    status: strings.manageSepaPendingStatus || 'Pendiente de firma',
+                    document: pendingDocument,
+                    buttonLabel: strings.manageSepaDownload || 'Descargar mandato',
+                    type: 'pending',
+                }));
+            }
+
+            if (hasSigned) {
+                let signedStatus = '';
+                if (awaitingValidation) {
+                    signedStatus = strings.manageSepaValidationStatus || 'Pendiente de validación';
+                } else if (needsActivation) {
+                    signedStatus = strings.manageSepaActivationStatus || 'Pendiente de domiciliación';
+                }
+                cards.push(renderSepaDocumentCard({
+                    title: strings.manageSepaSignedTitle || 'Mandato firmado por el profesional',
+                    description: strings.manageSepaSignedDescription || '',
+                    status: signedStatus,
+                    document: signedDocument,
+                    buttonLabel: strings.manageSepaViewSigned || 'Ver mandato firmado',
+                    type: 'signed',
+                }));
+            }
+
+            if (cards.length === 0) {
+                cards.push(`<p class="client-sepa-dialog__empty">${escapeHtml(strings.manageSepaNoDocuments || 'No hay documentos SEPA disponibles.')}</p>`);
+            }
+
+            sections.push(`<div class="client-sepa-dialog__cards">${cards.join('')}</div>`);
+
+            const actionButtons = [];
+            let actionHelp = '';
+
+            if (awaitingValidation || needsActivation) {
+                actionHelp = typeof strings.manageSepaActivateHelp === 'string'
+                    ? strings.manageSepaActivateHelp.trim()
+                    : '';
+
+                actionButtons.push(`
+                    <button type="button" class="client-sepa-dialog__activate" data-sepa-activate>
+                        ${escapeHtml(strings.manageSepaActivate || 'Activar domiciliación bancaria')}
+                    </button>
+                `);
+            } else if (isActive) {
+                actionHelp = typeof strings.manageSepaDeactivateHelp === 'string'
+                    ? strings.manageSepaDeactivateHelp.trim()
+                    : '';
+
+                actionButtons.push(`
+                    <button type="button" class="client-sepa-dialog__deactivate" data-sepa-deactivate>
+                        ${escapeHtml(strings.manageSepaDeactivate || 'Inhabilitar domiciliación bancaria')}
+                    </button>
+                `);
+            }
+
+            if (actionButtons.length > 0) {
+                sections.push(`
+                    <div class="client-sepa-dialog__actions">
+                        ${actionHelp !== '' ? `<p class="client-sepa-dialog__help">${escapeHtml(actionHelp)}</p>` : ''}
+                        ${actionButtons.join('')}
+                    </div>
+                `);
+            }
+
+            return `<div class="client-sepa-dialog">${sections.join('')}</div>`;
+        }
+
+        function setupSepaDialogBody(body, context) {
+            if (!body) {
+                return;
+            }
+
+            const currentContext = context && typeof context === 'object' ? context : {};
+            const item = currentContext.item && typeof currentContext.item === 'object' ? currentContext.item : null;
+
+            body.innerHTML = renderSepaDialog(item);
+
+            const activateButton = body.querySelector('[data-sepa-activate]');
+            if (activateButton && sepaConfirmDialog && typeof sepaConfirmDialog.open === 'function') {
+                if (activateButton.__goSepaHandler) {
+                    activateButton.removeEventListener('click', activateButton.__goSepaHandler);
+                }
+
+                const handler = () => {
+                    if (!item) {
+                        return;
+                    }
+
+                    const reference = extractSepaReference(item.sepa || {});
+                    const actor = formatSepaActor(item);
+                    const subject = typeof currentContext.subject === 'string' ? currentContext.subject : '';
+                    const name = item.name && typeof item.name === 'object' ? item.name : {};
+                    const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+                    let subtitleHtml = '';
+
+                    if (companyName !== '' && reference !== '') {
+                        subtitleHtml = `${escapeHtml(companyName)} <strong>${escapeHtml(reference)}</strong>`;
+                    } else if (companyName !== '') {
+                        subtitleHtml = escapeHtml(companyName);
+                    } else if (reference !== '') {
+                        subtitleHtml = `<strong>${escapeHtml(reference)}</strong>`;
+                    } else if (subject !== '') {
+                        subtitleHtml = escapeHtml(subject);
+                    }
+
+                    sepaConfirmDialog.open({
+                        actor,
+                        subtitleHtml,
+                        confirmLabel: strings.manageSepaConfirmAccept || 'Activar domiciliación bancaria',
+                        note: strings.manageSepaConfirmNote || '',
+                        onConfirm: async ({ close, setError, setLoading }) => {
+                            try {
+                                setError('');
+                                setLoading(true);
+                                await activateSepaForItem(item);
+                                setLoading(false);
+                                close();
+                            } catch (error) {
+                                const message = error && typeof error.message === 'string' && error.message.trim() !== ''
+                                    ? error.message.trim()
+                                    : (strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.');
+                                setLoading(false);
+                                setError(message);
+                            }
+                        },
+                    });
+                };
+
+                activateButton.__goSepaHandler = handler;
+                activateButton.addEventListener('click', handler);
+            }
+
+            const deactivateButton = body.querySelector('[data-sepa-deactivate]');
+            if (deactivateButton && sepaConfirmDialog && typeof sepaConfirmDialog.open === 'function') {
+                if (deactivateButton.__goSepaHandler) {
+                    deactivateButton.removeEventListener('click', deactivateButton.__goSepaHandler);
+                }
+
+                const handler = () => {
+                    if (!item) {
+                        return;
+                    }
+
+                    const reference = extractSepaReference(item.sepa || {});
+                    const actor = formatSepaActor(item);
+                    const subject = typeof currentContext.subject === 'string' ? currentContext.subject : '';
+                    const name = item.name && typeof item.name === 'object' ? item.name : {};
+                    const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+                    let subtitleHtml = '';
+
+                    if (companyName !== '' && reference !== '') {
+                        subtitleHtml = `${escapeHtml(companyName)} <strong>${escapeHtml(reference)}</strong>`;
+                    } else if (companyName !== '') {
+                        subtitleHtml = escapeHtml(companyName);
+                    } else if (reference !== '') {
+                        subtitleHtml = `<strong>${escapeHtml(reference)}</strong>`;
+                    } else if (subject !== '') {
+                        subtitleHtml = escapeHtml(subject);
+                    }
+
+                    sepaConfirmDialog.open({
+                        actor,
+                        subtitleHtml,
+                        title: strings.manageSepaDeactivateConfirmTitle || strings.manageSepaConfirmTitle || 'Confirmar SEPA',
+                        confirmLabel: strings.manageSepaDeactivateConfirmAccept || 'Inhabilitar domiciliación bancaria',
+                        loadingLabel: strings.manageSepaDeactivateConfirmLoading || 'Inhabilitando…',
+                        note: strings.manageSepaDeactivateConfirmNote || '',
+                        checkboxLabel: strings.manageSepaDeactivateConfirmCheckbox || strings.manageSepaConfirmCheckbox,
+                        message: strings.manageSepaDeactivateConfirmMessage || 'Confirmo que %s desea inhabilitar la domiciliación bancaria.',
+                        onConfirm: async ({ close, setError, setLoading }) => {
+                            try {
+                                setError('');
+                                setLoading(true);
+                                await deactivateSepaForItem(item);
+                                setLoading(false);
+                                close();
+                            } catch (error) {
+                                const message = error && typeof error.message === 'string' && error.message.trim() !== ''
+                                    ? error.message.trim()
+                                    : (strings.manageSepaDeactivateConfirmError || 'No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.');
+                                setLoading(false);
+                                setError(message);
+                            }
+                        },
+                    });
+                };
+
+                deactivateButton.__goSepaHandler = handler;
+                deactivateButton.addEventListener('click', handler);
+            }
+        }
+
+        async function activateSepaForItem(item) {
+            const userId = Number(item && item.id);
+            if (!Number.isFinite(userId) || userId <= 0) {
+                throw new Error(strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.');
+            }
+
+            const endpoint = `${restRoot}go/v1/clientes/${userId}/sepa/activate`;
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': restNonce,
+                },
+                body: JSON.stringify({}),
+            });
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (error) {
+                payload = {};
+            }
+
+            if (!response.ok) {
+                const message = payload && typeof payload.message === 'string' && payload.message.trim() !== ''
+                    ? payload.message.trim()
+                    : (strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.');
+                throw new Error(message);
+            }
+
+            if (payload && typeof payload.sepa === 'object') {
+                item.sepa = payload.sepa;
+            }
+
+            if (payload && typeof payload.payment === 'object') {
+                item.payment = payload.payment;
+            }
+
+            cache.set(String(userId), item);
+            refreshActiveDetail(item);
+
+            if (currentSepaDialogContext) {
+                currentSepaDialogContext.item = item;
+            }
+
+            if (currentSepaDialogBody) {
+                setupSepaDialogBody(currentSepaDialogBody, currentSepaDialogContext);
+            }
+
+            return payload;
+        }
+
+        async function deactivateSepaForItem(item) {
+            const userId = Number(item && item.id);
+            if (!Number.isFinite(userId) || userId <= 0) {
+                throw new Error(strings.manageSepaDeactivateConfirmError || 'No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.');
+            }
+
+            const endpoint = `${restRoot}go/v1/clientes/${userId}/sepa/deactivate`;
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': restNonce,
+                },
+                body: JSON.stringify({}),
+            });
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (error) {
+                payload = {};
+            }
+
+            if (!response.ok) {
+                const message = payload && typeof payload.message === 'string' && payload.message.trim() !== ''
+                    ? payload.message.trim()
+                    : (strings.manageSepaDeactivateConfirmError || 'No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.');
+                throw new Error(message);
+            }
+
+            if (payload && typeof payload.sepa === 'object') {
+                item.sepa = payload.sepa;
+            }
+
+            if (payload && typeof payload.payment === 'object') {
+                item.payment = payload.payment;
+            }
+
+            cache.set(String(userId), item);
+            refreshActiveDetail(item);
+
+            if (currentSepaDialogContext) {
+                currentSepaDialogContext.item = item;
+            }
+
+            if (currentSepaDialogBody) {
+                setupSepaDialogBody(currentSepaDialogBody, currentSepaDialogContext);
+            }
+
+            return payload;
+        }
+
         function renderDetail(item) {
             const name = item.name || {};
             const registered = item.registered || {};
@@ -1146,7 +1607,6 @@
             const contactActions = renderContactActions(contact);
             const workshopSection = renderWorkshop(item.workshop);
             const preferencesSection = renderPreferences(item.documents || {}, item.services || {});
-            const sepaDetails = renderSepaDetails(sepa);
             const adminLink = item.links && typeof item.links.admin === 'string' ? item.links.admin.trim() : '';
             const adminLinkHtml = adminLink !== ''
                 ? `<div class="client-detail__admin"><a class="client-detail__admin-link" href="${escapeAttribute(adminLink)}" target="_blank" rel="noopener">${escapeHtml(strings.adminLink || 'Ver ficha del cliente en el panel de gestión')}</a></div>`
@@ -1248,7 +1708,6 @@
                             ${manageSepaButtonHtml}
                         </div>
                         <p class="client-detail__status${sepaVariant}">${escapeHtml(sepaMessage)}</p>
-                        ${sepaDetails}
                     </section>
                     ${adminLinkHtml}
                 </div>
@@ -2948,6 +3407,13 @@
                 ? options.fallbackTitle.trim()
                 : 'Gestión';
             const saveLabelKey = typeof options.saveLabelKey === 'string' ? options.saveLabelKey : 'dialogSave';
+            const overlayClass = typeof options.overlayClass === 'string' ? options.overlayClass.trim() : '';
+            const panelClass = typeof options.panelClass === 'string' ? options.panelClass.trim() : '';
+            const bodyClass = typeof options.bodyClass === 'string' ? options.bodyClass.trim() : '';
+            const showFooter = options.showFooter !== false;
+            const resetBody = options.resetBody !== false;
+            const onOpen = typeof options.onOpen === 'function' ? options.onOpen : null;
+            const onClose = typeof options.onClose === 'function' ? options.onClose : null;
             const overlay = document.createElement('div');
             overlay.className = 'client-dialog client-dialog--simple';
             overlay.hidden = true;
@@ -2974,13 +3440,32 @@
                 </div>
             `;
 
+            if (overlayClass !== '') {
+                overlay.classList.add(overlayClass);
+            }
+
             document.body.appendChild(overlay);
 
             const panel = overlay.querySelector('.client-dialog__panel');
             const titleEl = overlay.querySelector('.client-dialog__title');
+            const bodyEl = overlay.querySelector('.client-dialog__body--simple');
             const saveButton = overlay.querySelector('.client-dialog__save');
+            const footer = overlay.querySelector('.client-dialog__footer');
             const statusEl = overlay.querySelector('.client-dialog__status');
             const closeControls = overlay.querySelectorAll('[data-dialog-close]');
+
+            if (panelClass !== '' && panel) {
+                panel.classList.add(panelClass);
+            }
+
+            if (bodyClass !== '' && bodyEl) {
+                bodyEl.classList.add(bodyClass);
+            }
+
+            if (!showFooter && footer) {
+                footer.hidden = true;
+                footer.setAttribute('aria-hidden', 'true');
+            }
 
             let previousActiveElement = null;
 
@@ -3022,6 +3507,16 @@
                 if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
                     previousActiveElement.focus();
                 }
+                if (onClose) {
+                    onClose({
+                        overlay,
+                        panel,
+                        body: bodyEl,
+                        status: statusEl,
+                        saveButton,
+                        footer,
+                    });
+                }
             }
 
             function handleKeydown(event) {
@@ -3045,6 +3540,25 @@
                 overlay.classList.add('is-open');
                 overlay.setAttribute('aria-hidden', 'false');
                 document.addEventListener('keydown', handleKeydown);
+
+                if (bodyEl && resetBody) {
+                    bodyEl.innerHTML = '';
+                    bodyEl.scrollTop = 0;
+                }
+
+                if (onOpen) {
+                    onOpen({
+                        overlay,
+                        panel,
+                        body: bodyEl,
+                        status: statusEl,
+                        saveButton,
+                        footer,
+                        context,
+                        close,
+                        setStatus,
+                    });
+                }
 
                 window.requestAnimationFrame(() => {
                     if (panel && typeof panel.focus === 'function') {
@@ -3074,6 +3588,281 @@
                 close,
             };
         }
+
+        function setupSepaConfirmModal(modal) {
+            if (!modal) {
+                return null;
+            }
+
+            const dialog = modal.querySelector('.confirm-modal__dialog');
+            const closeBtn = modal.querySelector('.confirm-modal__close');
+            const cancelBtn = modal.querySelector('.confirm-modal__btn--cancel');
+            const confirmBtn = modal.querySelector('.confirm-modal__btn--confirm');
+            const subtitleEl = modal.querySelector('.confirm-modal__subtitle');
+            const messageEl = modal.querySelector('.confirm-modal__message');
+            const noteEl = modal.querySelector('.confirm-modal__note');
+            const errorEl = modal.querySelector('.confirm-modal__error');
+            const titleEl = modal.querySelector('.confirm-modal__title');
+            const checkboxInput = modal.querySelector('.confirm-modal__checkbox-input');
+            const checkboxLabel = modal.querySelector('.confirm-modal__checkbox-label');
+            const defaultConfirmLabel = strings.manageSepaConfirmAccept || 'Activar domiciliación bancaria';
+            const defaultErrorMessage = strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.';
+            const defaultTitle = strings.manageSepaConfirmTitle || 'Confirmar SEPA';
+            const defaultCheckboxLabel = strings.manageSepaConfirmCheckbox || 'He revisado esta información y confirmo la operación.';
+            const defaultLoadingLabel = strings.manageSepaConfirmLoading || 'Activando…';
+            const defaultMessageTemplate = strings.manageSepaConfirmMessage || 'Confirmo que %s nos ha enviado el mandato SEPA firmado y todos los datos son correctos.';
+            const defaultNote = strings.manageSepaConfirmNote || '';
+
+            const sanitizeText = (value, fallback) => {
+                if (typeof value === 'string') {
+                    const trimmed = value.trim();
+                    if (trimmed !== '') {
+                        return trimmed;
+                    }
+                }
+
+                return fallback;
+            };
+
+            let currentContext = null;
+            let previousActiveElement = null;
+
+            function setError(message) {
+                if (!errorEl) {
+                    return;
+                }
+
+                const text = typeof message === 'string' ? message.trim() : '';
+                if (text === '') {
+                    errorEl.textContent = '';
+                    errorEl.hidden = true;
+                } else {
+                    errorEl.textContent = text;
+                    errorEl.hidden = false;
+                }
+            }
+
+            function syncConfirmState() {
+                if (!confirmBtn) {
+                    return;
+                }
+
+                if (confirmBtn.dataset.loading === 'true') {
+                    confirmBtn.disabled = true;
+                    return;
+                }
+
+                const checked = checkboxInput ? checkboxInput.checked : true;
+                confirmBtn.disabled = !checked;
+            }
+
+            function setLoading(isLoading) {
+                if (!confirmBtn) {
+                    return;
+                }
+
+                if (isLoading) {
+                    confirmBtn.dataset.loading = 'true';
+                    confirmBtn.disabled = true;
+                    confirmBtn.textContent = sanitizeText(currentContext?.loadingLabel, defaultLoadingLabel);
+                } else {
+                    confirmBtn.dataset.loading = 'false';
+                    confirmBtn.textContent = sanitizeText(currentContext?.confirmLabel, defaultConfirmLabel);
+                    syncConfirmState();
+                }
+            }
+
+            function resetConfirmButton() {
+                if (!confirmBtn) {
+                    return;
+                }
+
+                confirmBtn.dataset.loading = 'false';
+                confirmBtn.textContent = defaultConfirmLabel;
+                syncConfirmState();
+            }
+
+            function close() {
+                modal.classList.remove('is-open');
+                modal.setAttribute('aria-hidden', 'true');
+                modal.hidden = true;
+                document.removeEventListener('keydown', handleKeydown);
+                setError('');
+                if (checkboxInput) {
+                    checkboxInput.checked = false;
+                }
+                currentContext = null;
+                resetConfirmButton();
+                if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+                    previousActiveElement.focus();
+                }
+            }
+
+            function handleOverlayClick(event) {
+                if (event.target === modal) {
+                    close();
+                }
+            }
+
+            function handleKeydown(event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    close();
+                }
+            }
+
+            function formatMessage(actor, template) {
+                if (template.includes('%s')) {
+                    const actorHtml = template.includes('<strong>%s</strong>')
+                        ? escapeHtml(actor)
+                        : `<strong>${escapeHtml(actor)}</strong>`;
+                    return template.replace('%s', actorHtml);
+                }
+
+                return template;
+            }
+
+            function open(context = {}) {
+                previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                currentContext = {
+                    confirmLabel: sanitizeText(context.confirmLabel, defaultConfirmLabel),
+                    loadingLabel: sanitizeText(context.loadingLabel, defaultLoadingLabel),
+                    title: sanitizeText(context.title, defaultTitle),
+                    checkboxLabel: sanitizeText(context.checkboxLabel, defaultCheckboxLabel),
+                    message: sanitizeText(context.message, defaultMessageTemplate),
+                    note: sanitizeText(context.note, defaultNote),
+                    actor: sanitizeText(context.actor, strings.manageSepaConfirmActorFallback || 'este profesional'),
+                    subtitleHtml: typeof context.subtitleHtml === 'string' ? context.subtitleHtml.trim() : '',
+                    onConfirm: typeof context.onConfirm === 'function' ? context.onConfirm : null,
+                };
+
+                if (titleEl) {
+                    titleEl.textContent = currentContext.title;
+                }
+
+                if (checkboxLabel) {
+                    checkboxLabel.textContent = currentContext.checkboxLabel;
+                }
+
+                if (subtitleEl) {
+                    if (currentContext.subtitleHtml !== '') {
+                        subtitleEl.innerHTML = currentContext.subtitleHtml;
+                        subtitleEl.hidden = false;
+                    } else {
+                        subtitleEl.textContent = '';
+                        subtitleEl.hidden = true;
+                    }
+                }
+
+                if (messageEl) {
+                    messageEl.innerHTML = formatMessage(currentContext.actor, currentContext.message);
+                }
+
+                if (noteEl) {
+                    if (currentContext.note === '') {
+                        noteEl.textContent = '';
+                        noteEl.hidden = true;
+                    } else {
+                        noteEl.textContent = currentContext.note;
+                        noteEl.hidden = false;
+                    }
+                }
+
+                if (confirmBtn) {
+                    confirmBtn.textContent = currentContext.confirmLabel;
+                    confirmBtn.dataset.loading = 'false';
+                }
+
+                setError('');
+                setLoading(false);
+
+                if (checkboxInput) {
+                    checkboxInput.checked = false;
+                }
+
+                modal.hidden = false;
+                modal.classList.add('is-open');
+                modal.setAttribute('aria-hidden', 'false');
+                document.addEventListener('keydown', handleKeydown);
+                syncConfirmState();
+
+                window.requestAnimationFrame(() => {
+                    if (dialog && typeof dialog.focus === 'function') {
+                        dialog.focus({ preventScroll: true });
+                    }
+                });
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', close);
+            }
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    close();
+                });
+            }
+
+            if (checkboxInput) {
+                checkboxInput.addEventListener('change', syncConfirmState);
+            }
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (!currentContext || typeof currentContext.onConfirm !== 'function') {
+                        close();
+                        return;
+                    }
+
+                    setError('');
+                    setLoading(true);
+
+                    Promise.resolve(currentContext.onConfirm({
+                        close,
+                        setError,
+                        setLoading,
+                    })).catch((error) => {
+                        const message = error && typeof error.message === 'string' && error.message.trim() !== ''
+                            ? error.message.trim()
+                            : defaultErrorMessage;
+                        setLoading(false);
+                        setError(message);
+                    });
+                });
+            }
+
+            modal.addEventListener('click', handleOverlayClick);
+
+            return {
+                open,
+            };
+        }
+        sepaConfirmDialog = setupSepaConfirmModal(document.querySelector('[data-sepa-confirm-modal]'));
+
+        sepaDialog = createSimpleDialog({
+            titleKey: 'manageSepaTitle',
+            titleTemplateKey: 'manageSepaTitleTemplate',
+            fallbackTitle: 'Gestionar SEPA',
+            showFooter: false,
+            overlayClass: 'client-dialog--sepa',
+            panelClass: 'client-dialog__panel--sepa',
+            bodyClass: 'client-dialog__body--sepa',
+            onOpen({ body, context }) {
+                if (!body) {
+                    return;
+                }
+
+                currentSepaDialogContext = context || {};
+                currentSepaDialogBody = body;
+                setupSepaDialogBody(body, currentSepaDialogContext);
+            },
+            onClose() {
+                currentSepaDialogContext = null;
+                currentSepaDialogBody = null;
+            },
+        });
 
 
         function initDetailInteractions(container, item) {
@@ -3140,8 +3929,13 @@
             const manageSepaButton = container.querySelector('[data-manage-sepa]');
             if (manageSepaButton && sepaDialog && typeof sepaDialog.open === 'function') {
                 manageSepaButton.addEventListener('click', () => {
+                    if (!item) {
+                        return;
+                    }
+
                     sepaDialog.open({
                         subject: getCompanyLabelFromItem(item),
+                        item,
                     });
                 });
             }
