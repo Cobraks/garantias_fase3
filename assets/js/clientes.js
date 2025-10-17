@@ -1232,6 +1232,7 @@
             const hasPending = hasSepaDocument(pendingDocument);
             const hasSigned = hasSepaDocument(signedDocument);
             const awaitingValidation = Boolean(sepa.awaiting_validation);
+            const needsActivation = Boolean(sepa.needs_activation);
             const isActive = Boolean(sepa.status);
             const statusLabel = typeof sepa.label === 'string' && sepa.label.trim() !== ''
                 ? sepa.label.trim()
@@ -1268,9 +1269,12 @@
             }
 
             if (hasSigned) {
-                const signedStatus = awaitingValidation
-                    ? (strings.manageSepaValidationStatus || 'Pendiente de validación')
-                    : '';
+                let signedStatus = '';
+                if (awaitingValidation) {
+                    signedStatus = strings.manageSepaValidationStatus || 'Pendiente de validación';
+                } else if (needsActivation) {
+                    signedStatus = strings.manageSepaActivationStatus || 'Pendiente de domiciliación';
+                }
                 cards.push(renderSepaDocumentCard({
                     title: strings.manageSepaSignedTitle || 'Mandato firmado por el profesional',
                     description: strings.manageSepaSignedDescription || '',
@@ -1290,7 +1294,7 @@
             const actionButtons = [];
             let actionHelp = '';
 
-            if (awaitingValidation) {
+            if (awaitingValidation || needsActivation) {
                 actionHelp = typeof strings.manageSepaActivateHelp === 'string'
                     ? strings.manageSepaActivateHelp.trim()
                     : '';

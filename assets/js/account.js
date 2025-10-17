@@ -129,6 +129,7 @@
             awaitingValidation: strings.sepaAwaitingValidation || 'Pendiente de validación',
             awaitingSignature: strings.sepaAwaitingSignature || 'Pendiente de firma',
             awaitingMessage: strings.sepaAwaitingMessage || 'Tu SEPA firmado está pendiente de validación.',
+            awaitingActivation: strings.sepaAwaitingActivation || 'Pendiente de domiciliación',
         };
         const workshopToggle = document.querySelector('[data-workshop-toggle]');
         const workshopFieldKeys = [
@@ -695,9 +696,10 @@
                             }
 
                             const awaitingValidation = Boolean(sepaData.awaiting_validation);
+                            const needsActivation = Boolean(sepaData.needs_activation);
                             const sepaIsActive = Boolean(sepaData.status);
                             if (sepaController && typeof sepaController.setLocked === 'function') {
-                                sepaController.setLocked(awaitingValidation);
+                                sepaController.setLocked(awaitingValidation || needsActivation);
                             }
                             const activationCard = document.querySelector('[data-payment-activation]');
                             const detailCard = document.querySelector('[data-payment-detail]');
@@ -720,12 +722,12 @@
                             }
 
                             if (sepaStatusRow) {
-                                const isRequested = Boolean(sepaData.requested);
+                                const isRequested = Boolean(sepaData.requested) || needsActivation;
                                 sepaStatusRow.hidden = !isRequested;
                                 sepaStatusRow.setAttribute('aria-hidden', isRequested ? 'false' : 'true');
-                                sepaStatusRow.setAttribute('data-sepa-requested', isRequested ? 'true' : 'false');
-
+                                sepaStatusRow.setAttribute('data-sepa-requested', sepaData.requested ? 'true' : 'false');
                                 sepaStatusRow.setAttribute('data-sepa-awaiting', awaitingValidation ? 'true' : 'false');
+                                sepaStatusRow.setAttribute('data-sepa-needs-activation', needsActivation ? 'true' : 'false');
                                 sepaStatusRow.classList.toggle('account-card__status--sepa-success', awaitingValidation);
 
                                 const statusLabel = sepaStatusRow.querySelector('[data-sepa-status-label]');
@@ -735,22 +737,26 @@
                                         statusText = sepaData.status_label.trim();
                                     }
                                     if (statusText === '') {
-                                        statusText = awaitingValidation
-                                            ? (sepaText.awaitingValidation || 'Pendiente de validación')
-                                            : (sepaText.awaitingSignature || 'Pendiente de firma');
+                                        if (awaitingValidation) {
+                                            statusText = sepaText.awaitingValidation || 'Pendiente de validación';
+                                        } else if (needsActivation) {
+                                            statusText = sepaText.awaitingActivation || 'Pendiente de domiciliación';
+                                        } else {
+                                            statusText = sepaText.awaitingSignature || 'Pendiente de firma';
+                                        }
                                     }
                                     statusLabel.textContent = statusText;
                                 }
                             }
 
                             if (toggleWrapper) {
-                                const shouldHideToggle = sepaIsActive || Boolean(sepaData.requested);
+                                const shouldHideToggle = sepaIsActive || Boolean(sepaData.requested) || needsActivation;
                                 toggleWrapper.hidden = shouldHideToggle;
                                 toggleWrapper.setAttribute('aria-hidden', shouldHideToggle ? 'true' : 'false');
                             }
 
                             if (toggleInput) {
-                                const shouldDisableToggle = sepaIsActive || awaitingValidation || Boolean(sepaData.requested);
+                                const shouldDisableToggle = sepaIsActive || awaitingValidation || Boolean(sepaData.requested) || needsActivation;
                                 if (sepaIsActive) {
                                     toggleInput.checked = true;
                                 }
@@ -764,7 +770,7 @@
                                 let nextState = 'disabled';
                                 if (sepaIsActive) {
                                     nextState = 'locked';
-                                } else if (sepaData.requested) {
+                                } else if (sepaData.requested || needsActivation) {
                                     nextState = 'requested';
                                 } else if (selectedMethod === 'domiciliacion') {
                                     nextState = 'enabled';

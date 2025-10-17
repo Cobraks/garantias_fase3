@@ -1444,6 +1444,7 @@ class ClientRestController
         $requested = isset($sepa['requested']) ? (bool) $sepa['requested'] : false;
         $awaiting_validation = isset($sepa['awaiting_validation']) ? (bool) $sepa['awaiting_validation'] : false;
         $locked = isset($sepa['locked']) ? (bool) $sepa['locked'] : false;
+        $needs_activation = isset($sepa['needs_activation']) ? (bool) $sepa['needs_activation'] : false;
         $status_code = isset($sepa['status_code']) ? sanitize_key((string) $sepa['status_code']) : '';
         $activated = isset($sepa['activated']) ? (bool) $sepa['activated'] : false;
 
@@ -1489,6 +1490,7 @@ class ClientRestController
             'requested'           => $requested,
             'awaiting_validation' => $awaiting_validation,
             'locked'              => $locked,
+            'needs_activation'    => $needs_activation,
             'status'              => $status_value,
             'status_code'         => $status_code,
             'activated'           => $activated,

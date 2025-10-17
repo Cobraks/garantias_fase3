@@ -270,6 +270,7 @@ if (! empty($is_add_guarantee)) {
             'manageSepaSignedDescription' => __('Revisa el documento adjunto antes de activar la domiciliación bancaria.', 'garantias-online-360vo'),
             'manageSepaPendingStatus' => __('Pendiente de firma', 'garantias-online-360vo'),
             'manageSepaValidationStatus' => __('Pendiente de validación', 'garantias-online-360vo'),
+            'manageSepaActivationStatus' => __('Pendiente de domiciliación', 'garantias-online-360vo'),
             'manageSepaNoDocuments' => __('No hay documentos SEPA disponibles.', 'garantias-online-360vo'),
             'manageSepaDownload'   => __('Descargar mandato', 'garantias-online-360vo'),
             'manageSepaViewSigned' => __('Ver mandato firmado', 'garantias-online-360vo'),
@@ -473,6 +474,7 @@ if (! empty($is_add_guarantee)) {
             'sepaAwaitingValidation' => __('Pendiente de validación', 'garantias-online-360vo'),
             'sepaAwaitingSignature'  => __('Pendiente de firma', 'garantias-online-360vo'),
             'sepaAwaitingMessage'    => __('Tu SEPA firmado está pendiente de validación.', 'garantias-online-360vo'),
+            'sepaAwaitingActivation' => __('Pendiente de domiciliación', 'garantias-online-360vo'),
         ],
     ];
     ?>

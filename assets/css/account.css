@@ -1123,6 +1123,12 @@
   line-height: 1.6;
 }
 
+.account-sepa-request__status--info {
+  border-color: #bfdbfe;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
 .account-sepa-request__actions {
   display: flex;
   flex-direction: column;
@@ -1133,6 +1139,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2);
+}
+
+.account-sepa-request__action--primary {
+  align-items: flex-start;
 }
 
 .account-sepa-request__step {
@@ -1172,6 +1182,23 @@
   text-decoration: none;
   box-shadow: 0 22px 38px -24px rgba(220, 38, 38, 0.55);
   transition: transform var(--transition-speed), box-shadow var(--transition-speed), background-color var(--transition-speed), border-color var(--transition-speed);
+}
+
+.account-sepa-request__download--emphasis {
+  width: fit-content;
+}
+
+.account-sepa-signed {
+  margin-top: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.account-sepa-signed__label {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-color);
 }
 
 .account-sepa-request__download:hover,

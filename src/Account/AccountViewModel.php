@@ -457,6 +457,7 @@ class AccountViewModel
             'requested'          => false,
             'awaiting_validation' => false,
             'activated'          => false,
+            'needs_activation'   => false,
             'documents'          => [
                 'signed'  => [],
                 'pending' => [],
@@ -653,8 +654,12 @@ class AccountViewModel
                 || ((int) ($signed_document['id'] ?? 0) > 0)
             );
 
-        if ($has_signed_document && $sepa['status'] !== true) {
-            $sepa['awaiting_validation'] = true;
+        $sepa['awaiting_validation'] = (
+            $sepa['status_code'] === SepaMandateService::STATUS_PENDING_VALIDATION
+        );
+
+        if ($has_signed_document && empty($sepa['activated'])) {
+            $sepa['needs_activation'] = ($sepa['status_code'] === SepaMandateService::STATUS_SIGNED);
         }
 
         $status_code = $sepa['status_code'] ?? SepaMandateService::STATUS_UNFILLED;
@@ -690,7 +695,7 @@ class AccountViewModel
             true
         ) || $has_pending_request;
 
-        if (($has_pending_request || $sepa['awaiting_validation']) && ! $sepa['status']) {
+        if (($has_pending_request || $sepa['awaiting_validation'] || $sepa['needs_activation']) && ! $sepa['status']) {
             $selected_method = 'transferencia';
         }
 
@@ -721,6 +726,7 @@ class AccountViewModel
                     $sepa['status_label'] = __('SEPA válido y activo', 'garantias-online-360vo');
                     $sepa['status_variant'] = 'success';
                 } else {
+                    $sepa['status_label'] = __('Pendiente de domiciliación', 'garantias-online-360vo');
                     $sepa['status_variant'] = 'warning';
                 }
                 break;
