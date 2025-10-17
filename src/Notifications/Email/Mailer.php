@@ -53,12 +53,14 @@ class Mailer
             $buffer_started = true;
         }
 
+        $attachments = $this->normalize_attachments($message->get_attachments());
+
         $sent = wp_mail(
             $recipients,
             $message->get_subject(),
             $message->get_body(),
             $headers,
-            $message->get_attachments()
+            $attachments
         );
 
         if ($buffer_started) {
@@ -70,5 +72,41 @@ class Mailer
         }
 
         return $sent;
+    }
+
+    /**
+     * @param mixed $attachments
+     * @return string[]
+     */
+    private function normalize_attachments($attachments): array
+    {
+        if (! is_array($attachments)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($attachments as $attachment) {
+            if (is_string($attachment)) {
+                $path = trim($attachment);
+                if ($path !== '') {
+                    $normalized[] = $path;
+                }
+                continue;
+            }
+
+            if (! is_array($attachment) || empty($attachment['file'])) {
+                continue;
+            }
+
+            $path = (string) $attachment['file'];
+            if ($path === '') {
+                continue;
+            }
+
+            $normalized[] = $path;
+        }
+
+        return array_values($normalized);
     }
 }

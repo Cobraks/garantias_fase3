@@ -731,11 +731,7 @@ class AccountRestController
         }
 
         if ($tmp_file && file_put_contents($tmp_file, $binary) !== false) {
-            $attachments[] = [
-                'file' => $tmp_file,
-                'name' => $filename,
-                'type' => 'application/pdf',
-            ];
+            $attachments[] = $tmp_file;
             $temporary_files[] = $tmp_file;
         }
 
