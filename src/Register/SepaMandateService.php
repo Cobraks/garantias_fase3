@@ -216,30 +216,38 @@ class SepaMandateService
     public static function parse_activation_field($value): array
     {
         $label = '';
+        $source = $value;
 
         if (is_array($value)) {
             if (isset($value['label'])) {
                 $label = (string) $value['label'];
             }
 
-            if (isset($value['value'])) {
-                $value = $value['value'];
+            if (isset($value['state'])) {
+                $source = $value['state'];
+            } elseif (isset($value['value'])) {
+                $source = $value['value'];
             }
-        } elseif (is_object($value) && isset($value->value)) {
+        } elseif (is_object($value)) {
             if (isset($value->label)) {
                 $label = (string) $value->label;
             }
-            $value = $value->value;
+
+            if (isset($value->state)) {
+                $source = $value->state;
+            } elseif (isset($value->value)) {
+                $source = $value->value;
+            }
         }
 
-        $state = self::normalize_activation_state($value);
-        $payload = self::build_activation_payload($state);
+        $state = self::normalize_activation_state($source);
+        $label = $label !== '' ? $label : self::get_activation_label($state);
 
-        if ($label !== '') {
-            $payload['label'] = $label;
-        }
-
-        return $payload;
+        return [
+            'value' => $state,
+            'label' => $label,
+            'state' => $state,
+        ];
     }
 
     /**
@@ -255,12 +263,24 @@ class SepaMandateService
             return ((int) $value) === 1 ? self::ACTIVATION_ENABLED : self::ACTIVATION_DISABLED;
         }
 
-        if (is_array($value) && isset($value['value'])) {
-            return self::normalize_activation_state($value['value']);
+        if (is_array($value)) {
+            if (isset($value['state'])) {
+                return self::normalize_activation_state($value['state']);
+            }
+
+            if (isset($value['value'])) {
+                return self::normalize_activation_state($value['value']);
+            }
         }
 
-        if (is_object($value) && isset($value->value)) {
-            return self::normalize_activation_state($value->value);
+        if (is_object($value)) {
+            if (isset($value->state)) {
+                return self::normalize_activation_state($value->state);
+            }
+
+            if (isset($value->value)) {
+                return self::normalize_activation_state($value->value);
+            }
         }
 
         if (! is_scalar($value)) {
@@ -312,31 +332,39 @@ class SepaMandateService
     public static function build_activation_payload(string $state): array
     {
         $normalized = self::normalize_activation_state($state);
-
-        switch ($normalized) {
-            case self::ACTIVATION_ENABLED:
-                $label = __('Activada', 'garantias-online-360vo');
-                break;
-            case self::ACTIVATION_PENDING:
-                $label = __('Pendiente de domiciliación', 'garantias-online-360vo');
-                break;
-            default:
-                $label = __('Desactivada', 'garantias-online-360vo');
-                break;
-        }
+        $label = self::get_activation_label($normalized);
+        $acf_value = $normalized === self::ACTIVATION_ENABLED ? 1 : 0;
 
         return [
-            'value' => $normalized,
+            'value' => $acf_value,
             'label' => $label,
+            'state' => $normalized,
         ];
+    }
+
+    private static function get_activation_label(string $state): string
+    {
+        switch ($state) {
+            case self::ACTIVATION_ENABLED:
+                return __('Activada', 'garantias-online-360vo');
+            case self::ACTIVATION_PENDING:
+                return __('Pendiente de domiciliación', 'garantias-online-360vo');
+            default:
+                return __('Desactivada', 'garantias-online-360vo');
+        }
     }
 
     public static function get_activation_payload(int $user_id): array
     {
         $raw = get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
         $payload = self::parse_activation_field($raw);
+        $storage = self::build_activation_payload($payload['value']);
 
-        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $payload);
+        if ($payload['label'] !== '' && $payload['label'] !== $storage['label']) {
+            $storage['label'] = $payload['label'];
+        }
+
+        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $storage);
 
         return $payload;
     }

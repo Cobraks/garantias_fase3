@@ -1002,18 +1002,15 @@ footer.footer .footer__wrapper {
   height: 100%;
 }
 
-.register-page .summary-toggle__icon--hide,
-.register-page .summary-toggle__text--hide {
+.register-page .summary-toggle__icon--hide {
   display: none;
 }
 
-.register-page .summary-toggle[aria-pressed='true'] .summary-toggle__icon--show,
-.register-page .summary-toggle[aria-pressed='true'] .summary-toggle__text--show {
+.register-page .summary-toggle[aria-pressed='true'] .summary-toggle__icon--show {
   display: none;
 }
 
-.register-page .summary-toggle[aria-pressed='true'] .summary-toggle__icon--hide,
-.register-page .summary-toggle[aria-pressed='true'] .summary-toggle__text--hide {
+.register-page .summary-toggle[aria-pressed='true'] .summary-toggle__icon--hide {
   display: inline-flex;
 }
 

@@ -791,6 +791,8 @@
                             const awaitingValidation = Boolean(sepaData.awaiting_validation);
                             const needsActivation = Boolean(sepaData.needs_activation);
                             const sepaIsActive = Boolean(sepaData.status);
+                            const sepaIsActivated = Boolean(sepaData.activated);
+                            const shouldShowSuccess = sepaIsActive && sepaIsActivated;
                             if (sepaController && typeof sepaController.setLocked === 'function') {
                                 sepaController.setLocked(awaitingValidation || needsActivation);
                             }
@@ -837,8 +839,8 @@
                                 : '';
 
                             if (sepaSuccessRow) {
-                                sepaSuccessRow.hidden = !sepaIsActive;
-                                sepaSuccessRow.setAttribute('aria-hidden', sepaIsActive ? 'false' : 'true');
+                                sepaSuccessRow.hidden = !shouldShowSuccess;
+                                sepaSuccessRow.setAttribute('aria-hidden', shouldShowSuccess ? 'false' : 'true');
                             }
 
                             if (sepaDisabledRow) {
@@ -875,19 +877,21 @@
                             }
 
                             if (toggleWrapper) {
-                                const shouldHideToggle = sepaIsActive || Boolean(sepaData.requested) || needsActivation || sepaIsDisabled;
+                                const shouldHideToggle = sepaIsActivated || Boolean(sepaData.requested) || needsActivation || sepaIsDisabled;
                                 toggleWrapper.hidden = shouldHideToggle;
                                 toggleWrapper.setAttribute('aria-hidden', shouldHideToggle ? 'true' : 'false');
                             }
 
                             if (toggleInput) {
-                                const shouldDisableToggle = sepaIsActive
+                                const shouldDisableToggle = sepaIsActivated
                                     || awaitingValidation
                                     || Boolean(sepaData.requested)
                                     || needsActivation
                                     || sepaIsDisabled;
-                                if (sepaIsActive) {
+                                if (sepaIsActivated) {
                                     toggleInput.checked = true;
+                                } else if (!shouldDisableToggle) {
+                                    toggleInput.checked = false;
                                 }
                                 toggleInput.disabled = shouldDisableToggle;
                                 if (sepaIsDisabled) {

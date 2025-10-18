@@ -613,8 +613,13 @@ $formatPhoneHref = static function ($phone) {
             $sepa_status_label       = $sepa_info['status_label'] ?? 'Sin información del mandato';
             $sepa_status_variant     = $sepa_info['status_variant'] ?? 'info';
             $sepa_status_code        = (string) ($sepa_info['status_code'] ?? SepaMandateService::STATUS_UNFILLED);
-            $sepa_is_active          = (bool) ($sepa_info['status'] ?? false);
+            $sepa_is_activated       = ! empty($sepa_info['activated']);
+            $sepa_status_is_signed   = ($sepa_status_code === SepaMandateService::STATUS_SIGNED);
+            $sepa_is_active          = $sepa_is_activated && $sepa_status_is_signed;
             $sepa_locked             = (bool) ($sepa_info['locked'] ?? false);
+            if ($sepa_is_active) {
+                $sepa_locked = true;
+            }
             $sepa_requested          = (bool) ($sepa_info['requested'] ?? false);
             $sepa_awaiting_validation = (bool) ($sepa_info['awaiting_validation'] ?? false);
             $sepa_needs_activation   = (bool) ($sepa_info['needs_activation'] ?? false);
@@ -625,7 +630,9 @@ $formatPhoneHref = static function ($phone) {
                 'transferencia' => 'Transferencia bancaria',
             ];
             $current_method_label    = $method_labels[$selected_payment_method] ?? $method_labels['transferencia'];
-            if ($sepa_is_active || $sepa_locked) {
+            if ($sepa_is_active) {
+                $activation_state = 'locked';
+            } elseif ($sepa_locked) {
                 $activation_state = 'locked';
             } elseif ($sepa_requested || $sepa_needs_activation) {
                 $activation_state = 'requested';

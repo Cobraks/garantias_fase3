@@ -626,8 +626,6 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                         hidden>
                                         <span class="summary-toggle__icon summary-toggle__icon--show" aria-hidden="true"><?php echo Svg::icon('visibility'); ?></span>
                                         <span class="summary-toggle__icon summary-toggle__icon--hide" aria-hidden="true"><?php echo Svg::icon('visibility_off'); ?></span>
-                                        <span class="summary-toggle__text summary-toggle__text--show"><?php esc_html_e('Ver', 'garantias-online-360vo'); ?></span>
-                                        <span class="summary-toggle__text summary-toggle__text--hide"><?php esc_html_e('Ocultar', 'garantias-online-360vo'); ?></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Alternar visibilidad del IBAN', 'garantias-online-360vo'); ?></span>
                                     </button>
                                 </div>
