@@ -25,9 +25,10 @@ class SepaMandateService
 
     private const META_PENDING_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_sin_firmar';
     private const META_SIGNED_FIELD  = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_firmado';
-    private const META_STATUS_FIELD   = 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa';
-    private const META_ACTIVATE_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_activar_sepa';
-    private const META_PAYMENT_FIELD  = 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago';
+    private const META_STATUS_FIELD           = 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa';
+    private const META_ACTIVATE_FIELD         = 'gestion_pagos_gestion_sepa_estado_documentos_activar_sepa';
+    private const META_PAYMENT_FIELD          = 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago';
+    private const META_DISABLED_MESSAGE_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_mensaje_deshabilitado';
 
     public const ACTIVATION_ENABLED  = 'activada';
     public const ACTIVATION_DISABLED = 'desactivada';
@@ -46,6 +47,7 @@ class SepaMandateService
     public const STATUS_PENDING_SIGNATURE  = 'pendiente_firma';
     public const STATUS_PENDING_VALIDATION = 'pendiente_validacion';
     public const STATUS_SIGNED             = 'firmado';
+    public const STATUS_DISABLED           = 'deshabilitado';
 
     private const DEFAULT_REFERENCE_PREFIX = 'GO';
 
@@ -79,6 +81,7 @@ class SepaMandateService
             self::STATUS_PENDING_SIGNATURE  => __('Pendiente de firma', 'garantias-online-360vo'),
             self::STATUS_PENDING_VALIDATION => __('Pendiente de validación', 'garantias-online-360vo'),
             self::STATUS_SIGNED             => __('SEPA firmado', 'garantias-online-360vo'),
+            self::STATUS_DISABLED           => __('Deshabilitado', 'garantias-online-360vo'),
         ];
     }
 
@@ -116,6 +119,11 @@ class SepaMandateService
             case 'pendiente_firma':
             case 'pending_signature':
                 return self::STATUS_PENDING_SIGNATURE;
+            case 'deshabilitado':
+            case 'inhabilitado':
+            case 'disabled':
+            case 'deactivated':
+                return self::STATUS_DISABLED;
             case 'sin_rellenar_sepa':
             case 'sin_rellenar':
             case 'unfilled':
@@ -196,6 +204,10 @@ class SepaMandateService
     {
         $payload = self::build_status_payload($status);
         update_user_meta($user_id, self::META_STATUS_FIELD, $payload);
+
+        if ($payload['value'] !== self::STATUS_DISABLED) {
+            self::clear_disabled_message($user_id);
+        }
     }
 
     /**
@@ -607,6 +619,27 @@ class SepaMandateService
             self::set_status($user_id, self::STATUS_UNFILLED);
         }
         self::set_payment_method($user_id, 'transferencia');
+    }
+
+    public static function set_disabled_message(int $user_id, string $message): void
+    {
+        $sanitized = sanitize_textarea_field($message);
+        update_user_meta($user_id, self::META_DISABLED_MESSAGE_FIELD, $sanitized);
+    }
+
+    public static function get_disabled_message(int $user_id): string
+    {
+        $value = get_user_meta($user_id, self::META_DISABLED_MESSAGE_FIELD, true);
+        if (is_string($value)) {
+            return trim($value);
+        }
+
+        return '';
+    }
+
+    public static function clear_disabled_message(int $user_id): void
+    {
+        delete_user_meta($user_id, self::META_DISABLED_MESSAGE_FIELD);
     }
 
     /**

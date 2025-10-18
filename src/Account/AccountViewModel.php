@@ -570,6 +570,20 @@ class AccountViewModel
                                 $payment_method_value = (string) $status_group['metodo_de_pago']['value'];
                             }
                         }
+                        if (isset($status_group['mensaje_deshabilitado'])) {
+                            $disabled_message = $status_group['mensaje_deshabilitado'];
+                            if (is_array($disabled_message)) {
+                                if (isset($disabled_message['value'])) {
+                                    $disabled_message = $disabled_message['value'];
+                                } elseif (isset($disabled_message['label'])) {
+                                    $disabled_message = $disabled_message['label'];
+                                }
+                            }
+
+                            if (is_scalar($disabled_message)) {
+                                $sepa['disabled_message'] = self::sanitize_optional_text($disabled_message);
+                            }
+                        }
                         if (! empty($status_group['documento_sepa_firmado'])) {
                             $sepa['documents']['signed'] = SepaMandateService::normalize_document(
                                 $status_group['documento_sepa_firmado'],
@@ -604,6 +618,12 @@ class AccountViewModel
         $status_payload = SepaMandateService::get_status($user_id);
         $sepa['status_code']  = $status_payload['value'];
         $sepa['status_label'] = $status_payload['label'];
+
+        if (! isset($sepa['disabled_message']) || $sepa['disabled_message'] === '') {
+            $sepa['disabled_message'] = self::sanitize_optional_text(
+                SepaMandateService::get_disabled_message($user_id)
+            );
+        }
 
         if (! $sepa['activated']) {
             $activation_payload = SepaMandateService::get_activation_payload($user_id);
@@ -676,6 +696,15 @@ class AccountViewModel
             $sepa['needs_activation'] = ($sepa['status_code'] === SepaMandateService::STATUS_SIGNED);
         }
 
+        if ($sepa['status_code'] === SepaMandateService::STATUS_DISABLED) {
+            $sepa['awaiting_validation'] = false;
+            $sepa['activated'] = false;
+            $sepa['status'] = false;
+            if ($has_signed_document) {
+                $sepa['needs_activation'] = true;
+            }
+        }
+
         $status_code = $sepa['status_code'] ?? SepaMandateService::STATUS_UNFILLED;
         $is_activated = ! empty($sepa['activated']);
 
@@ -711,6 +740,11 @@ class AccountViewModel
 
         if (($has_pending_request || $sepa['awaiting_validation'] || $sepa['needs_activation']) && ! $sepa['status']) {
             $selected_method = 'transferencia';
+        }
+
+        if ($status_code === SepaMandateService::STATUS_DISABLED) {
+            $selected_method = 'transferencia';
+            $sepa['locked'] = false;
         }
 
         $sepa['locked'] = $selected_method === 'domiciliacion' && $sepa['status'];
@@ -754,6 +788,12 @@ class AccountViewModel
             case SepaMandateService::STATUS_PENDING_SIGNATURE:
                 $sepa['status_label'] = __('Pendiente de firma', 'garantias-online-360vo');
                 $sepa['status_variant'] = 'warning';
+                break;
+            case SepaMandateService::STATUS_DISABLED:
+                $sepa['status_label'] = __('Domiciliación bancaria deshabilitada', 'garantias-online-360vo');
+                $sepa['status_variant'] = 'error';
+                $sepa['activated'] = false;
+                $sepa['status'] = false;
                 break;
         }
 
