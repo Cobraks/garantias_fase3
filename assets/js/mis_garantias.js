@@ -70,6 +70,16 @@ const ADD_DOC_KEY = "add-document";
                                 muted: "var(--admin-summary-state-sin-finalizar-muted)",
                         },
                 };
+                const ADMIN_SUMMARY_KPI_TRENDS = {
+                        year: {
+                                amount: { label: "12.5% vs año ant.", type: "positive" },
+                                count: { label: "-5.2% vs mes ant.", type: "negative" },
+                        },
+                        month: {
+                                amount: { label: "5.2% vs mes ant.", type: "positive" },
+                                count: { label: "-5.2% vs mes ant.", type: "negative" },
+                        },
+                };
                 const ADMIN_SUMMARY_ACTION_ARROW_ICON =
                         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
                 const ADMIN_SUMMARY_ACTIONS = [
@@ -97,6 +107,31 @@ const ADD_DOC_KEY = "add-document";
                                 icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>',
                                 accent: "var(--admin-summary-action-collect)",
                         },
+                ];
+                const DETAIL_SKELETON_FIELD_CANDIDATES = [
+                        "plan",
+                        "precio",
+                        "tipo",
+                        "kilometros",
+                        "primera_matriculacion",
+                        "bastidor",
+                        "precio_venta",
+                        "combustible",
+                        "cambio",
+                        "potencia",
+                        "cilindrada",
+                        "canal_venta",
+                        "canal_venta_summary",
+                        "concesionario",
+                        "concesionario_personal",
+                        "nombre_comprador",
+                        "dni_comprador",
+                        "telefono_comprador",
+                        "email_comprador",
+                        "direccion_comprador",
+                        "localidad_comprador",
+                        "provincia_comprador",
+                        "codigo_postal_comprador",
                 ];
                 const integerFormatter = new Intl.NumberFormat("es-ES");
                 const currencyFormatter = new Intl.NumberFormat("es-ES", {
@@ -2367,6 +2402,46 @@ const ADD_DOC_KEY = "add-document";
                         numberAnimations.set(element, requestAnimationFrame(step));
                 }
 
+                function animateSummaryCurrency(element, target, options = {}) {
+                        if (!element) {
+                                return;
+                        }
+                        const duration = typeof options.duration === "number" ? options.duration : 500;
+                        const startValue =
+                                typeof options.start === "number"
+                                        ? options.start
+                                        : normalizeToFloat(element.dataset.value || element.textContent || 0);
+                        const normalizedTarget = normalizeToFloat(target);
+                        if (numberAnimations.has(element)) {
+                                cancelAnimationFrame(numberAnimations.get(element));
+                        }
+                        const startTime = performance.now();
+                        function step(now) {
+                                const progress = Math.min((now - startTime) / duration, 1);
+                                const current = startValue + (normalizedTarget - startValue) * progress;
+                                element.textContent = formatCurrencyValue(current);
+                                if (progress < 1) {
+                                        numberAnimations.set(element, requestAnimationFrame(step));
+                                } else {
+                                        element.textContent = formatCurrencyValue(normalizedTarget);
+                                        element.dataset.value = String(normalizedTarget);
+                                        numberAnimations.delete(element);
+                                }
+                        }
+                        numberAnimations.set(element, requestAnimationFrame(step));
+                }
+
+                function resetAdminSummaryKpis(root) {
+                        if (!root) {
+                                return;
+                        }
+                        const valueNodes = root.querySelectorAll("[data-admin-summary-kpi-value]");
+                        valueNodes.forEach((node) => {
+                                node.textContent = "—";
+                                node.dataset.value = "0";
+                        });
+                }
+
                 function setAdminSummaryLoading(root, isLoading) {
                         if (!root) {
                                 return;
@@ -2426,6 +2501,7 @@ const ADD_DOC_KEY = "add-document";
                                         resetDonutChart(donut);
                                         donut.classList.remove("is-empty");
                                 }
+                                resetAdminSummaryKpis(root);
                         }
                 }
 
@@ -2470,6 +2546,7 @@ const ADD_DOC_KEY = "add-document";
                         if (donut) {
                                 resetDonutChart(donut);
                         }
+                        resetAdminSummaryKpis(root);
                         const error = root.querySelector("[data-admin-summary-error]");
                         if (error) {
                                 error.hidden = false;
@@ -2513,6 +2590,22 @@ const ADD_DOC_KEY = "add-document";
                         });
 
                         return items;
+                }
+
+                function normalizeSummaryAmounts(amounts) {
+                        const map = new Map();
+                        if (!Array.isArray(amounts)) {
+                                return map;
+                        }
+                        amounts.forEach((entry) => {
+                                const value = typeof entry.value === "string" ? entry.value : "";
+                                if (!value) {
+                                        return;
+                                }
+                                const amount = normalizeToFloat(entry.amount || 0);
+                                map.set(value, amount);
+                        });
+                        return map;
                 }
 
                 function getDonutBaseColor(donut) {
@@ -2689,13 +2782,132 @@ const ADD_DOC_KEY = "add-document";
                         return match && match.value ? match.value : null;
                 }
 
+                function updateAdminSummaryKpis(root, context = {}) {
+                        if (!root) {
+                                return;
+                        }
+                        const container = root.querySelector("[data-admin-summary-kpis]");
+                        if (!container) {
+                                return;
+                        }
+                        const contextKey =
+                                context.key || root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                        const amountMap =
+                                context.amountMap instanceof Map
+                                        ? context.amountMap
+                                        : normalizeSummaryAmounts(context.amounts || []);
+                        const contextLabel =
+                                context && typeof context.label === "string"
+                                        ? context.label.trim()
+                                        : "";
+                        const countValue =
+                                typeof context.count === "number"
+                                        ? context.count
+                                        : 0;
+
+                        const amountCard = container.querySelector(
+                                '[data-admin-summary-kpi="amount"]'
+                        );
+                        if (amountCard) {
+                                const labelEl = amountCard.querySelector(
+                                        "[data-admin-summary-kpi-label]"
+                                );
+                                if (labelEl) {
+                                        labelEl.textContent =
+                                                contextKey === "year"
+                                                        ? "Valor acumulado"
+                                                        : contextLabel
+                                                        ? `Valor mensual (${contextLabel})`
+                                                        : "Valor mensual";
+                                }
+                                const valueEl = amountCard.querySelector(
+                                        "[data-admin-summary-kpi-value]"
+                                );
+                                if (valueEl) {
+                                        animateSummaryCurrency(
+                                                valueEl,
+                                                amountMap.get("activada") || 0,
+                                                { duration: 420 }
+                                        );
+                                }
+                                const trendEl = amountCard.querySelector(
+                                        "[data-admin-summary-kpi-trend]"
+                                );
+                                if (trendEl) {
+                                        const trendData =
+                                                (ADMIN_SUMMARY_KPI_TRENDS[contextKey] || {}).amount || null;
+                                        const trendLabel = trendData && trendData.label ? trendData.label : "";
+                                        trendEl.classList.toggle(
+                                                "positive",
+                                                Boolean(trendData && trendData.type === "positive")
+                                        );
+                                        trendEl.classList.toggle(
+                                                "negative",
+                                                Boolean(trendData && trendData.type === "negative")
+                                        );
+                                        const span = trendEl.querySelector("span");
+                                        if (span) {
+                                                span.textContent = trendLabel;
+                                        } else {
+                                                trendEl.textContent = trendLabel;
+                                        }
+                                }
+                        }
+
+                        const countCard = container.querySelector(
+                                '[data-admin-summary-kpi="count"]'
+                        );
+                        if (countCard) {
+                                const labelEl = countCard.querySelector(
+                                        "[data-admin-summary-kpi-label]"
+                                );
+                                if (labelEl) {
+                                        labelEl.textContent =
+                                                contextKey === "year"
+                                                        ? "Total garantías"
+                                                        : "Garantías este mes";
+                                }
+                                const valueEl = countCard.querySelector(
+                                        "[data-admin-summary-kpi-value]"
+                                );
+                                if (valueEl) {
+                                        animateSummaryNumber(valueEl, countValue, { duration: 420 });
+                                }
+                                const trendEl = countCard.querySelector(
+                                        "[data-admin-summary-kpi-trend]"
+                                );
+                                if (trendEl) {
+                                        const trendData =
+                                                (ADMIN_SUMMARY_KPI_TRENDS[contextKey] || {}).count || null;
+                                        const trendLabel = trendData && trendData.label ? trendData.label : "";
+                                        trendEl.classList.toggle(
+                                                "positive",
+                                                Boolean(trendData && trendData.type === "positive")
+                                        );
+                                        trendEl.classList.toggle(
+                                                "negative",
+                                                Boolean(trendData && trendData.type === "negative")
+                                        );
+                                        const span = trendEl.querySelector("span");
+                                        if (span) {
+                                                span.textContent = trendLabel;
+                                        } else {
+                                                trendEl.textContent = trendLabel;
+                                        }
+                                }
+                        }
+                }
+
                 function renderAdminSummaryStates(root, context = {}) {
                         const donut = root.querySelector("[data-admin-summary-donut]");
                         const legend = root.querySelector("[data-admin-summary-states]");
                         const totalEl = root.querySelector("[data-admin-summary-total]");
                         const labelEl = root.querySelector("[data-admin-summary-label]");
                         const items = normalizeSummaryStates((context && context.states) || []);
+                        const amountMap = normalizeSummaryAmounts((context && context.amounts) || []);
                         const total = items.reduce((sum, item) => sum + item.count, 0);
+                        const totalCount =
+                                typeof context.count === "number" ? context.count : total;
 
                         const defaultLabel = labelEl
                                 ? labelEl.getAttribute("data-default-label") || "Total"
@@ -2715,6 +2927,8 @@ const ADD_DOC_KEY = "add-document";
                                 if (typeof totalEl.dataset.value === "undefined") {
                                         totalEl.dataset.value = "0";
                                 }
+                                totalEl.dataset.value = String(totalCount);
+                                totalEl.textContent = formatIntegerValue(totalCount);
                                 totalEl.classList.remove("highlighted");
                                 totalEl.style.color = "";
                         }
@@ -2722,6 +2936,13 @@ const ADD_DOC_KEY = "add-document";
                         if (donut) {
                                 configureDonutSegments(donut, items);
                         }
+
+                        updateAdminSummaryKpis(root, {
+                                key: root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT,
+                                label: contextLabel,
+                                count: totalCount,
+                                amountMap,
+                        });
 
                         if (!legend) {
                                 return;
@@ -2734,8 +2955,10 @@ const ADD_DOC_KEY = "add-document";
                                 legend.appendChild(item);
                                 root._adminSummaryContextData = {
                                         items,
-                                        total,
+                                        total: totalCount,
+                                        count: totalCount,
                                         label: contextLabel || defaultLabel,
+                                        amounts: amountMap,
                                 };
                                 root._adminSummaryHighlight = null;
                                 root._adminSummaryLockedHighlight = null;
@@ -2805,8 +3028,10 @@ const ADD_DOC_KEY = "add-document";
 
                         root._adminSummaryContextData = {
                                 items,
-                                total,
+                                total: totalCount,
+                                count: totalCount,
                                 label: contextLabel || defaultLabel,
+                                amounts: amountMap,
                         };
                         root._adminSummaryLockedHighlight = sanitizeLegendState(
                                 root,
@@ -3138,7 +3363,23 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
-                function renderEmptyDetail(mode = "awaiting") {
+                function renderEmptyDetail(mode = "awaiting", options = {}) {
+                        if (mode === "loading") {
+                                const rawPlate =
+                                        typeof options.plate === "string" ? options.plate.trim() : "";
+                                const safePlate = escapeHtml(rawPlate);
+                                const message = safePlate
+                                        ? `Cargando garantía ${safePlate}`
+                                        : "Cargando garantía…";
+                                return `
+                                <div class="guarantee-detail__empty guarantee-detail__empty--loading" data-empty-detail data-empty-mode="loading">
+                                        <div class="client-detail__loading" role="status" aria-live="polite">
+                                                <span class="client-detail__loading-spinner" aria-hidden="true"></span>
+                                                <p class="guarantee-detail__hint">${message}</p>
+                                        </div>
+                                </div>
+                        `;
+                        }
                         const templateKey = mode === "no-results" ? "no-results" : "awaiting";
                         if (emptyTemplateMap[templateKey]) {
                                 return emptyTemplateMap[templateKey];
@@ -3177,11 +3418,16 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 // Nuevo: mostrar el empty panel como los de detalle, solo si no está ya activo
-                function setEmptyDetailPanel(direction = "forward", mode = "awaiting") {
+                function setEmptyDetailPanel(direction = "forward", mode = "awaiting", options = {}) {
                         clearActiveCountdown();
                         const currentActive = activePanel;
                         const nextPanel = activePanel === panel1 ? panel2 : panel1;
-                        const normalizedMode = mode === "no-results" ? "no-results" : "awaiting";
+                        const normalizedMode =
+                                mode === "no-results"
+                                        ? "no-results"
+                                        : mode === "loading"
+                                        ? "loading"
+                                        : "awaiting";
                         const activeHasSameMode =
                                 normalizedMode === currentEmptyMode &&
                                 currentActive &&
@@ -3199,7 +3445,7 @@ const ADD_DOC_KEY = "add-document";
                         if (activeHasSameMode || nextHasSameMode) {
                                 return;
                         }
-                        nextPanel.innerHTML = renderEmptyDetail(normalizedMode);
+                        nextPanel.innerHTML = renderEmptyDetail(normalizedMode, options);
                         const emptyNode = nextPanel.querySelector("[data-empty-detail]");
                         if (emptyNode) {
                                 emptyNode.setAttribute("data-empty-mode", normalizedMode);
@@ -3220,11 +3466,11 @@ const ADD_DOC_KEY = "add-document";
 			);
 			nextPanel.classList.add("active");
 			currentActive.classList.remove("active");
-			currentActive.addEventListener(
-				"animationend",
-				() => {
-					currentActive.classList.remove("slide-out-left", "slide-out-right");
-					nextPanel.classList.remove("slide-in-left", "slide-in-right");
+                        currentActive.addEventListener(
+                                "animationend",
+                                () => {
+                                        currentActive.classList.remove("slide-out-left", "slide-out-right");
+                                        nextPanel.classList.remove("slide-in-left", "slide-in-right");
 				},
 				{ once: true }
 			);
@@ -3234,10 +3480,20 @@ const ADD_DOC_KEY = "add-document";
 
                 function clearSelectionAndDetail(options = {}) {
                         const preserveQuery = Boolean(options.preserveQuery);
+                        const requestedMode =
+                                typeof options.emptyMode === "string" ? options.emptyMode : "";
+                        const shouldShowLoading =
+                                requestedMode === "" && pendingMatSelection && initialMatQuery;
                         const desiredMode =
-                                typeof options.emptyMode === "string"
-                                        ? options.emptyMode
+                                requestedMode !== ""
+                                        ? requestedMode
+                                        : shouldShowLoading
+                                        ? "loading"
                                         : "awaiting";
+                        const emptyOptions =
+                                desiredMode === "loading"
+                                        ? { plate: initialMatQuery }
+                                        : {};
                         const rows = Array.from(
                                 document.querySelectorAll(".guarantees-table__row")
                         );
@@ -3249,7 +3505,7 @@ const ADD_DOC_KEY = "add-document";
                                 pendingMatSelection = false;
                                 initialMatQuery = "";
                         }
-                        setEmptyDetailPanel("forward", desiredMode); // Mantén la dirección como prefieras
+                        setEmptyDetailPanel("forward", desiredMode, emptyOptions); // Mantén la dirección como prefieras
                 }
 
 		function setResultMessage(msg = "") {
@@ -3381,7 +3637,28 @@ const ADD_DOC_KEY = "add-document";
                                                 tbody.appendChild(renderRow(item));
                                                 loadedIds.add(item.id);
                                         }
-					setResultMessage("");
+                                        if (pendingMatSelection && initialMatQuery) {
+                                                const normalizedPlate = initialMatQuery
+                                                        .toString()
+                                                        .replace(/\s+/g, "")
+                                                        .toUpperCase();
+                                                const rows = Array.from(
+                                                        document.querySelectorAll(".guarantees-table__row")
+                                                );
+                                                const match = rows.find((row) =>
+                                                        (row.dataset.matricula || "")
+                                                                .toString()
+                                                                .replace(/\s+/g, "")
+                                                                .toUpperCase() === normalizedPlate
+                                                );
+                                                if (match) {
+                                                        rows.forEach((r) => r.classList.remove("selected"));
+                                                        match.classList.add("selected");
+                                                        prevSelectedRow = match;
+                                                        prevIdx = rows.indexOf(match);
+                                                }
+                                        }
+                                        setResultMessage("");
 					// AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
 					if (data.length === 1 && search && search.length > 0) {
 						const row = tbody.querySelector(".guarantees-table__row");
@@ -3403,8 +3680,10 @@ const ADD_DOC_KEY = "add-document";
                                                                 nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
                                                                 syncPdfModalDocs(nextPanel);
                                                         } else {
-                                                                nextPanel.classList.add("loading");
-                                                                nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                                                nextPanel.innerHTML = renderDetailSkeleton(rowData);
+                                                                nextPanel.dataset.matricula = rowData.matricula || "";
+                                                                nextPanel.dataset.plan = rowData.plan || "";
+                                                                syncPdfModalDocs(nextPanel);
                                                                 fetchDetail(id)
                                                                         .then((dataDetalle) => {
                                                                                 if (nextPanel.dataset.loadedId === String(id)) {
@@ -3528,8 +3807,10 @@ const ADD_DOC_KEY = "add-document";
                                 const rowData = buildRowData(row);
                                 const currentActive = activePanel;
                                 const nextPanel = activePanel === panel1 ? panel2 : panel1;
-                                nextPanel.classList.add("loading");
-                                nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                nextPanel.innerHTML = renderDetailSkeleton(rowData);
+                                nextPanel.dataset.matricula = rowData.matricula || "";
+                                nextPanel.dataset.plan = rowData.plan || "";
+                                syncPdfModalDocs(nextPanel);
                                 fetchDetail(id)
                                         .then((detailData) => {
                                                 if (nextPanel.dataset.loadedId === String(id)) {
@@ -3649,6 +3930,37 @@ const ADD_DOC_KEY = "add-document";
                                 : "";
                         const content = `${telHtml}${mailHtml}`;
                         return content ? `<ul class="fast-actions">${content}</ul>` : "";
+                }
+
+                function computeDetailSkeletonFields(rowData = {}) {
+                        const skeletons = [];
+                        DETAIL_SKELETON_FIELD_CANDIDATES.forEach((field) => {
+                                const value = rowData[field];
+                                if (value === undefined || value === null) {
+                                        skeletons.push(field);
+                                        return;
+                                }
+                                let normalized = "";
+                                if (typeof value === "string") {
+                                        normalized = value.trim();
+                                } else if (typeof value === "number") {
+                                        normalized = Number.isFinite(value)
+                                                ? String(value)
+                                                : "";
+                                } else {
+                                        normalized = String(value).trim();
+                                }
+                                if (!normalized || normalized === "-") {
+                                        skeletons.push(field);
+                                }
+                        });
+                        return skeletons;
+                }
+
+                function renderDetailSkeleton(rowData = {}) {
+                        const baseData = { ...rowData };
+                        const skeletons = computeDetailSkeletonFields(baseData);
+                        return renderFullDetail(baseData, baseData, skeletons);
                 }
 
                 function renderFullDetail(data, rowData, skeletons = []) {
@@ -4384,8 +4696,10 @@ function initRowSelection() {
                                         nextPanel.dataset.plan = data.plan || rowData.plan || "";
                                         syncPdfModalDocs(nextPanel);
                                 } else {
-                                        nextPanel.classList.add("loading");
-                                        nextPanel.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
+                                        nextPanel.innerHTML = renderDetailSkeleton(rowData);
+                                        nextPanel.dataset.matricula = rowData.matricula || "";
+                                        nextPanel.dataset.plan = rowData.plan || "";
+                                        syncPdfModalDocs(nextPanel);
                                 }
                                 nextPanel.dataset.loadedId = id;
 
@@ -5276,6 +5590,9 @@ function initRowSelection() {
                         { root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }
                 ).observe(scrollEnd);
 
+                if (pendingMatSelection && initialMatQuery) {
+                        setEmptyDetailPanel("forward", "loading", { plate: initialMatQuery });
+                }
                 const initialLoadPromise = loadPage(1);
                 if (initialMatQuery) {
                         initialLoadPromise
