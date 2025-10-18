@@ -3147,7 +3147,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .guarantee-detail__empty {
     padding: var(--spacing-3);
-    padding-bottom: 0;
+    padding-bottom: 2rem;
 }
 
 .guarantee-detail__empty--loading {
@@ -5467,6 +5467,17 @@ tr.guarantees-table__row:not(.selected):hover td,
     box-shadow: 0 10px 24px -16px rgba(var(--go-color-2563eb-rgb), 0.6);
     transform: translateY(-1px);
     color: var(--go-color-ffffff);
+}
+
+.guarantee-detail__cta-link {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.guarantee-detail__cta-link:hover,
+.guarantee-detail__cta-link:focus-visible {
+    color: var(--primary-color-hover, var(--primary-color));
 }
 
 .guarantee-detail__cta:focus-visible {

@@ -171,40 +171,33 @@ async function refreshMetodoPagoPorUsuario(targetUserId) {
                 : currentChannelSlug;
 
         select.innerHTML = "";
-        const optTransfer = document.createElement("option");
-        optTransfer.value = "transferencia";
-        optTransfer.textContent = "Transferencia bancaria";
-        select.appendChild(optTransfer);
 
-        if (canalSlug === "particular") {
-                optTransfer.selected = true;
-                if (mensaje) mensaje.style.display = "none";
-                const container = select.closest(".form__input-container");
-                if (container) {
-                        container.classList.toggle("has-value", !!select.value);
-                }
-                updateNextButtonState();
-                return;
-        }
+        const canalEsParticular = canalSlug === "particular";
+        const tieneSepa = canalEsParticular ? false : await fetchEstadoSepa(targetUserId);
 
-        const tieneSepa = await fetchEstadoSepa(targetUserId);
         if (tieneSepa) {
                 const optDomic = document.createElement("option");
                 optDomic.value = "domiciliacion";
                 optDomic.textContent = "Domiciliación bancaria";
                 optDomic.selected = true;
                 select.appendChild(optDomic);
-                optTransfer.selected = false;
                 if (mensaje) mensaje.style.display = "none";
         } else {
+                const optTransfer = document.createElement("option");
+                optTransfer.value = "transferencia";
+                optTransfer.textContent = "Transferencia bancaria";
                 optTransfer.selected = true;
-                if (mensaje) mensaje.style.display = "flex";
+                select.appendChild(optTransfer);
+                if (mensaje) {
+                        mensaje.style.display = canalEsParticular ? "none" : "flex";
+                }
         }
 
         const container = select.closest(".form__input-container");
         if (container) {
                 container.classList.toggle("has-value", !!select.value);
         }
+        updateSelectDataset(select);
         updateNextButtonState();
 }
 
