@@ -628,7 +628,7 @@ $formatPhoneHref = static function ($phone) {
             } else {
                 $activation_state = $selected_payment_method === 'domiciliacion' ? 'enabled' : 'disabled';
             }
-            $sepa_show_success       = $sepa_is_active || $activation_state === 'locked';
+            $sepa_show_success       = $sepa_is_active;
             $sepa_show_pending       = ($sepa_requested || $sepa_needs_activation) && ! $sepa_show_success;
             $sepa_show_disabled      = ! $sepa_show_success
                 && ($sepa_needs_activation || $sepa_activation_state === SepaMandateService::ACTIVATION_PENDING);
@@ -1280,6 +1280,7 @@ $formatPhoneHref = static function ($phone) {
                             <div
                                 class="account-form account-form--sepa"
                                 data-payment-state="enabled"
+                                data-sepa-form
                                 <?php echo $activation_state === 'enabled' ? '' : 'hidden'; ?>
                             >
                                 <?php foreach ($sepa_field_order as $field_key) : ?>
@@ -1309,6 +1310,9 @@ $formatPhoneHref = static function ($phone) {
                                                 value="<?php echo esc_attr($field_value); ?>"
                                                 placeholder=" "
                                                 autocomplete="off"
+                                                data-sepa-field="<?php echo esc_attr($field_key); ?>"
+                                                <?php echo $field_key === 'swift_bic' || $field_key === 'numero_cuenta' ? 'inputmode="text"' : ''; ?>
+                                                required
                                             >
                                             <label class="account-input__label" for="<?php echo esc_attr($field_id); ?>">
                                                 <?php echo esc_html($field_label); ?>

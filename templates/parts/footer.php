@@ -4,6 +4,7 @@
 
 use GarantiasOnline360VO\Svg;
 use GarantiasOnline360VO\Docs\ReclamationDocument;
+use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\Support\FeatureFlags;
 use GarantiasOnline360VO\Support\UserProfileResolver;
 
@@ -480,12 +481,17 @@ if (! empty($is_add_guarantee)) {
             'sepaAwaitingSignature'  => __('Pendiente de firma', 'garantias-online-360vo'),
             'sepaAwaitingMessage'    => __('Tu SEPA firmado está pendiente de validación.', 'garantias-online-360vo'),
             'sepaAwaitingActivation' => __('Pendiente de domiciliación', 'garantias-online-360vo'),
+            'sepaGenerateError'      => __('No se ha podido generar el mandato SEPA. Revisa los datos e inténtalo de nuevo.', 'garantias-online-360vo'),
+            'sepaGenerateSuccess'    => __('Mandato SEPA generado correctamente. Descárgalo para firmarlo.', 'garantias-online-360vo'),
+            'sepaGenerateLoading'    => __('Generando mandato…', 'garantias-online-360vo'),
         ],
+        'sepa'     => SepaMandateService::get_frontend_config(),
     ];
     ?>
     <script>
         window.go360Account = <?php echo wp_json_encode($account_config); ?>;
     </script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"></script>
     <script
         src="<?php echo esc_url(plugins_url('assets/js/account.min.js', GARANTIAS360VO__FILE__)); ?>"
         defer></script>

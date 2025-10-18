@@ -4248,6 +4248,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .client-detail__section-header .client-detail__section-title {
     margin-bottom: 0;
+    margin-right: auto;
 }
 
 .client-detail__section-header > .client-detail__action {

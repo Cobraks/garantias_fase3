@@ -557,7 +557,7 @@ class ClientRestController
             );
         }
 
-        SepaMandateService::set_activation_flag($user_id, false, SepaMandateService::ACTIVATION_PENDING);
+        SepaMandateService::set_activation_flag($user_id, false, SepaMandateService::ACTIVATION_DISABLED);
         SepaMandateService::set_payment_method($user_id, 'transferencia');
         SepaMandateService::set_status($user_id, SepaMandateService::STATUS_SIGNED);
 
