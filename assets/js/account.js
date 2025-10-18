@@ -131,6 +131,95 @@
             awaitingMessage: strings.sepaAwaitingMessage || 'Tu SEPA firmado está pendiente de validación.',
             awaitingActivation: strings.sepaAwaitingActivation || 'Pendiente de domiciliación',
         };
+        const formatIban = (value) => {
+            const raw = typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() : '';
+            if (!raw) {
+                return '';
+            }
+            return raw.replace(/(.{4})/g, '$1 ').trim();
+        };
+        const maskIban = (value) => {
+            const raw = typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() : '';
+            if (!raw) {
+                return '';
+            }
+            const groups = raw.match(/.{1,4}/g) || [];
+            return groups
+                .map((group, index) => {
+                    if (index <= 1 || index === groups.length - 1) {
+                        return group;
+                    }
+                    return '****';
+                })
+                .join(' ')
+                .trim();
+        };
+        const sepaIbanController = (() => {
+            const valueElement = document.querySelector('[data-sepa-iban]');
+            const toggle = document.querySelector('[data-sepa-iban-toggle]');
+            if (!valueElement) {
+                return {
+                    setValue: () => {},
+                };
+            }
+
+            let revealed = toggle ? toggle.getAttribute('aria-pressed') === 'true' : false;
+
+            const apply = () => {
+                const fullValue = valueElement.getAttribute('data-full-value') || '';
+                const maskedValue = valueElement.getAttribute('data-masked-value') || '';
+                const hasValue = Boolean(fullValue || maskedValue);
+                const display = revealed ? (fullValue || maskedValue || '—') : (maskedValue || fullValue || '—');
+
+                valueElement.textContent = display || '—';
+
+                if (!toggle) {
+                    return;
+                }
+
+                if (hasValue) {
+                    toggle.hidden = false;
+                    toggle.setAttribute('aria-hidden', 'false');
+                    toggle.setAttribute('aria-pressed', revealed ? 'true' : 'false');
+                    const showLabel = toggle.getAttribute('data-label-show') || '';
+                    const hideLabel = toggle.getAttribute('data-label-hide') || '';
+                    toggle.setAttribute('aria-label', revealed ? (hideLabel || showLabel) : (showLabel || hideLabel));
+                } else {
+                    toggle.hidden = true;
+                    toggle.setAttribute('aria-hidden', 'true');
+                    toggle.setAttribute('aria-pressed', 'false');
+                    const showLabel = toggle.getAttribute('data-label-show') || '';
+                    if (showLabel) {
+                        toggle.setAttribute('aria-label', showLabel);
+                    }
+                }
+            };
+
+            if (toggle) {
+                toggle.addEventListener('click', () => {
+                    revealed = !revealed;
+                    apply();
+                });
+            }
+
+            apply();
+
+            return {
+                setValue: (value) => {
+                    const formatted = formatIban(value);
+                    const masked = maskIban(value);
+                    valueElement.setAttribute('data-full-value', formatted);
+                    valueElement.setAttribute('data-masked-value', masked);
+                    if (!formatted) {
+                        revealed = false;
+                        if (toggle) {
+                            toggle.setAttribute('aria-pressed', 'false');
+                        }
+                    }
+                    apply();
+                },
+            };
+        })();
         const workshopToggle = document.querySelector('[data-workshop-toggle]');
         const workshopFieldKeys = [
             'name',
@@ -695,12 +784,29 @@
                                 sepaController.applyServerState(sepaData.documents.signed);
                             }
 
+                            const sepaStatusCodeRaw = typeof sepaData.status_code === 'string'
+                                ? sepaData.status_code.trim().toLowerCase()
+                                : '';
+                            const sepaIsDisabled = sepaStatusCodeRaw === 'deshabilitado';
                             const awaitingValidation = Boolean(sepaData.awaiting_validation);
                             const needsActivation = Boolean(sepaData.needs_activation);
                             const sepaIsActive = Boolean(sepaData.status);
                             if (sepaController && typeof sepaController.setLocked === 'function') {
                                 sepaController.setLocked(awaitingValidation || needsActivation);
                             }
+                            const sepaFields = Array.isArray(sepaData.fields) ? sepaData.fields : [];
+                            const ibanField = sepaFields.find((field) => {
+                                if (!field || typeof field !== 'object') {
+                                    return false;
+                                }
+                                const name = typeof field.name === 'string' ? field.name : '';
+                                const altName = typeof field.field === 'string' ? field.field : '';
+                                return name === 'numero_cuenta' || altName === 'numero_cuenta';
+                            });
+                            const ibanValue = ibanField && typeof ibanField.value === 'string'
+                                ? ibanField.value
+                                : '';
+                            sepaIbanController.setValue(ibanValue);
                             const activationCard = document.querySelector('[data-payment-activation]');
                             const detailCard = document.querySelector('[data-payment-detail]');
                             const sepaStatusRow = activationCard
@@ -709,20 +815,39 @@
                             const sepaSuccessRow = activationCard
                                 ? activationCard.querySelector('[data-sepa-success]')
                                 : null;
+                            const sepaDisabledRow = activationCard
+                                ? activationCard.querySelector('[data-sepa-disabled]')
+                                : null;
                             const toggleWrapper = activationCard
                                 ? activationCard.querySelector('[data-sepa-toggle]')
                                 : null;
                             const toggleInput = activationCard
                                 ? activationCard.querySelector('[data-payment-toggle]')
                                 : null;
+                            const disabledContainer = document.querySelector('[data-sepa-disabled-container]');
+                            const disabledFallback = document.querySelector('[data-sepa-disabled-fallback]');
+                            const disabledMessage = disabledContainer
+                                ? disabledContainer.querySelector('[data-sepa-disabled-text]')
+                                : null;
+                            const disabledReason = disabledContainer
+                                ? disabledContainer.querySelector('[data-sepa-disabled-reason]')
+                                : null;
+                            const defaultDisabledText = disabledContainer
+                                ? disabledContainer.getAttribute('data-default-message') || ''
+                                : '';
 
                             if (sepaSuccessRow) {
                                 sepaSuccessRow.hidden = !sepaIsActive;
                                 sepaSuccessRow.setAttribute('aria-hidden', sepaIsActive ? 'false' : 'true');
                             }
 
+                            if (sepaDisabledRow) {
+                                sepaDisabledRow.hidden = !sepaIsDisabled;
+                                sepaDisabledRow.setAttribute('aria-hidden', sepaIsDisabled ? 'false' : 'true');
+                            }
+
                             if (sepaStatusRow) {
-                                const isRequested = Boolean(sepaData.requested) || needsActivation;
+                                const isRequested = (Boolean(sepaData.requested) || needsActivation) && !sepaIsDisabled;
                                 sepaStatusRow.hidden = !isRequested;
                                 sepaStatusRow.setAttribute('aria-hidden', isRequested ? 'false' : 'true');
                                 sepaStatusRow.setAttribute('data-sepa-requested', sepaData.requested ? 'true' : 'false');
@@ -750,17 +875,24 @@
                             }
 
                             if (toggleWrapper) {
-                                const shouldHideToggle = sepaIsActive || Boolean(sepaData.requested) || needsActivation;
+                                const shouldHideToggle = sepaIsActive || Boolean(sepaData.requested) || needsActivation || sepaIsDisabled;
                                 toggleWrapper.hidden = shouldHideToggle;
                                 toggleWrapper.setAttribute('aria-hidden', shouldHideToggle ? 'true' : 'false');
                             }
 
                             if (toggleInput) {
-                                const shouldDisableToggle = sepaIsActive || awaitingValidation || Boolean(sepaData.requested) || needsActivation;
+                                const shouldDisableToggle = sepaIsActive
+                                    || awaitingValidation
+                                    || Boolean(sepaData.requested)
+                                    || needsActivation
+                                    || sepaIsDisabled;
                                 if (sepaIsActive) {
                                     toggleInput.checked = true;
                                 }
                                 toggleInput.disabled = shouldDisableToggle;
+                                if (sepaIsDisabled) {
+                                    toggleInput.checked = false;
+                                }
                             }
 
                             if (activationCard) {
@@ -788,11 +920,52 @@
 
                             const awaitingMessage = document.querySelector('[data-sepa-awaiting-message]');
                             if (awaitingMessage) {
-                                awaitingMessage.hidden = !awaitingValidation;
-                                awaitingMessage.setAttribute('aria-hidden', awaitingValidation ? 'false' : 'true');
+                                const shouldShowAwaiting = awaitingValidation && !sepaIsDisabled;
+                                awaitingMessage.hidden = !shouldShowAwaiting;
+                                awaitingMessage.setAttribute('aria-hidden', shouldShowAwaiting ? 'false' : 'true');
                                 if (awaitingValidation) {
                                     awaitingMessage.textContent = sepaText.awaitingMessage;
                                 }
+                            }
+
+                            if (disabledContainer) {
+                                if (sepaIsDisabled) {
+                                    disabledContainer.hidden = false;
+                                    disabledContainer.setAttribute('aria-hidden', 'false');
+                                    if (disabledMessage) {
+                                        disabledMessage.textContent = defaultDisabledText || disabledMessage.textContent || '';
+                                    }
+                                    if (disabledReason) {
+                                        const reasonText = typeof sepaData.disabled_message === 'string'
+                                            ? sepaData.disabled_message.trim()
+                                            : '';
+                                        if (reasonText) {
+                                            disabledReason.textContent = reasonText;
+                                            disabledReason.hidden = false;
+                                            disabledReason.setAttribute('aria-hidden', 'false');
+                                        } else {
+                                            disabledReason.textContent = '';
+                                            disabledReason.hidden = true;
+                                            disabledReason.setAttribute('aria-hidden', 'true');
+                                        }
+                                    }
+                                } else {
+                                    disabledContainer.hidden = true;
+                                    disabledContainer.setAttribute('aria-hidden', 'true');
+                                    if (disabledReason) {
+                                        disabledReason.textContent = '';
+                                        disabledReason.hidden = true;
+                                        disabledReason.setAttribute('aria-hidden', 'true');
+                                    }
+                                }
+                            }
+
+                            if (disabledFallback) {
+                                const shouldShowFallback = activationCard
+                                    && activationCard.getAttribute('data-state') === 'disabled'
+                                    && !sepaIsDisabled;
+                                disabledFallback.hidden = !shouldShowFallback;
+                                disabledFallback.setAttribute('aria-hidden', shouldShowFallback ? 'false' : 'true');
                             }
 
                             const downloadAction = document.querySelector('[data-sepa-download]');
@@ -897,6 +1070,31 @@
                                         removeButton.setAttribute('aria-hidden', hasServerDocument ? 'false' : 'true');
                                     }
                                 }
+                            }
+                        } else {
+                            sepaIbanController.setValue('');
+                            const disabledContainer = document.querySelector('[data-sepa-disabled-container]');
+                            const disabledReason = disabledContainer
+                                ? disabledContainer.querySelector('[data-sepa-disabled-reason]')
+                                : null;
+                            if (disabledContainer) {
+                                disabledContainer.hidden = true;
+                                disabledContainer.setAttribute('aria-hidden', 'true');
+                            }
+                            if (disabledReason) {
+                                disabledReason.textContent = '';
+                                disabledReason.hidden = true;
+                                disabledReason.setAttribute('aria-hidden', 'true');
+                            }
+                            const disabledFallback = document.querySelector('[data-sepa-disabled-fallback]');
+                            if (disabledFallback) {
+                                disabledFallback.hidden = true;
+                                disabledFallback.setAttribute('aria-hidden', 'true');
+                            }
+                            const sepaDisabledRow = document.querySelector('[data-sepa-disabled]');
+                            if (sepaDisabledRow) {
+                                sepaDisabledRow.hidden = true;
+                                sepaDisabledRow.setAttribute('aria-hidden', 'true');
                             }
                         }
 

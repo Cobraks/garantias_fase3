@@ -93,36 +93,40 @@ $signature_default_label   = esc_html__('+ Subir imagen de firma', 'garantias-on
 $seal_default_label        = esc_html__('+ Subir imagen de sello', 'garantias-online-360vo');
 $procedure_default_label   = esc_html__('+ Subir procedimiento de reclamación', 'garantias-online-360vo');
 
-$mask_iban_display = static function ($value) {
+$format_iban_display = static function ($value) {
     $clean = strtoupper(preg_replace('/\s+/', '', (string) $value));
     if ($clean === '') {
         return '';
     }
 
-    if (strlen($clean) <= 7) {
-        return $clean;
-    }
-
-    $prefix = substr($clean, 0, 4);
-    $suffix = substr($clean, -3);
-
-    return sprintf('%s (...) %s', $prefix, $suffix);
+    return trim(implode(' ', str_split($clean, 4)));
 };
 
-$mask_bic_display = static function ($value) {
+$mask_iban_display = static function ($value) use ($format_iban_display) {
     $clean = strtoupper(preg_replace('/\s+/', '', (string) $value));
     if ($clean === '') {
         return '';
     }
 
-    if (strlen($clean) <= 6) {
-        return $clean;
-    }
+    $groups = str_split($clean, 4);
+    $last_index = count($groups) - 1;
+    $masked = array_map(
+        static function ($group, $index) use ($last_index) {
+            if ($index <= 1 || $index === $last_index) {
+                return $group;
+            }
 
-    $prefix = substr($clean, 0, 4);
-    $suffix = substr($clean, -3);
+            return '****';
+        },
+        $groups,
+        array_keys($groups)
+    );
 
-    return sprintf('%s***%s', $prefix, $suffix);
+    return trim(implode(' ', $masked)) ?: $format_iban_display($clean);
+};
+
+$format_bic_display = static function ($value) {
+    return strtoupper(trim((string) $value));
 };
 
 \GarantiasOnline360VO\TemplateLoader::load_part(
@@ -630,9 +634,10 @@ $formatPhoneHref = static function ($phone) {
             }
             $sepa_show_success       = $sepa_is_active;
             $sepa_show_pending       = ($sepa_requested || $sepa_needs_activation) && ! $sepa_show_success;
-            $sepa_show_disabled      = ! $sepa_show_success
-                && ($sepa_needs_activation || $sepa_activation_state === SepaMandateService::ACTIVATION_PENDING);
+            $sepa_show_disabled      = ($sepa_status_code === SepaMandateService::STATUS_DISABLED);
             $sepa_field_lookup       = [];
+            $sepa_disabled_message   = trim((string) ($sepa_info['disabled_message'] ?? ''));
+            $sepa_disabled_default_message = __('La domiciliación bancaria ha sido deshabilitada. Por favor, ponte en contacto con tu comercial o con garantias@360vo.es para completar la información.', 'garantias-online-360vo');
 
             foreach ($sepa_fields as $field) {
                 $field_name = (string) ($field['name'] ?? '');
@@ -918,7 +923,7 @@ $formatPhoneHref = static function ($phone) {
                                 data-sepa-disabled
                             >
                                 <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
-                                <span><?php echo esc_html__('Domiciliación bancaria desactivada.', 'garantias-online-360vo'); ?></span>
+                                <span><?php echo esc_html__('Domiciliación bancaria deshabilitada.', 'garantias-online-360vo'); ?></span>
                             </p>
                         <?php endif; ?>
                         <?php if ($sepa_show_pending) : ?>
@@ -995,10 +1000,28 @@ $formatPhoneHref = static function ($phone) {
                                 <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
                             </button>
                         </div>
+                        <div
+                            class="account-sepa-disabled"
+                            data-sepa-disabled-container
+                            data-default-message="<?php echo esc_attr($sepa_disabled_default_message); ?>"
+                            <?php echo $sepa_status_code === SepaMandateService::STATUS_DISABLED ? '' : 'hidden aria-hidden="true"'; ?>
+                        >
+                            <p class="account-sepa-disabled__message" data-sepa-disabled-text>
+                                <?php echo esc_html($sepa_disabled_default_message); ?>
+                            </p>
+                            <p
+                                class="account-sepa-disabled__reason"
+                                data-sepa-disabled-reason
+                                <?php echo $sepa_disabled_message === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                            >
+                                <?php echo esc_html($sepa_disabled_message); ?>
+                            </p>
+                        </div>
                         <p
                             class="account-card__intro"
                             data-payment-state="disabled"
-                            <?php echo $activation_state === 'disabled' ? '' : 'hidden'; ?>
+                            data-sepa-disabled-fallback
+                            <?php echo $activation_state === 'disabled' && $sepa_status_code !== SepaMandateService::STATUS_DISABLED ? '' : 'hidden'; ?>
                         >
                             Activa la domiciliación para generar el mandato SEPA y olvidarte de gestionar transferencias manuales.
                         </p>
@@ -1038,21 +1061,60 @@ $formatPhoneHref = static function ($phone) {
                                                 $field_classes[] = 'account-form__field--quarter';
                                             }
                                             $display_value = $value;
+                                            $iban_full       = '';
+                                            $iban_masked     = '';
+                                            $has_iban_toggle = false;
+
                                             if ($field_name === 'numero_cuenta') {
-                                                $masked = $mask_iban_display($value);
-                                                if ($masked !== '') {
-                                                    $display_value = $masked;
+                                                $iban_full = $format_iban_display($value);
+                                                $iban_masked = $mask_iban_display($value);
+                                                $has_iban_toggle = $iban_full !== '';
+                                                if ($has_iban_toggle) {
+                                                    $display_value = $iban_masked !== '' ? $iban_masked : $iban_full;
                                                 }
                                             } elseif ($field_name === 'swift_bic') {
-                                                $masked_bic = $mask_bic_display($value);
-                                                if ($masked_bic !== '') {
-                                                    $display_value = $masked_bic;
+                                                $formatted_bic = $format_bic_display($value);
+                                                if ($formatted_bic !== '') {
+                                                    $display_value = $formatted_bic;
                                                 }
+                                            }
+
+                                            if ($display_value === '') {
+                                                $display_value = '—';
                                             }
                                         ?>
                                         <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
                                             <span class="account-form__label"><?php echo esc_html($field_label); ?></span>
-                                            <span class="account-form__value" id="<?php echo esc_attr($field_id); ?>-value"><?php echo esc_html($display_value); ?></span>
+                                            <?php if ($field_name === 'numero_cuenta') : ?>
+                                                <div class="account-form__value account-form__value--with-toggle">
+                                                    <span
+                                                        class="account-form__iban"
+                                                        id="<?php echo esc_attr($field_id); ?>-value"
+                                                        data-sepa-iban
+                                                        data-full-value="<?php echo esc_attr($iban_full); ?>"
+                                                        data-masked-value="<?php echo esc_attr($iban_masked); ?>"
+                                                    >
+                                                        <?php echo esc_html($display_value); ?>
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        class="account-sepa-toggle"
+                                                        data-sepa-iban-toggle
+                                                        aria-pressed="false"
+                                                        data-label-show="<?php esc_attr_e('Mostrar IBAN completo', 'garantias-online-360vo'); ?>"
+                                                        data-label-hide="<?php esc_attr_e('Ocultar IBAN completo', 'garantias-online-360vo'); ?>"
+                                                        <?php echo $has_iban_toggle ? '' : 'hidden aria-hidden="true"'; ?>
+                                                    >
+                                                        <span class="account-sepa-toggle__icon account-sepa-toggle__icon--show" aria-hidden="true"><?php echo Svg::icon('visibility'); ?></span>
+                                                        <span class="account-sepa-toggle__icon account-sepa-toggle__icon--hide" aria-hidden="true"><?php echo Svg::icon('visibility_off'); ?></span>
+                                                        <span class="account-sepa-toggle__text account-sepa-toggle__text--show"><?php esc_html_e('Ver', 'garantias-online-360vo'); ?></span>
+                                                        <span class="account-sepa-toggle__text account-sepa-toggle__text--hide"><?php esc_html_e('Ocultar', 'garantias-online-360vo'); ?></span>
+                                                        <span class="screen-reader-text"><?php esc_html_e('Alternar visibilidad del IBAN', 'garantias-online-360vo'); ?></span>
+                                                    </button>
+                                                </div>
+                                            <?php else : ?>
+                                                <span class="account-form__value" id="<?php echo esc_attr($field_id); ?>-value"><?php echo esc_html($display_value); ?></span>
+                                            <?php endif; ?>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
