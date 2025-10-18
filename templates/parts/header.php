@@ -164,7 +164,7 @@ $home_destination = $is_admin_user
             window.go360Register = <?php echo wp_json_encode($register_data); ?>;
         </script>
     <?php endif; ?>
-    <?php if (! empty($is_list_page) || ! empty($is_clients_page)) : ?>
+    <?php if (! empty($is_list_page) || ! empty($is_clients_page) || ! empty($is_breakdowns_page)) : ?>
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
     <?php if (! empty($is_account_page)) : ?>
@@ -184,7 +184,7 @@ $home_destination = $is_admin_user
     if (! empty($is_clients_page)) {
         $body_classes[] = 'body--clients';
     }
-    if (! empty($is_list_page)) {
+    if (! empty($is_list_page) || ! empty($is_breakdowns_page)) {
         $body_classes[] = 'body--guarantees';
     }
     ?>
@@ -406,7 +406,7 @@ $home_destination = $is_admin_user
     if (! empty($is_clients_page)) {
         $container_classes[] = 'clients-page';
     }
-    if (! empty($is_list_page)) {
+    if (! empty($is_list_page) || ! empty($is_breakdowns_page)) {
         $container_classes[] = 'guarantees-page';
     }
 
@@ -417,7 +417,7 @@ $home_destination = $is_admin_user
     if (! empty($is_clients_page)) {
         $main_grid_classes[] = 'clients-page';
     }
-    if (! empty($is_list_page)) {
+    if (! empty($is_list_page) || ! empty($is_breakdowns_page)) {
         $main_grid_classes[] = 'guarantees-page';
     }
     ?>
