@@ -26,7 +26,8 @@ class SepaMandateService
     private const META_PENDING_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_sin_firmar';
     private const META_SIGNED_FIELD  = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_firmado';
     private const META_STATUS_FIELD           = 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa';
-    private const META_ACTIVATE_FIELD         = 'gestion_pagos_gestion_sepa_estado_documentos_activar_sepa';
+    private const META_ACTIVATE_FIELD         = 'gestion_pagos_activar_sepa';
+    private const META_ACTIVATE_FIELD_LEGACY  = 'gestion_pagos_gestion_sepa_estado_documentos_activar_sepa';
     private const META_ACTIVATE_STATE_FIELD   = '_go360_sepa_activation_state';
     private const META_PAYMENT_FIELD          = 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago';
     private const META_DISABLED_MESSAGE_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_mensaje_deshabilitado';
@@ -358,6 +359,13 @@ class SepaMandateService
         $raw_flag   = get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
         $raw_state  = get_user_meta($user_id, self::META_ACTIVATE_STATE_FIELD, true);
 
+        if ($raw_flag === '' && self::META_ACTIVATE_FIELD_LEGACY !== self::META_ACTIVATE_FIELD) {
+            $legacy_flag = get_user_meta($user_id, self::META_ACTIVATE_FIELD_LEGACY, true);
+            if ($legacy_flag !== '') {
+                $raw_flag = $legacy_flag;
+            }
+        }
+
         $source = [];
         if ($raw_state !== '') {
             $source['state'] = $raw_state;
@@ -372,8 +380,16 @@ class SepaMandateService
         $payload = self::parse_activation_field($source);
         $storage = self::build_activation_payload($payload['value']);
 
-        if ((string) $raw_flag !== (string) $storage['flag']) {
+        $stored_flag = (string) get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
+        if ($stored_flag !== (string) $storage['flag']) {
             update_user_meta($user_id, self::META_ACTIVATE_FIELD, $storage['flag']);
+        }
+
+        if (self::META_ACTIVATE_FIELD_LEGACY !== self::META_ACTIVATE_FIELD) {
+            $legacy_value = (string) get_user_meta($user_id, self::META_ACTIVATE_FIELD_LEGACY, true);
+            if ($legacy_value !== (string) $storage['flag']) {
+                update_user_meta($user_id, self::META_ACTIVATE_FIELD_LEGACY, $storage['flag']);
+            }
         }
 
         if ($raw_state !== $payload['value']) {
@@ -401,6 +417,9 @@ class SepaMandateService
         $payload = self::build_activation_payload($state);
 
         update_user_meta($user_id, self::META_ACTIVATE_FIELD, $payload['flag']);
+        if (self::META_ACTIVATE_FIELD_LEGACY !== self::META_ACTIVATE_FIELD) {
+            update_user_meta($user_id, self::META_ACTIVATE_FIELD_LEGACY, $payload['flag']);
+        }
         update_user_meta($user_id, self::META_ACTIVATE_STATE_FIELD, $payload['value']);
     }
 
