@@ -18,7 +18,7 @@ if (! defined('ABSPATH')) {
 
 class RegistrationService
 {
-    private const CODE_EXPIRATION     = DAY_IN_SECONDS;
+    private const CODE_EXPIRATION     = 5 * MINUTE_IN_SECONDS;
     private const CODE_LENGTH         = 6;
     private const MAX_ATTEMPTS        = 5;
     private const LOCK_DURATION       = 5 * MINUTE_IN_SECONDS;
@@ -1189,7 +1189,6 @@ class RegistrationService
             'code'        => $code,
             'expires_at'  => gmdate('c', $expires),
             'expires_in'  => max(0, $expires - time()),
-            'verification_url' => home_url('/garantias-online/registro/'),
             'signature'   => $this->get_signature_html(),
             'channel_key'   => $channel_key,
             'channel_label' => $channel_label,

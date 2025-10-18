@@ -612,9 +612,25 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 <span class="summary-label">Swift BIC:</span>
                                 <span class="summary-value" id="summary-sepa-swift">—</span>
                             </div>
-                            <div class="summary-item">
+                            <div class="summary-item summary-item--iban">
                                 <span class="summary-label">IBAN:</span>
-                                <span class="summary-value" id="summary-sepa-iban">—</span>
+                                <div class="summary-value summary-value--with-toggle">
+                                    <span class="summary-value__masked" id="summary-sepa-iban" data-visibility="masked">—</span>
+                                    <button
+                                        type="button"
+                                        class="summary-toggle"
+                                        id="summary-sepa-iban-toggle"
+                                        aria-pressed="false"
+                                        data-label-show="<?php esc_attr_e('Mostrar IBAN completo', 'garantias-online-360vo'); ?>"
+                                        data-label-hide="<?php esc_attr_e('Ocultar IBAN completo', 'garantias-online-360vo'); ?>"
+                                        hidden>
+                                        <span class="summary-toggle__icon summary-toggle__icon--show" aria-hidden="true"><?php echo Svg::icon('visibility'); ?></span>
+                                        <span class="summary-toggle__icon summary-toggle__icon--hide" aria-hidden="true"><?php echo Svg::icon('visibility_off'); ?></span>
+                                        <span class="summary-toggle__text summary-toggle__text--show"><?php esc_html_e('Ver', 'garantias-online-360vo'); ?></span>
+                                        <span class="summary-toggle__text summary-toggle__text--hide"><?php esc_html_e('Ocultar', 'garantias-online-360vo'); ?></span>
+                                        <span class="screen-reader-text"><?php esc_html_e('Alternar visibilidad del IBAN', 'garantias-online-360vo'); ?></span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -638,7 +654,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                         <div class="verification-icon">✓</div>
                         <h2 class="verification-title">¡Cuenta creada con éxito!</h2>
                         <p class="verification-text" id="verification-text">
-                            <span id="verification-instructions">Te hemos enviado un código de verificación a <strong id="email-sent">juan@autosolutions.es</strong>. Introduce el código en esta pantalla para activar tu cuenta. <span id="verification-expiry">Caduca en 24&nbsp;horas.</span></span>
+                            <span id="verification-instructions">Te hemos enviado un código de verificación a <strong id="email-sent">juan@autosolutions.es</strong>. Introduce el código en esta pantalla para activar tu cuenta. <span id="verification-expiry">Caduca en 5&nbsp;minutos.</span></span>
                             <span id="verification-success-text" hidden>Cuenta verificada. Ya puedes acceder a tu área de usuario.</span>
                         </p>
                         <p class="verification-message" id="verification-message" role="status" aria-live="assertive" hidden></p>
