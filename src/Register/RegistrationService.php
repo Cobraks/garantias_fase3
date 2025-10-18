@@ -787,7 +787,8 @@ class RegistrationService
         $activation_state = $document !== null
             ? SepaMandateService::ACTIVATION_PENDING
             : SepaMandateService::ACTIVATION_DISABLED;
-        $estado['activar_sepa'] = SepaMandateService::build_activation_payload($activation_state);
+        $activation_payload = SepaMandateService::build_activation_payload($activation_state);
+        $estado['activar_sepa'] = $activation_payload['flag'];
         $estado['metodo_de_pago'] = SepaMandateService::build_payment_payload('transferencia');
 
         if ($document !== null) {

@@ -27,6 +27,7 @@ class SepaMandateService
     private const META_SIGNED_FIELD  = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_firmado';
     private const META_STATUS_FIELD           = 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa';
     private const META_ACTIVATE_FIELD         = 'gestion_pagos_gestion_sepa_estado_documentos_activar_sepa';
+    private const META_ACTIVATE_STATE_FIELD   = '_go360_sepa_activation_state';
     private const META_PAYMENT_FIELD          = 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago';
     private const META_DISABLED_MESSAGE_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_mensaje_deshabilitado';
 
@@ -332,13 +333,11 @@ class SepaMandateService
     public static function build_activation_payload(string $state): array
     {
         $normalized = self::normalize_activation_state($state);
-        $label = self::get_activation_label($normalized);
-        $acf_value = $normalized === self::ACTIVATION_ENABLED ? 1 : 0;
 
         return [
-            'value' => $acf_value,
-            'label' => $label,
-            'state' => $normalized,
+            'value' => $normalized,
+            'label' => self::get_activation_label($normalized),
+            'flag'  => $normalized === self::ACTIVATION_ENABLED ? 1 : 0,
         ];
     }
 
@@ -356,15 +355,32 @@ class SepaMandateService
 
     public static function get_activation_payload(int $user_id): array
     {
-        $raw = get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
-        $payload = self::parse_activation_field($raw);
-        $storage = self::build_activation_payload($payload['value']);
+        $raw_flag   = get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
+        $raw_state  = get_user_meta($user_id, self::META_ACTIVATE_STATE_FIELD, true);
 
-        if ($payload['label'] !== '' && $payload['label'] !== $storage['label']) {
-            $storage['label'] = $payload['label'];
+        $source = [];
+        if ($raw_state !== '') {
+            $source['state'] = $raw_state;
+        }
+        if ($raw_flag !== '') {
+            $source['value'] = $raw_flag;
+        }
+        if ($source === []) {
+            $source = $raw_flag;
         }
 
-        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $storage);
+        $payload = self::parse_activation_field($source);
+        $storage = self::build_activation_payload($payload['value']);
+
+        if ((string) $raw_flag !== (string) $storage['flag']) {
+            update_user_meta($user_id, self::META_ACTIVATE_FIELD, $storage['flag']);
+        }
+
+        if ($raw_state !== $payload['value']) {
+            update_user_meta($user_id, self::META_ACTIVATE_STATE_FIELD, $payload['value']);
+        }
+
+        $payload['flag'] = $storage['flag'];
 
         return $payload;
     }
@@ -384,7 +400,8 @@ class SepaMandateService
 
         $payload = self::build_activation_payload($state);
 
-        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $payload);
+        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $payload['flag']);
+        update_user_meta($user_id, self::META_ACTIVATE_STATE_FIELD, $payload['value']);
     }
 
     /**

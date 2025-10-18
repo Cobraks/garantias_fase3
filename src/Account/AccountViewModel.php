@@ -628,12 +628,8 @@ class AccountViewModel
         if (! $sepa['activated']) {
             $activation_payload = SepaMandateService::get_activation_payload($user_id);
             $sepa['activated'] = ($activation_payload['value'] === SepaMandateService::ACTIVATION_ENABLED);
-            if (! isset($sepa['activation_state'])) {
-                $sepa['activation_state'] = $activation_payload['value'];
-            }
-            if (! isset($sepa['activation_label'])) {
-                $sepa['activation_label'] = $activation_payload['label'];
-            }
+            $sepa['activation_state'] = $activation_payload['value'];
+            $sepa['activation_label'] = $activation_payload['label'];
         }
         if (! $sepa['documents']['signed']) {
             $signed_meta = get_user_meta(
