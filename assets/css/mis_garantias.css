@@ -3147,7 +3147,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .guarantee-detail__empty {
     padding: var(--spacing-3);
-    padding-bottom: 0;
+    padding-bottom: 2rem;
 }
 
 .guarantee-detail__empty--loading {

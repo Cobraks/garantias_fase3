@@ -60,7 +60,7 @@
         let sepaDialog = null;
         let sepaConfirmDialog = null;
         let currentSepaDialogContext = null;
-        let currentSepaDialogBody = null;
+        let currentSepaDialogElements = null;
 
         if (canAssignCommercials) {
             fetchCommercialDirectory().catch(() => {});
@@ -879,6 +879,9 @@
                     : '';
 
                 const actions = [emailAction, phoneAction].filter((action) => action !== '').join('\n');
+                const actionsMarkup = actions !== ''
+                    ? `<div class="client-detail__commercial-actions">${actions}</div>`
+                    : '';
 
                 return `
                     <li class="client-detail__commercial">
@@ -886,8 +889,8 @@
                         <div class="client-detail__commercial-body">
                             <span class="client-detail__commercial-name">${escapeHtml(name)}</span>
                             ${emailLine || fallbackContact}
-                            ${actions !== '' ? `<div class="client-detail__commercial-actions">${actions}</div>` : ''}
                         </div>
+                        ${actionsMarkup}
                     </li>
                 `;
             });
@@ -972,6 +975,24 @@
             `;
         }
 
+        function renderBadge(label, variant = '') {
+            if (typeof label !== 'string') {
+                return '';
+            }
+
+            const trimmedLabel = label.trim();
+            if (trimmedLabel === '') {
+                return '';
+            }
+
+            const variantKey = typeof variant === 'string' ? variant.trim() : '';
+            const variantClass = variantKey !== ''
+                ? ` client-detail__badge--${escapeHtml(variantKey)}`
+                : '';
+
+            return `<span class="client-detail__badge${variantClass}">${escapeHtml(trimmedLabel)}</span>`;
+        }
+
         function renderWorkshop(workshop) {
             const data = workshop && typeof workshop === 'object' ? workshop : {};
             const hasWorkshop = Boolean(data.has_workshop);
@@ -1027,10 +1048,16 @@
                 }
             }
 
+            const badge = renderBadge(statusLabel, statusClass.replace('client-detail__status--', ''));
+
             return `
                 <section class="client-detail__section client-detail__section--workshop">
-                    <h4 class="client-detail__section-title">${escapeHtml(strings.workshop || 'Taller propio')}</h4>
-                    <p class="client-detail__status ${statusClass}">${escapeHtml(statusLabel)}</p>
+                    <div class="client-detail__section-header">
+                        <div class="client-detail__section-heading">
+                            <h4 class="client-detail__section-title">${escapeHtml(strings.workshop || 'Taller propio')}</h4>
+                            ${badge}
+                        </div>
+                    </div>
                     ${details}
                 </section>
             `;
@@ -1243,13 +1270,6 @@
 
             const sections = [];
 
-            sections.push(`
-                <div class="client-sepa-dialog__status client-sepa-dialog__status--${escapeHtml(statusVariant)}">
-                    <span class="client-sepa-dialog__status-title">${escapeHtml(strings.sepaStatus || 'Estado SEPA')}</span>
-                    <span class="client-sepa-dialog__status-value">${escapeHtml(statusLabel)}</span>
-                </div>
-            `);
-
             const detailsHtml = renderSepaDetails(sepa);
             if (detailsHtml) {
                 sections.push(`<div class="client-sepa-dialog__details">${detailsHtml}</div>`);
@@ -1291,81 +1311,210 @@
 
             sections.push(`<div class="client-sepa-dialog__cards">${cards.join('')}</div>`);
 
-            const actionButtons = [];
+            let action = null;
             let actionHelp = '';
 
             if (awaitingValidation || needsActivation) {
+                const activateLabel = typeof strings.manageSepaActivate === 'string'
+                    ? strings.manageSepaActivate.trim()
+                    : '';
+                action = {
+                    type: 'activate',
+                    label: activateLabel !== '' ? activateLabel : 'Activar domiciliación bancaria',
+                };
                 actionHelp = typeof strings.manageSepaActivateHelp === 'string'
                     ? strings.manageSepaActivateHelp.trim()
                     : '';
-
-                actionButtons.push(`
-                    <button type="button" class="client-sepa-dialog__activate" data-sepa-activate>
-                        ${escapeHtml(strings.manageSepaActivate || 'Activar domiciliación bancaria')}
-                    </button>
-                `);
             } else if (isActive) {
+                const deactivateLabel = typeof strings.manageSepaDeactivate === 'string'
+                    ? strings.manageSepaDeactivate.trim()
+                    : '';
+                action = {
+                    type: 'deactivate',
+                    label: deactivateLabel !== '' ? deactivateLabel : 'Inhabilitar domiciliación bancaria',
+                };
                 actionHelp = typeof strings.manageSepaDeactivateHelp === 'string'
                     ? strings.manageSepaDeactivateHelp.trim()
                     : '';
-
-                actionButtons.push(`
-                    <button type="button" class="client-sepa-dialog__deactivate" data-sepa-deactivate>
-                        ${escapeHtml(strings.manageSepaDeactivate || 'Inhabilitar domiciliación bancaria')}
-                    </button>
-                `);
             }
 
-            if (actionButtons.length > 0) {
-                sections.push(`
-                    <div class="client-sepa-dialog__actions">
-                        ${actionHelp !== '' ? `<p class="client-sepa-dialog__help">${escapeHtml(actionHelp)}</p>` : ''}
-                        ${actionButtons.join('')}
-                    </div>
-                `);
-            }
-
-            return `<div class="client-sepa-dialog">${sections.join('')}</div>`;
+            return {
+                html: `<div class="client-sepa-dialog">${sections.join('')}</div>`,
+                status: statusLabel !== '' ? { label: statusLabel, variant: statusVariant } : null,
+                action,
+                help: actionHelp,
+            };
         }
 
-        function setupSepaDialogBody(body, context) {
-            if (!body) {
+        function setupSepaDialogBody(elements) {
+            if (!elements || !elements.body) {
                 return;
             }
 
-            const currentContext = context && typeof context === 'object' ? context : {};
+            const body = elements.body;
+            const currentContext = elements.context && typeof elements.context === 'object' ? elements.context : {};
             const item = currentContext.item && typeof currentContext.item === 'object' ? currentContext.item : null;
 
-            body.innerHTML = renderSepaDialog(item);
+            const dialogData = renderSepaDialog(item);
+            body.innerHTML = dialogData.html;
 
-            const activateButton = body.querySelector('[data-sepa-activate]');
-            if (activateButton && sepaConfirmDialog && typeof sepaConfirmDialog.open === 'function') {
-                if (activateButton.__goSepaHandler) {
-                    activateButton.removeEventListener('click', activateButton.__goSepaHandler);
+            updateSepaDialogStatusBadge(elements.panel, dialogData.status);
+
+            const actionButton = prepareSepaDialogFooter({
+                footer: elements.footer,
+                saveButton: elements.saveButton,
+                statusEl: elements.status,
+                action: dialogData.action,
+                help: dialogData.help,
+            });
+
+            bindSepaActionButton(actionButton, dialogData.action, item, currentContext);
+        }
+
+        function updateSepaDialogStatusBadge(panel, status) {
+            if (!panel) {
+                return;
+            }
+
+            const header = panel.querySelector('.client-dialog__header');
+            if (!header) {
+                return;
+            }
+
+            const closeButton = header.querySelector('.client-dialog__close');
+            let badge = header.querySelector('.client-sepa-dialog__status');
+
+            if (!status || typeof status.label !== 'string' || status.label.trim() === '') {
+                if (badge && badge.parentElement === header) {
+                    if (badge.__goSepaHandler) {
+                        badge.removeEventListener('click', badge.__goSepaHandler);
+                        delete badge.__goSepaHandler;
+                    }
+                    badge.remove();
                 }
+                return;
+            }
 
-                const handler = () => {
-                    if (!item) {
-                        return;
-                    }
+            const label = status.label.trim();
+            const variant = typeof status.variant === 'string' && status.variant.trim() !== ''
+                ? status.variant.trim()
+                : 'info';
 
-                    const reference = extractSepaReference(item.sepa || {});
-                    const actor = formatSepaActor(item);
-                    const subject = typeof currentContext.subject === 'string' ? currentContext.subject : '';
-                    const name = item.name && typeof item.name === 'object' ? item.name : {};
-                    const companyName = typeof name.company === 'string' ? name.company.trim() : '';
-                    let subtitleHtml = '';
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'client-sepa-dialog__status';
+                badge.setAttribute('aria-live', 'polite');
+                if (closeButton) {
+                    header.insertBefore(badge, closeButton);
+                } else {
+                    header.appendChild(badge);
+                }
+            }
 
-                    if (companyName !== '' && reference !== '') {
-                        subtitleHtml = `${escapeHtml(companyName)} <strong>${escapeHtml(reference)}</strong>`;
-                    } else if (companyName !== '') {
-                        subtitleHtml = escapeHtml(companyName);
-                    } else if (reference !== '') {
-                        subtitleHtml = `<strong>${escapeHtml(reference)}</strong>`;
-                    } else if (subject !== '') {
-                        subtitleHtml = escapeHtml(subject);
-                    }
+            badge.className = 'client-sepa-dialog__status';
+            if (variant) {
+                badge.classList.add(`client-sepa-dialog__status--${variant}`);
+            }
+            badge.textContent = label;
+        }
 
+        function prepareSepaDialogFooter({ footer, saveButton, statusEl, action, help }) {
+            if (statusEl) {
+                const helpText = typeof help === 'string' ? help.trim() : '';
+                statusEl.textContent = helpText;
+                if (helpText === '') {
+                    delete statusEl.dataset.variant;
+                }
+            }
+
+            if (!footer) {
+                return null;
+            }
+
+            let actionsContainer = footer.querySelector('.client-dialog__footer-actions');
+            if (!actionsContainer) {
+                actionsContainer = document.createElement('div');
+                actionsContainer.className = 'client-dialog__footer-actions';
+                if (saveButton && saveButton.parentElement === footer) {
+                    footer.removeChild(saveButton);
+                }
+                footer.appendChild(actionsContainer);
+                if (saveButton) {
+                    actionsContainer.appendChild(saveButton);
+                }
+            } else if (saveButton && saveButton.parentElement !== actionsContainer) {
+                actionsContainer.appendChild(saveButton);
+            }
+
+            actionsContainer.querySelectorAll('[data-sepa-action]').forEach((button) => {
+                if (button.__goSepaHandler) {
+                    button.removeEventListener('click', button.__goSepaHandler);
+                    delete button.__goSepaHandler;
+                }
+                button.remove();
+            });
+
+            if (!action || typeof action.label !== 'string' || action.label.trim() === '') {
+                return null;
+            }
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'client-dialog__footer-btn';
+            button.dataset.sepaAction = action.type === 'deactivate' ? 'deactivate' : 'activate';
+            button.textContent = action.label.trim();
+            actionsContainer.insertBefore(button, saveButton || null);
+
+            return button;
+        }
+
+        function bindSepaActionButton(button, action, item, context) {
+            if (!button || !action) {
+                return;
+            }
+
+            const type = action.type === 'deactivate' ? 'deactivate' : 'activate';
+            const handler = buildSepaActionHandler(type, item, context);
+
+            if (!handler) {
+                button.disabled = true;
+                return;
+            }
+
+            button.disabled = false;
+
+            if (button.__goSepaHandler) {
+                button.removeEventListener('click', button.__goSepaHandler);
+            }
+
+            button.__goSepaHandler = handler;
+            button.addEventListener('click', handler);
+        }
+
+        function buildSepaActionHandler(type, item, context) {
+            if (!item || !sepaConfirmDialog || typeof sepaConfirmDialog.open !== 'function') {
+                return null;
+            }
+
+            const reference = extractSepaReference(item.sepa || {});
+            const actor = formatSepaActor(item);
+            const subject = typeof context?.subject === 'string' ? context.subject : '';
+            const name = item.name && typeof item.name === 'object' ? item.name : {};
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+            let subtitleHtml = '';
+
+            if (companyName !== '' && reference !== '') {
+                subtitleHtml = `${escapeHtml(companyName)} <strong>${escapeHtml(reference)}</strong>`;
+            } else if (companyName !== '') {
+                subtitleHtml = escapeHtml(companyName);
+            } else if (reference !== '') {
+                subtitleHtml = `<strong>${escapeHtml(reference)}</strong>`;
+            } else if (subject !== '') {
+                subtitleHtml = escapeHtml(subject);
+            }
+
+            if (type === 'activate') {
+                return () => {
                     sepaConfirmDialog.open({
                         actor,
                         subtitleHtml,
@@ -1388,39 +1537,10 @@
                         },
                     });
                 };
-
-                activateButton.__goSepaHandler = handler;
-                activateButton.addEventListener('click', handler);
             }
 
-            const deactivateButton = body.querySelector('[data-sepa-deactivate]');
-            if (deactivateButton && sepaConfirmDialog && typeof sepaConfirmDialog.open === 'function') {
-                if (deactivateButton.__goSepaHandler) {
-                    deactivateButton.removeEventListener('click', deactivateButton.__goSepaHandler);
-                }
-
-                const handler = () => {
-                    if (!item) {
-                        return;
-                    }
-
-                    const reference = extractSepaReference(item.sepa || {});
-                    const actor = formatSepaActor(item);
-                    const subject = typeof currentContext.subject === 'string' ? currentContext.subject : '';
-                    const name = item.name && typeof item.name === 'object' ? item.name : {};
-                    const companyName = typeof name.company === 'string' ? name.company.trim() : '';
-                    let subtitleHtml = '';
-
-                    if (companyName !== '' && reference !== '') {
-                        subtitleHtml = `${escapeHtml(companyName)} <strong>${escapeHtml(reference)}</strong>`;
-                    } else if (companyName !== '') {
-                        subtitleHtml = escapeHtml(companyName);
-                    } else if (reference !== '') {
-                        subtitleHtml = `<strong>${escapeHtml(reference)}</strong>`;
-                    } else if (subject !== '') {
-                        subtitleHtml = escapeHtml(subject);
-                    }
-
+            if (type === 'deactivate') {
+                return () => {
                     sepaConfirmDialog.open({
                         actor,
                         subtitleHtml,
@@ -1447,10 +1567,9 @@
                         },
                     });
                 };
-
-                deactivateButton.__goSepaHandler = handler;
-                deactivateButton.addEventListener('click', handler);
             }
+
+            return null;
         }
 
         async function activateSepaForItem(item) {
@@ -1498,8 +1617,9 @@
                 currentSepaDialogContext.item = item;
             }
 
-            if (currentSepaDialogBody) {
-                setupSepaDialogBody(currentSepaDialogBody, currentSepaDialogContext);
+            if (currentSepaDialogElements) {
+                currentSepaDialogElements.context = currentSepaDialogContext;
+                setupSepaDialogBody(currentSepaDialogElements);
             }
 
             return payload;
@@ -1550,8 +1670,9 @@
                 currentSepaDialogContext.item = item;
             }
 
-            if (currentSepaDialogBody) {
-                setupSepaDialogBody(currentSepaDialogBody, currentSepaDialogContext);
+            if (currentSepaDialogElements) {
+                currentSepaDialogElements.context = currentSepaDialogContext;
+                setupSepaDialogBody(currentSepaDialogElements);
             }
 
             return payload;
@@ -1590,8 +1711,29 @@
             const addressLines = joinNonEmpty(addressParts, ', ');
             const addressHtml = addressLines !== '' ? escapeHtml(addressLines) : '';
 
-            const sepaVariant = sepa.variant ? ` client-detail__status--${escapeHtml(sepa.variant)}` : '';
-            const sepaMessage = sepa.label || strings.sepaEmpty || 'Sin información del mandato';
+            const sepaVariantKey = typeof sepa.variant === 'string' ? sepa.variant.trim() : '';
+            const sepaMessage = typeof sepa.label === 'string' && sepa.label.trim() !== ''
+                ? sepa.label.trim()
+                : (strings.sepaEmpty || 'Sin información del mandato');
+            const sepaBadge = renderBadge(sepaMessage, sepaVariantKey !== '' ? sepaVariantKey : 'muted');
+            const offers = Array.isArray(item.offers) ? item.offers : [];
+            const offersCount = offers.length;
+            const offersBadgeLabel = offersCount === 0
+                ? (strings.offersEmpty || 'Sin ofertas activas')
+                : offersCount === 1
+                    ? (strings.offersBadgeSingular || '1 oferta activa')
+                    : (strings.offersBadgePlural || '%s ofertas activas').replace('%s', offersCount);
+            const offersBadgeVariant = offersCount > 0 ? 'info' : 'muted';
+            const offersBadge = renderBadge(offersBadgeLabel, offersBadgeVariant);
+            const commercials = Array.isArray(item.commercials) ? item.commercials : [];
+            const commercialCount = commercials.length;
+            const commercialBadgeLabel = commercialCount === 0
+                ? (strings.commercialsBadgeEmpty || strings.commercialsEmpty || 'Sin comercial asignado')
+                : commercialCount === 1
+                    ? (strings.commercialsBadgeSingular || '1 comercial asignado')
+                    : (strings.commercialsBadgePlural || '%s comerciales asignados').replace('%s', commercialCount);
+            const commercialBadgeVariant = commercialCount > 0 ? 'info' : 'muted';
+            const commercialBadge = renderBadge(commercialBadgeLabel, commercialBadgeVariant);
             const registeredLabel = strings.registered || 'Registro';
             const safeSalesChannel = salesChannelLabel !== '' ? escapeHtml(salesChannelLabel) : '—';
             const salesTagClass = salesChannelLabel !== '' ? '' : ' client-detail__stat-tag--muted';
@@ -1609,9 +1751,9 @@
             const preferencesSection = renderPreferences(item.documents || {}, item.services || {});
             const adminLink = item.links && typeof item.links.admin === 'string' ? item.links.admin.trim() : '';
             const adminLinkHtml = adminLink !== ''
-                ? `<div class="client-detail__admin"><a class="client-detail__admin-link" href="${escapeAttribute(adminLink)}" target="_blank" rel="noopener">${escapeHtml(strings.adminLink || 'Ver ficha del cliente en el panel de gestión')}</a></div>`
+                ? `<div class="client-detail__admin"><a class="client-detail__admin-link" href="${escapeAttribute(adminLink)}" target="_blank" rel="noopener">${escapeHtml(strings.adminLink || 'Edita en panel de administración WordPress')}</a></div>`
                 : '';
-            const hasCommercials = Array.isArray(item.commercials) && item.commercials.length > 0;
+            const hasCommercials = commercialCount > 0;
             const assignButton = canAssignCommercials
                 ? `
                         <button type="button" class="client-detail__action" data-assign-commercial>
@@ -1635,6 +1777,12 @@
             const assignButtonHtml = assignButton ? assignButton.trim() : '';
             const manageOffersButtonHtml = manageOffersButton.trim();
             const manageSepaButtonHtml = manageSepaButton.trim();
+            const offersActionsHtml = manageOffersButtonHtml !== ''
+                ? `<div class="client-detail__actions client-detail__actions--inline">${manageOffersButtonHtml}</div>`
+                : '';
+            const sepaActionsHtml = manageSepaButtonHtml !== ''
+                ? `<div class="client-detail__actions client-detail__actions--inline">${manageSepaButtonHtml}</div>`
+                : '';
 
             return `
                 <div class="client-detail">
@@ -1687,27 +1835,35 @@
                         </dl>
                     </section>
                     <section class="client-detail__section">
-                        <div class="client-detail__section-header">
-                            <h4 class="client-detail__section-title">${escapeHtml(strings.commercials || 'Comercial')}</h4>
+                        <div class="client-detail__section-header client-detail__section-header--has-meta">
+                            <div class="client-detail__section-heading">
+                                <h4 class="client-detail__section-title">${escapeHtml(strings.commercials || 'Comercial')}</h4>
+                                ${commercialBadge}
+                            </div>
                             ${assignButtonHtml}
                         </div>
-                        ${renderCommercialsList(item.commercials)}
+                        ${renderCommercialsList(commercials)}
                     </section>
                     ${workshopSection}
                     ${preferencesSection}
-                    <section class="client-detail__section">
-                        <div class="client-detail__section-header">
-                            <h4 class="client-detail__section-title">${escapeHtml(strings.offers || 'Ofertas activas')}</h4>
-                            ${manageOffersButtonHtml}
+                    <section class="client-detail__section client-detail__section--offers">
+                        <div class="client-detail__section-header client-detail__section-header--has-meta">
+                            <div class="client-detail__section-heading">
+                                <h4 class="client-detail__section-title">${escapeHtml(strings.offers || 'Ofertas activas')}</h4>
+                                ${offersBadge}
+                            </div>
                         </div>
-                        ${renderOffersList(item.offers)}
+                        ${offersActionsHtml}
+                        ${renderOffersList(offers)}
                     </section>
-                    <section class="client-detail__section">
-                        <div class="client-detail__section-header">
-                            <h4 class="client-detail__section-title">${escapeHtml(strings.sepaStatus || 'Estado SEPA')}</h4>
-                            ${manageSepaButtonHtml}
+                    <section class="client-detail__section client-detail__section--sepa">
+                        <div class="client-detail__section-header client-detail__section-header--has-meta">
+                            <div class="client-detail__section-heading">
+                                <h4 class="client-detail__section-title">${escapeHtml(strings.sepaStatus || 'Estado SEPA')}</h4>
+                                ${sepaBadge}
+                            </div>
                         </div>
-                        <p class="client-detail__status${sepaVariant}">${escapeHtml(sepaMessage)}</p>
+                        ${sepaActionsHtml}
                     </section>
                     ${adminLinkHtml}
                 </div>
@@ -3845,22 +4001,22 @@
             titleKey: 'manageSepaTitle',
             titleTemplateKey: 'manageSepaTitleTemplate',
             fallbackTitle: 'Gestionar SEPA',
-            showFooter: false,
+            showFooter: true,
             overlayClass: 'client-dialog--sepa',
             panelClass: 'client-dialog__panel--sepa',
             bodyClass: 'client-dialog__body--sepa',
-            onOpen({ body, context }) {
-                if (!body) {
+            onOpen(dialogElements) {
+                if (!dialogElements || !dialogElements.body) {
                     return;
                 }
 
-                currentSepaDialogContext = context || {};
-                currentSepaDialogBody = body;
-                setupSepaDialogBody(body, currentSepaDialogContext);
+                currentSepaDialogContext = dialogElements.context || {};
+                currentSepaDialogElements = dialogElements;
+                setupSepaDialogBody(dialogElements);
             },
             onClose() {
                 currentSepaDialogContext = null;
-                currentSepaDialogBody = null;
+                currentSepaDialogElements = null;
             },
         });
 
