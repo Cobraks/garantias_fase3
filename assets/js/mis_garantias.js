@@ -3370,17 +3370,10 @@ const ADD_DOC_KEY = "add-document";
                                         typeof newGuaranteeUrl === "string" && newGuaranteeUrl
                                                 ? newGuaranteeUrl
                                                 : "#";
-                                const iconHtml = plusIcon
-                                        ? `<span class="guarantee-detail__cta-icon" aria-hidden="true">${plusIcon}</span>`
-                                        : "";
                                 return `
                                         <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="no-results">
                                                 <h3 class="guarantee-detail__title">Añade tu primera garantía</h3>
-                                                <p>Crea una nueva garantía para ver aquí todos sus detalles.</p>
-                                                <a class="guarantee-detail__cta" href="${safeUrl}">
-                                                        ${iconHtml}
-                                                        <span class="guarantee-detail__cta-label">Nueva Garantía</span>
-                                                </a>
+                                                <p><a class="guarantee-detail__cta-link" href="${safeUrl}">Contrata tu primera garantía</a> para ver aquí todos sus detalles.</p>
                                         </div>
                                 `;
                         }

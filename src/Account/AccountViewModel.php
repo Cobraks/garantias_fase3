@@ -458,6 +458,8 @@ class AccountViewModel
             'awaiting_validation' => false,
             'activated'          => false,
             'needs_activation'   => false,
+            'activation_state'   => SepaMandateService::ACTIVATION_DISABLED,
+            'activation_label'   => '',
             'documents'          => [
                 'signed'  => [],
                 'pending' => [],
@@ -555,7 +557,12 @@ class AccountViewModel
                             $sepa['status_label'] = $status_payload['label'];
                         }
                         if (isset($status_group['activar_sepa'])) {
-                            $sepa['activated'] = ! empty($status_group['activar_sepa']);
+                            $activation_payload = SepaMandateService::parse_activation_field(
+                                $status_group['activar_sepa']
+                            );
+                            $sepa['activation_state'] = $activation_payload['value'];
+                            $sepa['activation_label'] = $activation_payload['label'];
+                            $sepa['activated'] = ($activation_payload['value'] === SepaMandateService::ACTIVATION_ENABLED);
                         }
                         if (isset($status_group['metodo_de_pago'])) {
                             $payment_type = self::extract_payment_label($status_group['metodo_de_pago']);
@@ -599,7 +606,14 @@ class AccountViewModel
         $sepa['status_label'] = $status_payload['label'];
 
         if (! $sepa['activated']) {
-            $sepa['activated'] = SepaMandateService::get_activation_flag($user_id);
+            $activation_payload = SepaMandateService::get_activation_payload($user_id);
+            $sepa['activated'] = ($activation_payload['value'] === SepaMandateService::ACTIVATION_ENABLED);
+            if (! isset($sepa['activation_state'])) {
+                $sepa['activation_state'] = $activation_payload['value'];
+            }
+            if (! isset($sepa['activation_label'])) {
+                $sepa['activation_label'] = $activation_payload['label'];
+            }
         }
         if (! $sepa['documents']['signed']) {
             $signed_meta = get_user_meta(
@@ -716,6 +730,7 @@ class AccountViewModel
     {
         $status_code = $sepa['status_code'] ?? SepaMandateService::STATUS_UNFILLED;
         $activated = ! empty($sepa['activated']);
+        $activation_state = $sepa['activation_state'] ?? SepaMandateService::ACTIVATION_DISABLED;
 
         $sepa['status_label'] = SepaMandateService::status_label($status_code);
         $sepa['status_variant'] = 'info';
@@ -727,7 +742,9 @@ class AccountViewModel
                     $sepa['status_variant'] = 'success';
                 } else {
                     $sepa['status_label'] = __('Pendiente de domiciliación', 'garantias-online-360vo');
-                    $sepa['status_variant'] = 'warning';
+                    $sepa['status_variant'] = $activation_state === SepaMandateService::ACTIVATION_PENDING
+                        ? 'error'
+                        : 'warning';
                 }
                 break;
             case SepaMandateService::STATUS_PENDING_VALIDATION:
@@ -738,6 +755,13 @@ class AccountViewModel
                 $sepa['status_label'] = __('Pendiente de firma', 'garantias-online-360vo');
                 $sepa['status_variant'] = 'warning';
                 break;
+        }
+
+        if (
+            ($activation_state === SepaMandateService::ACTIVATION_PENDING)
+            && ($status_code === SepaMandateService::STATUS_SIGNED)
+        ) {
+            $sepa['needs_activation'] = true;
         }
 
         return $sepa;

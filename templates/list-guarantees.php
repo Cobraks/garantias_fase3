@@ -736,13 +736,27 @@ if (($is_admin_user || $is_director)
 
     <?php ob_start(); ?>
     <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="no-results">
-        <p><?php esc_html_e('Crea una nueva garantía para ver aquí todos sus detalles.', 'garantias-online-360vo'); ?></p>
-        <a class="guarantee-detail__cta" href="<?php echo esc_url($new_guarantee_url); ?>">
-            <span class="guarantee-detail__cta-icon" aria-hidden="true">
-                <?php echo Svg::icon('plus'); ?>
-            </span>
-            <span class="guarantee-detail__cta-label"><?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?></span>
-        </a>
+        <p>
+            <?php
+            printf(
+                /* translators: %s: link to create the first guarantee. */
+                wp_kses(
+                    __('%s para ver aquí todos sus detalles.', 'garantias-online-360vo'),
+                    [
+                        'a' => [
+                            'href'  => [],
+                            'class' => [],
+                        ],
+                    ]
+                ),
+                sprintf(
+                    '<a class="guarantee-detail__cta-link" href="%s">%s</a>',
+                    esc_url($new_guarantee_url),
+                    esc_html__('Contrata tu primera garantía', 'garantias-online-360vo')
+                )
+            );
+            ?>
+        </p>
     </div>
     <?php $empty_detail_no_results = ob_get_clean(); ?>
 

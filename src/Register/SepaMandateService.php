@@ -29,6 +29,10 @@ class SepaMandateService
     private const META_ACTIVATE_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_activar_sepa';
     private const META_PAYMENT_FIELD  = 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago';
 
+    public const ACTIVATION_ENABLED  = 'activada';
+    public const ACTIVATION_DISABLED = 'desactivada';
+    public const ACTIVATION_PENDING  = 'pendiente';
+
     private const META_PENDING_HASH      = '_go360_sepa_pending_hash';
     private const META_SIGNED_HASH       = '_go360_sepa_signed_hash';
     private const META_PENDING_FILENAME  = '_go360_sepa_pending_filename';
@@ -194,25 +198,153 @@ class SepaMandateService
         update_user_meta($user_id, self::META_STATUS_FIELD, $payload);
     }
 
-    public static function get_activation_flag(int $user_id): bool
+    /**
+     * @param mixed $value
+     */
+    public static function parse_activation_field($value): array
     {
-        $raw = get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
-        if (is_bool($raw)) {
-            return $raw;
+        $label = '';
+
+        if (is_array($value)) {
+            if (isset($value['label'])) {
+                $label = (string) $value['label'];
+            }
+
+            if (isset($value['value'])) {
+                $value = $value['value'];
+            }
+        } elseif (is_object($value) && isset($value->value)) {
+            if (isset($value->label)) {
+                $label = (string) $value->label;
+            }
+            $value = $value->value;
         }
 
-        if (is_array($raw) && isset($raw['value'])) {
-            $raw = $raw['value'];
+        $state = self::normalize_activation_state($value);
+        $payload = self::build_activation_payload($state);
+
+        if ($label !== '') {
+            $payload['label'] = $label;
         }
 
-        $value = is_scalar($raw) ? (string) $raw : '';
-
-        return in_array(strtolower($value), ['1', 'true', 'yes', 'on'], true);
+        return $payload;
     }
 
-    public static function set_activation_flag(int $user_id, bool $active): void
+    /**
+     * @param mixed $value
+     */
+    public static function normalize_activation_state($value): string
     {
-        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $active ? 1 : 0);
+        if (is_bool($value)) {
+            return $value ? self::ACTIVATION_ENABLED : self::ACTIVATION_DISABLED;
+        }
+
+        if (is_numeric($value)) {
+            return ((int) $value) === 1 ? self::ACTIVATION_ENABLED : self::ACTIVATION_DISABLED;
+        }
+
+        if (is_array($value) && isset($value['value'])) {
+            return self::normalize_activation_state($value['value']);
+        }
+
+        if (is_object($value) && isset($value->value)) {
+            return self::normalize_activation_state($value->value);
+        }
+
+        if (! is_scalar($value)) {
+            return self::ACTIVATION_DISABLED;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+        if ($normalized === '') {
+            return self::ACTIVATION_DISABLED;
+        }
+
+        $normalized = str_replace([' ', '-'], '_', $normalized);
+
+        $enabled_values = [
+            '1',
+            'true',
+            'yes',
+            'on',
+            'si',
+            'sí',
+            'activada',
+            'activa',
+            'habilitada',
+            'enabled',
+        ];
+
+        if (in_array($normalized, $enabled_values, true)) {
+            return self::ACTIVATION_ENABLED;
+        }
+
+        $pending_values = [
+            'pendiente',
+            'pendiente_de_domiciliacion',
+            'pendiente_de_domiciliación',
+            'pendiente_de_activacion',
+            'pendiente_de_activación',
+            'pending',
+            'pending_activation',
+            'pending_activation_review',
+        ];
+
+        if (in_array($normalized, $pending_values, true)) {
+            return self::ACTIVATION_PENDING;
+        }
+
+        return self::ACTIVATION_DISABLED;
+    }
+
+    public static function build_activation_payload(string $state): array
+    {
+        $normalized = self::normalize_activation_state($state);
+
+        switch ($normalized) {
+            case self::ACTIVATION_ENABLED:
+                $label = __('Activada', 'garantias-online-360vo');
+                break;
+            case self::ACTIVATION_PENDING:
+                $label = __('Pendiente de domiciliación', 'garantias-online-360vo');
+                break;
+            default:
+                $label = __('Desactivada', 'garantias-online-360vo');
+                break;
+        }
+
+        return [
+            'value' => $normalized,
+            'label' => $label,
+        ];
+    }
+
+    public static function get_activation_payload(int $user_id): array
+    {
+        $raw = get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
+        $payload = self::parse_activation_field($raw);
+
+        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $payload);
+
+        return $payload;
+    }
+
+    public static function get_activation_flag(int $user_id): bool
+    {
+        $payload = self::get_activation_payload($user_id);
+
+        return $payload['value'] === self::ACTIVATION_ENABLED;
+    }
+
+    public static function set_activation_flag(int $user_id, bool $active, string $state = ''): void
+    {
+        if ($state === '') {
+            $state = $active ? self::ACTIVATION_ENABLED : self::ACTIVATION_DISABLED;
+        }
+
+        $payload = self::build_activation_payload($state);
+
+        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $payload);
     }
 
     /**
@@ -425,7 +557,7 @@ class SepaMandateService
 
         if (! is_wp_error($stored)) {
             self::set_status($user_id, self::STATUS_PENDING_SIGNATURE);
-            self::set_activation_flag($user_id, false);
+            self::set_activation_flag($user_id, false, self::ACTIVATION_PENDING);
             self::set_payment_method($user_id, 'transferencia');
         }
 
@@ -442,7 +574,7 @@ class SepaMandateService
 
         if (! is_wp_error($stored)) {
             self::set_status($user_id, self::STATUS_PENDING_VALIDATION);
-            self::set_activation_flag($user_id, false);
+            self::set_activation_flag($user_id, false, self::ACTIVATION_PENDING);
             self::set_payment_method($user_id, 'transferencia');
         }
 
@@ -460,13 +592,13 @@ class SepaMandateService
             }
         }
         self::set_payment_method($user_id, 'transferencia');
-        self::set_activation_flag($user_id, false);
+        self::set_activation_flag($user_id, false, self::ACTIVATION_DISABLED);
     }
 
     public static function clear_signed_mandate(int $user_id): void
     {
         self::clear_document($user_id, self::TYPE_SIGNED);
-        self::set_activation_flag($user_id, false);
+        self::set_activation_flag($user_id, false, self::ACTIVATION_DISABLED);
 
         $pending = self::get_document_meta($user_id, self::TYPE_PENDING);
         if (! empty($pending['hash'])) {

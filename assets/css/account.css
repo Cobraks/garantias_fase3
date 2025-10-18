@@ -605,6 +605,15 @@
   color: #16a34a;
 }
 
+.account-card__status--sepa-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.account-card__status--sepa-error .account-card__status-icon {
+  color: #dc2626;
+}
+
 .account-card__status-icon {
   display: inline-flex;
   align-items: center;
@@ -1127,6 +1136,12 @@
   border-color: #bfdbfe;
   background: #dbeafe;
   color: #1d4ed8;
+}
+
+.account-sepa-request__status--warning {
+  border-color: #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .account-sepa-request__actions {

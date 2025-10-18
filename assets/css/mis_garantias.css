@@ -5469,6 +5469,17 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: var(--go-color-ffffff);
 }
 
+.guarantee-detail__cta-link {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.guarantee-detail__cta-link:hover,
+.guarantee-detail__cta-link:focus-visible {
+    color: var(--primary-color-hover, var(--primary-color));
+}
+
 .guarantee-detail__cta:focus-visible {
     outline: 2px solid rgba(var(--go-color-2563eb-rgb), 0.45);
     outline-offset: 2px;

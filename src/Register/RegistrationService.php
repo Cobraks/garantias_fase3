@@ -596,6 +596,10 @@ class RegistrationService
         if ($data['enable_sepa']) {
             $sepa = $data['sepa'];
             $this->persist_sepa_meta($user_id, $sepa);
+        } else {
+            SepaMandateService::set_status($user_id, SepaMandateService::STATUS_UNFILLED);
+            SepaMandateService::set_activation_flag($user_id, false, SepaMandateService::ACTIVATION_DISABLED);
+            SepaMandateService::set_payment_method($user_id, 'transferencia');
         }
 
         if (! empty($uploads['avatar']['id'])) {
@@ -780,7 +784,10 @@ class RegistrationService
         $estado['estado_sepa'] = SepaMandateService::build_status_payload(
             SepaMandateService::STATUS_PENDING_SIGNATURE
         );
-        $estado['activar_sepa'] = 0;
+        $activation_state = $document !== null
+            ? SepaMandateService::ACTIVATION_PENDING
+            : SepaMandateService::ACTIVATION_DISABLED;
+        $estado['activar_sepa'] = SepaMandateService::build_activation_payload($activation_state);
         $estado['metodo_de_pago'] = SepaMandateService::build_payment_payload('transferencia');
 
         if ($document !== null) {
@@ -828,7 +835,7 @@ class RegistrationService
         update_user_meta($user_id, 'gestion_pagos_gestion_sepa_datos_deudor_tipo_pago', $sepa['payment_type'] ?? '');
 
         SepaMandateService::set_status($user_id, SepaMandateService::STATUS_PENDING_SIGNATURE);
-        SepaMandateService::set_activation_flag($user_id, false);
+        SepaMandateService::set_activation_flag($user_id, false, SepaMandateService::ACTIVATION_PENDING);
         SepaMandateService::set_payment_method($user_id, 'transferencia');
     }
 
