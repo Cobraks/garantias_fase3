@@ -311,7 +311,7 @@ if (! empty($is_add_guarantee)) {
             'manageSepaDeactivateConfirmNote' => __('El método de pago volverá a ser transferencia bancaria.', 'garantias-online-360vo'),
             'manageSepaDeactivateReasonLabel' => __('Notas', 'garantias-online-360vo'),
             'manageSepaDeactivateReasonPlaceholder' => __('Añade una nota…', 'garantias-online-360vo'),
-            'manageSepaDeactivateReasonHelp' => __('Esta nota se mostrará al profesional en su área privada.', 'garantias-online-360vo'),
+            'manageSepaDeactivateReasonHelp' => __('Esta nota es privada y solo la verán los administradores.', 'garantias-online-360vo'),
             'manageSepaDeactivateReasonError' => __('Introduce una nota.', 'garantias-online-360vo'),
             'manageSepaDisabledNotice' => __('La domiciliación bancaria está deshabilitada. Revisa el motivo antes de reactivarla.', 'garantias-online-360vo'),
             'dialogSave'           => __('Guardar cambios', 'garantias-online-360vo'),

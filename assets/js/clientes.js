@@ -4069,6 +4069,8 @@
             function resetReasonField() {
                 if (reasonField) {
                     reasonField.hidden = true;
+                    reasonField.style.display = 'none';
+                    reasonField.setAttribute('aria-hidden', 'true');
                     reasonField.classList.remove('confirm-modal__field--invalid');
                 }
                 if (reasonTextarea) {
@@ -4274,6 +4276,8 @@
                     const shouldShowReason = Boolean(currentContext.reasonRequired);
                     if (shouldShowReason) {
                         reasonField.hidden = false;
+                        reasonField.style.display = '';
+                        reasonField.setAttribute('aria-hidden', 'false');
                         reasonField.classList.remove('confirm-modal__field--invalid');
                         reasonTextarea.value = '';
                         reasonTextarea.disabled = false;
