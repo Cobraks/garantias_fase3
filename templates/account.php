@@ -1227,29 +1227,13 @@ $formatPhoneHref = static function ($phone) {
                                     class="account-sepa-reactivation"
                                     data-sepa-reactivation
                                     data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
-                                    <?php echo $sepa_form_visible ? '' : 'hidden aria-hidden="true"'; ?>
                                 >
                                     <p
                                         class="account-sepa-request__status account-sepa-request__status--warning"
                                         data-sepa-reactivation-status
                                     >
-                                        <?php echo esc_html__('La domiciliación bancaria está desactivada.', 'garantias-online-360vo'); ?>
+                                        <?php echo esc_html__('La domiciliación bancaria ha sido desactivada. Ponte en contacto con garantias@360vo.es', 'garantias-online-360vo'); ?>
                                     </p>
-                                    <?php if ($sepa_disabled_message !== '') : ?>
-                                        <p
-                                            class="account-sepa-reactivation__reason"
-                                            data-sepa-reactivation-reason
-                                        >
-                                            <?php echo esc_html($sepa_disabled_message); ?>
-                                        </p>
-                                    <?php else : ?>
-                                        <p
-                                            class="account-sepa-reactivation__reason"
-                                            data-sepa-reactivation-reason
-                                            hidden
-                                            aria-hidden="true"
-                                        ></p>
-                                    <?php endif; ?>
                                 </div>
                             <?php endif; ?>
                             <div

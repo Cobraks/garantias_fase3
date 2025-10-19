@@ -874,7 +874,6 @@
                                 : null;
                             const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
                             const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
-                            const reactivationReason = document.querySelector('[data-sepa-reactivation-reason]');
 
                             if (toggleWrapper) {
                                 const shouldHideToggle = sepaIsActivated || Boolean(sepaData.requested) || needsActivation || sepaIsDisabled;
@@ -942,23 +941,8 @@
                                 const shouldShowStatus = Boolean(needsActivation || sepaIsDisabled);
                                 reactivationStatus.hidden = !shouldShowStatus;
                                 reactivationStatus.setAttribute('aria-hidden', shouldShowStatus ? 'false' : 'true');
-                                if (shouldShowStatus && !reactivationStatus.textContent.trim()) {
-                                    reactivationStatus.textContent = 'La domiciliación bancaria está desactivada.';
-                                }
-                            }
-
-                            if (reactivationReason) {
-                                const reasonText = typeof sepaData.disabled_message === 'string'
-                                    ? sepaData.disabled_message.trim()
-                                    : '';
-                                if ((needsActivation || sepaIsDisabled) && reasonText !== '') {
-                                    reactivationReason.hidden = false;
-                                    reactivationReason.setAttribute('aria-hidden', 'false');
-                                    reactivationReason.textContent = reasonText;
-                                } else {
-                                    reactivationReason.hidden = true;
-                                    reactivationReason.setAttribute('aria-hidden', 'true');
-                                    reactivationReason.textContent = '';
+                                if (shouldShowStatus) {
+                                    reactivationStatus.textContent = 'La domiciliación bancaria ha sido desactivada. Ponte en contacto con garantias@360vo.es';
                                 }
                             }
 
@@ -1070,20 +1054,15 @@
                     syncSignedDocumentBlocks(null);
                     const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
                     const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
-                    const reactivationReason = document.querySelector('[data-sepa-reactivation-reason]');
                     if (reactivationContainer) {
                         reactivationContainer.hidden = true;
-                                reactivationContainer.setAttribute('aria-hidden', 'true');
-                            }
-                            if (reactivationStatus) {
-                                reactivationStatus.hidden = true;
-                                reactivationStatus.setAttribute('aria-hidden', 'true');
-                            }
-                            if (reactivationReason) {
-                                reactivationReason.textContent = '';
-                                reactivationReason.hidden = true;
-                                reactivationReason.setAttribute('aria-hidden', 'true');
-                            }
+                        reactivationContainer.setAttribute('aria-hidden', 'true');
+                    }
+                    if (reactivationStatus) {
+                        reactivationStatus.hidden = true;
+                        reactivationStatus.setAttribute('aria-hidden', 'true');
+                        reactivationStatus.textContent = '';
+                    }
                         }
 
                         setStatus(strings.success || 'Cambios guardados correctamente.', 'success');
