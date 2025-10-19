@@ -696,9 +696,7 @@ class AccountViewModel
             $sepa['awaiting_validation'] = false;
             $sepa['activated'] = false;
             $sepa['status'] = false;
-            if ($has_signed_document) {
-                $sepa['needs_activation'] = true;
-            }
+            $sepa['needs_activation'] = true;
         }
 
         $status_code = $sepa['status_code'] ?? SepaMandateService::STATUS_UNFILLED;

@@ -641,6 +641,7 @@ $formatPhoneHref = static function ($phone) {
             }
             $sepa_field_lookup       = [];
             $sepa_disabled_message   = trim((string) ($sepa_info['disabled_message'] ?? ''));
+            $sepa_requires_reactivation = $sepa_needs_activation || $sepa_status_code === SepaMandateService::STATUS_DISABLED;
 
             foreach ($sepa_fields as $field) {
                 $field_name = (string) ($field['name'] ?? '');
@@ -912,7 +913,7 @@ $formatPhoneHref = static function ($phone) {
                         <p class="account-card__status">
                             Método de pago actual: <strong><?php echo esc_html($current_method_label); ?></strong>
                         </p>
-                        <?php if (! $sepa_is_active && ! $sepa_requested && ! $sepa_needs_activation) : ?>
+                        <?php if (! $sepa_is_active && ! $sepa_requested && ! $sepa_requires_reactivation) : ?>
                             <label
                                 class="account-toggle"
                                 data-sepa-toggle
@@ -1217,12 +1218,12 @@ $formatPhoneHref = static function ($phone) {
                             </div>
                         <?php else : ?>
                             <?php
-                                $sepa_form_state   = $sepa_needs_activation ? 'reactivation' : 'enabled';
-                                $sepa_form_visible = $sepa_needs_activation
-                                    ? ($activation_state === 'requested')
+                                $sepa_form_state   = $sepa_requires_reactivation ? 'reactivation' : 'enabled';
+                                $sepa_form_visible = $sepa_requires_reactivation
+                                    ? in_array($activation_state, ['requested', 'disabled'], true)
                                     : ($activation_state === 'enabled');
                             ?>
-                            <?php if ($sepa_needs_activation) : ?>
+                            <?php if ($sepa_requires_reactivation) : ?>
                                 <div
                                     class="account-sepa-reactivation"
                                     data-sepa-reactivation
@@ -1280,7 +1281,7 @@ $formatPhoneHref = static function ($phone) {
                                     </div>
                                 <?php endforeach; ?>
                             </div>
-                            <?php if ($sepa_needs_activation) : ?>
+                            <?php if ($sepa_requires_reactivation) : ?>
                                 <div
                                     class="account-payments__actions"
                                     data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
