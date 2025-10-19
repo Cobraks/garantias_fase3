@@ -155,6 +155,27 @@
                 .join(' ')
                 .trim();
         };
+        const isValidIban = (value) => {
+            const sanitized = typeof value === 'string'
+                ? value.replace(/\s+/g, '').toUpperCase()
+                : '';
+            if (!/^[A-Z0-9]{15,34}$/.test(sanitized)) {
+                return false;
+            }
+            const rearranged = sanitized.slice(4) + sanitized.slice(0, 4);
+            const converted = rearranged.replace(/[A-Z]/g, (char) => String(char.charCodeAt(0) - 55));
+            let remainder = 0;
+            for (let index = 0; index < converted.length; index += 1) {
+                const digit = Number(converted[index]);
+                if (Number.isNaN(digit)) {
+                    return false;
+                }
+                remainder = (remainder * 10 + digit) % 97;
+            }
+            return remainder === 1;
+        };
+        const POSTAL_CODE_REGEX = /^(0[1-9]|[1-4]\d|5[0-3])\d{3}$/;
+        const SWIFT_REGEX = /^[A-Za-z]{4}[A-Za-z]{2}[A-Za-z0-9]{2}([A-Za-z0-9]{3})?$/;
         const syncSignedDocumentBlocks = (documentData) => {
             const blocks = document.querySelectorAll('[data-sepa-signed]');
             if (!blocks.length) {
@@ -1470,6 +1491,106 @@
                 }
             }
         }
+
+        (() => {
+            const detail = document.querySelector('[data-payment-detail]');
+            if (!detail) {
+                return;
+            }
+
+            const form = detail.querySelector('[data-sepa-form]');
+            if (!form) {
+                return;
+            }
+
+            const fields = Array.from(form.querySelectorAll('[data-sepa-field]'))
+                .filter((element) => element instanceof HTMLInputElement);
+            if (!fields.length) {
+                return;
+            }
+
+            const generateButton = detail.querySelector('[data-payment-generate]');
+            if (!(generateButton instanceof HTMLButtonElement)) {
+                return;
+            }
+
+            const getActivationState = () => detail.getAttribute('data-state') || 'disabled';
+            const isGenerated = () => detail.getAttribute('data-generated') === 'true';
+
+            const messages = {
+                required: strings.requiredField || 'Este campo es obligatorio.',
+                postalCode: strings.postalCode || 'Introduce un código postal válido.',
+                iban: strings.iban || 'Introduce un IBAN válido.',
+                swift: strings.swift || 'Introduce un código SWIFT/BIC válido.',
+            };
+
+            const validators = {
+                codigo_postal: (value) => POSTAL_CODE_REGEX.test(value),
+                numero_cuenta: (value) => isValidIban(value),
+                swift_bic: (value) => SWIFT_REGEX.test(value),
+            };
+
+            const validateField = (field, report = false) => {
+                const key = field.dataset.sepaField || '';
+                const rawValue = typeof field.value === 'string' ? field.value.trim() : '';
+                const required = field.hasAttribute('required');
+                let valid = true;
+                let message = '';
+
+                if (required && rawValue === '') {
+                    valid = false;
+                    message = messages.required;
+                } else if (rawValue !== '' && validators[key]) {
+                    valid = validators[key](rawValue);
+                    if (!valid) {
+                        if (key === 'codigo_postal') {
+                            message = messages.postalCode;
+                        } else if (key === 'numero_cuenta') {
+                            message = messages.iban;
+                        } else {
+                            message = messages.swift;
+                        }
+                    }
+                }
+
+                if (typeof field.setCustomValidity === 'function') {
+                    field.setCustomValidity(valid ? '' : message);
+                }
+
+                if (report && !valid && typeof field.reportValidity === 'function') {
+                    field.reportValidity();
+                }
+
+                return valid;
+            };
+
+            const validateForm = (report = false) => fields.every((field) => validateField(field, report));
+
+            const updateButtonState = () => {
+                const state = getActivationState();
+                const ready = state === 'enabled' && !isGenerated() && validateForm(false);
+                generateButton.disabled = !ready;
+                generateButton.setAttribute('aria-disabled', ready ? 'false' : 'true');
+            };
+
+            fields.forEach((field) => {
+                field.addEventListener('input', () => {
+                    validateField(field, false);
+                    updateButtonState();
+                });
+                field.addEventListener('blur', () => {
+                    validateField(field, true);
+                    updateButtonState();
+                });
+            });
+
+            const observer = new MutationObserver(() => {
+                updateButtonState();
+            });
+            observer.observe(detail, { attributes: true, attributeFilter: ['data-state', 'data-generated'] });
+
+            updateButtonState();
+        })();
 
         const formatBytes = (bytes) => {
             if (typeof bytes !== 'number' || Number.isNaN(bytes) || bytes <= 0) {

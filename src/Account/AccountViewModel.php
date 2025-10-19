@@ -604,6 +604,7 @@ class AccountViewModel
         }
 
         $debtor_fields = self::hydrate_debtor_meta($debtor_fields, $user_id);
+        $debtor_fields = self::prefill_debtor_fields($debtor_fields, $user_id, $scope);
 
         if ($payment_type === '' || $payment_method_value === '') {
             $method_payload = SepaMandateService::get_payment_method($user_id);
@@ -832,6 +833,93 @@ class AccountViewModel
                 }
 
                 $fields[$key]['value'] = self::sanitize_optional_text($value);
+            }
+        }
+
+        return $fields;
+    }
+
+    private static function prefill_debtor_fields(array $fields, int $user_id, string $scope): array
+    {
+        $user = get_user_by('id', $user_id);
+        $prefill = [
+            'nombre_deudor'    => '',
+            'direccion_deudor' => '',
+            'codigo_postal'    => '',
+            'poblacion'        => '',
+            'provincia'        => '',
+            'pais_deudor'      => '',
+        ];
+
+        if ($user instanceof WP_User) {
+            $profile = UserProfileResolver::build_from_user($user);
+            $full_name = self::sanitize_optional_text($profile['personal_full_name'] ?? '');
+            if ($full_name === '') {
+                $full_name = self::sanitize_optional_text($profile['personal_name'] ?? '');
+            }
+
+            if ($full_name !== '') {
+                $prefill['nombre_deudor'] = $full_name;
+            }
+
+            $company = is_array($profile['company'] ?? null) ? $profile['company'] : [];
+            $address = is_array($company['address'] ?? null) ? $company['address'] : [];
+            $prefill['direccion_deudor'] = self::sanitize_optional_text($address['street'] ?? '');
+            $prefill['codigo_postal']    = self::sanitize_optional_text($address['zip'] ?? '');
+            $prefill['poblacion']        = self::sanitize_optional_text($address['city'] ?? '');
+            $prefill['provincia']        = self::sanitize_optional_text($address['state'] ?? '');
+            $prefill['pais_deudor']      = self::sanitize_optional_text($address['country'] ?? '');
+        }
+
+        $contact_meta = self::get_meta_group($scope, 'datos_usuario');
+
+        $fallbacks = [
+            'direccion_deudor' => [
+                $prefill['direccion_deudor'],
+                $contact_meta['direccion'] ?? '',
+                get_user_meta($user_id, 'datos_usuario_direccion', true),
+            ],
+            'codigo_postal' => [
+                $prefill['codigo_postal'],
+                $contact_meta['codigo_postal'] ?? '',
+                get_user_meta($user_id, 'datos_usuario_codigo_postal', true),
+            ],
+            'poblacion' => [
+                $prefill['poblacion'],
+                $contact_meta['localidad'] ?? '',
+                get_user_meta($user_id, 'datos_usuario_localidad', true),
+            ],
+            'provincia' => [
+                $prefill['provincia'],
+                $contact_meta['provincia'] ?? '',
+                get_user_meta($user_id, 'datos_usuario_provincia', true),
+            ],
+            'pais_deudor' => [
+                $prefill['pais_deudor'],
+                $contact_meta['pais'] ?? '',
+                get_user_meta($user_id, 'datos_usuario_pais', true),
+            ],
+        ];
+
+        foreach ($fallbacks as $key => $candidates) {
+            foreach ($candidates as $candidate) {
+                $clean = self::sanitize_optional_text($candidate);
+                if ($clean === '') {
+                    continue;
+                }
+
+                $prefill[$key] = $clean;
+                break;
+            }
+        }
+
+        foreach ($prefill as $key => $value) {
+            if ($value === '' || ! isset($fields[$key])) {
+                continue;
+            }
+
+            if (self::sanitize_optional_text($fields[$key]['value'] ?? '') === '') {
+                $fields[$key]['value'] = $value;
             }
         }
 

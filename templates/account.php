@@ -1238,7 +1238,8 @@ $formatPhoneHref = static function ($phone) {
                                 </div>
                             <?php else : ?>
                                 <?php
-                                    $sepa_form_state = $activation_state;
+                                    $sepa_form_visible_states = ['enabled', 'reactivation'];
+                                    $sepa_form_initially_visible = in_array($activation_state, $sepa_form_visible_states, true);
 
                                     ob_start();
                                     foreach ($sepa_field_order as $field_key) {
@@ -1283,22 +1284,25 @@ $formatPhoneHref = static function ($phone) {
 
                                 <div
                                     class="account-form account-form--sepa"
-                                    data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
+                                    data-payment-state="enabled reactivation"
                                     data-sepa-form
+                                    <?php echo $sepa_form_initially_visible ? '' : 'hidden aria-hidden="true"'; ?>
                                 >
                                     <?php echo $sepa_form_fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                                 </div>
                                 <?php if (! $has_generated_mandate) : ?>
                                     <div
                                         class="account-payments__actions"
-                                        data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
+                                        data-payment-state="enabled reactivation"
                                         data-payment-awaiting
+                                        <?php echo $sepa_form_initially_visible ? '' : 'hidden aria-hidden="true"'; ?>
                                     >
                                         <button
                                             type="button"
                                             class="account-button"
                                             data-payment-generate
-                                            <?php disabled($has_generated_mandate); ?>
+                                            disabled
+                                            aria-disabled="true"
                                         >
                                             <?php esc_html_e('Generar SEPA', 'garantias-online-360vo'); ?>
                                         </button>
