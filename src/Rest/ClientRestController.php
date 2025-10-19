@@ -1609,6 +1609,14 @@ class ClientRestController
             return $stored;
         }
 
+        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_SIGNED);
+        SepaMandateService::set_activation_flag(
+            $user_id,
+            true,
+            SepaMandateService::ACTIVATION_ENABLED
+        );
+        SepaMandateService::set_payment_method($user_id, 'domiciliacion');
+
         $stored['submitted_at'] = current_time('timestamp');
 
         return $stored;

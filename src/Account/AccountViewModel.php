@@ -709,6 +709,10 @@ class AccountViewModel
             && isset($pending_document['hash'])
             && $pending_document['hash'] !== '';
 
+        if ($is_activated) {
+            $has_pending_request = false;
+        }
+
         $sepa['awaiting_validation'] = ($status_code === SepaMandateService::STATUS_PENDING_VALIDATION);
 
         $selected_source = $payment_method_value !== '' ? $payment_method_value : $payment_type;
@@ -733,6 +737,10 @@ class AccountViewModel
             ],
             true
         ) || $has_pending_request;
+
+        if ($is_activated) {
+            $sepa['needs_activation'] = false;
+        }
 
         if (($has_pending_request || $sepa['awaiting_validation'] || $sepa['needs_activation']) && ! $sepa['status']) {
             $selected_method = 'transferencia';

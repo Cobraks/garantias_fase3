@@ -933,18 +933,17 @@ $formatPhoneHref = static function ($phone) {
                                 <span><?php echo esc_html__('Domiciliación bancaria deshabilitada.', 'garantias-online-360vo'); ?></span>
                             </p>
                         <?php endif; ?>
-                        <?php if ($sepa_show_pending) : ?>
-                            <p
-                                class="account-card__status account-card__status--sepa<?php echo $sepa_awaiting_validation ? ' account-card__status--sepa-success' : ''; ?>"
-                                data-sepa-status
-                                data-sepa-requested="<?php echo $sepa_requested ? 'true' : 'false'; ?>"
-                                data-sepa-awaiting="<?php echo $sepa_awaiting_validation ? 'true' : 'false'; ?>"
-                                data-sepa-needs-activation="<?php echo $sepa_needs_activation ? 'true' : 'false'; ?>"
-                            >
-                                <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
-                                <span>Estado domiciliación bancaria: <strong data-sepa-status-label><?php echo esc_html($sepa_status_label); ?></strong></span>
-                            </p>
-                        <?php endif; ?>
+                        <p
+                            class="account-card__status account-card__status--sepa<?php echo $sepa_awaiting_validation ? ' account-card__status--sepa-success' : ''; ?>"
+                            data-sepa-status
+                            data-sepa-requested="<?php echo $sepa_requested ? 'true' : 'false'; ?>"
+                            data-sepa-awaiting="<?php echo $sepa_awaiting_validation ? 'true' : 'false'; ?>"
+                            data-sepa-needs-activation="<?php echo $sepa_needs_activation ? 'true' : 'false'; ?>"
+                            <?php echo $sepa_show_pending ? '' : 'hidden aria-hidden="true"'; ?>
+                        >
+                            <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
+                            <span>Estado domiciliación bancaria: <strong data-sepa-status-label><?php echo esc_html($sepa_status_label); ?></strong></span>
+                        </p>
                         <?php if (! $sepa_show_success && ! $sepa_requested && ! $sepa_needs_activation) : ?>
                             <label
                                 class="account-toggle"
