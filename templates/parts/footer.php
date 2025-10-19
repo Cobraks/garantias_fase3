@@ -309,10 +309,10 @@ if (! empty($is_add_guarantee)) {
             'manageSepaDeactivateConfirmLoading' => __('Inhabilitando…', 'garantias-online-360vo'),
             'manageSepaDeactivateConfirmCheckbox' => __('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'),
             'manageSepaDeactivateConfirmNote' => __('El método de pago volverá a ser transferencia bancaria.', 'garantias-online-360vo'),
-            'manageSepaDeactivateReasonLabel' => __('Motivo de la deshabilitación', 'garantias-online-360vo'),
-            'manageSepaDeactivateReasonPlaceholder' => __('Describe el motivo…', 'garantias-online-360vo'),
-            'manageSepaDeactivateReasonHelp' => __('Este mensaje se mostrará al profesional en su área privada.', 'garantias-online-360vo'),
-            'manageSepaDeactivateReasonError' => __('Introduce el motivo de la deshabilitación.', 'garantias-online-360vo'),
+            'manageSepaDeactivateReasonLabel' => __('Notas', 'garantias-online-360vo'),
+            'manageSepaDeactivateReasonPlaceholder' => __('Añade una nota…', 'garantias-online-360vo'),
+            'manageSepaDeactivateReasonHelp' => __('Esta nota se mostrará al profesional en su área privada.', 'garantias-online-360vo'),
+            'manageSepaDeactivateReasonError' => __('Introduce una nota.', 'garantias-online-360vo'),
             'manageSepaDisabledNotice' => __('La domiciliación bancaria está deshabilitada. Revisa el motivo antes de reactivarla.', 'garantias-online-360vo'),
             'dialogSave'           => __('Guardar cambios', 'garantias-online-360vo'),
             'close'                => __('Cerrar', 'garantias-online-360vo'),
@@ -360,7 +360,7 @@ if (! empty($is_add_guarantee)) {
             </div>
             <p class="confirm-modal__error" role="alert" hidden></p>
             <div class="confirm-modal__field" data-confirm-reason hidden>
-                <label class="confirm-modal__field-label" for="client-sepa-confirm-reason"><?php esc_html_e('Motivo de la deshabilitación', 'garantias-online-360vo'); ?></label>
+                <label class="confirm-modal__field-label" for="client-sepa-confirm-reason"><?php esc_html_e('Notas', 'garantias-online-360vo'); ?></label>
                 <textarea id="client-sepa-confirm-reason" class="confirm-modal__textarea" rows="3"></textarea>
                 <p class="confirm-modal__field-help"></p>
             </div>

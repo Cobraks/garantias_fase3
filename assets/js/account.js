@@ -131,6 +131,7 @@
             awaitingMessage: strings.sepaAwaitingMessage || 'Tu SEPA firmado está pendiente de validación.',
             awaitingActivation: strings.sepaAwaitingActivation || 'Pendiente de domiciliación',
         };
+        const sepaSignedFallbackName = strings.sepaSignedFilename || 'Mandato SEPA firmado';
         const formatIban = (value) => {
             const raw = typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() : '';
             if (!raw) {
@@ -153,6 +154,56 @@
                 })
                 .join(' ')
                 .trim();
+        };
+        const syncSignedDocumentBlocks = (documentData) => {
+            const blocks = document.querySelectorAll('[data-sepa-signed]');
+            if (!blocks.length) {
+                return;
+            }
+
+            const doc = documentData && typeof documentData === 'object' ? documentData : null;
+            const url = doc && typeof doc.url === 'string' ? doc.url.trim() : '';
+            const filename = doc
+                && typeof doc.filename === 'string'
+                && doc.filename.trim() !== ''
+                ? doc.filename.trim()
+                : sepaSignedFallbackName;
+            const hasDocument = Boolean(url || (doc && (doc.hash || doc.id)));
+
+            blocks.forEach((block) => {
+                if (!(block instanceof HTMLElement)) {
+                    return;
+                }
+
+                const link = block.querySelector('[data-sepa-signed-link]');
+                const name = block.querySelector('[data-sepa-signed-name]');
+
+                if (hasDocument) {
+                    block.hidden = false;
+                    block.setAttribute('aria-hidden', 'false');
+                    if (link instanceof HTMLAnchorElement) {
+                        link.hidden = false;
+                        link.setAttribute('aria-hidden', 'false');
+                        link.removeAttribute('tabindex');
+                        link.setAttribute('href', url || '#');
+                    }
+                    if (name) {
+                        name.textContent = filename;
+                    }
+                } else {
+                    block.hidden = true;
+                    block.setAttribute('aria-hidden', 'true');
+                    if (link instanceof HTMLAnchorElement) {
+                        link.hidden = true;
+                        link.setAttribute('aria-hidden', 'true');
+                        link.setAttribute('tabindex', '-1');
+                        link.setAttribute('href', '#');
+                    }
+                    if (name) {
+                        name.textContent = sepaSignedFallbackName;
+                    }
+                }
+            });
         };
         const sepaIbanController = (() => {
             const valueElement = document.querySelector('[data-sepa-iban]');
@@ -790,6 +841,11 @@
                             const sepaIsDisabled = sepaStatusCodeRaw === 'deshabilitado';
                             const awaitingValidation = Boolean(sepaData.awaiting_validation);
                             const needsActivation = Boolean(sepaData.needs_activation);
+                            const signedDocumentData = (!needsActivation && !sepaIsDisabled)
+                                && sepaData.documents
+                                ? sepaData.documents.signed
+                                : null;
+                            syncSignedDocumentBlocks(signedDocumentData);
                             const sepaIsActive = Boolean(sepaData.status);
                             const sepaIsActivated = Boolean(sepaData.activated);
                             if (sepaController && typeof sepaController.setLocked === 'function') {
@@ -1007,15 +1063,16 @@
                                         removeButton.hidden = !hasServerDocument;
                                         removeButton.setAttribute('aria-hidden', hasServerDocument ? 'false' : 'true');
                                     }
-                                }
-                            }
-                        } else {
-                            sepaIbanController.setValue('');
-                            const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
-                            const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
-                            const reactivationReason = document.querySelector('[data-sepa-reactivation-reason]');
-                            if (reactivationContainer) {
-                                reactivationContainer.hidden = true;
+                        }
+                    }
+                } else {
+                    sepaIbanController.setValue('');
+                    syncSignedDocumentBlocks(null);
+                    const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
+                    const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
+                    const reactivationReason = document.querySelector('[data-sepa-reactivation-reason]');
+                    if (reactivationContainer) {
+                        reactivationContainer.hidden = true;
                                 reactivationContainer.setAttribute('aria-hidden', 'true');
                             }
                             if (reactivationStatus) {

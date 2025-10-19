@@ -1188,6 +1188,28 @@
             return false;
         }
 
+        function formatSepaTimestamp(value) {
+            const raw = typeof value === 'string' ? value.trim() : '';
+            if (raw === '') {
+                return '';
+            }
+
+            const date = new Date(raw);
+            if (Number.isNaN(date.getTime())) {
+                return raw;
+            }
+
+            const months = ['ene.', 'feb.', 'mar.', 'abr.', 'may.', 'jun.', 'jul.', 'ago.', 'sept.', 'oct.', 'nov.', 'dic.'];
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = months[date.getMonth()] || '';
+            const year = String(date.getFullYear()).slice(-2);
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const datePart = month !== '' ? `${day} ${month} ${year}` : `${day} ${year}`;
+
+            return `${datePart}, ${hours}:${minutes}h`;
+        }
+
         function renderSepaDocumentCard({
             title,
             description,
@@ -1207,7 +1229,8 @@
                 : (strings.manageSepaDownload || 'Mandato SEPA');
             const docUrl = typeof document.url === 'string' ? document.url.trim() : '';
             const docReference = typeof document.reference === 'string' ? document.reference.trim() : '';
-            const docGenerated = typeof document.generated_at === 'string' ? document.generated_at.trim() : '';
+            const docGeneratedRaw = typeof document.generated_at === 'string' ? document.generated_at.trim() : '';
+            const docGenerated = formatSepaTimestamp(docGeneratedRaw);
             const metaParts = [];
 
             if (docReference !== '') {
@@ -1314,7 +1337,7 @@
             }
 
             if (disabledMessage !== '') {
-                const noticeLabel = strings.manageSepaDeactivateReasonLabel || 'Motivo de la deshabilitación';
+                const noticeLabel = strings.manageSepaDeactivateReasonLabel || 'Notas';
                 const noticeIntro = strings.manageSepaDisabledNotice || '';
                 const introHtml = noticeIntro !== '' ? `<strong>${escapeHtml(noticeIntro)}</strong>` : `<strong>${escapeHtml(noticeLabel)}</strong>`;
                 sections.push(`
@@ -1792,10 +1815,10 @@
                         checkboxLabel: strings.manageSepaDeactivateConfirmCheckbox || strings.manageSepaConfirmCheckbox,
                         message: strings.manageSepaDeactivateConfirmMessage || 'Confirmo que %s desea inhabilitar la domiciliación bancaria.',
                         reasonRequired: true,
-                        reasonLabel: strings.manageSepaDeactivateReasonLabel || strings.manageSepaDeactivateConfirmTitle || 'Motivo de la deshabilitación',
-                        reasonPlaceholder: strings.manageSepaDeactivateReasonPlaceholder || 'Describe el motivo…',
+                        reasonLabel: strings.manageSepaDeactivateReasonLabel || strings.manageSepaDeactivateConfirmTitle || 'Notas',
+                        reasonPlaceholder: strings.manageSepaDeactivateReasonPlaceholder || 'Añade una nota…',
                         reasonHelp: strings.manageSepaDeactivateReasonHelp || '',
-                        reasonError: strings.manageSepaDeactivateReasonError || strings.manageSepaDeactivateConfirmError || 'Introduce el motivo de la deshabilitación.',
+                        reasonError: strings.manageSepaDeactivateReasonError || strings.manageSepaDeactivateConfirmError || 'Introduce una nota.',
                         onConfirm: async ({ close, setError, setLoading, reason }) => {
                             try {
                                 setError('');
@@ -1879,7 +1902,7 @@
 
             const reasonValue = typeof options.reason === 'string' ? options.reason.trim() : '';
             if (reasonValue === '') {
-                throw new Error(strings.manageSepaDeactivateReasonError || strings.manageSepaDeactivateConfirmError || 'Introduce el motivo de la deshabilitación.');
+                throw new Error(strings.manageSepaDeactivateReasonError || strings.manageSepaDeactivateConfirmError || 'Introduce una nota.');
             }
 
             const endpoint = `${restRoot}go/v1/clientes/${userId}/sepa/deactivate`;
@@ -4256,7 +4279,7 @@
                         reasonTextarea.disabled = false;
                         reasonTextarea.placeholder = currentContext.reasonPlaceholder || '';
                         if (reasonLabelEl) {
-                            const reasonLabelText = currentContext.reasonLabel || (strings.manageSepaDeactivateReasonLabel || 'Motivo de la deshabilitación');
+                            const reasonLabelText = currentContext.reasonLabel || (strings.manageSepaDeactivateReasonLabel || 'Notas');
                             reasonLabelEl.textContent = reasonLabelText;
                         }
                         if (reasonHelpEl) {
