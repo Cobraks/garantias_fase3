@@ -18,7 +18,7 @@ if (! defined('ABSPATH')) {
 
 class RegistrationService
 {
-    private const CODE_EXPIRATION     = DAY_IN_SECONDS;
+    private const CODE_EXPIRATION     = 5 * MINUTE_IN_SECONDS;
     private const CODE_LENGTH         = 6;
     private const MAX_ATTEMPTS        = 5;
     private const LOCK_DURATION       = 5 * MINUTE_IN_SECONDS;
@@ -787,7 +787,8 @@ class RegistrationService
         $activation_state = $document !== null
             ? SepaMandateService::ACTIVATION_PENDING
             : SepaMandateService::ACTIVATION_DISABLED;
-        $estado['activar_sepa'] = SepaMandateService::build_activation_payload($activation_state);
+        $activation_payload = SepaMandateService::build_activation_payload($activation_state);
+        $estado['activar_sepa'] = $activation_payload['flag'];
         $estado['metodo_de_pago'] = SepaMandateService::build_payment_payload('transferencia');
 
         if ($document !== null) {
@@ -1189,7 +1190,6 @@ class RegistrationService
             'code'        => $code,
             'expires_at'  => gmdate('c', $expires),
             'expires_in'  => max(0, $expires - time()),
-            'verification_url' => home_url('/garantias-online/registro/'),
             'signature'   => $this->get_signature_html(),
             'channel_key'   => $channel_key,
             'channel_label' => $channel_label,

@@ -7,9 +7,6 @@ $name       = isset($name) && $name !== '' ? $name : __('Profesional', 'garantia
 $code       = isset($code) ? (string) $code : '';
 $expires_at = isset($expires_at) ? (string) $expires_at : '';
 $expires_in = isset($expires_in) ? (int) $expires_in : 0;
-$url        = isset($verification_url) && $verification_url !== ''
-    ? $verification_url
-    : home_url('/garantias-online/registro/');
 $signature  = isset($signature) ? (string) $signature : '';
 $channel_key = isset($channel_key) ? (string) $channel_key : '';
 $channel_label = isset($channel_label) ? (string) $channel_label : '';
@@ -17,12 +14,31 @@ $is_individual = $channel_key === 'individual';
 
 $deadline_sentence = '';
 if ($expires_in > 0) {
-    $hours = max(1, floor($expires_in / HOUR_IN_SECONDS));
-    $deadline_sentence = sprintf(
-        /* translators: %d: number of hours */
-        __('El código caduca en %d horas.', 'garantias-online-360vo'),
-        $hours
-    );
+    if ($expires_in < HOUR_IN_SECONDS) {
+        $minutes = max(1, (int) ceil($expires_in / MINUTE_IN_SECONDS));
+        $deadline_sentence = sprintf(
+            /* translators: %d: number of minutes */
+            _n(
+                'El código caduca en %d minuto.',
+                'El código caduca en %d minutos.',
+                $minutes,
+                'garantias-online-360vo'
+            ),
+            $minutes
+        );
+    } else {
+        $hours = max(1, (int) ceil($expires_in / HOUR_IN_SECONDS));
+        $deadline_sentence = sprintf(
+            /* translators: %d: number of hours */
+            _n(
+                'El código caduca en %d hora.',
+                'El código caduca en %d horas.',
+                $hours,
+                'garantias-online-360vo'
+            ),
+            $hours
+        );
+    }
 }
 $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FILE__);
 ?>
@@ -72,18 +88,9 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                                 </p>
                             <?php else : ?>
                                 <p style="font-size:14px;margin:0 0 18px;color:#4b5563;line-height:1.6;">
-                                    <?php esc_html_e('El código caduca en 24 horas.', 'garantias-online-360vo'); ?>
+                                    <?php esc_html_e('El código caduca en 5 minutos.', 'garantias-online-360vo'); ?>
                                 </p>
                             <?php endif; ?>
-                            <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
-                                <tr>
-                                    <td style="border-radius:999px;background:#bc0000;">
-                                        <a href="<?php echo esc_url($url); ?>" style="display:inline-block;padding:14px 30px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px;">
-                                            <?php esc_html_e('Ir al paso de verificación', 'garantias-online-360vo'); ?>
-                                        </a>
-                                    </td>
-                                </tr>
-                            </table>
                             <p style="font-size:13px;margin:0 0 16px;color:#4b5563;line-height:1.6;">
                                 <?php esc_html_e('Si no has solicitado esta verificación puedes ignorar este mensaje.', 'garantias-online-360vo'); ?>
                             </p>

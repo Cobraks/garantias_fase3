@@ -25,9 +25,12 @@ class SepaMandateService
 
     private const META_PENDING_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_sin_firmar';
     private const META_SIGNED_FIELD  = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_firmado';
-    private const META_STATUS_FIELD   = 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa';
-    private const META_ACTIVATE_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_activar_sepa';
-    private const META_PAYMENT_FIELD  = 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago';
+    private const META_STATUS_FIELD           = 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa';
+    private const META_ACTIVATE_FIELD         = 'gestion_pagos_activar_sepa';
+    private const META_ACTIVATE_FIELD_LEGACY  = 'gestion_pagos_gestion_sepa_estado_documentos_activar_sepa';
+    private const META_ACTIVATE_STATE_FIELD   = '_go360_sepa_activation_state';
+    private const META_PAYMENT_FIELD          = 'gestion_pagos_gestion_sepa_estado_documentos_metodo_de_pago';
+    private const META_DISABLED_MESSAGE_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_mensaje_deshabilitado';
 
     public const ACTIVATION_ENABLED  = 'activada';
     public const ACTIVATION_DISABLED = 'desactivada';
@@ -46,6 +49,7 @@ class SepaMandateService
     public const STATUS_PENDING_SIGNATURE  = 'pendiente_firma';
     public const STATUS_PENDING_VALIDATION = 'pendiente_validacion';
     public const STATUS_SIGNED             = 'firmado';
+    public const STATUS_DISABLED           = 'deshabilitado';
 
     private const DEFAULT_REFERENCE_PREFIX = 'GO';
 
@@ -79,6 +83,7 @@ class SepaMandateService
             self::STATUS_PENDING_SIGNATURE  => __('Pendiente de firma', 'garantias-online-360vo'),
             self::STATUS_PENDING_VALIDATION => __('Pendiente de validación', 'garantias-online-360vo'),
             self::STATUS_SIGNED             => __('SEPA firmado', 'garantias-online-360vo'),
+            self::STATUS_DISABLED           => __('Deshabilitado', 'garantias-online-360vo'),
         ];
     }
 
@@ -116,6 +121,11 @@ class SepaMandateService
             case 'pendiente_firma':
             case 'pending_signature':
                 return self::STATUS_PENDING_SIGNATURE;
+            case 'deshabilitado':
+            case 'inhabilitado':
+            case 'disabled':
+            case 'deactivated':
+                return self::STATUS_DISABLED;
             case 'sin_rellenar_sepa':
             case 'sin_rellenar':
             case 'unfilled':
@@ -196,6 +206,10 @@ class SepaMandateService
     {
         $payload = self::build_status_payload($status);
         update_user_meta($user_id, self::META_STATUS_FIELD, $payload);
+
+        if ($payload['value'] !== self::STATUS_DISABLED) {
+            self::clear_disabled_message($user_id);
+        }
     }
 
     /**
@@ -204,30 +218,38 @@ class SepaMandateService
     public static function parse_activation_field($value): array
     {
         $label = '';
+        $source = $value;
 
         if (is_array($value)) {
             if (isset($value['label'])) {
                 $label = (string) $value['label'];
             }
 
-            if (isset($value['value'])) {
-                $value = $value['value'];
+            if (isset($value['state'])) {
+                $source = $value['state'];
+            } elseif (isset($value['value'])) {
+                $source = $value['value'];
             }
-        } elseif (is_object($value) && isset($value->value)) {
+        } elseif (is_object($value)) {
             if (isset($value->label)) {
                 $label = (string) $value->label;
             }
-            $value = $value->value;
+
+            if (isset($value->state)) {
+                $source = $value->state;
+            } elseif (isset($value->value)) {
+                $source = $value->value;
+            }
         }
 
-        $state = self::normalize_activation_state($value);
-        $payload = self::build_activation_payload($state);
+        $state = self::normalize_activation_state($source);
+        $label = $label !== '' ? $label : self::get_activation_label($state);
 
-        if ($label !== '') {
-            $payload['label'] = $label;
-        }
-
-        return $payload;
+        return [
+            'value' => $state,
+            'label' => $label,
+            'state' => $state,
+        ];
     }
 
     /**
@@ -243,12 +265,24 @@ class SepaMandateService
             return ((int) $value) === 1 ? self::ACTIVATION_ENABLED : self::ACTIVATION_DISABLED;
         }
 
-        if (is_array($value) && isset($value['value'])) {
-            return self::normalize_activation_state($value['value']);
+        if (is_array($value)) {
+            if (isset($value['state'])) {
+                return self::normalize_activation_state($value['state']);
+            }
+
+            if (isset($value['value'])) {
+                return self::normalize_activation_state($value['value']);
+            }
         }
 
-        if (is_object($value) && isset($value->value)) {
-            return self::normalize_activation_state($value->value);
+        if (is_object($value)) {
+            if (isset($value->state)) {
+                return self::normalize_activation_state($value->state);
+            }
+
+            if (isset($value->value)) {
+                return self::normalize_activation_state($value->value);
+            }
         }
 
         if (! is_scalar($value)) {
@@ -301,30 +335,68 @@ class SepaMandateService
     {
         $normalized = self::normalize_activation_state($state);
 
-        switch ($normalized) {
-            case self::ACTIVATION_ENABLED:
-                $label = __('Activada', 'garantias-online-360vo');
-                break;
-            case self::ACTIVATION_PENDING:
-                $label = __('Pendiente de domiciliación', 'garantias-online-360vo');
-                break;
-            default:
-                $label = __('Desactivada', 'garantias-online-360vo');
-                break;
-        }
-
         return [
             'value' => $normalized,
-            'label' => $label,
+            'label' => self::get_activation_label($normalized),
+            'flag'  => $normalized === self::ACTIVATION_ENABLED ? 1 : 0,
         ];
+    }
+
+    private static function get_activation_label(string $state): string
+    {
+        switch ($state) {
+            case self::ACTIVATION_ENABLED:
+                return __('Activada', 'garantias-online-360vo');
+            case self::ACTIVATION_PENDING:
+                return __('Pendiente de domiciliación', 'garantias-online-360vo');
+            default:
+                return __('Desactivada', 'garantias-online-360vo');
+        }
     }
 
     public static function get_activation_payload(int $user_id): array
     {
-        $raw = get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
-        $payload = self::parse_activation_field($raw);
+        $raw_flag   = get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
+        $raw_state  = get_user_meta($user_id, self::META_ACTIVATE_STATE_FIELD, true);
 
-        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $payload);
+        if ($raw_flag === '' && self::META_ACTIVATE_FIELD_LEGACY !== self::META_ACTIVATE_FIELD) {
+            $legacy_flag = get_user_meta($user_id, self::META_ACTIVATE_FIELD_LEGACY, true);
+            if ($legacy_flag !== '') {
+                $raw_flag = $legacy_flag;
+            }
+        }
+
+        $source = [];
+        if ($raw_state !== '') {
+            $source['state'] = $raw_state;
+        }
+        if ($raw_flag !== '') {
+            $source['value'] = $raw_flag;
+        }
+        if ($source === []) {
+            $source = $raw_flag;
+        }
+
+        $payload = self::parse_activation_field($source);
+        $storage = self::build_activation_payload($payload['value']);
+
+        $stored_flag = (string) get_user_meta($user_id, self::META_ACTIVATE_FIELD, true);
+        if ($stored_flag !== (string) $storage['flag']) {
+            update_user_meta($user_id, self::META_ACTIVATE_FIELD, $storage['flag']);
+        }
+
+        if (self::META_ACTIVATE_FIELD_LEGACY !== self::META_ACTIVATE_FIELD) {
+            $legacy_value = (string) get_user_meta($user_id, self::META_ACTIVATE_FIELD_LEGACY, true);
+            if ($legacy_value !== (string) $storage['flag']) {
+                update_user_meta($user_id, self::META_ACTIVATE_FIELD_LEGACY, $storage['flag']);
+            }
+        }
+
+        if ($raw_state !== $payload['value']) {
+            update_user_meta($user_id, self::META_ACTIVATE_STATE_FIELD, $payload['value']);
+        }
+
+        $payload['flag'] = $storage['flag'];
 
         return $payload;
     }
@@ -344,7 +416,11 @@ class SepaMandateService
 
         $payload = self::build_activation_payload($state);
 
-        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $payload);
+        update_user_meta($user_id, self::META_ACTIVATE_FIELD, $payload['flag']);
+        if (self::META_ACTIVATE_FIELD_LEGACY !== self::META_ACTIVATE_FIELD) {
+            update_user_meta($user_id, self::META_ACTIVATE_FIELD_LEGACY, $payload['flag']);
+        }
+        update_user_meta($user_id, self::META_ACTIVATE_STATE_FIELD, $payload['value']);
     }
 
     /**
@@ -607,6 +683,27 @@ class SepaMandateService
             self::set_status($user_id, self::STATUS_UNFILLED);
         }
         self::set_payment_method($user_id, 'transferencia');
+    }
+
+    public static function set_disabled_message(int $user_id, string $message): void
+    {
+        $sanitized = sanitize_textarea_field($message);
+        update_user_meta($user_id, self::META_DISABLED_MESSAGE_FIELD, $sanitized);
+    }
+
+    public static function get_disabled_message(int $user_id): string
+    {
+        $value = get_user_meta($user_id, self::META_DISABLED_MESSAGE_FIELD, true);
+        if (is_string($value)) {
+            return trim($value);
+        }
+
+        return '';
+    }
+
+    public static function clear_disabled_message(int $user_id): void
+    {
+        delete_user_meta($user_id, self::META_DISABLED_MESSAGE_FIELD);
     }
 
     /**

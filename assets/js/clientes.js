@@ -1188,6 +1188,28 @@
             return false;
         }
 
+        function formatSepaTimestamp(value) {
+            const raw = typeof value === 'string' ? value.trim() : '';
+            if (raw === '') {
+                return '';
+            }
+
+            const date = new Date(raw);
+            if (Number.isNaN(date.getTime())) {
+                return raw;
+            }
+
+            const months = ['ene.', 'feb.', 'mar.', 'abr.', 'may.', 'jun.', 'jul.', 'ago.', 'sept.', 'oct.', 'nov.', 'dic.'];
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = months[date.getMonth()] || '';
+            const year = String(date.getFullYear()).slice(-2);
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const datePart = month !== '' ? `${day} ${month} ${year}` : `${day} ${year}`;
+
+            return `${datePart}, ${hours}:${minutes}h`;
+        }
+
         function renderSepaDocumentCard({
             title,
             description,
@@ -1207,7 +1229,8 @@
                 : (strings.manageSepaDownload || 'Mandato SEPA');
             const docUrl = typeof document.url === 'string' ? document.url.trim() : '';
             const docReference = typeof document.reference === 'string' ? document.reference.trim() : '';
-            const docGenerated = typeof document.generated_at === 'string' ? document.generated_at.trim() : '';
+            const docGeneratedRaw = typeof document.generated_at === 'string' ? document.generated_at.trim() : '';
+            const docGenerated = formatSepaTimestamp(docGeneratedRaw);
             const metaParts = [];
 
             if (docReference !== '') {
@@ -1251,6 +1274,43 @@
             `;
         }
 
+        function renderSepaSignedUploadCard() {
+            const title = strings.manageSepaSignedUploadTitle || 'Mandato firmado';
+            const description = strings.manageSepaSignedUploadDescription || '';
+            const placeholder = strings.manageSepaSignedUploadPlaceholder || 'Selecciona un archivo PDF…';
+            const buttonLabel = strings.manageSepaSignedUploadButton || 'Subir mandato firmado';
+            const loadingLabel = strings.manageSepaSignedUploadLoading || 'Subiendo…';
+            const help = strings.manageSepaSignedUploadHelp || '';
+
+            return `
+                <section class="client-sepa-dialog__card client-sepa-dialog__card--signed" data-sepa-upload-card>
+                    <header class="client-sepa-dialog__card-header">
+                        <div class="client-sepa-dialog__card-heading">
+                            <h3>${escapeHtml(title)}</h3>
+                            ${description !== '' ? `<p class="client-sepa-dialog__card-description">${escapeHtml(description)}</p>` : ''}
+                        </div>
+                    </header>
+                    <div class="client-sepa-dialog__card-body">
+                        <div class="client-sepa-dialog__upload">
+                            <label class="client-sepa-dialog__upload-input">
+                                <span class="client-sepa-dialog__upload-placeholder" data-sepa-signed-placeholder>${escapeHtml(placeholder)}</span>
+                                <input type="file" accept="application/pdf" data-sepa-signed-input>
+                            </label>
+                            <p class="client-sepa-dialog__upload-meta" data-sepa-signed-meta hidden></p>
+                            <p class="client-sepa-dialog__upload-help" data-sepa-signed-help${help === '' ? ' hidden' : ''}>${escapeHtml(help)}</p>
+                            <p class="client-sepa-dialog__upload-error" data-sepa-signed-error hidden></p>
+                            <div class="client-sepa-dialog__upload-actions">
+                                <button type="button" class="client-sepa-dialog__button client-sepa-dialog__button--primary" data-sepa-signed-submit disabled>
+                                    <span data-default-label>${escapeHtml(buttonLabel)}</span>
+                                    <span data-loading-label hidden>${escapeHtml(loadingLabel)}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
         function renderSepaDialog(item) {
             const sepa = item && item.sepa && typeof item.sepa === 'object' ? item.sepa : {};
             const documents = sepa.documents && typeof sepa.documents === 'object' ? sepa.documents : {};
@@ -1258,21 +1318,43 @@
             const signedDocument = documents.signed || {};
             const hasPending = hasSepaDocument(pendingDocument);
             const hasSigned = hasSepaDocument(signedDocument);
-            const awaitingValidation = Boolean(sepa.awaiting_validation);
-            const needsActivation = Boolean(sepa.needs_activation);
+            const statusCodeRaw = typeof sepa.status_code === 'string'
+                ? sepa.status_code.trim().toLowerCase()
+                : '';
+            const isDisabled = statusCodeRaw === 'deshabilitado';
+            let awaitingValidation = Boolean(sepa.awaiting_validation);
+            let needsActivation = Boolean(sepa.needs_activation);
             const isActive = Boolean(sepa.status);
+
+            if (isDisabled) {
+                awaitingValidation = false;
+                needsActivation = true;
+            }
             const statusLabel = typeof sepa.label === 'string' && sepa.label.trim() !== ''
                 ? sepa.label.trim()
                 : (strings.sepaEmpty || 'Sin información del mandato');
             const statusVariant = typeof sepa.variant === 'string' && sepa.variant.trim() !== ''
                 ? sepa.variant.trim()
                 : 'info';
+            const disabledMessage = typeof sepa.disabled_message === 'string' ? sepa.disabled_message.trim() : '';
 
             const sections = [];
 
             const detailsHtml = renderSepaDetails(sepa);
             if (detailsHtml) {
                 sections.push(`<div class="client-sepa-dialog__details">${detailsHtml}</div>`);
+            }
+
+            if (disabledMessage !== '') {
+                const noticeLabel = strings.manageSepaDeactivateReasonLabel || 'Notas';
+                const noticeIntro = strings.manageSepaDisabledNotice || '';
+                const introHtml = noticeIntro !== '' ? `<strong>${escapeHtml(noticeIntro)}</strong>` : `<strong>${escapeHtml(noticeLabel)}</strong>`;
+                sections.push(`
+                    <div class="client-sepa-dialog__notice client-sepa-dialog__notice--danger">
+                        ${introHtml}
+                        <p class="client-sepa-dialog__notice-message">${escapeHtml(disabledMessage)}</p>
+                    </div>
+                `);
             }
 
             const cards = [];
@@ -1303,6 +1385,8 @@
                     buttonLabel: strings.manageSepaViewSigned || 'Ver mandato firmado',
                     type: 'signed',
                 }));
+            } else {
+                cards.push(renderSepaSignedUploadCard());
             }
 
             if (cards.length === 0) {
@@ -1357,6 +1441,8 @@
 
             const dialogData = renderSepaDialog(item);
             body.innerHTML = dialogData.html;
+
+            initSepaDialogUploads(body, item);
 
             updateSepaDialogStatusBadge(elements.panel, dialogData.status);
 
@@ -1491,6 +1577,193 @@
             button.addEventListener('click', handler);
         }
 
+        function initSepaDialogUploads(container, item) {
+            if (!container || !item || typeof item.id !== 'number') {
+                return;
+            }
+
+            const uploadCard = container.querySelector('[data-sepa-upload-card]');
+            if (!uploadCard) {
+                return;
+            }
+
+            const input = uploadCard.querySelector('[data-sepa-signed-input]');
+            const placeholderEl = uploadCard.querySelector('[data-sepa-signed-placeholder]');
+            const metaEl = uploadCard.querySelector('[data-sepa-signed-meta]');
+            const helpEl = uploadCard.querySelector('[data-sepa-signed-help]');
+            const errorEl = uploadCard.querySelector('[data-sepa-signed-error]');
+            const submitButton = uploadCard.querySelector('[data-sepa-signed-submit]');
+
+            if (!input || !submitButton) {
+                return;
+            }
+
+            let selectedFile = null;
+            const defaultPlaceholder = strings.manageSepaSignedUploadPlaceholder || 'Selecciona un archivo PDF…';
+            const selectedTemplate = strings.manageSepaSignedUploadSelected || 'Archivo seleccionado: %s';
+            const errorFallback = strings.manageSepaSignedUploadError || 'No se ha podido subir el mandato SEPA firmado. Inténtalo de nuevo.';
+            const buttonLabel = strings.manageSepaSignedUploadButton || 'Subir mandato firmado';
+            const loadingLabel = strings.manageSepaSignedUploadLoading || 'Subiendo…';
+
+            function formatSelectedLabel(name) {
+                if (selectedTemplate.includes('%s')) {
+                    return selectedTemplate.replace('%s', name);
+                }
+                return `${selectedTemplate} ${name}`;
+            }
+
+            function clearError() {
+                if (errorEl) {
+                    errorEl.textContent = '';
+                    errorEl.hidden = true;
+                }
+            }
+
+            function showError(message) {
+                if (errorEl) {
+                    errorEl.textContent = message;
+                    errorEl.hidden = false;
+                }
+            }
+
+            function resetFileState() {
+                selectedFile = null;
+                if (input instanceof HTMLInputElement) {
+                    input.value = '';
+                }
+                if (placeholderEl) {
+                    placeholderEl.textContent = defaultPlaceholder;
+                }
+                if (metaEl) {
+                    metaEl.textContent = '';
+                    metaEl.hidden = true;
+                }
+                submitButton.disabled = true;
+            }
+
+            function setButtonLoading(isLoading) {
+                const defaultLabelEl = submitButton.querySelector('[data-default-label]');
+                const loadingLabelEl = submitButton.querySelector('[data-loading-label]');
+
+                if (isLoading) {
+                    submitButton.disabled = true;
+                    submitButton.classList.add('client-sepa-dialog__button--loading');
+                    if (defaultLabelEl) {
+                        defaultLabelEl.hidden = true;
+                    }
+                    if (loadingLabelEl) {
+                        loadingLabelEl.textContent = loadingLabel;
+                        loadingLabelEl.hidden = false;
+                    }
+                } else {
+                    submitButton.classList.remove('client-sepa-dialog__button--loading');
+                    if (defaultLabelEl) {
+                        defaultLabelEl.textContent = buttonLabel;
+                        defaultLabelEl.hidden = false;
+                    }
+                    if (loadingLabelEl) {
+                        loadingLabelEl.hidden = true;
+                    }
+                    submitButton.disabled = !selectedFile;
+                }
+            }
+
+            resetFileState();
+            clearError();
+
+            input.addEventListener('change', () => {
+                if (input instanceof HTMLInputElement && input.files && input.files.length > 0) {
+                    selectedFile = input.files[0];
+                } else {
+                    selectedFile = null;
+                }
+
+                if (selectedFile) {
+                    if (placeholderEl) {
+                        placeholderEl.textContent = selectedFile.name;
+                    }
+                    if (metaEl) {
+                        metaEl.textContent = formatSelectedLabel(selectedFile.name);
+                        metaEl.hidden = false;
+                    }
+                    submitButton.disabled = false;
+                } else {
+                    resetFileState();
+                }
+
+                clearError();
+            });
+
+            submitButton.addEventListener('click', async (event) => {
+                event.preventDefault();
+                if (!selectedFile) {
+                    return;
+                }
+
+                clearError();
+                setButtonLoading(true);
+
+                try {
+                    const formData = new FormData();
+                    formData.append('sepa_signed', selectedFile);
+
+                    const endpoint = `${restRoot}go/v1/clientes/${item.id}/sepa/signed`;
+                    const headers = restNonce ? { 'X-WP-Nonce': restNonce } : {};
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers,
+                        body: formData,
+                    });
+
+                    let payload = {};
+                    try {
+                        payload = await response.json();
+                    } catch (error) {
+                        payload = {};
+                    }
+
+                    if (!response.ok) {
+                        const message = payload && typeof payload.message === 'string' && payload.message.trim() !== ''
+                            ? payload.message.trim()
+                            : errorFallback;
+                        throw new Error(message);
+                    }
+
+                    if (payload && typeof payload.sepa === 'object') {
+                        item.sepa = payload.sepa;
+                    }
+
+                    if (payload && typeof payload.payment === 'object') {
+                        item.payment = payload.payment;
+                    }
+
+                    cache.set(String(item.id), item);
+                    refreshActiveDetail(item);
+
+                    if (currentSepaDialogContext) {
+                        currentSepaDialogContext.item = item;
+                    }
+
+                    if (currentSepaDialogElements) {
+                        currentSepaDialogElements.context = currentSepaDialogContext;
+                        setupSepaDialogBody(currentSepaDialogElements);
+                    }
+
+                    return;
+                } catch (error) {
+                    const message = error && typeof error.message === 'string' && error.message.trim() !== ''
+                        ? error.message.trim()
+                        : errorFallback;
+                    showError(message);
+                    setButtonLoading(false);
+                }
+            });
+
+            if (helpEl && helpEl.textContent === '') {
+                helpEl.hidden = true;
+            }
+        }
+
         function buildSepaActionHandler(type, item, context) {
             if (!item || !sepaConfirmDialog || typeof sepaConfirmDialog.open !== 'function') {
                 return null;
@@ -1550,11 +1823,16 @@
                         note: strings.manageSepaDeactivateConfirmNote || '',
                         checkboxLabel: strings.manageSepaDeactivateConfirmCheckbox || strings.manageSepaConfirmCheckbox,
                         message: strings.manageSepaDeactivateConfirmMessage || 'Confirmo que %s desea inhabilitar la domiciliación bancaria.',
-                        onConfirm: async ({ close, setError, setLoading }) => {
+                        reasonRequired: true,
+                        reasonLabel: strings.manageSepaDeactivateReasonLabel || strings.manageSepaDeactivateConfirmTitle || 'Notas',
+                        reasonPlaceholder: strings.manageSepaDeactivateReasonPlaceholder || 'Añade una nota…',
+                        reasonHelp: strings.manageSepaDeactivateReasonHelp || '',
+                        reasonError: strings.manageSepaDeactivateReasonError || strings.manageSepaDeactivateConfirmError || 'Introduce una nota.',
+                        onConfirm: async ({ close, setError, setLoading, reason }) => {
                             try {
                                 setError('');
                                 setLoading(true);
-                                await deactivateSepaForItem(item);
+                                await deactivateSepaForItem(item, { reason });
                                 setLoading(false);
                                 close();
                             } catch (error) {
@@ -1625,10 +1903,15 @@
             return payload;
         }
 
-        async function deactivateSepaForItem(item) {
+        async function deactivateSepaForItem(item, options = {}) {
             const userId = Number(item && item.id);
             if (!Number.isFinite(userId) || userId <= 0) {
                 throw new Error(strings.manageSepaDeactivateConfirmError || 'No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.');
+            }
+
+            const reasonValue = typeof options.reason === 'string' ? options.reason.trim() : '';
+            if (reasonValue === '') {
+                throw new Error(strings.manageSepaDeactivateReasonError || strings.manageSepaDeactivateConfirmError || 'Introduce una nota.');
             }
 
             const endpoint = `${restRoot}go/v1/clientes/${userId}/sepa/deactivate`;
@@ -1638,7 +1921,7 @@
                     'Content-Type': 'application/json',
                     'X-WP-Nonce': restNonce,
                 },
-                body: JSON.stringify({}),
+                body: JSON.stringify({ reason: reasonValue }),
             });
 
             let payload = {};
@@ -1716,6 +1999,10 @@
                 ? sepa.label.trim()
                 : (strings.sepaEmpty || 'Sin información del mandato');
             const sepaBadge = renderBadge(sepaMessage, sepaVariantKey !== '' ? sepaVariantKey : 'muted');
+            const sepaDisabledMessage = typeof sepa.disabled_message === 'string' ? sepa.disabled_message.trim() : '';
+            const sepaNoticeHtml = sepaDisabledMessage !== ''
+                ? `<p class="client-detail__sepa-notice">${escapeHtml(sepaDisabledMessage)}</p>`
+                : '';
             const offers = Array.isArray(item.offers) ? item.offers : [];
             const offersCount = offers.length;
             const offersBadgeLabel = offersCount === 0
@@ -1864,6 +2151,7 @@
                             </div>
                         </div>
                         ${sepaActionsHtml}
+                        ${sepaNoticeHtml}
                     </section>
                     ${adminLinkHtml}
                 </div>
@@ -3761,6 +4049,10 @@
             const titleEl = modal.querySelector('.confirm-modal__title');
             const checkboxInput = modal.querySelector('.confirm-modal__checkbox-input');
             const checkboxLabel = modal.querySelector('.confirm-modal__checkbox-label');
+            const reasonField = modal.querySelector('[data-confirm-reason]');
+            const reasonTextarea = reasonField ? reasonField.querySelector('.confirm-modal__textarea') : null;
+            const reasonHelpEl = reasonField ? reasonField.querySelector('.confirm-modal__field-help') : null;
+            const reasonLabelEl = reasonField ? reasonField.querySelector('.confirm-modal__field-label') : null;
             const defaultConfirmLabel = strings.manageSepaConfirmAccept || 'Activar domiciliación bancaria';
             const defaultErrorMessage = strings.manageSepaConfirmError || 'No se ha podido activar la domiciliación bancaria. Inténtalo de nuevo.';
             const defaultTitle = strings.manageSepaConfirmTitle || 'Confirmar SEPA';
@@ -3782,6 +4074,56 @@
 
             let currentContext = null;
             let previousActiveElement = null;
+
+            function resetReasonField() {
+                if (reasonField) {
+                    reasonField.hidden = true;
+                    reasonField.style.display = 'none';
+                    reasonField.setAttribute('aria-hidden', 'true');
+                    reasonField.classList.remove('confirm-modal__field--invalid');
+                }
+                if (reasonTextarea) {
+                    reasonTextarea.value = '';
+                    reasonTextarea.disabled = false;
+                    reasonTextarea.placeholder = '';
+                }
+                if (reasonHelpEl) {
+                    reasonHelpEl.textContent = '';
+                    reasonHelpEl.hidden = true;
+                }
+            }
+
+            function setReasonError(message) {
+                if (!reasonField) {
+                    return;
+                }
+
+                const text = typeof message === 'string' ? message.trim() : '';
+                if (text === '') {
+                    reasonField.classList.remove('confirm-modal__field--invalid');
+                    if (reasonHelpEl) {
+                        const baseHelp = currentContext && typeof currentContext.reasonHelp === 'string'
+                            ? currentContext.reasonHelp
+                            : '';
+                        reasonHelpEl.textContent = baseHelp;
+                        reasonHelpEl.hidden = baseHelp === '';
+                    }
+                } else {
+                    reasonField.classList.add('confirm-modal__field--invalid');
+                    if (reasonHelpEl) {
+                        reasonHelpEl.textContent = text;
+                        reasonHelpEl.hidden = false;
+                    }
+                }
+            }
+
+            function getReasonValue() {
+                if (!reasonTextarea) {
+                    return '';
+                }
+
+                return reasonTextarea.value.trim();
+            }
 
             function setError(message) {
                 if (!errorEl) {
@@ -3809,7 +4151,9 @@
                 }
 
                 const checked = checkboxInput ? checkboxInput.checked : true;
-                confirmBtn.disabled = !checked;
+                const reasonRequired = Boolean(currentContext && currentContext.reasonRequired);
+                const reasonValid = !reasonRequired || getReasonValue() !== '';
+                confirmBtn.disabled = !checked || !reasonValid;
             }
 
             function setLoading(isLoading) {
@@ -3821,10 +4165,16 @@
                     confirmBtn.dataset.loading = 'true';
                     confirmBtn.disabled = true;
                     confirmBtn.textContent = sanitizeText(currentContext?.loadingLabel, defaultLoadingLabel);
+                    if (reasonTextarea) {
+                        reasonTextarea.disabled = true;
+                    }
                 } else {
                     confirmBtn.dataset.loading = 'false';
                     confirmBtn.textContent = sanitizeText(currentContext?.confirmLabel, defaultConfirmLabel);
                     syncConfirmState();
+                    if (reasonTextarea) {
+                        reasonTextarea.disabled = false;
+                    }
                 }
             }
 
@@ -3847,6 +4197,7 @@
                 if (checkboxInput) {
                     checkboxInput.checked = false;
                 }
+                resetReasonField();
                 currentContext = null;
                 resetConfirmButton();
                 if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
@@ -3880,6 +4231,7 @@
 
             function open(context = {}) {
                 previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                resetReasonField();
                 currentContext = {
                     confirmLabel: sanitizeText(context.confirmLabel, defaultConfirmLabel),
                     loadingLabel: sanitizeText(context.loadingLabel, defaultLoadingLabel),
@@ -3890,6 +4242,11 @@
                     actor: sanitizeText(context.actor, strings.manageSepaConfirmActorFallback || 'este profesional'),
                     subtitleHtml: typeof context.subtitleHtml === 'string' ? context.subtitleHtml.trim() : '',
                     onConfirm: typeof context.onConfirm === 'function' ? context.onConfirm : null,
+                    reasonRequired: Boolean(context.reasonRequired),
+                    reasonLabel: sanitizeText(context.reasonLabel, strings.manageSepaDeactivateReasonLabel || ''),
+                    reasonPlaceholder: sanitizeText(context.reasonPlaceholder, strings.manageSepaDeactivateReasonPlaceholder || ''),
+                    reasonHelp: sanitizeText(context.reasonHelp, strings.manageSepaDeactivateReasonHelp || ''),
+                    reasonError: sanitizeText(context.reasonError, strings.manageSepaDeactivateReasonError || defaultErrorMessage),
                 };
 
                 if (titleEl) {
@@ -3921,6 +4278,34 @@
                     } else {
                         noteEl.textContent = currentContext.note;
                         noteEl.hidden = false;
+                    }
+                }
+
+                if (reasonField && reasonTextarea) {
+                    const shouldShowReason = Boolean(currentContext.reasonRequired);
+                    if (shouldShowReason) {
+                        reasonField.hidden = false;
+                        reasonField.style.display = '';
+                        reasonField.setAttribute('aria-hidden', 'false');
+                        reasonField.classList.remove('confirm-modal__field--invalid');
+                        reasonTextarea.value = '';
+                        reasonTextarea.disabled = false;
+                        reasonTextarea.placeholder = currentContext.reasonPlaceholder || '';
+                        if (reasonLabelEl) {
+                            const reasonLabelText = currentContext.reasonLabel || (strings.manageSepaDeactivateReasonLabel || 'Notas');
+                            reasonLabelEl.textContent = reasonLabelText;
+                        }
+                        if (reasonHelpEl) {
+                            if (currentContext.reasonHelp !== '') {
+                                reasonHelpEl.textContent = currentContext.reasonHelp;
+                                reasonHelpEl.hidden = false;
+                            } else {
+                                reasonHelpEl.textContent = '';
+                                reasonHelpEl.hidden = true;
+                            }
+                        }
+                    } else {
+                        resetReasonField();
                     }
                 }
 
@@ -3964,6 +4349,16 @@
                 checkboxInput.addEventListener('change', syncConfirmState);
             }
 
+            if (reasonTextarea) {
+                reasonTextarea.addEventListener('input', () => {
+                    if (!currentContext) {
+                        return;
+                    }
+                    setReasonError('');
+                    syncConfirmState();
+                });
+            }
+
             if (confirmBtn) {
                 confirmBtn.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -3973,12 +4368,22 @@
                     }
 
                     setError('');
+                    const reasonValue = getReasonValue();
+                    if (currentContext.reasonRequired && reasonValue === '') {
+                        setReasonError(currentContext.reasonError || defaultErrorMessage);
+                        syncConfirmState();
+                        return;
+                    }
+
+                    setReasonError('');
                     setLoading(true);
 
                     Promise.resolve(currentContext.onConfirm({
                         close,
                         setError,
                         setLoading,
+                        reason: reasonValue,
+                        setReasonError,
                     })).catch((error) => {
                         const message = error && typeof error.message === 'string' && error.message.trim() !== ''
                             ? error.message.trim()
