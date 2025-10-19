@@ -156,6 +156,23 @@ class ClientRestController
                 ],
             ]
         );
+
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::REST_BASE . '/(?P<id>\d+)/sepa/signed',
+            [
+                [
+                    'methods'             => WP_REST_Server::EDITABLE,
+                    'callback'            => [__CLASS__, 'upload_signed_sepa'],
+                    'permission_callback' => [__CLASS__, 'permissions_check'],
+                    'args'                => [
+                        'id' => [
+                            'validate_callback' => 'absint',
+                        ],
+                    ],
+                ],
+            ]
+        );
     }
 
     public static function permissions_check($request = null): bool
@@ -454,6 +471,7 @@ class ClientRestController
         SepaMandateService::set_status($user_id, SepaMandateService::STATUS_SIGNED);
         SepaMandateService::set_activation_flag($user_id, true);
         SepaMandateService::set_payment_method($user_id, 'domiciliacion');
+        SepaMandateService::clear_disabled_message($user_id);
 
         $account = AccountViewModel::from_user($user);
         $payments = $account['payments'] ?? [];
@@ -549,17 +567,28 @@ class ClientRestController
             );
         }
 
-        $is_active = SepaMandateService::get_activation_flag($user_id);
-        if (! $is_active) {
+        $status_payload = SepaMandateService::get_status($user_id);
+        if ($status_payload['value'] === SepaMandateService::STATUS_DISABLED) {
             return new WP_REST_Response(
-                ['message' => __('La domiciliación bancaria ya está desactivada.', 'garantias-online-360vo')],
+                ['message' => __('La domiciliación bancaria ya está deshabilitada.', 'garantias-online-360vo')],
                 400
             );
         }
 
+        $reason_param = $request->get_param('reason');
+        $reason = is_string($reason_param) ? trim($reason_param) : '';
+
+        if ($reason === '') {
+            return new WP_REST_Response(
+                ['message' => __('Debes indicar el motivo de la deshabilitación.', 'garantias-online-360vo')],
+                400
+            );
+        }
+
+        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_DISABLED);
         SepaMandateService::set_activation_flag($user_id, false, SepaMandateService::ACTIVATION_DISABLED);
         SepaMandateService::set_payment_method($user_id, 'transferencia');
-        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_SIGNED);
+        SepaMandateService::set_disabled_message($user_id, $reason);
 
         $account = AccountViewModel::from_user($user);
         $payments = $account['payments'] ?? [];
@@ -612,6 +641,7 @@ class ClientRestController
             [
                 'user_name'          => $actor_label,
                 'document_reference' => $reference,
+                'deactivation_reason' => self::clean_text($reason),
             ]
         );
 
@@ -629,6 +659,93 @@ class ClientRestController
                 'message' => __('Domiciliación bancaria inhabilitada.', 'garantias-online-360vo'),
                 'sepa'    => $sepa_details,
                 'payment' => $payment_info,
+            ],
+            200
+        );
+    }
+
+    public static function upload_signed_sepa(WP_REST_Request $request)
+    {
+        if (! self::permissions_check()) {
+            return new WP_REST_Response(
+                ['message' => __('Acceso denegado', 'garantias-online-360vo')],
+                403
+            );
+        }
+
+        $user_id = (int) $request->get_param('id');
+        if ($user_id <= 0) {
+            return new WP_REST_Response(
+                ['message' => __('El cliente indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return new WP_REST_Response(
+                ['message' => __('El cliente indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        $files = $request->get_file_params();
+        $file  = is_array($files) ? ($files['sepa_signed'] ?? ($files['file'] ?? null)) : null;
+
+        if (! is_array($file) || empty($file['tmp_name'])) {
+            return new WP_REST_Response(
+                ['message' => __('Selecciona un mandato SEPA en formato PDF.', 'garantias-online-360vo')],
+                400
+            );
+        }
+
+        $stored = self::handle_admin_signed_upload($user_id, $file);
+        if (is_wp_error($stored)) {
+            $status = (int) ($stored->get_error_data()['status'] ?? 400);
+
+            return new WP_REST_Response(
+                ['message' => $stored->get_error_message()],
+                $status > 0 ? $status : 400
+            );
+        }
+
+        $account = AccountViewModel::from_user($user);
+        $payments = $account['payments'] ?? [];
+        $sepa_details = self::format_sepa_details($payments);
+        $payment_info = self::format_payment($payments);
+
+        $context = array_merge(
+            self::build_client_log_context($user),
+            [
+                'document_reference' => self::clean_text($stored['reference'] ?? ''),
+                'document_name'      => self::clean_text($stored['filename'] ?? ''),
+                'uploaded_by_admin'  => true,
+            ]
+        );
+
+        $actor = wp_get_current_user();
+        $actor_id = ($actor instanceof WP_User) ? (int) $actor->ID : 0;
+        if ($actor instanceof WP_User) {
+            $context['actor_name']  = self::clean_text($actor->display_name);
+            $context['actor_email'] = sanitize_email($actor->user_email);
+        }
+
+        ActivityLogger::log(
+            'sepa.signed_uploaded',
+            [
+                'actor_id'    => $actor_id,
+                'target_type' => 'user',
+                'target_id'   => (int) $user->ID,
+                'context'     => $context,
+            ]
+        );
+
+        return new WP_REST_Response(
+            [
+                'message'  => __('Mandato SEPA firmado actualizado.', 'garantias-online-360vo'),
+                'document' => $stored,
+                'sepa'     => $sepa_details,
+                'payment'  => $payment_info,
             ],
             200
         );
@@ -1412,6 +1529,99 @@ class ClientRestController
         ];
     }
 
+    /**
+     * @param array<string, mixed> $file
+     * @return array<string, mixed>|WP_Error
+     */
+    private static function handle_admin_signed_upload(int $user_id, array $file)
+    {
+        if (! isset($file['tmp_name']) || ! is_string($file['tmp_name']) || $file['tmp_name'] === '') {
+            return new WP_Error(
+                'go_client_sepa_upload',
+                __('No se ha podido procesar el mandato SEPA firmado.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        if (! empty($file['error'])) {
+            return new WP_Error(
+                'go_client_sepa_upload',
+                __('No se ha podido subir el mandato SEPA firmado.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $size = isset($file['size']) ? (int) $file['size'] : 0;
+        if ($size > 5 * 1024 * 1024) {
+            return new WP_Error(
+                'go_client_sepa_size',
+                __('El mandato SEPA firmado supera el tamaño permitido (5MB).', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        if (! function_exists('wp_check_filetype_and_ext')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        $original_name = isset($file['name']) ? (string) $file['name'] : 'mandato-sepa-firmado.pdf';
+        $check = wp_check_filetype_and_ext($file['tmp_name'], $original_name, ['pdf' => 'application/pdf']);
+        if (! is_array($check) || ($check['ext'] ?? '') !== 'pdf') {
+            return new WP_Error(
+                'go_client_sepa_type',
+                __('El mandato SEPA debe estar en formato PDF.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $binary = file_get_contents($file['tmp_name']);
+        if (! is_string($binary) || $binary === '') {
+            return new WP_Error(
+                'go_client_sepa_binary',
+                __('No se ha podido leer el mandato SEPA firmado.', 'garantias-online-360vo'),
+                ['status' => 500]
+            );
+        }
+
+        $filename = sanitize_file_name($original_name);
+        if ($filename === '') {
+            $filename = 'mandato-sepa-firmado.pdf';
+        }
+
+        if (pathinfo($filename, PATHINFO_EXTENSION) === '') {
+            $filename .= '.pdf';
+        } elseif (strtolower((string) pathinfo($filename, PATHINFO_EXTENSION)) !== 'pdf') {
+            $filename = sanitize_file_name(pathinfo($filename, PATHINFO_FILENAME) ?: 'mandato-sepa-firmado') . '.pdf';
+        }
+
+        $pending_meta = SepaMandateService::get_document_meta($user_id, SepaMandateService::TYPE_PENDING);
+        $context = [
+            'filename'     => $filename,
+            'generated_at' => gmdate('c'),
+        ];
+
+        if (! empty($pending_meta['reference'])) {
+            $context['reference'] = $pending_meta['reference'];
+        }
+
+        $stored = SepaMandateService::store_signed_mandate($user_id, $binary, $context);
+        if (is_wp_error($stored)) {
+            return $stored;
+        }
+
+        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_SIGNED);
+        SepaMandateService::set_activation_flag(
+            $user_id,
+            true,
+            SepaMandateService::ACTIVATION_ENABLED
+        );
+        SepaMandateService::set_payment_method($user_id, 'domiciliacion');
+
+        $stored['submitted_at'] = current_time('timestamp');
+
+        return $stored;
+    }
+
     private static function format_sepa_details(array $payments): array
     {
         $sepa = $payments['sepa'] ?? [];
@@ -1421,6 +1631,7 @@ class ClientRestController
 
         $label = self::clean_text($sepa['status_label'] ?? '');
         $variant = self::clean_text($sepa['status_variant'] ?? '');
+        $disabled_message = self::clean_text($sepa['disabled_message'] ?? '');
 
         $fields = [];
         if (! empty($sepa['fields']) && is_array($sepa['fields'])) {
@@ -1459,6 +1670,12 @@ class ClientRestController
             }
         }
 
+        if ($status_code === SepaMandateService::STATUS_DISABLED) {
+            $requested = false;
+            $awaiting_validation = false;
+            $needs_activation = true;
+        }
+
         $documents = [
             'pending' => [],
             'signed'  => [],
@@ -1495,6 +1712,7 @@ class ClientRestController
             'status_code'         => $status_code,
             'activated'           => $activated,
             'documents'           => $documents,
+            'disabled_message'    => $disabled_message,
         ];
     }
 

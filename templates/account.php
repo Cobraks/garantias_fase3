@@ -93,36 +93,40 @@ $signature_default_label   = esc_html__('+ Subir imagen de firma', 'garantias-on
 $seal_default_label        = esc_html__('+ Subir imagen de sello', 'garantias-online-360vo');
 $procedure_default_label   = esc_html__('+ Subir procedimiento de reclamación', 'garantias-online-360vo');
 
-$mask_iban_display = static function ($value) {
+$format_iban_display = static function ($value) {
     $clean = strtoupper(preg_replace('/\s+/', '', (string) $value));
     if ($clean === '') {
         return '';
     }
 
-    if (strlen($clean) <= 7) {
-        return $clean;
-    }
-
-    $prefix = substr($clean, 0, 4);
-    $suffix = substr($clean, -3);
-
-    return sprintf('%s (...) %s', $prefix, $suffix);
+    return trim(implode(' ', str_split($clean, 4)));
 };
 
-$mask_bic_display = static function ($value) {
+$mask_iban_display = static function ($value) use ($format_iban_display) {
     $clean = strtoupper(preg_replace('/\s+/', '', (string) $value));
     if ($clean === '') {
         return '';
     }
 
-    if (strlen($clean) <= 6) {
-        return $clean;
-    }
+    $groups = str_split($clean, 4);
+    $last_index = count($groups) - 1;
+    $masked = array_map(
+        static function ($group, $index) use ($last_index) {
+            if ($index <= 1 || $index === $last_index) {
+                return $group;
+            }
 
-    $prefix = substr($clean, 0, 4);
-    $suffix = substr($clean, -3);
+            return '****';
+        },
+        $groups,
+        array_keys($groups)
+    );
 
-    return sprintf('%s***%s', $prefix, $suffix);
+    return trim(implode(' ', $masked)) ?: $format_iban_display($clean);
+};
+
+$format_bic_display = static function ($value) {
+    return strtoupper(trim((string) $value));
 };
 
 \GarantiasOnline360VO\TemplateLoader::load_part(
@@ -608,9 +612,15 @@ $formatPhoneHref = static function ($phone) {
             $sepa_info               = is_array($payments['sepa'] ?? null) ? $payments['sepa'] : [];
             $sepa_status_label       = $sepa_info['status_label'] ?? 'Sin información del mandato';
             $sepa_status_variant     = $sepa_info['status_variant'] ?? 'info';
-            $sepa_status_code        = (string) ($sepa_info['status_code'] ?? SepaMandateService::STATUS_UNFILLED);
-            $sepa_is_active          = (bool) ($sepa_info['status'] ?? false);
+            $sepa_status_code_raw    = (string) ($sepa_info['status_code'] ?? SepaMandateService::STATUS_UNFILLED);
+            $sepa_status_code        = strtolower(trim($sepa_status_code_raw));
+            $sepa_is_activated       = ! empty($sepa_info['activated']);
+            $sepa_status_is_signed   = ($sepa_status_code === SepaMandateService::STATUS_SIGNED);
+            $sepa_is_active          = $sepa_is_activated && $sepa_status_is_signed;
             $sepa_locked             = (bool) ($sepa_info['locked'] ?? false);
+            if ($sepa_is_active) {
+                $sepa_locked = true;
+            }
             $sepa_requested          = (bool) ($sepa_info['requested'] ?? false);
             $sepa_awaiting_validation = (bool) ($sepa_info['awaiting_validation'] ?? false);
             $sepa_needs_activation   = (bool) ($sepa_info['needs_activation'] ?? false);
@@ -621,18 +631,23 @@ $formatPhoneHref = static function ($phone) {
                 'transferencia' => 'Transferencia bancaria',
             ];
             $current_method_label    = $method_labels[$selected_payment_method] ?? $method_labels['transferencia'];
-            if ($sepa_is_active || $sepa_locked) {
+            if ($sepa_is_active) {
+                $activation_state = 'locked';
+            } elseif ($sepa_locked) {
                 $activation_state = 'locked';
             } elseif ($sepa_requested || $sepa_needs_activation) {
                 $activation_state = 'requested';
             } else {
                 $activation_state = $selected_payment_method === 'domiciliacion' ? 'enabled' : 'disabled';
             }
-            $sepa_show_success       = $sepa_is_active;
-            $sepa_show_pending       = ($sepa_requested || $sepa_needs_activation) && ! $sepa_show_success;
-            $sepa_show_disabled      = ! $sepa_show_success
-                && ($sepa_needs_activation || $sepa_activation_state === SepaMandateService::ACTIVATION_PENDING);
             $sepa_field_lookup       = [];
+            $sepa_disabled_message   = trim((string) ($sepa_info['disabled_message'] ?? ''));
+            $sepa_is_disabled        = ($sepa_status_code === SepaMandateService::STATUS_DISABLED);
+            $sepa_requires_reactivation = $sepa_needs_activation || $sepa_is_disabled;
+
+            if ($sepa_is_disabled) {
+                $activation_state = 'reactivation';
+            }
 
             foreach ($sepa_fields as $field) {
                 $field_name = (string) ($field['name'] ?? '');
@@ -904,36 +919,7 @@ $formatPhoneHref = static function ($phone) {
                         <p class="account-card__status">
                             Método de pago actual: <strong><?php echo esc_html($current_method_label); ?></strong>
                         </p>
-                        <p
-                            class="account-card__status account-card__status--sepa account-card__status--sepa-success"
-                            data-sepa-success
-                            <?php echo $sepa_show_success ? '' : 'hidden aria-hidden="true"'; ?>
-                        >
-                            <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
-                            <span><?php echo esc_html__('Domiciliación bancaria activada.', 'garantias-online-360vo'); ?></span>
-                        </p>
-                        <?php if ($sepa_show_disabled) : ?>
-                            <p
-                                class="account-card__status account-card__status--sepa account-card__status--sepa-error"
-                                data-sepa-disabled
-                            >
-                                <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
-                                <span><?php echo esc_html__('Domiciliación bancaria desactivada.', 'garantias-online-360vo'); ?></span>
-                            </p>
-                        <?php endif; ?>
-                        <?php if ($sepa_show_pending) : ?>
-                            <p
-                                class="account-card__status account-card__status--sepa<?php echo $sepa_awaiting_validation ? ' account-card__status--sepa-success' : ''; ?>"
-                                data-sepa-status
-                                data-sepa-requested="<?php echo $sepa_requested ? 'true' : 'false'; ?>"
-                                data-sepa-awaiting="<?php echo $sepa_awaiting_validation ? 'true' : 'false'; ?>"
-                                data-sepa-needs-activation="<?php echo $sepa_needs_activation ? 'true' : 'false'; ?>"
-                            >
-                                <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
-                                <span>Estado domiciliación bancaria: <strong data-sepa-status-label><?php echo esc_html($sepa_status_label); ?></strong></span>
-                            </p>
-                        <?php endif; ?>
-                        <?php if (! $sepa_show_success && ! $sepa_requested && ! $sepa_needs_activation) : ?>
+                        <?php if (! $sepa_is_active && ! $sepa_requested && ! $sepa_requires_reactivation) : ?>
                             <label
                                 class="account-toggle"
                                 data-sepa-toggle
@@ -944,7 +930,7 @@ $formatPhoneHref = static function ($phone) {
                                     data-payment-toggle
                                     value="1"
                                     <?php checked($activation_state !== 'disabled'); ?>
-                                    <?php disabled($sepa_locked || $sepa_show_success); ?>
+                                    <?php disabled($sepa_locked || $sepa_is_active); ?>
                                 >
                                 <span class="account-toggle__label">Activar domiciliación bancaria</span>
                             </label>
@@ -998,7 +984,7 @@ $formatPhoneHref = static function ($phone) {
                         <p
                             class="account-card__intro"
                             data-payment-state="disabled"
-                            <?php echo $activation_state === 'disabled' ? '' : 'hidden'; ?>
+                            <?php echo $activation_state === 'disabled' && $sepa_status_code !== SepaMandateService::STATUS_DISABLED ? '' : 'hidden'; ?>
                         >
                             Activa la domiciliación para generar el mandato SEPA y olvidarte de gestionar transferencias manuales.
                         </p>
@@ -1038,127 +1024,83 @@ $formatPhoneHref = static function ($phone) {
                                                 $field_classes[] = 'account-form__field--quarter';
                                             }
                                             $display_value = $value;
+                                            $iban_full       = '';
+                                            $iban_masked     = '';
+                                            $has_iban_toggle = false;
+
                                             if ($field_name === 'numero_cuenta') {
-                                                $masked = $mask_iban_display($value);
-                                                if ($masked !== '') {
-                                                    $display_value = $masked;
+                                                $iban_full = $format_iban_display($value);
+                                                $iban_masked = $mask_iban_display($value);
+                                                $has_iban_toggle = $iban_full !== '';
+                                                if ($has_iban_toggle) {
+                                                    $display_value = $iban_masked !== '' ? $iban_masked : $iban_full;
                                                 }
                                             } elseif ($field_name === 'swift_bic') {
-                                                $masked_bic = $mask_bic_display($value);
-                                                if ($masked_bic !== '') {
-                                                    $display_value = $masked_bic;
+                                                $formatted_bic = $format_bic_display($value);
+                                                if ($formatted_bic !== '') {
+                                                    $display_value = $formatted_bic;
                                                 }
+                                            }
+
+                                            if ($display_value === '') {
+                                                $display_value = '—';
                                             }
                                         ?>
                                         <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
                                             <span class="account-form__label"><?php echo esc_html($field_label); ?></span>
-                                            <span class="account-form__value" id="<?php echo esc_attr($field_id); ?>-value"><?php echo esc_html($display_value); ?></span>
+                                            <?php if ($field_name === 'numero_cuenta') : ?>
+                                                <div class="account-form__value account-form__value--with-toggle">
+                                                    <span
+                                                        class="account-form__iban"
+                                                        id="<?php echo esc_attr($field_id); ?>-value"
+                                                        data-sepa-iban
+                                                        data-full-value="<?php echo esc_attr($iban_full); ?>"
+                                                        data-masked-value="<?php echo esc_attr($iban_masked); ?>"
+                                                    >
+                                                        <?php echo esc_html($display_value); ?>
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        class="account-sepa-toggle"
+                                                        data-sepa-iban-toggle
+                                                        aria-pressed="false"
+                                                        data-label-show="<?php esc_attr_e('Mostrar IBAN completo', 'garantias-online-360vo'); ?>"
+                                                        data-label-hide="<?php esc_attr_e('Ocultar IBAN completo', 'garantias-online-360vo'); ?>"
+                                                        <?php echo $has_iban_toggle ? '' : 'hidden aria-hidden="true"'; ?>
+                                                    >
+                                                        <span class="account-sepa-toggle__icon account-sepa-toggle__icon--show" aria-hidden="true"><?php echo Svg::icon('visibility'); ?></span>
+                                                        <span class="account-sepa-toggle__icon account-sepa-toggle__icon--hide" aria-hidden="true"><?php echo Svg::icon('visibility_off'); ?></span>
+                                                        <span class="screen-reader-text"><?php esc_html_e('Alternar visibilidad del IBAN', 'garantias-online-360vo'); ?></span>
+                                                    </button>
+                                                </div>
+                                            <?php else : ?>
+                                                <span class="account-form__value" id="<?php echo esc_attr($field_id); ?>-value"><?php echo esc_html($display_value); ?></span>
+                                            <?php endif; ?>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
                             <?php else : ?>
                                 <p class="account-card__note" data-payment-state="locked" <?php echo $activation_state === 'locked' ? '' : 'hidden'; ?>>Si necesitas actualizar los datos del mandato, contacta con tu equipo de 360VO.</p>
                             <?php endif; ?>
-                            <?php if ($signed_document_url !== '') : ?>
-                                <div class="account-sepa-signed" data-sepa-signed>
-                                    <p class="account-sepa-signed__label"><?php echo esc_html__('Tu documento SEPA firmado', 'garantias-online-360vo'); ?></p>
-                                    <a
-                                        class="account-sepa-request__download account-sepa-request__download--emphasis"
-                                        href="<?php echo esc_url($signed_document_url); ?>"
-                                        target="_blank"
-                                        rel="noopener"
-                                    >
-                                        <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
-                                        <span><?php echo esc_html($signed_document['filename'] ?? __('Mandato SEPA firmado', 'garantias-online-360vo')); ?></span>
-                                    </a>
-                                </div>
-                            <?php endif; ?>
-                        <?php elseif ($sepa_needs_activation) : ?>
-                            <?php $reactivation_has_download = ($signed_document_url !== ''); ?>
                             <div
-                                class="account-sepa-request account-sepa-request--reactivation"
-                                data-payment-state="requested"
-                                <?php echo $activation_state === 'requested' ? '' : 'hidden aria-hidden="true"'; ?>
+                                class="account-sepa-signed"
+                                data-sepa-signed
+                                <?php echo $signed_document_url !== '' ? '' : 'hidden aria-hidden="true"'; ?>
                             >
-                                <p class="account-sepa-request__status account-sepa-request__status--warning">
-                                    <?php echo esc_html__('La domiciliación bancaria está desactivada. Sube un nuevo mandato firmado para solicitar la reactivación.', 'garantias-online-360vo'); ?>
-                                </p>
-                                <div class="account-sepa-request__actions">
-                                    <?php if ($reactivation_has_download) : ?>
-                                        <div class="account-sepa-request__action" data-sepa-signed-link>
-                                            <p class="account-sepa-request__step"><span>1.</span> <?php echo esc_html__('Descarga el mandato revisado.', 'garantias-online-360vo'); ?></p>
-                                            <a
-                                                class="account-sepa-request__download account-sepa-request__download--emphasis"
-                                                href="<?php echo esc_url($signed_document_url); ?>"
-                                                target="_blank"
-                                                rel="noopener"
-                                            >
-                                                <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
-                                                <span><?php echo esc_html($signed_document['filename'] ?? __('Mandato SEPA firmado', 'garantias-online-360vo')); ?></span>
-                                            </a>
-                                        </div>
-                                    <?php endif; ?>
-                                    <div class="account-sepa-request__action account-sepa-request__action--primary" data-sepa-upload>
-                                        <p class="account-sepa-request__step">
-                                            <span><?php echo $reactivation_has_download ? '2.' : '1.'; ?></span>
-                                            <?php echo esc_html__('Sube el nuevo mandato firmado y guarda los cambios.', 'garantias-online-360vo'); ?>
-                                        </p>
-                                        <div class="account-sepa-request__upload">
-                                            <div class="account-upload account-upload--document">
-                                                <div
-                                                    class="file-upload file-upload--document"
-                                                    id="account-sepa-signed-upload"
-                                                    data-default-label="<?php echo esc_attr(__('Sube el nuevo mandato SEPA firmado (PDF)', 'garantias-online-360vo')); ?>"
-                                                    data-document-upload
-                                                    data-document-type="sepa_signed"
-                                                    data-locked="false"
-                                                >
-                                                    <div class="file-label" data-document-label><?php echo esc_html__('Sube el nuevo mandato SEPA firmado (PDF)', 'garantias-online-360vo'); ?></div>
-                                                    <p class="file-hint">Formato admitido: PDF (máx. 5MB)</p>
-                                                    <input
-                                                        type="file"
-                                                        id="account-sepa-signed"
-                                                        class="file-input"
-                                                        name="account_sepa_signed"
-                                                        accept=".pdf"
-                                                    >
-                                                    <div
-                                                        class="file-preview file-preview--document"
-                                                        data-document-preview
-                                                        hidden
-                                                        aria-hidden="true"
-                                                    >
-                                                        <div class="file-document" data-document-body hidden aria-hidden="true">
-                                                            <span class="file-document__icon" aria-hidden="true">
-                                                                <?php echo Svg::icon('pdf', 'file-document__svg'); ?>
-                                                            </span>
-                                                            <div class="file-document__meta">
-                                                                <p class="file-document__name" data-document-name><?php echo esc_html__('Sube el nuevo mandato SEPA firmado (PDF)', 'garantias-online-360vo'); ?></p>
-                                                                <p class="file-document__size" data-document-size hidden aria-hidden="true"></p>
-                                                                <a
-                                                                    class="file-document__link"
-                                                                    data-document-link
-                                                                    href="<?php echo esc_url($signed_document_url); ?>"
-                                                                    hidden
-                                                                    aria-hidden="true"
-                                                                    target="_blank"
-                                                                    rel="noopener"
-                                                                >
-                                                                    <?php echo esc_html__('Ver documento', 'garantias-online-360vo'); ?>
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                        <button type="button" class="file-remove" data-document-remove hidden aria-hidden="true">
-                                                            <?php echo esc_html__('Eliminar', 'garantias-online-360vo'); ?>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <p class="account-sepa-signed__label"><?php echo esc_html__('Tu documento SEPA firmado', 'garantias-online-360vo'); ?></p>
+                                <a
+                                    class="account-sepa-request__download account-sepa-request__download--emphasis"
+                                    data-sepa-signed-link
+                                    href="<?php echo esc_url($signed_document_url !== '' ? $signed_document_url : '#'); ?>"
+                                    <?php echo $signed_document_url !== '' ? '' : 'hidden aria-hidden="true" tabindex="-1"'; ?>
+                                    target="_blank"
+                                    rel="noopener"
+                                >
+                                    <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
+                                    <span data-sepa-signed-name><?php echo esc_html($signed_document['filename'] ?? __('Mandato SEPA firmado', 'garantias-online-360vo')); ?></span>
+                                </a>
                             </div>
-                        <?php elseif ($sepa_requested) : ?>
+                        <?php elseif ($sepa_requested && ! $sepa_needs_activation) : ?>
                             <div
                                 class="account-sepa-request"
                                 data-payment-state="requested"
@@ -1171,6 +1113,24 @@ $formatPhoneHref = static function ($phone) {
                                 >
                                     <?php echo esc_html__('Tu SEPA firmado está pendiente de validación.', 'garantias-online-360vo'); ?>
                                 </p>
+                                <div
+                                    class="account-sepa-signed"
+                                    data-sepa-signed
+                                    <?php echo $signed_document_url !== '' ? '' : 'hidden aria-hidden="true"'; ?>
+                                >
+                                    <p class="account-sepa-signed__label"><?php echo esc_html__('Tu documento SEPA firmado', 'garantias-online-360vo'); ?></p>
+                                    <a
+                                        class="account-sepa-request__download account-sepa-request__download--emphasis"
+                                        data-sepa-signed-link
+                                        href="<?php echo esc_url($signed_document_url !== '' ? $signed_document_url : '#'); ?>"
+                                        <?php echo $signed_document_url !== '' ? '' : 'hidden aria-hidden="true" tabindex="-1"'; ?>
+                                        target="_blank"
+                                        rel="noopener"
+                                    >
+                                        <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
+                                        <span data-sepa-signed-name><?php echo esc_html($signed_document['filename'] ?? __('Mandato SEPA firmado', 'garantias-online-360vo')); ?></span>
+                                    </a>
+                                </div>
                                 <div class="account-sepa-request__actions" data-sepa-actions>
                                     <?php if ($pending_download_url !== '' && ! $sepa_awaiting_validation) : ?>
                                         <div
@@ -1189,21 +1149,7 @@ $formatPhoneHref = static function ($phone) {
                                             </a>
                                         </div>
                                     <?php endif; ?>
-                                    <?php if ($sepa_awaiting_validation) : ?>
-                                        <?php if ($signed_document_url !== '') : ?>
-                                            <div class="account-sepa-request__action account-sepa-request__action--primary" data-sepa-signed-link>
-                                                <a
-                                                    class="account-sepa-request__download account-sepa-request__download--emphasis"
-                                                    href="<?php echo esc_url($signed_document_url); ?>"
-                                                    target="_blank"
-                                                    rel="noopener"
-                                                >
-                                                    <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
-                                                    <span><?php echo esc_html($signed_document['filename'] ?? __('Mandato SEPA firmado', 'garantias-online-360vo')); ?></span>
-                                                </a>
-                                            </div>
-                                        <?php endif; ?>
-                                    <?php else : ?>
+                                    <?php if (! $sepa_awaiting_validation) : ?>
                                         <div class="account-sepa-request__action" data-sepa-upload>
                                             <p class="account-sepa-request__step" data-sepa-step-upload><span>2.</span> <?php echo esc_html__('Súbelo firmado y guarda los cambios.', 'garantias-online-360vo'); ?></p>
                                             <div class="account-sepa-request__upload">
@@ -1277,14 +1223,25 @@ $formatPhoneHref = static function ($phone) {
                                 </div>
                             </div>
                         <?php else : ?>
-                            <div
-                                class="account-form account-form--sepa"
-                                data-payment-state="enabled"
-                                data-sepa-form
-                                <?php echo $activation_state === 'enabled' ? '' : 'hidden'; ?>
-                            >
-                                <?php foreach ($sepa_field_order as $field_key) : ?>
-                                    <?php
+                            <?php if ($sepa_is_disabled) : ?>
+                                <div
+                                    class="account-sepa-reactivation"
+                                    data-sepa-reactivation
+                                    data-payment-state="reactivation"
+                                >
+                                    <p
+                                        class="account-sepa-request__status account-sepa-request__status--warning"
+                                        data-sepa-reactivation-status
+                                    >
+                                        <?php echo esc_html__('La domiciliación bancaria ha sido desactivada. Ponte en contacto con garantias@360vo.es', 'garantias-online-360vo'); ?>
+                                    </p>
+                                </div>
+                            <?php else : ?>
+                                <?php
+                                    $sepa_form_state = $activation_state;
+
+                                    ob_start();
+                                    foreach ($sepa_field_order as $field_key) {
                                         $field = $sepa_field_lookup[$field_key] ?? null;
                                         $field_label = (string) ($field['label'] ?? ucfirst(str_replace('_', ' ', $field_key)));
                                         $field_value = (string) ($field['value'] ?? '');
@@ -1299,43 +1256,55 @@ $formatPhoneHref = static function ($phone) {
                                         if (in_array($field_key, $sepa_quarter_fields, true)) {
                                             $field_classes[] = 'account-form__field--quarter';
                                         }
-                                    ?>
-                                    <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
-                                        <div class="account-input-container">
-                                            <input
-                                                type="text"
-                                                id="<?php echo esc_attr($field_id); ?>"
-                                                name="account-sepa[<?php echo esc_attr($field_key); ?>]"
-                                                class="account-input"
-                                                value="<?php echo esc_attr($field_value); ?>"
-                                                placeholder=" "
-                                                autocomplete="off"
-                                                data-sepa-field="<?php echo esc_attr($field_key); ?>"
-                                                <?php echo $field_key === 'swift_bic' || $field_key === 'numero_cuenta' ? 'inputmode="text"' : ''; ?>
-                                                required
-                                            >
-                                            <label class="account-input__label" for="<?php echo esc_attr($field_id); ?>">
-                                                <?php echo esc_html($field_label); ?>
-                                            </label>
+                                        ?>
+                                        <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
+                                            <div class="account-input-container">
+                                                <input
+                                                    type="text"
+                                                    id="<?php echo esc_attr($field_id); ?>"
+                                                    name="account-sepa[<?php echo esc_attr($field_key); ?>]"
+                                                    class="account-input"
+                                                    value="<?php echo esc_attr($field_value); ?>"
+                                                    placeholder=" "
+                                                    autocomplete="off"
+                                                    data-sepa-field="<?php echo esc_attr($field_key); ?>"
+                                                    <?php echo $field_key === 'swift_bic' || $field_key === 'numero_cuenta' ? 'inputmode="text"' : ''; ?>
+                                                    required
+                                                >
+                                                <label class="account-input__label" for="<?php echo esc_attr($field_id); ?>">
+                                                    <?php echo esc_html($field_label); ?>
+                                                </label>
+                                            </div>
                                         </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                            <div
-                                class="account-payments__actions"
-                                data-payment-state="enabled"
-                                data-payment-awaiting
-                                <?php echo $activation_state === 'enabled' && ! $has_generated_mandate ? '' : 'hidden'; ?>
-                            >
-                                <button
-                                    type="button"
-                                    class="account-button"
-                                    data-payment-generate
-                                    <?php disabled($has_generated_mandate); ?>
+                                        <?php
+                                    }
+                                    $sepa_form_fields = ob_get_clean();
+                                ?>
+
+                                <div
+                                    class="account-form account-form--sepa"
+                                    data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
+                                    data-sepa-form
                                 >
-                                    Generar SEPA
-                                </button>
-                            </div>
+                                    <?php echo $sepa_form_fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                </div>
+                                <?php if (! $has_generated_mandate) : ?>
+                                    <div
+                                        class="account-payments__actions"
+                                        data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
+                                        data-payment-awaiting
+                                    >
+                                        <button
+                                            type="button"
+                                            class="account-button"
+                                            data-payment-generate
+                                            <?php disabled($has_generated_mandate); ?>
+                                        >
+                                            <?php esc_html_e('Generar SEPA', 'garantias-online-360vo'); ?>
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
