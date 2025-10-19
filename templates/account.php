@@ -612,7 +612,8 @@ $formatPhoneHref = static function ($phone) {
             $sepa_info               = is_array($payments['sepa'] ?? null) ? $payments['sepa'] : [];
             $sepa_status_label       = $sepa_info['status_label'] ?? 'Sin información del mandato';
             $sepa_status_variant     = $sepa_info['status_variant'] ?? 'info';
-            $sepa_status_code        = (string) ($sepa_info['status_code'] ?? SepaMandateService::STATUS_UNFILLED);
+            $sepa_status_code_raw    = (string) ($sepa_info['status_code'] ?? SepaMandateService::STATUS_UNFILLED);
+            $sepa_status_code        = strtolower(trim($sepa_status_code_raw));
             $sepa_is_activated       = ! empty($sepa_info['activated']);
             $sepa_status_is_signed   = ($sepa_status_code === SepaMandateService::STATUS_SIGNED);
             $sepa_is_active          = $sepa_is_activated && $sepa_status_is_signed;
@@ -641,9 +642,10 @@ $formatPhoneHref = static function ($phone) {
             }
             $sepa_field_lookup       = [];
             $sepa_disabled_message   = trim((string) ($sepa_info['disabled_message'] ?? ''));
-            $sepa_requires_reactivation = $sepa_needs_activation || $sepa_status_code === SepaMandateService::STATUS_DISABLED;
+            $sepa_is_disabled        = ($sepa_status_code === SepaMandateService::STATUS_DISABLED);
+            $sepa_requires_reactivation = $sepa_needs_activation || $sepa_is_disabled;
 
-            if ($sepa_status_code === SepaMandateService::STATUS_DISABLED) {
+            if ($sepa_is_disabled) {
                 $activation_state = 'reactivation';
             }
 
@@ -1221,51 +1223,7 @@ $formatPhoneHref = static function ($phone) {
                                 </div>
                             </div>
                         <?php else : ?>
-                            <?php
-                                $sepa_form_state = $sepa_requires_reactivation ? 'reactivation' : $activation_state;
-
-                                ob_start();
-                                foreach ($sepa_field_order as $field_key) {
-                                    $field = $sepa_field_lookup[$field_key] ?? null;
-                                    $field_label = (string) ($field['label'] ?? ucfirst(str_replace('_', ' ', $field_key)));
-                                    $field_value = (string) ($field['value'] ?? '');
-                                    $field_id    = 'account-sepa-' . sanitize_title($field_key);
-                                    $field_classes = ['account-field', 'account-form__field'];
-                                    if (in_array($field_key, $sepa_full_fields, true)) {
-                                        $field_classes[] = 'account-form__field--full';
-                                    }
-                                    if (in_array($field_key, $sepa_half_fields, true)) {
-                                        $field_classes[] = 'account-form__field--half';
-                                    }
-                                    if (in_array($field_key, $sepa_quarter_fields, true)) {
-                                        $field_classes[] = 'account-form__field--quarter';
-                                    }
-                                    ?>
-                                    <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
-                                        <div class="account-input-container">
-                                            <input
-                                                type="text"
-                                                id="<?php echo esc_attr($field_id); ?>"
-                                                name="account-sepa[<?php echo esc_attr($field_key); ?>]"
-                                                class="account-input"
-                                                value="<?php echo esc_attr($field_value); ?>"
-                                                placeholder=" "
-                                                autocomplete="off"
-                                                data-sepa-field="<?php echo esc_attr($field_key); ?>"
-                                                <?php echo $field_key === 'swift_bic' || $field_key === 'numero_cuenta' ? 'inputmode="text"' : ''; ?>
-                                                required
-                                            >
-                                            <label class="account-input__label" for="<?php echo esc_attr($field_id); ?>">
-                                                <?php echo esc_html($field_label); ?>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <?php
-                                }
-                                $sepa_form_fields = ob_get_clean();
-                            ?>
-
-                            <?php if ($sepa_requires_reactivation) : ?>
+                            <?php if ($sepa_is_disabled) : ?>
                                 <div
                                     class="account-sepa-reactivation"
                                     data-sepa-reactivation
@@ -1278,26 +1236,51 @@ $formatPhoneHref = static function ($phone) {
                                         <?php echo esc_html__('La domiciliación bancaria ha sido desactivada. Ponte en contacto con garantias@360vo.es', 'garantias-online-360vo'); ?>
                                     </p>
                                 </div>
-                                <div
-                                    class="account-form account-form--sepa"
-                                    data-payment-state="reactivation"
-                                    data-sepa-form
-                                >
-                                    <?php echo $sepa_form_fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                                </div>
-                                <div
-                                    class="account-payments__actions"
-                                    data-payment-state="reactivation"
-                                >
-                                    <button
-                                        type="button"
-                                        class="account-button"
-                                        data-payment-generate
-                                    >
-                                        <?php esc_html_e('Generar SEPA', 'garantias-online-360vo'); ?>
-                                    </button>
-                                </div>
                             <?php else : ?>
+                                <?php
+                                    $sepa_form_state = $activation_state;
+
+                                    ob_start();
+                                    foreach ($sepa_field_order as $field_key) {
+                                        $field = $sepa_field_lookup[$field_key] ?? null;
+                                        $field_label = (string) ($field['label'] ?? ucfirst(str_replace('_', ' ', $field_key)));
+                                        $field_value = (string) ($field['value'] ?? '');
+                                        $field_id    = 'account-sepa-' . sanitize_title($field_key);
+                                        $field_classes = ['account-field', 'account-form__field'];
+                                        if (in_array($field_key, $sepa_full_fields, true)) {
+                                            $field_classes[] = 'account-form__field--full';
+                                        }
+                                        if (in_array($field_key, $sepa_half_fields, true)) {
+                                            $field_classes[] = 'account-form__field--half';
+                                        }
+                                        if (in_array($field_key, $sepa_quarter_fields, true)) {
+                                            $field_classes[] = 'account-form__field--quarter';
+                                        }
+                                        ?>
+                                        <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
+                                            <div class="account-input-container">
+                                                <input
+                                                    type="text"
+                                                    id="<?php echo esc_attr($field_id); ?>"
+                                                    name="account-sepa[<?php echo esc_attr($field_key); ?>]"
+                                                    class="account-input"
+                                                    value="<?php echo esc_attr($field_value); ?>"
+                                                    placeholder=" "
+                                                    autocomplete="off"
+                                                    data-sepa-field="<?php echo esc_attr($field_key); ?>"
+                                                    <?php echo $field_key === 'swift_bic' || $field_key === 'numero_cuenta' ? 'inputmode="text"' : ''; ?>
+                                                    required
+                                                >
+                                                <label class="account-input__label" for="<?php echo esc_attr($field_id); ?>">
+                                                    <?php echo esc_html($field_label); ?>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <?php
+                                    }
+                                    $sepa_form_fields = ob_get_clean();
+                                ?>
+
                                 <div
                                     class="account-form account-form--sepa"
                                     data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"

@@ -696,7 +696,7 @@ class AccountViewModel
             $sepa['awaiting_validation'] = false;
             $sepa['activated'] = false;
             $sepa['status'] = false;
-            $sepa['needs_activation'] = true;
+            $sepa['needs_activation'] = false;
         }
 
         $status_code = $sepa['status_code'] ?? SepaMandateService::STATUS_UNFILLED;
