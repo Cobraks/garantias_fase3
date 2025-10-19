@@ -1318,9 +1318,18 @@
             const signedDocument = documents.signed || {};
             const hasPending = hasSepaDocument(pendingDocument);
             const hasSigned = hasSepaDocument(signedDocument);
-            const awaitingValidation = Boolean(sepa.awaiting_validation);
-            const needsActivation = Boolean(sepa.needs_activation);
+            const statusCodeRaw = typeof sepa.status_code === 'string'
+                ? sepa.status_code.trim().toLowerCase()
+                : '';
+            const isDisabled = statusCodeRaw === 'deshabilitado';
+            let awaitingValidation = Boolean(sepa.awaiting_validation);
+            let needsActivation = Boolean(sepa.needs_activation);
             const isActive = Boolean(sepa.status);
+
+            if (isDisabled) {
+                awaitingValidation = false;
+                needsActivation = true;
+            }
             const statusLabel = typeof sepa.label === 'string' && sepa.label.trim() !== ''
                 ? sepa.label.trim()
                 : (strings.sepaEmpty || 'Sin información del mandato');

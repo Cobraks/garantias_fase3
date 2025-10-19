@@ -1670,6 +1670,12 @@ class ClientRestController
             }
         }
 
+        if ($status_code === SepaMandateService::STATUS_DISABLED) {
+            $requested = false;
+            $awaiting_validation = false;
+            $needs_activation = true;
+        }
+
         $documents = [
             'pending' => [],
             'signed'  => [],

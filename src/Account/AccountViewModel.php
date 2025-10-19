@@ -747,6 +747,9 @@ class AccountViewModel
         if ($status_code === SepaMandateService::STATUS_DISABLED) {
             $selected_method = 'transferencia';
             $sepa['locked'] = false;
+            $sepa['requested'] = false;
+            $sepa['awaiting_validation'] = false;
+            $sepa['needs_activation'] = false;
         }
 
         $sepa['locked'] = $selected_method === 'domiciliacion' && $sepa['status'];
