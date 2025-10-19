@@ -816,47 +816,9 @@
                             const toggleInput = activationCard
                                 ? activationCard.querySelector('[data-payment-toggle]')
                                 : null;
-                            const disabledContainer = document.querySelector('[data-sepa-disabled-container]');
-                            const disabledFallback = document.querySelector('[data-sepa-disabled-fallback]');
-                            const disabledMessage = disabledContainer
-                                ? disabledContainer.querySelector('[data-sepa-disabled-text]')
-                                : null;
-                            const disabledReason = disabledContainer
-                                ? disabledContainer.querySelector('[data-sepa-disabled-reason]')
-                                : null;
-                            const defaultDisabledText = disabledContainer
-                                ? disabledContainer.getAttribute('data-default-message') || ''
-                                : '';
-
-                            if (disabledContainer) {
-                                if (sepaIsDisabled) {
-                                    disabledContainer.hidden = false;
-                                    disabledContainer.setAttribute('aria-hidden', 'false');
-                                } else {
-                                    disabledContainer.hidden = true;
-                                    disabledContainer.setAttribute('aria-hidden', 'true');
-                                }
-                            }
-
-                            if (disabledMessage) {
-                                const messageText = defaultDisabledText || '';
-                                disabledMessage.textContent = messageText;
-                            }
-
-                            if (disabledReason) {
-                                const reasonText = typeof sepaData.disabled_message === 'string'
-                                    ? sepaData.disabled_message.trim()
-                                    : '';
-                                if (sepaIsDisabled && reasonText !== '') {
-                                    disabledReason.hidden = false;
-                                    disabledReason.setAttribute('aria-hidden', 'false');
-                                    disabledReason.textContent = reasonText;
-                                } else {
-                                    disabledReason.hidden = true;
-                                    disabledReason.setAttribute('aria-hidden', 'true');
-                                    disabledReason.textContent = '';
-                                }
-                            }
+                            const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
+                            const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
+                            const reactivationReason = document.querySelector('[data-sepa-reactivation-reason]');
 
                             if (toggleWrapper) {
                                 const shouldHideToggle = sepaIsActivated || Boolean(sepaData.requested) || needsActivation || sepaIsDisabled;
@@ -914,44 +876,34 @@
                                 }
                             }
 
-                            if (disabledContainer) {
-                                if (sepaIsDisabled) {
-                                    disabledContainer.hidden = false;
-                                    disabledContainer.setAttribute('aria-hidden', 'false');
-                                    if (disabledMessage) {
-                                        disabledMessage.textContent = defaultDisabledText || disabledMessage.textContent || '';
-                                    }
-                                    if (disabledReason) {
-                                        const reasonText = typeof sepaData.disabled_message === 'string'
-                                            ? sepaData.disabled_message.trim()
-                                            : '';
-                                        if (reasonText) {
-                                            disabledReason.textContent = reasonText;
-                                            disabledReason.hidden = false;
-                                            disabledReason.setAttribute('aria-hidden', 'false');
-                                        } else {
-                                            disabledReason.textContent = '';
-                                            disabledReason.hidden = true;
-                                            disabledReason.setAttribute('aria-hidden', 'true');
-                                        }
-                                    }
-                                } else {
-                                    disabledContainer.hidden = true;
-                                    disabledContainer.setAttribute('aria-hidden', 'true');
-                                    if (disabledReason) {
-                                        disabledReason.textContent = '';
-                                        disabledReason.hidden = true;
-                                        disabledReason.setAttribute('aria-hidden', 'true');
-                                    }
+                            if (reactivationContainer) {
+                                const shouldShowReactivation = Boolean(needsActivation || sepaIsDisabled);
+                                reactivationContainer.hidden = !shouldShowReactivation;
+                                reactivationContainer.setAttribute('aria-hidden', shouldShowReactivation ? 'false' : 'true');
+                            }
+
+                            if (reactivationStatus) {
+                                const shouldShowStatus = Boolean(needsActivation || sepaIsDisabled);
+                                reactivationStatus.hidden = !shouldShowStatus;
+                                reactivationStatus.setAttribute('aria-hidden', shouldShowStatus ? 'false' : 'true');
+                                if (shouldShowStatus && !reactivationStatus.textContent.trim()) {
+                                    reactivationStatus.textContent = 'La domiciliación bancaria está desactivada.';
                                 }
                             }
 
-                            if (disabledFallback) {
-                                const shouldShowFallback = activationCard
-                                    && activationCard.getAttribute('data-state') === 'disabled'
-                                    && !sepaIsDisabled;
-                                disabledFallback.hidden = !shouldShowFallback;
-                                disabledFallback.setAttribute('aria-hidden', shouldShowFallback ? 'false' : 'true');
+                            if (reactivationReason) {
+                                const reasonText = typeof sepaData.disabled_message === 'string'
+                                    ? sepaData.disabled_message.trim()
+                                    : '';
+                                if ((needsActivation || sepaIsDisabled) && reasonText !== '') {
+                                    reactivationReason.hidden = false;
+                                    reactivationReason.setAttribute('aria-hidden', 'false');
+                                    reactivationReason.textContent = reasonText;
+                                } else {
+                                    reactivationReason.hidden = true;
+                                    reactivationReason.setAttribute('aria-hidden', 'true');
+                                    reactivationReason.textContent = '';
+                                }
                             }
 
                             const downloadAction = document.querySelector('[data-sepa-download]');
@@ -1059,28 +1011,21 @@
                             }
                         } else {
                             sepaIbanController.setValue('');
-                            const disabledContainer = document.querySelector('[data-sepa-disabled-container]');
-                            const disabledReason = disabledContainer
-                                ? disabledContainer.querySelector('[data-sepa-disabled-reason]')
-                                : null;
-                            if (disabledContainer) {
-                                disabledContainer.hidden = true;
-                                disabledContainer.setAttribute('aria-hidden', 'true');
+                            const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
+                            const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
+                            const reactivationReason = document.querySelector('[data-sepa-reactivation-reason]');
+                            if (reactivationContainer) {
+                                reactivationContainer.hidden = true;
+                                reactivationContainer.setAttribute('aria-hidden', 'true');
                             }
-                            if (disabledReason) {
-                                disabledReason.textContent = '';
-                                disabledReason.hidden = true;
-                                disabledReason.setAttribute('aria-hidden', 'true');
+                            if (reactivationStatus) {
+                                reactivationStatus.hidden = true;
+                                reactivationStatus.setAttribute('aria-hidden', 'true');
                             }
-                            const disabledFallback = document.querySelector('[data-sepa-disabled-fallback]');
-                            if (disabledFallback) {
-                                disabledFallback.hidden = true;
-                                disabledFallback.setAttribute('aria-hidden', 'true');
-                            }
-                            const sepaDisabledRow = document.querySelector('[data-sepa-disabled]');
-                            if (sepaDisabledRow) {
-                                sepaDisabledRow.hidden = true;
-                                sepaDisabledRow.setAttribute('aria-hidden', 'true');
+                            if (reactivationReason) {
+                                reactivationReason.textContent = '';
+                                reactivationReason.hidden = true;
+                                reactivationReason.setAttribute('aria-hidden', 'true');
                             }
                         }
 

@@ -1155,27 +1155,11 @@
   display: inline-flex;
 }
 
-.account-sepa-disabled {
-  margin-bottom: var(--spacing-3);
-  padding: 1rem 1.25rem;
-  border-radius: 0.85rem;
-  border: 1px solid #fecaca;
-  background: #fee2e2;
-  color: #7f1d1d;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-}
-
-.account-sepa-disabled__message,
-.account-sepa-disabled__reason {
-  margin: 0;
+.account-sepa-reactivation__reason {
+  margin: 0.75rem 0 0;
   font-size: 0.95rem;
   line-height: 1.6;
-}
-
-.account-sepa-disabled__reason {
-  font-weight: 600;
+  color: var(--account-color-text-muted, #4b5563);
   white-space: pre-wrap;
 }
 
