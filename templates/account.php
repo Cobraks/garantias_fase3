@@ -643,6 +643,10 @@ $formatPhoneHref = static function ($phone) {
             $sepa_disabled_message   = trim((string) ($sepa_info['disabled_message'] ?? ''));
             $sepa_requires_reactivation = $sepa_needs_activation || $sepa_status_code === SepaMandateService::STATUS_DISABLED;
 
+            if ($sepa_status_code === SepaMandateService::STATUS_DISABLED) {
+                $activation_state = 'reactivation';
+            }
+
             foreach ($sepa_fields as $field) {
                 $field_name = (string) ($field['name'] ?? '');
                 if ($field_name === '' && isset($field['label'])) {
@@ -1218,47 +1222,24 @@ $formatPhoneHref = static function ($phone) {
                             </div>
                         <?php else : ?>
                             <?php
-                                $sepa_form_state   = $sepa_requires_reactivation ? 'reactivation' : 'enabled';
-                                $sepa_form_visible = $sepa_requires_reactivation
-                                    ? in_array($activation_state, ['requested', 'disabled'], true)
-                                    : ($activation_state === 'enabled');
-                            ?>
-                            <?php if ($sepa_requires_reactivation) : ?>
-                                <div
-                                    class="account-sepa-reactivation"
-                                    data-sepa-reactivation
-                                    data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
-                                >
-                                    <p
-                                        class="account-sepa-request__status account-sepa-request__status--warning"
-                                        data-sepa-reactivation-status
-                                    >
-                                        <?php echo esc_html__('La domiciliación bancaria ha sido desactivada. Ponte en contacto con garantias@360vo.es', 'garantias-online-360vo'); ?>
-                                    </p>
-                                </div>
-                            <?php endif; ?>
-                            <div
-                                class="account-form account-form--sepa"
-                                data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
-                                data-sepa-form
-                                <?php echo $sepa_form_visible ? '' : 'hidden'; ?>
-                            >
-                                <?php foreach ($sepa_field_order as $field_key) : ?>
-                                    <?php
-                                        $field = $sepa_field_lookup[$field_key] ?? null;
-                                        $field_label = (string) ($field['label'] ?? ucfirst(str_replace('_', ' ', $field_key)));
-                                        $field_value = (string) ($field['value'] ?? '');
-                                        $field_id    = 'account-sepa-' . sanitize_title($field_key);
-                                        $field_classes = ['account-field', 'account-form__field'];
-                                        if (in_array($field_key, $sepa_full_fields, true)) {
-                                            $field_classes[] = 'account-form__field--full';
-                                        }
-                                        if (in_array($field_key, $sepa_half_fields, true)) {
-                                            $field_classes[] = 'account-form__field--half';
-                                        }
-                                        if (in_array($field_key, $sepa_quarter_fields, true)) {
-                                            $field_classes[] = 'account-form__field--quarter';
-                                        }
+                                $sepa_form_state = $sepa_requires_reactivation ? 'reactivation' : $activation_state;
+
+                                ob_start();
+                                foreach ($sepa_field_order as $field_key) {
+                                    $field = $sepa_field_lookup[$field_key] ?? null;
+                                    $field_label = (string) ($field['label'] ?? ucfirst(str_replace('_', ' ', $field_key)));
+                                    $field_value = (string) ($field['value'] ?? '');
+                                    $field_id    = 'account-sepa-' . sanitize_title($field_key);
+                                    $field_classes = ['account-field', 'account-form__field'];
+                                    if (in_array($field_key, $sepa_full_fields, true)) {
+                                        $field_classes[] = 'account-form__field--full';
+                                    }
+                                    if (in_array($field_key, $sepa_half_fields, true)) {
+                                        $field_classes[] = 'account-form__field--half';
+                                    }
+                                    if (in_array($field_key, $sepa_quarter_fields, true)) {
+                                        $field_classes[] = 'account-form__field--quarter';
+                                    }
                                     ?>
                                     <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
                                         <div class="account-input-container">
@@ -1279,13 +1260,34 @@ $formatPhoneHref = static function ($phone) {
                                             </label>
                                         </div>
                                     </div>
-                                <?php endforeach; ?>
-                            </div>
+                                    <?php
+                                }
+                                $sepa_form_fields = ob_get_clean();
+                            ?>
+
                             <?php if ($sepa_requires_reactivation) : ?>
                                 <div
+                                    class="account-sepa-reactivation"
+                                    data-sepa-reactivation
+                                    data-payment-state="reactivation"
+                                >
+                                    <p
+                                        class="account-sepa-request__status account-sepa-request__status--warning"
+                                        data-sepa-reactivation-status
+                                    >
+                                        <?php echo esc_html__('La domiciliación bancaria ha sido desactivada. Ponte en contacto con garantias@360vo.es', 'garantias-online-360vo'); ?>
+                                    </p>
+                                </div>
+                                <div
+                                    class="account-form account-form--sepa"
+                                    data-payment-state="reactivation"
+                                    data-sepa-form
+                                >
+                                    <?php echo $sepa_form_fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                </div>
+                                <div
                                     class="account-payments__actions"
-                                    data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
-                                    <?php echo $sepa_form_visible ? '' : 'hidden'; ?>
+                                    data-payment-state="reactivation"
                                 >
                                     <button
                                         type="button"
@@ -1297,20 +1299,28 @@ $formatPhoneHref = static function ($phone) {
                                 </div>
                             <?php else : ?>
                                 <div
-                                    class="account-payments__actions"
+                                    class="account-form account-form--sepa"
                                     data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
-                                    data-payment-awaiting
-                                    <?php echo $sepa_form_visible && ! $has_generated_mandate ? '' : 'hidden'; ?>
+                                    data-sepa-form
                                 >
-                                    <button
-                                        type="button"
-                                        class="account-button"
-                                        data-payment-generate
-                                        <?php disabled($has_generated_mandate); ?>
-                                    >
-                                        <?php esc_html_e('Generar SEPA', 'garantias-online-360vo'); ?>
-                                    </button>
+                                    <?php echo $sepa_form_fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                                 </div>
+                                <?php if (! $has_generated_mandate) : ?>
+                                    <div
+                                        class="account-payments__actions"
+                                        data-payment-state="<?php echo esc_attr($sepa_form_state); ?>"
+                                        data-payment-awaiting
+                                    >
+                                        <button
+                                            type="button"
+                                            class="account-button"
+                                            data-payment-generate
+                                            <?php disabled($has_generated_mandate); ?>
+                                        >
+                                            <?php esc_html_e('Generar SEPA', 'garantias-online-360vo'); ?>
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
                             <?php endif; ?>
                         <?php endif; ?>
                     </div>

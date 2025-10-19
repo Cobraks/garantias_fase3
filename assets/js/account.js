@@ -903,7 +903,9 @@
                                     ? data.payments.selected_method
                                     : 'transferencia';
                                 let nextState = 'disabled';
-                                if (sepaIsActive) {
+                                if (sepaIsDisabled) {
+                                    nextState = 'reactivation';
+                                } else if (sepaIsActive) {
                                     nextState = 'locked';
                                 } else if (sepaData.requested || needsActivation) {
                                     nextState = 'requested';
@@ -932,13 +934,13 @@
                             }
 
                             if (reactivationContainer) {
-                                const shouldShowReactivation = Boolean(needsActivation || sepaIsDisabled);
+                                const shouldShowReactivation = sepaIsDisabled;
                                 reactivationContainer.hidden = !shouldShowReactivation;
                                 reactivationContainer.setAttribute('aria-hidden', shouldShowReactivation ? 'false' : 'true');
                             }
 
                             if (reactivationStatus) {
-                                const shouldShowStatus = Boolean(needsActivation || sepaIsDisabled);
+                                const shouldShowStatus = sepaIsDisabled;
                                 reactivationStatus.hidden = !shouldShowStatus;
                                 reactivationStatus.setAttribute('aria-hidden', shouldShowStatus ? 'false' : 'true');
                                 if (shouldShowStatus) {
