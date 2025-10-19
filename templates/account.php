@@ -639,9 +639,6 @@ $formatPhoneHref = static function ($phone) {
             } else {
                 $activation_state = $selected_payment_method === 'domiciliacion' ? 'enabled' : 'disabled';
             }
-            $sepa_show_success       = $sepa_is_active;
-            $sepa_show_pending       = ($sepa_requested || $sepa_needs_activation) && ! $sepa_show_success;
-            $sepa_show_disabled      = ($sepa_status_code === SepaMandateService::STATUS_DISABLED);
             $sepa_field_lookup       = [];
             $sepa_disabled_message   = trim((string) ($sepa_info['disabled_message'] ?? ''));
             $sepa_disabled_default_message = __('La domiciliación bancaria ha sido deshabilitada. Por favor, ponte en contacto con tu comercial o con garantias@360vo.es para completar la información.', 'garantias-online-360vo');
@@ -916,35 +913,7 @@ $formatPhoneHref = static function ($phone) {
                         <p class="account-card__status">
                             Método de pago actual: <strong><?php echo esc_html($current_method_label); ?></strong>
                         </p>
-                        <p
-                            class="account-card__status account-card__status--sepa account-card__status--sepa-success"
-                            data-sepa-success
-                            <?php echo $sepa_show_success ? '' : 'hidden aria-hidden="true"'; ?>
-                        >
-                            <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
-                            <span><?php echo esc_html__('Domiciliación bancaria activada.', 'garantias-online-360vo'); ?></span>
-                        </p>
-                        <?php if ($sepa_show_disabled) : ?>
-                            <p
-                                class="account-card__status account-card__status--sepa account-card__status--sepa-error"
-                                data-sepa-disabled
-                            >
-                                <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
-                                <span><?php echo esc_html__('Domiciliación bancaria deshabilitada.', 'garantias-online-360vo'); ?></span>
-                            </p>
-                        <?php endif; ?>
-                        <p
-                            class="account-card__status account-card__status--sepa<?php echo $sepa_awaiting_validation ? ' account-card__status--sepa-success' : ''; ?>"
-                            data-sepa-status
-                            data-sepa-requested="<?php echo $sepa_requested ? 'true' : 'false'; ?>"
-                            data-sepa-awaiting="<?php echo $sepa_awaiting_validation ? 'true' : 'false'; ?>"
-                            data-sepa-needs-activation="<?php echo $sepa_needs_activation ? 'true' : 'false'; ?>"
-                            <?php echo $sepa_show_pending ? '' : 'hidden aria-hidden="true"'; ?>
-                        >
-                            <span class="account-card__status-icon" aria-hidden="true"><?php echo Svg::icon('info', 'account-card__status-svg'); ?></span>
-                            <span>Estado domiciliación bancaria: <strong data-sepa-status-label><?php echo esc_html($sepa_status_label); ?></strong></span>
-                        </p>
-                        <?php if (! $sepa_show_success && ! $sepa_requested && ! $sepa_needs_activation) : ?>
+                        <?php if (! $sepa_is_active && ! $sepa_requested && ! $sepa_needs_activation) : ?>
                             <label
                                 class="account-toggle"
                                 data-sepa-toggle
@@ -955,7 +924,7 @@ $formatPhoneHref = static function ($phone) {
                                     data-payment-toggle
                                     value="1"
                                     <?php checked($activation_state !== 'disabled'); ?>
-                                    <?php disabled($sepa_locked || $sepa_show_success); ?>
+                                    <?php disabled($sepa_locked || $sepa_is_active); ?>
                                 >
                                 <span class="account-toggle__label">Activar domiciliación bancaria</span>
                             </label>
@@ -1006,23 +975,35 @@ $formatPhoneHref = static function ($phone) {
                                 <?php echo Svg::icon('close', 'account-help__close-icon'); ?>
                             </button>
                         </div>
-                        <div
-                            class="account-sepa-disabled"
-                            data-sepa-disabled-container
-                            data-default-message="<?php echo esc_attr($sepa_disabled_default_message); ?>"
-                            <?php echo $sepa_status_code === SepaMandateService::STATUS_DISABLED ? '' : 'hidden aria-hidden="true"'; ?>
-                        >
-                            <p class="account-sepa-disabled__message" data-sepa-disabled-text>
-                                <?php echo esc_html($sepa_disabled_default_message); ?>
-                            </p>
-                            <p
-                                class="account-sepa-disabled__reason"
-                                data-sepa-disabled-reason
-                                <?php echo $sepa_disabled_message === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                        <?php if ($sepa_status_code === SepaMandateService::STATUS_DISABLED) : ?>
+                            <div
+                                class="account-sepa-disabled"
+                                data-sepa-disabled-container
+                                data-default-message="<?php echo esc_attr($sepa_disabled_default_message); ?>"
                             >
-                                <?php echo esc_html($sepa_disabled_message); ?>
-                            </p>
-                        </div>
+                                <p class="account-sepa-disabled__message" data-sepa-disabled-text>
+                                    <?php echo esc_html($sepa_disabled_default_message); ?>
+                                </p>
+                                <p
+                                    class="account-sepa-disabled__reason"
+                                    data-sepa-disabled-reason
+                                    <?php echo $sepa_disabled_message === '' ? 'hidden aria-hidden="true"' : ''; ?>
+                                >
+                                    <?php echo esc_html($sepa_disabled_message); ?>
+                                </p>
+                            </div>
+                        <?php else : ?>
+                            <div
+                                class="account-sepa-disabled"
+                                data-sepa-disabled-container
+                                data-default-message="<?php echo esc_attr($sepa_disabled_default_message); ?>"
+                                hidden
+                                aria-hidden="true"
+                            >
+                                <p class="account-sepa-disabled__message" data-sepa-disabled-text></p>
+                                <p class="account-sepa-disabled__reason" data-sepa-disabled-reason hidden aria-hidden="true"></p>
+                            </div>
+                        <?php endif; ?>
                         <p
                             class="account-card__intro"
                             data-payment-state="disabled"

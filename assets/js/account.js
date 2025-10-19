@@ -792,7 +792,6 @@
                             const needsActivation = Boolean(sepaData.needs_activation);
                             const sepaIsActive = Boolean(sepaData.status);
                             const sepaIsActivated = Boolean(sepaData.activated);
-                            const shouldShowSuccess = sepaIsActive && sepaIsActivated;
                             if (sepaController && typeof sepaController.setLocked === 'function') {
                                 sepaController.setLocked(awaitingValidation || needsActivation);
                             }
@@ -811,15 +810,6 @@
                             sepaIbanController.setValue(ibanValue);
                             const activationCard = document.querySelector('[data-payment-activation]');
                             const detailCard = document.querySelector('[data-payment-detail]');
-                            const sepaStatusRow = activationCard
-                                ? activationCard.querySelector('[data-sepa-status]')
-                                : null;
-                            const sepaSuccessRow = activationCard
-                                ? activationCard.querySelector('[data-sepa-success]')
-                                : null;
-                            const sepaDisabledRow = activationCard
-                                ? activationCard.querySelector('[data-sepa-disabled]')
-                                : null;
                             const toggleWrapper = activationCard
                                 ? activationCard.querySelector('[data-sepa-toggle]')
                                 : null;
@@ -838,41 +828,33 @@
                                 ? disabledContainer.getAttribute('data-default-message') || ''
                                 : '';
 
-                            if (sepaSuccessRow) {
-                                sepaSuccessRow.hidden = !shouldShowSuccess;
-                                sepaSuccessRow.setAttribute('aria-hidden', shouldShowSuccess ? 'false' : 'true');
+                            if (disabledContainer) {
+                                if (sepaIsDisabled) {
+                                    disabledContainer.hidden = false;
+                                    disabledContainer.setAttribute('aria-hidden', 'false');
+                                } else {
+                                    disabledContainer.hidden = true;
+                                    disabledContainer.setAttribute('aria-hidden', 'true');
+                                }
                             }
 
-                            if (sepaDisabledRow) {
-                                sepaDisabledRow.hidden = !sepaIsDisabled;
-                                sepaDisabledRow.setAttribute('aria-hidden', sepaIsDisabled ? 'false' : 'true');
+                            if (disabledMessage) {
+                                const messageText = defaultDisabledText || '';
+                                disabledMessage.textContent = messageText;
                             }
 
-                            if (sepaStatusRow) {
-                                const isRequested = (Boolean(sepaData.requested) || needsActivation) && !sepaIsDisabled;
-                                sepaStatusRow.hidden = !isRequested;
-                                sepaStatusRow.setAttribute('aria-hidden', isRequested ? 'false' : 'true');
-                                sepaStatusRow.setAttribute('data-sepa-requested', sepaData.requested ? 'true' : 'false');
-                                sepaStatusRow.setAttribute('data-sepa-awaiting', awaitingValidation ? 'true' : 'false');
-                                sepaStatusRow.setAttribute('data-sepa-needs-activation', needsActivation ? 'true' : 'false');
-                                sepaStatusRow.classList.toggle('account-card__status--sepa-success', awaitingValidation);
-
-                                const statusLabel = sepaStatusRow.querySelector('[data-sepa-status-label]');
-                                if (statusLabel) {
-                                    let statusText = '';
-                                    if (sepaData && typeof sepaData.status_label === 'string') {
-                                        statusText = sepaData.status_label.trim();
-                                    }
-                                    if (statusText === '') {
-                                        if (awaitingValidation) {
-                                            statusText = sepaText.awaitingValidation || 'Pendiente de validación';
-                                        } else if (needsActivation) {
-                                            statusText = sepaText.awaitingActivation || 'Pendiente de domiciliación';
-                                        } else {
-                                            statusText = sepaText.awaitingSignature || 'Pendiente de firma';
-                                        }
-                                    }
-                                    statusLabel.textContent = statusText;
+                            if (disabledReason) {
+                                const reasonText = typeof sepaData.disabled_message === 'string'
+                                    ? sepaData.disabled_message.trim()
+                                    : '';
+                                if (sepaIsDisabled && reasonText !== '') {
+                                    disabledReason.hidden = false;
+                                    disabledReason.setAttribute('aria-hidden', 'false');
+                                    disabledReason.textContent = reasonText;
+                                } else {
+                                    disabledReason.hidden = true;
+                                    disabledReason.setAttribute('aria-hidden', 'true');
+                                    disabledReason.textContent = '';
                                 }
                             }
 
