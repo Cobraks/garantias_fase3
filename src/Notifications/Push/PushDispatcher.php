@@ -45,4 +45,28 @@ class PushDispatcher
             }
         }
     }
+
+    /**
+     * @return array<int>
+     */
+    public function get_admin_user_ids_with_subscriptions(): array
+    {
+        $records = $this->subscriptions->get_admin_subscriptions();
+        if (empty($records)) {
+            return [];
+        }
+
+        $user_ids = array_map(
+            static function ($record) {
+                return isset($record['user_id']) ? (int) $record['user_id'] : 0;
+            },
+            $records
+        );
+
+        $filtered = array_filter($user_ids, static function ($id) {
+            return $id > 0;
+        });
+
+        return array_values(array_unique($filtered));
+    }
 }

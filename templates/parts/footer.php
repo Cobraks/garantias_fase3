@@ -498,14 +498,15 @@ if (! empty($is_add_guarantee)) {
     <?php
     $push_config = null;
     if (current_user_can('manage_options')) {
-        $push_config = [
-            'publicKey'             => apply_filters('go360/push/public_key', ''),
-            'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
-            'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
-            'testEndpoint'          => esc_url_raw(rest_url('go/v1/push-notifications/test')),
-            'testIcon'              => esc_url_raw(plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__)),
-            'serviceWorker'         => esc_url_raw(plugins_url('assets/js/push-sw.js', GARANTIAS360VO__FILE__)),
-        ];
+            $push_config = [
+                'publicKey'             => apply_filters('go360/push/public_key', ''),
+                'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
+                'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
+                'testEndpoint'          => esc_url_raw(rest_url('go/v1/push-notifications/test')),
+                'testAllEndpoint'       => esc_url_raw(rest_url('go/v1/push-notifications/test-all')),
+                'testIcon'              => esc_url_raw(plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__)),
+                'serviceWorker'         => esc_url_raw(plugins_url('assets/js/push-sw.js', GARANTIAS360VO__FILE__)),
+            ];
     }
 
     $account_config = [

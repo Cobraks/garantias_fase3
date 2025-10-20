@@ -1909,6 +1909,13 @@ $formatPhoneHref = static function ($phone) {
                                 >
                                     Probar notificación
                                 </button>
+                                <button
+                                    type="button"
+                                    class="account-button account-button--ghost"
+                                    data-notifications-test-all
+                                >
+                                    Test a todos
+                                </button>
                             </div>
                             <p class="account-status account-status--info" data-notifications-status>
                                 Revisa los permisos disponibles en tu navegador.

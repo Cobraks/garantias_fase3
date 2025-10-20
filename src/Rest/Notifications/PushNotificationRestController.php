@@ -67,6 +67,16 @@ class PushNotificationRestController
 
         register_rest_route(
             self::NAMESPACE,
+            self::REST_BASE . '/test-all',
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'send_test_all'],
+                'permission_callback' => [$this, 'check_permissions'],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
             self::REST_BASE . '/(?P<id>\d+)',
             [
                 'methods'             => 'POST',
@@ -135,11 +145,7 @@ class PushNotificationRestController
             return new WP_Error('notifications_disabled', __('Activa las notificaciones en tu perfil antes de enviar una prueba.', 'garantias-online-360vo'), ['status' => 403]);
         }
 
-        $payload = [
-            'title' => __('Notificación de prueba', 'garantias-online-360vo'),
-            'body'  => __('Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.', 'garantias-online-360vo'),
-            'icon'  => esc_url(plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__)),
-        ];
+        $payload = $this->build_test_payload();
 
         $notification_id = $this->repository->create($user_id, $payload);
         if (! $notification_id) {
@@ -153,6 +159,50 @@ class PushNotificationRestController
             'success' => true,
             'meta'    => [
                 'unread' => $this->repository->count_unread($user_id),
+            ],
+        ]);
+    }
+
+    public function send_test_all(WP_REST_Request $request)
+    {
+        $current_user_id = get_current_user_id();
+        if ($current_user_id <= 0) {
+            return new WP_Error('not_logged_in', __('Debes iniciar sesión para enviar la notificación de prueba.', 'garantias-online-360vo'), ['status' => 401]);
+        }
+
+        $targets = $this->dispatcher->get_admin_user_ids_with_subscriptions();
+        if (empty($targets)) {
+            return new WP_Error('no_recipients', __('No hay administradores con notificaciones activadas.', 'garantias-online-360vo'), ['status' => 404]);
+        }
+
+        $payload = $this->build_test_payload();
+        $sent = 0;
+
+        foreach ($targets as $user_id) {
+            if (! $this->user_has_opt_in($user_id)) {
+                continue;
+            }
+
+            $notification_id = $this->repository->create($user_id, $payload);
+            if (! $notification_id) {
+                continue;
+            }
+
+            $payload_with_id         = $payload;
+            $payload_with_id['id']    = $notification_id;
+            $this->dispatcher->dispatch($user_id, $payload_with_id);
+            $sent++;
+        }
+
+        if ($sent === 0) {
+            return new WP_Error('no_recipients', __('No hay administradores con notificaciones activadas.', 'garantias-online-360vo'), ['status' => 404]);
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'meta'    => [
+                'recipients' => $sent,
+                'unread'     => $this->repository->count_unread($current_user_id),
             ],
         ]);
     }
@@ -215,5 +265,17 @@ class PushNotificationRestController
         }
 
         return ! empty($group['activar_notificaciones_del_sistema']);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function build_test_payload(): array
+    {
+        return [
+            'title' => __('Notificación de prueba', 'garantias-online-360vo'),
+            'body'  => __('Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.', 'garantias-online-360vo'),
+            'icon'  => esc_url(plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__)),
+        ];
     }
 }

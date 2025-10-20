@@ -43,12 +43,32 @@
         }
     };
 
-    const getRegistration = async (serviceWorkerUrl) => {
-        const existing = await navigator.serviceWorker.getRegistration();
-        if (existing) {
-            return existing;
-        }
+    const getRegistration = async (serviceWorkerUrl, createIfMissing = false) => {
         const resolvedUrl = resolveServiceWorkerUrl(serviceWorkerUrl);
+        try {
+            const scoped = await navigator.serviceWorker.getRegistration(resolvedUrl);
+            if (scoped) {
+                return scoped;
+            }
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.warn('GO360 push scope lookup error', error);
+        }
+
+        try {
+            const active = await navigator.serviceWorker.getRegistration();
+            if (active) {
+                return active;
+            }
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.warn('GO360 push registration lookup error', error);
+        }
+
+        if (!createIfMissing) {
+            return null;
+        }
+
         return navigator.serviceWorker.register(resolvedUrl);
     };
 
@@ -65,6 +85,7 @@
         const accountConfig = window.go360Account || {};
         const pushConfig = accountConfig.push || {};
         const restConfig = accountConfig.rest || {};
+        const broadcastButton = card.querySelector('[data-notifications-test-all]');
 
         const setStatus = (message, tone) => {
             if (!status) {
@@ -113,12 +134,29 @@
         const publicKey = pushConfig.publicKey;
         const subscriptionEndpoint = pushConfig.subscriptionEndpoint;
         const testEndpoint = pushConfig.testEndpoint || '';
+        const testAllEndpoint = pushConfig.testAllEndpoint || '';
         const testIcon = pushConfig.testIcon || '';
         const serviceWorkerUrl = pushConfig.serviceWorker;
         const restNonce = restConfig.nonce || '';
 
         let isActive = false;
         let isProcessing = false;
+
+        const syncTestButtons = () => {
+            [testButton, broadcastButton].forEach((testControl) => {
+                if (!testControl) {
+                    return;
+                }
+                const isBroadcast = testControl === broadcastButton;
+                const isSingle = testControl === testButton;
+                const missingEndpoint = (isBroadcast && !testAllEndpoint) || (isSingle && !testEndpoint);
+                const shouldDisable = !isActive || isProcessing || missingEndpoint;
+                testControl.disabled = shouldDisable;
+                if (!shouldDisable) {
+                    testControl.removeAttribute('disabled');
+                }
+            });
+        };
 
         const updateControls = (active) => {
             isActive = active;
@@ -134,13 +172,7 @@
                 button.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
             }
 
-            if (testButton) {
-                const shouldDisableTest = !active || isProcessing;
-                testButton.disabled = shouldDisableTest;
-                if (!shouldDisableTest) {
-                    testButton.removeAttribute('disabled');
-                }
-            }
+            syncTestButtons();
         };
 
         const setProcessing = (processing) => {
@@ -149,24 +181,16 @@
             if (!processing) {
                 button.removeAttribute('disabled');
             }
-            if (testButton) {
-                const shouldDisableTest = processing || !isActive;
-                testButton.disabled = shouldDisableTest;
-                if (!shouldDisableTest) {
-                    testButton.removeAttribute('disabled');
-                }
-            }
+            syncTestButtons();
         };
 
         button.disabled = false;
         button.removeAttribute('disabled');
-        if (testButton) {
-            testButton.disabled = true;
-        }
+        syncTestButtons();
 
         const refreshUI = async () => {
             try {
-                const registration = await navigator.serviceWorker.getRegistration();
+                const registration = await getRegistration(serviceWorkerUrl, false);
                 if (!registration) {
                     updateControls(false);
                     return;
@@ -236,7 +260,7 @@
                     return;
                 }
 
-                const registration = await getRegistration(serviceWorkerUrl);
+                const registration = await getRegistration(serviceWorkerUrl, true);
                 const existing = await registration.pushManager.getSubscription();
                 if (existing) {
                     await sendSubscription(existing);
@@ -266,7 +290,7 @@
             try {
                 setProcessing(true);
                 setStatus('Desactivando notificaciones…', 'info');
-                const registration = await navigator.serviceWorker.getRegistration();
+                const registration = await getRegistration(serviceWorkerUrl, false);
                 if (!registration) {
                     setStatus('No hay notificaciones activas en este dispositivo.', 'warning');
                     updateControls(false);
@@ -315,7 +339,7 @@
                 }
                 setStatus('Hemos enviado una notificación de prueba. Revisa tu navegador y la campana del panel.', 'success');
                 try {
-                    const registration = await getRegistration(serviceWorkerUrl);
+                    const registration = await getRegistration(serviceWorkerUrl, true);
                     if (registration && typeof registration.showNotification === 'function') {
                         registration.showNotification('Notificación de prueba', {
                             body: 'Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.',
@@ -345,7 +369,46 @@
                 // eslint-disable-next-line no-console
                 console.error('GO360 push error', error);
             } finally {
-                testButton.disabled = !isActive;
+                syncTestButtons();
+            }
+        };
+
+        const sendBroadcastTest = async () => {
+            if (!broadcastButton || !testAllEndpoint) {
+                return;
+            }
+
+            try {
+                setStatus('Enviando notificación de prueba a todos los dispositivos…', 'info');
+                broadcastButton.disabled = true;
+                const response = await fetch(testAllEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': restNonce,
+                    },
+                    body: JSON.stringify({}),
+                });
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+                setStatus('Hemos enviado la notificación de prueba global. Revisa todos tus dispositivos y la campana del panel.', 'success');
+                if (window.dispatchEvent) {
+                    let refreshEvent;
+                    try {
+                        refreshEvent = new CustomEvent('go360:notifications:refresh');
+                    } catch (eventError) {
+                        refreshEvent = document.createEvent('Event');
+                        refreshEvent.initEvent('go360:notifications:refresh', true, true);
+                    }
+                    window.dispatchEvent(refreshEvent);
+                }
+            } catch (error) {
+                setStatus('No se pudo enviar la notificación global de prueba. Comprueba la consola.', 'error');
+                // eslint-disable-next-line no-console
+                console.error('GO360 push error', error);
+            } finally {
+                syncTestButtons();
             }
         };
 
@@ -360,6 +423,12 @@
         if (testButton) {
             testButton.addEventListener('click', () => {
                 sendTestNotification();
+            });
+        }
+
+        if (broadcastButton) {
+            broadcastButton.addEventListener('click', () => {
+                sendBroadcastTest();
             });
         }
 
