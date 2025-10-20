@@ -501,6 +501,12 @@ if (! empty($is_add_guarantee)) {
             'endpoint' => esc_url_raw(rest_url('go/v1/account')),
             'nonce'    => wp_create_nonce('wp_rest'),
         ],
+        'push'     => [
+            'publicKey'             => apply_filters('go360/push/public_key', ''),
+            'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
+            'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
+            'serviceWorker'         => esc_url_raw(plugins_url('assets/js/push-sw.js', GARANTIAS360VO__FILE__)),
+        ],
         'strings'  => [
             'saving'  => __('Guardando cambios…', 'garantias-online-360vo'),
             'success' => __('Cambios guardados correctamente.', 'garantias-online-360vo'),
@@ -524,6 +530,25 @@ if (! empty($is_add_guarantee)) {
     <script src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"></script>
     <script
         src="<?php echo esc_url(plugins_url('assets/js/account.min.js', GARANTIAS360VO__FILE__)); ?>"
+        defer></script>
+    <script
+        src="<?php echo esc_url(plugins_url('assets/js/push-subscription.min.js', GARANTIAS360VO__FILE__)); ?>"
+        defer></script>
+<?php endif; ?>
+
+<?php if (is_user_logged_in() && current_user_can('manage_options')) : ?>
+    <script>
+        window.go360Notifications = {
+            endpoints: {
+                list: <?php echo wp_json_encode(esc_url_raw(rest_url('go/v1/push-notifications'))); ?>,
+                markAll: <?php echo wp_json_encode(esc_url_raw(rest_url('go/v1/push-notifications'))); ?>,
+            },
+            nonce: <?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>,
+            perPage: 6,
+        };
+    </script>
+    <script
+        src="<?php echo esc_url(plugins_url('assets/js/admin-notifications.min.js', GARANTIAS360VO__FILE__)); ?>"
         defer></script>
 <?php endif; ?>
 
