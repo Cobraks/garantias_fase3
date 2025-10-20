@@ -708,7 +708,14 @@ $formatPhoneHref = static function ($phone) {
             if ($signed_document_available && ! empty($signed_document['filename'])) {
                 $sepa_upload_label = (string) $signed_document['filename'];
             }
-            $has_generated_mandate = $pending_document_available || $signed_document_available || ($sepa_info['status'] !== null);
+            $generated_status_codes = [
+                SepaMandateService::STATUS_PENDING_SIGNATURE,
+                SepaMandateService::STATUS_PENDING_VALIDATION,
+                SepaMandateService::STATUS_SIGNED,
+            ];
+            $has_generated_mandate = $pending_document_available
+                || $signed_document_available
+                || in_array($sepa_status_code, $generated_status_codes, true);
 
         ?>
         <?php if ((! $is_commercial_account || $is_admin_account) && ! $is_individual_account && ! $is_director_account) : ?>
