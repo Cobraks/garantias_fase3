@@ -1324,7 +1324,7 @@
             const isDisabled = statusCodeRaw === 'deshabilitado';
             let awaitingValidation = Boolean(sepa.awaiting_validation);
             let needsActivation = Boolean(sepa.needs_activation);
-            const isActive = Boolean(sepa.status);
+            const isActive = Boolean(sepa.activated);
 
             if (isDisabled) {
                 awaitingValidation = false;
@@ -1413,7 +1413,7 @@
                 activateType = 'deactivate';
                 activateLabel = deactivateLabel !== ''
                     ? deactivateLabel
-                    : 'Inhabilitar domiciliación bancaria';
+                    : 'Deshabilitar domiciliación bancaria';
                 actionHelp = typeof strings.manageSepaDeactivateHelp === 'string'
                     ? strings.manageSepaDeactivateHelp.trim()
                     : '';
@@ -1842,12 +1842,12 @@
                     sepaConfirmDialog.open({
                         actor,
                         subtitleHtml,
-                        title: strings.manageSepaDeactivateConfirmTitle || strings.manageSepaConfirmTitle || 'Confirmar SEPA',
-                        confirmLabel: strings.manageSepaDeactivateConfirmAccept || 'Inhabilitar domiciliación bancaria',
-                        loadingLabel: strings.manageSepaDeactivateConfirmLoading || 'Inhabilitando…',
+                        title: strings.manageSepaDeactivateConfirmTitle || strings.manageSepaConfirmTitle || 'Deshabilitar SEPA',
+                        confirmLabel: strings.manageSepaDeactivateConfirmAccept || 'Deshabilitar domiciliación bancaria',
+                        loadingLabel: strings.manageSepaDeactivateConfirmLoading || 'Deshabilitando…',
                         note: strings.manageSepaDeactivateConfirmNote || '',
                         checkboxLabel: strings.manageSepaDeactivateConfirmCheckbox || strings.manageSepaConfirmCheckbox,
-                        message: strings.manageSepaDeactivateConfirmMessage || 'Confirmo que %s desea inhabilitar la domiciliación bancaria.',
+                        message: strings.manageSepaDeactivateConfirmMessage || 'Confirmo que vamos a deshabilitar la domiciliación bancaria a %s.',
                         reasonRequired: true,
                         reasonLabel: strings.manageSepaDeactivateReasonLabel || strings.manageSepaDeactivateConfirmTitle || 'Notas',
                         reasonPlaceholder: strings.manageSepaDeactivateReasonPlaceholder || 'Añade una nota…',
@@ -1863,7 +1863,7 @@
                             } catch (error) {
                                 const message = error && typeof error.message === 'string' && error.message.trim() !== ''
                                     ? error.message.trim()
-                                    : (strings.manageSepaDeactivateConfirmError || 'No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.');
+                                    : (strings.manageSepaDeactivateConfirmError || 'No se ha podido deshabilitar la domiciliación bancaria. Inténtalo de nuevo.');
                                 setLoading(false);
                                 setError(message);
                             }
@@ -1931,7 +1931,7 @@
         async function deactivateSepaForItem(item, options = {}) {
             const userId = Number(item && item.id);
             if (!Number.isFinite(userId) || userId <= 0) {
-                throw new Error(strings.manageSepaDeactivateConfirmError || 'No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.');
+                throw new Error(strings.manageSepaDeactivateConfirmError || 'No se ha podido deshabilitar la domiciliación bancaria. Inténtalo de nuevo.');
             }
 
             const reasonValue = typeof options.reason === 'string' ? options.reason.trim() : '';
@@ -1959,7 +1959,7 @@
             if (!response.ok) {
                 const message = payload && typeof payload.message === 'string' && payload.message.trim() !== ''
                     ? payload.message.trim()
-                    : (strings.manageSepaDeactivateConfirmError || 'No se ha podido inhabilitar la domiciliación bancaria. Inténtalo de nuevo.');
+                    : (strings.manageSepaDeactivateConfirmError || 'No se ha podido deshabilitar la domiciliación bancaria. Inténtalo de nuevo.');
                 throw new Error(message);
             }
 
