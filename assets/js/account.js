@@ -2033,7 +2033,13 @@
                 }
 
                 if (typeof field.setCustomValidity === 'function') {
-                    field.setCustomValidity(valid ? '' : message);
+                    if (valid) {
+                        field.setCustomValidity('');
+                    } else if (report) {
+                        field.setCustomValidity(message);
+                    } else {
+                        field.setCustomValidity('');
+                    }
                 }
 
                 if (valid) {

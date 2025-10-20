@@ -386,6 +386,7 @@ class AccountViewModel
             'phone'          => '',
             'email'          => '',
             'address'        => '',
+            'country'        => '',
         ];
 
         $group = [];
@@ -930,6 +931,10 @@ class AccountViewModel
             if (self::sanitize_optional_text($fields[$key]['value'] ?? '') === '') {
                 $fields[$key]['value'] = $value;
             }
+        }
+
+        if (self::sanitize_optional_text($fields['pais_deudor']['value'] ?? '') === '') {
+            $fields['pais_deudor']['value'] = 'España';
         }
 
         return $fields;
