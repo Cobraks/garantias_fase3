@@ -65,6 +65,11 @@ const CHANNEL_TEXTS = {
         },
 };
 
+const PAYMENT_LABELS = {
+        transferencia: "Transferencia bancaria",
+        domiciliacion: "Domiciliación bancaria",
+};
+
 let baseUserRole = "";
 let currentChannelSlug = "";
 
@@ -141,10 +146,19 @@ async function fetchEstadoSepa(targetUserId = null) {
                 });
                 if (!res.ok) throw new Error("Error al obtener estado SEPA");
                 const json = await res.json();
-                return !!json.estado_sepa;
+                if (!json || typeof json !== "object") {
+                        return null;
+                }
+                return {
+                        estado: json.estado_sepa || "",
+                        status: json.status || null,
+                        activar: Boolean(json.activar),
+                        solicitado: Boolean(json.solicitado),
+                        metodo: json.metodo || null,
+                };
         } catch (e) {
                 console.warn("[form-user-select] fallo al obtener estado SEPA:", e);
-                return false;
+                return null;
         }
 }
 
@@ -173,24 +187,49 @@ async function refreshMetodoPagoPorUsuario(targetUserId) {
         select.innerHTML = "";
 
         const canalEsParticular = canalSlug === "particular";
-        const tieneSepa = canalEsParticular ? false : await fetchEstadoSepa(targetUserId);
+        const sepaInfo = canalEsParticular ? null : await fetchEstadoSepa(targetUserId);
+        const metodoDesdeApi = sepaInfo ? sepaInfo.metodo : null;
 
-        if (tieneSepa) {
-                const optDomic = document.createElement("option");
-                optDomic.value = "domiciliacion";
-                optDomic.textContent = "Domiciliación bancaria";
-                optDomic.selected = true;
-                select.appendChild(optDomic);
-                if (mensaje) mensaje.style.display = "none";
-        } else {
+        let metodoValue = "transferencia";
+        let metodoLabel = PAYMENT_LABELS.transferencia;
+
+        if (metodoDesdeApi && typeof metodoDesdeApi === "object") {
+                const value = metodoDesdeApi.value || "";
+                const label = metodoDesdeApi.label || "";
+                if (value) {
+                        metodoValue = String(value).toLowerCase();
+                        metodoLabel = label
+                                ? label
+                                : PAYMENT_LABELS[metodoValue] || PAYMENT_LABELS.transferencia;
+                }
+        } else if (typeof metodoDesdeApi === "string") {
+                const value = metodoDesdeApi.toLowerCase();
+                metodoValue = value === "domiciliación" ? "domiciliacion" : value;
+                metodoLabel = PAYMENT_LABELS[metodoValue] || PAYMENT_LABELS.transferencia;
+        }
+
+        const selectedOption = document.createElement("option");
+        selectedOption.value = metodoValue;
+        selectedOption.textContent = metodoLabel;
+        selectedOption.selected = true;
+        select.appendChild(selectedOption);
+
+        const role = baseUserRole || normalizeRole(getUserRole());
+        const esAdmin = isAdminLike(role);
+
+        if (esAdmin && metodoValue === "domiciliacion") {
                 const optTransfer = document.createElement("option");
                 optTransfer.value = "transferencia";
                 optTransfer.textContent = "Transferencia bancaria";
-                optTransfer.selected = true;
                 select.appendChild(optTransfer);
-                if (mensaje) {
-                        mensaje.style.display = canalEsParticular ? "none" : "flex";
-                }
+        }
+
+        select.disabled = !esAdmin;
+
+        if (mensaje) {
+                const mostrarMensaje =
+                        !canalEsParticular && metodoValue === "transferencia";
+                mensaje.style.display = mostrarMensaje ? "flex" : "none";
         }
 
         const container = select.closest(".form__input-container");
