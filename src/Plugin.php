@@ -8,6 +8,7 @@ use GarantiasOnline360VO\ActivityLog\ActivitySubscribers;
 use GarantiasOnline360VO\Auth\AuthController;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
+use GarantiasOnline360VO\Notifications\Push\PushNotificationService;
 use GarantiasOnline360VO\Register\RegisterManager;
 
 if (! defined('ABSPATH')) {
@@ -82,6 +83,7 @@ class Plugin
         ProfileAvatar::init();
         SettingsPage::init();
         EmailNotificationService::init();
+        PushNotificationService::init();
         RegisterManager::init();
 
         // 5) Cargar los grupos de campos ACF (solo si ACF está activo)
@@ -105,6 +107,7 @@ class Plugin
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
         ActivityLogger::create_table();
+        \GarantiasOnline360VO\Notifications\Push\PushTables::ensure_tables();
         PrivateDocsManager::ensure_directory();
         Rewrite::mark_rules_current();
     }

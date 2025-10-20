@@ -1,0 +1,368 @@
+(function () {
+    const variants = {
+        info: 'account-status--info',
+        success: 'account-status--success',
+        warning: 'account-status--warning',
+        error: 'account-status--error',
+    };
+
+    const encodeKey = (key) => {
+        if (!key) {
+            return '';
+        }
+        const buffer = new Uint8Array(key);
+        let string = '';
+        buffer.forEach((value) => {
+            string += String.fromCharCode(value);
+        });
+        return btoa(string);
+    };
+
+    const urlBase64ToUint8Array = (base64String) => {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; i += 1) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    };
+
+    const resolveServiceWorkerUrl = (url) => {
+        try {
+            const absolute = new URL(url, window.location.href);
+            if (absolute.origin !== window.location.origin) {
+                absolute.protocol = window.location.protocol;
+                absolute.host = window.location.host;
+            }
+            return absolute.href;
+        } catch (error) {
+            return url;
+        }
+    };
+
+    const getRegistration = async (serviceWorkerUrl) => {
+        const existing = await navigator.serviceWorker.getRegistration();
+        if (existing) {
+            return existing;
+        }
+        const resolvedUrl = resolveServiceWorkerUrl(serviceWorkerUrl);
+        return navigator.serviceWorker.register(resolvedUrl);
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const card = document.querySelector('[data-notifications-card]');
+        if (!card) {
+            return;
+        }
+
+        const button = card.querySelector('[data-notifications-request]');
+        const label = button ? button.querySelector('[data-notifications-label]') : null;
+        const testButton = card.querySelector('[data-notifications-test]');
+        const status = card.querySelector('[data-notifications-status]');
+        const accountConfig = window.go360Account || {};
+        const pushConfig = accountConfig.push || {};
+        const restConfig = accountConfig.rest || {};
+
+        const setStatus = (message, tone) => {
+            if (!status) {
+                return;
+            }
+            status.textContent = message;
+            Object.keys(variants).forEach((variant) => {
+                status.classList.remove(variants[variant]);
+            });
+            if (tone && variants[tone]) {
+                status.classList.add(variants[tone]);
+            }
+        };
+
+        if (!button || !status) {
+            return;
+        }
+
+        if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+            button.disabled = true;
+            if (testButton) {
+                testButton.disabled = true;
+            }
+            setStatus('Tu navegador no soporta notificaciones push.', 'error');
+            return;
+        }
+
+        if (!window.isSecureContext) {
+            button.disabled = true;
+            if (testButton) {
+                testButton.disabled = true;
+            }
+            setStatus('Accede mediante HTTPS para activar las notificaciones.', 'error');
+            return;
+        }
+
+        if (!pushConfig.publicKey || !pushConfig.subscriptionEndpoint || !pushConfig.serviceWorker) {
+            button.disabled = true;
+            if (testButton) {
+                testButton.disabled = true;
+            }
+            setStatus('La configuración de notificaciones no está disponible.', 'error');
+            return;
+        }
+
+        const publicKey = pushConfig.publicKey;
+        const subscriptionEndpoint = pushConfig.subscriptionEndpoint;
+        const testEndpoint = pushConfig.testEndpoint || '';
+        const testIcon = pushConfig.testIcon || '';
+        const serviceWorkerUrl = pushConfig.serviceWorker;
+        const restNonce = restConfig.nonce || '';
+
+        let isActive = false;
+        let isProcessing = false;
+
+        const updateControls = (active) => {
+            isActive = active;
+
+            if (!isProcessing) {
+                button.disabled = false;
+                button.removeAttribute('disabled');
+            }
+
+            if (label) {
+                label.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
+            } else {
+                button.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
+            }
+
+            if (testButton) {
+                const shouldDisableTest = !active || isProcessing;
+                testButton.disabled = shouldDisableTest;
+                if (!shouldDisableTest) {
+                    testButton.removeAttribute('disabled');
+                }
+            }
+        };
+
+        const setProcessing = (processing) => {
+            isProcessing = processing;
+            button.disabled = processing;
+            if (!processing) {
+                button.removeAttribute('disabled');
+            }
+            if (testButton) {
+                const shouldDisableTest = processing || !isActive;
+                testButton.disabled = shouldDisableTest;
+                if (!shouldDisableTest) {
+                    testButton.removeAttribute('disabled');
+                }
+            }
+        };
+
+        button.disabled = false;
+        button.removeAttribute('disabled');
+        if (testButton) {
+            testButton.disabled = true;
+        }
+
+        const refreshUI = async () => {
+            try {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (!registration) {
+                    updateControls(false);
+                    return;
+                }
+                const subscription = await registration.pushManager.getSubscription();
+                if (subscription) {
+                    updateControls(true);
+                    setStatus('Las notificaciones del navegador están activas en este dispositivo.', 'success');
+                } else {
+                    updateControls(false);
+                    setStatus('Pulsa “Activar notificaciones” para empezar a recibir avisos.', 'info');
+                }
+            } catch (error) {
+                setStatus('No se pudo comprobar el estado de las notificaciones.', 'warning');
+            }
+        };
+
+        const sendSubscription = async (subscription) => {
+            const body = {
+                endpoint: subscription.endpoint,
+                keys: {
+                    p256dh: encodeKey(subscription.getKey('p256dh')),
+                    auth: encodeKey(subscription.getKey('auth')),
+                },
+                contentEncoding: 'aes128gcm',
+                userAgent: navigator.userAgent,
+            };
+
+            const response = await fetch(subscriptionEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': restNonce,
+                },
+                body: JSON.stringify(body),
+            });
+
+            if (!response.ok) {
+                throw new Error('Request failed');
+            }
+        };
+
+        const deleteSubscription = async (endpoint) => {
+            const url = new URL(subscriptionEndpoint, window.location.origin);
+            url.searchParams.set('endpoint', endpoint);
+            const response = await fetch(url.toString(), {
+                method: 'DELETE',
+                headers: {
+                    'X-WP-Nonce': restNonce,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Request failed');
+            }
+        };
+
+        const requestPermissionAndSubscribe = async () => {
+            try {
+                setProcessing(true);
+                setStatus('Solicitando permisos…', 'info');
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    setStatus('Debes permitir las notificaciones en el navegador.', 'warning');
+                    updateControls(false);
+                    setProcessing(false);
+                    return;
+                }
+
+                const registration = await getRegistration(serviceWorkerUrl);
+                const existing = await registration.pushManager.getSubscription();
+                if (existing) {
+                    await sendSubscription(existing);
+                    setStatus('Notificaciones activadas correctamente.', 'success');
+                    updateControls(true);
+                    setProcessing(false);
+                    return;
+                }
+
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey),
+                });
+                await sendSubscription(subscription);
+                setStatus('Notificaciones activadas correctamente.', 'success');
+                updateControls(true);
+            } catch (error) {
+                setStatus('No se pudieron activar las notificaciones. Comprueba la consola.', 'error');
+                // eslint-disable-next-line no-console
+                console.error('GO360 push error', error);
+            } finally {
+                setProcessing(false);
+            }
+        };
+
+        const unsubscribe = async () => {
+            try {
+                setProcessing(true);
+                setStatus('Desactivando notificaciones…', 'info');
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (!registration) {
+                    setStatus('No hay notificaciones activas en este dispositivo.', 'warning');
+                    updateControls(false);
+                    return;
+                }
+
+                const subscription = await registration.pushManager.getSubscription();
+                if (!subscription) {
+                    setStatus('No hay notificaciones activas en este dispositivo.', 'warning');
+                    updateControls(false);
+                    return;
+                }
+
+                const endpoint = subscription.endpoint;
+                await subscription.unsubscribe();
+                await deleteSubscription(endpoint);
+                setStatus('Notificaciones desactivadas correctamente.', 'success');
+                updateControls(false);
+            } catch (error) {
+                setStatus('No se pudieron desactivar las notificaciones. Comprueba la consola.', 'error');
+                // eslint-disable-next-line no-console
+                console.error('GO360 push error', error);
+            } finally {
+                setProcessing(false);
+            }
+        };
+
+        const sendTestNotification = async () => {
+            if (!testButton || !testEndpoint) {
+                return;
+            }
+
+            try {
+                setStatus('Enviando notificación de prueba…', 'info');
+                testButton.disabled = true;
+                const response = await fetch(testEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': restNonce,
+                    },
+                    body: JSON.stringify({}),
+                });
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+                setStatus('Hemos enviado una notificación de prueba. Revisa tu navegador y la campana del panel.', 'success');
+                try {
+                    const registration = await getRegistration(serviceWorkerUrl);
+                    if (registration && typeof registration.showNotification === 'function') {
+                        registration.showNotification('Notificación de prueba', {
+                            body: 'Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.',
+                            icon: testIcon,
+                            badge: testIcon,
+                            data: {
+                                url: window.location.href,
+                            },
+                        });
+                    }
+                } catch (notificationError) {
+                    // eslint-disable-next-line no-console
+                    console.error('GO360 push local notification error', notificationError);
+                }
+                if (window.dispatchEvent) {
+                    let refreshEvent;
+                    try {
+                        refreshEvent = new CustomEvent('go360:notifications:refresh');
+                    } catch (eventError) {
+                        refreshEvent = document.createEvent('Event');
+                        refreshEvent.initEvent('go360:notifications:refresh', true, true);
+                    }
+                    window.dispatchEvent(refreshEvent);
+                }
+            } catch (error) {
+                setStatus('No se pudo enviar la notificación de prueba. Comprueba la consola.', 'error');
+                // eslint-disable-next-line no-console
+                console.error('GO360 push error', error);
+            } finally {
+                testButton.disabled = !isActive;
+            }
+        };
+
+        button.addEventListener('click', () => {
+            if (isActive) {
+                unsubscribe();
+            } else {
+                requestPermissionAndSubscribe();
+            }
+        });
+
+        if (testButton) {
+            testButton.addEventListener('click', () => {
+                sendTestNotification();
+            });
+        }
+
+        refreshUI();
+    });
+})();
