@@ -496,16 +496,20 @@ if (! empty($is_add_guarantee)) {
 
 <?php if ($is_account_page ?? false) : ?>
     <?php
-    $account_config = [
-        'rest'     => [
-            'endpoint' => esc_url_raw(rest_url('go/v1/account')),
-            'nonce'    => wp_create_nonce('wp_rest'),
-        ],
-        'push'     => [
+    $push_config = null;
+    if (current_user_can('manage_options')) {
+        $push_config = [
             'publicKey'             => apply_filters('go360/push/public_key', ''),
             'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
             'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
             'serviceWorker'         => esc_url_raw(plugins_url('assets/js/push-sw.js', GARANTIAS360VO__FILE__)),
+        ];
+    }
+
+    $account_config = [
+        'rest'     => [
+            'endpoint' => esc_url_raw(rest_url('go/v1/account')),
+            'nonce'    => wp_create_nonce('wp_rest'),
         ],
         'strings'  => [
             'saving'  => __('Guardando cambios…', 'garantias-online-360vo'),
@@ -523,6 +527,9 @@ if (! empty($is_add_guarantee)) {
         ],
         'sepa'     => SepaMandateService::get_frontend_config(),
     ];
+    if ($push_config !== null) {
+        $account_config['push'] = $push_config;
+    }
     ?>
     <script>
         window.go360Account = <?php echo wp_json_encode($account_config); ?>;
@@ -531,9 +538,11 @@ if (! empty($is_add_guarantee)) {
     <script
         src="<?php echo esc_url(plugins_url('assets/js/account.min.js', GARANTIAS360VO__FILE__)); ?>"
         defer></script>
-    <script
-        src="<?php echo esc_url(plugins_url('assets/js/push-subscription.min.js', GARANTIAS360VO__FILE__)); ?>"
-        defer></script>
+    <?php if ($push_config !== null) : ?>
+        <script
+            src="<?php echo esc_url(plugins_url('assets/js/push-subscription.min.js', GARANTIAS360VO__FILE__)); ?>"
+            defer></script>
+    <?php endif; ?>
 <?php endif; ?>
 
 <?php if (is_user_logged_in() && current_user_can('manage_options')) : ?>

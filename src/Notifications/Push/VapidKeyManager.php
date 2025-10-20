@@ -45,16 +45,16 @@ class VapidKeyManager
         }
 
         $details = openssl_pkey_get_details($resource);
-        $private = '';
-        openssl_pkey_export($resource, $private);
+        $private_pem = '';
+        openssl_pkey_export($resource, $private_pem);
 
-        if (! isset($details['key']) || $private === '') {
+        if (! isset($details['key']) || $private_pem === '') {
             throw new \RuntimeException('Invalid VAPID key generation');
         }
 
         $public_pem = (string) $details['key'];
         $public = $this->convert_public_to_uncompressed($public_pem);
-        $private_compact = $this->convert_private_to_compact($private);
+        $private_compact = $this->extract_private_key($details, $private_pem);
 
         update_option(self::OPTION_PUBLIC_KEY, $public);
         update_option(self::OPTION_PRIVATE_KEY, $private_compact);
@@ -83,10 +83,21 @@ class VapidKeyManager
         return rtrim(strtr(base64_encode($key), '+/', '-_'), '=');
     }
 
+    /**
+     * @param array<string, mixed> $details
+     */
+    private function extract_private_key(array $details, string $pem): string
+    {
+        if (isset($details['ec']['d']) && is_string($details['ec']['d'])) {
+            return $this->base64url_encode($details['ec']['d']);
+        }
+
+        return $this->convert_private_to_compact($pem);
+    }
+
     private function convert_private_to_compact(string $pem): string
     {
-        $pem = trim($pem);
-        $pem = str_replace(["-----BEGIN EC PRIVATE KEY-----", "-----END EC PRIVATE KEY-----", "\n", "\r"], '', $pem);
+        $pem = $this->strip_pem_headers($pem);
         $binary = base64_decode($pem, true);
         if ($binary === false) {
             throw new \RuntimeException('Invalid VAPID private key');
@@ -98,6 +109,19 @@ class VapidKeyManager
         }
         $key = substr($binary, $offset + 2, 32);
 
-        return rtrim(strtr(base64_encode($key), '+/', '-_'), '=');
+        return $this->base64url_encode($key);
+    }
+
+    private function strip_pem_headers(string $pem): string
+    {
+        $pem = trim($pem);
+        $pem = preg_replace('/-----BEGIN [^-]+-----/', '', $pem) ?? $pem;
+        $pem = preg_replace('/-----END [^-]+-----/', '', $pem) ?? $pem;
+        return str_replace(["\n", "\r"], '', $pem);
+    }
+
+    private function base64url_encode(string $binary): string
+    {
+        return rtrim(strtr(base64_encode($binary), '+/', '-_'), '=');
     }
 }

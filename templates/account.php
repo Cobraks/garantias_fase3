@@ -1887,21 +1887,23 @@ $formatPhoneHref = static function ($phone) {
                     <?php endif; ?>
                 </div>
 
-                <div class="account-card account-card--notifications" data-notifications-card>
-                    <h3>Notificaciones del navegador</h3>
-                    <p class="account-card__intro">
-                        Activa las alertas del sistema para enterarte al instante de las novedades de tus garantías.
-                    </p>
-                    <div class="account-card__actions">
-                        <button type="button" class="account-button account-button--menu" data-notifications-request>
-                            <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
-                            Activar notificaciones
-                        </button>
-                        <p class="account-status account-status--info" data-notifications-status>
-                            Revisa los permisos disponibles en tu navegador.
+                <?php if (current_user_can('manage_options')) : ?>
+                    <div class="account-card account-card--notifications" data-notifications-card>
+                        <h3>Notificaciones del navegador</h3>
+                        <p class="account-card__intro">
+                            Activa las alertas del sistema para enterarte al instante de las novedades de tus garantías.
                         </p>
+                        <div class="account-card__actions">
+                            <button type="button" class="account-button account-button--menu" data-notifications-request>
+                                <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
+                                Activar notificaciones
+                            </button>
+                            <p class="account-status account-status--info" data-notifications-status>
+                                Revisa los permisos disponibles en tu navegador.
+                            </p>
+                        </div>
                     </div>
-                </div>
+                <?php endif; ?>
             </div>
         </article>
 

@@ -56,6 +56,10 @@ class PushNotificationService
 
     public function get_public_key(): string
     {
+        if (! current_user_can('manage_options')) {
+            return '';
+        }
+
         $keys = $this->vapid->get_keys();
         return $keys['public'];
     }
