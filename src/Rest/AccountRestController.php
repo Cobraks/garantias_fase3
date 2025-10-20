@@ -1005,7 +1005,7 @@ class AccountRestController
         ]);
     }
 
-    private static function build_payments_snapshot(int $user_id): array
+    public static function build_payments_snapshot(int $user_id): array
     {
         $user = get_user_by('id', $user_id);
         if (! $user instanceof WP_User) {
@@ -1023,7 +1023,7 @@ class AccountRestController
      * @param array<string, mixed>|mixed $fields
      * @return array<string, string>|WP_Error
      */
-    private static function sanitize_sepa_request($fields, string $reference, string $generated_at, string $signature_locality, string $signature_date)
+    public static function sanitize_sepa_request($fields, string $reference, string $generated_at, string $signature_locality, string $signature_date)
     {
         $data = is_array($fields) ? $fields : [];
 
@@ -1218,7 +1218,7 @@ class AccountRestController
         return trim(implode(' ', str_split($clean, 4)));
     }
 
-    private static function validate_pending_file(array $file)
+    public static function validate_pending_file(array $file)
     {
         if (! isset($file['tmp_name']) || ! is_string($file['tmp_name']) || $file['tmp_name'] === '' || ! file_exists($file['tmp_name'])) {
             return new WP_Error(
@@ -1254,7 +1254,7 @@ class AccountRestController
         return true;
     }
 
-    private static function resolve_pending_filename(string $original, string $reference): string
+    public static function resolve_pending_filename(string $original, string $reference): string
     {
         $safe = sanitize_file_name($original);
         if ($safe === '') {
@@ -1271,7 +1271,7 @@ class AccountRestController
         return $safe;
     }
 
-    private static function update_sepa_acf_snapshot(int $user_id, array $sepa, ?array $document = null): void
+    public static function update_sepa_acf_snapshot(int $user_id, array $sepa, ?array $document = null): void
     {
         if (! function_exists('update_field') || ! function_exists('get_field')) {
             return;
@@ -1322,7 +1322,7 @@ class AccountRestController
         update_field('gestion_pagos', $group, $scope);
     }
 
-    private static function persist_sepa_meta_snapshot(int $user_id, array $sepa): void
+    public static function persist_sepa_meta_snapshot(int $user_id, array $sepa): void
     {
         update_user_meta($user_id, 'gestion_pagos_gestion_sepa_nombre_deudor', $sepa['name']);
         update_user_meta($user_id, 'gestion_pagos_gestion_sepa_direccion_deudor', $sepa['address']);
@@ -1352,7 +1352,7 @@ class AccountRestController
         SepaMandateService::set_payment_method($user_id, 'transferencia');
     }
 
-    private static function notify_user_pending_mandate(int $user_id, array $document, string $binary): void
+    public static function notify_user_pending_mandate(int $user_id, array $document, string $binary): void
     {
         $user = get_user_by('id', $user_id);
         if (! $user instanceof WP_User) {
@@ -1442,7 +1442,7 @@ class AccountRestController
         }
     }
 
-    private static function get_array_param(WP_REST_Request $request, string $key): array
+    public static function get_array_param(WP_REST_Request $request, string $key): array
     {
         $value = $request->get_param($key);
         if (is_array($value)) {

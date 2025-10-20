@@ -142,6 +142,23 @@ class ClientRestController
 
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::REST_BASE . '/(?P<id>\d+)/sepa/pending',
+            [
+                [
+                    'methods'             => WP_REST_Server::EDITABLE,
+                    'callback'            => [__CLASS__, 'generate_pending_sepa'],
+                    'permission_callback' => [__CLASS__, 'permissions_check'],
+                    'args'                => [
+                        'id' => [
+                            'validate_callback' => 'absint',
+                        ],
+                    ],
+                ],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::REST_BASE . '/(?P<id>\d+)/sepa/deactivate',
             [
                 [
@@ -431,6 +448,151 @@ class ClientRestController
 
         return new WP_REST_Response(
             self::prepare_offers_response($user_id),
+            200
+        );
+    }
+
+    public static function generate_pending_sepa(WP_REST_Request $request)
+    {
+        if (! self::permissions_check()) {
+            return new WP_REST_Response(
+                ['message' => __('Acceso denegado', 'garantias-online-360vo')],
+                403
+            );
+        }
+
+        $user_id = (int) $request->get_param('id');
+        if ($user_id <= 0) {
+            return new WP_REST_Response(
+                ['message' => __('El cliente indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return new WP_REST_Response(
+                ['message' => __('El cliente indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        $sepa_fields = AccountRestController::get_array_param($request, 'sepa');
+        $reference_param = is_string($request->get_param('reference')) ? (string) $request->get_param('reference') : '';
+        $generated_at_param = is_string($request->get_param('generated_at')) ? (string) $request->get_param('generated_at') : '';
+        $signature_locality_param = is_string($request->get_param('signature_locality')) ? (string) $request->get_param('signature_locality') : '';
+        $signature_date_param = is_string($request->get_param('signature_date')) ? (string) $request->get_param('signature_date') : '';
+
+        $files = $request->get_file_params();
+        $pending_file = is_array($files) ? ($files['sepa_pending'] ?? ($files['file'] ?? null)) : null;
+        if (! is_array($pending_file) || empty($pending_file['tmp_name'])) {
+            return new WP_REST_Response(
+                ['message' => __('No se ha recibido el mandato SEPA generado.', 'garantias-online-360vo')],
+                400
+            );
+        }
+
+        $sanitized = AccountRestController::sanitize_sepa_request(
+            $sepa_fields,
+            $reference_param,
+            $generated_at_param,
+            $signature_locality_param,
+            $signature_date_param
+        );
+        if (is_wp_error($sanitized)) {
+            $status = (int) ($sanitized->get_error_data()['status'] ?? 400);
+
+            return new WP_REST_Response(
+                ['message' => $sanitized->get_error_message()],
+                $status > 0 ? $status : 400
+            );
+        }
+
+        $file_validation = AccountRestController::validate_pending_file($pending_file);
+        if (is_wp_error($file_validation)) {
+            $status = (int) ($file_validation->get_error_data()['status'] ?? 400);
+
+            return new WP_REST_Response(
+                ['message' => $file_validation->get_error_message()],
+                $status > 0 ? $status : 400
+            );
+        }
+
+        $binary = file_get_contents($pending_file['tmp_name']);
+        if (! is_string($binary) || $binary === '') {
+            return new WP_REST_Response(
+                ['message' => __('No se ha podido procesar el mandato SEPA generado.', 'garantias-online-360vo')],
+                500
+            );
+        }
+
+        $filename = AccountRestController::resolve_pending_filename($pending_file['name'] ?? '', $sanitized['reference']);
+        $context = [
+            'filename'     => $filename,
+            'reference'    => $sanitized['reference'],
+            'generated_at' => $sanitized['generated_at'],
+        ];
+
+        $stored = SepaMandateService::store_pending_mandate($user_id, $binary, $context);
+        if (is_wp_error($stored)) {
+            $status = (int) ($stored->get_error_data()['status'] ?? 500);
+
+            return new WP_REST_Response(
+                ['message' => $stored->get_error_message()],
+                $status > 0 ? $status : 500
+            );
+        }
+
+        SepaMandateService::clear_signed_mandate($user_id);
+
+        $normalized_document = SepaMandateService::normalize_document(
+            $stored,
+            $user_id,
+            SepaMandateService::TYPE_PENDING
+        );
+
+        AccountRestController::update_sepa_acf_snapshot($user_id, $sanitized, $normalized_document);
+        AccountRestController::persist_sepa_meta_snapshot($user_id, $sanitized);
+        AccountRestController::notify_user_pending_mandate($user_id, $normalized_document, $binary);
+
+        $account = AccountViewModel::from_user($user);
+        $payments = $account['payments'] ?? [];
+        $sepa_details = self::format_sepa_details($payments);
+        $payment_info = self::format_payment($payments);
+
+        $log_context = array_merge(
+            self::build_client_log_context($user),
+            [
+                'document_reference' => self::clean_text($normalized_document['reference'] ?? ''),
+                'document_name'      => self::clean_text($normalized_document['filename'] ?? ''),
+                'generated_by_admin' => true,
+            ]
+        );
+
+        $actor = wp_get_current_user();
+        $actor_id = ($actor instanceof WP_User) ? (int) $actor->ID : 0;
+        if ($actor instanceof WP_User) {
+            $log_context['actor_name']  = self::clean_text($actor->display_name);
+            $log_context['actor_email'] = sanitize_email($actor->user_email);
+        }
+
+        ActivityLogger::log(
+            'sepa.pending_generated',
+            [
+                'actor_id'    => $actor_id,
+                'target_type' => 'user',
+                'target_id'   => (int) $user->ID,
+                'context'     => $log_context,
+            ]
+        );
+
+        return new WP_REST_Response(
+            [
+                'message'  => __('Mandato SEPA generado y enviado al profesional.', 'garantias-online-360vo'),
+                'document' => $normalized_document,
+                'sepa'     => $sepa_details,
+                'payment'  => $payment_info,
+            ],
             200
         );
     }

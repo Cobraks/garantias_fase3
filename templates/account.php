@@ -1125,11 +1125,13 @@ $formatPhoneHref = static function ($phone) {
                                                 data-sepa-step-number
                                                 <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
                                             >1.</span>
-                                            <span data-sepa-step-text>
+                                            <span data-sepa-step-label>
                                                 <?php
-                                                echo $sepa_awaiting_validation
-                                                    ? esc_html__('Tu SEPA firmado', 'garantias-online-360vo')
-                                                    : esc_html__('Descarga el documento', 'garantias-online-360vo');
+                                                if ($sepa_awaiting_validation) {
+                                                    echo esc_html__('Tu SEPA firmado', 'garantias-online-360vo');
+                                                } else {
+                                                    echo esc_html__('Descarga el documento', 'garantias-online-360vo') . '.';
+                                                }
                                                 ?>
                                             </span>
                                         </p>

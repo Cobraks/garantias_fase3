@@ -443,6 +443,10 @@ class AccountViewModel
             }
         }
 
+        if ($defaults['country'] === '') {
+            $defaults['country'] = 'España';
+        }
+
         return $defaults;
     }
 
@@ -543,6 +547,10 @@ class AccountViewModel
                             }
                         }
                     }
+                }
+
+                if ($debtor_fields['pais_deudor']['value'] === '') {
+                    $debtor_fields['pais_deudor']['value'] = 'España';
                 }
 
                 if (! empty($sepa_group['estado_documentos'])) {

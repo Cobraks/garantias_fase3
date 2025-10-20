@@ -150,7 +150,7 @@
             awaitingMessage: strings.sepaAwaitingMessage || 'Tu SEPA firmado está pendiente de validación.',
             awaitingActivation: strings.sepaAwaitingActivation || 'Pendiente de domiciliación',
             signedDocument: strings.sepaSignedDocument || 'Tu SEPA firmado',
-            downloadPrompt: strings.sepaDownloadPrompt || 'Descarga el documento',
+            downloadPrompt: strings.sepaDownloadPrompt || 'Descarga el documento.',
         };
         const sepaSignedFallbackName = strings.sepaSignedFilename || 'Mandato SEPA firmado';
         const sepaPendingLink = document.querySelector('[data-sepa-pending-link]');
@@ -821,7 +821,7 @@
                 const downloadStep = document.querySelector('[data-sepa-step-download]');
                 if (downloadStep) {
                     const downloadStepNumber = downloadStep.querySelector('[data-sepa-step-number]');
-                    const downloadStepText = downloadStep.querySelector('[data-sepa-step-text]');
+                    const downloadStepLabel = downloadStep.querySelector('[data-sepa-step-label]');
                     if (awaitingValidation) {
                         const shouldShowStep = hasSignedDocument;
                         downloadStep.hidden = !shouldShowStep;
@@ -830,10 +830,14 @@
                             downloadStepNumber.hidden = true;
                             downloadStepNumber.setAttribute('aria-hidden', 'true');
                         }
-                        if (downloadStepText) {
-                            downloadStepText.textContent = sepaText.signedDocument;
+                        const textValue = sepaText.signedDocument || 'Tu SEPA firmado';
+                        if (downloadStepLabel) {
+                            downloadStepLabel.textContent = textValue;
                         } else {
-                            downloadStep.textContent = sepaText.signedDocument;
+                            const label = document.createElement('span');
+                            label.setAttribute('data-sepa-step-label', '');
+                            label.textContent = textValue;
+                            downloadStep.appendChild(label);
                         }
                     } else {
                         const hideDownload = (!requestedFlag) && !hasPendingDocument;
@@ -843,10 +847,14 @@
                             downloadStepNumber.hidden = false;
                             downloadStepNumber.setAttribute('aria-hidden', 'false');
                         }
-                        if (downloadStepText) {
-                            downloadStepText.textContent = sepaText.downloadPrompt;
+                        const textValue = sepaText.downloadPrompt || 'Descarga el documento';
+                        if (downloadStepLabel) {
+                            downloadStepLabel.textContent = textValue;
                         } else {
-                            downloadStep.textContent = `1. ${sepaText.downloadPrompt}`;
+                            const label = document.createElement('span');
+                            label.setAttribute('data-sepa-step-label', '');
+                            label.textContent = textValue;
+                            downloadStep.appendChild(label);
                         }
                     }
                 }
@@ -2028,6 +2036,12 @@
                     field.setCustomValidity(valid ? '' : message);
                 }
 
+                if (valid) {
+                    field.removeAttribute('aria-invalid');
+                } else {
+                    field.setAttribute('aria-invalid', 'true');
+                }
+
                 if (report && !valid && typeof field.reportValidity === 'function') {
                     field.reportValidity();
                 }
@@ -2036,6 +2050,14 @@
             };
 
             const validateForm = (report = false) => fields.every((field) => validateField(field, report));
+
+            const defaultCountryField = fields.find((field) => field.dataset.sepaField === 'pais_deudor');
+            if (defaultCountryField && defaultCountryField.value.trim() === '') {
+                const defaultCountry = sepaCreditor && typeof sepaCreditor.country === 'string'
+                    ? sepaCreditor.country.trim()
+                    : '';
+                defaultCountryField.value = defaultCountry !== '' ? defaultCountry : 'España';
+            }
 
             const updateButtonState = () => {
                 const state = getActivationState();
@@ -2050,7 +2072,7 @@
                     updateButtonState();
                 });
                 field.addEventListener('blur', () => {
-                    validateField(field, true);
+                    validateField(field, false);
                     updateButtonState();
                 });
             });
@@ -2073,6 +2095,11 @@
                 if (!restEndpoint || !restNonce) {
                     const fallback = strings.error || strings.invalid || 'No se han podido guardar los cambios.';
                     setStatus(fallback, 'error');
+                    updateButtonState();
+                    return;
+                }
+
+                if (!validateForm(true)) {
                     updateButtonState();
                     return;
                 }
@@ -2117,6 +2144,7 @@
                     }
 
                     applyPaymentsSnapshot(payload.payments);
+                    updateButtonState();
                     setStatus(
                         strings.sepaGenerateSuccess
                             || 'Mandato SEPA generado correctamente. Descárgalo para firmarlo.',
