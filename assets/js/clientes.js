@@ -1324,20 +1324,6 @@
             const isDisabled = statusCodeRaw === 'deshabilitado';
             let awaitingValidation = Boolean(sepa.awaiting_validation);
             let needsActivation = Boolean(sepa.needs_activation);
-            let isActive = Boolean(sepa.activated);
-            const activationState = typeof sepa.activation_state === 'string'
-                ? sepa.activation_state.trim().toLowerCase()
-                : '';
-            if (!isActive && activationState === 'activada') {
-                isActive = true;
-            }
-            const paymentMethod = typeof item?.payment?.method === 'string'
-                ? item.payment.method.trim().toLowerCase()
-                : '';
-            if (!isActive && paymentMethod === 'domiciliacion') {
-                isActive = true;
-            }
-
             if (isDisabled) {
                 awaitingValidation = false;
                 needsActivation = true;
@@ -1407,38 +1393,43 @@
 
             sections.push(`<div class="client-sepa-dialog__cards">${cards.join('')}</div>`);
 
-            const activateLabelBase = typeof strings.manageSepaActivate === 'string'
-                ? strings.manageSepaActivate.trim()
-                : '';
-            let activateType = 'activate';
-            let activateLabel = activateLabelBase !== ''
-                ? activateLabelBase
-                : 'Habilitar domiciliación bancaria';
+            const statusCode = statusCodeRaw;
+            const canActivate = statusCode === 'pendiente_validacion' || statusCode === 'deshabilitado';
+            const canDeactivate = statusCode === 'firmado';
 
             let action = null;
             let actionHelp = '';
+            let activateAction = null;
 
-            if (isActive) {
+            if (canDeactivate) {
                 const deactivateLabel = typeof strings.manageSepaDeactivate === 'string'
                     ? strings.manageSepaDeactivate.trim()
                     : '';
-                activateType = 'deactivate';
-                activateLabel = deactivateLabel !== ''
+                const label = deactivateLabel !== ''
                     ? deactivateLabel
                     : 'Deshabilitar domiciliación bancaria';
+                activateAction = {
+                    type: 'deactivate',
+                    label,
+                };
                 actionHelp = typeof strings.manageSepaDeactivateHelp === 'string'
                     ? strings.manageSepaDeactivateHelp.trim()
                     : '';
-            } else if (awaitingValidation || needsActivation) {
+            } else if (canActivate) {
+                const activateLabelBase = typeof strings.manageSepaActivate === 'string'
+                    ? strings.manageSepaActivate.trim()
+                    : '';
+                const label = activateLabelBase !== ''
+                    ? activateLabelBase
+                    : 'Habilitar domiciliación bancaria';
+                activateAction = {
+                    type: 'activate',
+                    label,
+                };
                 actionHelp = typeof strings.manageSepaActivateHelp === 'string'
                     ? strings.manageSepaActivateHelp.trim()
                     : '';
             }
-
-            const activateAction = {
-                type: activateType,
-                label: activateLabel,
-            };
 
             return {
                 html: `<div class="client-sepa-dialog">${sections.join('')}</div>`,
