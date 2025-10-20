@@ -26,7 +26,15 @@ class VapidKeyManager
             ];
         }
 
-        return $this->generate_keys();
+        $generated = $this->safely_generate_keys();
+        if ($generated !== null) {
+            return $generated;
+        }
+
+        return [
+            'public'  => '',
+            'private' => '',
+        ];
     }
 
     /**
@@ -63,6 +71,22 @@ class VapidKeyManager
             'public'  => $public,
             'private' => $private_compact,
         ];
+    }
+
+    /**
+     * Attempt to generate keys and log any errors without bubbling exceptions up the stack.
+     *
+     * @return array{public: string, private: string}|null
+     */
+    private function safely_generate_keys(): ?array
+    {
+        try {
+            return $this->generate_keys();
+        } catch (\Throwable $exception) {
+            error_log('[go360] VAPID generation failed: ' . $exception->getMessage());
+        }
+
+        return null;
     }
 
     private function convert_public_to_uncompressed(string $pem): string

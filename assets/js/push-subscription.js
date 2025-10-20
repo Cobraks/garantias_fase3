@@ -73,6 +73,12 @@
             return;
         }
 
+        if (!window.isSecureContext) {
+            button.disabled = true;
+            setStatus('Accede mediante HTTPS para activar las notificaciones.', 'error');
+            return;
+        }
+
         if (!pushConfig.publicKey || !pushConfig.subscriptionEndpoint || !pushConfig.serviceWorker) {
             button.disabled = true;
             setStatus('La configuración de notificaciones no está disponible.', 'error');
