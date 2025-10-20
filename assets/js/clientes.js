@@ -1322,12 +1322,15 @@
                 ? sepa.status_code.trim().toLowerCase()
                 : '';
             const isDisabled = statusCodeRaw === 'deshabilitado';
-            let awaitingValidation = Boolean(sepa.awaiting_validation);
-            let needsActivation = Boolean(sepa.needs_activation);
-            if (!awaitingValidation && statusCodeRaw === 'pendiente_validacion') {
+            const activatedFlag = sepa.activated === true
+                || sepa.activated === '1'
+                || sepa.activated === 1;
+            const isActive = Boolean(sepa.status) || activatedFlag;
+            let awaitingValidation = !isActive && Boolean(sepa.awaiting_validation);
+            let needsActivation = !isActive && Boolean(sepa.needs_activation);
+            if (!awaitingValidation && !isActive && statusCodeRaw === 'pendiente_validacion') {
                 awaitingValidation = true;
             }
-            const isActive = Boolean(sepa.status);
 
             if (isActive) {
                 awaitingValidation = false;
