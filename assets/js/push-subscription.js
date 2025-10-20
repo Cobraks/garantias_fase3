@@ -432,6 +432,9 @@
                 console.error('GO360 push error', error);
             } finally {
                 syncTestButtons();
+                if (testButton && !testButton.disabled && isActive && testEndpoint) {
+                    testButton.removeAttribute('disabled');
+                }
             }
         };
 
@@ -472,6 +475,9 @@
                 console.error('GO360 push error', error);
             } finally {
                 syncTestButtons();
+                if (broadcastButton && !broadcastButton.disabled && isActive && testAllEndpoint) {
+                    broadcastButton.removeAttribute('disabled');
+                }
             }
         };
 

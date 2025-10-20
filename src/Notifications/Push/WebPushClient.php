@@ -160,14 +160,9 @@ class WebPushClient
             throw new \RuntimeException('Unable to load subscriber key.');
         }
 
-        $shared_secret = '';
-        $derived = openssl_pkey_derive($subscriber_resource, $local_key, 32, $shared_secret);
-        if ($derived === false || $shared_secret === '') {
+        $shared_secret = openssl_pkey_derive($subscriber_resource, $local_key, 32);
+        if (! is_string($shared_secret) || $shared_secret === '') {
             throw new \RuntimeException('Unable to derive shared secret.');
-        }
-
-        if (strlen($shared_secret) < 32) {
-            $shared_secret = str_pad($shared_secret, 32, "\0", STR_PAD_LEFT);
         }
 
         $ikm = $this->derive_ikm($auth_secret, $shared_secret, $subscriber_key, $local_public_binary);
