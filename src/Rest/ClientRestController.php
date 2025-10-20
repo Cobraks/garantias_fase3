@@ -1639,6 +1639,21 @@ class ClientRestController
 
         $requested = ! empty($sepa['requested']);
         $activated = ! empty($sepa['activated']);
+        $activation_state = isset($sepa['activation_state'])
+            ? sanitize_key((string) $sepa['activation_state'])
+            : '';
+
+        if (! $activated && $activation_state === SepaMandateService::ACTIVATION_ENABLED) {
+            $activated = true;
+        }
+
+        $payment_method = '';
+        if (! empty($payments['selected_method'])) {
+            $payment_method = sanitize_key((string) $payments['selected_method']);
+        }
+        if (! $activated && $payment_method === 'domiciliacion') {
+            $activated = true;
+        }
         $disabled_message = self::clean_text($sepa['disabled_message'] ?? '');
 
         $documents = [
@@ -1670,6 +1685,7 @@ class ClientRestController
             'status_code'      => $status_code,
             'requested'        => $requested,
             'activated'        => $activated,
+            'activation_state' => $activation_state,
             'documents'        => $documents,
             'disabled_message' => $disabled_message,
         ];

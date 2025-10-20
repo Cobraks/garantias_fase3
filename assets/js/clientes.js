@@ -1324,7 +1324,19 @@
             const isDisabled = statusCodeRaw === 'deshabilitado';
             let awaitingValidation = Boolean(sepa.awaiting_validation);
             let needsActivation = Boolean(sepa.needs_activation);
-            const isActive = Boolean(sepa.activated);
+            let isActive = Boolean(sepa.activated);
+            const activationState = typeof sepa.activation_state === 'string'
+                ? sepa.activation_state.trim().toLowerCase()
+                : '';
+            if (!isActive && activationState === 'activada') {
+                isActive = true;
+            }
+            const paymentMethod = typeof item?.payment?.method === 'string'
+                ? item.payment.method.trim().toLowerCase()
+                : '';
+            if (!isActive && paymentMethod === 'domiciliacion') {
+                isActive = true;
+            }
 
             if (isDisabled) {
                 awaitingValidation = false;

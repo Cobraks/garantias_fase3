@@ -410,16 +410,18 @@
                     if (field.acroField && typeof field.acroField.setDefaultAppearance === 'function') {
                         field.acroField.setDefaultAppearance(`0 0 0 rg /${resolvedFontName} 9 Tf`);
                     }
-                    if (
-                        field.acroField
-                        && field.acroField.dict
-                        && PDFLib?.PDFName
-                        && typeof field.acroField.dict.delete === 'function'
-                    ) {
+                    if (typeof field.updateAppearances === 'function') {
                         try {
-                            field.acroField.dict.delete(PDFLib.PDFName.of('AP'));
+                            if (PDFLib?.rgb) {
+                                field.updateAppearances(activeFont, {
+                                    textColor: PDFLib.rgb(0, 0, 0),
+                                    fontSize: 9,
+                                });
+                            } else {
+                                field.updateAppearances(activeFont);
+                            }
                         } catch (appearanceError) {
-                            console.warn('[account] Unable to clear existing field appearance', appearanceError);
+                            console.warn('[account] Unable to refresh field appearance', appearanceError);
                         }
                     }
                     if (!editableFields.has(name) && typeof field.enableReadOnly === 'function') {
