@@ -92,6 +92,8 @@ class WebPushClient
             'Content-Type'      => 'application/octet-stream',
             'Content-Length'    => (string) strlen($encrypted['body']),
             'Authorization'     => $authorization,
+            'Encryption'        => 'salt=' . $this->base64url_encode($encrypted['salt']),
+            'Crypto-Key'        => 'dh=' . $this->base64url_encode($encrypted['public_key']) . ';p256ecdsa=' . $keys['public'],
         ];
 
         $response = wp_remote_request($endpoint, [
@@ -130,7 +132,7 @@ class WebPushClient
     }
 
     /**
-     * @return array{body: string}
+     * @return array{body: string, salt: string, public_key: string}
      */
     private function encrypt_payload(string $payload, string $user_public_key, string $user_auth_token): array
     {
@@ -193,8 +195,17 @@ class WebPushClient
             . $ciphertext
             . $tag;
 
+        if (is_resource($subscriber_resource)) {
+            openssl_free_key($subscriber_resource);
+        }
+        if (is_resource($local_key)) {
+            openssl_free_key($local_key);
+        }
+
         return [
-            'body' => $body,
+            'body'        => $body,
+            'salt'        => $salt,
+            'public_key'  => $local_public_binary,
         ];
     }
 
