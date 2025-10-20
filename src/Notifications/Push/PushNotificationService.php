@@ -60,7 +60,13 @@ class PushNotificationService
             return '';
         }
 
-        $keys = $this->vapid->get_keys();
+        try {
+            $keys = $this->vapid->get_keys();
+        } catch (\RuntimeException $exception) {
+            error_log('[go360] Unable to load VAPID keys: ' . $exception->getMessage());
+            return '';
+        }
+
         return $keys['public'];
     }
 

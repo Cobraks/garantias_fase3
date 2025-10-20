@@ -39,7 +39,7 @@ class VapidKeyManager
             'curve_name'       => 'prime256v1',
         ];
 
-        $resource = openssl_pkey_new($config);
+        $resource = $this->create_key_resource($config);
         if (! $resource) {
             throw new \RuntimeException('Unable to generate VAPID keys');
         }
@@ -123,5 +123,91 @@ class VapidKeyManager
     private function base64url_encode(string $binary): string
     {
         return rtrim(strtr(base64_encode($binary), '+/', '-_'), '=');
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     * @return resource|false
+     */
+    private function create_key_resource(array $config)
+    {
+        $resource = openssl_pkey_new($config);
+        if ($resource !== false) {
+            return $resource;
+        }
+
+        $config_path = $this->locate_openssl_config();
+        if ($config_path !== null) {
+            $config['config'] = $config_path;
+            $resource = openssl_pkey_new($config);
+            if ($resource !== false) {
+                return $resource;
+            }
+        }
+
+        return false;
+    }
+
+    private function locate_openssl_config(): ?string
+    {
+        $env = getenv('OPENSSL_CONF');
+        if (is_string($env) && $env !== '') {
+            $path = $this->normalise_config_path($env);
+            if ($path !== null) {
+                return $path;
+            }
+        }
+
+        if (function_exists('openssl_get_cert_locations')) {
+            $locations = openssl_get_cert_locations();
+            foreach (['default_conf_filename', 'default_cert_file', 'ini_cafile', 'ini_capath'] as $key) {
+                if (! isset($locations[$key])) {
+                    continue;
+                }
+
+                $candidate = $this->normalise_config_path($locations[$key]);
+                if ($candidate !== null) {
+                    return $candidate;
+                }
+            }
+        }
+
+        $candidates = [
+            ini_get('openssl.cnf'),
+            '/etc/ssl/openssl.cnf',
+            '/etc/pki/tls/openssl.cnf',
+            '/usr/lib/ssl/openssl.cnf',
+            '/usr/local/ssl/openssl.cnf',
+            dirname((string) PHP_BINARY) . '/openssl.cnf',
+        ];
+
+        foreach ($candidates as $candidate) {
+            $path = $this->normalise_config_path($candidate);
+            if ($path !== null) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalise_config_path($path): ?string
+    {
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        if (is_file($path) && is_readable($path)) {
+            return $path;
+        }
+
+        if (is_dir($path)) {
+            $candidate = rtrim($path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'openssl.cnf';
+            if (is_file($candidate) && is_readable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 }
