@@ -1889,7 +1889,10 @@ $formatPhoneHref = static function ($phone) {
 
                 <?php if (current_user_can('manage_options')) : ?>
                     <div class="account-card account-card--notifications" data-notifications-card>
-                        <h3>Notificaciones del navegador</h3>
+                        <h3 class="account-card__title">
+                            Notificaciones del navegador
+                            <span class="account-card__badge account-card__badge--beta">beta</span>
+                        </h3>
                         <p class="account-card__intro">
                             Activa las alertas del sistema para enterarte al instante de las novedades de tus garantías.
                         </p>
@@ -1903,7 +1906,6 @@ $formatPhoneHref = static function ($phone) {
                                     type="button"
                                     class="account-button account-button--ghost"
                                     data-notifications-test
-                                    disabled
                                 >
                                     Probar notificación
                                 </button>

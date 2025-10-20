@@ -1456,6 +1456,32 @@ display: block;
   gap: 0.75rem;
 }
 
+.account-card__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.account-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.account-card__badge--beta {
+  background: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 6px 12px -6px rgba(239, 68, 68, 0.45);
+}
+
 @media (min-width: 640px) {
   .account-card__actions {
     align-items: flex-start;

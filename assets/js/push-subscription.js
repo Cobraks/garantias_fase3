@@ -99,29 +99,56 @@
         const publicKey = pushConfig.publicKey;
         const subscriptionEndpoint = pushConfig.subscriptionEndpoint;
         const testEndpoint = pushConfig.testEndpoint || '';
+        const testIcon = pushConfig.testIcon || '';
         const serviceWorkerUrl = pushConfig.serviceWorker;
         const restNonce = restConfig.nonce || '';
 
         let isActive = false;
+        let isProcessing = false;
 
         const updateControls = (active) => {
             isActive = active;
+
+            if (!isProcessing) {
+                button.disabled = false;
+                button.removeAttribute('disabled');
+            }
+
             if (label) {
                 label.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
             } else {
                 button.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
             }
+
             if (testButton) {
-                testButton.disabled = !active;
+                const shouldDisableTest = !active || isProcessing;
+                testButton.disabled = shouldDisableTest;
+                if (!shouldDisableTest) {
+                    testButton.removeAttribute('disabled');
+                }
             }
         };
 
         const setProcessing = (processing) => {
+            isProcessing = processing;
             button.disabled = processing;
+            if (!processing) {
+                button.removeAttribute('disabled');
+            }
             if (testButton) {
-                testButton.disabled = processing || !isActive;
+                const shouldDisableTest = processing || !isActive;
+                testButton.disabled = shouldDisableTest;
+                if (!shouldDisableTest) {
+                    testButton.removeAttribute('disabled');
+                }
             }
         };
+
+        button.disabled = false;
+        button.removeAttribute('disabled');
+        if (testButton) {
+            testButton.disabled = true;
+        }
 
         const refreshUI = async () => {
             try {
@@ -133,7 +160,7 @@
                 const subscription = await registration.pushManager.getSubscription();
                 if (subscription) {
                     updateControls(true);
-                    setStatus('Recibirás avisos cuando haya novedades.', 'success');
+                    setStatus('Las notificaciones del navegador están activas en este dispositivo.', 'success');
                 } else {
                     updateControls(false);
                     setStatus('Pulsa “Activar notificaciones” para empezar a recibir avisos.', 'info');
@@ -272,7 +299,23 @@
                 if (!response.ok) {
                     throw new Error('Request failed');
                 }
-                setStatus('Hemos enviado una notificación de prueba. Revisa la campana del panel.', 'success');
+                setStatus('Hemos enviado una notificación de prueba. Revisa tu navegador y la campana del panel.', 'success');
+                try {
+                    const registration = await getRegistration(serviceWorkerUrl);
+                    if (registration && typeof registration.showNotification === 'function') {
+                        registration.showNotification('Notificación de prueba', {
+                            body: 'Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.',
+                            icon: testIcon,
+                            badge: testIcon,
+                            data: {
+                                url: window.location.href,
+                            },
+                        });
+                    }
+                } catch (notificationError) {
+                    // eslint-disable-next-line no-console
+                    console.error('GO360 push local notification error', notificationError);
+                }
                 if (window.dispatchEvent) {
                     let refreshEvent;
                     try {
