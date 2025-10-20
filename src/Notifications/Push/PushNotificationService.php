@@ -11,9 +11,6 @@ if (! defined('ABSPATH')) {
 
 class PushNotificationService
 {
-    /** @var PushSubscriptionRepository */
-    private $subscriptions;
-
     /** @var PushNotificationRepository */
     private $notifications;
 
@@ -23,27 +20,30 @@ class PushNotificationService
     /** @var VapidKeyManager */
     private $vapid;
 
+    /** @var PushDispatcher */
+    private $dispatcher;
+
     public static function init(): void
     {
         $service = new self(
-            new PushSubscriptionRepository(),
             new PushNotificationRepository(),
             new PushMessageFactory(),
-            new VapidKeyManager()
+            new VapidKeyManager(),
+            new PushDispatcher()
         );
         $service->register_hooks();
     }
 
     public function __construct(
-        PushSubscriptionRepository $subscriptions,
         PushNotificationRepository $notifications,
         PushMessageFactory $message_factory,
-        VapidKeyManager $vapid
+        VapidKeyManager $vapid,
+        PushDispatcher $dispatcher
     ) {
-        $this->subscriptions = $subscriptions;
         $this->notifications = $notifications;
         $this->message_factory = $message_factory;
         $this->vapid = $vapid;
+        $this->dispatcher = $dispatcher;
     }
 
     private function register_hooks(): void
@@ -102,7 +102,7 @@ class PushNotificationService
             $notification_id = $this->notifications->create($admin_id, $payload);
 
             if ($notification_id) {
-                $this->dispatch_push($admin_id, $payload);
+                $this->dispatcher->dispatch($admin_id, $payload);
             }
         }
     }
@@ -160,34 +160,4 @@ class PushNotificationService
         ], true);
     }
 
-    /**
-     * @param int                  $user_id
-     * @param array<string, mixed> $payload
-     */
-    private function dispatch_push(int $user_id, array $payload): void
-    {
-        $subscriptions = $this->subscriptions->get_user_subscriptions($user_id);
-        if (empty($subscriptions)) {
-            return;
-        }
-
-        foreach ($subscriptions as $subscription) {
-            $success = $this->send_web_push($subscription, $payload);
-            if ($success) {
-                $this->subscriptions->mark_success($subscription['endpoint']);
-            } else {
-                $this->subscriptions->mark_failure($subscription['endpoint']);
-            }
-        }
-    }
-
-    /**
-     * @param array<string, mixed> $subscription
-     * @param array<string, mixed> $payload
-     */
-    private function send_web_push(array $subscription, array $payload): bool
-    {
-        $client = new WebPushClient();
-        return $client->send($subscription, $payload);
-    }
 }

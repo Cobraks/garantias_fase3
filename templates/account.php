@@ -1894,10 +1894,20 @@ $formatPhoneHref = static function ($phone) {
                             Activa las alertas del sistema para enterarte al instante de las novedades de tus garantías.
                         </p>
                         <div class="account-card__actions">
-                            <button type="button" class="account-button account-button--menu" data-notifications-request>
-                                <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
-                                Activar notificaciones
-                            </button>
+                            <div class="account-card__buttons">
+                                <button type="button" class="account-button account-button--menu" data-notifications-request>
+                                    <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
+                                    <span data-notifications-label>Activar notificaciones</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="account-button account-button--ghost"
+                                    data-notifications-test
+                                    disabled
+                                >
+                                    Probar notificación
+                                </button>
+                            </div>
                             <p class="account-status account-status--info" data-notifications-status>
                                 Revisa los permisos disponibles en tu navegador.
                             </p>

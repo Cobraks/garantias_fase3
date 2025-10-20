@@ -502,6 +502,7 @@ if (! empty($is_add_guarantee)) {
             'publicKey'             => apply_filters('go360/push/public_key', ''),
             'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
             'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
+            'testEndpoint'          => esc_url_raw(rest_url('go/v1/push-notifications/test')),
             'serviceWorker'         => esc_url_raw(plugins_url('assets/js/push-sw.js', GARANTIAS360VO__FILE__)),
         ];
     }

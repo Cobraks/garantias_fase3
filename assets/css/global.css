@@ -1443,6 +1443,23 @@ display: block;
       
         
     }
+.account-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.account-card__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .account-card__actions {
+    align-items: flex-start;
+  }
 }
 
 @media (min-width: 1600px) {

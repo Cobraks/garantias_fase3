@@ -361,6 +361,10 @@
             markNotification(id);
         });
 
+        window.addEventListener('go360:notifications:refresh', () => {
+            fetchNotifications();
+        });
+
         fetchNotifications();
     });
 })();

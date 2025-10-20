@@ -45,6 +45,8 @@
         }
 
         const button = card.querySelector('[data-notifications-request]');
+        const label = button ? button.querySelector('[data-notifications-label]') : null;
+        const testButton = card.querySelector('[data-notifications-test]');
         const status = card.querySelector('[data-notifications-status]');
         const accountConfig = window.go360Account || {};
         const pushConfig = accountConfig.push || {};
@@ -69,41 +71,72 @@
 
         if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
             button.disabled = true;
+            if (testButton) {
+                testButton.disabled = true;
+            }
             setStatus('Tu navegador no soporta notificaciones push.', 'error');
             return;
         }
 
         if (!window.isSecureContext) {
             button.disabled = true;
+            if (testButton) {
+                testButton.disabled = true;
+            }
             setStatus('Accede mediante HTTPS para activar las notificaciones.', 'error');
             return;
         }
 
         if (!pushConfig.publicKey || !pushConfig.subscriptionEndpoint || !pushConfig.serviceWorker) {
             button.disabled = true;
+            if (testButton) {
+                testButton.disabled = true;
+            }
             setStatus('La configuración de notificaciones no está disponible.', 'error');
             return;
         }
 
         const publicKey = pushConfig.publicKey;
         const subscriptionEndpoint = pushConfig.subscriptionEndpoint;
+        const testEndpoint = pushConfig.testEndpoint || '';
         const serviceWorkerUrl = pushConfig.serviceWorker;
         const restNonce = restConfig.nonce || '';
+
+        let isActive = false;
+
+        const updateControls = (active) => {
+            isActive = active;
+            if (label) {
+                label.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
+            } else {
+                button.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
+            }
+            if (testButton) {
+                testButton.disabled = !active;
+            }
+        };
+
+        const setProcessing = (processing) => {
+            button.disabled = processing;
+            if (testButton) {
+                testButton.disabled = processing || !isActive;
+            }
+        };
 
         const refreshUI = async () => {
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
                 if (!registration) {
-                    button.textContent = 'Activar notificaciones';
+                    updateControls(false);
                     return;
                 }
                 const subscription = await registration.pushManager.getSubscription();
                 if (subscription) {
-                    button.textContent = 'Notificaciones activas';
-                    button.disabled = false;
+                    updateControls(true);
                     setStatus('Recibirás avisos cuando haya novedades.', 'success');
                 } else {
-                    button.textContent = 'Activar notificaciones';
+                    updateControls(false);
+                    setStatus('Pulsa “Activar notificaciones” para empezar a recibir avisos.', 'info');
                 }
             } catch (error) {
                 setStatus('No se pudo comprobar el estado de las notificaciones.', 'warning');
@@ -135,12 +168,30 @@
             }
         };
 
+        const deleteSubscription = async (endpoint) => {
+            const url = new URL(subscriptionEndpoint, window.location.origin);
+            url.searchParams.set('endpoint', endpoint);
+            const response = await fetch(url.toString(), {
+                method: 'DELETE',
+                headers: {
+                    'X-WP-Nonce': restNonce,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Request failed');
+            }
+        };
+
         const requestPermissionAndSubscribe = async () => {
             try {
+                setProcessing(true);
                 setStatus('Solicitando permisos…', 'info');
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
                     setStatus('Debes permitir las notificaciones en el navegador.', 'warning');
+                    updateControls(false);
+                    setProcessing(false);
                     return;
                 }
 
@@ -149,7 +200,8 @@
                 if (existing) {
                     await sendSubscription(existing);
                     setStatus('Notificaciones activadas correctamente.', 'success');
-                    button.textContent = 'Notificaciones activas';
+                    updateControls(true);
+                    setProcessing(false);
                     return;
                 }
 
@@ -159,17 +211,100 @@
                 });
                 await sendSubscription(subscription);
                 setStatus('Notificaciones activadas correctamente.', 'success');
-                button.textContent = 'Notificaciones activas';
+                updateControls(true);
             } catch (error) {
                 setStatus('No se pudieron activar las notificaciones. Comprueba la consola.', 'error');
                 // eslint-disable-next-line no-console
                 console.error('GO360 push error', error);
+            } finally {
+                setProcessing(false);
+            }
+        };
+
+        const unsubscribe = async () => {
+            try {
+                setProcessing(true);
+                setStatus('Desactivando notificaciones…', 'info');
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (!registration) {
+                    setStatus('No hay notificaciones activas en este dispositivo.', 'warning');
+                    updateControls(false);
+                    return;
+                }
+
+                const subscription = await registration.pushManager.getSubscription();
+                if (!subscription) {
+                    setStatus('No hay notificaciones activas en este dispositivo.', 'warning');
+                    updateControls(false);
+                    return;
+                }
+
+                const endpoint = subscription.endpoint;
+                await subscription.unsubscribe();
+                await deleteSubscription(endpoint);
+                setStatus('Notificaciones desactivadas correctamente.', 'success');
+                updateControls(false);
+            } catch (error) {
+                setStatus('No se pudieron desactivar las notificaciones. Comprueba la consola.', 'error');
+                // eslint-disable-next-line no-console
+                console.error('GO360 push error', error);
+            } finally {
+                setProcessing(false);
+            }
+        };
+
+        const sendTestNotification = async () => {
+            if (!testButton || !testEndpoint) {
+                return;
+            }
+
+            try {
+                setStatus('Enviando notificación de prueba…', 'info');
+                testButton.disabled = true;
+                const response = await fetch(testEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': restNonce,
+                    },
+                    body: JSON.stringify({}),
+                });
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+                setStatus('Hemos enviado una notificación de prueba. Revisa la campana del panel.', 'success');
+                if (window.dispatchEvent) {
+                    let refreshEvent;
+                    try {
+                        refreshEvent = new CustomEvent('go360:notifications:refresh');
+                    } catch (eventError) {
+                        refreshEvent = document.createEvent('Event');
+                        refreshEvent.initEvent('go360:notifications:refresh', true, true);
+                    }
+                    window.dispatchEvent(refreshEvent);
+                }
+            } catch (error) {
+                setStatus('No se pudo enviar la notificación de prueba. Comprueba la consola.', 'error');
+                // eslint-disable-next-line no-console
+                console.error('GO360 push error', error);
+            } finally {
+                testButton.disabled = !isActive;
             }
         };
 
         button.addEventListener('click', () => {
-            requestPermissionAndSubscribe();
+            if (isActive) {
+                unsubscribe();
+            } else {
+                requestPermissionAndSubscribe();
+            }
         });
+
+        if (testButton) {
+            testButton.addEventListener('click', () => {
+                sendTestNotification();
+            });
+        }
 
         refreshUI();
     });
