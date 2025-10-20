@@ -120,6 +120,50 @@
             signatureDate: '',
         };
 
+        async function parseJsonResponse(response, defaultValue = {}) {
+            const text = await response.text();
+
+            if (typeof text !== 'string') {
+                return defaultValue;
+            }
+
+            const trimmed = text.trim();
+            if (trimmed === '') {
+                return defaultValue;
+            }
+
+            const tryParse = (value) => {
+                try {
+                    return JSON.parse(value);
+                } catch (error) {
+                    return null;
+                }
+            };
+
+            let parsed = tryParse(trimmed);
+            if (parsed !== null) {
+                return parsed;
+            }
+
+            const braceIndex = trimmed.indexOf('{');
+            const bracketIndex = trimmed.indexOf('[');
+            const indexes = [braceIndex, bracketIndex]
+                .filter((index) => index >= 0)
+                .sort((a, b) => a - b);
+
+            for (let i = 0; i < indexes.length; i += 1) {
+                const candidate = trimmed.slice(indexes[i]);
+                parsed = tryParse(candidate);
+                if (parsed !== null) {
+                    return parsed;
+                }
+            }
+
+            const error = new SyntaxError('Invalid JSON response');
+            error.responseText = trimmed.slice(0, 200);
+            throw error;
+        }
+
         function uniqueId(prefix) {
             dialogIdCounter += 1;
             return `${prefix}-${dialogIdCounter}`;
@@ -189,7 +233,7 @@
                     if (!response.ok) {
                         throw new Error(`Request failed: ${response.status}`);
                     }
-                    return response.json();
+                    return parseJsonResponse(response, {});
                 })
                 .then((data) => {
                     const items = Array.isArray(data.items) ? data.items : [];
@@ -2312,7 +2356,7 @@
 
                     let payload = {};
                     try {
-                        payload = await response.json();
+                        payload = await parseJsonResponse(response, {});
                     } catch (error) {
                         payload = {};
                     }
@@ -2463,7 +2507,7 @@
 
             let payload = {};
             try {
-                payload = await response.json();
+                payload = await parseJsonResponse(response, {});
             } catch (error) {
                 payload = {};
             }
@@ -2521,7 +2565,7 @@
 
             let payload = {};
             try {
-                payload = await response.json();
+                payload = await parseJsonResponse(response, {});
             } catch (error) {
                 payload = {};
             }
@@ -3223,7 +3267,7 @@
                         throw new Error(`Request failed: ${response.status}`);
                     }
 
-                    const data = await response.json();
+                    const data = await parseJsonResponse(response, {});
                     const updatedCommercials = Array.isArray(data.commercials) ? data.commercials : [];
 
                     const previousIds = new Set(originalIds);
@@ -4317,7 +4361,7 @@
                     if (!response.ok) {
                         throw new Error(`Request failed: ${response.status}`);
                     }
-                    const data = await response.json();
+                    const data = await parseJsonResponse(response, {});
                     choices = normalizeChoices(data?.choices || {});
                     modalities = normalizeModalities(data?.modalidades || []);
                     offers = normalizeOffers(data?.offers || []);
@@ -4361,7 +4405,7 @@
                     if (!response.ok) {
                         throw new Error(`Request failed: ${response.status}`);
                     }
-                    const data = await response.json();
+                    const data = await parseJsonResponse(response, {});
                     choices = normalizeChoices(data?.choices || {});
                     modalities = normalizeModalities(data?.modalidades || []);
                     offers = normalizeOffers(data?.offers || []);
@@ -5301,7 +5345,7 @@
                     throw new Error(`Request failed: ${response.status}`);
                 }
 
-                const data = await response.json();
+                const data = await parseJsonResponse(response, {});
                 const items = Array.isArray(data.items) ? data.items : [];
 
                 if (data && data.filters && data.filters.channels) {
@@ -5580,7 +5624,7 @@
 
                     let payload = {};
                     try {
-                        payload = await response.json();
+                        payload = await parseJsonResponse(response, {});
                     } catch (error) {
                         payload = {};
                     }
