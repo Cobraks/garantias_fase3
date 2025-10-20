@@ -70,8 +70,25 @@ const PAYMENT_LABELS = {
         domiciliacion: "Domiciliación bancaria",
 };
 
+const PAYMENT_OPTIONS = [
+        { value: "transferencia", label: PAYMENT_LABELS.transferencia },
+        { value: "domiciliacion", label: PAYMENT_LABELS.domiciliacion },
+];
+
+const ADMIN_SEPA_MESSAGES = {
+        sin_rellenar_sepa: (company) =>
+                `${company} no ha rellenado todavía el SEPA`,
+        pendiente_firma: (company) =>
+                `${company} no ha firmado todavía el SEPA`,
+        pendiente_validacion: (company) =>
+                `${company} tiene el SEPA firmado pendiente de validación`,
+        deshabilitado: (company) =>
+                `${company} tiene la domiciliación bancaria deshabilitada`,
+};
+
 let baseUserRole = "";
 let currentChannelSlug = "";
+let defaultSepaWarningText = "";
 
 function normalizeRole(value) {
         return String(value || "").toLowerCase();
@@ -179,6 +196,10 @@ async function refreshMetodoPagoPorUsuario(targetUserId) {
         const mensaje = document.querySelector(".mensaje_falta_sepa");
         if (!select) return;
 
+        if (mensaje && !defaultSepaWarningText) {
+                defaultSepaWarningText = mensaje.textContent.trim();
+        }
+
         const canalSelect = document.getElementById("canal-venta");
         const canalSlug = canalSelect
                 ? getChannelSlug(canalSelect.value)
@@ -187,49 +208,102 @@ async function refreshMetodoPagoPorUsuario(targetUserId) {
         select.innerHTML = "";
 
         const canalEsParticular = canalSlug === "particular";
-        const sepaInfo = canalEsParticular ? null : await fetchEstadoSepa(targetUserId);
-        const metodoDesdeApi = sepaInfo ? sepaInfo.metodo : null;
-
-        let metodoValue = "transferencia";
-        let metodoLabel = PAYMENT_LABELS.transferencia;
-
-        if (metodoDesdeApi && typeof metodoDesdeApi === "object") {
-                const value = metodoDesdeApi.value || "";
-                const label = metodoDesdeApi.label || "";
-                if (value) {
-                        metodoValue = String(value).toLowerCase();
-                        metodoLabel = label
-                                ? label
-                                : PAYMENT_LABELS[metodoValue] || PAYMENT_LABELS.transferencia;
-                }
-        } else if (typeof metodoDesdeApi === "string") {
-                const value = metodoDesdeApi.toLowerCase();
-                metodoValue = value === "domiciliación" ? "domiciliacion" : value;
-                metodoLabel = PAYMENT_LABELS[metodoValue] || PAYMENT_LABELS.transferencia;
-        }
-
-        const selectedOption = document.createElement("option");
-        selectedOption.value = metodoValue;
-        selectedOption.textContent = metodoLabel;
-        selectedOption.selected = true;
-        select.appendChild(selectedOption);
 
         const role = baseUserRole || normalizeRole(getUserRole());
         const esAdmin = isAdminLike(role);
 
-        if (esAdmin && metodoValue === "domiciliacion") {
-                const optTransfer = document.createElement("option");
-                optTransfer.value = "transferencia";
-                optTransfer.textContent = "Transferencia bancaria";
-                select.appendChild(optTransfer);
+        const appendOptions = (options, selectedValue) => {
+                options.forEach((option) => {
+                        const opt = document.createElement("option");
+                        opt.value = option.value;
+                        opt.textContent = option.label;
+                        if (option.value === selectedValue) {
+                                opt.selected = true;
+                        }
+                        select.appendChild(opt);
+                });
+        };
+
+        const ensureDefaultSelected = () => {
+                if (!select.value && select.options.length) {
+                        select.options[0].selected = true;
+                }
+        };
+
+        const usuarioSelect = document.getElementById("usuario-rol");
+        const selectedUsuarioOption = usuarioSelect
+                ? usuarioSelect.options[usuarioSelect.selectedIndex]
+                : null;
+        const selectedCompanyName = selectedUsuarioOption
+                ? (selectedUsuarioOption.dataset.companyName || selectedUsuarioOption.textContent || "")
+                : "";
+
+        const companyForMessages = selectedCompanyName.trim() || "Este profesional";
+
+        let metodoValue = "transferencia";
+        let sepaInfo = null;
+
+        if (!canalEsParticular && targetUserId) {
+                sepaInfo = await fetchEstadoSepa(targetUserId);
         }
 
-        select.disabled = !esAdmin;
+        const metodoDesdeApi = sepaInfo ? sepaInfo.metodo : null;
+
+        if (metodoDesdeApi && typeof metodoDesdeApi === "object") {
+                const value = metodoDesdeApi.value || "";
+                if (value) {
+                        metodoValue = String(value).toLowerCase();
+                }
+        } else if (typeof metodoDesdeApi === "string") {
+                const value = metodoDesdeApi.toLowerCase();
+                metodoValue = value === "domiciliación" ? "domiciliacion" : value;
+        }
+
+        if (canalEsParticular) {
+                appendOptions([PAYMENT_OPTIONS[0]], "transferencia");
+                select.disabled = true;
+        } else if (!targetUserId) {
+                if (esAdmin) {
+                        appendOptions(PAYMENT_OPTIONS, "transferencia");
+                        select.disabled = false;
+                } else {
+                        appendOptions([PAYMENT_OPTIONS[0]], "transferencia");
+                        select.disabled = true;
+                }
+        } else if (esAdmin) {
+                if (metodoValue === "domiciliacion") {
+                        appendOptions(PAYMENT_OPTIONS, "domiciliacion");
+                        select.disabled = false;
+                } else {
+                        appendOptions([PAYMENT_OPTIONS[0]], "transferencia");
+                        select.disabled = true;
+                }
+        } else {
+                const label =
+                        PAYMENT_LABELS[metodoValue] || PAYMENT_LABELS.transferencia;
+                appendOptions([
+                        { value: metodoValue, label },
+                ], metodoValue);
+                select.disabled = true;
+        }
+
+        ensureDefaultSelected();
 
         if (mensaje) {
-                const mostrarMensaje =
-                        !canalEsParticular && metodoValue === "transferencia";
-                mensaje.style.display = mostrarMensaje ? "flex" : "none";
+                if (esAdmin && sepaInfo && sepaInfo.estado) {
+                        const formatter = ADMIN_SEPA_MESSAGES[sepaInfo.estado] || null;
+                        if (formatter) {
+                                mensaje.textContent = formatter(companyForMessages);
+                                mensaje.style.display = "flex";
+                        } else {
+                                mensaje.style.display = "none";
+                        }
+                } else if (!canalEsParticular && metodoValue === "transferencia") {
+                        mensaje.textContent = defaultSepaWarningText;
+                        mensaje.style.display = "flex";
+                } else {
+                        mensaje.style.display = "none";
+                }
         }
 
         const container = select.closest(".form__input-container");
@@ -340,17 +414,17 @@ function configureUsuarioSelect(channelValue, { keepValue = false } = {}) {
         }
 
         if (!channelRequiresAssignment(channelSlug)) {
-                        wrapUsuario.style.display = "none";
-                        usuarioSelect.removeAttribute("required");
-                        usuarioSelect.innerHTML = "";
-                        usuarioSelect.value = "";
-                        updateSelectDataset(usuarioSelect);
-                        usuarioSelect.dispatchEvent(
-                                new Event("change", { bubbles: true }),
-                        );
-                        refreshMetodoPagoPorUsuario(getCurrentUserId() || null);
-                        updateNextButtonState();
-                        return;
+                wrapUsuario.style.display = "none";
+                usuarioSelect.removeAttribute("required");
+                usuarioSelect.innerHTML = "";
+                usuarioSelect.value = "";
+                updateSelectDataset(usuarioSelect);
+                usuarioSelect.dispatchEvent(
+                        new Event("change", { bubbles: true }),
+                );
+                refreshMetodoPagoPorUsuario(getCurrentUserId() || null);
+                updateNextButtonState();
+                return;
         }
 
         wrapUsuario.style.display = "";
@@ -376,7 +450,15 @@ function setupSepaWatcher() {
         if (usuarioSelect) {
                 usuarioSelect.addEventListener("change", () => {
                         updateSelectDataset(usuarioSelect);
-                        const target = usuarioSelect.value || getCurrentUserId() || null;
+                        const role = getUserRole();
+                        let target = null;
+                        if (isProfesional(role)) {
+                                target = usuarioSelect.value || getCurrentUserId() || null;
+                        } else if (isAdminLike(role) || isComercial(role)) {
+                                target = usuarioSelect.value || null;
+                        } else {
+                                target = usuarioSelect.value || getCurrentUserId() || null;
+                        }
                         refreshMetodoPagoPorUsuario(target);
                 });
                 updateSelectDataset(usuarioSelect);
@@ -390,7 +472,7 @@ function setupSepaWatcher() {
                                 target = getCurrentUserId();
                         } else if (isAdminLike(role) || isComercial(role)) {
                                 const v = document.getElementById("usuario-rol");
-                                target = (v && v.value) || getCurrentUserId();
+                                target = (v && v.value) || null;
                         } else {
                                 target = getCurrentUserId();
                         }
@@ -404,7 +486,7 @@ function setupSepaWatcher() {
                 initialTarget = getCurrentUserId();
         } else if (isAdminLike(role) || isComercial(role)) {
                 const v = document.getElementById("usuario-rol");
-                initialTarget = (v && v.value) || getCurrentUserId();
+                initialTarget = (v && v.value) || null;
         } else {
                 initialTarget = getCurrentUserId();
         }
