@@ -1247,7 +1247,7 @@
   gap: 0.5rem;
 }
 
-.account-sepa-request__step span {
+.account-sepa-request__step [data-sepa-step-number] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1258,6 +1258,11 @@
   color: var(--text-inverse);
   font-size: 0.9rem;
   font-weight: 600;
+}
+
+.account-sepa-request__step [data-sepa-step-label] {
+  font-weight: 600;
+  color: inherit;
 }
 
 .account-sepa-request__download {

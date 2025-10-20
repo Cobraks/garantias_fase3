@@ -386,6 +386,7 @@ class AccountViewModel
             'phone'          => '',
             'email'          => '',
             'address'        => '',
+            'country'        => '',
         ];
 
         $group = [];
@@ -441,6 +442,10 @@ class AccountViewModel
             } else {
                 $defaults[$key] = self::sanitize_optional_text($value);
             }
+        }
+
+        if ($defaults['country'] === '') {
+            $defaults['country'] = 'España';
         }
 
         return $defaults;
@@ -543,6 +548,10 @@ class AccountViewModel
                             }
                         }
                     }
+                }
+
+                if ($debtor_fields['pais_deudor']['value'] === '') {
+                    $debtor_fields['pais_deudor']['value'] = 'España';
                 }
 
                 if (! empty($sepa_group['estado_documentos'])) {
@@ -728,7 +737,8 @@ class AccountViewModel
 
         $sepa['status'] = ($status_code === SepaMandateService::STATUS_SIGNED) && $is_activated;
 
-        $sepa['requested'] = in_array(
+        $requested_flag = SepaMandateService::get_requested_flag($user_id);
+        $sepa['requested'] = $requested_flag || in_array(
             $status_code,
             [
                 SepaMandateService::STATUS_PENDING_SIGNATURE,
@@ -921,6 +931,10 @@ class AccountViewModel
             if (self::sanitize_optional_text($fields[$key]['value'] ?? '') === '') {
                 $fields[$key]['value'] = $value;
             }
+        }
+
+        if (self::sanitize_optional_text($fields['pais_deudor']['value'] ?? '') === '') {
+            $fields['pais_deudor']['value'] = 'España';
         }
 
         return $fields;
