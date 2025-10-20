@@ -181,9 +181,12 @@ class WebPushClient
         $cek = $this->hkdf($salt, $ikm, "Content-Encoding: aes128gcm\0", 16);
         $nonce = $this->hkdf($salt, $ikm, "Content-Encoding: nonce\0", 12);
 
-        $record = $payload . chr(2);
+        $padding_length = apply_filters('go360/push/payload_padding', 0, $payload);
+        $padding_length = is_int($padding_length) && $padding_length > 0 ? $padding_length : 0;
+
+        $plain_text = ($padding_length > 0 ? str_repeat("\0", $padding_length) : '') . "\x02" . $payload;
         $tag = '';
-        $ciphertext = openssl_encrypt($record, 'aes-128-gcm', $cek, OPENSSL_RAW_DATA, $nonce, $tag);
+        $ciphertext = openssl_encrypt($plain_text, 'aes-128-gcm', $cek, OPENSSL_RAW_DATA, $nonce, $tag);
         if ($ciphertext === false) {
             throw new \RuntimeException('Unable to encrypt payload.');
         }
