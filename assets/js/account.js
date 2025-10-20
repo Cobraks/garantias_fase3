@@ -861,82 +861,88 @@
 
                 const uploadStep = document.querySelector('[data-sepa-step-upload]');
                 if (uploadStep) {
+                    const uploadStepNumber = uploadStep.querySelector('[data-sepa-step-number]');
+                    const uploadStepLabel = uploadStep.querySelector('[data-sepa-step-label]');
                     if (awaitingValidation) {
-                        uploadStep.remove();
+                        uploadStep.hidden = true;
+                        uploadStep.setAttribute('aria-hidden', 'true');
+                        if (uploadStepNumber) {
+                            uploadStepNumber.hidden = true;
+                            uploadStepNumber.setAttribute('aria-hidden', 'true');
+                        }
+                        if (uploadStepLabel) {
+                            uploadStepLabel.hidden = true;
+                            uploadStepLabel.setAttribute('aria-hidden', 'true');
+                        }
                     } else {
                         uploadStep.hidden = false;
                         uploadStep.setAttribute('aria-hidden', 'false');
+                        if (uploadStepNumber) {
+                            uploadStepNumber.hidden = false;
+                            uploadStepNumber.setAttribute('aria-hidden', 'false');
+                        }
+                        if (uploadStepLabel) {
+                            uploadStepLabel.hidden = false;
+                            uploadStepLabel.setAttribute('aria-hidden', 'false');
+                        }
                     }
                 }
 
                 const uploadAction = document.querySelector('[data-sepa-upload]');
                 if (uploadAction) {
+                    const shouldShowUploadAction = !awaitingValidation && !needsActivation && !sepaIsDisabled;
+                    uploadAction.hidden = !shouldShowUploadAction;
+                    uploadAction.setAttribute('aria-hidden', shouldShowUploadAction ? 'false' : 'true');
+
                     const uploadWrapper = uploadAction.querySelector('.account-sepa-request__upload');
                     if (uploadWrapper) {
-                        if (awaitingValidation) {
-                            uploadWrapper.classList.add('account-sepa-request__upload--locked');
-                            uploadWrapper.setAttribute('data-locked', 'true');
-                        } else {
+                        if (shouldShowUploadAction) {
                             uploadWrapper.classList.remove('account-sepa-request__upload--locked');
                             uploadWrapper.removeAttribute('data-locked');
+                        } else {
+                            uploadWrapper.classList.add('account-sepa-request__upload--locked');
+                            uploadWrapper.setAttribute('data-locked', 'true');
                         }
                     }
 
                     const uploadContainer = uploadAction.querySelector('[data-document-upload]');
                     if (uploadContainer) {
-                        uploadContainer.dataset.locked = awaitingValidation ? 'true' : 'false';
+                        uploadContainer.dataset.locked = shouldShowUploadAction ? 'false' : 'true';
                     }
 
                     const fileLabel = uploadAction.querySelector('[data-document-label]');
                     if (fileLabel) {
-                        if (awaitingValidation) {
-                            fileLabel.remove();
-                        } else {
-                            fileLabel.hidden = false;
-                            fileLabel.setAttribute('aria-hidden', 'false');
-                        }
+                        fileLabel.hidden = !shouldShowUploadAction;
+                        fileLabel.setAttribute('aria-hidden', shouldShowUploadAction ? 'false' : 'true');
                     }
 
                     const fileHint = uploadAction.querySelector('.file-hint');
                     if (fileHint) {
-                        if (awaitingValidation) {
-                            fileHint.remove();
-                        } else {
-                            fileHint.hidden = false;
-                            fileHint.setAttribute('aria-hidden', 'false');
-                        }
+                        fileHint.hidden = !shouldShowUploadAction;
+                        fileHint.setAttribute('aria-hidden', shouldShowUploadAction ? 'false' : 'true');
                     }
 
                     const fileInput = uploadAction.querySelector('input[type="file"]');
                     if (fileInput) {
-                        if (awaitingValidation) {
-                            fileInput.setAttribute('disabled', 'disabled');
-                            fileInput.setAttribute('hidden', '');
-                            fileInput.setAttribute('aria-hidden', 'true');
-                        } else {
+                        if (shouldShowUploadAction) {
                             fileInput.removeAttribute('disabled');
                             fileInput.removeAttribute('hidden');
                             fileInput.setAttribute('aria-hidden', 'false');
+                        } else {
+                            fileInput.setAttribute('disabled', 'disabled');
+                            fileInput.setAttribute('hidden', '');
+                            fileInput.setAttribute('aria-hidden', 'true');
                         }
                     }
 
                     const removeButton = uploadAction.querySelector('[data-document-remove]');
                     if (removeButton) {
-                        if (awaitingValidation) {
-                            removeButton.remove();
+                        if (shouldShowUploadAction) {
+                            removeButton.hidden = !hasSignedDocument;
+                            removeButton.setAttribute('aria-hidden', hasSignedDocument ? 'false' : 'true');
                         } else {
-                            const hasServerDocument = Boolean(
-                                sepaData
-                                && sepaData.documents
-                                && sepaData.documents.signed
-                                && (
-                                    sepaData.documents.signed.url
-                                    || sepaData.documents.signed.filename
-                                    || sepaData.documents.signed.hash
-                                ),
-                            );
-                            removeButton.hidden = !hasServerDocument;
-                            removeButton.setAttribute('aria-hidden', hasServerDocument ? 'false' : 'true');
+                            removeButton.hidden = true;
+                            removeButton.setAttribute('aria-hidden', 'true');
                         }
                     }
                 }
@@ -956,7 +962,8 @@
                     && (signedDocument.url || signedDocument.hash || signedDocument.filename),
                 );
                 if (sepaPendingLink instanceof HTMLAnchorElement) {
-                    if (hasPendingDocument) {
+                    const shouldShowPending = hasPendingDocument && !awaitingValidation && !sepaIsDisabled;
+                    if (shouldShowPending) {
                         const pendingUrl = typeof pendingDocument.url === 'string'
                             ? pendingDocument.url.trim()
                             : '';

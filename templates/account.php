@@ -1166,7 +1166,10 @@ $formatPhoneHref = static function ($phone) {
                                     </div>
                                     <?php if (! $sepa_awaiting_validation) : ?>
                                         <div class="account-sepa-request__action" data-sepa-upload>
-                                            <p class="account-sepa-request__step" data-sepa-step-upload><span>2.</span> <?php echo esc_html__('Súbelo firmado y guarda los cambios.', 'garantias-online-360vo'); ?></p>
+                                            <p class="account-sepa-request__step" data-sepa-step-upload>
+                                                <span data-sepa-step-number>2.</span>
+                                                <span data-sepa-step-label><?php echo esc_html__('Súbelo firmado y guarda los cambios.', 'garantias-online-360vo'); ?></span>
+                                            </p>
                                             <div class="account-sepa-request__upload">
                                                 <div class="account-upload account-upload--document">
                                                     <div
