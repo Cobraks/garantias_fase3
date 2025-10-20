@@ -92,7 +92,7 @@ class WebPushClient
             'Content-Type'      => 'application/octet-stream',
             'Content-Length'    => (string) strlen($encrypted['body']),
             'Authorization'     => $authorization,
-            'Encryption'        => 'salt=' . $this->base64url_encode($encrypted['salt']),
+            'Encryption'        => 'salt=' . $this->base64url_encode($encrypted['salt']) . ';rs=4096',
             'Crypto-Key'        => 'dh=' . $this->base64url_encode($encrypted['public_key']) . ';p256ecdsa=' . $keys['public'],
         ];
 
@@ -184,7 +184,8 @@ class WebPushClient
         $padding_length = apply_filters('go360/push/payload_padding', 0, $payload);
         $padding_length = is_int($padding_length) && $padding_length > 0 ? $padding_length : 0;
 
-        $plain_text = ($padding_length > 0 ? str_repeat("\0", $padding_length) : '') . "\x02" . $payload;
+        $padding = $padding_length > 0 ? str_repeat("\0", $padding_length) : '';
+        $plain_text = pack('n', $padding_length) . $padding . $payload;
         $tag = '';
         $ciphertext = openssl_encrypt($plain_text, 'aes-128-gcm', $cek, OPENSSL_RAW_DATA, $nonce, $tag);
         if ($ciphertext === false) {

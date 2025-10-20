@@ -43,12 +43,44 @@
         }
     };
 
+    const resolveServiceWorkerScope = (url) => {
+        try {
+            const absolute = new URL(resolveServiceWorkerUrl(url));
+            absolute.hash = '';
+            absolute.search = '';
+            const segments = absolute.pathname.split('/');
+            if (segments.length > 1) {
+                segments.pop();
+            }
+            absolute.pathname = `${segments.join('/')}/`;
+            return absolute.href;
+        } catch (error) {
+            return url;
+        }
+    };
+
+    const matchesRegistration = (registration, scriptUrl) => {
+        if (!registration) {
+            return false;
+        }
+
+        const candidates = [registration.active, registration.waiting, registration.installing].filter(Boolean);
+        if (candidates.length === 0) {
+            return false;
+        }
+
+        return candidates.some((worker) => worker && worker.scriptURL === scriptUrl);
+    };
+
     const getRegistration = async (serviceWorkerUrl, createIfMissing = false) => {
         const resolvedUrl = resolveServiceWorkerUrl(serviceWorkerUrl);
+        const scopeUrl = resolveServiceWorkerScope(serviceWorkerUrl);
+
+        const candidates = [];
         try {
-            const scoped = await navigator.serviceWorker.getRegistration(resolvedUrl);
+            const scoped = await navigator.serviceWorker.getRegistration(scopeUrl);
             if (scoped) {
-                return scoped;
+                candidates.push(scoped);
             }
         } catch (error) {
             // eslint-disable-next-line no-console
@@ -58,18 +90,37 @@
         try {
             const active = await navigator.serviceWorker.getRegistration();
             if (active) {
-                return active;
+                candidates.push(active);
             }
         } catch (error) {
             // eslint-disable-next-line no-console
             console.warn('GO360 push registration lookup error', error);
         }
 
+        try {
+            const ready = await navigator.serviceWorker.ready;
+            if (ready) {
+                candidates.push(ready);
+            }
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.warn('GO360 push ready lookup error', error);
+        }
+
+        const match = candidates.find((registration) => matchesRegistration(registration, resolvedUrl));
+        if (match) {
+            return match;
+        }
+
+        if (candidates.length > 0) {
+            return candidates[0];
+        }
+
         if (!createIfMissing) {
             return null;
         }
 
-        return navigator.serviceWorker.register(resolvedUrl);
+        return navigator.serviceWorker.register(resolvedUrl, { scope: scopeUrl });
     };
 
     document.addEventListener('DOMContentLoaded', () => {
