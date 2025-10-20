@@ -701,6 +701,9 @@ $formatPhoneHref = static function ($phone) {
                 ? (string) $pending_document['filename']
                 : __('Mandato SEPA pendiente', 'garantias-online-360vo');
             $signed_document_url = $signed_document_available ? esc_url($signed_document['url'] ?? '') : '';
+            $signed_download_label = $signed_document_available && ! empty($signed_document['filename'])
+                ? (string) $signed_document['filename']
+                : __('Mandato SEPA firmado', 'garantias-online-360vo');
             $sepa_upload_default_label = $sepa_awaiting_validation
                 ? __('Tu documento SEPA firmado', 'garantias-online-360vo')
                 : __('Sube el mandato SEPA firmado (PDF)', 'garantias-online-360vo');
@@ -1103,18 +1106,32 @@ $formatPhoneHref = static function ($phone) {
                                     <?php echo esc_html__('Tu SEPA firmado está pendiente de validación.', 'garantias-online-360vo'); ?>
                                 </p>
                                 <div class="account-sepa-request__actions" data-sepa-actions>
-                                    <?php $show_pending_download = $pending_download_url !== '' && ! $sepa_awaiting_validation; ?>
+                                    <?php
+                                    $show_pending_download = $pending_download_url !== '' && ! $sepa_awaiting_validation;
+                                    $show_signed_download = $sepa_awaiting_validation && $signed_document_url !== '';
+                                    $show_download_block = $show_pending_download || $show_signed_download;
+                                    ?>
                                     <div
                                         class="account-sepa-request__action"
                                         data-sepa-download
-                                        <?php echo $show_pending_download ? '' : 'hidden aria-hidden="true"'; ?>
+                                        <?php echo $show_download_block ? '' : 'hidden aria-hidden="true"'; ?>
                                     >
                                         <p
                                             class="account-sepa-request__step"
                                             data-sepa-step-download
-                                            <?php echo $show_pending_download ? '' : 'hidden aria-hidden="true"'; ?>
+                                            <?php echo $show_download_block ? '' : 'hidden aria-hidden="true"'; ?>
                                         >
-                                            <span>1.</span> <?php echo esc_html__('Descarga el documento', 'garantias-online-360vo'); ?>
+                                            <span
+                                                data-sepa-step-number
+                                                <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
+                                            >1.</span>
+                                            <span data-sepa-step-text>
+                                                <?php
+                                                echo $sepa_awaiting_validation
+                                                    ? esc_html__('Tu SEPA firmado', 'garantias-online-360vo')
+                                                    : esc_html__('Descarga el documento', 'garantias-online-360vo');
+                                                ?>
+                                            </span>
                                         </p>
                                         <a
                                             class="account-sepa-request__download"
@@ -1127,6 +1144,23 @@ $formatPhoneHref = static function ($phone) {
                                             <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
                                             <span data-sepa-pending-label><?php echo esc_html($pending_download_label); ?></span>
                                         </a>
+                                        <div
+                                            class="account-sepa-request__signed"
+                                            data-sepa-signed
+                                            <?php echo $show_signed_download ? '' : 'hidden aria-hidden="true"'; ?>
+                                        >
+                                            <a
+                                                class="account-sepa-request__download"
+                                                data-sepa-signed-link
+                                                href="<?php echo esc_url($signed_document_url !== '' ? $signed_document_url : '#'); ?>"
+                                                <?php echo $show_signed_download ? '' : 'hidden aria-hidden="true" tabindex="-1"'; ?>
+                                                target="_blank"
+                                                rel="noopener"
+                                            >
+                                                <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
+                                                <span data-sepa-signed-name><?php echo esc_html($signed_download_label); ?></span>
+                                            </a>
+                                        </div>
                                     </div>
                                     <?php if (! $sepa_awaiting_validation) : ?>
                                         <div class="account-sepa-request__action" data-sepa-upload>

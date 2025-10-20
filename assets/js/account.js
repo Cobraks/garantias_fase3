@@ -149,6 +149,8 @@
             awaitingSignature: strings.sepaAwaitingSignature || 'Pendiente de firma',
             awaitingMessage: strings.sepaAwaitingMessage || 'Tu SEPA firmado está pendiente de validación.',
             awaitingActivation: strings.sepaAwaitingActivation || 'Pendiente de domiciliación',
+            signedDocument: strings.sepaSignedDocument || 'Tu SEPA firmado',
+            downloadPrompt: strings.sepaDownloadPrompt || 'Descarga el documento',
         };
         const sepaSignedFallbackName = strings.sepaSignedFilename || 'Mandato SEPA firmado';
         const sepaPendingLink = document.querySelector('[data-sepa-pending-link]');
@@ -799,31 +801,51 @@
                     }
                 }
 
+                const requestedFlag = typeof sepaData.requested !== 'undefined'
+                    ? Boolean(sepaData.requested)
+                    : true;
                 const downloadAction = document.querySelector('[data-sepa-download]');
                 if (downloadAction) {
+                    let shouldShowDownload = true;
                     if (awaitingValidation) {
-                        downloadAction.hidden = true;
-                        downloadAction.setAttribute('aria-hidden', 'true');
+                        shouldShowDownload = hasSignedDocument;
                     } else {
-                        const hideDownload = (
-                            typeof sepaData.requested !== 'undefined' && !sepaData.requested
-                        ) && !hasPendingDocument;
-                        downloadAction.hidden = hideDownload;
-                        downloadAction.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
+                        shouldShowDownload = !(!requestedFlag && !hasPendingDocument);
                     }
+                    downloadAction.hidden = !shouldShowDownload;
+                    downloadAction.setAttribute('aria-hidden', shouldShowDownload ? 'false' : 'true');
                 }
 
                 const downloadStep = document.querySelector('[data-sepa-step-download]');
                 if (downloadStep) {
+                    const downloadStepNumber = downloadStep.querySelector('[data-sepa-step-number]');
+                    const downloadStepText = downloadStep.querySelector('[data-sepa-step-text]');
                     if (awaitingValidation) {
-                        downloadStep.hidden = true;
-                        downloadStep.setAttribute('aria-hidden', 'true');
+                        const shouldShowStep = hasSignedDocument;
+                        downloadStep.hidden = !shouldShowStep;
+                        downloadStep.setAttribute('aria-hidden', shouldShowStep ? 'false' : 'true');
+                        if (downloadStepNumber) {
+                            downloadStepNumber.hidden = true;
+                            downloadStepNumber.setAttribute('aria-hidden', 'true');
+                        }
+                        if (downloadStepText) {
+                            downloadStepText.textContent = sepaText.signedDocument;
+                        } else {
+                            downloadStep.textContent = sepaText.signedDocument;
+                        }
                     } else {
-                        const hideDownload = (
-                            typeof sepaData.requested !== 'undefined' && !sepaData.requested
-                        ) && !hasPendingDocument;
+                        const hideDownload = (!requestedFlag) && !hasPendingDocument;
                         downloadStep.hidden = hideDownload;
                         downloadStep.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
+                        if (downloadStepNumber) {
+                            downloadStepNumber.hidden = false;
+                            downloadStepNumber.setAttribute('aria-hidden', 'false');
+                        }
+                        if (downloadStepText) {
+                            downloadStepText.textContent = sepaText.downloadPrompt;
+                        } else {
+                            downloadStep.textContent = `1. ${sepaText.downloadPrompt}`;
+                        }
                     }
                 }
 

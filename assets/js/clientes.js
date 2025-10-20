@@ -1398,32 +1398,35 @@
             const activateLabelBase = typeof strings.manageSepaActivate === 'string'
                 ? strings.manageSepaActivate.trim()
                 : '';
-            const activateAction = {
-                type: 'activate',
-                label: activateLabelBase !== '' ? activateLabelBase : 'Habilitar domiciliación bancaria',
-            };
+            let activateType = 'activate';
+            let activateLabel = activateLabelBase !== ''
+                ? activateLabelBase
+                : 'Habilitar domiciliación bancaria';
 
             let action = null;
             let actionHelp = '';
-
-            if (awaitingValidation || needsActivation) {
-                actionHelp = typeof strings.manageSepaActivateHelp === 'string'
-                    ? strings.manageSepaActivateHelp.trim()
-                    : '';
-            }
 
             if (isActive) {
                 const deactivateLabel = typeof strings.manageSepaDeactivate === 'string'
                     ? strings.manageSepaDeactivate.trim()
                     : '';
-                action = {
-                    type: 'deactivate',
-                    label: deactivateLabel !== '' ? deactivateLabel : 'Inhabilitar domiciliación bancaria',
-                };
+                activateType = 'deactivate';
+                activateLabel = deactivateLabel !== ''
+                    ? deactivateLabel
+                    : 'Inhabilitar domiciliación bancaria';
                 actionHelp = typeof strings.manageSepaDeactivateHelp === 'string'
                     ? strings.manageSepaDeactivateHelp.trim()
                     : '';
+            } else if (awaitingValidation || needsActivation) {
+                actionHelp = typeof strings.manageSepaActivateHelp === 'string'
+                    ? strings.manageSepaActivateHelp.trim()
+                    : '';
             }
+
+            const activateAction = {
+                type: activateType,
+                label: activateLabel,
+            };
 
             return {
                 html: `<div class="client-sepa-dialog">${sections.join('')}</div>`,
@@ -1557,7 +1560,7 @@
                 const activateButton = document.createElement('button');
                 activateButton.type = 'button';
                 activateButton.className = 'client-dialog__footer-btn';
-                activateButton.dataset.sepaAction = 'activate';
+                activateButton.dataset.sepaAction = activateAction.type === 'deactivate' ? 'deactivate' : 'activate';
                 activateButton.textContent = activateAction.label.trim();
                 actionsContainer.insertBefore(activateButton, saveButton || null);
                 result.activate = activateButton;
