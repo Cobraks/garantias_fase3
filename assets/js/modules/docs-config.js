@@ -26,6 +26,14 @@ export const AVAILABLE_DOCS = [
                 successLabel: "Descargar condicionado",
                 icon: "pdf",
         },
+        {
+                key: "sepa-signed",
+                field: "",
+                routeType: "",
+                listLabel: "Mandato SEPA",
+                successLabel: "Descargar mandato SEPA",
+                icon: "payment",
+        },
 ];
 
 export function getDocConfigByKey(key) {

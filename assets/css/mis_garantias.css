@@ -1035,6 +1035,12 @@ section.guarantees-list.sticky-active {
 .detail__docs-icon--payment svg {
     fill: currentColor;
 }
+.detail__docs-btn.active .detail__docs-icon--payment {
+    color: #fff;
+}
+.detail__docs-btn.active .detail__docs-icon--payment svg {
+    fill: #fff;
+}
 
 .detail__docs-label {
     font-size: 0.95rem;

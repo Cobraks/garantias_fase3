@@ -8,6 +8,7 @@ use WP_REST_Response;
 use WP_Error;
 use DateTimeImmutable;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
+use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\GuaranteeLogger;
 use GarantiasOnline360VO\Notifications\Email\EmailMessage;
 use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
@@ -806,6 +807,8 @@ class GuaranteeRestController
     private static function inject_document_collection(array $detail, int $post_id, bool $include_urls)
     {
         $documents = self::build_document_collection($post_id, $include_urls);
+
+        $documents = self::maybe_append_sepa_document($documents, $detail);
         $detail['documents'] = $documents;
 
         $detail['certificate_url'] = '';
@@ -830,6 +833,108 @@ class GuaranteeRestController
         }
 
         return $detail;
+    }
+
+    /**
+     * Append the signed SEPA mandate to the document collection for admin users.
+     *
+     * @param array<int, array<string, mixed>> $documents
+     * @param array<string, mixed> $detail
+     * @return array<int, array<string, mixed>>
+     */
+    private static function maybe_append_sepa_document(array $documents, array $detail): array
+    {
+        $vendor_id = isset($detail['vendor_id']) ? (int) $detail['vendor_id'] : 0;
+        if ($vendor_id <= 0 || ! self::current_user_can_view_vendor_sepa_document()) {
+            return $documents;
+        }
+
+        foreach ($documents as $doc) {
+            if (isset($doc['key']) && $doc['key'] === 'sepa-signed') {
+                return $documents;
+            }
+        }
+
+        $meta = SepaMandateService::get_document_meta($vendor_id, SepaMandateService::TYPE_SIGNED);
+        if ($meta['hash'] === '') {
+            return $documents;
+        }
+
+        $download_url = SepaMandateService::build_download_url($vendor_id, SepaMandateService::TYPE_SIGNED);
+        if ($download_url === '') {
+            return $documents;
+        }
+
+        $company_candidates = [];
+        if (! empty($detail['vendor_company']) && is_array($detail['vendor_company'])) {
+            $company = $detail['vendor_company'];
+            $company_candidates[] = (string) ($company['trade_name'] ?? '');
+            $company_candidates[] = (string) ($company['name'] ?? '');
+            $company_candidates[] = (string) ($company['legal_name'] ?? '');
+        }
+        $company_candidates[] = (string) ($detail['concesionario'] ?? '');
+
+        $company_name = '';
+        foreach ($company_candidates as $candidate) {
+            $candidate = trim((string) $candidate);
+            if ($candidate !== '' && $candidate !== '-') {
+                $company_name = $candidate;
+                break;
+            }
+        }
+
+        if ($company_name === '') {
+            $company_name = __('profesional', 'garantias-online-360vo');
+        }
+
+        $company_name = sanitize_text_field($company_name);
+
+        $title = sprintf(__('Mandato SEPA %s', 'garantias-online-360vo'), $company_name);
+        $filename = $meta['filename'] !== '' ? $meta['filename'] : 'mandato-sepa.pdf';
+
+        $documents[] = [
+            'key'            => 'sepa-signed',
+            'title'          => $title,
+            'listLabel'      => $title,
+            'downloadLabel'  => __('Descargar mandato SEPA', 'garantias-online-360vo'),
+            'routeType'      => '',
+            'is_private'     => true,
+            'extension'      => 'pdf',
+            'allowed_roles'  => ['admin'],
+            'allowed_users'  => [],
+            'filename'       => $filename,
+            'hash'           => $meta['hash'],
+            'reference'      => $meta['reference'],
+            'generated_at'   => $meta['generated_at'],
+            'source'         => 'sepa',
+            'mime'           => 'application/pdf',
+            'url'            => $download_url,
+            'icon'           => 'payment',
+            'kind'           => 'sepa_signed',
+            'row'            => 0,
+        ];
+
+        return $documents;
+    }
+
+    private static function current_user_can_view_vendor_sepa_document(): bool
+    {
+        if (! is_user_logged_in()) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $current_user = wp_get_current_user();
+        if (! $current_user instanceof \WP_User) {
+            return false;
+        }
+
+        $roles = array_map('sanitize_key', (array) $current_user->roles);
+
+        return in_array('admin', $roles, true);
     }
 
     private static function upsert_transfer_receipt_document(int $post_id, string $title, string $hash, string $extension)
