@@ -1329,6 +1329,11 @@
             }
             const isActive = Boolean(sepa.status);
 
+            if (isActive) {
+                awaitingValidation = false;
+                needsActivation = false;
+            }
+
             if (isDisabled) {
                 awaitingValidation = false;
                 needsActivation = true;
