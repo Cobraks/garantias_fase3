@@ -1174,6 +1174,12 @@
   align-items: flex-start;
 }
 
+.account-payments__actions [data-payment-generate] {
+  margin-top: 2rem;
+  margin-left: auto;
+  font-weight: 400;
+}
+
 .account-form[hidden],
 .account-payments__actions[hidden] {
   display: none !important;
@@ -1802,6 +1808,28 @@
   transform: none;
 }
 
+.account-button--loading {
+  pointer-events: none;
+}
+
+.account-button__spinner {
+  display: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  animation: go-spin 0.75s linear infinite;
+}
+
+.account-button--loading .account-button__spinner {
+  display: inline-flex;
+}
+
+.account-button--loading .account-button__label {
+  opacity: 0.95;
+}
+
 .account-button--menu {
   padding: 0.5rem 1rem;
   border-radius: 0.75rem;
@@ -2136,4 +2164,10 @@
   width: 1rem;
   height: 1rem;
   color: currentColor;
+}
+
+@keyframes go-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

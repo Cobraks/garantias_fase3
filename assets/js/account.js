@@ -151,6 +151,14 @@
             awaitingActivation: strings.sepaAwaitingActivation || 'Pendiente de domiciliación',
         };
         const sepaSignedFallbackName = strings.sepaSignedFilename || 'Mandato SEPA firmado';
+        const sepaPendingLink = document.querySelector('[data-sepa-pending-link]');
+        const sepaPendingLabel = document.querySelector('[data-sepa-pending-label]');
+        const sepaPendingDefaultHref = sepaPendingLink instanceof HTMLAnchorElement
+            ? sepaPendingLink.getAttribute('href') || '#'
+            : '#';
+        const sepaPendingDefaultLabel = sepaPendingLabel
+            ? sepaPendingLabel.textContent.trim()
+            : '';
         const formatIban = (value) => {
             const raw = typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() : '';
             if (!raw) {
@@ -794,9 +802,12 @@
                 const downloadAction = document.querySelector('[data-sepa-download]');
                 if (downloadAction) {
                     if (awaitingValidation) {
-                        downloadAction.remove();
+                        downloadAction.hidden = true;
+                        downloadAction.setAttribute('aria-hidden', 'true');
                     } else {
-                        const hideDownload = typeof sepaData.requested !== 'undefined' && !sepaData.requested;
+                        const hideDownload = (
+                            typeof sepaData.requested !== 'undefined' && !sepaData.requested
+                        ) && !hasPendingDocument;
                         downloadAction.hidden = hideDownload;
                         downloadAction.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
                     }
@@ -805,9 +816,12 @@
                 const downloadStep = document.querySelector('[data-sepa-step-download]');
                 if (downloadStep) {
                     if (awaitingValidation) {
-                        downloadStep.remove();
+                        downloadStep.hidden = true;
+                        downloadStep.setAttribute('aria-hidden', 'true');
                     } else {
-                        const hideDownload = typeof sepaData.requested !== 'undefined' && !sepaData.requested;
+                        const hideDownload = (
+                            typeof sepaData.requested !== 'undefined' && !sepaData.requested
+                        ) && !hasPendingDocument;
                         downloadStep.hidden = hideDownload;
                         downloadStep.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
                     }
@@ -909,6 +923,42 @@
                     signedDocument
                     && (signedDocument.url || signedDocument.hash || signedDocument.filename),
                 );
+                if (sepaPendingLink instanceof HTMLAnchorElement) {
+                    if (hasPendingDocument) {
+                        const pendingUrl = typeof pendingDocument.url === 'string'
+                            ? pendingDocument.url.trim()
+                            : '';
+                        const resolvedUrl = pendingUrl || sepaPendingDefaultHref || '#';
+                        sepaPendingLink.href = resolvedUrl;
+                        sepaPendingLink.hidden = false;
+                        sepaPendingLink.setAttribute('aria-hidden', 'false');
+                        sepaPendingLink.removeAttribute('tabindex');
+                    } else {
+                        sepaPendingLink.href = sepaPendingDefaultHref || '#';
+                        sepaPendingLink.hidden = true;
+                        sepaPendingLink.setAttribute('aria-hidden', 'true');
+                        sepaPendingLink.setAttribute('tabindex', '-1');
+                    }
+                }
+                if (sepaPendingLabel) {
+                    const labelCandidates = [];
+                    if (hasPendingDocument) {
+                        const pendingLabel = typeof pendingDocument.label === 'string'
+                            ? pendingDocument.label.trim()
+                            : '';
+                        const pendingFilename = typeof pendingDocument.filename === 'string'
+                            ? pendingDocument.filename.trim()
+                            : '';
+                        if (pendingLabel) {
+                            labelCandidates.push(pendingLabel);
+                        }
+                        if (pendingFilename) {
+                            labelCandidates.push(pendingFilename);
+                        }
+                    }
+                    const nextLabel = labelCandidates.find((value) => value !== '') || sepaPendingDefaultLabel;
+                    sepaPendingLabel.textContent = nextLabel;
+                }
                 const hasGeneratedMandate = hasPendingDocument || hasSignedDocument || sepaData.status !== null;
 
                 if (paymentActivation && typeof paymentActivation.__goSetGenerated === 'function') {
@@ -1988,6 +2038,10 @@
 
             updateButtonState();
 
+            const setGenerateLoading = (loading) => {
+                generateButton.classList.toggle('account-button--loading', Boolean(loading));
+            };
+
             const handleSepaGeneration = async () => {
                 if (generateButton.disabled) {
                     return;
@@ -2001,6 +2055,7 @@
 
                 generateButton.disabled = true;
                 generateButton.setAttribute('aria-disabled', 'true');
+                setGenerateLoading(true);
                 setStatus(strings.sepaGenerateLoading || 'Generando mandato…', 'info');
 
                 try {
@@ -2056,6 +2111,8 @@
                     );
                     updateButtonState();
                     return;
+                } finally {
+                    setGenerateLoading(false);
                 }
             };
 
