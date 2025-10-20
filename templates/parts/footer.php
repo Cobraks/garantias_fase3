@@ -4,6 +4,7 @@
 
 use GarantiasOnline360VO\Svg;
 use GarantiasOnline360VO\Docs\ReclamationDocument;
+use GarantiasOnline360VO\Notifications\Push\PushSubscriptionRepository;
 use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\Support\FeatureFlags;
 use GarantiasOnline360VO\Support\UserProfileResolver;
@@ -498,15 +499,25 @@ if (! empty($is_add_guarantee)) {
     <?php
     $push_config = null;
     if (current_user_can('manage_options')) {
-            $push_config = [
-                'publicKey'             => apply_filters('go360/push/public_key', ''),
-                'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
-                'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
-                'testEndpoint'          => esc_url_raw(rest_url('go/v1/push-notifications/test')),
-                'testAllEndpoint'       => esc_url_raw(rest_url('go/v1/push-notifications/test-all')),
-                'testIcon'              => esc_url_raw(plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__)),
-                'serviceWorker'         => esc_url_raw(plugins_url('assets/js/push-sw.js', GARANTIAS360VO__FILE__)),
-            ];
+        $is_subscribed = false;
+        try {
+            $subscription_repository = new PushSubscriptionRepository();
+            $subscriptions = $subscription_repository->get_user_subscriptions(get_current_user_id());
+            $is_subscribed = ! empty($subscriptions);
+        } catch (\Throwable $exception) {
+            $is_subscribed = false;
+        }
+
+        $push_config = [
+            'publicKey'             => apply_filters('go360/push/public_key', ''),
+            'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
+            'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
+            'testEndpoint'          => esc_url_raw(rest_url('go/v1/push-notifications/test')),
+            'testAllEndpoint'       => esc_url_raw(rest_url('go/v1/push-notifications/test-all')),
+            'testIcon'              => esc_url_raw(plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__)),
+            'serviceWorker'         => esc_url_raw(plugins_url('assets/js/push-sw.js', GARANTIAS360VO__FILE__)),
+            'isSubscribed'          => $is_subscribed,
+        ];
     }
 
     $account_config = [

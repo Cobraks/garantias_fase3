@@ -187,10 +187,11 @@
         const testEndpoint = pushConfig.testEndpoint || '';
         const testAllEndpoint = pushConfig.testAllEndpoint || '';
         const testIcon = pushConfig.testIcon || '';
+        const initialSubscribed = Boolean(pushConfig.isSubscribed);
         const serviceWorkerUrl = pushConfig.serviceWorker;
         const restNonce = restConfig.nonce || '';
 
-        let isActive = false;
+        let isActive = initialSubscribed;
         let isProcessing = false;
 
         const syncTestButtons = () => {
@@ -237,7 +238,32 @@
 
         button.disabled = false;
         button.removeAttribute('disabled');
-        syncTestButtons();
+
+        if (isActive) {
+            updateControls(true);
+            setStatus('Las notificaciones del navegador están activas en este dispositivo.', 'success');
+        } else {
+            syncTestButtons();
+        }
+
+        const showLocalTestNotification = async () => {
+            try {
+                const registration = await getRegistration(serviceWorkerUrl, true);
+                if (registration && typeof registration.showNotification === 'function') {
+                    registration.showNotification('Notificación de prueba', {
+                        body: 'Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.',
+                        icon: testIcon,
+                        badge: testIcon,
+                        data: {
+                            url: window.location.href,
+                        },
+                    });
+                }
+            } catch (notificationError) {
+                // eslint-disable-next-line no-console
+                console.error('GO360 push local notification error', notificationError);
+            }
+        };
 
         const refreshUI = async () => {
             try {
@@ -389,22 +415,7 @@
                     throw new Error('Request failed');
                 }
                 setStatus('Hemos enviado una notificación de prueba. Revisa tu navegador y la campana del panel.', 'success');
-                try {
-                    const registration = await getRegistration(serviceWorkerUrl, true);
-                    if (registration && typeof registration.showNotification === 'function') {
-                        registration.showNotification('Notificación de prueba', {
-                            body: 'Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.',
-                            icon: testIcon,
-                            badge: testIcon,
-                            data: {
-                                url: window.location.href,
-                            },
-                        });
-                    }
-                } catch (notificationError) {
-                    // eslint-disable-next-line no-console
-                    console.error('GO360 push local notification error', notificationError);
-                }
+                await showLocalTestNotification();
                 if (window.dispatchEvent) {
                     let refreshEvent;
                     try {
@@ -444,6 +455,7 @@
                     throw new Error('Request failed');
                 }
                 setStatus('Hemos enviado la notificación de prueba global. Revisa todos tus dispositivos y la campana del panel.', 'success');
+                await showLocalTestNotification();
                 if (window.dispatchEvent) {
                     let refreshEvent;
                     try {
@@ -484,5 +496,12 @@
         }
 
         refreshUI();
+        if (navigator.serviceWorker && 'ready' in navigator.serviceWorker) {
+            navigator.serviceWorker.ready.then(() => {
+                refreshUI();
+            }).catch(() => {
+                // noop
+            });
+        }
     });
 })();

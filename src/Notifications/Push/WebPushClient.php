@@ -145,14 +145,7 @@ class WebPushClient
 
         $salt = random_bytes(16);
 
-        $local_key = openssl_pkey_new([
-            'private_key_type' => OPENSSL_KEYTYPE_EC,
-            'curve_name'       => 'prime256v1',
-        ]);
-
-        if (! $local_key) {
-            throw new \RuntimeException('Unable to generate local key pair.');
-        }
+        $local_key = $this->create_ephemeral_key();
 
         $local_details = openssl_pkey_get_details($local_key);
         if (! $local_details || ! isset($local_details['key'])) {
@@ -512,5 +505,32 @@ class WebPushClient
         }
 
         return false;
+    }
+
+    /**
+     * @return resource
+     */
+    private function create_ephemeral_key()
+    {
+        $config = [
+            'private_key_type' => OPENSSL_KEYTYPE_EC,
+            'curve_name'       => 'prime256v1',
+        ];
+
+        $resource = openssl_pkey_new($config);
+        if ($resource !== false) {
+            return $resource;
+        }
+
+        $config_path = VapidKeyManager::discover_openssl_config_path();
+        if ($config_path !== null) {
+            $config['config'] = $config_path;
+            $resource = openssl_pkey_new($config);
+            if ($resource !== false) {
+                return $resource;
+            }
+        }
+
+        throw new \RuntimeException('Unable to generate local key pair.');
     }
 }

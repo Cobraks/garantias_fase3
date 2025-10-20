@@ -160,7 +160,7 @@ class VapidKeyManager
             return $resource;
         }
 
-        $config_path = $this->locate_openssl_config();
+        $config_path = self::discover_openssl_config_path();
         if ($config_path !== null) {
             $config['config'] = $config_path;
             $resource = openssl_pkey_new($config);
@@ -172,11 +172,11 @@ class VapidKeyManager
         return false;
     }
 
-    private function locate_openssl_config(): ?string
+    public static function discover_openssl_config_path(): ?string
     {
         $env = getenv('OPENSSL_CONF');
         if (is_string($env) && $env !== '') {
-            $path = $this->normalise_config_path($env);
+            $path = self::normalise_config_path($env);
             if ($path !== null) {
                 return $path;
             }
@@ -189,7 +189,7 @@ class VapidKeyManager
                     continue;
                 }
 
-                $candidate = $this->normalise_config_path($locations[$key]);
+                $candidate = self::normalise_config_path($locations[$key]);
                 if ($candidate !== null) {
                     return $candidate;
                 }
@@ -206,7 +206,7 @@ class VapidKeyManager
         ];
 
         foreach ($candidates as $candidate) {
-            $path = $this->normalise_config_path($candidate);
+            $path = self::normalise_config_path($candidate);
             if ($path !== null) {
                 return $path;
             }
@@ -215,7 +215,7 @@ class VapidKeyManager
         return null;
     }
 
-    private function normalise_config_path($path): ?string
+    private static function normalise_config_path($path): ?string
     {
         if (! is_string($path) || $path === '') {
             return null;
