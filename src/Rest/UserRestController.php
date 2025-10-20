@@ -324,12 +324,15 @@ class UserRestController
 
         $status = SepaMandateService::get_status($user_id);
         $active = SepaMandateService::get_activation_flag($user_id);
-        $is_active = $active && ($status['value'] === SepaMandateService::STATUS_SIGNED);
+        $requested = SepaMandateService::get_requested_flag($user_id);
+        $payment = SepaMandateService::get_payment_method($user_id);
 
         return new \WP_REST_Response([
-            'estado_sepa' => $is_active,
+            'estado_sepa' => $status['value'],
             'status'      => $status,
             'activar'     => $active,
+            'solicitado'  => $requested,
+            'metodo'      => $payment,
         ], 200);
     }
 }

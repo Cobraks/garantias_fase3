@@ -600,6 +600,7 @@ class RegistrationService
             SepaMandateService::set_status($user_id, SepaMandateService::STATUS_UNFILLED);
             SepaMandateService::set_activation_flag($user_id, false, SepaMandateService::ACTIVATION_DISABLED);
             SepaMandateService::set_payment_method($user_id, 'transferencia');
+            SepaMandateService::clear_requested_flag($user_id);
         }
 
         if (! empty($uploads['avatar']['id'])) {
@@ -792,6 +793,10 @@ class RegistrationService
         $estado['metodo_de_pago'] = SepaMandateService::build_payment_payload('transferencia');
 
         if ($document !== null) {
+            SepaMandateService::set_requested_flag($user_id, true);
+        }
+
+        if ($document !== null) {
             $estado['documento_sepa_sin_firmar'] = $document;
             $estado['documento_sepa_firmado'] = null;
         }
@@ -838,6 +843,7 @@ class RegistrationService
         SepaMandateService::set_status($user_id, SepaMandateService::STATUS_PENDING_SIGNATURE);
         SepaMandateService::set_activation_flag($user_id, false, SepaMandateService::ACTIVATION_PENDING);
         SepaMandateService::set_payment_method($user_id, 'transferencia');
+        SepaMandateService::set_requested_flag($user_id, true);
     }
 
     /**

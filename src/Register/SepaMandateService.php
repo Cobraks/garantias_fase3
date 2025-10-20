@@ -25,6 +25,7 @@ class SepaMandateService
 
     private const META_PENDING_FIELD = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_sin_firmar';
     private const META_SIGNED_FIELD  = 'gestion_pagos_gestion_sepa_estado_documentos_documento_sepa_firmado';
+    private const META_REQUESTED_FIELD        = 'gestion_pagos_gestion_sepa_estado_documentos_sepa_solicitado';
     private const META_STATUS_FIELD           = 'gestion_pagos_gestion_sepa_estado_documentos_estado_sepa';
     private const META_ACTIVATE_FIELD         = 'gestion_pagos_activar_sepa';
     private const META_ACTIVATE_FIELD_LEGACY  = 'gestion_pagos_gestion_sepa_estado_documentos_activar_sepa';
@@ -210,6 +211,40 @@ class SepaMandateService
         if ($payload['value'] !== self::STATUS_DISABLED) {
             self::clear_disabled_message($user_id);
         }
+    }
+
+    public static function set_requested_flag(int $user_id, bool $requested): void
+    {
+        update_user_meta($user_id, self::META_REQUESTED_FIELD, $requested ? '1' : '0');
+    }
+
+    public static function get_requested_flag(int $user_id): bool
+    {
+        $value = get_user_meta($user_id, self::META_REQUESTED_FIELD, true);
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value === 1;
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+            if ($normalized === '') {
+                return false;
+            }
+
+            return in_array($normalized, ['1', 'true', 'yes', 'on', 'si', 'sí'], true);
+        }
+
+        return false;
+    }
+
+    public static function clear_requested_flag(int $user_id): void
+    {
+        delete_user_meta($user_id, self::META_REQUESTED_FIELD);
     }
 
     /**
@@ -421,6 +456,23 @@ class SepaMandateService
             update_user_meta($user_id, self::META_ACTIVATE_FIELD_LEGACY, $payload['flag']);
         }
         update_user_meta($user_id, self::META_ACTIVATE_STATE_FIELD, $payload['value']);
+
+        if ($active) {
+            self::set_requested_flag($user_id, true);
+            self::set_status($user_id, self::STATUS_SIGNED);
+            self::set_payment_method($user_id, 'domiciliacion');
+
+            return;
+        }
+
+        self::set_payment_method($user_id, 'transferencia');
+
+        if ($state === self::ACTIVATION_DISABLED) {
+            $current_status = self::get_status($user_id);
+            if ($current_status['value'] === self::STATUS_SIGNED) {
+                self::set_status($user_id, self::STATUS_DISABLED);
+            }
+        }
     }
 
     /**
@@ -632,6 +684,7 @@ class SepaMandateService
         $stored = self::store_document($user_id, self::TYPE_PENDING, $binary, $context);
 
         if (! is_wp_error($stored)) {
+            self::set_requested_flag($user_id, true);
             self::set_status($user_id, self::STATUS_PENDING_SIGNATURE);
             self::set_activation_flag($user_id, false, self::ACTIVATION_PENDING);
             self::set_payment_method($user_id, 'transferencia');
@@ -649,6 +702,7 @@ class SepaMandateService
         $stored = self::store_document($user_id, self::TYPE_SIGNED, $binary, $context);
 
         if (! is_wp_error($stored)) {
+            self::set_requested_flag($user_id, true);
             self::set_status($user_id, self::STATUS_PENDING_VALIDATION);
             self::set_activation_flag($user_id, false, self::ACTIVATION_PENDING);
             self::set_payment_method($user_id, 'transferencia');
@@ -665,6 +719,7 @@ class SepaMandateService
             $signed = self::get_document_meta($user_id, self::TYPE_SIGNED);
             if (empty($signed['hash'])) {
                 self::set_status($user_id, self::STATUS_UNFILLED);
+                self::clear_requested_flag($user_id);
             }
         }
         self::set_payment_method($user_id, 'transferencia');
@@ -679,8 +734,10 @@ class SepaMandateService
         $pending = self::get_document_meta($user_id, self::TYPE_PENDING);
         if (! empty($pending['hash'])) {
             self::set_status($user_id, self::STATUS_PENDING_SIGNATURE);
+            self::set_requested_flag($user_id, true);
         } else {
             self::set_status($user_id, self::STATUS_UNFILLED);
+            self::clear_requested_flag($user_id);
         }
         self::set_payment_method($user_id, 'transferencia');
     }

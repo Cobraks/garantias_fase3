@@ -468,9 +468,7 @@ class ClientRestController
             );
         }
 
-        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_SIGNED);
         SepaMandateService::set_activation_flag($user_id, true);
-        SepaMandateService::set_payment_method($user_id, 'domiciliacion');
         SepaMandateService::clear_disabled_message($user_id);
 
         $account = AccountViewModel::from_user($user);
@@ -587,7 +585,6 @@ class ClientRestController
 
         SepaMandateService::set_status($user_id, SepaMandateService::STATUS_DISABLED);
         SepaMandateService::set_activation_flag($user_id, false, SepaMandateService::ACTIVATION_DISABLED);
-        SepaMandateService::set_payment_method($user_id, 'transferencia');
         SepaMandateService::set_disabled_message($user_id, $reason);
 
         $account = AccountViewModel::from_user($user);
@@ -1508,16 +1505,20 @@ class ClientRestController
         return $filters;
     }
 
+
     private static function format_payment(array $payments): array
     {
         $selected = isset($payments['selected_method']) ? sanitize_key((string) $payments['selected_method']) : '';
+        if ($selected === '') {
+            $selected = 'transferencia';
+        }
 
-        $label = '';
-        if (! empty($payments['raw_method'])) {
+        $label = self::clean_text($payments['method_label'] ?? '');
+        if ($label === '' && ! empty($payments['raw_method'])) {
             $label = self::clean_text((string) $payments['raw_method']);
         }
 
-        if ($label === '' && $selected !== '') {
+        if ($label === '') {
             $label = $selected === 'domiciliacion'
                 ? __('Domiciliación bancaria', 'garantias-online-360vo')
                 : __('Transferencia bancaria', 'garantias-online-360vo');
@@ -1609,18 +1610,17 @@ class ClientRestController
             return $stored;
         }
 
-        SepaMandateService::set_status($user_id, SepaMandateService::STATUS_SIGNED);
         SepaMandateService::set_activation_flag(
             $user_id,
             true,
             SepaMandateService::ACTIVATION_ENABLED
         );
-        SepaMandateService::set_payment_method($user_id, 'domiciliacion');
 
         $stored['submitted_at'] = current_time('timestamp');
 
         return $stored;
     }
+
 
     private static function format_sepa_details(array $payments): array
     {
@@ -1629,52 +1629,17 @@ class ClientRestController
             $sepa = [];
         }
 
-        $label = self::clean_text($sepa['status_label'] ?? '');
-        $variant = self::clean_text($sepa['status_variant'] ?? '');
-        $disabled_message = self::clean_text($sepa['disabled_message'] ?? '');
-
-        $fields = [];
-        if (! empty($sepa['fields']) && is_array($sepa['fields'])) {
-            foreach ($sepa['fields'] as $field) {
-                if (! is_array($field)) {
-                    continue;
-                }
-
-                $value = self::clean_text($field['value'] ?? '');
-                if ($value === '') {
-                    continue;
-                }
-
-                $fields[] = [
-                    'label' => self::clean_text($field['label'] ?? ''),
-                    'value' => $value,
-                ];
-            }
-        }
-
-        $requested = isset($sepa['requested']) ? (bool) $sepa['requested'] : false;
-        $awaiting_validation = isset($sepa['awaiting_validation']) ? (bool) $sepa['awaiting_validation'] : false;
-        $locked = isset($sepa['locked']) ? (bool) $sepa['locked'] : false;
-        $needs_activation = isset($sepa['needs_activation']) ? (bool) $sepa['needs_activation'] : false;
         $status_code = isset($sepa['status_code']) ? sanitize_key((string) $sepa['status_code']) : '';
-        $activated = isset($sepa['activated']) ? (bool) $sepa['activated'] : false;
-
-        $status_value = null;
-        if ($status_code !== '') {
-            $status_value = ($status_code === SepaMandateService::STATUS_SIGNED) && $activated;
-        } elseif (array_key_exists('status', $sepa)) {
-            if ($sepa['status'] === true) {
-                $status_value = true;
-            } elseif ($sepa['status'] === false) {
-                $status_value = false;
-            }
+        $label = self::clean_text($sepa['status_label'] ?? '');
+        if ($label === '') {
+            $label = $status_code !== ''
+                ? SepaMandateService::status_label($status_code)
+                : __('Sin información del mandato', 'garantias-online-360vo');
         }
 
-        if ($status_code === SepaMandateService::STATUS_DISABLED) {
-            $requested = false;
-            $awaiting_validation = false;
-            $needs_activation = true;
-        }
+        $requested = ! empty($sepa['requested']);
+        $activated = ! empty($sepa['activated']);
+        $disabled_message = self::clean_text($sepa['disabled_message'] ?? '');
 
         $documents = [
             'pending' => [],
@@ -1701,18 +1666,12 @@ class ClientRestController
         }
 
         return [
-            'label'               => $label !== '' ? $label : __('Sin información del mandato', 'garantias-online-360vo'),
-            'variant'             => $variant !== '' ? $variant : 'info',
-            'fields'              => $fields,
-            'requested'           => $requested,
-            'awaiting_validation' => $awaiting_validation,
-            'locked'              => $locked,
-            'needs_activation'    => $needs_activation,
-            'status'              => $status_value,
-            'status_code'         => $status_code,
-            'activated'           => $activated,
-            'documents'           => $documents,
-            'disabled_message'    => $disabled_message,
+            'label'            => $label,
+            'status_code'      => $status_code,
+            'requested'        => $requested,
+            'activated'        => $activated,
+            'documents'        => $documents,
+            'disabled_message' => $disabled_message,
         ];
     }
 

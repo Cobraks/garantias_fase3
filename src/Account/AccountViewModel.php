@@ -728,7 +728,8 @@ class AccountViewModel
 
         $sepa['status'] = ($status_code === SepaMandateService::STATUS_SIGNED) && $is_activated;
 
-        $sepa['requested'] = in_array(
+        $requested_flag = SepaMandateService::get_requested_flag($user_id);
+        $sepa['requested'] = $requested_flag || in_array(
             $status_code,
             [
                 SepaMandateService::STATUS_PENDING_SIGNATURE,
