@@ -132,62 +132,49 @@
                 return defaultValue;
             }
 
-            const tryParse = (value) => {
-                try {
-                    return JSON.parse(value);
-                } catch (error) {
-                    return null;
+            try {
+                return JSON.parse(trimmed);
+            } catch (error) {
+                const firstBrace = trimmed.indexOf('{');
+                const firstBracket = trimmed.indexOf('[');
+
+                const hasBrace = firstBrace >= 0;
+                const hasBracket = firstBracket >= 0;
+
+                if (!hasBrace && !hasBracket) {
+                    const invalidError = new SyntaxError('Invalid JSON response');
+                    invalidError.responseText = trimmed.slice(0, 200);
+                    throw invalidError;
                 }
-            };
 
-            let parsed = tryParse(trimmed);
-            if (parsed !== null) {
-                return parsed;
-            }
+                let start = hasBrace ? firstBrace : firstBracket;
+                if (hasBrace && hasBracket) {
+                    start = Math.min(firstBrace, firstBracket);
+                }
 
-            const braceIndex = trimmed.indexOf('{');
-            const bracketIndex = trimmed.indexOf('[');
-            const startIndexes = [braceIndex, bracketIndex]
-                .filter((index) => index >= 0)
-                .sort((a, b) => a - b);
+                const lastBrace = trimmed.lastIndexOf('}');
+                const lastBracket = trimmed.lastIndexOf(']');
 
-            const endIndexes = [];
-            const lastBraceIndex = trimmed.lastIndexOf('}');
-            const lastBracketIndex = trimmed.lastIndexOf(']');
-            if (lastBraceIndex >= 0) {
-                endIndexes.push(lastBraceIndex + 1);
-            }
-            if (lastBracketIndex >= 0) {
-                endIndexes.push(lastBracketIndex + 1);
-            }
+                const braceEnd = lastBrace >= 0 ? lastBrace + 1 : -1;
+                const bracketEnd = lastBracket >= 0 ? lastBracket + 1 : -1;
 
-            for (let i = 0; i < startIndexes.length; i += 1) {
-                const start = startIndexes[i];
-                for (let j = 0; j < endIndexes.length; j += 1) {
-                    const end = endIndexes[j];
-                    if (end <= start) {
-                        continue;
-                    }
+                let end = Math.max(braceEnd, bracketEnd);
+
+                if (end > start) {
                     const candidate = trimmed.slice(start, end).trim();
-                    if (!candidate) {
-                        continue;
-                    }
-                    parsed = tryParse(candidate);
-                    if (parsed !== null) {
-                        return parsed;
+                    if (candidate) {
+                        try {
+                            return JSON.parse(candidate);
+                        } catch (innerError) {
+                            // fall through to final error
+                        }
                     }
                 }
 
-                const candidate = trimmed.slice(start).trim();
-                parsed = tryParse(candidate);
-                if (parsed !== null) {
-                    return parsed;
-                }
+                const invalidError = new SyntaxError('Invalid JSON response');
+                invalidError.responseText = trimmed.slice(0, 200);
+                throw invalidError;
             }
-
-            const error = new SyntaxError('Invalid JSON response');
-            error.responseText = trimmed.slice(0, 200);
-            throw error;
         }
 
         function uniqueId(prefix) {
