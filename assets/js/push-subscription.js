@@ -30,12 +30,26 @@
         return outputArray;
     };
 
+    const resolveServiceWorkerUrl = (url) => {
+        try {
+            const absolute = new URL(url, window.location.href);
+            if (absolute.origin !== window.location.origin) {
+                absolute.protocol = window.location.protocol;
+                absolute.host = window.location.host;
+            }
+            return absolute.href;
+        } catch (error) {
+            return url;
+        }
+    };
+
     const getRegistration = async (serviceWorkerUrl) => {
         const existing = await navigator.serviceWorker.getRegistration();
         if (existing) {
             return existing;
         }
-        return navigator.serviceWorker.register(serviceWorkerUrl, { scope: '/' });
+        const resolvedUrl = resolveServiceWorkerUrl(serviceWorkerUrl);
+        return navigator.serviceWorker.register(resolvedUrl);
     };
 
     document.addEventListener('DOMContentLoaded', () => {
