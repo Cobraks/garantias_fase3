@@ -1385,7 +1385,7 @@
                     buttonLabel: strings.manageSepaViewSigned || 'Ver mandato firmado',
                     type: 'signed',
                 }));
-            } else {
+            } else if (!awaitingValidation) {
                 cards.push(renderSepaSignedUploadCard());
             }
 
@@ -1395,21 +1395,24 @@
 
             sections.push(`<div class="client-sepa-dialog__cards">${cards.join('')}</div>`);
 
+            const activateLabelBase = typeof strings.manageSepaActivate === 'string'
+                ? strings.manageSepaActivate.trim()
+                : '';
+            const activateAction = {
+                type: 'activate',
+                label: activateLabelBase !== '' ? activateLabelBase : 'Habilitar domiciliación bancaria',
+            };
+
             let action = null;
             let actionHelp = '';
 
             if (awaitingValidation || needsActivation) {
-                const activateLabel = typeof strings.manageSepaActivate === 'string'
-                    ? strings.manageSepaActivate.trim()
-                    : '';
-                action = {
-                    type: 'activate',
-                    label: activateLabel !== '' ? activateLabel : 'Activar domiciliación bancaria',
-                };
                 actionHelp = typeof strings.manageSepaActivateHelp === 'string'
                     ? strings.manageSepaActivateHelp.trim()
                     : '';
-            } else if (isActive) {
+            }
+
+            if (isActive) {
                 const deactivateLabel = typeof strings.manageSepaDeactivate === 'string'
                     ? strings.manageSepaDeactivate.trim()
                     : '';
@@ -1427,6 +1430,7 @@
                 status: statusLabel !== '' ? { label: statusLabel, variant: statusVariant } : null,
                 action,
                 help: actionHelp,
+                activateAction,
             };
         }
 
@@ -1446,15 +1450,22 @@
 
             updateSepaDialogStatusBadge(elements.panel, dialogData.status);
 
-            const actionButton = prepareSepaDialogFooter({
+            const actionButtons = prepareSepaDialogFooter({
                 footer: elements.footer,
                 saveButton: elements.saveButton,
                 statusEl: elements.status,
                 action: dialogData.action,
                 help: dialogData.help,
+                activateAction: dialogData.activateAction,
             });
 
-            bindSepaActionButton(actionButton, dialogData.action, item, currentContext);
+            if (actionButtons && actionButtons.activate) {
+                bindSepaActionButton(actionButtons.activate, dialogData.activateAction, item, currentContext);
+            }
+
+            if (actionButtons && actionButtons.secondary) {
+                bindSepaActionButton(actionButtons.secondary, dialogData.action, item, currentContext);
+            }
         }
 
         function updateSepaDialogStatusBadge(panel, status) {
@@ -1504,7 +1515,7 @@
             badge.textContent = label;
         }
 
-        function prepareSepaDialogFooter({ footer, saveButton, statusEl, action, help }) {
+        function prepareSepaDialogFooter({ footer, saveButton, statusEl, action, help, activateAction }) {
             if (statusEl) {
                 const helpText = typeof help === 'string' ? help.trim() : '';
                 statusEl.textContent = helpText;
@@ -1540,18 +1551,29 @@
                 button.remove();
             });
 
-            if (!action || typeof action.label !== 'string' || action.label.trim() === '') {
-                return null;
+            const result = {};
+
+            if (activateAction && typeof activateAction.label === 'string' && activateAction.label.trim() !== '') {
+                const activateButton = document.createElement('button');
+                activateButton.type = 'button';
+                activateButton.className = 'client-dialog__footer-btn';
+                activateButton.dataset.sepaAction = 'activate';
+                activateButton.textContent = activateAction.label.trim();
+                actionsContainer.insertBefore(activateButton, saveButton || null);
+                result.activate = activateButton;
             }
 
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'client-dialog__footer-btn';
-            button.dataset.sepaAction = action.type === 'deactivate' ? 'deactivate' : 'activate';
-            button.textContent = action.label.trim();
-            actionsContainer.insertBefore(button, saveButton || null);
+            if (action && typeof action.label === 'string' && action.label.trim() !== '') {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'client-dialog__footer-btn';
+                button.dataset.sepaAction = action.type === 'deactivate' ? 'deactivate' : 'activate';
+                button.textContent = action.label.trim();
+                actionsContainer.insertBefore(button, saveButton || null);
+                result.secondary = button;
+            }
 
-            return button;
+            return Object.keys(result).length > 0 ? result : null;
         }
 
         function bindSepaActionButton(button, action, item, context) {
