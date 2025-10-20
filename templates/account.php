@@ -1121,10 +1121,9 @@ $formatPhoneHref = static function ($phone) {
                                             data-sepa-step-download
                                             <?php echo $show_download_block ? '' : 'hidden aria-hidden="true"'; ?>
                                         >
-                                            <span
-                                                data-sepa-step-number
-                                                <?php echo $sepa_awaiting_validation ? 'hidden aria-hidden="true"' : ''; ?>
-                                            >1.</span>
+                                            <?php if (! $sepa_awaiting_validation) : ?>
+                                                <span data-sepa-step-number>1.</span>
+                                            <?php endif; ?>
                                             <span data-sepa-step-label>
                                                 <?php
                                                 if ($sepa_awaiting_validation) {
@@ -1135,17 +1134,18 @@ $formatPhoneHref = static function ($phone) {
                                                 ?>
                                             </span>
                                         </p>
-                                        <a
-                                            class="account-sepa-request__download"
-                                            data-sepa-pending-link
-                                            href="<?php echo esc_url($pending_download_url !== '' ? $pending_download_url : '#'); ?>"
-                                            <?php echo $show_pending_download ? '' : 'hidden aria-hidden="true" tabindex="-1"'; ?>
-                                            target="_blank"
-                                            rel="noopener"
-                                        >
-                                            <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
-                                            <span data-sepa-pending-label><?php echo esc_html($pending_download_label); ?></span>
-                                        </a>
+                                        <?php if ($show_pending_download) : ?>
+                                            <a
+                                                class="account-sepa-request__download"
+                                                data-sepa-pending-link
+                                                href="<?php echo esc_url($pending_download_url !== '' ? $pending_download_url : '#'); ?>"
+                                                target="_blank"
+                                                rel="noopener"
+                                            >
+                                                <span class="account-sepa-request__download-icon" aria-hidden="true"><?php echo Svg::icon('pdf', 'account-sepa-request__download-svg'); ?></span>
+                                                <span data-sepa-pending-label><?php echo esc_html($pending_download_label); ?></span>
+                                            </a>
+                                        <?php endif; ?>
                                         <div
                                             class="account-sepa-request__signed"
                                             data-sepa-signed

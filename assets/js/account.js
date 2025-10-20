@@ -153,14 +153,70 @@
             downloadPrompt: strings.sepaDownloadPrompt || 'Descarga el documento.',
         };
         const sepaSignedFallbackName = strings.sepaSignedFilename || 'Mandato SEPA firmado';
-        const sepaPendingLink = document.querySelector('[data-sepa-pending-link]');
-        const sepaPendingLabel = document.querySelector('[data-sepa-pending-label]');
+        const sepaDownloadContainer = document.querySelector('[data-sepa-download]');
+        let sepaPendingLink = document.querySelector('[data-sepa-pending-link]');
+        let sepaPendingLabel = sepaPendingLink
+            ? sepaPendingLink.querySelector('[data-sepa-pending-label]')
+            : null;
         const sepaPendingDefaultHref = sepaPendingLink instanceof HTMLAnchorElement
             ? sepaPendingLink.getAttribute('href') || '#'
             : '#';
-        const sepaPendingDefaultLabel = sepaPendingLabel
+        let sepaPendingDefaultLabel = sepaPendingLabel
             ? sepaPendingLabel.textContent.trim()
             : '';
+        if (sepaPendingDefaultLabel === '') {
+            sepaPendingDefaultLabel = sepaText.downloadPrompt || 'Descarga el documento.';
+        }
+        const sepaDownloadIconMarkup = (() => {
+            const icon = sepaDownloadContainer
+                ? sepaDownloadContainer.querySelector('.account-sepa-request__download-icon')
+                : null;
+            if (icon) {
+                return icon.innerHTML;
+            }
+            return '';
+        })();
+        const ensurePendingLink = (shouldExist) => {
+            if (!sepaDownloadContainer) {
+                return null;
+            }
+            if (shouldExist) {
+                if (sepaPendingLink instanceof HTMLAnchorElement) {
+                    return sepaPendingLink;
+                }
+                const link = document.createElement('a');
+                link.className = 'account-sepa-request__download';
+                link.setAttribute('data-sepa-pending-link', '');
+                link.target = '_blank';
+                link.rel = 'noopener';
+                const icon = document.createElement('span');
+                icon.className = 'account-sepa-request__download-icon';
+                icon.setAttribute('aria-hidden', 'true');
+                if (sepaDownloadIconMarkup) {
+                    icon.innerHTML = sepaDownloadIconMarkup;
+                }
+                const label = document.createElement('span');
+                label.setAttribute('data-sepa-pending-label', '');
+                label.textContent = sepaPendingDefaultLabel;
+                link.appendChild(icon);
+                link.appendChild(label);
+                const signedBlock = sepaDownloadContainer.querySelector('[data-sepa-signed]');
+                if (signedBlock) {
+                    sepaDownloadContainer.insertBefore(link, signedBlock);
+                } else {
+                    sepaDownloadContainer.appendChild(link);
+                }
+                sepaPendingLink = link;
+                sepaPendingLabel = label;
+                return sepaPendingLink;
+            }
+            if (sepaPendingLink instanceof HTMLAnchorElement) {
+                sepaPendingLink.remove();
+                sepaPendingLink = null;
+                sepaPendingLabel = null;
+            }
+            return null;
+        };
         const formatIban = (value) => {
             const raw = typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() : '';
             if (!raw) {
@@ -961,25 +1017,19 @@
                     signedDocument
                     && (signedDocument.url || signedDocument.hash || signedDocument.filename),
                 );
-                if (sepaPendingLink instanceof HTMLAnchorElement) {
-                    const shouldShowPending = hasPendingDocument && !awaitingValidation && !sepaIsDisabled;
-                    if (shouldShowPending) {
+                const shouldShowPending = hasPendingDocument && !awaitingValidation && !sepaIsDisabled;
+                if (shouldShowPending) {
+                    const pendingLinkElement = ensurePendingLink(true);
+                    if (pendingLinkElement instanceof HTMLAnchorElement) {
                         const pendingUrl = typeof pendingDocument.url === 'string'
                             ? pendingDocument.url.trim()
                             : '';
                         const resolvedUrl = pendingUrl || sepaPendingDefaultHref || '#';
-                        sepaPendingLink.href = resolvedUrl;
-                        sepaPendingLink.hidden = false;
-                        sepaPendingLink.setAttribute('aria-hidden', 'false');
-                        sepaPendingLink.removeAttribute('tabindex');
-                    } else {
-                        sepaPendingLink.href = sepaPendingDefaultHref || '#';
-                        sepaPendingLink.hidden = true;
-                        sepaPendingLink.setAttribute('aria-hidden', 'true');
-                        sepaPendingLink.setAttribute('tabindex', '-1');
+                        pendingLinkElement.href = resolvedUrl;
+                        pendingLinkElement.hidden = false;
+                        pendingLinkElement.setAttribute('aria-hidden', 'false');
+                        pendingLinkElement.removeAttribute('tabindex');
                     }
-                }
-                if (sepaPendingLabel) {
                     const labelCandidates = [];
                     if (hasPendingDocument) {
                         const pendingLabel = typeof pendingDocument.label === 'string'
@@ -996,7 +1046,17 @@
                         }
                     }
                     const nextLabel = labelCandidates.find((value) => value !== '') || sepaPendingDefaultLabel;
-                    sepaPendingLabel.textContent = nextLabel;
+                    if (sepaPendingLabel) {
+                        sepaPendingLabel.textContent = nextLabel;
+                    } else if (pendingLinkElement) {
+                        const newLabel = pendingLinkElement.querySelector('[data-sepa-pending-label]');
+                        if (newLabel) {
+                            newLabel.textContent = nextLabel;
+                            sepaPendingLabel = newLabel;
+                        }
+                    }
+                } else {
+                    ensurePendingLink(false);
                 }
                 const hasGeneratedMandate = hasPendingDocument || hasSignedDocument || sepaData.status !== null;
 

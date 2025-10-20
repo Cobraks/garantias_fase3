@@ -1324,6 +1324,9 @@
             const isDisabled = statusCodeRaw === 'deshabilitado';
             let awaitingValidation = Boolean(sepa.awaiting_validation);
             let needsActivation = Boolean(sepa.needs_activation);
+            if (!awaitingValidation && statusCodeRaw === 'pendiente_validacion') {
+                awaitingValidation = true;
+            }
             const isActive = Boolean(sepa.status);
 
             if (isDisabled) {
