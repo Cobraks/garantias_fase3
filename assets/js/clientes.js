@@ -147,12 +147,38 @@
 
             const braceIndex = trimmed.indexOf('{');
             const bracketIndex = trimmed.indexOf('[');
-            const indexes = [braceIndex, bracketIndex]
+            const startIndexes = [braceIndex, bracketIndex]
                 .filter((index) => index >= 0)
                 .sort((a, b) => a - b);
 
-            for (let i = 0; i < indexes.length; i += 1) {
-                const candidate = trimmed.slice(indexes[i]);
+            const endIndexes = [];
+            const lastBraceIndex = trimmed.lastIndexOf('}');
+            const lastBracketIndex = trimmed.lastIndexOf(']');
+            if (lastBraceIndex >= 0) {
+                endIndexes.push(lastBraceIndex + 1);
+            }
+            if (lastBracketIndex >= 0) {
+                endIndexes.push(lastBracketIndex + 1);
+            }
+
+            for (let i = 0; i < startIndexes.length; i += 1) {
+                const start = startIndexes[i];
+                for (let j = 0; j < endIndexes.length; j += 1) {
+                    const end = endIndexes[j];
+                    if (end <= start) {
+                        continue;
+                    }
+                    const candidate = trimmed.slice(start, end).trim();
+                    if (!candidate) {
+                        continue;
+                    }
+                    parsed = tryParse(candidate);
+                    if (parsed !== null) {
+                        return parsed;
+                    }
+                }
+
+                const candidate = trimmed.slice(start).trim();
                 parsed = tryParse(candidate);
                 if (parsed !== null) {
                     return parsed;
