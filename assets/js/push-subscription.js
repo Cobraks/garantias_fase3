@@ -96,31 +96,29 @@
         const scopeUrl = resolveServiceWorkerScope(serviceWorkerUrl);
 
         const candidates = [];
-        try {
-            const scoped = await navigator.serviceWorker.getRegistration(scopeUrl);
-            if (scoped) {
-                candidates.push(scoped);
+        const pushCandidate = (registration) => {
+            if (registration && !candidates.includes(registration)) {
+                candidates.push(registration);
             }
+        };
+
+        try {
+            pushCandidate(await navigator.serviceWorker.getRegistration(scopeUrl));
         } catch (error) {
             warn('scope lookup error', error);
         }
 
         try {
-            const active = await navigator.serviceWorker.getRegistration();
-            if (active) {
-                candidates.push(active);
-            }
+            pushCandidate(await navigator.serviceWorker.getRegistration());
         } catch (error) {
             warn('registration lookup error', error);
         }
 
         try {
-            const ready = await navigator.serviceWorker.ready;
-            if (ready) {
-                candidates.push(ready);
-            }
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            registrations.forEach(pushCandidate);
         } catch (error) {
-            warn('ready lookup error', error);
+            warn('registrations lookup error', error);
         }
 
         const match = candidates.find((registration) => matchesRegistration(registration, resolvedUrl));
@@ -128,15 +126,21 @@
             return match;
         }
 
-        if (candidates.length > 0) {
-            return candidates[0];
-        }
-
         if (!createIfMissing) {
-            return null;
+            return candidates.length > 0 ? candidates[0] : null;
         }
 
-        return navigator.serviceWorker.register(resolvedUrl, { scope: scopeUrl });
+        try {
+            const registration = await navigator.serviceWorker.register(resolvedUrl, { scope: scopeUrl });
+            log('getRegistration: registered new service worker', {
+                scope: registration.scope,
+                scriptURL: resolvedUrl,
+            });
+            return registration;
+        } catch (registerError) {
+            reportError('getRegistration: registration failed', registerError);
+            throw registerError;
+        }
     };
 
     document.addEventListener('DOMContentLoaded', () => {
