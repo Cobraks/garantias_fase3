@@ -153,11 +153,24 @@ class PushNotificationRestController
         }
 
         $payload['id'] = $notification_id;
-        $this->dispatcher->dispatch($user_id, $payload);
+        $result = $this->dispatcher->dispatch($user_id, $payload);
+
+        if ($result['sent'] === 0) {
+            return new WP_Error(
+                'push_failed',
+                __('No se pudo entregar la notificación de prueba en este dispositivo.', 'garantias-online-360vo'),
+                [
+                    'status'   => 502,
+                    'failures' => $result['failures'],
+                ]
+            );
+        }
 
         return new WP_REST_Response([
             'success' => true,
             'meta'    => [
+                'sent'   => $result['sent'],
+                'failed' => $result['failed'],
                 'unread' => $this->repository->count_unread($user_id),
             ],
         ]);
@@ -177,6 +190,9 @@ class PushNotificationRestController
 
         $payload = $this->build_test_payload();
         $sent = 0;
+        $failed = 0;
+        $failures = [];
+        $attempted = 0;
 
         foreach ($targets as $user_id) {
             if (! $this->user_has_opt_in($user_id)) {
@@ -188,10 +204,15 @@ class PushNotificationRestController
                 continue;
             }
 
+            $attempted++;
             $payload_with_id         = $payload;
             $payload_with_id['id']    = $notification_id;
-            $this->dispatcher->dispatch($user_id, $payload_with_id);
-            $sent++;
+            $result = $this->dispatcher->dispatch($user_id, $payload_with_id);
+            $sent += $result['sent'];
+            $failed += $result['failed'];
+            if (! empty($result['failures'])) {
+                $failures = array_merge($failures, $result['failures']);
+            }
         }
 
         if ($sent === 0) {
@@ -201,8 +222,11 @@ class PushNotificationRestController
         return new WP_REST_Response([
             'success' => true,
             'meta'    => [
-                'recipients' => $sent,
-                'unread'     => $this->repository->count_unread($current_user_id),
+                'targets'   => $attempted,
+                'delivered' => $sent,
+                'failed'    => $failed,
+                'failures'  => $failures,
+                'unread'    => $this->repository->count_unread($current_user_id),
             ],
         ]);
     }

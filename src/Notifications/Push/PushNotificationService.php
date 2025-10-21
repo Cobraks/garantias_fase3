@@ -52,6 +52,7 @@ class PushNotificationService
         add_action('rest_api_init', [$this, 'register_rest']);
         add_action('go360/activity/logged', [$this, 'handle_activity'], 20, 4);
         add_filter('go360/push/public_key', [$this, 'get_public_key']);
+        add_action('go360/push/log', [$this, 'log_push_event'], 10, 2);
     }
 
     public function get_public_key(): string
@@ -161,4 +162,16 @@ class PushNotificationService
         ], true);
     }
 
+    /**
+     * @param array<string, mixed> $context
+     */
+    public function log_push_event(string $event, array $context = []): void
+    {
+        if (! defined('WP_DEBUG') || ! WP_DEBUG) {
+            return;
+        }
+
+        $message = sprintf('[GO360 Push] %s %s', $event, wp_json_encode($context));
+        error_log($message);
+    }
 }

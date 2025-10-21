@@ -25,25 +25,39 @@ class PushDispatcher
     /**
      * @param array<string, mixed> $payload
      */
-    public function dispatch(int $user_id, array $payload): void
+    /**
+     * @return array{sent:int,failed:int,failures:array<int,string>}
+     */
+    public function dispatch(int $user_id, array $payload): array
     {
+        $result = [
+            'sent'     => 0,
+            'failed'   => 0,
+            'failures' => [],
+        ];
+
         if ($user_id <= 0) {
-            return;
+            return $result;
         }
 
         $subscriptions = $this->subscriptions->get_user_subscriptions($user_id);
         if (empty($subscriptions)) {
-            return;
+            return $result;
         }
 
         foreach ($subscriptions as $subscription) {
             $success = $this->client->send($subscription, $payload);
             if ($success) {
                 $this->subscriptions->mark_success((string) $subscription['endpoint']);
+                $result['sent']++;
             } else {
                 $this->subscriptions->mark_failure((string) $subscription['endpoint']);
+                $result['failed']++;
+                $result['failures'][] = (string) $subscription['endpoint'];
             }
         }
+
+        return $result;
     }
 
     /**

@@ -61,7 +61,7 @@ class PushSubscriptionRestController
         }
 
         $payload = $this->sanitize_payload($request->get_json_params());
-        if (empty($payload['endpoint'])) {
+        if (empty($payload['endpoint']) || empty($payload['publicKey']) || empty($payload['authToken'])) {
             return new WP_Error('invalid_payload', __('Suscripción no válida.', 'garantias-online-360vo'), ['status' => 400]);
         }
 
@@ -128,10 +128,44 @@ class PushSubscriptionRestController
 
         return [
             'endpoint'         => $endpoint,
-            'publicKey'        => isset($keys['p256dh']) ? sanitize_text_field((string) $keys['p256dh']) : sanitize_text_field((string) ($params['publicKey'] ?? '')),
-            'authToken'        => isset($keys['auth']) ? sanitize_text_field((string) $keys['auth']) : sanitize_text_field((string) ($params['authToken'] ?? '')),
+            'publicKey'        => $this->sanitize_base64_key($keys['p256dh'] ?? $params['publicKey'] ?? ''),
+            'authToken'        => $this->sanitize_base64_key($keys['auth'] ?? $params['authToken'] ?? ''),
             'contentEncoding'  => $content_encoding !== '' ? $content_encoding : 'aes128gcm',
             'userAgent'        => isset($params['userAgent']) ? sanitize_text_field((string) $params['userAgent']) : '',
         ];
+    }
+
+    private function sanitize_base64_key($value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $normalized = preg_replace('/\s+/', '', $value);
+        if (! is_string($normalized)) {
+            return '';
+        }
+
+        $normalized = trim($normalized);
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        if (! preg_match('/^[A-Za-z0-9\-_=+/]+$/', $normalized)) {
+            return '';
+        }
+
+        $converted = strtr($normalized, '-_', '+/');
+        $padding = strlen($converted) % 4;
+        if ($padding) {
+            $converted .= str_repeat('=', 4 - $padding);
+        }
+
+        if (base64_decode($converted, true) === false) {
+            return '';
+        }
+
+        return $normalized;
     }
 }
