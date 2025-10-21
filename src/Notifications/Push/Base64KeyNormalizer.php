@@ -18,7 +18,7 @@ class Base64KeyNormalizer
             }
         }
 
-        $filtered = preg_replace('/[^A-Za-z0-9\-_=+/]+/', '', $value);
+        $filtered = preg_replace('~[^A-Za-z0-9\-_=+\/]+~', '', $value);
         if (! is_string($filtered)) {
             return '';
         }
