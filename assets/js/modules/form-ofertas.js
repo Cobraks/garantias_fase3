@@ -21,8 +21,19 @@ function log(...args) {
 }
 
 // Cache simple por userId con posibilidad de invalidar
-const ofertasCache = new Map(); // userId -> { ofertas, especiales, meta, fetchedAt }
+const ofertasCache = new Map(); // userId -> { ofertas, especiales, meta, fetchedAt, version }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
+const CACHE_VERSION = 2;
+
+function isValidCacheEntry(entry) {
+        if (!entry || typeof entry !== "object") return false;
+        if (entry.version !== CACHE_VERSION) return false;
+        if (!Array.isArray(entry.ofertas)) return false;
+        if (!Array.isArray(entry.especiales)) return false;
+        if (typeof entry.fetchedAt !== "number") return false;
+        if (Date.now() - entry.fetchedAt >= CACHE_TTL) return false;
+        return true;
+}
 
 function storageKey(userId) {
         return `ofertas_${userId}`;
@@ -92,25 +103,24 @@ function applyOfertasState(entry) {
 function getCachedOfertas(userId) {
         if (ofertasCache.has(userId)) {
                 const cached = ofertasCache.get(userId);
-                if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
+                if (isValidCacheEntry(cached)) {
                         return cached;
                 }
+                ofertasCache.delete(userId);
         }
 
         const raw = sessionStorage.getItem(storageKey(userId));
         if (raw) {
                 try {
                         const parsed = JSON.parse(raw);
-                        if (
-                                parsed &&
-                                typeof parsed === "object" &&
-                                Date.now() - parsed.fetchedAt < CACHE_TTL
-                        ) {
+                        if (isValidCacheEntry(parsed)) {
                                 ofertasCache.set(userId, parsed);
                                 return parsed;
                         }
+                        sessionStorage.removeItem(storageKey(userId));
                 } catch (e) {
                         // ignore parse errors
+                        sessionStorage.removeItem(storageKey(userId));
                 }
         }
 
@@ -256,6 +266,7 @@ export async function fetchOfertas(userId, { force = false } = {}) {
                 const entry = {
                         ...normalized,
                         fetchedAt: Date.now(),
+                        version: CACHE_VERSION,
                 };
                 ofertasCache.set(effectiveUserId, entry);
                 try {
