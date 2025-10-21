@@ -70,6 +70,13 @@ class WebPushClient
             return false;
         }
 
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push DEBUG] Dispatch attempt to ' . substr($endpoint, 0, 120));
+            error_log('[GO360 Push DEBUG] Subscriber key length: ' . strlen($public_key));
+            error_log('[GO360 Push DEBUG] Auth token length: ' . strlen($auth_token));
+            error_log('[GO360 Push DEBUG] VAPID public key available: ' . (! empty($keys['public']) ? 'yes' : 'no'));
+        }
+
         do_action('go360/push/log', 'dispatch_attempt', [
             'endpoint' => $endpoint,
         ]);
@@ -82,7 +89,15 @@ class WebPushClient
                 'error'    => $exception->getMessage(),
             ]);
 
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[GO360 Push DEBUG] Encryption failure: ' . $exception->getMessage());
+            }
+
             return false;
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push DEBUG] Payload encrypted. Body length: ' . strlen($encrypted['body']));
         }
 
         $audience = $this->determine_audience($endpoint);
@@ -93,6 +108,10 @@ class WebPushClient
         $authorization = $this->build_vapid_authorization($audience, $keys);
         if ($authorization === null) {
             return false;
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push DEBUG] VAPID authorization generated. Audience: ' . $audience);
         }
 
         $headers = [
@@ -112,6 +131,14 @@ class WebPushClient
             ),
         ];
 
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push DEBUG] Request headers: ' . wp_json_encode([
+                'TTL'              => $headers['TTL'],
+                'Content-Encoding' => $headers['Content-Encoding'],
+                'Content-Length'   => $headers['Content-Length'],
+            ]));
+        }
+
         $response = wp_remote_request($endpoint, [
             'method'  => 'POST',
             'headers' => $headers,
@@ -119,16 +146,34 @@ class WebPushClient
             'timeout' => 10,
         ]);
 
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push DEBUG] HTTP request finished. WP_Error: ' . (is_wp_error($response) ? 'yes' : 'no'));
+        }
+
         if (is_wp_error($response)) {
             do_action('go360/push/log', 'dispatch_failed', [
                 'endpoint' => $endpoint,
                 'error'    => $response->get_error_message(),
             ]);
 
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[GO360 Push DEBUG] Request error message: ' . $response->get_error_message());
+            }
+
             return false;
         }
 
         $status = (int) wp_remote_retrieve_response_code($response);
+        $message = wp_remote_retrieve_response_message($response);
+        $body_snippet = substr(wp_remote_retrieve_body($response), 0, 500);
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push DEBUG] Response status: ' . $status . ' message: ' . $message);
+            if ($body_snippet !== '') {
+                error_log('[GO360 Push DEBUG] Response body snippet: ' . $body_snippet);
+            }
+        }
+
         if ($status >= 200 && $status < 300) {
             do_action('go360/push/log', 'dispatch_success', [
                 'endpoint' => $endpoint,
@@ -141,7 +186,8 @@ class WebPushClient
         do_action('go360/push/log', 'dispatch_failed', [
             'endpoint' => $endpoint,
             'status'   => $status,
-            'body'     => wp_remote_retrieve_body($response),
+            'body'     => $body_snippet,
+            'message'  => $message,
         ]);
 
         return false;

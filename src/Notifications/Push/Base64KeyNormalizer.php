@@ -36,12 +36,13 @@ class Base64KeyNormalizer
 
         $decoded = base64_decode($converted, true);
         if ($decoded === false) {
-            return '';
+            // If decoding fails, fall back to the cleaned original string so we don't
+            // discard keys that might already be URL-safe encoded.
+            return $filtered;
         }
 
         $reencoded = base64_encode($decoded);
-        $url_safe = rtrim(strtr($reencoded, '+/', '-_'), '=');
 
-        return $url_safe;
+        return rtrim(strtr($reencoded, '+/', '-_'), '=');
     }
 }
