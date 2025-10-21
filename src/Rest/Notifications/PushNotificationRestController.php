@@ -69,9 +69,16 @@ class PushNotificationRestController
             self::NAMESPACE,
             self::REST_BASE . '/(?P<id>\d+)',
             [
-                'methods'             => 'POST',
-                'callback'            => [$this, 'mark_single'],
-                'permission_callback' => [$this, 'check_permissions'],
+                [
+                    'methods'             => 'POST',
+                    'callback'            => [$this, 'mark_single'],
+                    'permission_callback' => [$this, 'check_permissions'],
+                ],
+                [
+                    'methods'             => 'DELETE',
+                    'callback'            => [$this, 'delete_single'],
+                    'permission_callback' => [$this, 'check_permissions'],
+                ],
             ]
         );
     }
@@ -169,6 +176,28 @@ class PushNotificationRestController
         }
 
         $this->repository->mark_read($notification_id, $user_id);
+
+        return new WP_REST_Response([
+            'success' => true,
+            'meta'    => [
+                'unread' => $this->repository->count_unread($user_id),
+            ],
+        ]);
+    }
+
+    public function delete_single(WP_REST_Request $request)
+    {
+        $user_id = get_current_user_id();
+        if ($user_id <= 0) {
+            return new WP_Error('not_logged_in', __('Debes iniciar sesión para actualizar las notificaciones.', 'garantias-online-360vo'), ['status' => 401]);
+        }
+
+        $notification_id = (int) $request['id'];
+        if ($notification_id <= 0) {
+            return new WP_Error('invalid_id', __('Identificador de notificación no válido.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $this->repository->delete($notification_id, $user_id);
 
         return new WP_REST_Response([
             'success' => true,

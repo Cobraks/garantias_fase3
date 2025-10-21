@@ -9,9 +9,10 @@ import {
 } from "./form-role-utils.js";
 import { getRestRoot, getRestNonce } from "./config.js";
 import {
-	setCurrentOfertas,
-	getCurrentOfertas,
-	getVisibleModalidades,
+        setCurrentOfertas,
+        getCurrentOfertas,
+        getVisibleModalidades,
+        setFixedPriceConfig,
 } from "./form-state.js";
 
 const ENABLE_LOGS = true;
@@ -20,30 +21,90 @@ function log(...args) {
 }
 
 // Cache simple por userId con posibilidad de invalidar
-const ofertasCache = new Map(); // userId -> { ofertas, fetchedAt }
+const ofertasCache = new Map(); // userId -> { ofertas, fixedPrice, fetchedAt }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
 
 function storageKey(userId) {
         return `ofertas_${userId}`;
 }
 
-function getCachedOfertas(userId) {
+function normalizeFixedPriceConfig(raw) {
+        if (!raw || typeof raw !== "object") {
+                return { habilitado: false, items: [] };
+        }
+        const enabled = !!(raw.habilitado ?? raw.enabled ?? raw.tiene ?? false);
+        const items = Array.isArray(raw.items) ? raw.items : [];
+        return { habilitado: enabled && items.length > 0, items };
+}
+
+function normalizeOfertasPayload(payload) {
+        if (Array.isArray(payload)) {
+                return {
+                        ofertas: payload,
+                        fixedPrice: { habilitado: false, items: [] },
+                };
+        }
+        if (payload && typeof payload === "object") {
+                const ofertas = Array.isArray(payload.ofertas) ? payload.ofertas : [];
+                const fixedPriceRaw =
+                        payload.especial_precio_fijo ??
+                        payload.fixedPrice ??
+                        payload.precio_fijo_especial ??
+                        payload.precioFijoEspecial ??
+                        null;
+                return {
+                        ofertas,
+                        fixedPrice: normalizeFixedPriceConfig(fixedPriceRaw),
+                };
+        }
+        return { ofertas: [], fixedPrice: { habilitado: false, items: [] } };
+}
+
+function applyOfertasEntry(entry) {
+        const ofertas = Array.isArray(entry?.ofertas) ? entry.ofertas : [];
+        const fixedPrice = entry?.fixedPrice ?? { habilitado: false, items: [] };
+        setCurrentOfertas(ofertas);
+        setFixedPriceConfig(fixedPrice);
+}
+
+function getCachedEntry(userId) {
         if (ofertasCache.has(userId)) {
                 const cached = ofertasCache.get(userId);
                 if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
-                        return cached.ofertas;
+                        applyOfertasEntry(cached);
+                        return cached;
                 }
         }
         const raw = sessionStorage.getItem(storageKey(userId));
         if (raw) {
                 try {
                         const parsed = JSON.parse(raw);
+                        let entry = null;
+                        if (Array.isArray(parsed)) {
+                                entry = {
+                                        ofertas: parsed,
+                                        fixedPrice: { habilitado: false, items: [] },
+                                        fetchedAt: 0,
+                                };
+                        } else if (parsed && typeof parsed === "object") {
+                                entry = {
+                                        ofertas: Array.isArray(parsed.ofertas)
+                                                ? parsed.ofertas
+                                                : [],
+                                        fixedPrice: normalizeFixedPriceConfig(
+                                                parsed.fixedPrice || parsed.especial_precio_fijo
+                                        ),
+                                        fetchedAt: parsed.fetchedAt || 0,
+                                };
+                        }
                         if (
-                                Array.isArray(parsed.ofertas) &&
-                                Date.now() - parsed.fetchedAt < CACHE_TTL
+                                entry &&
+                                Array.isArray(entry.ofertas) &&
+                                Date.now() - entry.fetchedAt < CACHE_TTL
                         ) {
-                                ofertasCache.set(userId, parsed);
-                                return parsed.ofertas;
+                                ofertasCache.set(userId, entry);
+                                applyOfertasEntry(entry);
+                                return entry;
                         }
                 } catch (e) {
                         // ignore parse errors
@@ -158,12 +219,11 @@ export async function fetchOfertas(userId, { force = false } = {}) {
         if (!effectiveUserId) return [];
 
         if (!force) {
-                const cached = getCachedOfertas(effectiveUserId);
-                if (cached) {
+                const cachedEntry = getCachedEntry(effectiveUserId);
+                if (cachedEntry) {
                         if (ENABLE_LOGS)
                                 log(`Usando cache de ofertas para usuario ${effectiveUserId}`);
-                        setCurrentOfertas(cached);
-                        return cached;
+                        return cachedEntry.ofertas;
                 }
         }
 
@@ -186,8 +246,13 @@ export async function fetchOfertas(userId, { force = false } = {}) {
 		if (!res.ok) {
 			throw new Error(`Error al obtener ofertas: ${res.status}`);
 		}
-                const ofertas = await res.json();
-                const entry = { ofertas, fetchedAt: Date.now() };
+                const payload = await res.json();
+                const normalized = normalizeOfertasPayload(payload);
+                const entry = {
+                        ofertas: normalized.ofertas,
+                        fixedPrice: normalized.fixedPrice,
+                        fetchedAt: Date.now(),
+                };
                 ofertasCache.set(effectiveUserId, entry);
                 try {
                         sessionStorage.setItem(
@@ -197,8 +262,8 @@ export async function fetchOfertas(userId, { force = false } = {}) {
                 } catch (e) {
                         // storage might be full/disabled
                 }
-                setCurrentOfertas(ofertas);
-                return ofertas;
+                applyOfertasEntry(entry);
+                return entry.ofertas;
         } catch (e) {
                 log("Error al obtener ofertas para usuario", effectiveUserId, e);
                 return [];
@@ -343,7 +408,7 @@ export function refreshOfertasDisplay() {
                         return;
                 }
 
-                const hasCache = !!getCachedOfertas(effectiveUserId);
+                const hasCache = !!getCachedEntry(effectiveUserId);
 
                 if (_refreshOfertasPending) clearTimeout(_refreshOfertasPending);
                 _refreshOfertasPending = setTimeout(async () => {

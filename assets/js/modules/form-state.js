@@ -9,19 +9,21 @@
 let currentOfertas = null;
 let visibleModalidades = [];
 const formCache = {
-	selectedModalidadId: null,
+        selectedModalidadId: null,
 };
 let limitesDinamicos = {
         cilindrada: { min: 0, max: 9000 },
         potencia: { min: 0, max: 3000 },
         kilometros: { min: 0, max: Infinity },
 };
+let fixedPriceConfig = { habilitado: false, items: [] };
 
 const listeners = {
-	ofertas: [],
-	modalidades: [],
-	limites: [],
-	selectedModalidad: [],
+        ofertas: [],
+        modalidades: [],
+        limites: [],
+        selectedModalidad: [],
+        fixedPrice: [],
 };
 
 function notify(topic, payload) {
@@ -73,5 +75,28 @@ export function getLimitesDinamicos() {
 	return limitesDinamicos;
 }
 export function subscribeLimites(cb) {
-	listeners.limites.push(cb);
+        listeners.limites.push(cb);
+}
+
+// Configuración de precios fijos
+export function setFixedPriceConfig(config) {
+        if (!config || typeof config !== "object") {
+                fixedPriceConfig = { habilitado: false, items: [] };
+        } else {
+                const enabled = !!(config.habilitado ?? config.enabled ?? false);
+                const items = Array.isArray(config.items) ? config.items : [];
+                fixedPriceConfig = {
+                        habilitado: enabled && items.length > 0,
+                        items,
+                };
+        }
+        notify("fixedPrice", fixedPriceConfig);
+}
+
+export function getFixedPriceConfig() {
+        return fixedPriceConfig;
+}
+
+export function subscribeFixedPrice(cb) {
+        listeners.fixedPrice.push(cb);
 }
