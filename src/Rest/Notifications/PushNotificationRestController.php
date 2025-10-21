@@ -159,6 +159,15 @@ class PushNotificationRestController
         $result = $this->dispatcher->dispatch($user_id, $payload);
         $attempts = $result['sent'] + $result['failed'];
 
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push] test dispatch result: ' . wp_json_encode([
+                'user'     => $user_id,
+                'attempts' => $attempts,
+                'sent'     => $result['sent'],
+                'failed'   => $result['failed'],
+            ]));
+        }
+
         if ($attempts === 0) {
             do_action('go360/push/log', 'test_notification_failed', [
                 'user'     => $user_id,
@@ -252,6 +261,15 @@ class PushNotificationRestController
             $payload_with_id['id'] = $notification_id;
             $result = $this->dispatcher->dispatch($user_id, $payload_with_id);
             $attempts = $result['sent'] + $result['failed'];
+
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[GO360 Push] broadcast dispatch result: ' . wp_json_encode([
+                    'user'     => $user_id,
+                    'attempts' => $attempts,
+                    'sent'     => $result['sent'],
+                    'failed'   => $result['failed'],
+                ]));
+            }
 
             if ($attempts === 0) {
                 $summary['failures'][] = [

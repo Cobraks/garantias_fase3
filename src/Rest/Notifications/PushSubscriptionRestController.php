@@ -42,6 +42,16 @@ class PushSubscriptionRestController
                 ],
             ]
         );
+
+        register_rest_route(
+            self::NAMESPACE,
+            self::REST_BASE . '/status',
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'get_subscription_status'],
+                'permission_callback' => [$this, 'check_permissions'],
+            ]
+        );
     }
 
     public function check_permissions(): bool
@@ -62,7 +72,14 @@ class PushSubscriptionRestController
 
         $payload = $this->sanitize_payload($request->get_json_params());
         if (empty($payload['endpoint']) || empty($payload['publicKey']) || empty($payload['authToken'])) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[GO360 Push] invalid subscription payload for user ' . $user_id . ': ' . wp_json_encode($payload));
+            }
             return new WP_Error('invalid_payload', __('Suscripción no válida.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push] creating subscription for user ' . $user_id . ' endpoint ' . substr($payload['endpoint'], 0, 80));
         }
 
         do_action('go360/push/log', 'subscription_upsert', [
@@ -73,7 +90,14 @@ class PushSubscriptionRestController
         $stored = $this->repository->upsert($user_id, $payload);
 
         if (! $stored) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[GO360 Push] subscription upsert failed for user ' . $user_id);
+            }
             return new WP_Error('subscription_error', __('No se pudo registrar la suscripción.', 'garantias-online-360vo'), ['status' => 500]);
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push] subscription stored for user ' . $user_id);
         }
 
         return new WP_REST_Response(['success' => true]);
@@ -91,14 +115,44 @@ class PushSubscriptionRestController
             return new WP_Error('invalid_payload', __('Debes indicar el endpoint a eliminar.', 'garantias-online-360vo'), ['status' => 400]);
         }
 
-        do_action('go360/push/log', 'subscription_delete', [
-            'user'     => $user_id,
-            'endpoint' => substr((string) $endpoint, 0, 80),
-        ]);
+        if ($endpoint === 'all') {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[GO360 Push] removing all subscriptions for user ' . $user_id);
+            }
 
-        $this->repository->remove_by_endpoint($endpoint);
+            $this->repository->remove_all_for_user($user_id);
+        } else {
+            do_action('go360/push/log', 'subscription_delete', [
+                'user'     => $user_id,
+                'endpoint' => substr((string) $endpoint, 0, 80),
+            ]);
+
+            $this->repository->remove_by_endpoint($endpoint);
+        }
 
         return new WP_REST_Response(['success' => true]);
+    }
+
+    public function get_subscription_status(WP_REST_Request $request)
+    {
+        $user_id = get_current_user_id();
+        if ($user_id <= 0) {
+            return new WP_Error('not_logged_in', __('Debes iniciar sesión para consultar las notificaciones.', 'garantias-online-360vo'), ['status' => 401]);
+        }
+
+        $subscriptions = $this->repository->get_user_subscriptions($user_id);
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push] subscription status for user ' . $user_id . ': ' . wp_json_encode([
+                'count' => count($subscriptions),
+            ]));
+        }
+
+        return new WP_REST_Response([
+            'hasSubscriptions' => ! empty($subscriptions),
+            'count'            => count($subscriptions),
+            'subscriptions'    => $subscriptions,
+        ]);
     }
 
     private function user_has_opt_in(int $user_id): bool

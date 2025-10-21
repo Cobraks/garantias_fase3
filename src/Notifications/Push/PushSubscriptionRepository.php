@@ -30,7 +30,18 @@ class PushSubscriptionRepository
         $user_agent = sanitize_text_field((string) ($subscription['userAgent'] ?? ''));
 
         if ($public_key === '' || $auth_token === '') {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[GO360 Push] upsert rejected because keys are empty for endpoint ' . substr($endpoint, 0, 80));
+            }
             return false;
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push] upsert subscription payload: ' . wp_json_encode([
+                'user_id'          => $user_id,
+                'endpoint'         => substr($endpoint, 0, 80),
+                'content_encoding' => $content_encoding,
+            ]));
         }
 
         $existing = $wpdb->get_row(
@@ -72,6 +83,24 @@ class PushSubscriptionRepository
         );
 
         return $inserted !== false;
+    }
+
+    public function remove_all_for_user(int $user_id): bool
+    {
+        if ($user_id <= 0) {
+            return false;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . PushTables::SUBSCRIPTIONS_TABLE;
+
+        $deleted = $wpdb->delete($table, ['user_id' => $user_id], ['%d']);
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[GO360 Push] removed all subscriptions for user ' . $user_id . ' result: ' . var_export($deleted, true));
+        }
+
+        return $deleted !== false;
     }
 
     public function remove_by_endpoint(string $endpoint): bool

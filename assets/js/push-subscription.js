@@ -1,4 +1,21 @@
 (function () {
+    const log = (...args) => {
+        if (typeof console !== 'undefined' && console.log) {
+            console.log('GO360 push', ...args);
+        }
+    };
+
+    const warn = (...args) => {
+        if (typeof console !== 'undefined' && console.warn) {
+            console.warn('GO360 push', ...args);
+        }
+    };
+
+    const reportError = (...args) => {
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('GO360 push', ...args);
+        }
+    };
     const variants = {
         info: 'account-status--info',
         success: 'account-status--success',
@@ -19,6 +36,7 @@
     };
 
     const urlBase64ToUint8Array = (base64String) => {
+        log('urlBase64ToUint8Array: received key', base64String);
         const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
         const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
         const rawData = window.atob(base64);
@@ -27,6 +45,7 @@
         for (let i = 0; i < rawData.length; i += 1) {
             outputArray[i] = rawData.charCodeAt(i);
         }
+        log('urlBase64ToUint8Array: converted length', outputArray.length);
         return outputArray;
     };
 
@@ -83,8 +102,7 @@
                 candidates.push(scoped);
             }
         } catch (error) {
-            // eslint-disable-next-line no-console
-            console.warn('GO360 push scope lookup error', error);
+            warn('scope lookup error', error);
         }
 
         try {
@@ -93,8 +111,7 @@
                 candidates.push(active);
             }
         } catch (error) {
-            // eslint-disable-next-line no-console
-            console.warn('GO360 push registration lookup error', error);
+            warn('registration lookup error', error);
         }
 
         try {
@@ -103,8 +120,7 @@
                 candidates.push(ready);
             }
         } catch (error) {
-            // eslint-disable-next-line no-console
-            console.warn('GO360 push ready lookup error', error);
+            warn('ready lookup error', error);
         }
 
         const match = candidates.find((registration) => matchesRegistration(registration, resolvedUrl));
@@ -178,6 +194,7 @@
         const publicKeyEndpoint = pushConfig.publicKeyEndpoint || '';
         let publicKey = pushConfig.publicKey;
         const subscriptionEndpoint = pushConfig.subscriptionEndpoint;
+        const statusEndpoint = pushConfig.statusEndpoint || '';
         const testEndpoint = pushConfig.testEndpoint || '';
         const testAllEndpoint = pushConfig.testAllEndpoint || '';
         const testIcon = pushConfig.testIcon || '';
@@ -200,10 +217,15 @@
                 const missingEndpoint = (isBroadcast && !testAllEndpoint) || (isSingle && !testEndpoint);
                 const inactive = !isActive || isProcessing || missingEndpoint;
 
+                testControl.disabled = false;
+                testControl.removeAttribute('disabled');
+
                 if (inactive) {
                     testControl.dataset.pushInactive = '1';
+                    testControl.setAttribute('aria-disabled', 'true');
                 } else {
                     delete testControl.dataset.pushInactive;
+                    testControl.removeAttribute('aria-disabled');
                 }
             });
         };
@@ -211,26 +233,28 @@
         const updateControls = (active) => {
             isActive = active;
 
+            button.disabled = false;
+            button.removeAttribute('disabled');
+
             if (label) {
                 label.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
             } else {
                 button.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
             }
 
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+
             syncTestButtons();
         };
 
         const setProcessing = (processing) => {
             isProcessing = processing;
+            log('processing state changed', { processing });
             syncTestButtons();
         };
 
-        if (isActive) {
-            updateControls(true);
-            setStatus('Las notificaciones del navegador están activas en este dispositivo.', 'success');
-        } else {
-            syncTestButtons();
-        }
+        updateControls(isActive);
+        setStatus('Comprobando el estado de las notificaciones…', 'info');
 
         const showLocalTestNotification = async () => {
             try {
@@ -246,42 +270,100 @@
                     });
                 }
             } catch (notificationError) {
-                // eslint-disable-next-line no-console
-                console.error('GO360 push local notification error', notificationError);
+                reportError('local notification error', notificationError);
             }
         };
 
         const refreshUI = async () => {
-            try {
-                const registration = await getRegistration(serviceWorkerUrl, false);
-                if (!registration) {
-                    updateControls(false);
-                    return;
-                }
-                const subscription = await registration.pushManager.getSubscription();
-                if (subscription) {
-                    updateControls(true);
-                    setStatus('Las notificaciones del navegador están activas en este dispositivo.', 'success');
-                    if (!hasSyncedSubscription) {
-                        try {
-                            await sendSubscription(subscription);
-                            hasSyncedSubscription = true;
-                            // eslint-disable-next-line no-console
-                            console.log('GO360 push subscription synchronised after refresh');
-                        } catch (syncError) {
-                            // eslint-disable-next-line no-console
-                            console.error('GO360 push sync error', syncError);
-                            setStatus('No se pudo sincronizar esta suscripción con el servidor. Comprueba la consola.', 'warning');
+            log('refreshUI: checking current subscription status');
+
+            let serverState = {
+                hasSubscriptions: Boolean(initialSubscribed),
+                count: initialSubscribed ? 1 : 0,
+            };
+
+            if (statusEndpoint) {
+                try {
+                    const response = await fetch(statusEndpoint, {
+                        headers: {
+                            'X-WP-Nonce': restNonce,
+                        },
+                        credentials: 'same-origin',
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && typeof data === 'object') {
+                            serverState = {
+                                hasSubscriptions: Boolean(data.hasSubscriptions),
+                                count: Number(data.count || 0),
+                            };
+                            log('refreshUI: server subscription state', serverState);
                         }
+                    } else {
+                        const text = await response.text();
+                        warn('refreshUI: status endpoint responded with error', response.status, text);
                     }
+                } catch (statusError) {
+                    warn('refreshUI: status endpoint failed', statusError);
+                }
+            }
+
+            let registration = null;
+            try {
+                registration = await getRegistration(serviceWorkerUrl, false);
+                log('refreshUI: service worker registration', registration);
+            } catch (registrationError) {
+                reportError('refreshUI: error obtaining service worker registration', registrationError);
+            }
+
+            if (!registration) {
+                updateControls(serverState.hasSubscriptions);
+                if (serverState.hasSubscriptions) {
+                    setStatus('Las notificaciones están activas, pero este navegador no tiene una suscripción válida. Pulsa “Desactivar notificaciones” y vuelve a activarlas.', 'warning');
                 } else {
-                    updateControls(false);
                     setStatus('Pulsa “Activar notificaciones” para empezar a recibir avisos.', 'info');
                 }
                 syncTestButtons();
-            } catch (error) {
-                setStatus('No se pudo comprobar el estado de las notificaciones.', 'warning');
+                return;
             }
+
+            let subscription = null;
+            try {
+                subscription = await registration.pushManager.getSubscription();
+            } catch (subscriptionError) {
+                reportError('refreshUI: error reading push subscription', subscriptionError);
+            }
+
+            log('refreshUI: local subscription', subscription);
+
+            if (subscription && !serverState.hasSubscriptions) {
+                log('refreshUI: local subscription exists but server has no record, synchronising');
+                try {
+                    await sendSubscription(subscription);
+                    hasSyncedSubscription = true;
+                    serverState.hasSubscriptions = true;
+                    serverState.count = Math.max(serverState.count, 1);
+                    log('refreshUI: subscription synchronised with server');
+                } catch (syncError) {
+                    reportError('refreshUI: failed to synchronise subscription', syncError);
+                }
+            }
+
+            if (!subscription && serverState.hasSubscriptions) {
+                warn('refreshUI: server reports active subscriptions but browser is missing one');
+            }
+
+            const active = Boolean(subscription || serverState.hasSubscriptions);
+            updateControls(active);
+
+            if (active) {
+                setStatus('Las notificaciones del navegador están activas en este dispositivo.', 'success');
+            } else {
+                setStatus('Pulsa “Activar notificaciones” para empezar a recibir avisos.', 'info');
+            }
+
+            syncTestButtons();
         };
 
         const sendSubscription = async (subscription) => {
@@ -304,15 +386,17 @@
                 body: JSON.stringify(body),
             });
 
-            // eslint-disable-next-line no-console
-            console.log('GO360 push subscription request', { endpoint: subscription.endpoint, status: response.status });
+            log('subscription request response', { endpoint: subscription.endpoint, status: response.status });
 
             if (!response.ok) {
                 const text = await response.text();
-                // eslint-disable-next-line no-console
-                console.error('GO360 push subscription failed', text);
+                reportError('subscription failed', text);
                 throw new Error('Request failed');
             }
+
+            hasSyncedSubscription = true;
+
+            return true;
         };
 
         const deleteSubscription = async (endpoint) => {
@@ -326,8 +410,11 @@
             });
 
             if (!response.ok) {
+                reportError('delete subscription failed', response.status);
                 throw new Error('Request failed');
             }
+
+            log('subscription deleted', { endpoint });
         };
 
         const ensurePublicKey = async () => {
@@ -348,19 +435,16 @@
                 });
                 if (!response.ok) {
                     const text = await response.text();
-                    // eslint-disable-next-line no-console
-                    console.error('GO360 push public key error', text);
+                    reportError('public key endpoint error', text);
                     return '';
                 }
                 const data = await response.json();
                 if (data && data.publicKey) {
                     publicKey = data.publicKey;
-                    // eslint-disable-next-line no-console
-                    console.log('GO360 push public key fetched');
+                    log('public key fetched from endpoint');
                 }
             } catch (error) {
-                // eslint-disable-next-line no-console
-                console.error('GO360 push public key fetch failed', error);
+                reportError('public key fetch failed', error);
                 return '';
             }
 
@@ -375,7 +459,9 @@
 
                 setProcessing(true);
                 setStatus('Solicitando permisos…', 'info');
+                log('requestPermissionAndSubscribe: requesting permission');
                 const permission = await Notification.requestPermission();
+                log('requestPermissionAndSubscribe: permission result', permission);
                 if (permission !== 'granted') {
                     setStatus('Debes permitir las notificaciones en el navegador.', 'warning');
                     updateControls(false);
@@ -384,7 +470,9 @@
                 }
 
                 const registration = await getRegistration(serviceWorkerUrl, true);
+                log('requestPermissionAndSubscribe: obtained registration', registration);
                 const existing = await registration.pushManager.getSubscription();
+                log('requestPermissionAndSubscribe: existing subscription', existing);
                 if (existing) {
                     await sendSubscription(existing);
                     hasSyncedSubscription = true;
@@ -405,14 +493,14 @@
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(resolvedPublicKey),
                 });
+                log('requestPermissionAndSubscribe: new subscription created', subscription);
                 await sendSubscription(subscription);
                 hasSyncedSubscription = true;
                 setStatus('Notificaciones activadas correctamente.', 'success');
                 updateControls(true);
             } catch (error) {
                 setStatus('No se pudieron activar las notificaciones. Comprueba la consola.', 'error');
-                // eslint-disable-next-line no-console
-                console.error('GO360 push error', error);
+                reportError('requestPermissionAndSubscribe error', error);
             } finally {
                 setProcessing(false);
             }
@@ -448,8 +536,7 @@
                 updateControls(false);
             } catch (error) {
                 setStatus('No se pudieron desactivar las notificaciones. Comprueba la consola.', 'error');
-                // eslint-disable-next-line no-console
-                console.error('GO360 push error', error);
+                reportError('unsubscribe error', error);
             } finally {
                 setProcessing(false);
             }
@@ -472,6 +559,7 @@
 
             try {
                 setStatus('Enviando notificación de prueba…', 'info');
+                log('sendTestNotification: requesting test notification');
                 const response = await fetch(testEndpoint, {
                     method: 'POST',
                     headers: {
@@ -482,13 +570,11 @@
                 });
                 if (!response.ok) {
                     const errorText = await response.text();
-                    // eslint-disable-next-line no-console
-                    console.error('GO360 push test error payload', errorText);
+                    reportError('test notification payload error', errorText);
                     throw new Error('Request failed');
                 }
                 const payload = await response.json().catch(() => ({}));
-                // eslint-disable-next-line no-console
-                console.log('GO360 push test response', payload);
+                log('sendTestNotification: response received', payload);
                 if (!payload.success) {
                     throw new Error('Push dispatch failed');
                 }
@@ -506,8 +592,7 @@
                 }
             } catch (error) {
                 setStatus('No se pudo enviar la notificación de prueba. Comprueba la consola.', 'error');
-                // eslint-disable-next-line no-console
-                console.error('GO360 push error', error);
+                reportError('sendTestNotification error', error);
             } finally {
                 syncTestButtons();
             }
@@ -530,6 +615,7 @@
 
             try {
                 setStatus('Enviando notificación de prueba a todos los dispositivos…', 'info');
+                log('sendBroadcastTest: requesting broadcast notification');
                 const response = await fetch(testAllEndpoint, {
                     method: 'POST',
                     headers: {
@@ -540,13 +626,11 @@
                 });
                 if (!response.ok) {
                     const errorText = await response.text();
-                    // eslint-disable-next-line no-console
-                    console.error('GO360 push broadcast error payload', errorText);
+                    reportError('broadcast notification payload error', errorText);
                     throw new Error('Request failed');
                 }
                 const payload = await response.json().catch(() => ({}));
-                // eslint-disable-next-line no-console
-                console.log('GO360 push broadcast response', payload);
+                log('sendBroadcastTest: response received', payload);
                 if (!payload.success) {
                     throw new Error('Broadcast dispatch failed');
                 }
@@ -564,8 +648,7 @@
                 }
             } catch (error) {
                 setStatus('No se pudo enviar la notificación global de prueba. Comprueba la consola.', 'error');
-                // eslint-disable-next-line no-console
-                console.error('GO360 push error', error);
+                reportError('sendBroadcastTest error', error);
             } finally {
                 syncTestButtons();
             }
