@@ -190,10 +190,13 @@ class OfertasRestController
 
     private static function normalize_special_price_row(array $row): ?array
     {
-        $tipo_id  = isset($row['tipo_de_garantia']) ? (int) $row['tipo_de_garantia'] : 0;
-        $nivel_id = isset($row['nivel_garantia']) ? (int) $row['nivel_garantia'] : 0;
+        $tipo_info  = self::resolve_term_field($row['tipo_de_garantia'] ?? null, 'tipo_garantia');
+        $nivel_info = self::resolve_term_field($row['nivel_garantia'] ?? null, 'nivel_garantia');
 
-        if ($tipo_id <= 0 && $nivel_id <= 0) {
+        if ($tipo_info['id'] === null && $tipo_info['slug'] === '') {
+            return null;
+        }
+        if ($nivel_info['id'] === null && $nivel_info['slug'] === '') {
             return null;
         }
 
@@ -215,16 +218,6 @@ class OfertasRestController
         }
 
         if ($precio === null) {
-            return null;
-        }
-
-        $tipo_info  = self::resolve_term_info($tipo_id, 'tipo_garantia');
-        $nivel_info = self::resolve_term_info($nivel_id, 'nivel_garantia');
-
-        if ($tipo_info['id'] === null && $tipo_info['slug'] === '') {
-            return null;
-        }
-        if ($nivel_info['id'] === null && $nivel_info['slug'] === '') {
             return null;
         }
 
@@ -257,6 +250,89 @@ class OfertasRestController
             'duracion_meses'       => $duracion_value ? (int) $duracion_value : null,
             'duracion_label'       => $duracion_label,
         ];
+    }
+
+    private static function resolve_term_field($field, string $taxonomy): array
+    {
+        $candidate = [
+            'id'   => null,
+            'slug' => '',
+        ];
+
+        if ($field instanceof \WP_Term) {
+            return [
+                'id'   => (int) $field->term_id,
+                'slug' => (string) $field->slug,
+            ];
+        }
+
+        if (is_object($field)) {
+            $field = get_object_vars($field);
+        }
+
+        if (is_array($field)) {
+            if (isset($field['term_id'])) {
+                $candidate['id'] = (int) $field['term_id'];
+            } elseif (isset($field['ID'])) {
+                $candidate['id'] = (int) $field['ID'];
+            } elseif (isset($field['id']) && is_numeric($field['id'])) {
+                $candidate['id'] = (int) $field['id'];
+            }
+
+            if (!empty($field['slug'])) {
+                $candidate['slug'] = (string) $field['slug'];
+            }
+
+            if ($candidate['id'] === null && array_key_exists('value', $field)) {
+                $value = $field['value'];
+                if (is_numeric($value)) {
+                    $candidate['id'] = (int) $value;
+                } elseif ($value instanceof \WP_Term || is_object($value) || is_array($value)) {
+                    $nested = self::resolve_term_field($value, $taxonomy);
+                    if ($candidate['id'] === null) {
+                        $candidate['id'] = $nested['id'];
+                    }
+                    if ($candidate['slug'] === '') {
+                        $candidate['slug'] = $nested['slug'];
+                    }
+                } elseif (is_string($value) && $value !== '') {
+                    $candidate['slug'] = $value;
+                }
+            }
+
+        } elseif (is_numeric($field)) {
+            $candidate['id'] = (int) $field;
+        } elseif (is_string($field) && $field !== '') {
+            if (ctype_digit($field)) {
+                $candidate['id'] = (int) $field;
+            } else {
+                $candidate['slug'] = $field;
+            }
+        }
+
+        if ($candidate['id'] !== null && $candidate['id'] > 0) {
+            $resolved = self::resolve_term_info((int) $candidate['id'], $taxonomy);
+            if ($resolved['slug'] === '' && $candidate['slug'] !== '') {
+                $resolved['slug'] = (string) $candidate['slug'];
+            }
+            return $resolved;
+        }
+
+        if ($candidate['slug'] !== '') {
+            $term = get_term_by('slug', $candidate['slug'], $taxonomy);
+            if ($term instanceof \WP_Term && ! is_wp_error($term)) {
+                return [
+                    'id'   => (int) $term->term_id,
+                    'slug' => (string) $term->slug,
+                ];
+            }
+            return [
+                'id'   => null,
+                'slug' => (string) $candidate['slug'],
+            ];
+        }
+
+        return $candidate;
     }
 
     private static function resolve_term_info(int $term_id, string $taxonomy): array
