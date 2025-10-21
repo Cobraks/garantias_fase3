@@ -432,8 +432,12 @@
                 console.error('GO360 push error', error);
             } finally {
                 syncTestButtons();
-                if (testButton && !testButton.disabled && isActive && testEndpoint) {
-                    testButton.removeAttribute('disabled');
+                if (testButton) {
+                    const shouldDisable = !isActive || !testEndpoint;
+                    testButton.disabled = shouldDisable;
+                    if (!shouldDisable) {
+                        testButton.removeAttribute('disabled');
+                    }
                 }
             }
         };
@@ -475,8 +479,12 @@
                 console.error('GO360 push error', error);
             } finally {
                 syncTestButtons();
-                if (broadcastButton && !broadcastButton.disabled && isActive && testAllEndpoint) {
-                    broadcastButton.removeAttribute('disabled');
+                if (broadcastButton) {
+                    const shouldDisable = !isActive || !testAllEndpoint;
+                    broadcastButton.disabled = shouldDisable;
+                    if (!shouldDisable) {
+                        broadcastButton.removeAttribute('disabled');
+                    }
                 }
             }
         };
