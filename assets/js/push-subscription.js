@@ -207,6 +207,14 @@
         let hasSyncedSubscription = initialSubscribed;
 
         const syncTestButtons = () => {
+            log('syncTestButtons: updating state', {
+                hasTestButton: Boolean(testButton),
+                hasBroadcastButton: Boolean(broadcastButton),
+                isActive,
+                isProcessing,
+                testEndpoint,
+                testAllEndpoint,
+            });
             [testButton, broadcastButton].forEach((testControl) => {
                 if (!testControl) {
                     return;
@@ -229,6 +237,8 @@
 
         const updateControls = (active) => {
             isActive = active;
+
+            log('updateControls: toggling active state', { active });
 
             button.disabled = false;
             button.removeAttribute('disabled');
