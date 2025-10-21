@@ -9,9 +9,10 @@ import {
 } from "./form-role-utils.js";
 import { getRestRoot, getRestNonce } from "./config.js";
 import {
-	setCurrentOfertas,
-	getCurrentOfertas,
-	getVisibleModalidades,
+        setCurrentOfertas,
+        getCurrentOfertas,
+        getVisibleModalidades,
+        setSpecialFixedOffers,
 } from "./form-state.js";
 
 const ENABLE_LOGS = true;
@@ -20,35 +21,99 @@ function log(...args) {
 }
 
 // Cache simple por userId con posibilidad de invalidar
-const ofertasCache = new Map(); // userId -> { ofertas, fetchedAt }
+const ofertasCache = new Map(); // userId -> { ofertas, especiales, meta, fetchedAt }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
 
 function storageKey(userId) {
         return `ofertas_${userId}`;
 }
 
+function normalizeOfertasResponse(payload) {
+        if (Array.isArray(payload)) {
+                return {
+                        ofertas: payload,
+                        especiales: [],
+                        meta: {},
+                        tiene_oferta_especial_precio_fijo: false,
+                };
+        }
+
+        if (!payload || typeof payload !== "object") {
+                return {
+                        ofertas: [],
+                        especiales: [],
+                        meta: {},
+                        tiene_oferta_especial_precio_fijo: false,
+                };
+        }
+
+        const ofertas = Array.isArray(payload.ofertas) ? payload.ofertas : [];
+        const especiales = Array.isArray(payload.ofertas_precio_fijo)
+                ? payload.ofertas_precio_fijo
+                : [];
+        const meta = payload.meta && typeof payload.meta === "object" ? payload.meta : {};
+        const tieneEspecial = Boolean(
+                payload.tiene_oferta_especial_precio_fijo || meta.tiene_oferta_especial_precio_fijo
+        );
+
+        return {
+                ofertas,
+                especiales,
+                meta,
+                tiene_oferta_especial_precio_fijo: tieneEspecial,
+        };
+}
+
+function applyOfertasState(entry) {
+        if (!entry || typeof entry !== "object") {
+                setCurrentOfertas([]);
+                setSpecialFixedOffers([], { enabled: false });
+                return;
+        }
+
+        const ofertas = Array.isArray(entry.ofertas) ? entry.ofertas : [];
+        const especiales = Array.isArray(entry.especiales) ? entry.especiales : [];
+        const meta = entry.meta && typeof entry.meta === "object" ? entry.meta : {};
+        const enabledFlag = Boolean(
+                meta.enabled ??
+                        meta.tieneOfertaEspecial ??
+                        meta.tiene_oferta_especial_precio_fijo ??
+                        entry.tiene_oferta_especial_precio_fijo ??
+                        (especiales.length > 0)
+        );
+
+        setCurrentOfertas(ofertas);
+        setSpecialFixedOffers(especiales, {
+                ...meta,
+                enabled: enabledFlag,
+        });
+}
+
 function getCachedOfertas(userId) {
         if (ofertasCache.has(userId)) {
                 const cached = ofertasCache.get(userId);
                 if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
-                        return cached.ofertas;
+                        return cached;
                 }
         }
+
         const raw = sessionStorage.getItem(storageKey(userId));
         if (raw) {
                 try {
                         const parsed = JSON.parse(raw);
                         if (
-                                Array.isArray(parsed.ofertas) &&
+                                parsed &&
+                                typeof parsed === "object" &&
                                 Date.now() - parsed.fetchedAt < CACHE_TTL
                         ) {
                                 ofertasCache.set(userId, parsed);
-                                return parsed.ofertas;
+                                return parsed;
                         }
                 } catch (e) {
                         // ignore parse errors
                 }
         }
+
         return null;
 }
 
@@ -162,8 +227,8 @@ export async function fetchOfertas(userId, { force = false } = {}) {
                 if (cached) {
                         if (ENABLE_LOGS)
                                 log(`Usando cache de ofertas para usuario ${effectiveUserId}`);
-                        setCurrentOfertas(cached);
-                        return cached;
+                        applyOfertasState(cached);
+                        return Array.isArray(cached.ofertas) ? cached.ofertas : [];
                 }
         }
 
@@ -186,8 +251,12 @@ export async function fetchOfertas(userId, { force = false } = {}) {
 		if (!res.ok) {
 			throw new Error(`Error al obtener ofertas: ${res.status}`);
 		}
-                const ofertas = await res.json();
-                const entry = { ofertas, fetchedAt: Date.now() };
+                const payload = await res.json();
+                const normalized = normalizeOfertasResponse(payload);
+                const entry = {
+                        ...normalized,
+                        fetchedAt: Date.now(),
+                };
                 ofertasCache.set(effectiveUserId, entry);
                 try {
                         sessionStorage.setItem(
@@ -197,10 +266,11 @@ export async function fetchOfertas(userId, { force = false } = {}) {
                 } catch (e) {
                         // storage might be full/disabled
                 }
-                setCurrentOfertas(ofertas);
-                return ofertas;
+                applyOfertasState(entry);
+                return entry.ofertas;
         } catch (e) {
                 log("Error al obtener ofertas para usuario", effectiveUserId, e);
+                applyOfertasState(null);
                 return [];
         }
 }

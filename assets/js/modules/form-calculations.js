@@ -29,12 +29,233 @@ import {
         getLimitesDinamicos,
         setLimitesDinamicos,
         getSelectedModalidadId,
+        getSpecialFixedOffers,
 } from "./form-state.js";
 import { setupPlanSelection } from "./plan-selection.js";
 
 const ENABLE_LOGS = false;
 function log(...args) {
         if (ENABLE_LOGS) console.log("[form-calculations]", ...args);
+}
+
+function normalizeToArray(value) {
+        if (Array.isArray(value)) return value;
+        if (value === null || typeof value === "undefined") return [];
+        return [value];
+}
+
+function resolveTermSlug(item) {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+                if (typeof item.slug === "string") return item.slug;
+                if (typeof item.value === "string") return item.value;
+        }
+        return "";
+}
+
+function resolveTermId(item) {
+        if (item && typeof item === "object") {
+                if (typeof item.id !== "undefined") return item.id;
+                if (typeof item.term_id !== "undefined") return item.term_id;
+                if (typeof item.value !== "undefined") return item.value;
+        }
+        return item;
+}
+
+function toLowerSlug(value) {
+        return typeof value === "string" ? value.toLowerCase() : "";
+}
+
+function getSlugSet(field) {
+        const set = new Set();
+        normalizeToArray(field)
+                .map(resolveTermSlug)
+                .map(toLowerSlug)
+                .filter(Boolean)
+                .forEach((slug) => set.add(slug));
+        return set;
+}
+
+function toPositiveInt(value) {
+        if (value === null || typeof value === "undefined" || value === "") return null;
+        const num = Number(value);
+        if (!Number.isFinite(num)) return null;
+        const intVal = Math.trunc(num);
+        return intVal > 0 ? intVal : null;
+}
+
+function toFloat(value) {
+        if (value === null || typeof value === "undefined" || value === "") return null;
+        if (typeof value === "number") {
+                return Number.isFinite(value) ? value : null;
+        }
+        if (typeof value === "string") {
+                const parsed = parseNumericFormValue(value);
+                return Number.isNaN(parsed) ? null : parsed;
+        }
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+}
+
+function getIdSet(field) {
+        const set = new Set();
+        normalizeToArray(field)
+                .map(resolveTermId)
+                .map(toPositiveInt)
+                .filter((id) => id !== null)
+                .forEach((id) => set.add(id));
+        return set;
+}
+
+function getSpecialFixedConfig(modalidad) {
+        const specials = getSpecialFixedOffers();
+        if (!Array.isArray(specials) || specials.length === 0) return null;
+
+        const tipoSlugs = getSlugSet(modalidad?.tipo_garantia);
+        const tipoIds = getIdSet(modalidad?.tipo_garantia_ids);
+        const nivelSlugs = getSlugSet(modalidad?.nivel_garantia);
+        const nivelIds = getIdSet(modalidad?.nivel_garantia_ids);
+
+        for (const special of specials) {
+                if (!special || typeof special !== "object") continue;
+
+                const tipoSlug = toLowerSlug(special.tipo_garantia_slug);
+                const tipoId = toPositiveInt(special.tipo_garantia_id);
+                const nivelSlug = toLowerSlug(special.nivel_garantia_slug);
+                const nivelId = toPositiveInt(special.nivel_garantia_id);
+
+                const matchesTipo =
+                        (tipoSlug && tipoSlugs.has(tipoSlug)) ||
+                        (tipoId !== null && tipoIds.has(tipoId));
+                if (!matchesTipo) continue;
+
+                const matchesNivel =
+                        (nivelSlug && nivelSlugs.has(nivelSlug)) ||
+                        (nivelId !== null && nivelIds.has(nivelId));
+                if (!matchesNivel) continue;
+
+                const precio = toFloat(special.precio_fijo);
+                const duracion = toPositiveInt(special.duracion_meses);
+                const duracionLabel =
+                        typeof special.duracion_label === "string"
+                                ? special.duracion_label
+                                : "";
+
+                return {
+                        ...special,
+                        tipo_garantia_slug: tipoSlug,
+                        tipo_garantia_id: tipoId,
+                        nivel_garantia_slug: nivelSlug,
+                        nivel_garantia_id: nivelId,
+                        precio,
+                        duracion,
+                        duracion_label: duracionLabel,
+                };
+        }
+
+        return null;
+}
+
+function buildSpecialRestrictionMap() {
+        const specials = getSpecialFixedOffers();
+        if (!Array.isArray(specials) || specials.length === 0) return null;
+
+        const byTipoSlug = new Map();
+        const byTipoId = new Map();
+
+        specials.forEach((special) => {
+                if (!special || !special.excluir_resto_niveles) return;
+
+                const tipoSlug = toLowerSlug(special.tipo_garantia_slug);
+                const tipoId = toPositiveInt(special.tipo_garantia_id);
+                const nivelSlug = toLowerSlug(special.nivel_garantia_slug);
+                const nivelId = toPositiveInt(special.nivel_garantia_id);
+
+                if (tipoSlug) {
+                        if (!byTipoSlug.has(tipoSlug)) {
+                                byTipoSlug.set(tipoSlug, { slugs: new Set(), ids: new Set() });
+                        }
+                        const entry = byTipoSlug.get(tipoSlug);
+                        if (nivelSlug) entry.slugs.add(nivelSlug);
+                        if (nivelId !== null) entry.ids.add(nivelId);
+                }
+
+                if (tipoId !== null) {
+                        if (!byTipoId.has(tipoId)) {
+                                byTipoId.set(tipoId, { slugs: new Set(), ids: new Set() });
+                        }
+                        const entry = byTipoId.get(tipoId);
+                        if (nivelSlug) entry.slugs.add(nivelSlug);
+                        if (nivelId !== null) entry.ids.add(nivelId);
+                }
+        });
+
+        if (!byTipoSlug.size && !byTipoId.size) return null;
+        return { byTipoSlug, byTipoId };
+}
+
+function tieneNivelPermitido(allowed, nivelSlugs, nivelIds) {
+        if (!allowed) return true;
+        if (allowed.slugs.size === 0 && allowed.ids.size === 0) {
+            return false;
+        }
+        for (const slug of allowed.slugs) {
+                if (nivelSlugs.has(slug)) return true;
+        }
+        for (const id of allowed.ids) {
+                if (nivelIds.has(id)) return true;
+        }
+        return false;
+}
+
+function modalidadRespetaRestriccionesEspeciales(modalidad, restrictions) {
+        if (!restrictions) return true;
+        const tipoSlugs = getSlugSet(modalidad?.tipo_garantia);
+        const tipoIds = getIdSet(modalidad?.tipo_garantia_ids);
+        const nivelSlugs = getSlugSet(modalidad?.nivel_garantia);
+        const nivelIds = getIdSet(modalidad?.nivel_garantia_ids);
+
+        for (const slug of tipoSlugs) {
+                const allowed = restrictions.byTipoSlug.get(slug);
+                if (allowed && !tieneNivelPermitido(allowed, nivelSlugs, nivelIds)) {
+                        return false;
+                }
+        }
+
+        for (const id of tipoIds) {
+                const allowed = restrictions.byTipoId.get(id);
+                if (allowed && !tieneNivelPermitido(allowed, nivelSlugs, nivelIds)) {
+                        return false;
+                }
+        }
+
+        return true;
+}
+
+function createEmptyBreakdown() {
+        return {
+                recargoTotal: 0,
+                maximoAcumulableTotal: null,
+                detalles: [],
+                limiteTotalAlcanzado: false,
+                recargosPorGrupo: {},
+                topePorGrupo: {},
+        };
+}
+
+function renderRecargosEspecial({ precioBase, precioIVA, duracionLabel }) {
+        let html = `<div class="form__plan-recargos form__plan-recargos--especial">`;
+        html += `<p class="form__plan-recargos-precios"><b>Precio base:</b> ${eurosString(
+                precioBase
+        )}€ | <b>Precio final + IVA:</b> ${eurosString(precioIVA)}€</p>`;
+        html += `<p class="form__plan-recargos-note">Tarifa especial con precio fijo. No se aplican suplementos ni descuentos.</p>`;
+        if (duracionLabel) {
+                html += `<p class="form__plan-recargos-note">Duración disponible: ${escapeHtml(
+                        duracionLabel
+                )}</p>`;
+        }
+        html += `</div>`;
+        return html;
 }
 
 const MODALIDAD_CACHE_TTL = 5 * 60 * 1000; // 5 minutos de cache
@@ -1076,10 +1297,14 @@ function applyDesgloseVisibility() {
 
 // --------- Cálculo de recargos (suplementos) ---------
 function calcularRecargos(modalidad, valoresForm) {
-	const suplementos = modalidad.acf?.suplementos || [];
-	const maximosGrupo = modalidad.acf?.maximo_acumulable_por_grupo || [];
-	const maximoAcumulableTotal =
-		Number(modalidad.acf?.maximo_acumulable_total) || null;
+        const specialConfig = getSpecialFixedConfig(modalidad);
+        if (specialConfig && specialConfig.precio !== null) {
+                return createEmptyBreakdown();
+        }
+        const suplementos = modalidad.acf?.suplementos || [];
+        const maximosGrupo = modalidad.acf?.maximo_acumulable_por_grupo || [];
+        const maximoAcumulableTotal =
+                Number(modalidad.acf?.maximo_acumulable_total) || null;
 
 	const topePorGrupo = {};
 	maximosGrupo.forEach((g) => {
@@ -1285,6 +1510,10 @@ async function getDescuentosAplicables(
 	{ incluirCaducadas = false } = {}
 ) {
         if (!modalidad) return [];
+        const specialConfig = getSpecialFixedConfig(modalidad);
+        if (specialConfig && specialConfig.precio !== null) {
+                return [];
+        }
         await ensureOfertasLoaded();
         if (!Array.isArray(getCurrentOfertas())) return [];
 
@@ -1345,6 +1574,10 @@ function getDescuentosAplicablesSync(
         { incluirCaducadas = false } = {}
 ) {
         if (!modalidad) return [];
+        const specialConfig = getSpecialFixedConfig(modalidad);
+        if (specialConfig && specialConfig.precio !== null) {
+                return [];
+        }
         const ofertas = getCurrentOfertas();
         if (!Array.isArray(ofertas)) return [];
 
@@ -1378,6 +1611,10 @@ function getOfertaSinSuplementosAplicableSync(
         { incluirCaducadas = false } = {},
 ) {
         if (!modalidad) return null;
+        const specialConfig = getSpecialFixedConfig(modalidad);
+        if (specialConfig && specialConfig.precio !== null) {
+                return null;
+        }
         const ofertas = getCurrentOfertas();
         if (!Array.isArray(ofertas)) return null;
         const now = Date.now() / 1000;
@@ -1695,6 +1932,10 @@ function modalidadAdmiteValor(modalidad, valoresForm) {
 }
 
 function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
+        const specialConfig = getSpecialFixedConfig(modalidad);
+        if (specialConfig && specialConfig.duracion) {
+                return [specialConfig.duracion];
+        }
         const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
         const tarifas = cg?.tarifas || [];
         const esCamion = valoresForm.tipo_vehiculo === "camion";
@@ -1722,6 +1963,10 @@ function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
 }
 
 function calcularPrecioBase(modalidad, valoresForm) {
+        const specialConfig = getSpecialFixedConfig(modalidad);
+        if (specialConfig && specialConfig.precio !== null) {
+                return redondearEuros(specialConfig.precio);
+        }
         const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
         const cm = cg?.condiciones_modalidad || {};
         const tarifas = cg?.tarifas || [];
@@ -1940,7 +2185,10 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 				planClasses.push("form__plan--no-selected");
 			}
 
-			const precioBase = calcularPrecioBase(m, valoresForm);
+                        const specialConfig = getSpecialFixedConfig(m);
+                        const isSpecial = !!(specialConfig && specialConfig.precio !== null);
+
+                        const precioBase = calcularPrecioBase(m, valoresForm);
 
 			const breakdown = calcularRecargos(m, {
 				...valoresForm,
@@ -2033,16 +2281,29 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                                 precioBase !== null &&
                                 precioFinal !== null
                         ) {
-                                recargosHTML = renderRecargosHTML({
-                                        precioBase,
-                                        breakdown,
-                                        precioFinal,
-                                        precioIVA,
-                                        descuentoTotal: descuentoTotalSync,
-                                        modalidad: m,
-                                        sinSuplementos: aplicaSinSuplementos,
-                                        ofertaSinSuplementos,
-                                });
+                                if (isSpecial) {
+                                        const duracionLabel =
+                                                specialConfig?.duracion_label ||
+                                                (specialConfig?.duracion
+                                                        ? `${specialConfig.duracion} meses`
+                                                        : "");
+                                        recargosHTML = renderRecargosEspecial({
+                                                precioBase,
+                                                precioIVA,
+                                                duracionLabel,
+                                        });
+                                } else {
+                                        recargosHTML = renderRecargosHTML({
+                                                precioBase,
+                                                breakdown,
+                                                precioFinal,
+                                                precioIVA,
+                                                descuentoTotal: descuentoTotalSync,
+                                                modalidad: m,
+                                                sinSuplementos: aplicaSinSuplementos,
+                                                ofertaSinSuplementos,
+                                        });
+                                }
                         }
 
 			let buttonInner;
@@ -2170,6 +2431,13 @@ async function filtrarModalidadesBase() {
         let candidatas = modalidades.filter(
                 (m) => m.tipo_vehiculo && m.tipo_vehiculo.includes(tipoVehiculoSeleccionado)
         );
+
+        const specialRestrictions = buildSpecialRestrictionMap();
+        if (specialRestrictions) {
+                candidatas = candidatas.filter((m) =>
+                        modalidadRespetaRestriccionesEspeciales(m, specialRestrictions)
+                );
+        }
 
         let antiguedadSuperaMaximo = false;
         let antiguedadPorDebajoMinima = false;
@@ -2349,6 +2617,7 @@ async function filtrarModalidadesBase() {
                 });
         } else {
                 updateDuracionSelect(mesesDisponibles);
+                valoresForm.duracion = Number(getValorInput("duracion")) || 12;
                 renderPlans(disponibles, valoresForm);
         }
 
@@ -2460,11 +2729,17 @@ async function initCalculations() {
                 });
         }
 
+        let initialOffersLoaded = false;
         if (isProfesional()) {
                 await ensureCurrentUserIdReady();
         }
+        const initialUserId = getEffectiveProfessionalId();
+        if (initialUserId) {
+                await fetchOfertas(initialUserId);
+                initialOffersLoaded = true;
+        }
         await filtrarModalidadesBase();
-        if (!document.getElementById("usuario-rol") && isProfesional()) {
+        if (!initialOffersLoaded && !document.getElementById("usuario-rol") && isProfesional()) {
                 const ofertas = getCurrentOfertas();
                 if (!ofertas || ofertas.length === 0) {
                         await updateOfertas();
