@@ -25,14 +25,38 @@
 
     const encodeKey = (key) => {
         if (!key) {
+            log('encodeKey: missing key input', key);
             return '';
         }
-        const buffer = new Uint8Array(key);
-        let string = '';
-        buffer.forEach((value) => {
-            string += String.fromCharCode(value);
+
+        let buffer;
+
+        if (key instanceof ArrayBuffer) {
+            buffer = new Uint8Array(key);
+        } else if (ArrayBuffer.isView(key) && key.buffer) {
+            buffer = new Uint8Array(key.buffer, key.byteOffset, key.byteLength);
+        } else if (typeof key.length === 'number') {
+            buffer = new Uint8Array(key);
+        } else {
+            log('encodeKey: unsupported key input', key);
+            return '';
+        }
+
+        let binary = '';
+        for (let index = 0; index < buffer.length; index += 1) {
+            binary += String.fromCharCode(buffer[index]);
+        }
+
+        const base64 = btoa(binary);
+        const urlSafe = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/u, '');
+
+        log('encodeKey: encoded key lengths', {
+            bytes: buffer.length,
+            base64: base64.length,
+            urlSafe: urlSafe.length,
         });
-        return btoa(string);
+
+        return urlSafe;
     };
 
     const urlBase64ToUint8Array = (base64String) => {
@@ -96,47 +120,61 @@
         const scopeUrl = resolveServiceWorkerScope(serviceWorkerUrl);
 
         const candidates = [];
-        try {
-            const scoped = await navigator.serviceWorker.getRegistration(scopeUrl);
-            if (scoped) {
-                candidates.push(scoped);
+        const pushCandidate = (registration) => {
+            if (registration && !candidates.includes(registration)) {
+                candidates.push(registration);
             }
+        };
+
+        try {
+            log('getRegistration: looking up registration for scope', scopeUrl);
+            pushCandidate(await navigator.serviceWorker.getRegistration(scopeUrl));
         } catch (error) {
             warn('scope lookup error', error);
         }
 
         try {
-            const active = await navigator.serviceWorker.getRegistration();
-            if (active) {
-                candidates.push(active);
-            }
+            log('getRegistration: looking up default registration');
+            pushCandidate(await navigator.serviceWorker.getRegistration());
         } catch (error) {
             warn('registration lookup error', error);
         }
 
         try {
-            const ready = await navigator.serviceWorker.ready;
-            if (ready) {
-                candidates.push(ready);
-            }
+            log('getRegistration: enumerating all registrations');
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            registrations.forEach(pushCandidate);
+            log('getRegistration: enumerated registrations', registrations.length);
         } catch (error) {
-            warn('ready lookup error', error);
+            warn('registrations lookup error', error);
         }
 
         const match = candidates.find((registration) => matchesRegistration(registration, resolvedUrl));
         if (match) {
+            log('getRegistration: returning matching registration', { scope: match.scope, scriptURL: resolvedUrl });
             return match;
         }
 
-        if (candidates.length > 0) {
-            return candidates[0];
-        }
-
         if (!createIfMissing) {
-            return null;
+            if (candidates.length > 0) {
+                log('getRegistration: returning first available registration without match', { scope: candidates[0].scope });
+            } else {
+                log('getRegistration: no registration candidates found');
+            }
+            return candidates.length > 0 ? candidates[0] : null;
         }
 
-        return navigator.serviceWorker.register(resolvedUrl, { scope: scopeUrl });
+        try {
+            const registration = await navigator.serviceWorker.register(resolvedUrl, { scope: scopeUrl });
+            log('getRegistration: registered new service worker', {
+                scope: registration.scope,
+                scriptURL: resolvedUrl,
+            });
+            return registration;
+        } catch (registerError) {
+            reportError('getRegistration: registration failed', registerError);
+            throw registerError;
+        }
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -207,6 +245,14 @@
         let hasSyncedSubscription = initialSubscribed;
 
         const syncTestButtons = () => {
+            log('syncTestButtons: updating state', {
+                hasTestButton: Boolean(testButton),
+                hasBroadcastButton: Boolean(broadcastButton),
+                isActive,
+                isProcessing,
+                testEndpoint,
+                testAllEndpoint,
+            });
             [testButton, broadcastButton].forEach((testControl) => {
                 if (!testControl) {
                     return;
@@ -215,23 +261,22 @@
                 const isBroadcast = testControl === broadcastButton;
                 const isSingle = testControl === testButton;
                 const missingEndpoint = (isBroadcast && !testAllEndpoint) || (isSingle && !testEndpoint);
-                const inactive = !isActive || isProcessing || missingEndpoint;
+                const shouldEnable = !missingEndpoint && isActive && !isProcessing;
 
-                testControl.disabled = false;
-                testControl.removeAttribute('disabled');
-
-                if (inactive) {
-                    testControl.dataset.pushInactive = '1';
-                    testControl.setAttribute('aria-disabled', 'true');
-                } else {
-                    delete testControl.dataset.pushInactive;
+                if (shouldEnable) {
+                    testControl.disabled = false;
                     testControl.removeAttribute('aria-disabled');
+                } else {
+                    testControl.disabled = true;
+                    testControl.setAttribute('aria-disabled', 'true');
                 }
             });
         };
 
         const updateControls = (active) => {
             isActive = active;
+
+            log('updateControls: toggling active state', { active });
 
             button.disabled = false;
             button.removeAttribute('disabled');
@@ -276,11 +321,31 @@
 
         const refreshUI = async () => {
             log('refreshUI: checking current subscription status');
+            setStatus('Comprobando el estado de las notificaciones…', 'info');
 
-            let serverState = {
-                hasSubscriptions: Boolean(initialSubscribed),
-                count: initialSubscribed ? 1 : 0,
-            };
+            let registration = null;
+            let subscription = null;
+            let hasLocalSubscription = false;
+            let serverHasSubscriptions = false;
+            let serverCount = 0;
+            let messageText = '';
+            let messageTone = '';
+
+            try {
+                registration = await getRegistration(serviceWorkerUrl, false);
+                log('refreshUI: service worker registration', registration);
+            } catch (registrationError) {
+                reportError('refreshUI: error obtaining service worker registration', registrationError);
+            }
+
+            if (registration) {
+                try {
+                    subscription = await registration.pushManager.getSubscription();
+                    hasLocalSubscription = Boolean(subscription);
+                } catch (subscriptionError) {
+                    reportError('refreshUI: error reading push subscription', subscriptionError);
+                }
+            }
 
             if (statusEndpoint) {
                 try {
@@ -294,11 +359,9 @@
                     if (response.ok) {
                         const data = await response.json();
                         if (data && typeof data === 'object') {
-                            serverState = {
-                                hasSubscriptions: Boolean(data.hasSubscriptions),
-                                count: Number(data.count || 0),
-                            };
-                            log('refreshUI: server subscription state', serverState);
+                            serverHasSubscriptions = Boolean(data.hasSubscriptions);
+                            serverCount = Number(data.count || 0);
+                            log('refreshUI: server subscription state', { hasSubscriptions: serverHasSubscriptions, count: serverCount });
                         }
                     } else {
                         const text = await response.text();
@@ -307,96 +370,105 @@
                 } catch (statusError) {
                     warn('refreshUI: status endpoint failed', statusError);
                 }
+            } else if (initialSubscribed) {
+                serverHasSubscriptions = true;
+                serverCount = 1;
             }
 
-            let registration = null;
-            try {
-                registration = await getRegistration(serviceWorkerUrl, false);
-                log('refreshUI: service worker registration', registration);
-            } catch (registrationError) {
-                reportError('refreshUI: error obtaining service worker registration', registrationError);
-            }
-
-            if (!registration) {
-                updateControls(serverState.hasSubscriptions);
-                if (serverState.hasSubscriptions) {
-                    setStatus('Las notificaciones están activas, pero este navegador no tiene una suscripción válida. Pulsa “Desactivar notificaciones” y vuelve a activarlas.', 'warning');
-                } else {
-                    setStatus('Pulsa “Activar notificaciones” para empezar a recibir avisos.', 'info');
-                }
-                syncTestButtons();
-                return;
-            }
-
-            let subscription = null;
-            try {
-                subscription = await registration.pushManager.getSubscription();
-            } catch (subscriptionError) {
-                reportError('refreshUI: error reading push subscription', subscriptionError);
-            }
-
-            log('refreshUI: local subscription', subscription);
-
-            if (subscription && !serverState.hasSubscriptions) {
+            if (subscription && !serverHasSubscriptions) {
                 log('refreshUI: local subscription exists but server has no record, synchronising');
                 try {
                     await sendSubscription(subscription);
                     hasSyncedSubscription = true;
-                    serverState.hasSubscriptions = true;
-                    serverState.count = Math.max(serverState.count, 1);
+                    serverHasSubscriptions = true;
+                    serverCount = Math.max(serverCount, 1);
                     log('refreshUI: subscription synchronised with server');
                 } catch (syncError) {
                     reportError('refreshUI: failed to synchronise subscription', syncError);
                 }
             }
 
-            if (!subscription && serverState.hasSubscriptions) {
+            if (!subscription && serverHasSubscriptions) {
                 warn('refreshUI: server reports active subscriptions but browser is missing one');
+                messageText = 'Notificaciones activas en otros dispositivos.';
+                messageTone = 'info';
             }
 
-            const active = Boolean(subscription || serverState.hasSubscriptions);
+            const active = Boolean(subscription || serverHasSubscriptions);
+
             updateControls(active);
 
-            if (active) {
-                setStatus('Las notificaciones del navegador están activas en este dispositivo.', 'success');
-            } else {
-                setStatus('Pulsa “Activar notificaciones” para empezar a recibir avisos.', 'info');
+            if (!messageText) {
+                if (active && hasLocalSubscription) {
+                    messageText = 'Las notificaciones del navegador están activas en este dispositivo.';
+                    messageTone = 'success';
+                } else if (active) {
+                    messageText = 'Notificaciones activas en otros dispositivos.';
+                    messageTone = 'info';
+                } else {
+                    messageText = 'Pulsa “Activar notificaciones” para empezar a recibir avisos.';
+                    messageTone = 'info';
+                }
             }
 
+            setStatus(messageText, messageTone);
             syncTestButtons();
         };
 
         const sendSubscription = async (subscription) => {
-            const body = {
-                endpoint: subscription.endpoint,
-                keys: {
-                    p256dh: encodeKey(subscription.getKey('p256dh')),
-                    auth: encodeKey(subscription.getKey('auth')),
-                },
-                contentEncoding: 'aes128gcm',
-                userAgent: navigator.userAgent,
-            };
+            try {
+                log('sendSubscription: starting', { endpoint: subscription && subscription.endpoint });
 
-            const response = await fetch(subscriptionEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-WP-Nonce': restNonce,
-                },
-                body: JSON.stringify(body),
-            });
+                const publicKeyPayload = encodeKey(subscription.getKey('p256dh'));
+                const authTokenPayload = encodeKey(subscription.getKey('auth'));
 
-            log('subscription request response', { endpoint: subscription.endpoint, status: response.status });
+                if (!publicKeyPayload || !authTokenPayload) {
+                    reportError('sendSubscription: missing key material', {
+                        publicKeyLength: publicKeyPayload ? publicKeyPayload.length : 0,
+                        authTokenLength: authTokenPayload ? authTokenPayload.length : 0,
+                    });
+                    throw new Error('Subscription keys missing');
+                }
 
-            if (!response.ok) {
-                const text = await response.text();
-                reportError('subscription failed', text);
-                throw new Error('Request failed');
+                const body = {
+                    endpoint: subscription.endpoint,
+                    keys: {
+                        p256dh: publicKeyPayload,
+                        auth: authTokenPayload,
+                    },
+                    publicKey: publicKeyPayload,
+                    authToken: authTokenPayload,
+                    contentEncoding: 'aes128gcm',
+                    userAgent: navigator.userAgent,
+                };
+
+                log('sendSubscription: request body prepared', body);
+
+                const response = await fetch(subscriptionEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': restNonce,
+                    },
+                    body: JSON.stringify(body),
+                });
+
+                log('sendSubscription: response received', { status: response.status, ok: response.ok });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    log('sendSubscription: ERROR response body', text);
+                    reportError('subscription failed', text);
+                    throw new Error(`Request failed with status: ${response.status}`);
+                }
+
+                hasSyncedSubscription = true;
+                log('sendSubscription: success');
+                return true;
+            } catch (error) {
+                log('sendSubscription: ERROR', error);
+                throw error;
             }
-
-            hasSyncedSubscription = true;
-
-            return true;
         };
 
         const deleteSubscription = async (endpoint) => {
@@ -460,8 +532,10 @@
                 setProcessing(true);
                 setStatus('Solicitando permisos…', 'info');
                 log('requestPermissionAndSubscribe: requesting permission');
+
                 const permission = await Notification.requestPermission();
                 log('requestPermissionAndSubscribe: permission result', permission);
+
                 if (permission !== 'granted') {
                     setStatus('Debes permitir las notificaciones en el navegador.', 'warning');
                     updateControls(false);
@@ -469,11 +543,22 @@
                     return;
                 }
 
+                log('requestPermissionAndSubscribe: getting service worker registration');
                 const registration = await getRegistration(serviceWorkerUrl, true);
                 log('requestPermissionAndSubscribe: obtained registration', registration);
+
+                if (!registration) {
+                    setStatus('Error: No se pudo registrar el service worker.', 'error');
+                    setProcessing(false);
+                    return;
+                }
+
+                log('requestPermissionAndSubscribe: checking existing subscription');
                 const existing = await registration.pushManager.getSubscription();
                 log('requestPermissionAndSubscribe: existing subscription', existing);
+
                 if (existing) {
+                    log('requestPermissionAndSubscribe: sending existing subscription to server');
                     await sendSubscription(existing);
                     hasSyncedSubscription = true;
                     setStatus('Notificaciones activadas correctamente.', 'success');
@@ -482,23 +567,30 @@
                     return;
                 }
 
+                log('requestPermissionAndSubscribe: getting public key');
                 const resolvedPublicKey = await ensurePublicKey();
+
                 if (!resolvedPublicKey) {
                     setStatus('No se pudo obtener la clave de notificaciones. Comprueba la consola.', 'error');
                     setProcessing(false);
                     return;
                 }
 
+                log('requestPermissionAndSubscribe: creating new subscription');
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(resolvedPublicKey),
                 });
+
                 log('requestPermissionAndSubscribe: new subscription created', subscription);
+                log('requestPermissionAndSubscribe: sending new subscription to server');
                 await sendSubscription(subscription);
+
                 hasSyncedSubscription = true;
                 setStatus('Notificaciones activadas correctamente.', 'success');
                 updateControls(true);
             } catch (error) {
+                log('requestPermissionAndSubscribe: ERROR caught', error);
                 setStatus('No se pudieron activar las notificaciones. Comprueba la consola.', 'error');
                 reportError('requestPermissionAndSubscribe error', error);
             } finally {

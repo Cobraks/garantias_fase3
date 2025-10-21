@@ -4,6 +4,8 @@ namespace GarantiasOnline360VO\Notifications\Push;
 
 use wpdb;
 
+use GarantiasOnline360VO\Notifications\Push\Base64KeyNormalizer;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -24,8 +26,8 @@ class PushSubscriptionRepository
         global $wpdb;
         $table = $wpdb->prefix . PushTables::SUBSCRIPTIONS_TABLE;
         $endpoint = esc_url_raw((string) $subscription['endpoint']);
-        $public_key = $this->normalize_key((string) ($subscription['publicKey'] ?? $subscription['p256dh'] ?? ''));
-        $auth_token = $this->normalize_key((string) ($subscription['authToken'] ?? $subscription['auth'] ?? ''));
+        $public_key = Base64KeyNormalizer::normalize($subscription['publicKey'] ?? $subscription['p256dh'] ?? '');
+        $auth_token = Base64KeyNormalizer::normalize($subscription['authToken'] ?? $subscription['auth'] ?? '');
         $content_encoding = sanitize_key((string) ($subscription['contentEncoding'] ?? 'aes128gcm'));
         $user_agent = sanitize_text_field((string) ($subscription['userAgent'] ?? ''));
 
@@ -179,8 +181,8 @@ class PushSubscriptionRepository
 
         foreach ($records as $record) {
             $endpoint = isset($record['endpoint']) ? (string) $record['endpoint'] : '';
-            $public = $this->normalize_key((string) ($record['public_key'] ?? ''));
-            $auth = $this->normalize_key((string) ($record['auth_token'] ?? ''));
+            $public = Base64KeyNormalizer::normalize($record['public_key'] ?? '');
+            $auth = Base64KeyNormalizer::normalize($record['auth_token'] ?? '');
 
             if ($endpoint === '' || $public === '' || $auth === '') {
                 if ($endpoint !== '') {
@@ -235,32 +237,4 @@ class PushSubscriptionRepository
         );
 }
 
-    private function normalize_key(string $value): string
-    {
-        $normalized = preg_replace('/\s+/', '', $value);
-        if (! is_string($normalized)) {
-            return '';
-        }
-
-        $normalized = trim($normalized);
-        if ($normalized === '') {
-            return '';
-        }
-
-        if (! preg_match('/^[A-Za-z0-9\-_=+/]+$/', $normalized)) {
-            return '';
-        }
-
-        $converted = strtr($normalized, '-_', '+/');
-        $padding = strlen($converted) % 4;
-        if ($padding) {
-            $converted .= str_repeat('=', 4 - $padding);
-        }
-
-        if (base64_decode($converted, true) === false) {
-            return '';
-        }
-
-        return $normalized;
-    }
 }
