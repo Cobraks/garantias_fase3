@@ -6,12 +6,14 @@ import {
         getEffectiveProfessionalId,
         ensureCurrentUserIdReady,
         isAdmin,
+        isProfesional,
 } from "./form-role-utils.js";
 import { getRestRoot, getRestNonce } from "./config.js";
 import {
-	setCurrentOfertas,
-	getCurrentOfertas,
-	getVisibleModalidades,
+        setCurrentOfertas,
+        getCurrentOfertas,
+        getVisibleModalidades,
+        setSpecialFixedOffers,
 } from "./form-state.js";
 
 const ENABLE_LOGS = true;
@@ -20,35 +22,118 @@ function log(...args) {
 }
 
 // Cache simple por userId con posibilidad de invalidar
-const ofertasCache = new Map(); // userId -> { ofertas, fetchedAt }
+const ofertasCache = new Map(); // cacheKey -> { ofertas, especiales, meta, fetchedAt, version }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
+const CACHE_VERSION = 3;
 
-function storageKey(userId) {
-        return `ofertas_${userId}`;
+function isValidCacheEntry(entry) {
+        if (!entry || typeof entry !== "object") return false;
+        if (entry.version !== CACHE_VERSION) return false;
+        if (!Array.isArray(entry.ofertas)) return false;
+        if (!Array.isArray(entry.especiales)) return false;
+        if (typeof entry.fetchedAt !== "number") return false;
+        if (Date.now() - entry.fetchedAt >= CACHE_TTL) return false;
+        return true;
 }
 
-function getCachedOfertas(userId) {
-        if (ofertasCache.has(userId)) {
-                const cached = ofertasCache.get(userId);
-                if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
-                        return cached.ofertas;
-                }
+function storageKey(cacheKey) {
+        return `ofertas_${cacheKey}`;
+}
+
+function toCacheKey(userId, { fallbackToSelf = false } = {}) {
+        if (userId !== null && typeof userId !== "undefined") {
+                return String(userId);
         }
-        const raw = sessionStorage.getItem(storageKey(userId));
+        return fallbackToSelf ? "self" : null;
+}
+
+function normalizeOfertasResponse(payload) {
+        if (Array.isArray(payload)) {
+                return {
+                        ofertas: payload,
+                        especiales: [],
+                        meta: {},
+                        tiene_oferta_especial_precio_fijo: false,
+                };
+        }
+
+        if (!payload || typeof payload !== "object") {
+                return {
+                        ofertas: [],
+                        especiales: [],
+                        meta: {},
+                        tiene_oferta_especial_precio_fijo: false,
+                };
+        }
+
+        const ofertas = Array.isArray(payload.ofertas) ? payload.ofertas : [];
+        const especiales = Array.isArray(payload.ofertas_precio_fijo)
+                ? payload.ofertas_precio_fijo
+                : [];
+        const meta = payload.meta && typeof payload.meta === "object" ? payload.meta : {};
+        const tieneEspecial = Boolean(
+                payload.tiene_oferta_especial_precio_fijo || meta.tiene_oferta_especial_precio_fijo
+        );
+
+        return {
+                ofertas,
+                especiales,
+                meta,
+                tiene_oferta_especial_precio_fijo: tieneEspecial,
+        };
+}
+
+function applyOfertasState(entry) {
+        if (!entry || typeof entry !== "object") {
+                setCurrentOfertas([]);
+                setSpecialFixedOffers([], { enabled: false });
+                return;
+        }
+
+        const ofertas = Array.isArray(entry.ofertas) ? entry.ofertas : [];
+        const especiales = Array.isArray(entry.especiales) ? entry.especiales : [];
+        const meta = entry.meta && typeof entry.meta === "object" ? entry.meta : {};
+        const enabledFlag = Boolean(
+                meta.enabled ??
+                        meta.tieneOfertaEspecial ??
+                        meta.tiene_oferta_especial_precio_fijo ??
+                        entry.tiene_oferta_especial_precio_fijo ??
+                        (especiales.length > 0)
+        );
+
+        setCurrentOfertas(ofertas);
+        setSpecialFixedOffers(especiales, {
+                ...meta,
+                enabled: enabledFlag,
+        });
+}
+
+function getCachedOfertas(cacheKey) {
+        if (!cacheKey) return null;
+
+        if (ofertasCache.has(cacheKey)) {
+                const cached = ofertasCache.get(cacheKey);
+                if (isValidCacheEntry(cached)) {
+                        return cached;
+                }
+                ofertasCache.delete(cacheKey);
+        }
+
+        const raw = sessionStorage.getItem(storageKey(cacheKey));
         if (raw) {
                 try {
                         const parsed = JSON.parse(raw);
-                        if (
-                                Array.isArray(parsed.ofertas) &&
-                                Date.now() - parsed.fetchedAt < CACHE_TTL
-                        ) {
-                                ofertasCache.set(userId, parsed);
-                                return parsed.ofertas;
+                        if (isValidCacheEntry(parsed)) {
+                                ofertasCache.set(cacheKey, parsed);
+                                return parsed;
                         }
+                        sessionStorage.removeItem(storageKey(cacheKey));
                 } catch (e) {
                         // ignore parse errors
+                        sessionStorage.removeItem(storageKey(cacheKey));
                 }
         }
+
         return null;
 }
 
@@ -149,58 +234,72 @@ export function filterOfertasPorModalidades(
  * Fetch de ofertas con cache y fallback profesional.
  */
 export async function fetchOfertas(userId, { force = false } = {}) {
-	// Si dependemos de profesional y no se pasó userId, asegurar que esté listo
-	if (!userId) {
-		await ensureCurrentUserIdReady();
-	}
+        // Si dependemos de profesional y no se pasó userId, asegurar que esté listo
+        if (!userId) {
+                await ensureCurrentUserIdReady();
+        }
 
         const effectiveUserId = resolveUserId(userId);
-        if (!effectiveUserId) return [];
+        const useSelfFallback = !effectiveUserId && isProfesional();
+        const cacheKey = toCacheKey(effectiveUserId, { fallbackToSelf: useSelfFallback });
+
+        if (!effectiveUserId && !useSelfFallback) {
+                return [];
+        }
 
         if (!force) {
-                const cached = getCachedOfertas(effectiveUserId);
+                const cached = getCachedOfertas(cacheKey);
                 if (cached) {
                         if (ENABLE_LOGS)
-                                log(`Usando cache de ofertas para usuario ${effectiveUserId}`);
-                        setCurrentOfertas(cached);
-                        return cached;
+                                log(
+                                        `Usando cache de ofertas para usuario ${
+                                                effectiveUserId ?? "self"
+                                        }`
+                                );
+                        applyOfertasState(cached);
+                        return Array.isArray(cached.ofertas) ? cached.ofertas : [];
                 }
         }
 
-	const restRoot = getRestRoot();
-	const restNonce = getRestNonce();
-	const url = `${restRoot}go/v1/ofertas-usuario?id=${encodeURIComponent(
-		effectiveUserId
-	)}`;
+        const restRoot = getRestRoot();
+        const restNonce = getRestNonce();
+        const url = effectiveUserId
+                ? `${restRoot}go/v1/ofertas-usuario?id=${encodeURIComponent(effectiveUserId)}`
+                : `${restRoot}go/v1/ofertas-usuario`;
 
-	try {
-		const res = await fetch(url, {
-			method: "GET",
-			credentials: "include",
+        try {
+                const res = await fetch(url, {
+                        method: "GET",
+                        credentials: "include",
 			headers: {
 				"X-WP-Nonce": restNonce,
 				Accept: "application/json",
 			},
 			cache: "no-store",
-		});
-		if (!res.ok) {
-			throw new Error(`Error al obtener ofertas: ${res.status}`);
-		}
-                const ofertas = await res.json();
-                const entry = { ofertas, fetchedAt: Date.now() };
-                ofertasCache.set(effectiveUserId, entry);
-                try {
-                        sessionStorage.setItem(
-                                storageKey(effectiveUserId),
-                                JSON.stringify(entry)
-                        );
-                } catch (e) {
-                        // storage might be full/disabled
+                });
+                if (!res.ok) {
+                        throw new Error(`Error al obtener ofertas: ${res.status}`);
                 }
-                setCurrentOfertas(ofertas);
-                return ofertas;
+                const payload = await res.json();
+                const normalized = normalizeOfertasResponse(payload);
+                const entry = {
+                        ...normalized,
+                        fetchedAt: Date.now(),
+                        version: CACHE_VERSION,
+                };
+                if (cacheKey) {
+                        ofertasCache.set(cacheKey, entry);
+                        try {
+                                sessionStorage.setItem(storageKey(cacheKey), JSON.stringify(entry));
+                        } catch (e) {
+                                // storage might be full/disabled
+                        }
+                }
+                applyOfertasState(entry);
+                return entry.ofertas;
         } catch (e) {
-                log("Error al obtener ofertas para usuario", effectiveUserId, e);
+                log("Error al obtener ofertas para usuario", effectiveUserId ?? "self", e);
+                applyOfertasState(null);
                 return [];
         }
 }
