@@ -1756,9 +1756,9 @@ async function updateOfertas() {
         }
 
         const usuarioId = getEffectiveProfessionalId();
-        if (!usuarioId) return;
+        if (!usuarioId && !isProfesional()) return;
 
-        await fetchOfertas(usuarioId, { force: true });
+        await fetchOfertas(usuarioId ?? null, { force: true });
         await filtrarModalidadesBase();
         document.dispatchEvent(new Event("ofertas:actualizadas"));
 }
@@ -2761,22 +2761,15 @@ async function initCalculations() {
                 });
         }
 
-        let initialOffersLoaded = false;
-        if (isProfesional()) {
+        const esProfesional = isProfesional();
+        if (esProfesional) {
                 await ensureCurrentUserIdReady();
         }
         const initialUserId = getEffectiveProfessionalId();
-        if (initialUserId) {
-                await fetchOfertas(initialUserId);
-                initialOffersLoaded = true;
+        if (initialUserId || esProfesional) {
+                await fetchOfertas(initialUserId ?? null);
         }
         await filtrarModalidadesBase();
-        if (!initialOffersLoaded && !document.getElementById("usuario-rol") && isProfesional()) {
-                const ofertas = getCurrentOfertas();
-                if (!ofertas || ofertas.length === 0) {
-                        await updateOfertas();
-                }
-        }
 }
 
 // === EXPORTS NECESARIOS PARA OTROS MÓDULOS ===
