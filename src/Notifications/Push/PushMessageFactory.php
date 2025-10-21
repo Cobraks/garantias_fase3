@@ -56,6 +56,7 @@ class PushMessageFactory
         $guarantee_id = isset($record['guarantee_id']) ? (int) $record['guarantee_id'] : 0;
         $title = isset($context['guarantee_label']) ? (string) $context['guarantee_label'] : '';
         $initiator = isset($context['initiator_label']) ? (string) $context['initiator_label'] : '';
+        $company = isset($context['vendor_name']) ? (string) $context['vendor_name'] : '';
 
         $body_parts = [];
         if ($initiator !== '') {
@@ -63,6 +64,9 @@ class PushMessageFactory
         }
         if ($title !== '') {
             $body_parts[] = $title;
+        }
+        if ($company !== '') {
+            $body_parts[] = sprintf(__('Empresa: %s', 'garantias-online-360vo'), $company);
         }
 
         $link = $guarantee_id > 0

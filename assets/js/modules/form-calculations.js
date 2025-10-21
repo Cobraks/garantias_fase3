@@ -29,6 +29,7 @@ import {
         getLimitesDinamicos,
         setLimitesDinamicos,
         getSelectedModalidadId,
+        getFixedPriceConfig,
 } from "./form-state.js";
 import { setupPlanSelection } from "./plan-selection.js";
 
@@ -55,6 +56,130 @@ function normalizeChannel(value) {
         if (!value) return "";
         const key = String(value).toLowerCase();
         return CHANNEL_NORMALIZATION[key] || "";
+}
+
+function extractSlug(value) {
+        if (value == null) return "";
+        if (Array.isArray(value)) {
+                for (const v of value) {
+                        const slug = extractSlug(v);
+                        if (slug) return slug;
+                }
+                return "";
+        }
+        if (typeof value === "object") {
+                if (value.slug) return String(value.slug).toLowerCase();
+                if (value.value) return String(value.value).toLowerCase();
+                if (value.name) return String(value.name).toLowerCase();
+                if (value.id != null) return String(value.id).toLowerCase();
+                if (value.ID != null) return String(value.ID).toLowerCase();
+        }
+        return String(value).toLowerCase();
+}
+
+function parseFixedNumber(raw) {
+        if (raw == null || raw === "") return null;
+        if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+        if (typeof raw === "string") {
+                const normalized = raw.replace(/,/g, ".");
+                const parsed = Number.parseFloat(normalized);
+                if (!Number.isNaN(parsed)) return parsed;
+        }
+        return null;
+}
+
+function parseDurationValue(raw) {
+        if (raw == null || raw === "") return null;
+        if (Array.isArray(raw)) {
+                for (const v of raw) {
+                        const parsed = parseDurationValue(v);
+                        if (parsed != null) return parsed;
+                }
+                return null;
+        }
+        if (typeof raw === "object") {
+                if (raw.value != null && raw.value !== "") {
+                        return parseDurationValue(raw.value);
+                }
+                if (raw.label && raw.value == null) {
+                        return null;
+                }
+        }
+        const parsed = Number(raw);
+        return Number.isNaN(parsed) ? null : parsed;
+}
+
+let fixedPriceNormalizedRef = null;
+let fixedPriceNormalizedItems = [];
+
+function getNormalizedFixedPriceItems() {
+        const cfg = getFixedPriceConfig();
+        if (cfg === fixedPriceNormalizedRef) {
+                return fixedPriceNormalizedItems;
+        }
+        if (!cfg || typeof cfg !== "object") {
+                fixedPriceNormalizedRef = cfg;
+                fixedPriceNormalizedItems = [];
+                return fixedPriceNormalizedItems;
+        }
+        const enabled = !!(cfg.habilitado ?? cfg.enabled);
+        const items = Array.isArray(cfg.items) ? cfg.items : [];
+        if (!enabled || !items.length) {
+                fixedPriceNormalizedRef = cfg;
+                fixedPriceNormalizedItems = [];
+                return fixedPriceNormalizedItems;
+        }
+        fixedPriceNormalizedItems = items
+                .map((item) => {
+                        if (!item || typeof item !== "object") return null;
+                        const tipoSlug = extractSlug(item.tipo_garantia ?? item.tipo);
+                        const nivelSlug = extractSlug(item.nivel_garantia ?? item.nivel);
+                        const precio = parseFixedNumber(item.precio_fijo ?? item.precio);
+                        if (!tipoSlug || !nivelSlug || precio === null) return null;
+                        const excluir =
+                                item.excluir_resto_de_niveles === true ||
+                                item.excluir_resto_de_niveles === 1 ||
+                                item.excluir_resto_de_niveles === "1" ||
+                                item.excluir_resto_de_niveles === "true";
+                        const duracionValue = parseDurationValue(item.duracion_maxima);
+                        return {
+                                tipoSlug,
+                                nivelSlug,
+                                precio,
+                                excluir,
+                                duracionValue,
+                                raw: item,
+                        };
+                })
+                .filter(Boolean);
+        fixedPriceNormalizedRef = cfg;
+        return fixedPriceNormalizedItems;
+}
+
+function getFixedPriceMatch(modalidad) {
+        if (!modalidad) return null;
+        const tipoSlug = extractSlug(modalidad?.tipo_garantia);
+        const nivelSlug = extractSlug(modalidad?.nivel_garantia);
+        if (!tipoSlug || !nivelSlug) return null;
+        const items = getNormalizedFixedPriceItems();
+        if (!items.length) return null;
+        return (
+                items.find((item) => item.tipoSlug === tipoSlug && item.nivelSlug === nivelSlug) ||
+                null
+        );
+}
+
+function getFixedPriceRestrictions() {
+        const items = getNormalizedFixedPriceItems();
+        const map = new Map();
+        items.forEach((item) => {
+                if (!item.excluir) return;
+                if (!map.has(item.tipoSlug)) {
+                        map.set(item.tipoSlug, new Set());
+                }
+                map.get(item.tipoSlug).add(item.nivelSlug);
+        });
+        return map;
 }
 
 function getDefaultChannelForRole() {
@@ -1076,10 +1201,21 @@ function applyDesgloseVisibility() {
 
 // --------- Cálculo de recargos (suplementos) ---------
 function calcularRecargos(modalidad, valoresForm) {
-	const suplementos = modalidad.acf?.suplementos || [];
-	const maximosGrupo = modalidad.acf?.maximo_acumulable_por_grupo || [];
-	const maximoAcumulableTotal =
-		Number(modalidad.acf?.maximo_acumulable_total) || null;
+        const fixedMatch = getFixedPriceMatch(modalidad);
+        if (fixedMatch) {
+                return {
+                        recargoTotal: 0,
+                        maximoAcumulableTotal: 0,
+                        detalles: [],
+                        limiteTotalAlcanzado: false,
+                        recargosPorGrupo: {},
+                        topePorGrupo: {},
+                };
+        }
+        const suplementos = modalidad.acf?.suplementos || [];
+        const maximosGrupo = modalidad.acf?.maximo_acumulable_por_grupo || [];
+        const maximoAcumulableTotal =
+                Number(modalidad.acf?.maximo_acumulable_total) || null;
 
 	const topePorGrupo = {};
 	maximosGrupo.forEach((g) => {
@@ -1269,22 +1405,23 @@ function calcularRecargos(modalidad, valoresForm) {
 
 // --------- DESCUENTOS AVANZADOS ---------
 async function ensureOfertasLoaded() {
-	const hasProf = getEffectiveProfessionalId();
-	if (!hasProf) return;
-    if (!Array.isArray(getCurrentOfertas())) {
-		await ensureCurrentUserIdReady();
-		const uid = getEffectiveProfessionalId();
-		if (uid) {
-                    setCurrentOfertas(await fetchOfertas(uid));
-		}
-	}
+        const hasProf = getEffectiveProfessionalId();
+        if (!hasProf) return;
+        if (!Array.isArray(getCurrentOfertas())) {
+                await ensureCurrentUserIdReady();
+                const uid = getEffectiveProfessionalId();
+                if (uid) {
+                        await fetchOfertas(uid);
+                }
+        }
 }
 
 async function getDescuentosAplicables(
-	modalidad,
-	{ incluirCaducadas = false } = {}
+        modalidad,
+        { incluirCaducadas = false } = {}
 ) {
         if (!modalidad) return [];
+        if (getFixedPriceMatch(modalidad)) return [];
         await ensureOfertasLoaded();
         if (!Array.isArray(getCurrentOfertas())) return [];
 
@@ -1345,6 +1482,7 @@ function getDescuentosAplicablesSync(
         { incluirCaducadas = false } = {}
 ) {
         if (!modalidad) return [];
+        if (getFixedPriceMatch(modalidad)) return [];
         const ofertas = getCurrentOfertas();
         if (!Array.isArray(ofertas)) return [];
 
@@ -1378,6 +1516,7 @@ function getOfertaSinSuplementosAplicableSync(
         { incluirCaducadas = false } = {},
 ) {
         if (!modalidad) return null;
+        if (getFixedPriceMatch(modalidad)) return null;
         const ofertas = getCurrentOfertas();
         if (!Array.isArray(ofertas)) return null;
         const now = Date.now() / 1000;
@@ -1695,6 +1834,10 @@ function modalidadAdmiteValor(modalidad, valoresForm) {
 }
 
 function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
+        const fixedMatch = getFixedPriceMatch(modalidad);
+        if (fixedMatch && fixedMatch.duracionValue != null) {
+                return [Number(fixedMatch.duracionValue)];
+        }
         const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
         const tarifas = cg?.tarifas || [];
         const esCamion = valoresForm.tipo_vehiculo === "camion";
@@ -1722,6 +1865,10 @@ function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
 }
 
 function calcularPrecioBase(modalidad, valoresForm) {
+        const fixedMatch = getFixedPriceMatch(modalidad);
+        if (fixedMatch) {
+                return fixedMatch.precio;
+        }
         const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
         const cm = cg?.condiciones_modalidad || {};
         const tarifas = cg?.tarifas || [];
@@ -2275,6 +2422,18 @@ async function filtrarModalidadesBase() {
         }
 
         candidatas = candidatas.filter((m) => cumpleCondiciones(m));
+
+        const fixedRestrictions = getFixedPriceRestrictions();
+        if (fixedRestrictions.size) {
+                candidatas = candidatas.filter((m) => {
+                        const tipoSlug = extractSlug(m?.tipo_garantia);
+                        const nivelSlug = extractSlug(m?.nivel_garantia);
+                        if (!tipoSlug || !nivelSlug) return true;
+                        const permitidos = fixedRestrictions.get(tipoSlug);
+                        if (!permitidos || permitidos.size === 0) return true;
+                        return permitidos.has(nivelSlug);
+                });
+        }
 
         const canalesDisponibles = new Set();
         candidatas.forEach((m) => {

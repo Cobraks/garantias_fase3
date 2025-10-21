@@ -302,7 +302,15 @@ $home_destination = $is_admin_user
                             </a>
                         </li>
                         <?php if ($is_admin_user) : ?>
-                            <li class="menu-item menu-item--notifications" data-admin-notifications>
+                            <li
+                                class="menu-item menu-item--notifications"
+                                data-admin-notifications
+                                data-icon-view="<?php echo esc_attr(Svg::icon('visibility', 'notifications-panel__action-icon')); ?>"
+                                data-icon-delete="<?php echo esc_attr(Svg::icon('trash', 'notifications-panel__action-icon')); ?>"
+                                data-mark-label="<?php echo esc_attr__('Marcar como leído', 'garantias-online-360vo'); ?>"
+                                data-marked-label="<?php echo esc_attr__('Leída', 'garantias-online-360vo'); ?>"
+                                data-delete-label="<?php echo esc_attr__('Eliminar', 'garantias-online-360vo'); ?>"
+                            >
                                 <button
                                     type="button"
                                     class="top-bar__notifications-button"

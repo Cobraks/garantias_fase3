@@ -68,15 +68,82 @@ class OfertasRestController
             return new \WP_REST_Response([], 200);
         }
 
-        $ofertas = get_field('ofertas_y_descuentos', 'user_' . $user_id);
-        if (empty($ofertas) || !isset($ofertas['ofertas']) || !is_array($ofertas['ofertas'])) {
-            return new \WP_REST_Response([], 200);
+        $ofertas_group = get_field('ofertas_y_descuentos', 'user_' . $user_id);
+        if (!is_array($ofertas_group)) {
+            $ofertas_group = [];
+        }
+
+        $ofertas_list = isset($ofertas_group['ofertas']) && is_array($ofertas_group['ofertas'])
+            ? $ofertas_group['ofertas']
+            : [];
+
+        $tiene_precio_fijo = !empty($ofertas_group['tiene_oferta_especial_precio_fijo']);
+        $ofertas_fijas_raw = [];
+        if ($tiene_precio_fijo && !empty($ofertas_group['oferta_especial_precio_fijo']) && is_array($ofertas_group['oferta_especial_precio_fijo'])) {
+            $ofertas_fijas_raw = $ofertas_group['oferta_especial_precio_fijo'];
+        }
+
+        $ofertas_fijas = [];
+        foreach ($ofertas_fijas_raw as $entrada) {
+            $tipo_id = isset($entrada['tipo_de_garantia']) ? intval($entrada['tipo_de_garantia']) : 0;
+            $nivel_id = isset($entrada['nivel_garantia']) ? intval($entrada['nivel_garantia']) : 0;
+            $precio_fijo_raw = $entrada['precio_fijo'] ?? '';
+            $precio_fijo = $precio_fijo_raw === '' ? null : floatval(str_replace(',', '.', (string) $precio_fijo_raw));
+
+            if (!$tipo_id || !$nivel_id || $precio_fijo === null) {
+                continue;
+            }
+
+            $tipo_term = get_term($tipo_id, 'tipo_garantia');
+            $nivel_term = get_term($nivel_id, 'nivel_garantia');
+
+            if (is_wp_error($tipo_term) || is_wp_error($nivel_term)) {
+                continue;
+            }
+
+            $duracion = $entrada['duracion_maxima'] ?? null;
+            $duracion_value = null;
+            $duracion_label = '';
+            if (is_array($duracion)) {
+                if (isset($duracion['value'])) {
+                    $duracion_value = is_numeric($duracion['value']) ? intval($duracion['value']) : null;
+                    $duracion_label = $duracion['label'] ?? '';
+                } elseif (isset($duracion[0])) {
+                    $duracion_value = is_numeric($duracion[0]) ? intval($duracion[0]) : null;
+                    $duracion_label = $duracion[1] ?? '';
+                }
+            } elseif ($duracion !== null && $duracion !== '') {
+                $duracion_value = is_numeric($duracion) ? intval($duracion) : null;
+            }
+
+            if ($duracion_label === '' && $duracion_value !== null) {
+                $duracion_label = sprintf('%d meses', $duracion_value);
+            }
+
+            $ofertas_fijas[] = [
+                'tipo_garantia' => [
+                    'id'   => $tipo_id,
+                    'slug' => $tipo_term ? $tipo_term->slug : '',
+                    'name' => $tipo_term ? $tipo_term->name : '',
+                ],
+                'nivel_garantia' => [
+                    'id'   => $nivel_id,
+                    'slug' => $nivel_term ? $nivel_term->slug : '',
+                    'name' => $nivel_term ? $nivel_term->name : '',
+                ],
+                'precio_fijo' => $precio_fijo,
+                'excluir_resto_de_niveles' => !empty($entrada['excluir_resto_de_niveles']),
+                'duracion_maxima' => [
+                    'value' => $duracion_value,
+                    'label' => $duracion_label,
+                ],
+            ];
         }
 
         $now = time();
         $ofertas_clean = [];
 
-        foreach ($ofertas['ofertas'] as $oferta) {
+        foreach ($ofertas_list as $oferta) {
             $estado_activo = isset($oferta['estado']) ? (bool) $oferta['estado'] : false;
             if (!$estado_activo) {
                 continue;
@@ -140,6 +207,12 @@ class OfertasRestController
             ];
         }
 
-        return new \WP_REST_Response($ofertas_clean, 200);
+        return new \WP_REST_Response([
+            'ofertas' => $ofertas_clean,
+            'especial_precio_fijo' => [
+                'habilitado' => $tiene_precio_fijo && !empty($ofertas_fijas),
+                'items'      => $tiene_precio_fijo ? $ofertas_fijas : [],
+            ],
+        ], 200);
     }
 }
