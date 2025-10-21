@@ -92,6 +92,15 @@ class WebPushClient
             'Content-Type'     => 'application/octet-stream',
             'Content-Length'   => (string) strlen($encrypted['body']),
             'Authorization'    => $authorization,
+            'Encryption'       => sprintf(
+                'salt=%s;rs=4096',
+                $this->base64url_encode($encrypted['salt'])
+            ),
+            'Crypto-Key'       => sprintf(
+                'dh=%s;p256ecdsa=%s',
+                $this->base64url_encode($encrypted['public_key']),
+                $keys['public']
+            ),
         ];
 
         $response = wp_remote_request($endpoint, [
@@ -171,7 +180,7 @@ class WebPushClient
         $padding_length = is_int($padding_length) && $padding_length > 0 ? $padding_length : 0;
 
         $padding = $padding_length > 0 ? str_repeat("\0", $padding_length) : '';
-        $plain_text = $payload . "\x02" . $padding;
+        $plain_text = pack('n', $padding_length) . $padding . $payload;
         $tag = '';
         $ciphertext = openssl_encrypt($plain_text, 'aes-128-gcm', $cek, OPENSSL_RAW_DATA, $nonce, $tag);
         if ($ciphertext === false) {
