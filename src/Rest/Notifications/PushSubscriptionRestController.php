@@ -2,6 +2,7 @@
 
 namespace GarantiasOnline360VO\Rest\Notifications;
 
+use GarantiasOnline360VO\Notifications\Push\Base64KeyNormalizer;
 use GarantiasOnline360VO\Notifications\Push\PushSubscriptionRepository;
 use WP_Error;
 use WP_REST_Request;
@@ -70,10 +71,19 @@ class PushSubscriptionRestController
             return new WP_Error('notifications_disabled', __('Las notificaciones están desactivadas en tu perfil.', 'garantias-online-360vo'), ['status' => 403]);
         }
 
-        $payload = $this->sanitize_payload($request->get_json_params());
+        $raw_params = $request->get_json_params();
+        $payload = $this->sanitize_payload($raw_params);
         if (empty($payload['endpoint']) || empty($payload['publicKey']) || empty($payload['authToken'])) {
             if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[GO360 Push] invalid subscription payload for user ' . $user_id . ': ' . wp_json_encode($payload));
+                $raw_keys = is_array($raw_params['keys'] ?? null) ? $raw_params['keys'] : [];
+                error_log('[GO360 Push] invalid subscription payload for user ' . $user_id . ': ' . wp_json_encode([
+                    'endpointEmpty'   => empty($payload['endpoint']),
+                    'publicKeyEmpty'  => empty($payload['publicKey']),
+                    'authTokenEmpty'  => empty($payload['authToken']),
+                    'rawEndpointLen'  => isset($raw_params['endpoint']) ? strlen((string) $raw_params['endpoint']) : null,
+                    'rawPublicKeyLen' => isset($raw_keys['p256dh']) ? strlen((string) $raw_keys['p256dh']) : (isset($raw_params['publicKey']) ? strlen((string) $raw_params['publicKey']) : null),
+                    'rawAuthLen'      => isset($raw_keys['auth']) ? strlen((string) $raw_keys['auth']) : (isset($raw_params['authToken']) ? strlen((string) $raw_params['authToken']) : null),
+                ]));
             }
             return new WP_Error('invalid_payload', __('Suscripción no válida.', 'garantias-online-360vo'), ['status' => 400]);
         }
@@ -186,50 +196,18 @@ class PushSubscriptionRestController
 
         $endpoint = isset($params['endpoint']) ? esc_url_raw((string) $params['endpoint']) : '';
         $keys = isset($params['keys']) && is_array($params['keys']) ? $params['keys'] : [];
+        $raw_public_key = $keys['p256dh'] ?? ($params['publicKey'] ?? '');
+        $raw_auth_token = $keys['auth'] ?? ($params['authToken'] ?? '');
         $content_encoding = isset($params['contentEncoding'])
             ? sanitize_key((string) $params['contentEncoding'])
             : (isset($params['content_encoding']) ? sanitize_key((string) $params['content_encoding']) : 'aes128gcm');
 
         return [
             'endpoint'         => $endpoint,
-            'publicKey'        => $this->sanitize_base64_key($keys['p256dh'] ?? $params['publicKey'] ?? ''),
-            'authToken'        => $this->sanitize_base64_key($keys['auth'] ?? $params['authToken'] ?? ''),
+            'publicKey'        => Base64KeyNormalizer::normalize($raw_public_key),
+            'authToken'        => Base64KeyNormalizer::normalize($raw_auth_token),
             'contentEncoding'  => $content_encoding !== '' ? $content_encoding : 'aes128gcm',
             'userAgent'        => isset($params['userAgent']) ? sanitize_text_field((string) $params['userAgent']) : '',
         ];
-    }
-
-    private function sanitize_base64_key($value): string
-    {
-        if (! is_string($value)) {
-            return '';
-        }
-
-        $normalized = preg_replace('/\s+/', '', $value);
-        if (! is_string($normalized)) {
-            return '';
-        }
-
-        $normalized = trim($normalized);
-
-        if ($normalized === '') {
-            return '';
-        }
-
-        if (! preg_match('/^[A-Za-z0-9\-_=+/]+$/', $normalized)) {
-            return '';
-        }
-
-        $converted = strtr($normalized, '-_', '+/');
-        $padding = strlen($converted) % 4;
-        if ($padding) {
-            $converted .= str_repeat('=', 4 - $padding);
-        }
-
-        if (base64_decode($converted, true) === false) {
-            return '';
-        }
-
-        return $normalized;
     }
 }
