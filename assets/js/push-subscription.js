@@ -194,6 +194,7 @@
 
         let isActive = initialSubscribed;
         let isProcessing = false;
+        let hasSyncedSubscription = initialSubscribed;
 
         const syncTestButtons = () => {
             [testButton, broadcastButton].forEach((testControl) => {
@@ -277,10 +278,23 @@
                 if (subscription) {
                     updateControls(true);
                     setStatus('Las notificaciones del navegador están activas en este dispositivo.', 'success');
+                    if (!hasSyncedSubscription) {
+                        try {
+                            await sendSubscription(subscription);
+                            hasSyncedSubscription = true;
+                            // eslint-disable-next-line no-console
+                            console.log('GO360 push subscription synchronised after refresh');
+                        } catch (syncError) {
+                            // eslint-disable-next-line no-console
+                            console.error('GO360 push sync error', syncError);
+                            setStatus('No se pudo sincronizar esta suscripción con el servidor. Comprueba la consola.', 'warning');
+                        }
+                    }
                 } else {
                     updateControls(false);
                     setStatus('Pulsa “Activar notificaciones” para empezar a recibir avisos.', 'info');
                 }
+                syncTestButtons();
             } catch (error) {
                 setStatus('No se pudo comprobar el estado de las notificaciones.', 'warning');
             }
@@ -385,6 +399,7 @@
                 const existing = await registration.pushManager.getSubscription();
                 if (existing) {
                     await sendSubscription(existing);
+                    hasSyncedSubscription = true;
                     setStatus('Notificaciones activadas correctamente.', 'success');
                     updateControls(true);
                     setProcessing(false);
@@ -403,6 +418,7 @@
                     applicationServerKey: urlBase64ToUint8Array(resolvedPublicKey),
                 });
                 await sendSubscription(subscription);
+                hasSyncedSubscription = true;
                 setStatus('Notificaciones activadas correctamente.', 'success');
                 updateControls(true);
             } catch (error) {
@@ -435,6 +451,7 @@
                 const endpoint = subscription.endpoint;
                 await subscription.unsubscribe();
                 await deleteSubscription(endpoint);
+                hasSyncedSubscription = false;
                 setStatus('Notificaciones desactivadas correctamente.', 'success');
                 updateControls(false);
             } catch (error) {
@@ -497,14 +514,16 @@
                     testButton.disabled = shouldDisable;
                     if (!shouldDisable) {
                         testButton.removeAttribute('disabled');
-                    } else {
-                        testButton.setAttribute('disabled', 'disabled');
                     }
                 }
                 setTimeout(() => {
                     syncTestButtons();
                     if (testButton) {
-                        testButton.disabled = !isActive || !testEndpoint;
+                        const shouldDisable = !isActive || !testEndpoint;
+                        testButton.disabled = shouldDisable;
+                        if (!shouldDisable) {
+                            testButton.removeAttribute('disabled');
+                        }
                     }
                 }, 1000);
             }
@@ -561,14 +580,16 @@
                     broadcastButton.disabled = shouldDisable;
                     if (!shouldDisable) {
                         broadcastButton.removeAttribute('disabled');
-                    } else {
-                        broadcastButton.setAttribute('disabled', 'disabled');
                     }
                 }
                 setTimeout(() => {
                     syncTestButtons();
                     if (broadcastButton) {
-                        broadcastButton.disabled = !isActive || !testAllEndpoint;
+                        const shouldDisable = !isActive || !testAllEndpoint;
+                        broadcastButton.disabled = shouldDisable;
+                        if (!shouldDisable) {
+                            broadcastButton.removeAttribute('disabled');
+                        }
                     }
                 }, 1000);
             }
