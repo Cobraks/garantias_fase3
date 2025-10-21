@@ -103,30 +103,40 @@
         };
 
         try {
+            log('getRegistration: looking up registration for scope', scopeUrl);
             pushCandidate(await navigator.serviceWorker.getRegistration(scopeUrl));
         } catch (error) {
             warn('scope lookup error', error);
         }
 
         try {
+            log('getRegistration: looking up default registration');
             pushCandidate(await navigator.serviceWorker.getRegistration());
         } catch (error) {
             warn('registration lookup error', error);
         }
 
         try {
+            log('getRegistration: enumerating all registrations');
             const registrations = await navigator.serviceWorker.getRegistrations();
             registrations.forEach(pushCandidate);
+            log('getRegistration: enumerated registrations', registrations.length);
         } catch (error) {
             warn('registrations lookup error', error);
         }
 
         const match = candidates.find((registration) => matchesRegistration(registration, resolvedUrl));
         if (match) {
+            log('getRegistration: returning matching registration', { scope: match.scope, scriptURL: resolvedUrl });
             return match;
         }
 
         if (!createIfMissing) {
+            if (candidates.length > 0) {
+                log('getRegistration: returning first available registration without match', { scope: candidates[0].scope });
+            } else {
+                log('getRegistration: no registration candidates found');
+            }
             return candidates.length > 0 ? candidates[0] : null;
         }
 
@@ -382,36 +392,46 @@
         };
 
         const sendSubscription = async (subscription) => {
-            const body = {
-                endpoint: subscription.endpoint,
-                keys: {
-                    p256dh: encodeKey(subscription.getKey('p256dh')),
-                    auth: encodeKey(subscription.getKey('auth')),
-                },
-                contentEncoding: 'aes128gcm',
-                userAgent: navigator.userAgent,
-            };
+            try {
+                log('sendSubscription: starting', { endpoint: subscription && subscription.endpoint });
 
-            const response = await fetch(subscriptionEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-WP-Nonce': restNonce,
-                },
-                body: JSON.stringify(body),
-            });
+                const body = {
+                    endpoint: subscription.endpoint,
+                    keys: {
+                        p256dh: encodeKey(subscription.getKey('p256dh')),
+                        auth: encodeKey(subscription.getKey('auth')),
+                    },
+                    contentEncoding: 'aes128gcm',
+                    userAgent: navigator.userAgent,
+                };
 
-            log('subscription request response', { endpoint: subscription.endpoint, status: response.status });
+                log('sendSubscription: request body prepared', body);
 
-            if (!response.ok) {
-                const text = await response.text();
-                reportError('subscription failed', text);
-                throw new Error('Request failed');
+                const response = await fetch(subscriptionEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': restNonce,
+                    },
+                    body: JSON.stringify(body),
+                });
+
+                log('sendSubscription: response received', { status: response.status, ok: response.ok });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    log('sendSubscription: ERROR response body', text);
+                    reportError('subscription failed', text);
+                    throw new Error(`Request failed with status: ${response.status}`);
+                }
+
+                hasSyncedSubscription = true;
+                log('sendSubscription: success');
+                return true;
+            } catch (error) {
+                log('sendSubscription: ERROR', error);
+                throw error;
             }
-
-            hasSyncedSubscription = true;
-
-            return true;
         };
 
         const deleteSubscription = async (endpoint) => {
@@ -475,8 +495,10 @@
                 setProcessing(true);
                 setStatus('Solicitando permisos…', 'info');
                 log('requestPermissionAndSubscribe: requesting permission');
+
                 const permission = await Notification.requestPermission();
                 log('requestPermissionAndSubscribe: permission result', permission);
+
                 if (permission !== 'granted') {
                     setStatus('Debes permitir las notificaciones en el navegador.', 'warning');
                     updateControls(false);
@@ -484,11 +506,22 @@
                     return;
                 }
 
+                log('requestPermissionAndSubscribe: getting service worker registration');
                 const registration = await getRegistration(serviceWorkerUrl, true);
                 log('requestPermissionAndSubscribe: obtained registration', registration);
+
+                if (!registration) {
+                    setStatus('Error: No se pudo registrar el service worker.', 'error');
+                    setProcessing(false);
+                    return;
+                }
+
+                log('requestPermissionAndSubscribe: checking existing subscription');
                 const existing = await registration.pushManager.getSubscription();
                 log('requestPermissionAndSubscribe: existing subscription', existing);
+
                 if (existing) {
+                    log('requestPermissionAndSubscribe: sending existing subscription to server');
                     await sendSubscription(existing);
                     hasSyncedSubscription = true;
                     setStatus('Notificaciones activadas correctamente.', 'success');
@@ -497,23 +530,30 @@
                     return;
                 }
 
+                log('requestPermissionAndSubscribe: getting public key');
                 const resolvedPublicKey = await ensurePublicKey();
+
                 if (!resolvedPublicKey) {
                     setStatus('No se pudo obtener la clave de notificaciones. Comprueba la consola.', 'error');
                     setProcessing(false);
                     return;
                 }
 
+                log('requestPermissionAndSubscribe: creating new subscription');
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(resolvedPublicKey),
                 });
+
                 log('requestPermissionAndSubscribe: new subscription created', subscription);
+                log('requestPermissionAndSubscribe: sending new subscription to server');
                 await sendSubscription(subscription);
+
                 hasSyncedSubscription = true;
                 setStatus('Notificaciones activadas correctamente.', 'success');
                 updateControls(true);
             } catch (error) {
+                log('requestPermissionAndSubscribe: ERROR caught', error);
                 setStatus('No se pudieron activar las notificaciones. Comprueba la consola.', 'error');
                 reportError('requestPermissionAndSubscribe error', error);
             } finally {
