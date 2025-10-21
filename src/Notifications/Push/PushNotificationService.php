@@ -55,6 +55,7 @@ class PushNotificationService
         add_action('go360/activity/logged', [$this, 'handle_activity'], 20, 4);
         add_filter('go360/push/public_key', [$this, 'get_public_key']);
         add_action('go360/push/log', [$this, 'log_push_event'], 10, 2);
+        add_action('go360_async_push_dispatch', [$this, 'handle_async_dispatch'], 10, 2);
     }
 
     public function get_public_key(): string
@@ -202,6 +203,35 @@ class PushNotificationService
             'payment.reported',
             'sepa.signed_uploaded',
         ], true);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function handle_async_dispatch(int $user_id, array $payload): void
+    {
+        if ($user_id <= 0) {
+            return;
+        }
+
+        if (isset($payload['queued_at'])) {
+            unset($payload['queued_at']);
+        }
+
+        do_action('go360/push/log', 'async_dispatch_start', [
+            'user'        => $user_id,
+            'payload_id'  => isset($payload['id']) ? (int) $payload['id'] : null,
+            'has_payload' => ! empty($payload),
+        ]);
+
+        $result = $this->dispatcher->dispatch($user_id, $payload);
+
+        do_action('go360/push/log', 'async_dispatch_complete', [
+            'user'    => $user_id,
+            'sent'    => $result['sent'],
+            'failed'  => $result['failed'],
+            'failures'=> $result['failures'],
+        ]);
     }
 
     /**

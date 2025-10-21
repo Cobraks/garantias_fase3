@@ -3,6 +3,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+use GarantiasOnline360VO\Notifications\Push\VapidKeyManager;
 use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Svg;
@@ -1887,6 +1888,21 @@ $formatPhoneHref = static function ($phone) {
                     <?php endif; ?>
                 </div>
 
+                <?php
+                if (current_user_can('manage_options')) {
+                    try {
+                        $debug_vapid_manager = new VapidKeyManager();
+                        $debug_vapid_keys = $debug_vapid_manager->get_keys();
+                        if (defined('WP_DEBUG') && WP_DEBUG) {
+                            error_log('DEBUG - VAPID Keys: ' . print_r($debug_vapid_keys, true));
+                        }
+                    } catch (\Throwable $debug_exception) {
+                        if (defined('WP_DEBUG') && WP_DEBUG) {
+                            error_log('DEBUG - VAPID Keys error: ' . $debug_exception->getMessage());
+                        }
+                    }
+                }
+                ?>
                 <?php if (current_user_can('manage_options')) : ?>
                     <div class="account-card account-card--notifications" data-notifications-card>
                         <h3 class="account-card__title">

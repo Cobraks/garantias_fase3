@@ -31,6 +31,15 @@ class WebPushClient
             return false;
         }
 
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('DEBUG - Sending to endpoint: ' . $endpoint);
+            error_log('DEBUG - Subscription data: ' . print_r([
+                'has_public_key' => ! empty($subscription['public_key'] ?? $subscription['publicKey'] ?? $subscription['p256dh']),
+                'has_auth_token' => ! empty($subscription['auth_token'] ?? $subscription['authToken'] ?? $subscription['auth']),
+                'encoding'       => $subscription['content_encoding'] ?? $subscription['contentEncoding'] ?? 'none',
+            ], true));
+        }
+
         $encoding = $this->normalise_encoding($subscription['content_encoding'] ?? $subscription['contentEncoding'] ?? '');
         if ($encoding === '') {
             $encoding = 'aes128gcm';
@@ -107,7 +116,7 @@ class WebPushClient
             'method'  => 'POST',
             'headers' => $headers,
             'body'    => $encrypted['body'],
-            'timeout' => 15,
+            'timeout' => 10,
         ]);
 
         if (is_wp_error($response)) {

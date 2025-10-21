@@ -155,35 +155,29 @@ class PushNotificationRestController
         }
 
         $payload['id'] = $notification_id;
-        $result = $this->dispatcher->dispatch($user_id, $payload);
-
-        if ($result['sent'] === 0) {
+        $queued = $this->dispatch_async($user_id, $payload, $notification_id);
+        if (! $queued) {
             do_action('go360/push/log', 'test_notification_failed', [
                 'user'     => $user_id,
-                'failures' => $result['failures'],
+                'failures' => ['schedule'],
             ]);
 
             return new WP_Error(
-                'push_failed',
-                __('No se pudo entregar la notificación de prueba en este dispositivo.', 'garantias-online-360vo'),
-                [
-                    'status'   => 502,
-                    'failures' => $result['failures'],
-                ]
+                'push_schedule_failed',
+                __('No se pudo programar la notificación de prueba. Comprueba los registros.', 'garantias-online-360vo'),
+                ['status' => 500]
             );
         }
 
-        do_action('go360/push/log', 'test_notification_sent', [
-            'user'    => $user_id,
-            'targets' => $result['sent'],
-            'failed'  => $result['failed'],
+        do_action('go360/push/log', 'test_notification_queued', [
+            'user'           => $user_id,
+            'notificationId' => $notification_id,
         ]);
 
         return new WP_REST_Response([
             'success' => true,
             'meta'    => [
-                'sent'   => $result['sent'],
-                'failed' => $result['failed'],
+                'queued' => 1,
                 'unread' => $this->repository->count_unread($user_id),
             ],
         ]);
@@ -204,9 +198,8 @@ class PushNotificationRestController
         do_action('go360/push/log', 'broadcast_test_requested', ['targets' => $targets]);
 
         $payload = $this->build_test_payload();
-        $sent = 0;
-        $failed = 0;
-        $failures = [];
+        $queued = 0;
+        $failedSchedules = [];
         $attempted = 0;
 
         foreach ($targets as $user_id) {
@@ -220,41 +213,84 @@ class PushNotificationRestController
             }
 
             $attempted++;
-            $payload_with_id         = $payload;
-            $payload_with_id['id']    = $notification_id;
-            $result = $this->dispatcher->dispatch($user_id, $payload_with_id);
-            $sent += $result['sent'];
-            $failed += $result['failed'];
-            if (! empty($result['failures'])) {
-                $failures = array_merge($failures, $result['failures']);
+            $payload_with_id = $payload;
+            $payload_with_id['id'] = $notification_id;
+            $scheduled = $this->dispatch_async($user_id, $payload_with_id, $notification_id);
+            if ($scheduled) {
+                $queued++;
+            } else {
+                $failedSchedules[] = (int) $user_id;
             }
         }
 
-        if ($sent === 0) {
+        if ($queued === 0) {
             do_action('go360/push/log', 'broadcast_test_failed', [
                 'attempted' => $attempted,
-                'failures'  => $failures,
+                'failures'  => $failedSchedules,
             ]);
 
-            return new WP_Error('no_recipients', __('No hay administradores con notificaciones activadas.', 'garantias-online-360vo'), ['status' => 404]);
+            return new WP_Error('push_schedule_failed', __('No se pudo programar la notificación global de prueba.', 'garantias-online-360vo'), ['status' => 500]);
         }
 
         do_action('go360/push/log', 'broadcast_test_sent', [
             'attempted' => $attempted,
-            'sent'      => $sent,
-            'failed'    => $failed,
+            'queued'    => $queued,
+            'failed'    => count($failedSchedules),
         ]);
 
         return new WP_REST_Response([
             'success' => true,
             'meta'    => [
                 'targets'   => $attempted,
-                'delivered' => $sent,
-                'failed'    => $failed,
-                'failures'  => $failures,
+                'queued'    => $queued,
+                'failed'    => count($failedSchedules),
+                'failures'  => $failedSchedules,
                 'unread'    => $this->repository->count_unread($current_user_id),
             ],
         ]);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function dispatch_async(int $user_id, array $payload, int $notification_id): bool
+    {
+        $payload['queued_at'] = microtime(true);
+
+        do_action('go360/push/log', 'dispatch_schedule_attempt', [
+            'user'           => $user_id,
+            'notificationId' => $notification_id,
+        ]);
+
+        $timestamp = time() + 1;
+        $scheduled = wp_schedule_single_event($timestamp, 'go360_async_push_dispatch', [$user_id, $payload], true);
+
+        if (is_wp_error($scheduled)) {
+            do_action('go360/push/log', 'dispatch_schedule_error', [
+                'user'           => $user_id,
+                'notificationId' => $notification_id,
+                'error'          => $scheduled->get_error_message(),
+            ]);
+
+            return false;
+        }
+
+        if (! $scheduled) {
+            do_action('go360/push/log', 'dispatch_schedule_collision', [
+                'user'           => $user_id,
+                'notificationId' => $notification_id,
+            ]);
+
+            return false;
+        }
+
+        do_action('go360/push/log', 'dispatch_schedule_success', [
+            'user'           => $user_id,
+            'notificationId' => $notification_id,
+            'timestamp'      => $timestamp,
+        ]);
+
+        return true;
     }
 
     public function mark_single(WP_REST_Request $request)

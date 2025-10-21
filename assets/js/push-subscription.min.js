@@ -501,6 +501,12 @@
                         testButton.setAttribute('disabled', 'disabled');
                     }
                 }
+                setTimeout(() => {
+                    syncTestButtons();
+                    if (testButton) {
+                        testButton.disabled = !isActive || !testEndpoint;
+                    }
+                }, 1000);
             }
         };
 
@@ -559,6 +565,12 @@
                         broadcastButton.setAttribute('disabled', 'disabled');
                     }
                 }
+                setTimeout(() => {
+                    syncTestButtons();
+                    if (broadcastButton) {
+                        broadcastButton.disabled = !isActive || !testAllEndpoint;
+                    }
+                }, 1000);
             }
         };
 
