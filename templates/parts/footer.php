@@ -4,6 +4,7 @@
 
 use GarantiasOnline360VO\Svg;
 use GarantiasOnline360VO\Docs\ReclamationDocument;
+use GarantiasOnline360VO\Notifications\Push\PushSubscriptionRepository;
 use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\Support\FeatureFlags;
 use GarantiasOnline360VO\Support\UserProfileResolver;
@@ -496,6 +497,31 @@ if (! empty($is_add_guarantee)) {
 
 <?php if ($is_account_page ?? false) : ?>
     <?php
+    $push_config = null;
+    if (current_user_can('manage_options')) {
+        $is_subscribed = false;
+        try {
+            $subscription_repository = new PushSubscriptionRepository();
+            $subscriptions = $subscription_repository->get_user_subscriptions(get_current_user_id());
+            $is_subscribed = ! empty($subscriptions);
+        } catch (\Throwable $exception) {
+            $is_subscribed = false;
+        }
+
+        $push_config = [
+            'publicKey'             => apply_filters('go360/push/public_key', ''),
+            'publicKeyEndpoint'    => esc_url_raw(rest_url('go/v1/push-public-key')),
+            'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
+            'statusEndpoint'        => esc_url_raw(rest_url('go/v1/push-subscriptions/status')),
+            'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
+            'testEndpoint'          => esc_url_raw(rest_url('go/v1/push-notifications/test')),
+            'testAllEndpoint'       => esc_url_raw(rest_url('go/v1/push-notifications/test-all')),
+            'testIcon'              => esc_url_raw(plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__)),
+            'serviceWorker'         => esc_url_raw(plugins_url('assets/js/push-sw.js', GARANTIAS360VO__FILE__)),
+            'isSubscribed'          => $is_subscribed,
+        ];
+    }
+
     $account_config = [
         'rest'     => [
             'endpoint' => esc_url_raw(rest_url('go/v1/account')),
@@ -517,6 +543,9 @@ if (! empty($is_add_guarantee)) {
         ],
         'sepa'     => SepaMandateService::get_frontend_config(),
     ];
+    if ($push_config !== null) {
+        $account_config['push'] = $push_config;
+    }
     ?>
     <script>
         window.go360Account = <?php echo wp_json_encode($account_config); ?>;
@@ -524,6 +553,27 @@ if (! empty($is_add_guarantee)) {
     <script src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"></script>
     <script
         src="<?php echo esc_url(plugins_url('assets/js/account.min.js', GARANTIAS360VO__FILE__)); ?>"
+        defer></script>
+    <?php if ($push_config !== null) : ?>
+        <script
+            src="<?php echo esc_url(plugins_url('assets/js/push-subscription.min.js', GARANTIAS360VO__FILE__)); ?>"
+            defer></script>
+    <?php endif; ?>
+<?php endif; ?>
+
+<?php if (is_user_logged_in() && current_user_can('manage_options')) : ?>
+    <script>
+        window.go360Notifications = {
+            endpoints: {
+                list: <?php echo wp_json_encode(esc_url_raw(rest_url('go/v1/push-notifications'))); ?>,
+                markAll: <?php echo wp_json_encode(esc_url_raw(rest_url('go/v1/push-notifications'))); ?>,
+            },
+            nonce: <?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>,
+            perPage: 6,
+        };
+    </script>
+    <script
+        src="<?php echo esc_url(plugins_url('assets/js/admin-notifications.min.js', GARANTIAS360VO__FILE__)); ?>"
         defer></script>
 <?php endif; ?>
 

@@ -301,6 +301,52 @@ $home_destination = $is_admin_user
                                 <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
                             </a>
                         </li>
+                        <?php if ($is_admin_user) : ?>
+                            <li class="menu-item menu-item--notifications" data-admin-notifications>
+                                <button
+                                    type="button"
+                                    class="top-bar__notifications-button"
+                                    aria-haspopup="true"
+                                    aria-expanded="false"
+                                    aria-controls="top-bar-notifications-panel"
+                                    data-notifications-toggle
+                                >
+                                    <?php echo Svg::icon('notifications', 'top-bar__icon top-bar__icon--notifications'); ?>
+                                    <span class="top-bar__notifications-badge" data-notifications-badge hidden>0</span>
+                                    <span class="screen-reader-text"><?php esc_html_e('Abrir bandeja de notificaciones', 'garantias-online-360vo'); ?></span>
+                                </button>
+                                <div
+                                    class="notifications-panel"
+                                    id="top-bar-notifications-panel"
+                                    role="region"
+                                    aria-live="polite"
+                                    aria-hidden="true"
+                                    data-notifications-panel
+                                >
+                                    <div class="notifications-panel__header">
+                                        <h4 class="notifications-panel__title"><?php esc_html_e('Notificaciones', 'garantias-online-360vo'); ?></h4>
+                                        <button type="button" class="notifications-panel__mark" data-notifications-mark-all>
+                                            <?php esc_html_e('Marcar todo como leído', 'garantias-online-360vo'); ?>
+                                        </button>
+                                    </div>
+                                    <div class="notifications-panel__content" data-notifications-scroll>
+                                        <p class="notifications-panel__empty" data-notifications-empty hidden>
+                                            <?php esc_html_e('No tienes notificaciones nuevas.', 'garantias-online-360vo'); ?>
+                                        </p>
+                                        <ul class="notifications-panel__list" data-notifications-list></ul>
+                                    </div>
+                                    <div class="notifications-panel__footer">
+                                        <button type="button" class="notifications-panel__nav" data-notifications-prev disabled>
+                                            <?php esc_html_e('Anterior', 'garantias-online-360vo'); ?>
+                                        </button>
+                                        <span class="notifications-panel__page" data-notifications-page>1</span>
+                                        <button type="button" class="notifications-panel__nav" data-notifications-next disabled>
+                                            <?php esc_html_e('Siguiente', 'garantias-online-360vo'); ?>
+                                        </button>
+                                    </div>
+                                </div>
+                            </li>
+                        <?php endif; ?>
                     </ul>
                 </nav>
                 <?php $tiene_foto = false; ?>

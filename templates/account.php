@@ -3,6 +3,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+use GarantiasOnline360VO\Notifications\Push\VapidKeyManager;
 use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Svg;
@@ -1887,21 +1888,57 @@ $formatPhoneHref = static function ($phone) {
                     <?php endif; ?>
                 </div>
 
-                <div class="account-card account-card--notifications" data-notifications-card>
-                    <h3>Notificaciones del navegador</h3>
-                    <p class="account-card__intro">
-                        Activa las alertas del sistema para enterarte al instante de las novedades de tus garantías.
-                    </p>
-                    <div class="account-card__actions">
-                        <button type="button" class="account-button account-button--menu" data-notifications-request>
-                            <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
-                            Activar notificaciones
-                        </button>
-                        <p class="account-status account-status--info" data-notifications-status>
-                            Revisa los permisos disponibles en tu navegador.
+                <?php
+                if (current_user_can('manage_options')) {
+                    try {
+                        $debug_vapid_manager = new VapidKeyManager();
+                        $debug_vapid_keys = $debug_vapid_manager->get_keys();
+                        if (defined('WP_DEBUG') && WP_DEBUG) {
+                            error_log('DEBUG - VAPID Keys: ' . print_r($debug_vapid_keys, true));
+                        }
+                    } catch (\Throwable $debug_exception) {
+                        if (defined('WP_DEBUG') && WP_DEBUG) {
+                            error_log('DEBUG - VAPID Keys error: ' . $debug_exception->getMessage());
+                        }
+                    }
+                }
+                ?>
+                <?php if (current_user_can('manage_options')) : ?>
+                    <div class="account-card account-card--notifications" data-notifications-card>
+                        <h3 class="account-card__title">
+                            Notificaciones del navegador
+                            <span class="account-card__badge account-card__badge--beta">beta</span>
+                        </h3>
+                        <p class="account-card__intro">
+                            Activa las alertas del sistema para enterarte al instante de las novedades de tus garantías.
                         </p>
+                        <div class="account-card__actions">
+                            <div class="account-card__buttons">
+                                <button type="button" class="account-button account-button--menu" data-notifications-request>
+                                    <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
+                                    <span data-notifications-label>Activar notificaciones</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="account-button account-button--ghost"
+                                    data-notifications-test
+                                >
+                                    Probar notificación
+                                </button>
+                                <button
+                                    type="button"
+                                    class="account-button account-button--ghost"
+                                    data-notifications-test-all
+                                >
+                                    Test a todos
+                                </button>
+                            </div>
+                            <p class="account-status account-status--info" data-notifications-status>
+                                Revisa los permisos disponibles en tu navegador.
+                            </p>
+                        </div>
                     </div>
-                </div>
+                <?php endif; ?>
             </div>
         </article>
 
