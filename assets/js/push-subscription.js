@@ -215,17 +215,14 @@
                 const isBroadcast = testControl === broadcastButton;
                 const isSingle = testControl === testButton;
                 const missingEndpoint = (isBroadcast && !testAllEndpoint) || (isSingle && !testEndpoint);
-                const inactive = !isActive || isProcessing || missingEndpoint;
+                const shouldEnable = !missingEndpoint && isActive && !isProcessing;
 
-                testControl.disabled = false;
-                testControl.removeAttribute('disabled');
-
-                if (inactive) {
-                    testControl.dataset.pushInactive = '1';
-                    testControl.setAttribute('aria-disabled', 'true');
-                } else {
-                    delete testControl.dataset.pushInactive;
+                if (shouldEnable) {
+                    testControl.disabled = false;
                     testControl.removeAttribute('aria-disabled');
+                } else {
+                    testControl.disabled = true;
+                    testControl.setAttribute('aria-disabled', 'true');
                 }
             });
         };
@@ -276,11 +273,31 @@
 
         const refreshUI = async () => {
             log('refreshUI: checking current subscription status');
+            setStatus('Comprobando el estado de las notificaciones…', 'info');
 
-            let serverState = {
-                hasSubscriptions: Boolean(initialSubscribed),
-                count: initialSubscribed ? 1 : 0,
-            };
+            let registration = null;
+            let subscription = null;
+            let hasLocalSubscription = false;
+            let serverHasSubscriptions = false;
+            let serverCount = 0;
+            let messageText = '';
+            let messageTone = '';
+
+            try {
+                registration = await getRegistration(serviceWorkerUrl, false);
+                log('refreshUI: service worker registration', registration);
+            } catch (registrationError) {
+                reportError('refreshUI: error obtaining service worker registration', registrationError);
+            }
+
+            if (registration) {
+                try {
+                    subscription = await registration.pushManager.getSubscription();
+                    hasLocalSubscription = Boolean(subscription);
+                } catch (subscriptionError) {
+                    reportError('refreshUI: error reading push subscription', subscriptionError);
+                }
+            }
 
             if (statusEndpoint) {
                 try {
@@ -294,11 +311,9 @@
                     if (response.ok) {
                         const data = await response.json();
                         if (data && typeof data === 'object') {
-                            serverState = {
-                                hasSubscriptions: Boolean(data.hasSubscriptions),
-                                count: Number(data.count || 0),
-                            };
-                            log('refreshUI: server subscription state', serverState);
+                            serverHasSubscriptions = Boolean(data.hasSubscriptions);
+                            serverCount = Number(data.count || 0);
+                            log('refreshUI: server subscription state', { hasSubscriptions: serverHasSubscriptions, count: serverCount });
                         }
                     } else {
                         const text = await response.text();
@@ -307,62 +322,48 @@
                 } catch (statusError) {
                     warn('refreshUI: status endpoint failed', statusError);
                 }
+            } else if (initialSubscribed) {
+                serverHasSubscriptions = true;
+                serverCount = 1;
             }
 
-            let registration = null;
-            try {
-                registration = await getRegistration(serviceWorkerUrl, false);
-                log('refreshUI: service worker registration', registration);
-            } catch (registrationError) {
-                reportError('refreshUI: error obtaining service worker registration', registrationError);
-            }
-
-            if (!registration) {
-                updateControls(serverState.hasSubscriptions);
-                if (serverState.hasSubscriptions) {
-                    setStatus('Las notificaciones están activas, pero este navegador no tiene una suscripción válida. Pulsa “Desactivar notificaciones” y vuelve a activarlas.', 'warning');
-                } else {
-                    setStatus('Pulsa “Activar notificaciones” para empezar a recibir avisos.', 'info');
-                }
-                syncTestButtons();
-                return;
-            }
-
-            let subscription = null;
-            try {
-                subscription = await registration.pushManager.getSubscription();
-            } catch (subscriptionError) {
-                reportError('refreshUI: error reading push subscription', subscriptionError);
-            }
-
-            log('refreshUI: local subscription', subscription);
-
-            if (subscription && !serverState.hasSubscriptions) {
+            if (subscription && !serverHasSubscriptions) {
                 log('refreshUI: local subscription exists but server has no record, synchronising');
                 try {
                     await sendSubscription(subscription);
                     hasSyncedSubscription = true;
-                    serverState.hasSubscriptions = true;
-                    serverState.count = Math.max(serverState.count, 1);
+                    serverHasSubscriptions = true;
+                    serverCount = Math.max(serverCount, 1);
                     log('refreshUI: subscription synchronised with server');
                 } catch (syncError) {
                     reportError('refreshUI: failed to synchronise subscription', syncError);
                 }
             }
 
-            if (!subscription && serverState.hasSubscriptions) {
+            if (!subscription && serverHasSubscriptions) {
                 warn('refreshUI: server reports active subscriptions but browser is missing one');
+                messageText = 'Notificaciones activas en otros dispositivos.';
+                messageTone = 'info';
             }
 
-            const active = Boolean(subscription || serverState.hasSubscriptions);
+            const active = Boolean(subscription || serverHasSubscriptions);
+
             updateControls(active);
 
-            if (active) {
-                setStatus('Las notificaciones del navegador están activas en este dispositivo.', 'success');
-            } else {
-                setStatus('Pulsa “Activar notificaciones” para empezar a recibir avisos.', 'info');
+            if (!messageText) {
+                if (active && hasLocalSubscription) {
+                    messageText = 'Las notificaciones del navegador están activas en este dispositivo.';
+                    messageTone = 'success';
+                } else if (active) {
+                    messageText = 'Notificaciones activas en otros dispositivos.';
+                    messageTone = 'info';
+                } else {
+                    messageText = 'Pulsa “Activar notificaciones” para empezar a recibir avisos.';
+                    messageTone = 'info';
+                }
             }
 
+            setStatus(messageText, messageTone);
             syncTestButtons();
         };
 
