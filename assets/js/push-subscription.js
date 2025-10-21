@@ -25,14 +25,38 @@
 
     const encodeKey = (key) => {
         if (!key) {
+            log('encodeKey: missing key input', key);
             return '';
         }
-        const buffer = new Uint8Array(key);
-        let string = '';
-        buffer.forEach((value) => {
-            string += String.fromCharCode(value);
+
+        let buffer;
+
+        if (key instanceof ArrayBuffer) {
+            buffer = new Uint8Array(key);
+        } else if (ArrayBuffer.isView(key) && key.buffer) {
+            buffer = new Uint8Array(key.buffer, key.byteOffset, key.byteLength);
+        } else if (typeof key.length === 'number') {
+            buffer = new Uint8Array(key);
+        } else {
+            log('encodeKey: unsupported key input', key);
+            return '';
+        }
+
+        let binary = '';
+        for (let index = 0; index < buffer.length; index += 1) {
+            binary += String.fromCharCode(buffer[index]);
+        }
+
+        const base64 = btoa(binary);
+        const urlSafe = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/u, '');
+
+        log('encodeKey: encoded key lengths', {
+            bytes: buffer.length,
+            base64: base64.length,
+            urlSafe: urlSafe.length,
         });
-        return btoa(string);
+
+        return urlSafe;
     };
 
     const urlBase64ToUint8Array = (base64String) => {
@@ -395,12 +419,25 @@
             try {
                 log('sendSubscription: starting', { endpoint: subscription && subscription.endpoint });
 
+                const publicKeyPayload = encodeKey(subscription.getKey('p256dh'));
+                const authTokenPayload = encodeKey(subscription.getKey('auth'));
+
+                if (!publicKeyPayload || !authTokenPayload) {
+                    reportError('sendSubscription: missing key material', {
+                        publicKeyLength: publicKeyPayload ? publicKeyPayload.length : 0,
+                        authTokenLength: authTokenPayload ? authTokenPayload.length : 0,
+                    });
+                    throw new Error('Subscription keys missing');
+                }
+
                 const body = {
                     endpoint: subscription.endpoint,
                     keys: {
-                        p256dh: encodeKey(subscription.getKey('p256dh')),
-                        auth: encodeKey(subscription.getKey('auth')),
+                        p256dh: publicKeyPayload,
+                        auth: authTokenPayload,
                     },
+                    publicKey: publicKeyPayload,
+                    authToken: authTokenPayload,
                     contentEncoding: 'aes128gcm',
                     userAgent: navigator.userAgent,
                 };
