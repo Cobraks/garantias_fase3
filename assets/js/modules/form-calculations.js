@@ -2766,7 +2766,10 @@ async function initCalculations() {
                 await ensureCurrentUserIdReady();
         }
         const initialUserId = getEffectiveProfessionalId();
-        if (initialUserId || esProfesional) {
+        if (esProfesional) {
+                await fetchOfertas(initialUserId ?? null, { force: true });
+                document.dispatchEvent(new Event("ofertas:actualizadas"));
+        } else if (initialUserId) {
                 await fetchOfertas(initialUserId ?? null);
         }
         await filtrarModalidadesBase();

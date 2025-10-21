@@ -24,7 +24,7 @@ function log(...args) {
 // Cache simple por userId con posibilidad de invalidar
 const ofertasCache = new Map(); // cacheKey -> { ofertas, especiales, meta, fetchedAt, version }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 function isValidCacheEntry(entry) {
         if (!entry || typeof entry !== "object") return false;
