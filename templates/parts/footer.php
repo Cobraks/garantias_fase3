@@ -510,6 +510,7 @@ if (! empty($is_add_guarantee)) {
 
         $push_config = [
             'publicKey'             => apply_filters('go360/push/public_key', ''),
+            'publicKeyEndpoint'    => esc_url_raw(rest_url('go/v1/push-public-key')),
             'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
             'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
             'testEndpoint'          => esc_url_raw(rest_url('go/v1/push-notifications/test')),

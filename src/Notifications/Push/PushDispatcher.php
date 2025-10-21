@@ -50,10 +50,18 @@ class PushDispatcher
             if ($success) {
                 $this->subscriptions->mark_success((string) $subscription['endpoint']);
                 $result['sent']++;
+                do_action('go360/push/log', 'dispatch_success', [
+                    'user'     => $user_id,
+                    'endpoint' => substr((string) $subscription['endpoint'], 0, 80),
+                ]);
             } else {
                 $this->subscriptions->mark_failure((string) $subscription['endpoint']);
                 $result['failed']++;
                 $result['failures'][] = (string) $subscription['endpoint'];
+                do_action('go360/push/log', 'dispatch_failure', [
+                    'user'     => $user_id,
+                    'endpoint' => substr((string) $subscription['endpoint'], 0, 80),
+                ]);
             }
         }
 

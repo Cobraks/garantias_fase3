@@ -145,6 +145,8 @@ class PushNotificationRestController
             return new WP_Error('notifications_disabled', __('Activa las notificaciones en tu perfil antes de enviar una prueba.', 'garantias-online-360vo'), ['status' => 403]);
         }
 
+        do_action('go360/push/log', 'test_notification_requested', ['user' => $user_id]);
+
         $payload = $this->build_test_payload();
 
         $notification_id = $this->repository->create($user_id, $payload);
@@ -156,6 +158,11 @@ class PushNotificationRestController
         $result = $this->dispatcher->dispatch($user_id, $payload);
 
         if ($result['sent'] === 0) {
+            do_action('go360/push/log', 'test_notification_failed', [
+                'user'     => $user_id,
+                'failures' => $result['failures'],
+            ]);
+
             return new WP_Error(
                 'push_failed',
                 __('No se pudo entregar la notificación de prueba en este dispositivo.', 'garantias-online-360vo'),
@@ -165,6 +172,12 @@ class PushNotificationRestController
                 ]
             );
         }
+
+        do_action('go360/push/log', 'test_notification_sent', [
+            'user'    => $user_id,
+            'targets' => $result['sent'],
+            'failed'  => $result['failed'],
+        ]);
 
         return new WP_REST_Response([
             'success' => true,
@@ -187,6 +200,8 @@ class PushNotificationRestController
         if (empty($targets)) {
             return new WP_Error('no_recipients', __('No hay administradores con notificaciones activadas.', 'garantias-online-360vo'), ['status' => 404]);
         }
+
+        do_action('go360/push/log', 'broadcast_test_requested', ['targets' => $targets]);
 
         $payload = $this->build_test_payload();
         $sent = 0;
@@ -216,8 +231,19 @@ class PushNotificationRestController
         }
 
         if ($sent === 0) {
+            do_action('go360/push/log', 'broadcast_test_failed', [
+                'attempted' => $attempted,
+                'failures'  => $failures,
+            ]);
+
             return new WP_Error('no_recipients', __('No hay administradores con notificaciones activadas.', 'garantias-online-360vo'), ['status' => 404]);
         }
+
+        do_action('go360/push/log', 'broadcast_test_sent', [
+            'attempted' => $attempted,
+            'sent'      => $sent,
+            'failed'    => $failed,
+        ]);
 
         return new WP_REST_Response([
             'success' => true,
@@ -296,10 +322,25 @@ class PushNotificationRestController
      */
     private function build_test_payload(): array
     {
+        $icon = esc_url(plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__));
+        $badge_path = plugin_dir_path(GARANTIAS360VO__FILE__) . 'assets/img/notifications/badge.png';
+        $badge = file_exists($badge_path)
+            ? esc_url(plugins_url('assets/img/notifications/badge.png', GARANTIAS360VO__FILE__))
+            : $icon;
+
         return [
-            'title' => __('Notificación de prueba', 'garantias-online-360vo'),
-            'body'  => __('Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.', 'garantias-online-360vo'),
-            'icon'  => esc_url(plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__)),
+            'title'   => __('Notificación de prueba', 'garantias-online-360vo'),
+            'body'    => __('Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.', 'garantias-online-360vo'),
+            'icon'    => $icon,
+            'badge'   => $badge,
+            'link'    => admin_url(),
+            'actions' => [
+                [
+                    'action' => 'open-dashboard',
+                    'title'  => __('Abrir panel', 'garantias-online-360vo'),
+                    'url'    => admin_url(),
+                ],
+            ],
         ];
     }
 }

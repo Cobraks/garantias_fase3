@@ -65,6 +65,11 @@ class PushSubscriptionRestController
             return new WP_Error('invalid_payload', __('Suscripción no válida.', 'garantias-online-360vo'), ['status' => 400]);
         }
 
+        do_action('go360/push/log', 'subscription_upsert', [
+            'user'     => $user_id,
+            'endpoint' => substr($payload['endpoint'], 0, 80),
+        ]);
+
         $stored = $this->repository->upsert($user_id, $payload);
 
         if (! $stored) {
@@ -85,6 +90,11 @@ class PushSubscriptionRestController
         if ($endpoint === '') {
             return new WP_Error('invalid_payload', __('Debes indicar el endpoint a eliminar.', 'garantias-online-360vo'), ['status' => 400]);
         }
+
+        do_action('go360/push/log', 'subscription_delete', [
+            'user'     => $user_id,
+            'endpoint' => substr((string) $endpoint, 0, 80),
+        ]);
 
         $this->repository->remove_by_endpoint($endpoint);
 

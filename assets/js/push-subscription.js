@@ -182,7 +182,8 @@
             return;
         }
 
-        const publicKey = pushConfig.publicKey;
+        const publicKeyEndpoint = pushConfig.publicKeyEndpoint || '';
+        let publicKey = pushConfig.publicKey;
         const subscriptionEndpoint = pushConfig.subscriptionEndpoint;
         const testEndpoint = pushConfig.testEndpoint || '';
         const testAllEndpoint = pushConfig.testAllEndpoint || '';
@@ -305,7 +306,13 @@
                 body: JSON.stringify(body),
             });
 
+            // eslint-disable-next-line no-console
+            console.log('GO360 push subscription request', { endpoint: subscription.endpoint, status: response.status });
+
             if (!response.ok) {
+                const text = await response.text();
+                // eslint-disable-next-line no-console
+                console.error('GO360 push subscription failed', text);
                 throw new Error('Request failed');
             }
         };
@@ -323,6 +330,43 @@
             if (!response.ok) {
                 throw new Error('Request failed');
             }
+        };
+
+        const ensurePublicKey = async () => {
+            if (publicKey) {
+                return publicKey;
+            }
+
+            if (!publicKeyEndpoint) {
+                return '';
+            }
+
+            try {
+                const response = await fetch(publicKeyEndpoint, {
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-WP-Nonce': restNonce,
+                    },
+                });
+                if (!response.ok) {
+                    const text = await response.text();
+                    // eslint-disable-next-line no-console
+                    console.error('GO360 push public key error', text);
+                    return '';
+                }
+                const data = await response.json();
+                if (data && data.publicKey) {
+                    publicKey = data.publicKey;
+                    // eslint-disable-next-line no-console
+                    console.log('GO360 push public key fetched');
+                }
+            } catch (error) {
+                // eslint-disable-next-line no-console
+                console.error('GO360 push public key fetch failed', error);
+                return '';
+            }
+
+            return publicKey;
         };
 
         const requestPermissionAndSubscribe = async () => {
@@ -347,9 +391,16 @@
                     return;
                 }
 
+                const resolvedPublicKey = await ensurePublicKey();
+                if (!resolvedPublicKey) {
+                    setStatus('No se pudo obtener la clave de notificaciones. Comprueba la consola.', 'error');
+                    setProcessing(false);
+                    return;
+                }
+
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(publicKey),
+                    applicationServerKey: urlBase64ToUint8Array(resolvedPublicKey),
                 });
                 await sendSubscription(subscription);
                 setStatus('Notificaciones activadas correctamente.', 'success');
@@ -412,7 +463,16 @@
                     body: JSON.stringify({}),
                 });
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    // eslint-disable-next-line no-console
+                    console.error('GO360 push test error payload', errorText);
                     throw new Error('Request failed');
+                }
+                const payload = await response.json().catch(() => ({}));
+                // eslint-disable-next-line no-console
+                console.log('GO360 push test response', payload);
+                if (!payload.success) {
+                    throw new Error('Push dispatch failed');
                 }
                 setStatus('Hemos enviado una notificación de prueba. Revisa tu navegador y la campana del panel.', 'success');
                 await showLocalTestNotification();
@@ -437,6 +497,8 @@
                     testButton.disabled = shouldDisable;
                     if (!shouldDisable) {
                         testButton.removeAttribute('disabled');
+                    } else {
+                        testButton.setAttribute('disabled', 'disabled');
                     }
                 }
             }
@@ -459,7 +521,16 @@
                     body: JSON.stringify({}),
                 });
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    // eslint-disable-next-line no-console
+                    console.error('GO360 push broadcast error payload', errorText);
                     throw new Error('Request failed');
+                }
+                const payload = await response.json().catch(() => ({}));
+                // eslint-disable-next-line no-console
+                console.log('GO360 push broadcast response', payload);
+                if (!payload.success) {
+                    throw new Error('Broadcast dispatch failed');
                 }
                 setStatus('Hemos enviado la notificación de prueba global. Revisa todos tus dispositivos y la campana del panel.', 'success');
                 await showLocalTestNotification();
@@ -484,6 +555,8 @@
                     broadcastButton.disabled = shouldDisable;
                     if (!shouldDisable) {
                         broadcastButton.removeAttribute('disabled');
+                    } else {
+                        broadcastButton.setAttribute('disabled', 'disabled');
                     }
                 }
             }

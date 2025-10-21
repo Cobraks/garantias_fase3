@@ -4,6 +4,8 @@ namespace GarantiasOnline360VO\Notifications\Push;
 
 use GarantiasOnline360VO\Rest\Notifications\PushNotificationRestController;
 use GarantiasOnline360VO\Rest\Notifications\PushSubscriptionRestController;
+use WP_Error;
+use WP_REST_Response;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -58,11 +60,13 @@ class PushNotificationService
     public function get_public_key(): string
     {
         if (! current_user_can('manage_options')) {
+            do_action('go360/push/log', 'public_key_denied', ['reason' => 'capability']);
             return '';
         }
 
         $keys = $this->vapid->get_keys();
         if (empty($keys['public'])) {
+            do_action('go360/push/log', 'public_key_missing');
             return '';
         }
 
@@ -73,6 +77,44 @@ class PushNotificationService
     {
         (new PushSubscriptionRestController())->register_routes();
         (new PushNotificationRestController())->register_routes();
+
+        register_rest_route(
+            'go/v1',
+            '/push-public-key',
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'get_public_key_rest'],
+                'permission_callback' => [$this, 'check_public_key_permissions'],
+            ]
+        );
+    }
+
+    /**
+     * @return WP_REST_Response|WP_Error
+     */
+    public function get_public_key_rest()
+    {
+        $key = $this->get_public_key();
+        if ($key === '') {
+            do_action('go360/push/log', 'public_key_response_empty');
+
+            return new WP_Error(
+                'push_key_unavailable',
+                __('No hay una clave pública disponible para notificaciones push.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        do_action('go360/push/log', 'public_key_response_success');
+
+        return new WP_REST_Response([
+            'publicKey' => $key,
+        ]);
+    }
+
+    public function check_public_key_permissions(): bool
+    {
+        return current_user_can('manage_options');
     }
 
     /**
