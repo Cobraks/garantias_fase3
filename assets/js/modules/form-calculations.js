@@ -30,6 +30,7 @@ import {
         setLimitesDinamicos,
         getSelectedModalidadId,
         getSpecialFixedOffers,
+        subscribeSpecialFixedOffers,
 } from "./form-state.js";
 import { setupPlanSelection } from "./plan-selection.js";
 
@@ -2623,6 +2624,37 @@ async function filtrarModalidadesBase() {
 
         return disponibles;
 }
+
+let lastSpecialSignature = null;
+subscribeSpecialFixedOffers(({ ofertas, meta }) => {
+        const enabled = Boolean(
+                meta?.enabled ?? meta?.tiene_oferta_especial_precio_fijo ?? meta?.tieneOfertaEspecial
+        );
+        const itemsSignature = Array.isArray(ofertas)
+                ? ofertas
+                          .map((item) => {
+                                  if (!item || typeof item !== "object") return "";
+                                  const parts = [
+                                          item.tipo_garantia_id ?? "",
+                                          (item.tipo_garantia_slug || "").toLowerCase(),
+                                          item.nivel_garantia_id ?? "",
+                                          (item.nivel_garantia_slug || "").toLowerCase(),
+                                          item.precio_fijo ?? "",
+                                          item.excluir_resto_niveles ? "1" : "0",
+                                          item.duracion_meses ?? "",
+                                  ];
+                                  return parts.join("|");
+                          })
+                          .sort()
+                          .join("||")
+                : "";
+        const signature = `${enabled ? 1 : 0}::${itemsSignature}`;
+        if (signature === lastSpecialSignature) return;
+        lastSpecialSignature = signature;
+        setTimeout(() => {
+                filtrarModalidadesBase();
+        }, 0);
+});
 
 const filtrarModalidades = debounce(() => {
         filtrarModalidadesBase();

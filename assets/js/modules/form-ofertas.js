@@ -6,6 +6,7 @@ import {
         getEffectiveProfessionalId,
         ensureCurrentUserIdReady,
         isAdmin,
+        isProfesional,
 } from "./form-role-utils.js";
 import { getRestRoot, getRestNonce } from "./config.js";
 import {
@@ -21,7 +22,7 @@ function log(...args) {
 }
 
 // Cache simple por userId con posibilidad de invalidar
-const ofertasCache = new Map(); // userId -> { ofertas, especiales, meta, fetchedAt, version }
+const ofertasCache = new Map(); // cacheKey -> { ofertas, especiales, meta, fetchedAt, version }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
 const CACHE_VERSION = 2;
 
@@ -35,8 +36,15 @@ function isValidCacheEntry(entry) {
         return true;
 }
 
-function storageKey(userId) {
-        return `ofertas_${userId}`;
+function storageKey(cacheKey) {
+        return `ofertas_${cacheKey}`;
+}
+
+function toCacheKey(userId, { fallbackToSelf = false } = {}) {
+        if (userId !== null && typeof userId !== "undefined") {
+                return String(userId);
+        }
+        return fallbackToSelf ? "self" : null;
 }
 
 function normalizeOfertasResponse(payload) {
@@ -100,27 +108,29 @@ function applyOfertasState(entry) {
         });
 }
 
-function getCachedOfertas(userId) {
-        if (ofertasCache.has(userId)) {
-                const cached = ofertasCache.get(userId);
+function getCachedOfertas(cacheKey) {
+        if (!cacheKey) return null;
+
+        if (ofertasCache.has(cacheKey)) {
+                const cached = ofertasCache.get(cacheKey);
                 if (isValidCacheEntry(cached)) {
                         return cached;
                 }
-                ofertasCache.delete(userId);
+                ofertasCache.delete(cacheKey);
         }
 
-        const raw = sessionStorage.getItem(storageKey(userId));
+        const raw = sessionStorage.getItem(storageKey(cacheKey));
         if (raw) {
                 try {
                         const parsed = JSON.parse(raw);
                         if (isValidCacheEntry(parsed)) {
-                                ofertasCache.set(userId, parsed);
+                                ofertasCache.set(cacheKey, parsed);
                                 return parsed;
                         }
-                        sessionStorage.removeItem(storageKey(userId));
+                        sessionStorage.removeItem(storageKey(cacheKey));
                 } catch (e) {
                         // ignore parse errors
-                        sessionStorage.removeItem(storageKey(userId));
+                        sessionStorage.removeItem(storageKey(cacheKey));
                 }
         }
 
@@ -224,43 +234,52 @@ export function filterOfertasPorModalidades(
  * Fetch de ofertas con cache y fallback profesional.
  */
 export async function fetchOfertas(userId, { force = false } = {}) {
-	// Si dependemos de profesional y no se pasó userId, asegurar que esté listo
-	if (!userId) {
-		await ensureCurrentUserIdReady();
-	}
+        // Si dependemos de profesional y no se pasó userId, asegurar que esté listo
+        if (!userId) {
+                await ensureCurrentUserIdReady();
+        }
 
         const effectiveUserId = resolveUserId(userId);
-        if (!effectiveUserId) return [];
+        const useSelfFallback = !effectiveUserId && isProfesional();
+        const cacheKey = toCacheKey(effectiveUserId, { fallbackToSelf: useSelfFallback });
+
+        if (!effectiveUserId && !useSelfFallback) {
+                return [];
+        }
 
         if (!force) {
-                const cached = getCachedOfertas(effectiveUserId);
+                const cached = getCachedOfertas(cacheKey);
                 if (cached) {
                         if (ENABLE_LOGS)
-                                log(`Usando cache de ofertas para usuario ${effectiveUserId}`);
+                                log(
+                                        `Usando cache de ofertas para usuario ${
+                                                effectiveUserId ?? "self"
+                                        }`
+                                );
                         applyOfertasState(cached);
                         return Array.isArray(cached.ofertas) ? cached.ofertas : [];
                 }
         }
 
-	const restRoot = getRestRoot();
-	const restNonce = getRestNonce();
-	const url = `${restRoot}go/v1/ofertas-usuario?id=${encodeURIComponent(
-		effectiveUserId
-	)}`;
+        const restRoot = getRestRoot();
+        const restNonce = getRestNonce();
+        const url = effectiveUserId
+                ? `${restRoot}go/v1/ofertas-usuario?id=${encodeURIComponent(effectiveUserId)}`
+                : `${restRoot}go/v1/ofertas-usuario`;
 
-	try {
-		const res = await fetch(url, {
-			method: "GET",
-			credentials: "include",
+        try {
+                const res = await fetch(url, {
+                        method: "GET",
+                        credentials: "include",
 			headers: {
 				"X-WP-Nonce": restNonce,
 				Accept: "application/json",
 			},
 			cache: "no-store",
-		});
-		if (!res.ok) {
-			throw new Error(`Error al obtener ofertas: ${res.status}`);
-		}
+                });
+                if (!res.ok) {
+                        throw new Error(`Error al obtener ofertas: ${res.status}`);
+                }
                 const payload = await res.json();
                 const normalized = normalizeOfertasResponse(payload);
                 const entry = {
@@ -268,19 +287,18 @@ export async function fetchOfertas(userId, { force = false } = {}) {
                         fetchedAt: Date.now(),
                         version: CACHE_VERSION,
                 };
-                ofertasCache.set(effectiveUserId, entry);
-                try {
-                        sessionStorage.setItem(
-                                storageKey(effectiveUserId),
-                                JSON.stringify(entry)
-                        );
-                } catch (e) {
-                        // storage might be full/disabled
+                if (cacheKey) {
+                        ofertasCache.set(cacheKey, entry);
+                        try {
+                                sessionStorage.setItem(storageKey(cacheKey), JSON.stringify(entry));
+                        } catch (e) {
+                                // storage might be full/disabled
+                        }
                 }
                 applyOfertasState(entry);
                 return entry.ofertas;
         } catch (e) {
-                log("Error al obtener ofertas para usuario", effectiveUserId, e);
+                log("Error al obtener ofertas para usuario", effectiveUserId ?? "self", e);
                 applyOfertasState(null);
                 return [];
         }
