@@ -76,6 +76,11 @@
         const markEndpoint = endpoints.markAll || '';
         const nonce = config.nonce || '';
         const perPage = config.perPage || 6;
+        const markLabel = container.dataset.markLabel || 'Marcar como leído';
+        const markedLabel = container.dataset.markedLabel || 'Leída';
+        const deleteLabel = container.dataset.deleteLabel || 'Eliminar';
+        const markIcon = container.dataset.iconView || '';
+        const deleteIcon = container.dataset.iconDelete || '';
 
         if (!toggle || !panel || !list || !listEndpoint) {
             return;
@@ -85,6 +90,19 @@
         let isOpen = false;
         let isLoading = false;
         let refreshTimer = null;
+
+        const emitEvent = (name) => {
+            if (typeof window === 'undefined') {
+                return;
+            }
+            if (typeof window.CustomEvent === 'function') {
+                window.dispatchEvent(new CustomEvent(name));
+            } else if (typeof document !== 'undefined' && typeof document.createEvent === 'function') {
+                const custom = document.createEvent('CustomEvent');
+                custom.initCustomEvent(name, false, false, {});
+                window.dispatchEvent(custom);
+            }
+        };
 
         const setBadge = (count) => {
             if (!badge) {
@@ -99,6 +117,9 @@
         };
 
         const closePanel = () => {
+            if (!isOpen) {
+                return;
+            }
             isOpen = false;
             panel.setAttribute('aria-hidden', 'true');
             toggle.setAttribute('aria-expanded', 'false');
@@ -106,15 +127,21 @@
                 window.clearInterval(refreshTimer);
                 refreshTimer = null;
             }
+            emitEvent('go360:notifications:closed');
         };
 
         const openPanel = () => {
+            if (isOpen) {
+                return;
+            }
             isOpen = true;
             panel.setAttribute('aria-hidden', 'false');
             toggle.setAttribute('aria-expanded', 'true');
             if (scrollBox) {
                 scrollBox.scrollTop = 0;
             }
+            emitEvent('go360:profile:close');
+            emitEvent('go360:notifications:opened');
             fetchNotifications();
             if (!refreshTimer) {
                 refreshTimer = window.setInterval(fetchNotifications, 60000);
@@ -183,6 +210,48 @@
                 if (meta.textContent) {
                     body.appendChild(meta);
                 }
+
+                const quickActions = document.createElement('div');
+                quickActions.className = 'notifications-panel__quick-actions';
+
+                const markButton = document.createElement('button');
+                markButton.type = 'button';
+                markButton.className = 'notifications-panel__action-button';
+                markButton.dataset.action = 'mark';
+                markButton.dataset.labelRead = markedLabel;
+                markButton.dataset.labelUnread = markLabel;
+                if (markIcon) {
+                    markButton.innerHTML = markIcon;
+                }
+                const markText = document.createElement('span');
+                markText.className = 'notifications-panel__action-text';
+                markText.textContent = item.is_read ? markedLabel : markLabel;
+                markButton.appendChild(markText);
+                if (item.is_read) {
+                    markButton.classList.add('is-disabled');
+                    markButton.setAttribute('aria-disabled', 'true');
+                    markButton.setAttribute('aria-label', markedLabel);
+                } else {
+                    markButton.setAttribute('aria-disabled', 'false');
+                    markButton.setAttribute('aria-label', markLabel);
+                }
+                quickActions.appendChild(markButton);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'notifications-panel__action-button';
+                deleteButton.dataset.action = 'delete';
+                deleteButton.setAttribute('aria-label', deleteLabel);
+                if (deleteIcon) {
+                    deleteButton.innerHTML = deleteIcon;
+                }
+                const deleteText = document.createElement('span');
+                deleteText.className = 'notifications-panel__action-text';
+                deleteText.textContent = deleteLabel;
+                deleteButton.appendChild(deleteText);
+                quickActions.appendChild(deleteButton);
+
+                body.appendChild(quickActions);
 
                 if (Array.isArray(item.actions) && item.actions.length) {
                     const actionsContainer = document.createElement('div');
@@ -282,6 +351,33 @@
             }
         };
 
+        const deleteNotification = async (id) => {
+            if (!id) {
+                return false;
+            }
+            try {
+                const endpoint = `${listEndpoint}/${id}`;
+                const response = await fetch(endpoint, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-WP-Nonce': nonce,
+                    },
+                });
+                if (!response.ok) {
+                    throw new Error('Delete failed');
+                }
+                const payload = await response.json();
+                if (payload.meta && typeof payload.meta.unread === 'number') {
+                    setBadge(payload.meta.unread);
+                }
+                return true;
+            } catch (error) {
+                // eslint-disable-next-line no-console
+                console.error('GO360 notifications delete error', error);
+            }
+            return false;
+        };
+
         const markAll = async () => {
             try {
                 const response = await fetch(markEndpoint, {
@@ -307,6 +403,7 @@
         };
 
         toggle.addEventListener('click', (event) => {
+            event.preventDefault();
             event.stopPropagation();
             togglePanel();
         });
@@ -324,6 +421,14 @@
             if (event.key === 'Escape' && isOpen) {
                 closePanel();
             }
+        });
+
+        window.addEventListener('go360:profile:opened', () => {
+            closePanel();
+        });
+
+        window.addEventListener('go360:notifications:close', () => {
+            closePanel();
         });
 
         if (markAllButton) {
@@ -349,15 +454,76 @@
         }
 
         list.addEventListener('click', (event) => {
+            const actionButton = event.target.closest('.notifications-panel__action-button');
+            if (actionButton) {
+                event.preventDefault();
+                event.stopPropagation();
+                const item = actionButton.closest('.notifications-panel__item');
+                if (!item) {
+                    return;
+                }
+                const id = item.dataset.notificationId;
+                if (!id) {
+                    return;
+                }
+
+                if (actionButton.dataset.action === 'delete') {
+                    if (actionButton.classList.contains('is-disabled')) {
+                        return;
+                    }
+                    actionButton.classList.add('is-disabled');
+                    actionButton.setAttribute('aria-disabled', 'true');
+                    deleteNotification(id).then((success) => {
+                        if (!success) {
+                            actionButton.classList.remove('is-disabled');
+                            actionButton.setAttribute('aria-disabled', 'false');
+                            return;
+                        }
+                        item.remove();
+                        if (empty) {
+                            empty.hidden = list.children.length > 0;
+                        }
+                        fetchNotifications();
+                    });
+                    return;
+                }
+
+                if (actionButton.dataset.action === 'mark') {
+                    if (!item.classList.contains('notifications-panel__item--unread')) {
+                        return;
+                    }
+                    item.classList.remove('notifications-panel__item--unread');
+                    actionButton.classList.add('is-disabled');
+                    actionButton.setAttribute('aria-disabled', 'true');
+                    actionButton.setAttribute('aria-label', actionButton.dataset.labelRead || markedLabel);
+                    const markText = actionButton.querySelector('.notifications-panel__action-text');
+                    if (markText) {
+                        markText.textContent = actionButton.dataset.labelRead || markedLabel;
+                    }
+                    markNotification(id);
+                }
+                return;
+            }
+
             const item = event.target.closest('.notifications-panel__item');
             if (!item) {
                 return;
             }
             const id = item.dataset.notificationId;
-            if (!item.classList.contains('notifications-panel__item--unread')) {
+            if (!id || !item.classList.contains('notifications-panel__item--unread')) {
                 return;
             }
             item.classList.remove('notifications-panel__item--unread');
+            const markButton = item.querySelector('[data-action="mark"]');
+            if (markButton) {
+                markButton.classList.add('is-disabled');
+                markButton.setAttribute('aria-disabled', 'true');
+                markButton.setAttribute('aria-label', markButton.dataset.labelRead || markedLabel);
+                const markText = markButton.querySelector('.notifications-panel__action-text');
+                if (markText) {
+                    markText.textContent = markButton.dataset.labelRead || markedLabel;
+                }
+            }
             markNotification(id);
         });
 

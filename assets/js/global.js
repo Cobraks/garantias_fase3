@@ -122,16 +122,38 @@ console.log("GO360 script cargado");
                 const profileMenu = document.querySelector(".top-bar__profile-menu");
 
                 if (profileBtn && profileMenu) {
+                        const emitProfileEvent = (name) => {
+                                if (typeof window === "undefined") {
+                                        return;
+                                }
+                                if (typeof window.CustomEvent === "function") {
+                                        window.dispatchEvent(new CustomEvent(name));
+                                } else if (typeof document !== "undefined" && typeof document.createEvent === "function") {
+                                        const custom = document.createEvent("CustomEvent");
+                                        custom.initCustomEvent(name, false, false, {});
+                                        window.dispatchEvent(custom);
+                                }
+                        };
+
                         const openMenu = () => {
+                                if (profileMenu.classList.contains("visible")) {
+                                        return;
+                                }
+                                emitProfileEvent("go360:notifications:close");
                                 profileMenu.classList.add("visible");
                                 profileMenu.setAttribute("aria-hidden", "false");
                                 profileBtn.setAttribute("aria-expanded", "true");
+                                emitProfileEvent("go360:profile:opened");
                         };
 
                         const closeMenu = () => {
+                                if (!profileMenu.classList.contains("visible")) {
+                                        return;
+                                }
                                 profileMenu.classList.remove("visible");
                                 profileMenu.setAttribute("aria-hidden", "true");
                                 profileBtn.setAttribute("aria-expanded", "false");
+                                emitProfileEvent("go360:profile:closed");
                         };
 
                         profileBtn.addEventListener("click", (event) => {
@@ -164,6 +186,14 @@ console.log("GO360 script cargado");
 
                         profileMenu.addEventListener("click", (event) => {
                                 event.stopPropagation();
+                        });
+
+                        window.addEventListener("go360:notifications:opened", () => {
+                                closeMenu();
+                        });
+
+                        window.addEventListener("go360:profile:close", () => {
+                                closeMenu();
                         });
                 }
 
