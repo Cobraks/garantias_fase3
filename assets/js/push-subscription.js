@@ -156,29 +156,22 @@
         }
 
         if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-            button.disabled = true;
-            if (testButton) {
-                testButton.disabled = true;
-            }
             setStatus('Tu navegador no soporta notificaciones push.', 'error');
             return;
         }
 
         if (!window.isSecureContext) {
-            button.disabled = true;
-            if (testButton) {
-                testButton.disabled = true;
-            }
             setStatus('Accede mediante HTTPS para activar las notificaciones.', 'error');
             return;
         }
 
-        if (!pushConfig.publicKey || !pushConfig.subscriptionEndpoint || !pushConfig.serviceWorker) {
-            button.disabled = true;
-            if (testButton) {
-                testButton.disabled = true;
-            }
+        if (!pushConfig.subscriptionEndpoint || !pushConfig.serviceWorker) {
             setStatus('La configuración de notificaciones no está disponible.', 'error');
+            return;
+        }
+
+        if (!pushConfig.publicKey && !pushConfig.publicKeyEndpoint) {
+            setStatus('No se pudo obtener la clave pública de notificaciones.', 'error');
             return;
         }
 
@@ -201,24 +194,22 @@
                 if (!testControl) {
                     return;
                 }
+
                 const isBroadcast = testControl === broadcastButton;
                 const isSingle = testControl === testButton;
                 const missingEndpoint = (isBroadcast && !testAllEndpoint) || (isSingle && !testEndpoint);
-                const shouldDisable = !isActive || isProcessing || missingEndpoint;
-                testControl.disabled = shouldDisable;
-                if (!shouldDisable) {
-                    testControl.removeAttribute('disabled');
+                const inactive = !isActive || isProcessing || missingEndpoint;
+
+                if (inactive) {
+                    testControl.dataset.pushInactive = '1';
+                } else {
+                    delete testControl.dataset.pushInactive;
                 }
             });
         };
 
         const updateControls = (active) => {
             isActive = active;
-
-            if (!isProcessing) {
-                button.disabled = false;
-                button.removeAttribute('disabled');
-            }
 
             if (label) {
                 label.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
@@ -231,15 +222,8 @@
 
         const setProcessing = (processing) => {
             isProcessing = processing;
-            button.disabled = processing;
-            if (!processing) {
-                button.removeAttribute('disabled');
-            }
             syncTestButtons();
         };
-
-        button.disabled = false;
-        button.removeAttribute('disabled');
 
         if (isActive) {
             updateControls(true);
@@ -385,6 +369,10 @@
 
         const requestPermissionAndSubscribe = async () => {
             try {
+                if (isProcessing) {
+                    return;
+                }
+
                 setProcessing(true);
                 setStatus('Solicitando permisos…', 'info');
                 const permission = await Notification.requestPermission();
@@ -432,6 +420,10 @@
 
         const unsubscribe = async () => {
             try {
+                if (isProcessing) {
+                    return;
+                }
+
                 setProcessing(true);
                 setStatus('Desactivando notificaciones…', 'info');
                 const registration = await getRegistration(serviceWorkerUrl, false);
@@ -464,13 +456,22 @@
         };
 
         const sendTestNotification = async () => {
-            if (!testButton || !testEndpoint) {
+            if (!testButton) {
+                return;
+            }
+
+            if (!testEndpoint) {
+                setStatus('La configuración de notificaciones no está disponible.', 'error');
+                return;
+            }
+
+            if (!isActive) {
+                setStatus('Activa primero las notificaciones en este dispositivo.', 'warning');
                 return;
             }
 
             try {
                 setStatus('Enviando notificación de prueba…', 'info');
-                testButton.disabled = true;
                 const response = await fetch(testEndpoint, {
                     method: 'POST',
                     headers: {
@@ -509,34 +510,26 @@
                 console.error('GO360 push error', error);
             } finally {
                 syncTestButtons();
-                if (testButton) {
-                    const shouldDisable = !isActive || !testEndpoint;
-                    testButton.disabled = shouldDisable;
-                    if (!shouldDisable) {
-                        testButton.removeAttribute('disabled');
-                    }
-                }
-                setTimeout(() => {
-                    syncTestButtons();
-                    if (testButton) {
-                        const shouldDisable = !isActive || !testEndpoint;
-                        testButton.disabled = shouldDisable;
-                        if (!shouldDisable) {
-                            testButton.removeAttribute('disabled');
-                        }
-                    }
-                }, 1000);
             }
         };
 
         const sendBroadcastTest = async () => {
-            if (!broadcastButton || !testAllEndpoint) {
+            if (!broadcastButton) {
+                return;
+            }
+
+            if (!testAllEndpoint) {
+                setStatus('La configuración de notificaciones no está disponible.', 'error');
+                return;
+            }
+
+            if (!isActive) {
+                setStatus('Activa primero las notificaciones en este dispositivo.', 'warning');
                 return;
             }
 
             try {
                 setStatus('Enviando notificación de prueba a todos los dispositivos…', 'info');
-                broadcastButton.disabled = true;
                 const response = await fetch(testAllEndpoint, {
                     method: 'POST',
                     headers: {
@@ -575,27 +568,14 @@
                 console.error('GO360 push error', error);
             } finally {
                 syncTestButtons();
-                if (broadcastButton) {
-                    const shouldDisable = !isActive || !testAllEndpoint;
-                    broadcastButton.disabled = shouldDisable;
-                    if (!shouldDisable) {
-                        broadcastButton.removeAttribute('disabled');
-                    }
-                }
-                setTimeout(() => {
-                    syncTestButtons();
-                    if (broadcastButton) {
-                        const shouldDisable = !isActive || !testAllEndpoint;
-                        broadcastButton.disabled = shouldDisable;
-                        if (!shouldDisable) {
-                            broadcastButton.removeAttribute('disabled');
-                        }
-                    }
-                }, 1000);
             }
         };
 
         button.addEventListener('click', () => {
+            if (isProcessing) {
+                return;
+            }
+
             if (isActive) {
                 unsubscribe();
             } else {
