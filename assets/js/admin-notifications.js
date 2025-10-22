@@ -455,7 +455,7 @@
             updateEmptyState();
         };
 
-        const handleNewItems = (items, allowToast) => {
+        const handleNewItems = (items, allowToast, previousItems = []) => {
             const normalized = normalizeItems(items);
             normalized.forEach((item) => {
                 state.knownIds.add(item.id);
@@ -470,7 +470,11 @@
                 return;
             }
 
-            const unseen = normalized.filter((item) => !state.items.some((existing) => existing.id === item.id));
+            const previousIds = Array.isArray(previousItems)
+                ? previousItems.map((entry) => Number(entry.id))
+                : [];
+
+            const unseen = normalized.filter((item) => !previousIds.includes(item.id));
             if (unseen.length > 0) {
                 showToast(unseen[0]);
             }
@@ -513,12 +517,12 @@
                     items.forEach((item) => state.knownIds.add(item.id));
                     renderNotifications(items, true);
                 } else {
-                    const previousIds = state.items.map((item) => item.id);
+                    const previousItems = state.items.slice();
                     state.page = 1;
                     state.hasMore = Boolean(payload.meta && payload.meta.has_more);
                     state.items = items;
                     renderNotifications(items, false);
-                    handleNewItems(items, background, previousIds);
+                    handleNewItems(items, background, previousItems);
                 }
 
                 if (payload.meta && typeof payload.meta.unread === 'number') {

@@ -138,13 +138,13 @@ class PushNotificationService
         }
 
         $settings = get_field('ajustes_de_notificaciones', 'user_' . $user_id);
-        if (! is_array($settings)) {
-            return false;
+        if (! is_array($settings) || empty($settings)) {
+            return true;
         }
 
-        $group = $settings['notificaciones_del_sistema'] ?? [];
-        if (! is_array($group)) {
-            return false;
+        $group = $settings['notificaciones_del_sistema'] ?? null;
+        if (! is_array($group) || ! array_key_exists('activar_notificaciones_del_sistema', $group)) {
+            return true;
         }
 
         return ! empty($group['activar_notificaciones_del_sistema']);

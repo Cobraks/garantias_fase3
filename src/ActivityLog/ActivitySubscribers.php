@@ -59,12 +59,13 @@ class ActivitySubscribers
         self::$login_failure_handled = true;
     }
 
-    public static function on_logout(): void
+    public static function on_logout(int $user_id = 0): void
     {
-        $user_id = get_current_user_id();
-        if (! $user_id) {
+        $user_id = $user_id > 0 ? $user_id : get_current_user_id();
+        if ($user_id <= 0) {
             return;
         }
+
         $user = get_userdata($user_id);
         ActivityLogger::log('auth.logout', [
             'actor_id' => $user_id,
