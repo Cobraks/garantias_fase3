@@ -501,6 +501,7 @@
                     headers: {
                         'X-WP-Nonce': nonce,
                     },
+                    credentials: 'same-origin',
                 });
 
                 if (!response.ok) {
@@ -555,6 +556,7 @@
                     headers: {
                         'X-WP-Nonce': nonce,
                     },
+                    credentials: 'same-origin',
                 });
                 if (!response.ok) {
                     throw new Error('Mark failed');
@@ -581,6 +583,7 @@
                     headers: {
                         'X-WP-Nonce': nonce,
                     },
+                    credentials: 'same-origin',
                 });
                 if (!response.ok) {
                     throw new Error('Delete failed');
@@ -606,6 +609,7 @@
                         'Content-Type': 'application/json',
                         'X-WP-Nonce': nonce,
                     },
+                    credentials: 'same-origin',
                     body: JSON.stringify({ action: 'mark_read' }),
                 });
                 if (!response.ok) {
