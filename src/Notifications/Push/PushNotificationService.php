@@ -101,7 +101,7 @@ class PushNotificationService
             $payload['user_id'] = $admin_id;
             $notification_id = $this->notifications->create($admin_id, $payload);
 
-            if ($notification_id) {
+            if ($notification_id && $this->user_allows_push_notifications($admin_id)) {
                 $this->dispatcher->dispatch($admin_id, $payload);
             }
         }
@@ -121,17 +121,10 @@ class PushNotificationService
             return [];
         }
 
-        $allowed = [];
-        foreach ($users as $user_id) {
-            if ($this->user_allows_notifications((int) $user_id)) {
-                $allowed[] = (int) $user_id;
-            }
-        }
-
-        return $allowed;
+        return array_map('intval', $users);
     }
 
-    private function user_allows_notifications(int $user_id): bool
+    private function user_allows_push_notifications(int $user_id): bool
     {
         if (! function_exists('get_field')) {
             return true;
