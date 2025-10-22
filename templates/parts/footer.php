@@ -503,7 +503,7 @@ if (! empty($is_add_guarantee)) {
             'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
             'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
             'testEndpoint'          => esc_url_raw(rest_url('go/v1/push-notifications/test')),
-            'testIcon'              => esc_url_raw(plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__)),
+            'testIcon'              => Svg::data_uri('check_shield'),
             'serviceWorker'         => esc_url_raw(plugins_url('assets/js/push-sw.js', GARANTIAS360VO__FILE__)),
         ];
     }
@@ -555,7 +555,9 @@ if (! empty($is_add_guarantee)) {
                 markAll: <?php echo wp_json_encode(esc_url_raw(rest_url('go/v1/push-notifications'))); ?>,
             },
             nonce: <?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>,
-            perPage: 6,
+            perPage: 8,
+            pollInterval: 15000,
+            toastDuration: 6000,
         };
     </script>
     <script

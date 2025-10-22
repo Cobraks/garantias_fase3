@@ -28,9 +28,12 @@ class PushNotificationRepository
             'user_id'    => $user_id,
             'title'      => sanitize_text_field((string) $payload['title']),
             'body'       => isset($payload['body']) ? wp_kses_post((string) $payload['body']) : null,
-            'icon'       => isset($payload['icon']) ? esc_url_raw((string) $payload['icon']) : null,
-            'badge'      => isset($payload['badge']) ? esc_url_raw((string) $payload['badge']) : null,
+            'icon'       => isset($payload['icon']) ? sanitize_text_field((string) $payload['icon']) : null,
+            'icon_slug'  => isset($payload['icon_slug']) ? sanitize_key((string) $payload['icon_slug']) : null,
+            'badge'      => isset($payload['badge']) ? sanitize_text_field((string) $payload['badge']) : null,
+            'tone'       => isset($payload['tone']) ? sanitize_key((string) $payload['tone']) : null,
             'actions'    => isset($payload['actions']) ? wp_json_encode($payload['actions']) : null,
+            'meta'       => isset($payload['meta']) ? wp_json_encode($payload['meta']) : null,
             'link'       => isset($payload['link']) ? esc_url_raw((string) $payload['link']) : null,
             'is_read'    => empty($payload['is_read']) ? 0 : 1,
             'created_at' => current_time('mysql'),
@@ -39,7 +42,7 @@ class PushNotificationRepository
         $inserted = $wpdb->insert(
             $table,
             $record,
-            ['%d','%s','%s','%s','%s','%s','%s','%d','%s']
+            ['%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s']
         );
 
         if ($inserted === false) {
@@ -133,6 +136,14 @@ class PushNotificationRepository
         return array_map(
             static function (array $row): array {
                 $row['actions'] = $row['actions'] ? json_decode((string) $row['actions'], true) : [];
+                if (! is_array($row['actions'])) {
+                    $row['actions'] = [];
+                }
+                $row['meta'] = $row['meta'] ? json_decode((string) $row['meta'], true) : [];
+                if (! is_array($row['meta'])) {
+                    $row['meta'] = [];
+                }
+
                 return $row;
             },
             $results

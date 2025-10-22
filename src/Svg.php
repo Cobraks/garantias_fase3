@@ -140,4 +140,23 @@ class Svg
 
         return $svg;             // Se asume sanitizado de antemano
     }
+
+    public static function data_uri(string $name): string
+    {
+        if (empty(self::$icons[$name])) {
+            return '';
+        }
+
+        $svg = trim(self::$icons[$name]);
+        if ($svg === '') {
+            return '';
+        }
+
+        $svg = preg_replace('/\s+/', ' ', $svg);
+        if (! is_string($svg) || $svg === '') {
+            return '';
+        }
+
+        return 'data:image/svg+xml,' . rawurlencode($svg);
+    }
 }
