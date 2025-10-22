@@ -223,15 +223,17 @@ class PushNotificationRestController
      */
     private function transform_notification(array $item): array
     {
-        $icon_slug = isset($item['icon_slug']) ? sanitize_key((string) $item['icon_slug']) : '';
+        $icon_slug = $this->resolve_icon_slug($item);
+        $icon_svg  = $icon_slug !== '' ? Svg::icon($icon_slug, 'notifications-panel__icon-svg') : '';
+        $icon_data = $icon_svg !== '' ? Svg::data_uri($icon_slug) : (string) ($item['icon'] ?? '');
 
         return [
             'id'         => (int) $item['id'],
             'title'      => (string) ($item['title'] ?? ''),
             'body'       => (string) ($item['body'] ?? ''),
-            'icon'       => (string) ($item['icon'] ?? ''),
+            'icon'       => $icon_data,
             'icon_slug'  => $icon_slug,
-            'icon_svg'   => $icon_slug !== '' ? Svg::icon($icon_slug, 'notifications-panel__icon-svg') : '',
+            'icon_svg'   => $icon_svg,
             'badge'      => (string) ($item['badge'] ?? ''),
             'tone'       => isset($item['tone']) ? sanitize_key((string) $item['tone']) : '',
             'link'       => (string) ($item['link'] ?? ''),
@@ -292,5 +294,47 @@ class PushNotificationRestController
         }
 
         return ! empty($group['activar_notificaciones_del_sistema']);
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function resolve_icon_slug(array $item): string
+    {
+        $slug = isset($item['icon_slug']) ? sanitize_key((string) $item['icon_slug']) : '';
+        if ($slug !== '') {
+            return $slug;
+        }
+
+        $legacy = isset($item['icon']) ? (string) $item['icon'] : '';
+        if ($legacy === '') {
+            return '';
+        }
+
+        $candidate = sanitize_key($legacy);
+        if ($candidate !== '' && $candidate === $legacy) {
+            return $candidate;
+        }
+
+        $path = (string) parse_url($legacy, PHP_URL_PATH);
+        if ($path === '') {
+            return '';
+        }
+
+        $basename = basename($path, '.svg');
+        if ($basename === '') {
+            return '';
+        }
+
+        $map = [
+            'guarantee-created'   => 'new_shield',
+            'sepa-uploaded'       => 'iban',
+            'transfer-confirmed'  => 'sell',
+            'user-verified'       => 'check_shield',
+        ];
+
+        $key = sanitize_key($basename);
+
+        return $map[$key] ?? '';
     }
 }

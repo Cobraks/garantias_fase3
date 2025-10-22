@@ -28,7 +28,7 @@ class PushNotificationRepository
             'user_id'    => $user_id,
             'title'      => sanitize_text_field((string) $payload['title']),
             'body'       => isset($payload['body']) ? wp_kses_post((string) $payload['body']) : null,
-            'icon'       => isset($payload['icon']) ? sanitize_text_field((string) $payload['icon']) : null,
+            'icon'       => $this->prepare_icon_value($payload['icon'] ?? null, $payload['icon_slug'] ?? null),
             'icon_slug'  => isset($payload['icon_slug']) ? sanitize_key((string) $payload['icon_slug']) : null,
             'badge'      => isset($payload['badge']) ? sanitize_text_field((string) $payload['badge']) : null,
             'tone'       => isset($payload['tone']) ? sanitize_key((string) $payload['tone']) : null,
@@ -148,5 +148,33 @@ class PushNotificationRepository
             },
             $results
         );
+    }
+
+    /**
+     * @param mixed $icon
+     * @param mixed $icon_slug
+     */
+    private function prepare_icon_value($icon, $icon_slug): ?string
+    {
+        if (is_string($icon)) {
+            $icon = trim($icon);
+            if ($icon !== '') {
+                if (strpos($icon, 'data:image/svg+xml') !== 0 && strlen($icon) <= 180) {
+                    return sanitize_text_field($icon);
+                }
+
+                if (preg_match('/^[a-z0-9_-]+$/', $icon) === 1) {
+                    $slug = sanitize_key($icon);
+                    return $slug !== '' ? $slug : null;
+                }
+            }
+        }
+
+        if (is_string($icon_slug) && $icon_slug !== '') {
+            $slug = sanitize_key($icon_slug);
+            return $slug !== '' ? $slug : null;
+        }
+
+        return null;
     }
 }
