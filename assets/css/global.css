@@ -722,11 +722,11 @@ text-decoration: none;
   display: none;
   flex-direction: column;
   background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 22px 45px rgba(15, 23, 42, 0.12);
-  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  border: 1px solid #d9e2f1;
   padding: 1rem 1rem 0.75rem;
   z-index: 13500;
+  box-shadow: none;
 }
 
 .notifications-panel[aria-hidden='false'] {
@@ -806,70 +806,69 @@ text-decoration: none;
   width: 100%;
   padding: 0.95rem 1rem;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  border: 1px solid #d9e2f1;
+  background: #ffffff;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
 }
 
 .notifications-panel__item:hover {
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
-  transform: translateY(-1px);
+  background: #f5f7ff;
+  border-color: #c5cff6;
 }
 
 .notifications-panel__item--unread {
-  box-shadow: 0 18px 36px rgba(67, 97, 238, 0.18);
   border-color: #4361ee;
   background: #eef2ff;
 }
 
 .notifications-panel__item--tone-primary {
-  border-color: #dbe4ff;
-  background: #eff2ff;
+  border-color: #ced8ff;
+  background: #f1f4ff;
 }
 
 .notifications-panel__item--tone-primary .notifications-panel__icon {
-  background: #e3e9ff;
-  color: #2740d4;
+  background: #e0e6ff;
+  color: #273fce;
 }
 
 .notifications-panel__item--tone-info {
-  border-color: #e2e8f0;
-  background: #f8fafc;
+  border-color: #dde5f3;
+  background: #f7f9fc;
 }
 
 .notifications-panel__item--tone-info .notifications-panel__icon {
-  background: #eaf2ff;
-  color: #1e3a8a;
+  background: #e7eefc;
+  color: #2341a6;
 }
 
 .notifications-panel__item--tone-success {
-  border-color: #bfe4d6;
-  background: #ecfdf5;
+  border-color: #b6e4d4;
+  background: #edfdf5;
 }
 
 .notifications-panel__item--tone-success .notifications-panel__icon {
-  background: #d6f5e8;
-  color: #0f766e;
+  background: #d8f4e6;
+  color: #0f7a6c;
 }
 
 .notifications-panel__item--tone-warning {
-  border-color: #fcd9a5;
-  background: #fff7ed;
+  border-color: #f4cf9a;
+  background: #fff6e8;
 }
 
 .notifications-panel__item--tone-warning .notifications-panel__icon {
-  background: #ffe8c7;
-  color: #b45309;
+  background: #ffe2be;
+  color: #a9540c;
 }
 
 .notifications-panel__item--tone-danger {
-  border-color: #f6c6d9;
-  background: #fff0f6;
+  border-color: #f3c0d4;
+  background: #fff1f7;
 }
 
 .notifications-panel__item--tone-danger .notifications-panel__icon {
-  background: #ffe0eb;
-  color: #c11c5a;
+  background: #ffd8e7;
+  color: #c22664;
 }
 
 .notifications-panel__indicator {
@@ -890,8 +889,8 @@ text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e3e9ff;
-  color: #2740d4;
+  background: #edf0ff;
+  color: #2a3dd3;
 }
 
 .notifications-panel__icon svg {
@@ -1105,8 +1104,7 @@ text-decoration: none;
   gap: 0.85rem;
   background: #ffffff;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.18);
+  border: 1px solid #d9e2f1;
   padding: 0.85rem 1rem;
 }
 
@@ -1115,11 +1113,11 @@ text-decoration: none;
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 10px;
-  background: #eff2ff;
+  background: #edf0ff;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #2740d4;
+  color: #2a3dd3;
 }
 
 .notifications-toast__icon svg {

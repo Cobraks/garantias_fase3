@@ -556,7 +556,7 @@ if (! empty($is_add_guarantee)) {
             },
             nonce: <?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>,
             perPage: 8,
-            pollInterval: 15000,
+            pollInterval: 4000,
             toastDuration: 6000,
         };
     </script>

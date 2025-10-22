@@ -49,7 +49,18 @@ class PushNotificationRepository
             return null;
         }
 
-        return (int) $wpdb->insert_id;
+        $notification_id = (int) $wpdb->insert_id;
+
+        /**
+         * Action fired after a push notification has been stored for later delivery.
+         *
+         * @param int                  $notification_id
+         * @param int                  $user_id
+         * @param array<string, mixed> $payload
+         */
+        do_action('go360/notifications/created', $notification_id, $user_id, $payload);
+
+        return $notification_id;
     }
 
     public function mark_read(int $notification_id, int $user_id): bool
@@ -121,7 +132,7 @@ class PushNotificationRepository
 
         $results = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT * FROM {$table} WHERE user_id = %d ORDER BY created_at DESC LIMIT %d OFFSET %d",
+                "SELECT * FROM {$table} WHERE user_id = %d ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d",
                 $user_id,
                 $per_page,
                 $offset
@@ -129,25 +140,53 @@ class PushNotificationRepository
             ARRAY_A
         );
 
-        if (empty($results)) {
+        return $this->hydrate_rows($results);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function list_after(int $user_id, int $after_id, int $limit = 10): array
+    {
+        if ($user_id <= 0 || $after_id <= 0) {
             return [];
         }
 
-        return array_map(
-            static function (array $row): array {
-                $row['actions'] = $row['actions'] ? json_decode((string) $row['actions'], true) : [];
-                if (! is_array($row['actions'])) {
-                    $row['actions'] = [];
-                }
-                $row['meta'] = $row['meta'] ? json_decode((string) $row['meta'], true) : [];
-                if (! is_array($row['meta'])) {
-                    $row['meta'] = [];
-                }
+        $limit = max(1, min(50, $limit));
 
-                return $row;
-            },
-            $results
+        global $wpdb;
+        $table = $wpdb->prefix . PushTables::NOTIFICATIONS_TABLE;
+
+        $results = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE user_id = %d AND id > %d ORDER BY id DESC LIMIT %d",
+                $user_id,
+                $after_id,
+                $limit
+            ),
+            ARRAY_A
         );
+
+        return $this->hydrate_rows($results);
+    }
+
+    public function latest_id(int $user_id): int
+    {
+        if ($user_id <= 0) {
+            return 0;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . PushTables::NOTIFICATIONS_TABLE;
+
+        $latest = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT MAX(id) FROM {$table} WHERE user_id = %d",
+                $user_id
+            )
+        );
+
+        return (int) $latest;
     }
 
     /**
@@ -176,5 +215,32 @@ class PushNotificationRepository
         }
 
         return null;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>>|null $results
+     * @return array<int, array<string, mixed>>
+     */
+    private function hydrate_rows($results): array
+    {
+        if (empty($results) || ! is_array($results)) {
+            return [];
+        }
+
+        return array_map(
+            static function (array $row): array {
+                $row['actions'] = $row['actions'] ? json_decode((string) $row['actions'], true) : [];
+                if (! is_array($row['actions'])) {
+                    $row['actions'] = [];
+                }
+                $row['meta'] = $row['meta'] ? json_decode((string) $row['meta'], true) : [];
+                if (! is_array($row['meta'])) {
+                    $row['meta'] = [];
+                }
+
+                return $row;
+            },
+            $results
+        );
     }
 }

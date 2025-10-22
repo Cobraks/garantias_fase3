@@ -32,6 +32,32 @@
         }
     };
 
+    const decodeIcon = (encoded) => {
+        if (!encoded || typeof encoded !== 'string') {
+            return '';
+        }
+        try {
+            return window.atob(encoded).trim();
+        } catch (error) {
+            return '';
+        }
+    };
+
+    const dedupeById = (items) => {
+        if (!Array.isArray(items)) {
+            return [];
+        }
+        const seen = new Set();
+        return items.filter((item) => {
+            const id = Number(item.id);
+            if (seen.has(id)) {
+                return false;
+            }
+            seen.add(id);
+            return true;
+        });
+    };
+
     const createElement = (tag, className, text) => {
         const element = document.createElement(tag);
         if (className) {
@@ -67,16 +93,16 @@
         const markEndpoint = endpoints.markAll || '';
         const nonce = config.nonce || '';
         const perPage = config.perPage || 8;
-        const pollInterval = Math.max(5000, Number(config.pollInterval || 15000));
+        const pollInterval = Math.max(3000, Number(config.pollInterval || 6000));
         const toastDuration = Math.max(4000, Number(config.toastDuration || 6000));
 
         if (!toggle || !panel || !list || !listEndpoint) {
             return;
         }
 
-        const checkIcon = container.dataset.iconCheck || '';
-        const trashIcon = container.dataset.iconTrash || '';
-        const closeIcon = container.dataset.iconClose || '';
+        const checkIcon = decodeIcon(container.dataset.iconCheck || '');
+        const trashIcon = decodeIcon(container.dataset.iconTrash || '');
+        const closeIcon = decodeIcon(container.dataset.iconClose || '');
         const markLabel = container.dataset.markLabel || 'Marcar como leído';
         const markedLabel = container.dataset.markedLabel || 'Leída';
         const deleteLabel = container.dataset.deleteLabel || 'Eliminar';
@@ -102,6 +128,28 @@
             toastTimer: null,
             modal: null,
             modalOpen: false,
+            latestId: 0,
+            isPolling: false,
+        };
+
+        const updateLatestId = (items, metaLatest) => {
+            let candidate = state.latestId;
+
+            if (Array.isArray(items) && items.length > 0) {
+                const ids = items
+                    .map((item) => Number(item.id) || 0)
+                    .filter((id) => Number.isFinite(id) && id > 0);
+                if (ids.length) {
+                    const maxId = Math.max(...ids);
+                    candidate = Math.max(candidate, maxId);
+                }
+            }
+
+            if (typeof metaLatest === 'number' && Number.isFinite(metaLatest) && metaLatest > 0) {
+                candidate = Math.max(candidate, metaLatest);
+            }
+
+            state.latestId = candidate;
         };
 
         const normalizeItems = (items) => {
@@ -455,7 +503,7 @@
             updateEmptyState();
         };
 
-        const handleNewItems = (items, allowToast, previousItems = []) => {
+        const handleNewItems = (items, { allowToast = false, previousItems = [] } = {}) => {
             const normalized = normalizeItems(items);
             normalized.forEach((item) => {
                 state.knownIds.add(item.id);
@@ -496,12 +544,14 @@
                 const url = new URL(listEndpoint, window.location.origin);
                 url.searchParams.set('page', String(page));
                 url.searchParams.set('per_page', String(perPage));
+                url.searchParams.set('_', String(Date.now()));
 
                 const response = await fetch(url.toString(), {
                     headers: {
                         'X-WP-Nonce': nonce,
                     },
                     credentials: 'same-origin',
+                    cache: 'no-store',
                 });
 
                 if (!response.ok) {
@@ -510,26 +560,32 @@
 
                 const payload = await response.json();
                 const items = normalizeItems(payload.data);
+                const meta = payload.meta || {};
+                const latestFromMeta = typeof meta.latest_id === 'number'
+                    ? meta.latest_id
+                    : Number(meta.latest_id);
 
                 if (append) {
                     state.page = page;
-                    state.hasMore = Boolean(payload.meta && payload.meta.has_more);
-                    state.items = state.items.concat(items);
+                    state.hasMore = Boolean(meta.has_more);
+                    state.items = dedupeById(state.items.concat(items));
                     items.forEach((item) => state.knownIds.add(item.id));
                     renderNotifications(items, true);
                 } else {
                     const previousItems = state.items.slice();
                     state.page = 1;
-                    state.hasMore = Boolean(payload.meta && payload.meta.has_more);
+                    state.hasMore = Boolean(meta.has_more);
                     state.items = items;
                     renderNotifications(items, false);
-                    handleNewItems(items, background, previousItems);
+                    handleNewItems(items, { allowToast: background, previousItems });
                 }
 
-                if (payload.meta && typeof payload.meta.unread === 'number') {
-                    state.unread = payload.meta.unread;
+                if (typeof meta.unread === 'number') {
+                    state.unread = meta.unread;
                     setBadge(state.unread);
                 }
+
+                updateLatestId(items, Number.isFinite(latestFromMeta) ? latestFromMeta : null);
 
                 updateLoadMore();
                 updateEmptyState();
@@ -542,6 +598,79 @@
                     state.loadingMore = false;
                     updateLoadMore();
                 }
+            }
+        };
+
+        const pollNotifications = async () => {
+            if (state.isPolling || state.isLoading) {
+                return;
+            }
+
+            state.isPolling = true;
+
+            try {
+                if (state.latestId <= 0) {
+                    await fetchNotifications({ append: false, background: true });
+                    return;
+                }
+
+                const url = new URL(listEndpoint, window.location.origin);
+                url.searchParams.set('since', String(state.latestId));
+                url.searchParams.set('per_page', String(perPage));
+                url.searchParams.set('_', String(Date.now()));
+
+                const response = await fetch(url.toString(), {
+                    headers: {
+                        'X-WP-Nonce': nonce,
+                    },
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Poll request failed');
+                }
+
+                const payload = await response.json();
+                const freshItems = normalizeItems(payload.data);
+                const meta = payload.meta || {};
+                const latestFromMeta = typeof meta.latest_id === 'number'
+                    ? meta.latest_id
+                    : Number(meta.latest_id);
+
+                if (typeof meta.unread === 'number') {
+                    state.unread = meta.unread;
+                    setBadge(state.unread);
+                }
+
+                if (freshItems.length > 0) {
+                    const previousItems = state.items.slice();
+                    state.items = dedupeById(freshItems.concat(state.items));
+
+                    let previousScroll = null;
+                    if (state.isOpen && scrollBox) {
+                        previousScroll = scrollBox.scrollTop;
+                    }
+
+                    renderNotifications(state.items, false);
+
+                    if (state.isOpen && scrollBox && previousScroll !== null) {
+                        scrollBox.scrollTop = previousScroll;
+                    }
+
+                    handleNewItems(freshItems, {
+                        allowToast: !state.isOpen,
+                        previousItems,
+                    });
+                }
+
+                updateLatestId(freshItems, Number.isFinite(latestFromMeta) ? latestFromMeta : null);
+                updateEmptyState();
+            } catch (error) {
+                // eslint-disable-next-line no-console
+                console.error('GO360 notifications poll error', error);
+            } finally {
+                state.isPolling = false;
             }
         };
 
@@ -857,17 +986,23 @@
             }
         });
 
-        const startPolling = () => {
+        const schedulePoll = () => {
             if (state.pollTimer) {
-                window.clearInterval(state.pollTimer);
+                window.clearTimeout(state.pollTimer);
             }
-            state.pollTimer = window.setInterval(() => {
-                fetchNotifications({ append: false, background: !state.isOpen });
+            state.pollTimer = window.setTimeout(async () => {
+                await pollNotifications();
+                schedulePoll();
             }, pollInterval);
         };
 
-        fetchNotifications({ append: false, background: false }).then(() => {
-            startPolling();
-        });
+        fetchNotifications({ append: false, background: false })
+            .catch(() => {})
+            .finally(() => {
+                schedulePoll();
+                window.setTimeout(() => {
+                    pollNotifications();
+                }, Math.min(pollInterval, 2500));
+            });
     });
 })();

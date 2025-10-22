@@ -98,15 +98,25 @@ class PushNotificationRestController
 
         $page = max(1, (int) $request->get_param('page'));
         $per_page = max(1, min(20, (int) $request->get_param('per_page')));
+        $since_id = max(0, (int) $request->get_param('since'));
 
-        $query_per_page = min(50, $per_page + 1);
-        $items = $this->repository->list($user_id, $page, $query_per_page);
-        $has_more = false;
-        if (count($items) > $per_page) {
-            $has_more = true;
-            $items = array_slice($items, 0, $per_page);
+        \nocache_headers();
+
+        if ($since_id > 0) {
+            $items = $this->repository->list_after($user_id, $since_id, $per_page);
+            $has_more = false;
+        } else {
+            $query_per_page = min(50, $per_page + 1);
+            $items = $this->repository->list($user_id, $page, $query_per_page);
+            $has_more = false;
+            if (count($items) > $per_page) {
+                $has_more = true;
+                $items = array_slice($items, 0, $per_page);
+            }
         }
+
         $count = $this->repository->count_unread($user_id);
+        $latest_id = $this->repository->latest_id($user_id);
 
         return new WP_REST_Response([
             'data' => array_map([$this, 'transform_notification'], $items),
@@ -115,6 +125,8 @@ class PushNotificationRestController
                 'per_page'  => $per_page,
                 'unread'    => $count,
                 'has_more'  => $has_more,
+                'latest_id' => $latest_id,
+                'since'     => $since_id,
             ],
         ]);
     }
