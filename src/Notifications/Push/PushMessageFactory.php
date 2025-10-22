@@ -15,6 +15,10 @@ class PushMessageFactory
     public function build_from_activity(string $event_type, array $activity_record): ?array
     {
         switch ($event_type) {
+            case 'auth.login_success':
+                return $this->build_login_success($activity_record);
+            case 'auth.logout':
+                return $this->build_logout($activity_record);
             case 'user.verification_verified':
                 return $this->build_user_verified($activity_record);
             case 'guarantee.created':
@@ -26,6 +30,56 @@ class PushMessageFactory
             default:
                 return null;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    private function build_login_success(array $record): array
+    {
+        $context = $this->decode_context($record['context'] ?? '');
+        $actor_name = isset($record['actor_name']) ? sanitize_text_field((string) $record['actor_name']) : '';
+        $username = isset($context['username']) ? sanitize_text_field((string) $context['username']) : '';
+        $actor_email = isset($record['actor_email']) ? sanitize_email((string) $record['actor_email']) : '';
+        $actor_label = $actor_name !== '' ? $actor_name : ($actor_email !== '' ? $actor_email : $username);
+        $actor_id = isset($record['actor_id']) ? (int) $record['actor_id'] : 0;
+
+        $link = $actor_id > 0
+            ? admin_url('user-edit.php?user_id=' . $actor_id)
+            : admin_url('users.php');
+
+        return [
+            'title' => __('Inicio de sesión registrado', 'garantias-online-360vo'),
+            'body'  => $actor_label !== ''
+                ? sprintf(__('El usuario %s ha iniciado sesión.', 'garantias-online-360vo'), $actor_label)
+                : __('Se ha registrado un nuevo inicio de sesión.', 'garantias-online-360vo'),
+            'link'  => $link,
+            'icon'  => plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    private function build_logout(array $record): array
+    {
+        $actor_name = isset($record['actor_name']) ? sanitize_text_field((string) $record['actor_name']) : '';
+        $actor_email = isset($record['actor_email']) ? sanitize_email((string) $record['actor_email']) : '';
+        $actor_label = $actor_name !== '' ? $actor_name : $actor_email;
+        $actor_id = isset($record['actor_id']) ? (int) $record['actor_id'] : 0;
+
+        $link = $actor_id > 0
+            ? admin_url('user-edit.php?user_id=' . $actor_id)
+            : admin_url('users.php');
+
+        return [
+            'title' => __('Sesión cerrada', 'garantias-online-360vo'),
+            'body'  => $actor_label !== ''
+                ? sprintf(__('El usuario %s ha cerrado la sesión.', 'garantias-online-360vo'), $actor_label)
+                : __('Se ha cerrado una sesión de usuario.', 'garantias-online-360vo'),
+            'link'  => $link,
+            'icon'  => plugins_url('assets/img/notifications/user-verified.svg', GARANTIAS360VO__FILE__),
+        ];
     }
 
     /**

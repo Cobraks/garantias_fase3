@@ -153,6 +153,8 @@ class PushNotificationService
     private function is_relevant_event(string $event_type): bool
     {
         return in_array($event_type, [
+            'auth.login_success',
+            'auth.logout',
             'user.verification_verified',
             'guarantee.created',
             'payment.reported',
