@@ -180,7 +180,7 @@ class PushNotificationService
             'auth.login_success',
             'auth.logout',
             'user.verification_verified',
-            'guarantee.created',
+            'guarantee.contracted',
             'payment.reported',
             'sepa.signed_uploaded',
         ], true);

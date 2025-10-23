@@ -26,7 +26,8 @@ class PushMessageFactory
             case 'user.verification_verified':
                 return $this->build_user_verified($activity_record);
             case 'guarantee.created':
-                return $this->build_guarantee_created($activity_record);
+            case 'guarantee.contracted':
+                return $this->build_guarantee_contracted($activity_record);
             case 'payment.reported':
                 return $this->build_transfer_reported($activity_record);
             case 'sepa.signed_uploaded':
@@ -128,7 +129,7 @@ class PushMessageFactory
     /**
      * @param array<string, mixed> $record
      */
-    private function build_guarantee_created(array $record): array
+    private function build_guarantee_contracted(array $record): array
     {
         $context = $this->decode_context($record['context'] ?? '');
         $guarantee_id = isset($record['guarantee_id']) ? (int) $record['guarantee_id'] : 0;
@@ -159,11 +160,17 @@ class PushMessageFactory
             ? $plan_clean
             : __('Sin identificar', 'garantias-online-360vo');
 
-        $body = esc_html(sprintf(
-            __('%1$s ha contratado una Cobertura %2$s', 'garantias-online-360vo'),
-            $company_display,
+        $body_suffix = sprintf(
+            /* translators: %s: coverage name */
+            __('ha contratado una Cobertura %s', 'garantias-online-360vo'),
             $plan_display
-        ));
+        );
+
+        $body = sprintf(
+            '<strong>%1$s</strong> %2$s',
+            esc_html($company_display),
+            esc_html($body_suffix)
+        );
 
         $link = $this->build_guarantee_link($guarantee_id, $context);
 
@@ -357,25 +364,39 @@ class PushMessageFactory
 
     private function resolve_status_from_context(array $context, int $guarantee_id): string
     {
+        $payment_method = isset($context['payment_method'])
+            ? sanitize_key((string) $context['payment_method'])
+            : '';
+
+        $status_slug = '';
+        if (! empty($context['current_state'])) {
+            $status_slug = sanitize_key((string) $context['current_state']);
+        }
+
+        $status_label = '';
         if (! empty($context['current_state_label'])) {
-            return wp_strip_all_tags((string) $context['current_state_label']);
+            $status_label = wp_strip_all_tags((string) $context['current_state_label']);
         }
 
-        $status = isset($context['current_state']) ? sanitize_key((string) $context['current_state']) : '';
-        $label = $this->status_label($status);
-        if ($label !== '') {
-            return $label;
+        if ($status_label === '' && $status_slug !== '') {
+            $status_label = $this->status_label($status_slug);
         }
 
-        if ($guarantee_id > 0) {
+        if ($status_label === '' && $guarantee_id > 0) {
             $stored = (string) get_post_meta($guarantee_id, 'estado_garantia_estado_contratacion', true);
-            $label = $this->status_label($stored);
-            if ($label !== '') {
-                return $label;
+            if ($stored !== '') {
+                $status_slug = sanitize_key($stored);
+                $status_label = $this->status_label($status_slug);
             }
         }
 
-        return '';
+        if ($payment_method !== '' && strpos($payment_method, 'domiciliacion') !== false) {
+            if ($status_slug === '' || in_array($status_slug, ['pendiente_pago', 'pending_payment', 'pending_cobro', 'pendiente_cobro', 'activada', 'publish'], true)) {
+                $status_label = __('Pend. Domiciliación', 'garantias-online-360vo');
+            }
+        }
+
+        return $status_label;
     }
 
     /**
