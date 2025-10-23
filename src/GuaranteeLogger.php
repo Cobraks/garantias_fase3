@@ -188,6 +188,7 @@ class GuaranteeLogger
             case 'contract_notice_dispatched':
             case 'contracted':
                 $context = array_merge($context, self::parse_contract_details($details));
+                $context = self::enrich_contract_context($context, $guarantee_id);
                 break;
             case 'email_sent':
             case 'email_failed':
@@ -241,10 +242,11 @@ class GuaranteeLogger
         $channel_value = '';
         $channel_label = '';
         if (is_array($channel_meta)) {
-            $channel_value = sanitize_key($channel_meta['value'] ?? '');
+            $raw_value = $channel_meta['value'] ?? ($channel_meta['label'] ?? '');
+            $channel_value = self::normalize_channel_slug($raw_value);
             $channel_label = (string) ($channel_meta['label'] ?? '');
         } elseif (is_string($channel_meta) && $channel_meta !== '') {
-            $channel_value = sanitize_key($channel_meta);
+            $channel_value = self::normalize_channel_slug($channel_meta);
         }
 
         if ($channel_label === '' && $channel_value !== '') {
@@ -253,7 +255,8 @@ class GuaranteeLogger
 
         $vendor_id = 0;
         if ($channel_value === 'profesional') {
-            $vendor_id = (int) get_post_meta($guarantee_id, 'garantia_contratada_concesionario_empresa_profesional', true);
+            $vendor_meta = get_post_meta($guarantee_id, 'garantia_contratada_concesionario_empresa_profesional', true);
+            $vendor_id = self::normalize_vendor_meta($vendor_meta);
         } elseif ($channel_value === 'gestoria') {
             $gestoria = get_post_meta($guarantee_id, 'garantia_contratada_gestoria', true);
             if (is_array($gestoria)) {
@@ -281,6 +284,50 @@ class GuaranteeLogger
             'vendor_name'   => $vendor_name,
             'vendor_person_name' => $vendor_person,
         ];
+    }
+
+    private static function normalize_channel_slug($value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        $value = sanitize_key((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (strpos($value, 'go_') === 0) {
+            $value = substr($value, 3);
+        }
+
+        return $value;
+    }
+
+    private static function normalize_vendor_meta($raw): int
+    {
+        if (is_array($raw)) {
+            if (isset($raw['ID'])) {
+                return (int) $raw['ID'];
+            }
+            if (isset($raw['id'])) {
+                return (int) $raw['id'];
+            }
+            if (isset($raw['value'])) {
+                return (int) $raw['value'];
+            }
+        }
+
+        if (is_numeric($raw)) {
+            return (int) $raw;
+        }
+
+        $raw_string = is_string($raw) ? trim($raw) : '';
+        if ($raw_string !== '' && ctype_digit($raw_string)) {
+            return (int) $raw_string;
+        }
+
+        return 0;
     }
 
     /**
@@ -331,6 +378,12 @@ class GuaranteeLogger
             if (! empty($decoded['initiator'])) {
                 $context['initiator'] = (int) $decoded['initiator'];
             }
+            if (! empty($decoded['payment_method'])) {
+                $method = sanitize_key((string) $decoded['payment_method']);
+                if ($method !== '') {
+                    $context['payment_method'] = $method;
+                }
+            }
             return $context;
         }
 
@@ -338,6 +391,81 @@ class GuaranteeLogger
         if ($status !== '') {
             $context['current_state'] = $status;
             $context['current_state_label'] = self::status_label($status);
+        }
+
+        return $context;
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     * @return array<string, mixed>
+     */
+    private static function enrich_contract_context(array $context, int $guarantee_id): array
+    {
+        if ($guarantee_id <= 0) {
+            return $context;
+        }
+
+        $plan_id = isset($context['plan_id']) ? (int) $context['plan_id'] : 0;
+        if ($plan_id <= 0) {
+            $plan_meta = get_post_meta($guarantee_id, 'garantia_contratada_garantia', true);
+            if (is_array($plan_meta)) {
+                if (isset($plan_meta['ID'])) {
+                    $plan_id = (int) $plan_meta['ID'];
+                } elseif (isset($plan_meta['id'])) {
+                    $plan_id = (int) $plan_meta['id'];
+                } elseif (isset($plan_meta['value'])) {
+                    $plan_id = (int) $plan_meta['value'];
+                }
+            } else {
+                $plan_id = (int) $plan_meta;
+            }
+        }
+
+        if ($plan_id > 0) {
+            $context['plan_id'] = $plan_id;
+            if (empty($context['plan_label'])) {
+                $label = '';
+                if (function_exists('get_field')) {
+                    $custom_label = get_field('detalles_modalidad_nombre_mostrar', $plan_id);
+                    if (is_string($custom_label) && $custom_label !== '') {
+                        $label = $custom_label;
+                    }
+                }
+                if ($label === '') {
+                    $title = get_the_title($plan_id);
+                    if (is_string($title) && $title !== '') {
+                        $label = $title;
+                    }
+                }
+                if ($label !== '') {
+                    $context['plan_label'] = wp_strip_all_tags($label);
+                }
+            }
+        }
+
+        if (empty($context['payment_method'])) {
+            $payment_meta = get_post_meta($guarantee_id, 'garantia_contratada_metodo_pago', true);
+            if (is_array($payment_meta)) {
+                $method = sanitize_key((string) ($payment_meta['value'] ?? ''));
+            } else {
+                $method = sanitize_key((string) $payment_meta);
+            }
+            if ($method !== '') {
+                $context['payment_method'] = $method;
+            }
+        }
+
+        if (empty($context['current_state'])) {
+            $state = (string) get_post_meta($guarantee_id, 'estado_garantia_estado_contratacion', true);
+            if ($state !== '') {
+                $context['current_state'] = sanitize_key($state);
+                if (empty($context['current_state_label'])) {
+                    $context['current_state_label'] = self::status_label($context['current_state']);
+                }
+            }
+        } elseif (empty($context['current_state_label'])) {
+            $context['current_state_label'] = self::status_label((string) $context['current_state']);
         }
 
         return $context;
