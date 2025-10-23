@@ -144,11 +144,11 @@ class PushMessageFactory
         $plan_clean   = $plan_label !== '' ? esc_html($plan_label) : '';
 
         if ($company_label !== '' && $plan_clean !== '') {
-            $body = sprintf(__('%1$s ha contratado una nueva garantía %2$s.', 'garantias-online-360vo'), $company_label, $plan_clean);
+            $body = sprintf(__('%1$s ha contratado una Cobertura %2$s.', 'garantias-online-360vo'), $company_label, $plan_clean);
         } elseif ($company_label !== '') {
-            $body = sprintf(__('%s ha contratado una nueva garantía.', 'garantias-online-360vo'), $company_label);
+            $body = sprintf(__('%s ha contratado una nueva cobertura.', 'garantias-online-360vo'), $company_label);
         } elseif ($plan_clean !== '') {
-            $body = sprintf(__('Se ha contratado una nueva garantía %s.', 'garantias-online-360vo'), $plan_clean);
+            $body = sprintf(__('Se ha contratado una Cobertura %s.', 'garantias-online-360vo'), $plan_clean);
         } else {
             $body = __('Se ha creado una nueva garantía.', 'garantias-online-360vo');
         }

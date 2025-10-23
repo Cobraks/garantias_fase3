@@ -305,10 +305,10 @@ $home_destination = $is_admin_user
                             <li
                                 class="menu-item menu-item--notifications"
                                 data-admin-notifications
-                                data-icon-check="<?php echo esc_attr(base64_encode(Svg::icon('check', 'notifications-panel__action-icon'))); ?>"
-                                data-icon-trash="<?php echo esc_attr(base64_encode(Svg::icon('trash', 'notifications-panel__action-icon'))); ?>"
+                                data-icon-mark="<?php echo esc_attr(base64_encode(Svg::icon('visibility_off', 'notifications-panel__action-icon'))); ?>"
+                                data-icon-delete="<?php echo esc_attr(base64_encode(Svg::icon('trash', 'notifications-panel__action-icon'))); ?>"
                                 data-icon-close="<?php echo esc_attr(base64_encode(Svg::icon('close', 'notifications-modal__close-icon'))); ?>"
-                                data-mark-label="<?php echo esc_attr__('Marcar como leído', 'garantias-online-360vo'); ?>"
+                                data-mark-label="<?php echo esc_attr__('Sin leer', 'garantias-online-360vo'); ?>"
                                 data-marked-label="<?php echo esc_attr__('Leída', 'garantias-online-360vo'); ?>"
                                 data-delete-label="<?php echo esc_attr__('Eliminar', 'garantias-online-360vo'); ?>"
                                 data-load-more-label="<?php echo esc_attr__('Cargar más', 'garantias-online-360vo'); ?>"

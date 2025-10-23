@@ -106,10 +106,10 @@
             return;
         }
 
-        const checkIcon = decodeIcon(container.dataset.iconCheck || '');
-        const trashIcon = decodeIcon(container.dataset.iconTrash || '');
+        const markIcon = decodeIcon(container.dataset.iconMark || '');
+        const deleteIcon = decodeIcon(container.dataset.iconDelete || '');
         const closeIcon = decodeIcon(container.dataset.iconClose || '');
-        const markLabel = container.dataset.markLabel || 'Marcar como leído';
+        const markLabel = container.dataset.markLabel || 'Sin leer';
         const markedLabel = container.dataset.markedLabel || 'Leída';
         const deleteLabel = container.dataset.deleteLabel || 'Eliminar';
         const loadMoreLabel = container.dataset.loadMoreLabel || 'Cargar más';
@@ -402,7 +402,8 @@
             }
             li.appendChild(iconWrapper);
 
-            const header = createElement('div', 'notifications-panel__body');
+            const header = createElement('div', 'notifications-panel__header-block');
+            header.classList.add('notifications-panel__body');
             const titleRow = createElement('div', 'notifications-panel__title-row');
             titleRow.appendChild(createElement('p', 'notifications-panel__title-text', item.title));
             if (item.badge && !item.is_read) {
@@ -447,7 +448,7 @@
             }
 
             statusEntries.forEach((entry) => {
-                const line = createElement('p', 'notifications-panel__status');
+                const line = createElement('p', 'notifications-panel__status-line');
                 if (entry.label) {
                     const label = createElement('span', 'notifications-panel__status-label', `${entry.label}:`);
                     line.appendChild(label);
@@ -471,8 +472,8 @@
             deleteButton.type = 'button';
             deleteButton.dataset.action = 'delete';
             deleteButton.setAttribute('aria-label', deleteLabel);
-            if (trashIcon) {
-                deleteButton.insertAdjacentHTML('afterbegin', trashIcon);
+            if (deleteIcon) {
+                deleteButton.insertAdjacentHTML('afterbegin', deleteIcon);
             }
             deleteButton.appendChild(createElement('span', 'notifications-panel__action-text', deleteLabel));
             quickActions.appendChild(deleteButton);
@@ -482,8 +483,8 @@
             markButton.dataset.action = 'mark';
             markButton.dataset.labelRead = markedLabel;
             markButton.dataset.labelUnread = markLabel;
-            if (checkIcon) {
-                markButton.insertAdjacentHTML('afterbegin', checkIcon);
+            if (markIcon) {
+                markButton.insertAdjacentHTML('afterbegin', markIcon);
             }
             const markText = createElement('span', 'notifications-panel__action-text', item.is_read ? markedLabel : markLabel);
             markButton.appendChild(markText);
