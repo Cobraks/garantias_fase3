@@ -154,6 +154,31 @@
         };
         const sepaSignedFallbackName = strings.sepaSignedFilename || 'Mandato SEPA firmado';
         const sepaDownloadContainer = document.querySelector('[data-sepa-download]');
+        const sepaStepDefaults = (() => {
+            const resolveNumber = (element, fallback) => {
+                if (!element) {
+                    return fallback;
+                }
+                const value = element.textContent ? element.textContent.trim() : '';
+                return value !== '' ? value : fallback;
+            };
+
+            const downloadStep = document.querySelector('[data-sepa-step-download]');
+            const downloadNumberElement = downloadStep
+                ? downloadStep.querySelector('[data-sepa-step-number]')
+                : null;
+            const uploadAction = document.querySelector('[data-sepa-upload]');
+            const uploadStep = document.querySelector('[data-sepa-step-upload]');
+            const uploadNumberElement = uploadStep
+                ? uploadStep.querySelector('[data-sepa-step-number]')
+                : null;
+
+            return {
+                downloadNumber: resolveNumber(downloadNumberElement, '1.'),
+                uploadNumber: resolveNumber(uploadNumberElement, '2.'),
+                uploadDisplay: uploadAction ? uploadAction.style.display : '',
+            };
+        })();
         let sepaPendingLink = document.querySelector('[data-sepa-pending-link]');
         let sepaPendingLabel = sepaPendingLink
             ? sepaPendingLink.querySelector('[data-sepa-pending-label]')
@@ -862,6 +887,21 @@
                 const requestedFlag = typeof sepaData.requested !== 'undefined'
                     ? Boolean(sepaData.requested)
                     : true;
+                const pendingDocument = sepaData.documents && sepaData.documents.pending
+                    ? sepaData.documents.pending
+                    : null;
+                const hasPendingDocument = Boolean(
+                    pendingDocument
+                    && (pendingDocument.url || pendingDocument.hash || pendingDocument.filename),
+                );
+                const signedDocument = sepaData.documents && sepaData.documents.signed
+                    ? sepaData.documents.signed
+                    : null;
+                const hasSignedDocument = Boolean(
+                    signedDocument
+                    && (signedDocument.url || signedDocument.hash || signedDocument.filename),
+                );
+                const shouldShowPending = hasPendingDocument && !awaitingValidation && !sepaIsDisabled;
                 const downloadAction = document.querySelector('[data-sepa-download]');
                 if (downloadAction) {
                     let shouldShowDownload = true;
@@ -876,13 +916,14 @@
 
                 const downloadStep = document.querySelector('[data-sepa-step-download]');
                 if (downloadStep) {
-                    const downloadStepNumber = downloadStep.querySelector('[data-sepa-step-number]');
+                    let downloadStepNumber = downloadStep.querySelector('[data-sepa-step-number]');
                     const downloadStepLabel = downloadStep.querySelector('[data-sepa-step-label]');
                     if (awaitingValidation) {
                         const shouldShowStep = hasSignedDocument;
                         downloadStep.hidden = !shouldShowStep;
                         downloadStep.setAttribute('aria-hidden', shouldShowStep ? 'false' : 'true');
                         if (downloadStepNumber) {
+                            downloadStepNumber.textContent = '';
                             downloadStepNumber.hidden = true;
                             downloadStepNumber.setAttribute('aria-hidden', 'true');
                         }
@@ -899,10 +940,15 @@
                         const hideDownload = (!requestedFlag) && !hasPendingDocument;
                         downloadStep.hidden = hideDownload;
                         downloadStep.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
-                        if (downloadStepNumber) {
-                            downloadStepNumber.hidden = false;
-                            downloadStepNumber.setAttribute('aria-hidden', 'false');
+                        if (!downloadStepNumber) {
+                            downloadStepNumber = document.createElement('span');
+                            downloadStepNumber.setAttribute('data-sepa-step-number', '');
+                            downloadStep.insertBefore(downloadStepNumber, downloadStep.firstChild || null);
                         }
+                        const defaultNumber = sepaStepDefaults.downloadNumber || '1.';
+                        downloadStepNumber.textContent = defaultNumber;
+                        downloadStepNumber.hidden = false;
+                        downloadStepNumber.setAttribute('aria-hidden', 'false');
                         const textValue = sepaText.downloadPrompt || 'Descarga el documento';
                         if (downloadStepLabel) {
                             downloadStepLabel.textContent = textValue;
@@ -949,21 +995,27 @@
                     const shouldShowUploadAction = !awaitingValidation && !needsActivation && !sepaIsDisabled;
                     uploadAction.hidden = !shouldShowUploadAction;
                     uploadAction.setAttribute('aria-hidden', shouldShowUploadAction ? 'false' : 'true');
+                    uploadAction.style.display = shouldShowUploadAction
+                        ? (sepaStepDefaults.uploadDisplay || '')
+                        : 'none';
 
                     const uploadWrapper = uploadAction.querySelector('.account-sepa-request__upload');
                     if (uploadWrapper) {
                         if (shouldShowUploadAction) {
                             uploadWrapper.classList.remove('account-sepa-request__upload--locked');
                             uploadWrapper.removeAttribute('data-locked');
+                            uploadWrapper.style.display = '';
                         } else {
                             uploadWrapper.classList.add('account-sepa-request__upload--locked');
                             uploadWrapper.setAttribute('data-locked', 'true');
+                            uploadWrapper.style.display = 'none';
                         }
                     }
 
                     const uploadContainer = uploadAction.querySelector('[data-document-upload]');
                     if (uploadContainer) {
                         uploadContainer.dataset.locked = shouldShowUploadAction ? 'false' : 'true';
+                        uploadContainer.style.display = shouldShowUploadAction ? '' : 'none';
                     }
 
                     const fileLabel = uploadAction.querySelector('[data-document-label]');
@@ -1003,21 +1055,6 @@
                     }
                 }
 
-                const pendingDocument = sepaData.documents && sepaData.documents.pending
-                    ? sepaData.documents.pending
-                    : null;
-                const hasPendingDocument = Boolean(
-                    pendingDocument
-                    && (pendingDocument.url || pendingDocument.hash || pendingDocument.filename),
-                );
-                const signedDocument = sepaData.documents && sepaData.documents.signed
-                    ? sepaData.documents.signed
-                    : null;
-                const hasSignedDocument = Boolean(
-                    signedDocument
-                    && (signedDocument.url || signedDocument.hash || signedDocument.filename),
-                );
-                const shouldShowPending = hasPendingDocument && !awaitingValidation && !sepaIsDisabled;
                 if (shouldShowPending) {
                     const pendingLinkElement = ensurePendingLink(true);
                     if (pendingLinkElement instanceof HTMLAnchorElement) {

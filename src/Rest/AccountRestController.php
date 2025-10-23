@@ -958,6 +958,176 @@ class AccountRestController
         }
     }
 
+    public static function notify_sepa_activation(int $user_id, array $sepa_details = []): void
+    {
+        $signed_meta = SepaMandateService::get_document_meta($user_id, SepaMandateService::TYPE_SIGNED);
+
+        self::notify_user_sepa_activated($user_id, $sepa_details, $signed_meta);
+        self::notify_admin_sepa_activated($user_id, $sepa_details, $signed_meta);
+    }
+
+    private static function notify_user_sepa_activated(int $user_id, array $sepa_details, array $signed_meta): void
+    {
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return;
+        }
+
+        $profile = UserProfileResolver::build_from_user($user);
+        $personal_name = isset($profile['personal_full_name']) && $profile['personal_full_name'] !== ''
+            ? (string) $profile['personal_full_name']
+            : ($user->display_name !== '' ? $user->display_name : __('Profesional', 'garantias-online-360vo'));
+        $company_name = '';
+        if (isset($profile['company']) && is_array($profile['company'])) {
+            $company = $profile['company'];
+            $company_name = (string) ($company['name'] ?? ($company['trade_name'] ?? ($company['legal_name'] ?? '')));
+        }
+
+        $reference = isset($signed_meta['reference']) ? (string) $signed_meta['reference'] : '';
+        $filename = isset($signed_meta['filename']) ? sanitize_file_name((string) $signed_meta['filename']) : '';
+        if ($filename === '') {
+            $filename = 'mandato-sepa-firmado.pdf';
+        }
+
+        $status_label = '';
+        if (is_array($sepa_details) && ! empty($sepa_details['label'])) {
+            $status_label = trim((string) $sepa_details['label']);
+        }
+
+        $activated_at = current_time('timestamp');
+
+        $renderer = new TemplateRenderer();
+        $context = [
+            'user' => [
+                'name'    => $personal_name,
+                'company' => $company_name,
+            ],
+            'document' => [
+                'filename'  => $filename,
+                'reference' => $reference,
+            ],
+            'status' => [
+                'label' => $status_label,
+            ],
+            'activated_at' => $activated_at,
+            'account_url'  => home_url('/garantias-online/'),
+            'support_url'  => home_url('/garantias-online/soporte/'),
+            'signature'    => EmailSettings::getSignature(),
+        ];
+
+        $body = $renderer->render('sepa-activated', $context);
+        if ($body === '') {
+            return;
+        }
+
+        $subject = __('Domiciliación bancaria activada', 'garantias-online-360vo');
+        $headers = [];
+        $from_header = EmailSettings::buildFromHeader('professional');
+        if ($from_header !== '') {
+            $headers[] = $from_header;
+        }
+
+        $metadata = [];
+        $reply_to = EmailSettings::getReplyTo();
+        if ($reply_to !== '') {
+            $metadata['reply_to'] = $reply_to;
+        }
+
+        $mailer = new Mailer();
+        $message = new EmailMessage([
+            $user->user_email,
+        ], $subject, $body, $headers, [], $metadata);
+        $mailer->send($message);
+    }
+
+    private static function notify_admin_sepa_activated(int $user_id, array $sepa_details, array $signed_meta): void
+    {
+        $delivery = self::resolve_admin_recipients();
+        if (empty($delivery['to']) && empty($delivery['bcc'])) {
+            return;
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return;
+        }
+
+        $profile = UserProfileResolver::build_from_user($user);
+        $company_name = $profile['company']['name'] ?? ($profile['company']['trade_name'] ?? '');
+        if ($company_name === '' && isset($profile['company']['legal_name'])) {
+            $company_name = $profile['company']['legal_name'];
+        }
+        $personal_name = $profile['personal_full_name'] ?? $profile['personal_name'] ?? $user->display_name;
+        $profile_url = self::build_user_profile_url($user_id);
+        $email = $profile['email'] ?? $user->user_email;
+        $phone = get_user_meta($user_id, 'datos_usuario_telefono', true);
+        if (! is_string($phone)) {
+            $phone = '';
+        }
+
+        $reference = isset($signed_meta['reference']) ? (string) $signed_meta['reference'] : '';
+        $filename = isset($signed_meta['filename']) ? sanitize_file_name((string) $signed_meta['filename']) : '';
+        if ($filename === '') {
+            $filename = 'mandato-sepa-firmado.pdf';
+        }
+
+        $status_label = '';
+        if (is_array($sepa_details) && ! empty($sepa_details['label'])) {
+            $status_label = trim((string) $sepa_details['label']);
+        }
+
+        $renderer = new TemplateRenderer();
+        $context = [
+            'user' => [
+                'name'        => $personal_name,
+                'email'       => $email,
+                'phone'       => $phone,
+                'company'     => $company_name,
+                'profile_url' => $profile_url,
+            ],
+            'document' => [
+                'filename'  => $filename,
+                'reference' => $reference,
+            ],
+            'status'    => [
+                'label' => $status_label,
+            ],
+            'signature' => EmailSettings::getSignature(),
+        ];
+
+        $body = $renderer->render('sepa-activated-admin', $context);
+        if ($body === '') {
+            return;
+        }
+
+        $subject_name = $company_name !== '' ? $company_name : $personal_name;
+        $subject = sprintf(
+            __('Domiciliación bancaria activada: %s', 'garantias-online-360vo'),
+            $subject_name !== '' ? $subject_name : __('Profesional', 'garantias-online-360vo')
+        );
+
+        $headers = [];
+        $from_header = EmailSettings::buildFromHeader('admin');
+        if ($from_header !== '') {
+            $headers[] = $from_header;
+        }
+
+        $mailer = new Mailer();
+        $message = new EmailMessage(
+            $delivery['to'] ?: [$delivery['primary']],
+            $subject,
+            $body,
+            $headers,
+            [],
+            [
+                'bcc'      => $delivery['bcc'],
+                'reply_to' => $delivery['reply_to'],
+            ]
+        );
+
+        $mailer->send($message);
+    }
+
     /**
      * @return array{primary:string,to:array<int,string>,bcc:array<int,string>,reply_to:string}
      */
