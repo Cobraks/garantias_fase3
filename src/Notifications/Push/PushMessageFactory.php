@@ -139,8 +139,9 @@ class PushMessageFactory
 
         if ($vendor_id <= 0 && $guarantee_id > 0) {
             $stored_vendor = get_post_meta($guarantee_id, 'garantia_contratada_concesionario_empresa_profesional', true);
-            if (is_numeric($stored_vendor)) {
-                $vendor_id = (int) $stored_vendor;
+            $normalized_vendor = $this->normalize_vendor_meta($stored_vendor);
+            if ($normalized_vendor > 0) {
+                $vendor_id = $normalized_vendor;
             }
         }
 
@@ -156,7 +157,7 @@ class PushMessageFactory
 
         $plan_display = $plan_clean !== ''
             ? $plan_clean
-            : __('sin identificar', 'garantias-online-360vo');
+            : __('Sin identificar', 'garantias-online-360vo');
 
         $body = esc_html(sprintf(
             __('%1$s ha contratado una Cobertura %2$s', 'garantias-online-360vo'),
@@ -321,7 +322,7 @@ class PushMessageFactory
     {
         $candidates = [];
 
-        foreach (['plan_label', 'plan_name', 'plan_title', 'plan_display_name'] as $key) {
+        foreach (['plan_label', 'plan_name', 'plan_title', 'plan_display_name', 'plan', 'modalidad_label', 'coverage_label'] as $key) {
             if (! empty($context[$key]) && is_string($context[$key])) {
                 $candidates[] = $this->sanitize_plain_text($context[$key]);
             }
@@ -337,7 +338,10 @@ class PushMessageFactory
             return '';
         }
 
-        $plan_id = (int) get_post_meta($guarantee_id, 'garantia_contratada_garantia', true);
+        $plan_id = (int) ($context['plan_id'] ?? 0);
+        if ($plan_id <= 0) {
+            $plan_id = (int) get_post_meta($guarantee_id, 'garantia_contratada_garantia', true);
+        }
         if ($plan_id <= 0) {
             return '';
         }
@@ -408,6 +412,10 @@ class PushMessageFactory
     {
         $company = '';
 
+        if ($vendor_id <= 0 && ! empty($context['vendor_id'])) {
+            $vendor_id = (int) $context['vendor_id'];
+        }
+
         if ($vendor_id > 0) {
             $labels = UserProfileResolver::get_vendor_labels($vendor_id);
             if (! empty($labels['company']['trade_name'])) {
@@ -444,6 +452,32 @@ class PushMessageFactory
         }
 
         return $company;
+    }
+
+    private function normalize_vendor_meta($raw): int
+    {
+        if (is_array($raw)) {
+            if (isset($raw['ID'])) {
+                return (int) $raw['ID'];
+            }
+            if (isset($raw['id'])) {
+                return (int) $raw['id'];
+            }
+            if (isset($raw['value'])) {
+                return (int) $raw['value'];
+            }
+        }
+
+        if (is_numeric($raw)) {
+            return (int) $raw;
+        }
+
+        $raw_string = is_string($raw) ? trim($raw) : '';
+        if ($raw_string !== '' && ctype_digit($raw_string)) {
+            return (int) $raw_string;
+        }
+
+        return 0;
     }
 
     private function sanitize_plain_text($value): string

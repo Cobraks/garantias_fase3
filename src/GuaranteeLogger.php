@@ -241,10 +241,11 @@ class GuaranteeLogger
         $channel_value = '';
         $channel_label = '';
         if (is_array($channel_meta)) {
-            $channel_value = sanitize_key($channel_meta['value'] ?? '');
+            $raw_value = $channel_meta['value'] ?? ($channel_meta['label'] ?? '');
+            $channel_value = self::normalize_channel_slug($raw_value);
             $channel_label = (string) ($channel_meta['label'] ?? '');
         } elseif (is_string($channel_meta) && $channel_meta !== '') {
-            $channel_value = sanitize_key($channel_meta);
+            $channel_value = self::normalize_channel_slug($channel_meta);
         }
 
         if ($channel_label === '' && $channel_value !== '') {
@@ -253,7 +254,8 @@ class GuaranteeLogger
 
         $vendor_id = 0;
         if ($channel_value === 'profesional') {
-            $vendor_id = (int) get_post_meta($guarantee_id, 'garantia_contratada_concesionario_empresa_profesional', true);
+            $vendor_meta = get_post_meta($guarantee_id, 'garantia_contratada_concesionario_empresa_profesional', true);
+            $vendor_id = self::normalize_vendor_meta($vendor_meta);
         } elseif ($channel_value === 'gestoria') {
             $gestoria = get_post_meta($guarantee_id, 'garantia_contratada_gestoria', true);
             if (is_array($gestoria)) {
@@ -281,6 +283,50 @@ class GuaranteeLogger
             'vendor_name'   => $vendor_name,
             'vendor_person_name' => $vendor_person,
         ];
+    }
+
+    private static function normalize_channel_slug($value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        $value = sanitize_key((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (strpos($value, 'go_') === 0) {
+            $value = substr($value, 3);
+        }
+
+        return $value;
+    }
+
+    private static function normalize_vendor_meta($raw): int
+    {
+        if (is_array($raw)) {
+            if (isset($raw['ID'])) {
+                return (int) $raw['ID'];
+            }
+            if (isset($raw['id'])) {
+                return (int) $raw['id'];
+            }
+            if (isset($raw['value'])) {
+                return (int) $raw['value'];
+            }
+        }
+
+        if (is_numeric($raw)) {
+            return (int) $raw;
+        }
+
+        $raw_string = is_string($raw) ? trim($raw) : '';
+        if ($raw_string !== '' && ctype_digit($raw_string)) {
+            return (int) $raw_string;
+        }
+
+        return 0;
     }
 
     /**

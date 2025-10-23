@@ -23,6 +23,14 @@ class PushNotificationService
     /** @var PushDispatcher */
     private $dispatcher;
 
+    /**
+     * @var array<int, array{event:string,record:array}>
+     */
+    private $pending = [];
+
+    /** @var bool */
+    private $shutdown_registered = false;
+
     public static function init(): void
     {
         $service = new self(
@@ -86,25 +94,48 @@ class PushNotificationService
             return;
         }
 
-        $message = $this->message_factory->build_from_activity($event_type, $record);
-        if (! is_array($message)) {
+        $this->pending[] = [
+            'event'  => $event_type,
+            'record' => $record,
+        ];
+
+        if (! $this->shutdown_registered) {
+            $this->shutdown_registered = true;
+            add_action('shutdown', [$this, 'flush_pending']);
+        }
+    }
+
+    public function flush_pending(): void
+    {
+        if (empty($this->pending)) {
             return;
         }
 
         $admins = $this->get_target_admins();
         if (empty($admins)) {
+            $this->pending = [];
             return;
         }
 
-        foreach ($admins as $admin_id) {
-            $payload = $message;
-            $payload['user_id'] = $admin_id;
-            $notification_id = $this->notifications->create($admin_id, $payload);
+        foreach ($this->pending as $entry) {
+            $message = $this->message_factory->build_from_activity($entry['event'], $entry['record']);
+            if (! is_array($message)) {
+                continue;
+            }
 
-            if ($notification_id && $this->user_allows_push_notifications($admin_id)) {
-                $this->dispatcher->dispatch($admin_id, $payload);
+            foreach ($admins as $admin_id) {
+                $payload = $message;
+                $payload['user_id'] = $admin_id;
+                $notification_id = $this->notifications->create($admin_id, $payload);
+
+                if ($notification_id && $this->user_allows_push_notifications($admin_id)) {
+                    $this->dispatcher->dispatch($admin_id, $payload);
+                }
             }
         }
+
+        $this->pending = [];
+        $this->shutdown_registered = false;
     }
 
     /**
