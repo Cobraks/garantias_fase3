@@ -302,14 +302,28 @@ $home_destination = $is_admin_user
                             </a>
                         </li>
                         <?php if ($is_admin_user) : ?>
+                            <?php
+                            // Update the toast notification sound by adjusting the data attribute below once the dedicated audio is available.
+                            ?>
                             <li
                                 class="menu-item menu-item--notifications"
                                 data-admin-notifications
-                                data-icon-view="<?php echo esc_attr(Svg::icon('visibility', 'notifications-panel__action-icon')); ?>"
-                                data-icon-delete="<?php echo esc_attr(Svg::icon('trash', 'notifications-panel__action-icon')); ?>"
-                                data-mark-label="<?php echo esc_attr__('Marcar como leído', 'garantias-online-360vo'); ?>"
+                                data-icon-mark="<?php echo esc_attr(base64_encode(Svg::icon('visibility_off', 'notifications-panel__action-icon'))); ?>"
+                                data-icon-mark-read="<?php echo esc_attr(base64_encode(Svg::icon('visibility', 'notifications-panel__action-icon'))); ?>"
+                                data-icon-delete="<?php echo esc_attr(base64_encode(Svg::icon('delete', 'notifications-panel__action-icon'))); ?>"
+                                data-icon-close="<?php echo esc_attr(base64_encode(Svg::icon('close', 'notifications-modal__close-icon'))); ?>"
+                                data-mark-label="<?php echo esc_attr__('Sin leer', 'garantias-online-360vo'); ?>"
                                 data-marked-label="<?php echo esc_attr__('Leída', 'garantias-online-360vo'); ?>"
                                 data-delete-label="<?php echo esc_attr__('Eliminar', 'garantias-online-360vo'); ?>"
+                                data-load-more-label="<?php echo esc_attr__('Cargar más', 'garantias-online-360vo'); ?>"
+                                data-loading-label="<?php echo esc_attr__('Cargando…', 'garantias-online-360vo'); ?>"
+                                data-view-all-label="<?php echo esc_attr__('Ver todas las notificaciones', 'garantias-online-360vo'); ?>"
+                                data-toast-open-label="<?php echo esc_attr__('Ver ahora', 'garantias-online-360vo'); ?>"
+                                data-toast-dismiss-label="<?php echo esc_attr__('Descartar', 'garantias-online-360vo'); ?>"
+                                data-modal-placeholder="<?php echo esc_attr__('Muy pronto podrás gestionar todas tus notificaciones desde aquí.', 'garantias-online-360vo'); ?>"
+                                data-modal-close-label="<?php echo esc_attr__('Cerrar', 'garantias-online-360vo'); ?>"
+                                data-toast-sound="<?php echo esc_attr(plugins_url('assets/sounds/success.mp3', GARANTIAS360VO__FILE__)); ?>"
+                                data-browser-icon="<?php echo esc_attr(plugins_url('assets/images/logo.png', GARANTIAS360VO__FILE__)); ?>"
                             >
                                 <button
                                     type="button"
@@ -320,7 +334,7 @@ $home_destination = $is_admin_user
                                     data-notifications-toggle
                                 >
                                     <?php echo Svg::icon('notifications', 'top-bar__icon top-bar__icon--notifications'); ?>
-                                    <span class="top-bar__notifications-badge" data-notifications-badge hidden>0</span>
+                                    <span class="top-bar__notifications-badge" data-notifications-badge hidden></span>
                                     <span class="screen-reader-text"><?php esc_html_e('Abrir bandeja de notificaciones', 'garantias-online-360vo'); ?></span>
                                 </button>
                                 <div
@@ -332,7 +346,9 @@ $home_destination = $is_admin_user
                                     data-notifications-panel
                                 >
                                     <div class="notifications-panel__header">
-                                        <h4 class="notifications-panel__title"><?php esc_html_e('Notificaciones', 'garantias-online-360vo'); ?></h4>
+                                        <div class="notifications-panel__header-main">
+                                            <h4 class="notifications-panel__title"><?php esc_html_e('Notificaciones', 'garantias-online-360vo'); ?></h4>
+                                        </div>
                                         <button type="button" class="notifications-panel__mark" data-notifications-mark-all>
                                             <?php esc_html_e('Marcar todo como leído', 'garantias-online-360vo'); ?>
                                         </button>
@@ -342,17 +358,19 @@ $home_destination = $is_admin_user
                                             <?php esc_html_e('No tienes notificaciones nuevas.', 'garantias-online-360vo'); ?>
                                         </p>
                                         <ul class="notifications-panel__list" data-notifications-list></ul>
+                                        <button type="button" class="notifications-panel__load-more" data-notifications-load-more hidden>
+                                            <?php esc_html_e('Cargar más', 'garantias-online-360vo'); ?>
+                                        </button>
                                     </div>
                                     <div class="notifications-panel__footer">
-                                        <button type="button" class="notifications-panel__nav" data-notifications-prev disabled>
-                                            <?php esc_html_e('Anterior', 'garantias-online-360vo'); ?>
-                                        </button>
-                                        <span class="notifications-panel__page" data-notifications-page>1</span>
-                                        <button type="button" class="notifications-panel__nav" data-notifications-next disabled>
-                                            <?php esc_html_e('Siguiente', 'garantias-online-360vo'); ?>
-                                        </button>
+                                        <div class="notifications-panel__footer-controls">
+                                            <button type="button" class="notifications-panel__view-all" data-notifications-view-all>
+                                                <?php esc_html_e('Ver todas las notificaciones', 'garantias-online-360vo'); ?>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
+                                <div class="notifications-toast" data-notifications-toast hidden></div>
                             </li>
                         <?php endif; ?>
                     </ul>

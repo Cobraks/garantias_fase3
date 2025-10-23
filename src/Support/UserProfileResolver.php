@@ -156,6 +156,7 @@ class UserProfileResolver
             $company_group['nombre_comercial'] ?? '',
             $legacy_group['nombre_comercial'] ?? '',
             $legacy_group['nombre_empresa'] ?? '',
+            get_user_meta($user_id, 'datos_empresa_nombre_comercial', true),
             get_user_meta($user_id, 'datos_usuario_nombre_comercial', true),
             get_user_meta($user_id, 'datos_usuario_nombre_empresa', true),
         ]);
