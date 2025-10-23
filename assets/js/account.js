@@ -862,6 +862,21 @@
                 const requestedFlag = typeof sepaData.requested !== 'undefined'
                     ? Boolean(sepaData.requested)
                     : true;
+                const pendingDocument = sepaData.documents && sepaData.documents.pending
+                    ? sepaData.documents.pending
+                    : null;
+                const hasPendingDocument = Boolean(
+                    pendingDocument
+                    && (pendingDocument.url || pendingDocument.hash || pendingDocument.filename),
+                );
+                const signedDocument = sepaData.documents && sepaData.documents.signed
+                    ? sepaData.documents.signed
+                    : null;
+                const hasSignedDocument = Boolean(
+                    signedDocument
+                    && (signedDocument.url || signedDocument.hash || signedDocument.filename),
+                );
+                const shouldShowPending = hasPendingDocument && !awaitingValidation && !sepaIsDisabled;
                 const downloadAction = document.querySelector('[data-sepa-download]');
                 if (downloadAction) {
                     let shouldShowDownload = true;
@@ -1003,21 +1018,6 @@
                     }
                 }
 
-                const pendingDocument = sepaData.documents && sepaData.documents.pending
-                    ? sepaData.documents.pending
-                    : null;
-                const hasPendingDocument = Boolean(
-                    pendingDocument
-                    && (pendingDocument.url || pendingDocument.hash || pendingDocument.filename),
-                );
-                const signedDocument = sepaData.documents && sepaData.documents.signed
-                    ? sepaData.documents.signed
-                    : null;
-                const hasSignedDocument = Boolean(
-                    signedDocument
-                    && (signedDocument.url || signedDocument.hash || signedDocument.filename),
-                );
-                const shouldShowPending = hasPendingDocument && !awaitingValidation && !sepaIsDisabled;
                 if (shouldShowPending) {
                     const pendingLinkElement = ensurePendingLink(true);
                     if (pendingLinkElement instanceof HTMLAnchorElement) {
