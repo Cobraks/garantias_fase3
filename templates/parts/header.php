@@ -322,7 +322,7 @@ $home_destination = $is_admin_user
                                 data-toast-dismiss-label="<?php echo esc_attr__('Descartar', 'garantias-online-360vo'); ?>"
                                 data-modal-placeholder="<?php echo esc_attr__('Muy pronto podrás gestionar todas tus notificaciones desde aquí.', 'garantias-online-360vo'); ?>"
                                 data-modal-close-label="<?php echo esc_attr__('Cerrar', 'garantias-online-360vo'); ?>"
-                                data-toast-sound="<?php echo esc_attr(plugins_url('assets/sounds/success.mp3', GARANTIAS360VO__FILE__)); ?>"
+                                data-toast-sound="<?php echo esc_attr(plugins_url('assets/sounds/notify_toast.mp3', GARANTIAS360VO__FILE__)); ?>"
                                 data-browser-icon="<?php echo esc_attr(plugins_url('assets/images/logo.png', GARANTIAS360VO__FILE__)); ?>"
                             >
                                 <button
