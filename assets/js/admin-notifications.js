@@ -58,13 +58,19 @@
         });
     };
 
-    const createElement = (tag, className, text) => {
+    const createElement = (tag, className, content) => {
         const element = document.createElement(tag);
         if (className) {
             element.className = className;
         }
-        if (typeof text === 'string' && text !== '') {
-            element.textContent = text;
+        if (typeof content === 'string' && content !== '') {
+            element.textContent = content;
+        } else if (content && typeof content === 'object') {
+            if (typeof content.html === 'string' && content.html !== '') {
+                element.innerHTML = content.html;
+            } else if (typeof content.text === 'string' && content.text !== '') {
+                element.textContent = content.text;
+            }
         }
         return element;
     };
@@ -379,24 +385,6 @@
             return line;
         };
 
-        const renderAction = (action) => {
-            if (!action || !action.title) {
-                return null;
-            }
-
-            if (action.url) {
-                const link = createElement('a', 'notifications-panel__cta', action.title);
-                link.href = action.url;
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                return link;
-            }
-
-            const button = createElement('button', 'notifications-panel__cta', action.title);
-            button.type = 'button';
-            return button;
-        };
-
         const buildNotification = (item) => {
             const li = createElement('li', 'notifications-panel__item');
             li.dataset.notificationId = String(item.id);
@@ -414,55 +402,88 @@
             }
             li.appendChild(iconWrapper);
 
-            const body = createElement('div', 'notifications-panel__body');
-
+            const header = createElement('div', 'notifications-panel__body');
             const titleRow = createElement('div', 'notifications-panel__title-row');
             titleRow.appendChild(createElement('p', 'notifications-panel__title-text', item.title));
             if (item.badge && !item.is_read) {
                 titleRow.appendChild(createElement('span', 'notifications-panel__badge', item.badge));
             }
-            body.appendChild(titleRow);
+            header.appendChild(titleRow);
+
+            const formattedTime = formatDate(item.created_at);
+            if (formattedTime) {
+                const time = createElement('time', 'notifications-panel__time', formattedTime);
+                if (item.created_at) {
+                    time.dateTime = item.created_at;
+                }
+                header.appendChild(time);
+            }
+
+            li.appendChild(header);
 
             if (item.body) {
-                body.appendChild(createElement('p', 'notifications-panel__description', item.body));
+                li.appendChild(createElement('p', 'notifications-panel__description', { html: item.body }));
             }
+
+            const statusEntries = [];
+            const metaEntries = [];
 
             if (Array.isArray(item.meta)) {
                 item.meta.forEach((entry) => {
-                    const metaLine = buildMetaLine(entry);
-                    if (metaLine) {
-                        body.appendChild(metaLine);
+                    if (!entry || typeof entry.text !== 'string' || entry.text === '') {
+                        return;
                     }
+                    const type = typeof entry.type === 'string' ? entry.type : '';
+                    const label = typeof entry.label === 'string' ? entry.label : '';
+                    if (type === 'status') {
+                        statusEntries.push(entry);
+                        return;
+                    }
+                    if (label && label.toLowerCase() === 'garantía') {
+                        return;
+                    }
+                    metaEntries.push(entry);
                 });
             }
 
-            if (Array.isArray(item.actions) && item.actions.length) {
-                const actionGroup = createElement('div', 'notifications-panel__cta-group');
-                item.actions.forEach((action) => {
-                    const element = renderAction(action);
-                    if (element) {
-                        actionGroup.appendChild(element);
-                    }
-                });
-                body.appendChild(actionGroup);
-            }
+            statusEntries.forEach((entry) => {
+                const line = createElement('p', 'notifications-panel__status');
+                if (entry.label) {
+                    const label = createElement('span', 'notifications-panel__status-label', `${entry.label}:`);
+                    line.appendChild(label);
+                    line.appendChild(document.createTextNode(` ${entry.text}`));
+                } else {
+                    line.textContent = entry.text;
+                }
+                li.appendChild(line);
+            });
 
-            const footer = createElement('div', 'notifications-panel__meta-bar');
-            const time = createElement('time', 'notifications-panel__time', formatDate(item.created_at));
-            if (item.created_at) {
-                time.dateTime = item.created_at;
-            }
-            footer.appendChild(time);
+            metaEntries.forEach((entry) => {
+                const metaLine = buildMetaLine(entry);
+                if (metaLine) {
+                    li.appendChild(metaLine);
+                }
+            });
 
             const quickActions = createElement('div', 'notifications-panel__quick-actions');
 
-            const markButton = createElement('button', 'notifications-panel__action-button');
+            const deleteButton = createElement('button', 'notifications-panel__action-button notifications-panel__action-button--ghost');
+            deleteButton.type = 'button';
+            deleteButton.dataset.action = 'delete';
+            deleteButton.setAttribute('aria-label', deleteLabel);
+            if (trashIcon) {
+                deleteButton.insertAdjacentHTML('afterbegin', trashIcon);
+            }
+            deleteButton.appendChild(createElement('span', 'notifications-panel__action-text', deleteLabel));
+            quickActions.appendChild(deleteButton);
+
+            const markButton = createElement('button', 'notifications-panel__action-button notifications-panel__action-button--ghost');
             markButton.type = 'button';
             markButton.dataset.action = 'mark';
             markButton.dataset.labelRead = markedLabel;
             markButton.dataset.labelUnread = markLabel;
             if (checkIcon) {
-                markButton.insertAdjacentHTML('beforeend', checkIcon);
+                markButton.insertAdjacentHTML('afterbegin', checkIcon);
             }
             const markText = createElement('span', 'notifications-panel__action-text', item.is_read ? markedLabel : markLabel);
             markButton.appendChild(markText);
@@ -474,20 +495,26 @@
             }
             quickActions.appendChild(markButton);
 
-            const deleteButton = createElement('button', 'notifications-panel__action-button');
-            deleteButton.type = 'button';
-            deleteButton.dataset.action = 'delete';
-            deleteButton.setAttribute('aria-label', deleteLabel);
-            if (trashIcon) {
-                deleteButton.insertAdjacentHTML('beforeend', trashIcon);
+            if (Array.isArray(item.actions)) {
+                item.actions.forEach((action) => {
+                    if (!action || !action.title) {
+                        return;
+                    }
+                    if (action.url) {
+                        const link = createElement('a', 'notifications-panel__action-button notifications-panel__action-button--primary', action.title);
+                        link.href = action.url;
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+                        quickActions.appendChild(link);
+                    }
+                });
             }
-            deleteButton.appendChild(createElement('span', 'notifications-panel__action-text', deleteLabel));
-            quickActions.appendChild(deleteButton);
 
-            footer.appendChild(quickActions);
-            body.appendChild(footer);
-
-            li.appendChild(body);
+            if (quickActions.childNodes.length > 0) {
+                const footer = createElement('div', 'notifications-panel__meta-bar');
+                footer.appendChild(quickActions);
+                li.appendChild(footer);
+            }
 
             return li;
         };
@@ -885,6 +912,11 @@
 
             const actionButton = target.closest('.notifications-panel__action-button');
             if (actionButton) {
+                const actionType = actionButton.dataset.action || '';
+                if (actionType === '') {
+                    return;
+                }
+
                 event.preventDefault();
                 event.stopPropagation();
                 const itemElement = actionButton.closest('.notifications-panel__item');
@@ -896,7 +928,7 @@
                     return;
                 }
 
-                if (actionButton.dataset.action === 'delete') {
+                if (actionType === 'delete') {
                     if (actionButton.classList.contains('is-disabled')) {
                         return;
                     }
@@ -916,7 +948,7 @@
                     return;
                 }
 
-                if (actionButton.dataset.action === 'mark') {
+                if (actionType === 'mark') {
                     if (!itemElement.classList.contains('notifications-panel__item--unread')) {
                         return;
                     }

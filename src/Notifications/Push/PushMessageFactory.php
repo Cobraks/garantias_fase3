@@ -140,13 +140,15 @@ class PushMessageFactory
         $plan_label = $this->resolve_plan_label($guarantee_id);
         $status_label = $this->resolve_status_from_context($context, $guarantee_id);
 
-        $body = '';
-        if ($company !== '' && $plan_label !== '') {
-            $body = sprintf(__('%1$s ha contratado una cobertura %2$s.', 'garantias-online-360vo'), $company, $plan_label);
-        } elseif ($plan_label !== '') {
-            $body = sprintf(__('Se ha contratado una cobertura %s.', 'garantias-online-360vo'), $plan_label);
-        } elseif ($company !== '') {
-            $body = sprintf(__('Hay una nueva garantía creada para %s.', 'garantias-online-360vo'), $company);
+        $company_label = $company !== '' ? '<strong>' . esc_html($company) . '</strong>' : '';
+        $plan_clean   = $plan_label !== '' ? esc_html($plan_label) : '';
+
+        if ($company_label !== '' && $plan_clean !== '') {
+            $body = sprintf(__('%1$s ha contratado una nueva garantía %2$s.', 'garantias-online-360vo'), $company_label, $plan_clean);
+        } elseif ($company_label !== '') {
+            $body = sprintf(__('%s ha contratado una nueva garantía.', 'garantias-online-360vo'), $company_label);
+        } elseif ($plan_clean !== '') {
+            $body = sprintf(__('Se ha contratado una nueva garantía %s.', 'garantias-online-360vo'), $plan_clean);
         } else {
             $body = __('Se ha creado una nueva garantía.', 'garantias-online-360vo');
         }
@@ -157,7 +159,7 @@ class PushMessageFactory
 
         $meta = [];
         if ($status_label !== '') {
-            $meta[] = $this->meta_entry(__('Estado', 'garantias-online-360vo'), $status_label);
+            $meta[] = $this->meta_entry(__('Estado', 'garantias-online-360vo'), $status_label, 'status');
         }
 
         if ($actor_id > 0 && $vendor_id > 0 && $actor_id !== $vendor_id) {
@@ -166,16 +168,12 @@ class PushMessageFactory
                 $actor_label = wp_strip_all_tags($initiator);
             }
             if ($actor_label !== '') {
-                $meta[] = $this->meta_entry(__('Iniciada por', 'garantias-online-360vo'), $actor_label);
+                $meta[] = $this->meta_entry(__('Iniciada por', 'garantias-online-360vo'), $actor_label, 'actor');
             }
         }
 
-        if ($title !== '') {
-            $meta[] = $this->meta_entry(__('Garantía', 'garantias-online-360vo'), $title);
-        }
-
         return [
-            'title' => __('Nueva garantía creada', 'garantias-online-360vo'),
+            'title' => __('Nueva garantía', 'garantias-online-360vo'),
             'body'  => $body,
             'link'  => $link,
             'icon'      => Svg::data_uri('new_shield'),
@@ -221,7 +219,7 @@ class PushMessageFactory
 
         $status_label = $this->resolve_status_from_context($context, $guarantee_id);
         if ($status_label !== '') {
-            $meta[] = $this->meta_entry(__('Estado', 'garantias-online-360vo'), $status_label);
+            $meta[] = $this->meta_entry(__('Estado', 'garantias-online-360vo'), $status_label, 'status');
         }
 
         return [
@@ -263,13 +261,13 @@ class PushMessageFactory
         $meta = [];
         $status_label = $this->resolve_status_from_context($context, $guarantee_id);
         if ($status_label !== '') {
-            $meta[] = $this->meta_entry(__('Estado', 'garantias-online-360vo'), $status_label);
+            $meta[] = $this->meta_entry(__('Estado', 'garantias-online-360vo'), $status_label, 'status');
         }
 
         if ($actor_id > 0 && $vendor_id > 0 && $actor_id !== $vendor_id) {
             $actor_label = UserProfileResolver::get_personal_name($actor_id);
             if ($actor_label !== '') {
-                $meta[] = $this->meta_entry(__('Subido por', 'garantias-online-360vo'), $actor_label);
+                $meta[] = $this->meta_entry(__('Subido por', 'garantias-online-360vo'), $actor_label, 'actor');
             }
         }
 
@@ -388,11 +386,17 @@ class PushMessageFactory
         return $status !== '' ? ucfirst($status) : '';
     }
 
-    private function meta_entry(string $label, string $text): array
+    private function meta_entry(string $label, string $text, string $type = ''): array
     {
-        return [
+        $entry = [
             'label' => $label,
             'text'  => $text,
         ];
+
+        if ($type !== '') {
+            $entry['type'] = $type;
+        }
+
+        return $entry;
     }
 }

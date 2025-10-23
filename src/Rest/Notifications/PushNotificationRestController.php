@@ -280,9 +280,12 @@ class PushNotificationRestController
             $text = wp_strip_all_tags($text);
             $label = $label !== '' ? wp_strip_all_tags($label) : '';
 
+            $type = isset($entry['type']) ? sanitize_key((string) $entry['type']) : '';
+
             $normalized[] = [
                 'label' => $label,
                 'text'  => $text,
+                'type'  => $type,
             ];
         }
 

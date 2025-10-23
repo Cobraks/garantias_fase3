@@ -11,9 +11,15 @@ if (! defined('ABSPATH')) {
 class ActivitySubscribers
 {
     private static bool $login_failure_handled = false;
+    private static bool $registered = false;
 
     public static function init(): void
     {
+        if (self::$registered) {
+            return;
+        }
+
+        self::$registered = true;
         add_action('wp_login', [__CLASS__, 'on_login'], 10, 2);
         add_action('wp_login_failed', [__CLASS__, 'on_login_failed']);
         add_action('wp_logout', [__CLASS__, 'on_logout']);
