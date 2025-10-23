@@ -306,6 +306,7 @@ $home_destination = $is_admin_user
                                 class="menu-item menu-item--notifications"
                                 data-admin-notifications
                                 data-icon-mark="<?php echo esc_attr(base64_encode(Svg::icon('visibility_off', 'notifications-panel__action-icon'))); ?>"
+                                data-icon-mark-read="<?php echo esc_attr(base64_encode(Svg::icon('visibility', 'notifications-panel__action-icon'))); ?>"
                                 data-icon-delete="<?php echo esc_attr(base64_encode(Svg::icon('trash', 'notifications-panel__action-icon'))); ?>"
                                 data-icon-close="<?php echo esc_attr(base64_encode(Svg::icon('close', 'notifications-modal__close-icon'))); ?>"
                                 data-mark-label="<?php echo esc_attr__('Sin leer', 'garantias-online-360vo'); ?>"

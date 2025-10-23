@@ -107,6 +107,7 @@
         }
 
         const markIcon = decodeIcon(container.dataset.iconMark || '');
+        const markIconRead = decodeIcon(container.dataset.iconMarkRead || '');
         const deleteIcon = decodeIcon(container.dataset.iconDelete || '');
         const closeIcon = decodeIcon(container.dataset.iconClose || '');
         const markLabel = container.dataset.markLabel || 'Sin leer';
@@ -136,6 +137,46 @@
             modalOpen: false,
             latestId: 0,
             isPolling: false,
+        };
+
+        const setMarkButtonState = (button, isRead) => {
+            if (!button) {
+                return;
+            }
+
+            const markText = button.querySelector('.notifications-panel__action-text');
+            if (markText) {
+                markText.textContent = isRead ? markedLabel : markLabel;
+            }
+
+            const existingIcon = button.querySelector('.notifications-panel__action-icon');
+            if (existingIcon) {
+                existingIcon.remove();
+            }
+
+            const iconMarkup = isRead ? markIconRead : markIcon;
+            if (iconMarkup) {
+                button.insertAdjacentHTML('afterbegin', iconMarkup);
+            }
+
+            if (isRead) {
+                button.classList.add('is-disabled');
+                button.setAttribute('aria-disabled', 'true');
+            } else {
+                button.classList.remove('is-disabled');
+                button.setAttribute('aria-disabled', 'false');
+            }
+        };
+
+        const markItemAsRead = (itemElement) => {
+            if (!itemElement) {
+                return;
+            }
+            itemElement.classList.remove('notifications-panel__item--unread');
+            const badge = itemElement.querySelector('.notifications-panel__badge');
+            if (badge) {
+                badge.remove();
+            }
         };
 
         const updateLatestId = (items, metaLatest) => {
@@ -390,37 +431,44 @@
             li.dataset.notificationId = String(item.id);
 
             const tone = item.tone || 'info';
-            li.classList.add(`notifications-panel__item--tone-${tone}`);
+            if (tone) {
+                li.classList.add(`notifications-panel__item--tone-${tone}`);
+            }
             if (!item.is_read) {
                 li.classList.add('notifications-panel__item--unread');
-                li.appendChild(createElement('span', 'notifications-panel__indicator'));
             }
 
-            const iconWrapper = createElement('div', 'notifications-panel__icon');
+            const formattedTime = formatDate(item.created_at);
+
+            const headerBlock = createElement('div', 'notifications-panel__header-block');
+            const titleRow = createElement('div', 'notifications-panel__title-row');
+            const titleMain = createElement('div', 'notifications-panel__title-main');
+            const iconWrapper = createElement('span', 'notifications-panel__icon');
             if (item.icon_svg) {
                 iconWrapper.innerHTML = item.icon_svg;
             }
-            li.appendChild(iconWrapper);
+            titleMain.appendChild(iconWrapper);
 
-            const header = createElement('div', 'notifications-panel__header-block');
-            header.classList.add('notifications-panel__body');
-            const titleRow = createElement('div', 'notifications-panel__title-row');
-            titleRow.appendChild(createElement('p', 'notifications-panel__title-text', item.title));
-            if (item.badge && !item.is_read) {
-                titleRow.appendChild(createElement('span', 'notifications-panel__badge', item.badge));
-            }
-            header.appendChild(titleRow);
+            const titleContent = createElement('div', 'notifications-panel__title-content');
+            titleContent.appendChild(createElement('p', 'notifications-panel__title-text', item.title));
 
-            const formattedTime = formatDate(item.created_at);
             if (formattedTime) {
                 const time = createElement('time', 'notifications-panel__time', formattedTime);
                 if (item.created_at) {
                     time.dateTime = item.created_at;
                 }
-                header.appendChild(time);
+                titleContent.appendChild(time);
             }
 
-            li.appendChild(header);
+            titleMain.appendChild(titleContent);
+            titleRow.appendChild(titleMain);
+
+            if (item.badge && !item.is_read) {
+                titleRow.appendChild(createElement('span', 'notifications-panel__badge', item.badge));
+            }
+
+            headerBlock.appendChild(titleRow);
+            li.appendChild(headerBlock);
 
             if (item.body) {
                 li.appendChild(createElement('p', 'notifications-panel__description', { html: item.body }));
@@ -483,17 +531,8 @@
             markButton.dataset.action = 'mark';
             markButton.dataset.labelRead = markedLabel;
             markButton.dataset.labelUnread = markLabel;
-            if (markIcon) {
-                markButton.insertAdjacentHTML('afterbegin', markIcon);
-            }
-            const markText = createElement('span', 'notifications-panel__action-text', item.is_read ? markedLabel : markLabel);
-            markButton.appendChild(markText);
-            if (item.is_read) {
-                markButton.classList.add('is-disabled');
-                markButton.setAttribute('aria-disabled', 'true');
-            } else {
-                markButton.setAttribute('aria-disabled', 'false');
-            }
+            markButton.appendChild(createElement('span', 'notifications-panel__action-text'));
+            setMarkButtonState(markButton, Boolean(item.is_read));
             quickActions.appendChild(markButton);
 
             if (Array.isArray(item.actions)) {
@@ -953,17 +992,8 @@
                     if (!itemElement.classList.contains('notifications-panel__item--unread')) {
                         return;
                     }
-                    itemElement.classList.remove('notifications-panel__item--unread');
-                    const indicator = itemElement.querySelector('.notifications-panel__indicator');
-                    if (indicator) {
-                        indicator.remove();
-                    }
-                    actionButton.classList.add('is-disabled');
-                    actionButton.setAttribute('aria-disabled', 'true');
-                    const markText = actionButton.querySelector('.notifications-panel__action-text');
-                    if (markText) {
-                        markText.textContent = markedLabel;
-                    }
+                    markItemAsRead(itemElement);
+                    setMarkButtonState(actionButton, true);
                     state.items = state.items.map((item) => {
                         if (String(item.id) === id) {
                             return { ...item, is_read: true };
@@ -986,19 +1016,10 @@
             if (!itemElement.classList.contains('notifications-panel__item--unread')) {
                 return;
             }
-            itemElement.classList.remove('notifications-panel__item--unread');
-            const indicator = itemElement.querySelector('.notifications-panel__indicator');
-            if (indicator) {
-                indicator.remove();
-            }
+            markItemAsRead(itemElement);
             const markButton = itemElement.querySelector('[data-action="mark"]');
             if (markButton) {
-                markButton.classList.add('is-disabled');
-                markButton.setAttribute('aria-disabled', 'true');
-                const markText = markButton.querySelector('.notifications-panel__action-text');
-                if (markText) {
-                    markText.textContent = markedLabel;
-                }
+                setMarkButtonState(markButton, true);
             }
             state.items = state.items.map((item) => {
                 if (String(item.id) === id) {

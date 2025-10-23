@@ -4,6 +4,7 @@ namespace GarantiasOnline360VO\Notifications\Push;
 
 use GarantiasOnline360VO\Support\UserProfileResolver;
 use GarantiasOnline360VO\Svg;
+use function home_url;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -144,18 +145,16 @@ class PushMessageFactory
         $plan_clean   = $plan_label !== '' ? esc_html($plan_label) : '';
 
         if ($company_label !== '' && $plan_clean !== '') {
-            $body = sprintf(__('%1$s ha contratado una Cobertura %2$s.', 'garantias-online-360vo'), $company_label, $plan_clean);
+            $body = sprintf(__('%1$s ha contratado una Cobertura %2$s', 'garantias-online-360vo'), $company_label, $plan_clean);
         } elseif ($company_label !== '') {
-            $body = sprintf(__('%s ha contratado una nueva cobertura.', 'garantias-online-360vo'), $company_label);
+            $body = sprintf(__('%s ha contratado una nueva cobertura', 'garantias-online-360vo'), $company_label);
         } elseif ($plan_clean !== '') {
-            $body = sprintf(__('Se ha contratado una Cobertura %s.', 'garantias-online-360vo'), $plan_clean);
+            $body = sprintf(__('Se ha contratado una Cobertura %s', 'garantias-online-360vo'), $plan_clean);
         } else {
-            $body = __('Se ha creado una nueva garantía.', 'garantias-online-360vo');
+            $body = __('Se ha creado una nueva garantía', 'garantias-online-360vo');
         }
 
-        $link = $guarantee_id > 0
-            ? get_permalink($guarantee_id)
-            : admin_url('edit.php?post_type=garantia');
+        $link = $this->build_guarantee_link($guarantee_id, $context);
 
         $meta = [];
         if ($status_label !== '') {
@@ -349,6 +348,36 @@ class PushMessageFactory
         }
 
         return '';
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     */
+    private function build_guarantee_link(int $guarantee_id, array $context): string
+    {
+        $base = home_url('/garantias-online/mis-garantias/');
+
+        $plate = '';
+        if (! empty($context['vehicle_plate'])) {
+            $plate = (string) $context['vehicle_plate'];
+        } elseif ($guarantee_id > 0) {
+            $stored_plate = get_post_meta($guarantee_id, 'datos_vehiculo_matricula', true);
+            if (is_string($stored_plate)) {
+                $plate = $stored_plate;
+            }
+        }
+
+        $plate = strtoupper(trim((string) $plate));
+        if ($plate !== '') {
+            $normalized = preg_replace('/[^A-Z0-9]/', '', $plate);
+            if (is_string($normalized) && $normalized !== '') {
+                $separator = strpos($base, '?') === false ? '?' : '&';
+
+                return $base . $separator . 'matricula=' . rawurlencode($normalized);
+            }
+        }
+
+        return $base;
     }
 
     private function status_label(string $status): string
