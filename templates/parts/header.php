@@ -307,7 +307,7 @@ $home_destination = $is_admin_user
                                 data-admin-notifications
                                 data-icon-mark="<?php echo esc_attr(base64_encode(Svg::icon('visibility_off', 'notifications-panel__action-icon'))); ?>"
                                 data-icon-mark-read="<?php echo esc_attr(base64_encode(Svg::icon('visibility', 'notifications-panel__action-icon'))); ?>"
-                                data-icon-delete="<?php echo esc_attr(base64_encode(Svg::icon('trash', 'notifications-panel__action-icon'))); ?>"
+                                data-icon-delete="<?php echo esc_attr(base64_encode(Svg::icon('delete', 'notifications-panel__action-icon'))); ?>"
                                 data-icon-close="<?php echo esc_attr(base64_encode(Svg::icon('close', 'notifications-modal__close-icon'))); ?>"
                                 data-mark-label="<?php echo esc_attr__('Sin leer', 'garantias-online-360vo'); ?>"
                                 data-marked-label="<?php echo esc_attr__('Leída', 'garantias-online-360vo'); ?>"
@@ -343,7 +343,6 @@ $home_destination = $is_admin_user
                                     <div class="notifications-panel__header">
                                         <div class="notifications-panel__header-main">
                                             <h4 class="notifications-panel__title"><?php esc_html_e('Notificaciones', 'garantias-online-360vo'); ?></h4>
-                                            <span class="notifications-panel__counter" data-notifications-counter hidden>0</span>
                                         </div>
                                         <button type="button" class="notifications-panel__mark" data-notifications-mark-all>
                                             <?php esc_html_e('Marcar todo como leído', 'garantias-online-360vo'); ?>

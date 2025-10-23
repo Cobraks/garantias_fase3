@@ -4,7 +4,6 @@
         toggle: '[data-notifications-toggle]',
         panel: '[data-notifications-panel]',
         badge: '[data-notifications-badge]',
-        counter: '[data-notifications-counter]',
         list: '[data-notifications-list]',
         empty: '[data-notifications-empty]',
         markAll: '[data-notifications-mark-all]',
@@ -85,7 +84,6 @@
         const panel = container.querySelector(SELECTORS.panel);
         const list = container.querySelector(SELECTORS.list);
         const badge = container.querySelector(SELECTORS.badge);
-        const counter = container.querySelector(SELECTORS.counter);
         const empty = container.querySelector(SELECTORS.empty);
         const markAllButton = container.querySelector(SELECTORS.markAll);
         const loadMoreButton = container.querySelector(SELECTORS.loadMore);
@@ -173,6 +171,7 @@
                 return;
             }
             itemElement.classList.remove('notifications-panel__item--unread');
+            itemElement.classList.add('notifications-panel__item--read');
             const badge = itemElement.querySelector('.notifications-panel__badge');
             if (badge) {
                 badge.remove();
@@ -220,21 +219,14 @@
         };
 
         const setBadge = (count) => {
-            if (badge) {
-                if (count > 0) {
-                    badge.hidden = false;
-                    badge.textContent = String(count);
-                } else {
-                    badge.hidden = true;
-                }
+            if (!badge) {
+                return;
             }
-            if (counter) {
-                if (count > 0) {
-                    counter.hidden = false;
-                    counter.textContent = String(count);
-                } else {
-                    counter.hidden = true;
-                }
+            if (count > 0) {
+                badge.hidden = false;
+                badge.textContent = String(count);
+            } else {
+                badge.hidden = true;
             }
         };
 
@@ -436,6 +428,8 @@
             }
             if (!item.is_read) {
                 li.classList.add('notifications-panel__item--unread');
+            } else {
+                li.classList.add('notifications-panel__item--read');
             }
 
             const formattedTime = formatDate(item.created_at);
@@ -447,6 +441,7 @@
             if (item.icon_svg) {
                 iconWrapper.innerHTML = item.icon_svg;
             }
+            iconWrapper.setAttribute('aria-hidden', 'true');
             titleMain.appendChild(iconWrapper);
 
             const titleContent = createElement('div', 'notifications-panel__title-content');

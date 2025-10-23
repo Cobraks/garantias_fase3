@@ -151,7 +151,7 @@ class PushMessageFactory
         } elseif ($plan_clean !== '') {
             $body = sprintf(__('Se ha contratado una Cobertura %s', 'garantias-online-360vo'), $plan_clean);
         } else {
-            $body = __('Se ha creado una nueva garantía', 'garantias-online-360vo');
+            $body = __('Tenemos una nueva cobertura pendiente de revisar.', 'garantias-online-360vo');
         }
 
         $link = $this->build_guarantee_link($guarantee_id, $context);
