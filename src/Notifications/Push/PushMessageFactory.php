@@ -144,33 +144,25 @@ class PushMessageFactory
             }
         }
 
-        $plan_label = $this->resolve_plan_label($guarantee_id);
+        $plan_label = $this->resolve_plan_label($guarantee_id, $context);
         $status_label = $this->resolve_status_from_context($context, $guarantee_id);
 
         $company_label = $this->resolve_company_label($vendor_id, $context, $initiator);
         $plan_clean   = $this->sanitize_plain_text($plan_label);
 
-        if ($company_label !== '' && $plan_clean !== '') {
-            $body_text = sprintf(
-                __('%1$s ha contratado una cobertura %2$s', 'garantias-online-360vo'),
-                $company_label,
-                $plan_clean
-            );
-        } elseif ($company_label !== '') {
-            $body_text = sprintf(
-                __('%s ha contratado una nueva cobertura', 'garantias-online-360vo'),
-                $company_label
-            );
-        } elseif ($plan_clean !== '') {
-            $body_text = sprintf(
-                __('Se ha contratado una cobertura %s', 'garantias-online-360vo'),
-                $plan_clean
-            );
-        } else {
-            $body_text = __('Se ha registrado una nueva cobertura en el sistema.', 'garantias-online-360vo');
-        }
+        $company_display = $company_label !== ''
+            ? $company_label
+            : __('Un profesional', 'garantias-online-360vo');
 
-        $body = esc_html($body_text);
+        $plan_display = $plan_clean !== ''
+            ? $plan_clean
+            : __('sin identificar', 'garantias-online-360vo');
+
+        $body = esc_html(sprintf(
+            __('%1$s ha contratado una Cobertura %2$s', 'garantias-online-360vo'),
+            $company_display,
+            $plan_display
+        ));
 
         $link = $this->build_guarantee_link($guarantee_id, $context);
 
@@ -325,8 +317,22 @@ class PushMessageFactory
         return [];
     }
 
-    private function resolve_plan_label(int $guarantee_id): string
+    private function resolve_plan_label(int $guarantee_id, array $context): string
     {
+        $candidates = [];
+
+        foreach (['plan_label', 'plan_name', 'plan_title', 'plan_display_name'] as $key) {
+            if (! empty($context[$key]) && is_string($context[$key])) {
+                $candidates[] = $this->sanitize_plain_text($context[$key]);
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
         if ($guarantee_id <= 0) {
             return '';
         }
@@ -400,23 +406,37 @@ class PushMessageFactory
 
     private function resolve_company_label(int $vendor_id, array $context, string $initiator): string
     {
-        $company = $this->sanitize_plain_text($context['vendor_name'] ?? '');
+        $company = '';
 
-        if ($company === '' && ! empty($context['vendor_person_name'])) {
-            $company = $this->sanitize_plain_text((string) $context['vendor_person_name']);
-        }
-
-        if ($company === '' && $vendor_id > 0) {
+        if ($vendor_id > 0) {
             $labels = UserProfileResolver::get_vendor_labels($vendor_id);
-            if (! empty($labels['company_name'])) {
+            if (! empty($labels['company']['trade_name'])) {
+                $company = $this->sanitize_plain_text((string) $labels['company']['trade_name']);
+            }
+            if ($company === '' && ! empty($labels['company_name'])) {
                 $company = $this->sanitize_plain_text((string) $labels['company_name']);
             }
-            if ($company === '' && ! empty($labels['personal_name'])) {
-                $company = $this->sanitize_plain_text((string) $labels['personal_name']);
+            if ($company === '' && ! empty($labels['company']['legal_name'])) {
+                $company = $this->sanitize_plain_text((string) $labels['company']['legal_name']);
             }
             if ($company === '' && ! empty($labels['personal_full_name'])) {
                 $company = $this->sanitize_plain_text((string) $labels['personal_full_name']);
             }
+            if ($company === '' && ! empty($labels['personal_name'])) {
+                $company = $this->sanitize_plain_text((string) $labels['personal_name']);
+            }
+        }
+
+        if ($company === '' && ! empty($context['vendor_company_name'])) {
+            $company = $this->sanitize_plain_text((string) $context['vendor_company_name']);
+        }
+
+        if ($company === '' && ! empty($context['vendor_name'])) {
+            $company = $this->sanitize_plain_text((string) $context['vendor_name']);
+        }
+
+        if ($company === '' && ! empty($context['vendor_person_name'])) {
+            $company = $this->sanitize_plain_text((string) $context['vendor_person_name']);
         }
 
         if ($company === '' && $initiator !== '') {
