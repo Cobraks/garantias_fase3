@@ -134,25 +134,43 @@ class PushMessageFactory
         $guarantee_id = isset($record['guarantee_id']) ? (int) $record['guarantee_id'] : 0;
         $title = isset($context['guarantee_label']) ? (string) $context['guarantee_label'] : '';
         $initiator = isset($context['initiator_label']) ? (string) $context['initiator_label'] : '';
-        $company = isset($context['vendor_name']) ? (string) $context['vendor_name'] : '';
         $vendor_id = isset($context['vendor_id']) ? (int) $context['vendor_id'] : 0;
         $actor_id = isset($record['actor_id']) ? (int) $record['actor_id'] : 0;
+
+        if ($vendor_id <= 0 && $guarantee_id > 0) {
+            $stored_vendor = get_post_meta($guarantee_id, 'garantia_contratada_concesionario_empresa_profesional', true);
+            if (is_numeric($stored_vendor)) {
+                $vendor_id = (int) $stored_vendor;
+            }
+        }
 
         $plan_label = $this->resolve_plan_label($guarantee_id);
         $status_label = $this->resolve_status_from_context($context, $guarantee_id);
 
-        $company_label = $company !== '' ? '<strong>' . esc_html($company) . '</strong>' : '';
-        $plan_clean   = $plan_label !== '' ? esc_html($plan_label) : '';
+        $company_label = $this->resolve_company_label($vendor_id, $context, $initiator);
+        $plan_clean   = $this->sanitize_plain_text($plan_label);
 
         if ($company_label !== '' && $plan_clean !== '') {
-            $body = sprintf(__('%1$s ha contratado una Cobertura %2$s', 'garantias-online-360vo'), $company_label, $plan_clean);
+            $body_text = sprintf(
+                __('%1$s ha contratado una cobertura %2$s', 'garantias-online-360vo'),
+                $company_label,
+                $plan_clean
+            );
         } elseif ($company_label !== '') {
-            $body = sprintf(__('%s ha contratado una nueva cobertura', 'garantias-online-360vo'), $company_label);
+            $body_text = sprintf(
+                __('%s ha contratado una nueva cobertura', 'garantias-online-360vo'),
+                $company_label
+            );
         } elseif ($plan_clean !== '') {
-            $body = sprintf(__('Se ha contratado una Cobertura %s', 'garantias-online-360vo'), $plan_clean);
+            $body_text = sprintf(
+                __('Se ha contratado una cobertura %s', 'garantias-online-360vo'),
+                $plan_clean
+            );
         } else {
-            $body = __('Tenemos una nueva cobertura pendiente de revisar.', 'garantias-online-360vo');
+            $body_text = __('Se ha registrado una nueva cobertura en el sistema.', 'garantias-online-360vo');
         }
+
+        $body = esc_html($body_text);
 
         $link = $this->build_guarantee_link($guarantee_id, $context);
 
@@ -378,6 +396,45 @@ class PushMessageFactory
         }
 
         return $base;
+    }
+
+    private function resolve_company_label(int $vendor_id, array $context, string $initiator): string
+    {
+        $company = $this->sanitize_plain_text($context['vendor_name'] ?? '');
+
+        if ($company === '' && ! empty($context['vendor_person_name'])) {
+            $company = $this->sanitize_plain_text((string) $context['vendor_person_name']);
+        }
+
+        if ($company === '' && $vendor_id > 0) {
+            $labels = UserProfileResolver::get_vendor_labels($vendor_id);
+            if (! empty($labels['company_name'])) {
+                $company = $this->sanitize_plain_text((string) $labels['company_name']);
+            }
+            if ($company === '' && ! empty($labels['personal_name'])) {
+                $company = $this->sanitize_plain_text((string) $labels['personal_name']);
+            }
+            if ($company === '' && ! empty($labels['personal_full_name'])) {
+                $company = $this->sanitize_plain_text((string) $labels['personal_full_name']);
+            }
+        }
+
+        if ($company === '' && $initiator !== '') {
+            $company = $this->sanitize_plain_text($initiator);
+        }
+
+        return $company;
+    }
+
+    private function sanitize_plain_text($value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $value = wp_strip_all_tags($value);
+
+        return trim($value);
     }
 
     private function status_label(string $status): string
