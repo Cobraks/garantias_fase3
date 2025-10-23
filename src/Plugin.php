@@ -48,6 +48,7 @@ class Plugin
         add_action('init', [AssetCompiler::class, 'ensure_minified'], 1);
         add_action('init', [ActivityLogger::class, 'ensure_table']);
         add_action('init', [ActivitySubscribers::class, 'init']);
+        add_action('login_init', [ActivitySubscribers::class, 'init']);
         add_action('init', [PrivateDocsManager::class, 'ensure_directory']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
         \GarantiasOnline360VO\Rest\GuaranteeRestController::register_cache_hooks();

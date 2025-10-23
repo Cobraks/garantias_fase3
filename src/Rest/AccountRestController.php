@@ -931,12 +931,22 @@ class AccountRestController
                     if (! is_array($row)) {
                         continue;
                     }
-                    $email = sanitize_email($row['correo'] ?? '');
-                    $type  = sanitize_key($row['destino'] ?? '');
+
+                    $email_field = $row['admin_recipients'] ?? ($row['correo'] ?? '');
+                    $email = sanitize_email($email_field);
                     if (! is_email($email)) {
                         continue;
                     }
-                    if ($type === 'bcc') {
+
+                    $is_bcc = false;
+                    if (array_key_exists('copia_oculta', $row)) {
+                        $is_bcc = (bool) $row['copia_oculta'];
+                    } else {
+                        $type = sanitize_key($row['destino'] ?? '');
+                        $is_bcc = $type === 'bcc';
+                    }
+
+                    if ($is_bcc) {
                         $bcc[] = $email;
                     } else {
                         $to[] = $email;
