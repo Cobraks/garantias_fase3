@@ -704,14 +704,14 @@ text-decoration: none;
   height: 1.35rem;
   padding: 0 0.3rem;
   border-radius: 999px;
-  background: #ef4444;
+  background: #4361ee;
   color: #ffffff;
   font-size: 0.75rem;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.28);
 }
 
 .top-bar__notifications-badge:not([hidden]) {
@@ -803,27 +803,13 @@ text-decoration: none;
   border-bottom: 0;
 }
 
-.notifications-panel__item--unread::before {
-  content: '';
-  position: absolute;
-  top: 0.85rem;
-  bottom: 0.85rem;
-  left: 0;
-  width: 3px;
-  border-radius: 999px;
-  background: #7c3aed;
-}
-
 .notifications-panel__item--unread .notifications-panel__title-text {
-  color: #4c1d95;
-}
-
-.notifications-panel__item--unread .notifications-panel__time {
-  color: #1f2937;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .notifications-panel__item--read {
-  opacity: 0.88;
+  opacity: 0.72;
 }
 
 .notifications-panel__item--read .notifications-panel__title-text {
@@ -919,12 +905,13 @@ text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.1rem 0.6rem;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.55rem;
   border-radius: 999px;
-  background: #f97316;
-  color: #ffffff;
-  font-size: 0.7rem;
-  font-weight: 600;
+  background: #ef4444;
+  color: #fff5f5;
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 0.02em;
   flex-shrink: 0;
   align-self: flex-start;
@@ -983,7 +970,7 @@ text-decoration: none;
 .notifications-panel__quick-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 0.5rem;
   justify-content: flex-end;
   width: 100%;
 }
@@ -991,8 +978,8 @@ text-decoration: none;
 .notifications-panel__action-button {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.22rem 0.5rem;
+  gap: 0.25rem;
+  padding: 0 0.55rem;
   border-radius: 0.45rem;
   border: 1px solid #d4dbe7;
   background: #ffffff;
@@ -1003,6 +990,11 @@ text-decoration: none;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
+.notifications-panel__action-button .notifications-panel__action-icon {
+  width: 18px;
+  height: 18px;
+}
+
 .notifications-panel__action-button--ghost:hover {
   border-color: #cbd5e1;
   color: #111827;
@@ -1010,14 +1002,14 @@ text-decoration: none;
 }
 
 .notifications-panel__action-button--primary {
-  background: #7c3aed;
-  border-color: #7c3aed;
-  color: #ffffff;
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #f8fafc;
 }
 
 .notifications-panel__action-button--primary:hover {
-  background: #6d28d9;
-  border-color: #6d28d9;
+  background: #1e293b;
+  border-color: #1e293b;
 }
 
 .notifications-panel__action-button.is-disabled {
@@ -1065,6 +1057,59 @@ text-decoration: none;
 .notifications-panel__footer {
   padding-top: 0.75rem;
   border-top: 1px solid #e2e8f0;
+}
+
+.notifications-panel__footer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.notifications-panel__toast-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #f8fafc;
+  border: 1px solid #d4dbe7;
+  border-radius: 999px;
+  padding: 0.25rem 0.35rem 0.25rem 0.5rem;
+}
+
+.notifications-panel__toast-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.notifications-panel__toast-options {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.notifications-panel__toast-option {
+  border: none;
+  background: none;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.notifications-panel__toast-option.is-active {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.notifications-panel__toast-option:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
 }
 
 .notifications-panel__view-all {
@@ -1195,13 +1240,13 @@ text-decoration: none;
 
 @keyframes notifications-badge-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+    box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4);
   }
   70% {
-    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 8px rgba(67, 97, 238, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 0 rgba(67, 97, 238, 0);
   }
 }
 

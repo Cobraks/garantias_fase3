@@ -11,6 +11,38 @@
         viewAll: '[data-notifications-view-all]',
         scroll: '[data-notifications-scroll]',
         toast: '[data-notifications-toast]',
+        toastToggle: '[data-notifications-toast-toggle]',
+    };
+
+    const STORAGE_KEYS = {
+        snapshot: 'go360_notifications_snapshot',
+        toastPreference: 'go360_notifications_toast_pref',
+    };
+
+    const SNAPSHOT_LIMIT = 4;
+
+    const safeStorage = {
+        get(key) {
+            try {
+                return window.localStorage.getItem(key);
+            } catch (error) {
+                return null;
+            }
+        },
+        set(key, value) {
+            try {
+                window.localStorage.setItem(key, value);
+            } catch (error) {
+                // noop
+            }
+        },
+        remove(key) {
+            try {
+                window.localStorage.removeItem(key);
+            } catch (error) {
+                // noop
+            }
+        },
     };
 
     const formatDate = (iso) => {
@@ -90,6 +122,7 @@
         const viewAllButton = container.querySelector(SELECTORS.viewAll);
         const scrollBox = container.querySelector(SELECTORS.scroll);
         const toast = container.querySelector(SELECTORS.toast);
+        const toastToggle = container.querySelector(SELECTORS.toastToggle);
 
         const config = window.go360Notifications || {};
         const endpoints = config.endpoints || {};
@@ -135,6 +168,66 @@
             modalOpen: false,
             latestId: 0,
             isPolling: false,
+            toastEnabled: true,
+        };
+
+        const persistSnapshot = () => {
+            const payload = {
+                unread: state.unread,
+                items: state.items.slice(0, SNAPSHOT_LIMIT).map((item) => ({
+                    id: item.id,
+                    title: item.title,
+                    body: item.body,
+                    icon: item.icon,
+                    icon_svg: item.icon_svg,
+                    tone: item.tone,
+                    badge: item.badge,
+                    link: item.link,
+                    meta: item.meta,
+                    is_read: item.is_read,
+                    created_at: item.created_at,
+                    actions: item.actions,
+                })),
+            };
+
+            safeStorage.set(STORAGE_KEYS.snapshot, JSON.stringify(payload));
+        };
+
+        const hydrateSnapshot = () => {
+            const raw = safeStorage.get(STORAGE_KEYS.snapshot);
+            if (!raw) {
+                return;
+            }
+
+            try {
+                const snapshot = JSON.parse(raw);
+                if (snapshot && typeof snapshot.unread === 'number') {
+                    state.unread = snapshot.unread;
+                    if (snapshot.unread > 0) {
+                        setBadge(snapshot.unread);
+                    }
+                }
+
+                if (Array.isArray(snapshot.items) && snapshot.items.length > 0) {
+                    const items = normalizeItems(snapshot.items).slice(0, perPage);
+                    state.items = items;
+                    items.forEach((item) => {
+                        state.knownIds.add(item.id);
+                    });
+                    renderNotifications(items, false);
+                }
+            } catch (error) {
+                safeStorage.remove(STORAGE_KEYS.snapshot);
+            }
+        };
+
+        const loadToastPreference = () => {
+            const stored = safeStorage.get(STORAGE_KEYS.toastPreference);
+            if (stored === '0') {
+                state.toastEnabled = false;
+                return;
+            }
+            state.toastEnabled = true;
         };
 
         const setMarkButtonState = (button, isRead) => {
@@ -288,7 +381,7 @@
             const title = createElement('p', 'notifications-toast__title', item.title);
             content.appendChild(title);
             if (item.body) {
-                const description = createElement('p', 'notifications-toast__description', item.body);
+                const description = createElement('p', 'notifications-toast__description', { html: item.body });
                 content.appendChild(description);
             }
 
@@ -576,7 +669,7 @@
                 return;
             }
 
-            if (!allowToast || normalized.length === 0 || state.isOpen) {
+            if (!allowToast || normalized.length === 0 || state.isOpen || !state.toastEnabled) {
                 return;
             }
 
@@ -646,6 +739,8 @@
                     state.unread = meta.unread;
                     setBadge(state.unread);
                 }
+
+                persistSnapshot();
 
                 updateLatestId(items, Number.isFinite(latestFromMeta) ? latestFromMeta : null);
 
@@ -728,6 +823,7 @@
 
                 updateLatestId(freshItems, Number.isFinite(latestFromMeta) ? latestFromMeta : null);
                 updateEmptyState();
+                persistSnapshot();
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.error('GO360 notifications poll error', error);
@@ -757,6 +853,7 @@
                     state.unread = payload.meta.unread;
                     setBadge(state.unread);
                 }
+                persistSnapshot();
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.error('GO360 notifications mark error', error);
@@ -784,6 +881,7 @@
                     state.unread = payload.meta.unread;
                     setBadge(state.unread);
                 }
+                persistSnapshot();
                 return true;
             } catch (error) {
                 // eslint-disable-next-line no-console
@@ -816,6 +914,7 @@
                     is_read: true,
                 }));
                 renderNotifications(state.items, false);
+                persistSnapshot();
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.error('GO360 notifications mark all error', error);
@@ -978,6 +1077,11 @@
                         state.items = state.items.filter((item) => String(item.id) !== id);
                         itemElement.remove();
                         updateEmptyState();
+                        if (state.unread > 0 && itemElement.classList.contains('notifications-panel__item--unread')) {
+                            state.unread = Math.max(0, state.unread - 1);
+                            setBadge(state.unread);
+                        }
+                        persistSnapshot();
                         fetchNotifications({ append: false, background: state.isOpen === false });
                     });
                     return;
@@ -995,6 +1099,11 @@
                         }
                         return item;
                     });
+                    if (state.unread > 0) {
+                        state.unread -= 1;
+                        setBadge(state.unread);
+                    }
+                    persistSnapshot();
                     markNotification(id);
                 }
                 return;
@@ -1022,6 +1131,11 @@
                 }
                 return item;
             });
+            if (state.unread > 0) {
+                state.unread -= 1;
+                setBadge(state.unread);
+            }
+            persistSnapshot();
             markNotification(id);
         });
 
@@ -1044,6 +1158,45 @@
                 schedulePoll();
             }, pollInterval);
         };
+
+        loadToastPreference();
+
+        if (toastToggle) {
+            const inputs = Array.from(toastToggle.querySelectorAll('[data-toast-option]'));
+            inputs.forEach((input) => {
+                const value = input.getAttribute('data-toast-option');
+                if ((value === 'on' && state.toastEnabled) || (value === 'off' && !state.toastEnabled)) {
+                    input.setAttribute('aria-pressed', 'true');
+                    input.classList.add('is-active');
+                } else {
+                    input.setAttribute('aria-pressed', 'false');
+                    input.classList.remove('is-active');
+                }
+                input.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const option = input.getAttribute('data-toast-option');
+                    if (option === 'on') {
+                        state.toastEnabled = true;
+                        safeStorage.set(STORAGE_KEYS.toastPreference, '1');
+                    } else {
+                        state.toastEnabled = false;
+                        safeStorage.set(STORAGE_KEYS.toastPreference, '0');
+                        hideToast();
+                    }
+                    inputs.forEach((button) => {
+                        if (button === input) {
+                            button.setAttribute('aria-pressed', 'true');
+                            button.classList.add('is-active');
+                        } else {
+                            button.setAttribute('aria-pressed', 'false');
+                            button.classList.remove('is-active');
+                        }
+                    });
+                });
+            });
+        }
+
+        hydrateSnapshot();
 
         fetchNotifications({ append: false, background: false })
             .catch(() => {})

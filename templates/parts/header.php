@@ -329,7 +329,7 @@ $home_destination = $is_admin_user
                                     data-notifications-toggle
                                 >
                                     <?php echo Svg::icon('notifications', 'top-bar__icon top-bar__icon--notifications'); ?>
-                                    <span class="top-bar__notifications-badge" data-notifications-badge hidden>0</span>
+                                    <span class="top-bar__notifications-badge" data-notifications-badge hidden></span>
                                     <span class="screen-reader-text"><?php esc_html_e('Abrir bandeja de notificaciones', 'garantias-online-360vo'); ?></span>
                                 </button>
                                 <div
@@ -358,9 +358,22 @@ $home_destination = $is_admin_user
                                         </button>
                                     </div>
                                     <div class="notifications-panel__footer">
-                                        <button type="button" class="notifications-panel__view-all" data-notifications-view-all>
-                                            <?php esc_html_e('Ver todas las notificaciones', 'garantias-online-360vo'); ?>
-                                        </button>
+                                        <div class="notifications-panel__footer-controls">
+                                            <div class="notifications-panel__toast-toggle" data-notifications-toast-toggle>
+                                                <span class="notifications-panel__toast-label"><?php esc_html_e('Notif. emergentes', 'garantias-online-360vo'); ?></span>
+                                                <div class="notifications-panel__toast-options">
+                                                    <button type="button" class="notifications-panel__toast-option" data-toast-option="on" aria-pressed="false">
+                                                        <?php esc_html_e('Activadas', 'garantias-online-360vo'); ?>
+                                                    </button>
+                                                    <button type="button" class="notifications-panel__toast-option" data-toast-option="off" aria-pressed="false">
+                                                        <?php esc_html_e('Desactivadas', 'garantias-online-360vo'); ?>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <button type="button" class="notifications-panel__view-all" data-notifications-view-all>
+                                                <?php esc_html_e('Ver todas las notificaciones', 'garantias-online-360vo'); ?>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="notifications-toast" data-notifications-toast hidden></div>
