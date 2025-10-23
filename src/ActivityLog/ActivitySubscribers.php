@@ -11,9 +11,15 @@ if (! defined('ABSPATH')) {
 class ActivitySubscribers
 {
     private static bool $login_failure_handled = false;
+    private static bool $registered = false;
 
     public static function init(): void
     {
+        if (self::$registered) {
+            return;
+        }
+
+        self::$registered = true;
         add_action('wp_login', [__CLASS__, 'on_login'], 10, 2);
         add_action('wp_login_failed', [__CLASS__, 'on_login_failed']);
         add_action('wp_logout', [__CLASS__, 'on_logout']);
@@ -59,12 +65,13 @@ class ActivitySubscribers
         self::$login_failure_handled = true;
     }
 
-    public static function on_logout(): void
+    public static function on_logout(int $user_id = 0): void
     {
-        $user_id = get_current_user_id();
-        if (! $user_id) {
+        $user_id = $user_id > 0 ? $user_id : get_current_user_id();
+        if ($user_id <= 0) {
             return;
         }
+
         $user = get_userdata($user_id);
         ActivityLogger::log('auth.logout', [
             'actor_id' => $user_id,

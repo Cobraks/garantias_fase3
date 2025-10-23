@@ -241,6 +241,12 @@ class EventCatalog
             'level'    => 'error',
             'message'  => 'Error en el cobro de {{context.amount}} en la garantía {{context.guarantee_label}}.',
         ],
+        'sepa.pending_requested' => [
+            'label'    => 'Mandato SEPA solicitado',
+            'category' => 'finance',
+            'level'    => 'info',
+            'message'  => 'Mandato SEPA generado por {{context.company_name}}.',
+        ],
         'sepa.signed_uploaded' => [
             'label'    => 'Mandato SEPA recibido',
             'category' => 'finance',
