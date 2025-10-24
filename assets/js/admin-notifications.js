@@ -231,25 +231,47 @@
 
         const persistSnapshot = () => {
             const panelItems = filterPanelItems(state.items);
+            const panelSnapshot = panelItems.slice(0, SNAPSHOT_LIMIT).map((item) => ({
+                id: item.id,
+                title: item.title,
+                body: item.body,
+                icon: item.icon,
+                icon_svg: item.icon_svg,
+                tone: item.tone,
+                badge: item.badge,
+                link: item.link,
+                meta: item.meta,
+                is_read: item.is_read,
+                created_at: item.created_at,
+                actions: item.actions,
+                icon_slug: item.icon_slug,
+            }));
+
+            const modalSnapshot = state.items.slice(0, SNAPSHOT_LIMIT).map((item) => ({
+                id: item.id,
+                title: item.title,
+                body: item.body,
+                icon: item.icon,
+                icon_svg: item.icon_svg,
+                tone: item.tone,
+                badge: item.badge,
+                link: item.link,
+                meta: item.meta,
+                is_read: item.is_read,
+                created_at: item.created_at,
+                actions: item.actions,
+                icon_slug: item.icon_slug,
+            }));
+
             const payload = {
                 unread: parseUnread(state.panelUnread),
                 total_unread: parseUnread(state.unread),
-                items: panelItems.slice(0, SNAPSHOT_LIMIT).map((item) => ({
-                    id: item.id,
-                    title: item.title,
-                    body: item.body,
-                    icon: item.icon,
-                    icon_svg: item.icon_svg,
-                    tone: item.tone,
-                    badge: item.badge,
-                    link: item.link,
-                    meta: item.meta,
-                    is_read: item.is_read,
-                    created_at: item.created_at,
-                    actions: item.actions,
-                    icon_slug: item.icon_slug,
-                })),
+                items: panelSnapshot,
             };
+
+            if (modalSnapshot.length > 0) {
+                payload.modal_items = modalSnapshot;
+            }
 
             safeStorage.set(STORAGE_KEYS.snapshot, JSON.stringify(payload));
         };
@@ -274,8 +296,12 @@
                     }
                 }
 
-                if (Array.isArray(snapshot?.items) && snapshot.items.length > 0) {
-                    const items = normalizeItems(snapshot.items).slice(0, perPage);
+                const snapshotModalItems = Array.isArray(snapshot?.modal_items) && snapshot.modal_items.length > 0
+                    ? snapshot.modal_items
+                    : snapshot?.items;
+
+                if (Array.isArray(snapshotModalItems) && snapshotModalItems.length > 0) {
+                    const items = normalizeItems(snapshotModalItems).slice(0, perPage);
                     state.items = items;
                     items.forEach((item) => {
                         state.knownIds.add(item.id);
@@ -397,17 +423,21 @@
             }
         };
 
-        const applyLoadMoreState = (button) => {
+        const applyLoadMoreState = (button, { context = 'panel' } = {}) => {
             if (!button) {
                 return;
             }
-            if (!state.hasMore) {
+
+            const hasPanelItems = filterPanelItems(state.items).length > 0;
+            const shouldHidePanelButton = context === 'panel' && !hasPanelItems;
+            if (shouldHidePanelButton || !state.hasMore) {
                 button.hidden = true;
                 button.disabled = false;
                 button.classList.remove('is-loading');
                 button.textContent = loadMoreLabel;
                 return;
             }
+
             button.hidden = false;
             button.disabled = state.loadingMore;
             if (state.loadingMore) {
@@ -420,9 +450,9 @@
         };
 
         const updateLoadMore = () => {
-            applyLoadMoreState(loadMoreButton);
+            applyLoadMoreState(loadMoreButton, { context: 'panel' });
             if (state.modalElements && state.modalElements.loadMore) {
-                applyLoadMoreState(state.modalElements.loadMore);
+                applyLoadMoreState(state.modalElements.loadMore, { context: 'modal' });
             }
         };
 
