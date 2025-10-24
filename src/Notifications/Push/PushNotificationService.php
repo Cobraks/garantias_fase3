@@ -11,6 +11,7 @@ if (! defined('ABSPATH')) {
 
 class PushNotificationService
 {
+    private const BRAND_ICON_SLUG = 'notify_logo';
     /** @var PushNotificationRepository */
     private $notifications;
 
@@ -123,13 +124,16 @@ class PushNotificationService
                 continue;
             }
 
+            $message = $this->apply_branding($message);
+
             foreach ($admins as $admin_id) {
                 $payload = $message;
                 $payload['user_id'] = $admin_id;
                 $notification_id = $this->notifications->create($admin_id, $payload);
 
                 if ($notification_id && $this->user_allows_push_notifications($admin_id)) {
-                    $this->dispatcher->dispatch($admin_id, $payload);
+                    $push_payload = $this->prepare_push_payload($message, $notification_id);
+                    $this->dispatcher->dispatch($admin_id, $push_payload);
                 }
             }
         }
@@ -185,7 +189,48 @@ class PushNotificationService
             'payment.reported',
             'sepa.pending_requested',
             'sepa.signed_uploaded',
+            'sepa.activated',
         ], true);
+    }
+
+    /**
+     * @param array<string, mixed> $message
+     * @return array<string, mixed>
+     */
+    private function apply_branding(array $message): array
+    {
+        $message['badge'] = self::BRAND_ICON_SLUG;
+
+        return $message;
+    }
+
+    /**
+     * @param array<string, mixed> $message
+     * @return array<string, mixed>
+     */
+    private function prepare_push_payload(array $message, int $notification_id): array
+    {
+        $brand_slug = self::BRAND_ICON_SLUG;
+
+        if (! empty($message['badge']) && is_string($message['badge'])) {
+            $candidate = sanitize_key((string) $message['badge']);
+            if ($candidate !== '') {
+                $brand_slug = $candidate;
+            }
+        }
+
+        return [
+            'id'        => $notification_id,
+            'title'     => isset($message['title']) ? (string) $message['title'] : '',
+            'body'      => isset($message['body']) ? (string) $message['body'] : '',
+            'icon'      => $brand_slug,
+            'badge'     => $brand_slug,
+            'icon_slug' => isset($message['icon_slug']) ? (string) $message['icon_slug'] : '',
+            'link'      => isset($message['link']) ? (string) $message['link'] : '',
+            'tone'      => isset($message['tone']) ? (string) $message['tone'] : '',
+            'actions'   => isset($message['actions']) && is_array($message['actions']) ? $message['actions'] : [],
+            'meta'      => isset($message['meta']) && is_array($message['meta']) ? $message['meta'] : [],
+        ];
     }
 
 }

@@ -503,7 +503,10 @@ if (! empty($is_add_guarantee)) {
             'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
             'notificationsEndpoint' => esc_url_raw(rest_url('go/v1/push-notifications')),
             'testEndpoint'          => esc_url_raw(rest_url('go/v1/push-notifications/test')),
-            'testIcon'              => Svg::data_uri('check_shield'),
+            'testIcon'              => 'notify_logo',
+            'iconMap'               => [
+                'notify_logo' => Svg::data_uri('notify_logo'),
+            ],
             'serviceWorker'         => esc_url_raw(plugins_url('assets/js/push-sw.js', GARANTIAS360VO__FILE__)),
         ];
     }

@@ -113,7 +113,25 @@
         const publicKey = pushConfig.publicKey;
         const subscriptionEndpoint = pushConfig.subscriptionEndpoint;
         const testEndpoint = pushConfig.testEndpoint || '';
-        const testIcon = pushConfig.testIcon || '';
+        const iconMap = pushConfig.iconMap || {};
+        const resolveIcon = (value) => {
+            if (!value) {
+                return '';
+            }
+            if (typeof value === 'string') {
+                const trimmed = value.trim();
+                if (trimmed === '') {
+                    return '';
+                }
+                if (trimmed.startsWith('data:image')) {
+                    return trimmed;
+                }
+                return iconMap[trimmed] || '';
+            }
+            return '';
+        };
+        const brandIcon = resolveIcon('notify_logo') || iconMap.notify_logo || '';
+        const testIconSlug = pushConfig.testIcon || '';
         const serviceWorkerUrl = pushConfig.serviceWorker;
         const restNonce = restConfig.nonce || '';
 
@@ -317,10 +335,11 @@
                 try {
                     const registration = await getRegistration(serviceWorkerUrl);
                     if (registration && typeof registration.showNotification === 'function') {
+                        const localIcon = resolveIcon(testIconSlug) || brandIcon;
                         registration.showNotification('Notificación de prueba', {
                             body: 'Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.',
-                            icon: testIcon,
-                            badge: testIcon,
+                            icon: localIcon,
+                            badge: localIcon,
                             data: {
                                 url: window.location.href,
                             },

@@ -13,6 +13,7 @@ use WP_REST_Response;
 use WP_REST_Server;
 use WP_User;
 use WP_User_Query;
+use function home_url;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -679,7 +680,11 @@ class ClientRestController
             self::build_client_log_context($user),
             [
                 'user_name'          => $actor_label,
+                'user_email'         => sanitize_email($user->user_email),
+                'company_name'       => $company_name,
                 'document_reference' => $reference,
+                'status_label'       => isset($sepa_details['label']) ? (string) $sepa_details['label'] : '',
+                'profile_url'        => self::build_client_profile_url($user),
             ]
         );
 
@@ -692,6 +697,15 @@ class ClientRestController
             ]
         );
 
+        $notify_options = [];
+        $actor = wp_get_current_user();
+        if ($actor instanceof WP_User) {
+            $notify_options['actor_name'] = self::clean_text($actor->display_name);
+            $notify_options['actor_email'] = sanitize_email($actor->user_email);
+        }
+
+        AccountRestController::notify_sepa_activation($user_id, $sepa_details, $notify_options);
+
         return new WP_REST_Response(
             [
                 'message' => __('Domiciliación bancaria activada.', 'garantias-online-360vo'),
@@ -700,6 +714,17 @@ class ClientRestController
             ],
             200
         );
+    }
+
+    private static function build_client_profile_url(WP_User $user): string
+    {
+        $slug = $user->user_nicename !== '' ? $user->user_nicename : $user->user_login;
+        $slug = sanitize_title($slug);
+        if ($slug === '') {
+            return '';
+        }
+
+        return trailingslashit(home_url('/garantias-online/clientes/' . rawurlencode($slug)));
     }
 
     public static function deactivate_sepa(WP_REST_Request $request)
@@ -873,24 +898,70 @@ class ClientRestController
         $sepa_details = self::format_sepa_details($payments);
         $payment_info = self::format_payment($payments);
 
+        $actor = wp_get_current_user();
+        $actor_id = ($actor instanceof WP_User) ? (int) $actor->ID : 0;
+
+        $account_user = is_array($account['user'] ?? null) ? $account['user'] : [];
+        $name_data = is_array($account_user['name'] ?? null) ? $account_user['name'] : [];
+        $full_name = self::clean_text($account_user['full_name'] ?? '');
+        if ($full_name === '' && ! empty($name_data)) {
+            $full_name = self::clean_text($name_data['full'] ?? '');
+            if ($full_name === '') {
+                $parts = array_filter([
+                    self::clean_text($name_data['first'] ?? ''),
+                    self::clean_text($name_data['last'] ?? ''),
+                ]);
+                if (! empty($parts)) {
+                    $full_name = trim(implode(' ', $parts));
+                }
+            }
+            if ($full_name === '') {
+                $full_name = self::clean_text($name_data['personal'] ?? '');
+            }
+        }
+        if ($full_name === '') {
+            $full_name = self::clean_text($user->display_name);
+        }
+
+        $company_data = is_array($account_user['company'] ?? null) ? $account_user['company'] : [];
+        $company_name = self::clean_text($company_data['name'] ?? '');
+        if ($company_name === '') {
+            $company_name = self::clean_text($company_data['trade_name'] ?? '');
+        }
+
+        $reference = self::clean_text($stored['reference'] ?? '');
+        $status_label = isset($sepa_details['label']) ? (string) $sepa_details['label'] : '';
+
+        $actor_label = $full_name;
+        if ($company_name !== '' && $full_name !== '' && strcasecmp($company_name, $full_name) !== 0) {
+            $actor_label = sprintf('%s (%s)', $full_name, $company_name);
+        } elseif ($full_name === '' && $company_name !== '') {
+            $actor_label = $company_name;
+        }
+
         $context = array_merge(
             self::build_client_log_context($user),
             [
-                'document_reference' => self::clean_text($stored['reference'] ?? ''),
+                'user_name'          => $actor_label,
+                'user_email'         => sanitize_email($user->user_email),
+                'company_name'       => $company_name,
+                'document_reference' => $reference,
                 'document_name'      => self::clean_text($stored['filename'] ?? ''),
+                'status_label'       => $status_label,
+                'profile_url'        => self::build_client_profile_url($user),
                 'uploaded_by_admin'  => true,
             ]
         );
 
-        $actor = wp_get_current_user();
-        $actor_id = ($actor instanceof WP_User) ? (int) $actor->ID : 0;
         if ($actor instanceof WP_User) {
-            $context['actor_name']  = self::clean_text($actor->display_name);
-            $context['actor_email'] = sanitize_email($actor->user_email);
+            $context['actor_name']       = self::clean_text($actor->display_name);
+            $context['actor_email']      = sanitize_email($actor->user_email);
+            $context['uploaded_by']      = self::clean_text($actor->display_name);
+            $context['uploaded_by_email'] = sanitize_email($actor->user_email);
         }
 
         ActivityLogger::log(
-            'sepa.signed_uploaded',
+            'sepa.activated',
             [
                 'actor_id'    => $actor_id,
                 'target_type' => 'user',
@@ -898,6 +969,17 @@ class ClientRestController
                 'context'     => $context,
             ]
         );
+
+        $notify_options = [
+            'uploaded_by_admin' => true,
+        ];
+
+        if ($actor instanceof WP_User) {
+            $notify_options['actor_name'] = self::clean_text($actor->display_name);
+            $notify_options['actor_email'] = sanitize_email($actor->user_email);
+        }
+
+        AccountRestController::notify_sepa_activation($user_id, $sepa_details, $notify_options);
 
         return new WP_REST_Response(
             [
@@ -1777,6 +1859,7 @@ class ClientRestController
             true,
             SepaMandateService::ACTIVATION_ENABLED
         );
+        SepaMandateService::clear_disabled_message($user_id);
 
         $stored['submitted_at'] = current_time('timestamp');
 
