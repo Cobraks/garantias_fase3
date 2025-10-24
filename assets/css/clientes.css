@@ -507,14 +507,14 @@
     color: var(--go-color-0f172a);
 }
 .clients-table__client-cell {
-    min-width: 440px;
+    min-width: 360px;
 }
 .clients-table__registered {
-    min-width: 80px;
+    min-width: 72px;
     white-space: nowrap;
 }
 .clients-table__meta--count {
-    min-width: 90px;
+    min-width: 72px;
     text-align: right;
 }
 .clients-table__meta--commercial {
@@ -533,10 +533,10 @@
 }
 .clients-table__offers {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 0.35rem;
-    align-items: center;
-    align-content: flex-start;
+    align-items: stretch;
+    justify-content: flex-start;
     height: 100%;
     white-space: normal;
     text-overflow: initial;
@@ -546,7 +546,7 @@
     color: var(--go-color-1d4ed8);
     background: rgba(var(--go-color-3b82f6-rgb), 0.12);
     border-color: rgba(var(--go-color-3b82f6-rgb), 0.35);
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 0.4rem;
     font-size: 0.7rem;
@@ -556,7 +556,7 @@
     line-height: 1.2;
 }
 .clients-table__offer-badge {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 0.35rem;
     flex-wrap: wrap;
