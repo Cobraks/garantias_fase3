@@ -864,6 +864,11 @@
                     }
                 }
 
+                const shouldDisplayRequestedState = Boolean(sepaData.requested)
+                    || needsActivation
+                    || hasPendingDocument
+                    || awaitingValidation;
+
                 if (activationCard) {
                     const selectedMethod = payments && typeof payments.selected_method === 'string'
                         ? payments.selected_method
@@ -873,7 +878,7 @@
                         nextState = 'reactivation';
                     } else if (sepaIsActive) {
                         nextState = 'locked';
-                    } else if (sepaData.requested || needsActivation) {
+                    } else if (shouldDisplayRequestedState) {
                         nextState = 'requested';
                     } else if (selectedMethod === 'domiciliacion') {
                         nextState = 'enabled';
