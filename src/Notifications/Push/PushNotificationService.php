@@ -185,6 +185,7 @@ class PushNotificationService
             'payment.reported',
             'sepa.pending_requested',
             'sepa.signed_uploaded',
+            'sepa.activated',
         ], true);
     }
 
