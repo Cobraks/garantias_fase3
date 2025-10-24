@@ -23,6 +23,14 @@ class PushNotificationService
     /** @var PushDispatcher */
     private $dispatcher;
 
+    /**
+     * @var array<int, array{event:string,record:array}>
+     */
+    private $pending = [];
+
+    /** @var bool */
+    private $shutdown_registered = false;
+
     public static function init(): void
     {
         $service = new self(
@@ -86,25 +94,48 @@ class PushNotificationService
             return;
         }
 
-        $message = $this->message_factory->build_from_activity($event_type, $record);
-        if (! is_array($message)) {
+        $this->pending[] = [
+            'event'  => $event_type,
+            'record' => $record,
+        ];
+
+        if (! $this->shutdown_registered) {
+            $this->shutdown_registered = true;
+            add_action('shutdown', [$this, 'flush_pending']);
+        }
+    }
+
+    public function flush_pending(): void
+    {
+        if (empty($this->pending)) {
             return;
         }
 
         $admins = $this->get_target_admins();
         if (empty($admins)) {
+            $this->pending = [];
             return;
         }
 
-        foreach ($admins as $admin_id) {
-            $payload = $message;
-            $payload['user_id'] = $admin_id;
-            $notification_id = $this->notifications->create($admin_id, $payload);
+        foreach ($this->pending as $entry) {
+            $message = $this->message_factory->build_from_activity($entry['event'], $entry['record']);
+            if (! is_array($message)) {
+                continue;
+            }
 
-            if ($notification_id) {
-                $this->dispatcher->dispatch($admin_id, $payload);
+            foreach ($admins as $admin_id) {
+                $payload = $message;
+                $payload['user_id'] = $admin_id;
+                $notification_id = $this->notifications->create($admin_id, $payload);
+
+                if ($notification_id && $this->user_allows_push_notifications($admin_id)) {
+                    $this->dispatcher->dispatch($admin_id, $payload);
+                }
             }
         }
+
+        $this->pending = [];
+        $this->shutdown_registered = false;
     }
 
     /**
@@ -121,30 +152,23 @@ class PushNotificationService
             return [];
         }
 
-        $allowed = [];
-        foreach ($users as $user_id) {
-            if ($this->user_allows_notifications((int) $user_id)) {
-                $allowed[] = (int) $user_id;
-            }
-        }
-
-        return $allowed;
+        return array_map('intval', $users);
     }
 
-    private function user_allows_notifications(int $user_id): bool
+    private function user_allows_push_notifications(int $user_id): bool
     {
         if (! function_exists('get_field')) {
             return true;
         }
 
         $settings = get_field('ajustes_de_notificaciones', 'user_' . $user_id);
-        if (! is_array($settings)) {
-            return false;
+        if (! is_array($settings) || empty($settings)) {
+            return true;
         }
 
-        $group = $settings['notificaciones_del_sistema'] ?? [];
-        if (! is_array($group)) {
-            return false;
+        $group = $settings['notificaciones_del_sistema'] ?? null;
+        if (! is_array($group) || ! array_key_exists('activar_notificaciones_del_sistema', $group)) {
+            return true;
         }
 
         return ! empty($group['activar_notificaciones_del_sistema']);
@@ -153,9 +177,13 @@ class PushNotificationService
     private function is_relevant_event(string $event_type): bool
     {
         return in_array($event_type, [
+            'auth.login_success',
+            'auth.logout',
             'user.verification_verified',
-            'guarantee.created',
+            'guarantee.contracted',
+            'payment.recorded',
             'payment.reported',
+            'sepa.pending_requested',
             'sepa.signed_uploaded',
         ], true);
     }

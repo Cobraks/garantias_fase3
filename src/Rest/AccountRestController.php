@@ -253,6 +253,58 @@ class AccountRestController
         self::update_sepa_acf_snapshot($user_id, $sanitized, $normalized_document);
         self::persist_sepa_meta_snapshot($user_id, $sanitized);
         self::notify_user_pending_mandate($user_id, $normalized_document, $binary);
+        self::notify_admin_pending_mandate($user_id, $normalized_document, $binary);
+
+        $user = get_user_by('id', $user_id);
+        $company_name = '';
+        $user_name = '';
+        $user_email = '';
+
+        if ($user instanceof WP_User) {
+            $profile = UserProfileResolver::build_from_user($user);
+            $user_email = isset($profile['email']) && $profile['email'] !== ''
+                ? (string) $profile['email']
+                : $user->user_email;
+            $user_name = isset($profile['personal_full_name']) && $profile['personal_full_name'] !== ''
+                ? (string) $profile['personal_full_name']
+                : ($profile['personal_name'] ?? $user->display_name);
+
+            if (isset($profile['company']) && is_array($profile['company'])) {
+                $company = $profile['company'];
+                if (! empty($company['trade_name'])) {
+                    $company_name = (string) $company['trade_name'];
+                } elseif (! empty($company['name'])) {
+                    $company_name = (string) $company['name'];
+                } elseif (! empty($company['legal_name'])) {
+                    $company_name = (string) $company['legal_name'];
+                }
+            }
+
+            if ($company_name === '' && isset($profile['company_name']) && $profile['company_name'] !== '') {
+                $company_name = (string) $profile['company_name'];
+            }
+        }
+
+        $company_name = sanitize_text_field($company_name);
+        $user_name = sanitize_text_field($user_name);
+        $user_email = sanitize_email($user_email);
+
+        $context_status = SepaMandateService::status_label(SepaMandateService::STATUS_PENDING_SIGNATURE);
+
+        ActivityLogger::log('sepa.pending_requested', [
+            'actor_id'    => $user_id,
+            'target_type' => 'user',
+            'target_id'   => $user_id,
+            'context'     => [
+                'company_name'        => $company_name,
+                'user_name'           => $user_name,
+                'user_email'          => $user_email,
+                'document_reference'  => $normalized_document['reference'] ?? '',
+                'document_generated'  => $normalized_document['generated_at'] ?? '',
+                'profile_url'         => self::build_user_profile_url($user_id),
+                'status_label'        => $context_status,
+            ],
+        ]);
 
         $payments = self::build_payments_snapshot($user_id);
 
@@ -931,12 +983,22 @@ class AccountRestController
                     if (! is_array($row)) {
                         continue;
                     }
-                    $email = sanitize_email($row['correo'] ?? '');
-                    $type  = sanitize_key($row['destino'] ?? '');
+
+                    $email_field = $row['admin_recipients'] ?? ($row['correo'] ?? '');
+                    $email = sanitize_email($email_field);
                     if (! is_email($email)) {
                         continue;
                     }
-                    if ($type === 'bcc') {
+
+                    $is_bcc = false;
+                    if (array_key_exists('copia_oculta', $row)) {
+                        $is_bcc = (bool) $row['copia_oculta'];
+                    } else {
+                        $type = sanitize_key($row['destino'] ?? '');
+                        $is_bcc = $type === 'bcc';
+                    }
+
+                    if ($is_bcc) {
                         $bcc[] = $email;
                     } else {
                         $to[] = $email;
@@ -1433,6 +1495,115 @@ class AccountRestController
         $message = new EmailMessage([
             $user->user_email,
         ], $subject, $body, $headers, $attachments, $metadata);
+        $mailer->send($message);
+
+        foreach ($temporary_files as $file) {
+            if (is_string($file) && file_exists($file)) {
+                @unlink($file);
+            }
+        }
+    }
+
+    private static function notify_admin_pending_mandate(int $user_id, array $document, string $binary): void
+    {
+        $delivery = self::resolve_admin_recipients();
+        if (empty($delivery['to']) && empty($delivery['bcc'])) {
+            return;
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return;
+        }
+
+        $profile = UserProfileResolver::build_from_user($user);
+        $company_name = $profile['company']['name'] ?? ($profile['company']['trade_name'] ?? '');
+        if ($company_name === '' && isset($profile['company']['legal_name'])) {
+            $company_name = $profile['company']['legal_name'];
+        }
+        $personal_name = $profile['personal_full_name'] ?? $profile['personal_name'] ?? $user->display_name;
+        $profile_url = self::build_user_profile_url($user_id);
+        $email = $profile['email'] ?? $user->user_email;
+        $phone = get_user_meta($user_id, 'datos_usuario_telefono', true);
+        if (! is_string($phone)) {
+            $phone = '';
+        }
+
+        $filename = isset($document['filename']) ? sanitize_file_name((string) $document['filename']) : 'mandato-sepa.pdf';
+        if ($filename === '') {
+            $filename = 'mandato-sepa.pdf';
+        }
+        if (pathinfo($filename, PATHINFO_EXTENSION) === '') {
+            $filename .= '.pdf';
+        }
+
+        if (! function_exists('wp_tempnam')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        $temporary_files = [];
+        $attachments = [];
+        $tmp_file = wp_tempnam($filename);
+        if ($tmp_file && file_put_contents($tmp_file, $binary) !== false) {
+            $attachments[] = $tmp_file;
+            $temporary_files[] = $tmp_file;
+        }
+
+        $reference = isset($document['reference']) ? (string) $document['reference'] : '';
+        $generated = isset($document['generated_at']) ? (string) $document['generated_at'] : '';
+
+        $renderer = new TemplateRenderer();
+        $context = [
+            'user' => [
+                'name'        => $personal_name,
+                'email'       => $email,
+                'phone'       => $phone,
+                'company'     => $company_name,
+                'profile_url' => $profile_url,
+            ],
+            'document' => [
+                'filename'  => $filename,
+                'reference' => $reference,
+                'generated' => $generated,
+            ],
+            'signature' => EmailSettings::getSignature(),
+        ];
+
+        $body = $renderer->render('sepa-pending-admin', $context);
+        if ($body === '') {
+            foreach ($temporary_files as $file) {
+                if (is_string($file) && file_exists($file)) {
+                    @unlink($file);
+                }
+            }
+            return;
+        }
+
+        $subject_name = $company_name !== '' ? $company_name : $personal_name;
+        $subject = sprintf(
+            __('Solicitud de domiciliación bancaria: %s', 'garantias-online-360vo'),
+            $subject_name !== '' ? $subject_name : __('Profesional', 'garantias-online-360vo')
+        );
+
+        $headers = [];
+        $from_header = EmailSettings::buildFromHeader('admin');
+        if ($from_header !== '') {
+            $headers[] = $from_header;
+        }
+
+        $mailer = new Mailer();
+        $message = new EmailMessage(
+            $delivery['to'] ?: [$delivery['primary']],
+            $subject,
+            $body,
+            $headers,
+            $attachments,
+            [
+                'bcc'      => $delivery['bcc'],
+                'reply_to' => $delivery['reply_to'],
+            ]
+        );
+
         $mailer->send($message);
 
         foreach ($temporary_files as $file) {
