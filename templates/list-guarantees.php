@@ -133,12 +133,15 @@ $can_view_summary          = false;
 $show_kpi_grid             = $is_admin_user;
 
 $format_summary_number = static function ($value): string {
-    return number_format_i18n((int) $value);
+    $number = is_numeric($value) ? (float) $value : 0.0;
+
+    return number_format($number, 0, ',', '.');
 };
 
 $format_summary_currency = static function ($value): string {
     $amount = is_numeric($value) ? (float) $value : 0.0;
-    return number_format_i18n($amount, 2) . '€';
+
+    return number_format($amount, 2, ',', '.') . '€';
 };
 
 $format_summary_guarantees = static function ($count) use ($format_summary_number): string {

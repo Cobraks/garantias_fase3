@@ -105,10 +105,16 @@ const ADD_DOC_KEY = "add-document";
                                 accent: "var(--admin-summary-action-collect)",
                         },
                 ];
-                const integerFormatter = new Intl.NumberFormat("es-ES");
-                const currencyFormatter = new Intl.NumberFormat("es-ES", {
+                const integerFormatter = new Intl.NumberFormat("de-DE", {
+                        useGrouping: true,
+                        maximumFractionDigits: 0,
+                });
+                const currencyFormatter = new Intl.NumberFormat("de-DE", {
                         style: "currency",
                         currency: "EUR",
+                        useGrouping: true,
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
                 });
                 let adminSummaryCache = null;
                 let adminSummaryPromise = null;
@@ -2234,7 +2240,7 @@ const ADD_DOC_KEY = "add-document";
                                                           .replace(",", ".")
                                           );
                         if (isNaN(num)) return String(value);
-                        return new Intl.NumberFormat("es-ES", {
+                        return new Intl.NumberFormat("de-DE", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                         }).format(num);
@@ -3277,6 +3283,15 @@ const ADD_DOC_KEY = "add-document";
                         const labelEl = root.querySelector("[data-admin-summary-label]");
                         const items = normalizeSummaryStates((context && context.states) || []);
                         const amountMap = normalizeSummaryAmounts((context && context.amounts) || []);
+                        const monthNameRaw =
+                                context && typeof context.month_name === "string"
+                                        ? context.month_name
+                                        : "";
+                        const monthName = monthNameRaw ? monthNameRaw.trim() : "";
+                        const trendsData =
+                                context && typeof context.trends === "object" && context.trends
+                                        ? context.trends
+                                        : {};
                         const total = items.reduce((sum, item) => sum + item.count, 0);
                         const totalCount =
                                 typeof context.count === "number" ? context.count : total;
@@ -3314,6 +3329,8 @@ const ADD_DOC_KEY = "add-document";
                                 label: contextLabel,
                                 count: totalCount,
                                 amountMap,
+                                month_name: monthName,
+                                trends: trendsData,
                         });
 
                         if (!legend) {
