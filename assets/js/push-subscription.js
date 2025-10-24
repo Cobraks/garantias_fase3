@@ -113,9 +113,17 @@
         const publicKey = pushConfig.publicKey;
         const subscriptionEndpoint = pushConfig.subscriptionEndpoint;
         const testEndpoint = pushConfig.testEndpoint || '';
-        const testIcon = pushConfig.testIcon || '';
         const serviceWorkerUrl = pushConfig.serviceWorker;
         const restNonce = restConfig.nonce || '';
+
+        let testIcon = pushConfig.testIcon || '';
+        if (!testIcon && serviceWorkerUrl) {
+            try {
+                testIcon = new URL('../images/logo-notify.png', serviceWorkerUrl).href;
+            } catch (error) {
+                testIcon = '';
+            }
+        }
 
         let isActive = false;
         let isProcessing = false;
