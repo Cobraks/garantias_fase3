@@ -115,6 +115,21 @@
         });
     };
 
+    const isLoginActivity = (item) => {
+        if (!item || typeof item !== 'object') {
+            return false;
+        }
+        const slug = typeof item.icon_slug === 'string' ? item.icon_slug : '';
+        return slug === 'login' || slug === 'logout';
+    };
+
+    const filterPanelItems = (items) => {
+        if (!Array.isArray(items)) {
+            return [];
+        }
+        return items.filter((item) => !isLoginActivity(item) && !item.is_read);
+    };
+
     const createElement = (tag, className, content) => {
         const element = document.createElement(tag);
         if (className) {
@@ -192,8 +207,10 @@
             knownIds: new Set(),
             initialized: false,
             unread: 0,
+            panelUnread: 0,
             toastTimer: null,
             modal: null,
+            modalElements: null,
             modalOpen: false,
             latestId: 0,
             isPolling: false,
@@ -213,9 +230,11 @@
         }
 
         const persistSnapshot = () => {
+            const panelItems = filterPanelItems(state.items);
             const payload = {
-                unread: parseUnread(state.unread),
-                items: state.items.slice(0, SNAPSHOT_LIMIT).map((item) => ({
+                unread: parseUnread(state.panelUnread),
+                total_unread: parseUnread(state.unread),
+                items: panelItems.slice(0, SNAPSHOT_LIMIT).map((item) => ({
                     id: item.id,
                     title: item.title,
                     body: item.body,
@@ -228,6 +247,7 @@
                     is_read: item.is_read,
                     created_at: item.created_at,
                     actions: item.actions,
+                    icon_slug: item.icon_slug,
                 })),
             };
 
@@ -242,21 +262,29 @@
 
             try {
                 const snapshot = JSON.parse(raw);
-                if (snapshot && (typeof snapshot.unread === 'number' || typeof snapshot.unread === 'string')) {
-                    const cachedUnread = parseUnread(snapshot.unread);
-                    state.unread = cachedUnread;
-                    if (cachedUnread > 0) {
-                        setBadge(cachedUnread);
+                if (snapshot) {
+                    if (typeof snapshot.total_unread === 'number' || typeof snapshot.total_unread === 'string') {
+                        state.unread = parseUnread(snapshot.total_unread);
+                    }
+
+                    if (typeof snapshot.unread === 'number' || typeof snapshot.unread === 'string') {
+                        const cachedPanelUnread = parseUnread(snapshot.unread);
+                        state.panelUnread = cachedPanelUnread;
+                        setBadge(cachedPanelUnread);
                     }
                 }
 
-                if (Array.isArray(snapshot.items) && snapshot.items.length > 0) {
+                if (Array.isArray(snapshot?.items) && snapshot.items.length > 0) {
                     const items = normalizeItems(snapshot.items).slice(0, perPage);
                     state.items = items;
                     items.forEach((item) => {
                         state.knownIds.add(item.id);
                     });
-                    renderNotifications(items, false);
+                    synchronizeInterface({
+                        persist: false,
+                        preservePanelScroll: false,
+                        preserveModalScroll: false,
+                    });
                 }
             } catch (error) {
                 safeStorage.remove(STORAGE_KEYS.snapshot);
@@ -334,6 +362,7 @@
                 body: typeof item.body === 'string' ? decodeHtmlEntities(item.body) : '',
                 icon: typeof item.icon === 'string' ? item.icon : '',
                 icon_svg: typeof item.icon_svg === 'string' ? item.icon_svg : '',
+                icon_slug: typeof item.icon_slug === 'string' ? item.icon_slug : '',
                 tone: typeof item.tone === 'string' ? item.tone : '',
                 badge: typeof item.badge === 'string' ? item.badge : '',
                 link: typeof item.link === 'string' ? item.link : '',
@@ -359,29 +388,42 @@
         };
 
         const updateEmptyState = () => {
-            if (!empty) {
+            if (empty) {
+                const panelItems = filterPanelItems(state.items);
+                empty.hidden = panelItems.length > 0;
+            }
+            if (state.modalElements && state.modalElements.empty) {
+                state.modalElements.empty.hidden = state.items.length > 0;
+            }
+        };
+
+        const applyLoadMoreState = (button) => {
+            if (!button) {
                 return;
             }
-            if (state.items.length === 0) {
-                empty.hidden = false;
+            if (!state.hasMore) {
+                button.hidden = true;
+                button.disabled = false;
+                button.classList.remove('is-loading');
+                button.textContent = loadMoreLabel;
+                return;
+            }
+            button.hidden = false;
+            button.disabled = state.loadingMore;
+            if (state.loadingMore) {
+                button.classList.add('is-loading');
+                button.innerHTML = `<span class="notifications-panel__load-more-spinner" aria-hidden="true"></span><span class="notifications-panel__load-more-text">${loadingLabel}</span>`;
             } else {
-                empty.hidden = true;
+                button.classList.remove('is-loading');
+                button.textContent = loadMoreLabel;
             }
         };
 
         const updateLoadMore = () => {
-            if (!loadMoreButton) {
-                return;
+            applyLoadMoreState(loadMoreButton);
+            if (state.modalElements && state.modalElements.loadMore) {
+                applyLoadMoreState(state.modalElements.loadMore);
             }
-            if (!state.hasMore) {
-                loadMoreButton.hidden = true;
-                loadMoreButton.disabled = false;
-                loadMoreButton.textContent = loadMoreLabel;
-                return;
-            }
-            loadMoreButton.hidden = false;
-            loadMoreButton.disabled = state.loadingMore;
-            loadMoreButton.textContent = state.loadingMore ? loadingLabel : loadMoreLabel;
         };
 
         const hideToast = () => {
@@ -635,15 +677,58 @@
             dialog.appendChild(header);
 
             const body = createElement('div', 'notifications-modal__body');
-            if (modalPlaceholder) {
-                body.appendChild(createElement('p', 'notifications-modal__placeholder', modalPlaceholder));
-            }
+            const content = createElement('div', 'notifications-modal__content');
+
+            const controls = createElement('div', 'notifications-modal__controls');
+            const modalMarkAll = createElement('button', 'notifications-panel__mark');
+            modalMarkAll.type = 'button';
+            modalMarkAll.textContent = markAllButton ? markAllButton.textContent.trim() : 'Marcar todo como leído';
+            controls.appendChild(modalMarkAll);
+            content.appendChild(controls);
+
+            const scrollArea = createElement('div', 'notifications-modal__scroll');
+            const emptyMessage = empty ? empty.textContent : 'No tienes notificaciones nuevas.';
+            const modalEmpty = createElement('p', 'notifications-panel__empty', emptyMessage);
+            modalEmpty.hidden = true;
+            scrollArea.appendChild(modalEmpty);
+
+            const modalList = createElement('ul', 'notifications-panel__list');
+            scrollArea.appendChild(modalList);
+
+            const modalLoadMore = createElement('button', 'notifications-panel__load-more');
+            modalLoadMore.type = 'button';
+            modalLoadMore.hidden = true;
+            modalLoadMore.textContent = loadMoreLabel;
+            scrollArea.appendChild(modalLoadMore);
+
+            content.appendChild(scrollArea);
+            body.appendChild(content);
             dialog.appendChild(body);
 
             modal.appendChild(dialog);
             document.body.appendChild(modal);
 
             state.modal = modal;
+            state.modalElements = {
+                list: modalList,
+                empty: modalEmpty,
+                loadMore: modalLoadMore,
+                markAll: modalMarkAll,
+                scroll: scrollArea,
+            };
+
+            attachListEvents(modalList, 'modal');
+
+            modalMarkAll.addEventListener('click', () => {
+                markAll();
+            });
+
+            modalLoadMore.addEventListener('click', () => {
+                if (state.loadingMore || !state.hasMore) {
+                    return;
+                }
+                fetchNotifications({ append: true, background: state.isOpen === false && state.modalOpen === false });
+            });
 
             modal.addEventListener('click', (event) => {
                 const target = event.target;
@@ -667,6 +752,11 @@
             modal.setAttribute('aria-hidden', 'false');
             modal.classList.add('notifications-modal--visible');
             state.modalOpen = true;
+            synchronizeInterface({
+                persist: false,
+                preservePanelScroll: state.isOpen,
+                preserveModalScroll: false,
+            });
         };
 
         const closeModal = () => {
@@ -830,15 +920,61 @@
             return li;
         };
 
-        const renderNotifications = (items, append = false) => {
-            if (!append) {
+        const refreshNotifications = ({
+            panelItems = filterPanelItems(state.items),
+            preservePanelScroll = state.isOpen,
+            preserveModalScroll = state.modalOpen,
+        } = {}) => {
+            if (list) {
+                let previousScroll = null;
+                if (preservePanelScroll && scrollBox) {
+                    previousScroll = scrollBox.scrollTop;
+                }
                 list.innerHTML = '';
+                panelItems.forEach((item) => {
+                    const element = buildNotification(item);
+                    list.appendChild(element);
+                });
+                if (previousScroll !== null && scrollBox) {
+                    scrollBox.scrollTop = previousScroll;
+                }
             }
-            items.forEach((item) => {
-                const element = buildNotification(item);
-                list.appendChild(element);
-            });
+
+            if (state.modalElements && state.modalElements.list) {
+                const { list: modalList, scroll } = state.modalElements;
+                let previousModalScroll = null;
+                if (preserveModalScroll && scroll) {
+                    previousModalScroll = scroll.scrollTop;
+                }
+                modalList.innerHTML = '';
+                state.items.forEach((item) => {
+                    modalList.appendChild(buildNotification(item));
+                });
+                if (previousModalScroll !== null && scroll) {
+                    scroll.scrollTop = previousModalScroll;
+                }
+            }
+
             updateEmptyState();
+        };
+
+        const synchronizeInterface = ({
+            persist = true,
+            preservePanelScroll = state.isOpen,
+            preserveModalScroll = state.modalOpen,
+        } = {}) => {
+            const panelItems = filterPanelItems(state.items);
+            state.panelUnread = panelItems.length;
+            setBadge(state.panelUnread);
+            refreshNotifications({
+                panelItems,
+                preservePanelScroll,
+                preserveModalScroll,
+            });
+            updateLoadMore();
+            if (persist) {
+                persistSnapshot();
+            }
         };
 
         const handleNewItems = (items, { allowToast = false, previousItems = [] } = {}) => {
@@ -914,28 +1050,24 @@
                     state.hasMore = Boolean(meta.has_more);
                     state.items = dedupeById(state.items.concat(items));
                     items.forEach((item) => state.knownIds.add(item.id));
-                    renderNotifications(items, true);
                 } else {
                     const previousItems = state.items.slice();
                     state.page = 1;
                     state.hasMore = Boolean(meta.has_more);
                     state.items = items;
-                    renderNotifications(items, false);
                     handleNewItems(items, { allowToast: background, previousItems });
                 }
 
                 if (typeof meta.unread !== 'undefined') {
-                    const unreadValue = parseUnread(meta.unread);
-                    state.unread = unreadValue;
-                    setBadge(unreadValue);
+                    state.unread = parseUnread(meta.unread);
                 }
 
-                persistSnapshot();
+                synchronizeInterface({
+                    preservePanelScroll: append && state.isOpen,
+                    preserveModalScroll: append && state.modalOpen,
+                });
 
                 updateLatestId(items, Number.isFinite(latestFromMeta) ? latestFromMeta : null);
-
-                updateLoadMore();
-                updateEmptyState();
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.warn('GO360 notifications warning', error);
@@ -986,35 +1118,25 @@
                     : Number(meta.latest_id);
 
                 if (typeof meta.unread !== 'undefined') {
-                    const unreadValue = parseUnread(meta.unread);
-                    state.unread = unreadValue;
-                    setBadge(unreadValue);
+                    state.unread = parseUnread(meta.unread);
                 }
 
                 if (freshItems.length > 0) {
                     const previousItems = state.items.slice();
                     state.items = dedupeById(freshItems.concat(state.items));
-
-                    let previousScroll = null;
-                    if (state.isOpen && scrollBox) {
-                        previousScroll = scrollBox.scrollTop;
-                    }
-
-                    renderNotifications(state.items, false);
-
-                    if (state.isOpen && scrollBox && previousScroll !== null) {
-                        scrollBox.scrollTop = previousScroll;
-                    }
-
+                    freshItems.forEach((item) => state.knownIds.add(item.id));
                     handleNewItems(freshItems, {
                         allowToast: !state.isOpen,
                         previousItems,
                     });
                 }
 
+                synchronizeInterface({
+                    preservePanelScroll: state.isOpen,
+                    preserveModalScroll: state.modalOpen,
+                });
+
                 updateLatestId(freshItems, Number.isFinite(latestFromMeta) ? latestFromMeta : null);
-                updateEmptyState();
-                persistSnapshot();
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.warn('GO360 notifications poll warning', error);
@@ -1041,11 +1163,8 @@
                 }
                 const payload = await response.json();
                 if (payload.meta && typeof payload.meta.unread !== 'undefined') {
-                    const unreadValue = parseUnread(payload.meta.unread);
-                    state.unread = unreadValue;
-                    setBadge(unreadValue);
+                    state.unread = parseUnread(payload.meta.unread);
                 }
-                persistSnapshot();
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.error('GO360 notifications mark error', error);
@@ -1070,11 +1189,8 @@
                 }
                 const payload = await response.json();
                 if (payload.meta && typeof payload.meta.unread !== 'undefined') {
-                    const unreadValue = parseUnread(payload.meta.unread);
-                    state.unread = unreadValue;
-                    setBadge(unreadValue);
+                    state.unread = parseUnread(payload.meta.unread);
                 }
-                persistSnapshot();
                 return true;
             } catch (error) {
                 // eslint-disable-next-line no-console
@@ -1097,9 +1213,10 @@
             if (hadItems) {
                 state.items = state.items.map((item) => ({ ...item, is_read: true }));
                 state.unread = 0;
-                setBadge(0);
-                renderNotifications(state.items, false);
-                persistSnapshot();
+                synchronizeInterface({
+                    preservePanelScroll: false,
+                    preserveModalScroll: false,
+                });
             }
 
             try {
@@ -1118,19 +1235,13 @@
                 }
                 const payload = await response.json();
                 if (payload.meta && typeof payload.meta.unread !== 'undefined') {
-                    const unreadValue = parseUnread(payload.meta.unread);
-                    state.unread = unreadValue;
-                    setBadge(unreadValue);
+                    state.unread = parseUnread(payload.meta.unread);
                 }
-                if (hadItems) {
-                    persistSnapshot();
-                }
+                synchronizeInterface();
             } catch (error) {
                 state.items = previousItems;
                 state.unread = previousUnread;
-                setBadge(previousUnread);
-                renderNotifications(state.items, false);
-                persistSnapshot();
+                synchronizeInterface();
                 // eslint-disable-next-line no-console
                 console.error('GO360 notifications mark all error', error);
             } finally {
@@ -1259,65 +1370,92 @@
             });
         }
 
-        list.addEventListener('click', (event) => {
-            const target = event.target;
-            if (!(target instanceof HTMLElement)) {
+        const attachListEvents = (listElement, context) => {
+            if (!listElement) {
                 return;
             }
 
-            const actionButton = target.closest('.notifications-panel__action-button');
-            if (actionButton) {
-                const actionType = actionButton.dataset.action || '';
-                if (actionType === '') {
+            listElement.addEventListener('click', (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLElement)) {
                     return;
                 }
 
-                event.preventDefault();
-                event.stopPropagation();
-                const itemElement = actionButton.closest('.notifications-panel__item');
-                if (!itemElement) {
-                    return;
-                }
-                const id = itemElement.dataset.notificationId;
-                if (!id) {
-                    return;
-                }
-
-                if (actionType === 'delete') {
-                    if (actionButton.classList.contains('is-disabled')) {
+                const actionButton = target.closest('.notifications-panel__action-button');
+                if (actionButton) {
+                    const actionType = actionButton.dataset.action || '';
+                    if (actionType === '') {
                         return;
                     }
-                    actionButton.classList.add('is-disabled');
-                    actionButton.setAttribute('aria-disabled', 'true');
-                    deleteNotification(id).then((success) => {
-                        if (!success) {
-                            actionButton.classList.remove('is-disabled');
-                            actionButton.setAttribute('aria-disabled', 'false');
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const itemElement = actionButton.closest('.notifications-panel__item');
+                    if (!itemElement) {
+                        return;
+                    }
+
+                    const id = itemElement.dataset.notificationId;
+                    if (!id) {
+                        return;
+                    }
+
+                    const preservePanelScroll = state.isOpen;
+                    const preserveModalScroll = state.modalOpen;
+
+                    if (actionType === 'delete') {
+                        if (actionButton.classList.contains('is-disabled')) {
                             return;
                         }
-                        state.items = state.items.filter((item) => String(item.id) !== id);
-                        itemElement.remove();
-                        updateEmptyState();
-                        if (state.unread > 0 && itemElement.classList.contains('notifications-panel__item--unread')) {
-                            state.unread = Math.max(0, state.unread - 1);
-                            setBadge(state.unread);
-                        }
-                        persistSnapshot();
-                        fetchNotifications({ append: false, background: state.isOpen === false });
-                    });
-                    return;
-                }
-
-                if (actionType === 'open-link') {
-                    const url = actionButton.dataset.url || '';
-                    if (url) {
-                        window.open(url, '_blank', 'noopener,noreferrer');
+                        actionButton.classList.add('is-disabled');
+                        actionButton.setAttribute('aria-disabled', 'true');
+                        deleteNotification(id).then((success) => {
+                            if (!success) {
+                                actionButton.classList.remove('is-disabled');
+                                actionButton.setAttribute('aria-disabled', 'false');
+                                return;
+                            }
+                            const wasUnread = itemElement.classList.contains('notifications-panel__item--unread');
+                            state.items = state.items.filter((item) => String(item.id) !== id);
+                            if (wasUnread) {
+                                state.unread = Math.max(0, state.unread - 1);
+                            }
+                            synchronizeInterface({
+                                preservePanelScroll,
+                                preserveModalScroll,
+                            });
+                            const backgroundRefresh = !state.isOpen && !state.modalOpen;
+                            fetchNotifications({ append: false, background: backgroundRefresh });
+                        });
+                        return;
                     }
-                    if (itemElement.classList.contains('notifications-panel__item--unread')) {
-                        markItemAsRead(itemElement);
-                        const markButton = itemElement.querySelector('[data-action="mark"]');
-                        if (markButton) {
-                            setMarkButtonState(markButton, true);
+
+                    if (actionType === 'open-link') {
+                        const url = actionButton.dataset.url || '';
+                        if (url) {
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                        }
+                        if (itemElement.classList.contains('notifications-panel__item--unread')) {
+                            state.items = state.items.map((item) => {
+                                if (String(item.id) === id) {
+                                    return { ...item, is_read: true };
+                                }
+                                return item;
+                            });
+                            state.unread = Math.max(0, state.unread - 1);
+                            synchronizeInterface({
+                                preservePanelScroll,
+                                preserveModalScroll,
+                            });
+                            markNotification(id);
+                        }
+                        return;
+                    }
+
+                    if (actionType === 'mark') {
+                        if (!itemElement.classList.contains('notifications-panel__item--unread')) {
+                            return;
                         }
                         state.items = state.items.map((item) => {
                             if (String(item.id) === id) {
@@ -1325,65 +1463,47 @@
                             }
                             return item;
                         });
-                        state.unread = Math.max(0, state.unread - 1);
-                        setBadge(state.unread);
-                        persistSnapshot();
+                        if (state.unread > 0) {
+                            state.unread = Math.max(0, state.unread - 1);
+                        }
+                        synchronizeInterface({
+                            preservePanelScroll,
+                            preserveModalScroll,
+                        });
                         markNotification(id);
                     }
                     return;
                 }
 
-                if (actionType === 'mark') {
-                    if (!itemElement.classList.contains('notifications-panel__item--unread')) {
-                        return;
-                    }
-                    markItemAsRead(itemElement);
-                    setMarkButtonState(actionButton, true);
-                    state.items = state.items.map((item) => {
-                        if (String(item.id) === id) {
-                            return { ...item, is_read: true };
-                        }
-                        return item;
-                    });
-                    if (state.unread > 0) {
-                        state.unread = Math.max(0, state.unread - 1);
-                        setBadge(state.unread);
-                    }
-                    persistSnapshot();
-                    markNotification(id);
+                const itemElement = target.closest('.notifications-panel__item');
+                if (!itemElement) {
+                    return;
                 }
-                return;
-            }
-
-            const itemElement = target.closest('.notifications-panel__item');
-            if (!itemElement) {
-                return;
-            }
-            const id = itemElement.dataset.notificationId;
-            if (!id) {
-                return;
-            }
-            if (!itemElement.classList.contains('notifications-panel__item--unread')) {
-                return;
-            }
-            markItemAsRead(itemElement);
-            const markButton = itemElement.querySelector('[data-action="mark"]');
-            if (markButton) {
-                setMarkButtonState(markButton, true);
-            }
-            state.items = state.items.map((item) => {
-                if (String(item.id) === id) {
-                    return { ...item, is_read: true };
+                const id = itemElement.dataset.notificationId;
+                if (!id) {
+                    return;
                 }
-                return item;
+                if (!itemElement.classList.contains('notifications-panel__item--unread')) {
+                    return;
+                }
+                state.items = state.items.map((item) => {
+                    if (String(item.id) === id) {
+                        return { ...item, is_read: true };
+                    }
+                    return item;
+                });
+                if (state.unread > 0) {
+                    state.unread = Math.max(0, state.unread - 1);
+                }
+                synchronizeInterface({
+                    preservePanelScroll: state.isOpen,
+                    preserveModalScroll: state.modalOpen,
+                });
+                markNotification(id);
             });
-            if (state.unread > 0) {
-                state.unread = Math.max(0, state.unread - 1);
-                setBadge(state.unread);
-            }
-            persistSnapshot();
-            markNotification(id);
-        });
+        };
+
+        attachListEvents(list, 'panel');
 
         window.addEventListener('go360:notifications:refresh', () => {
             fetchNotifications({ append: false, background: !state.isOpen });
