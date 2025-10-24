@@ -39,6 +39,29 @@ $show_order_button   = ! $is_particular;
 $show_plan_in_advanced   = $show_more_filters && ! $is_professional;
 $show_payment_in_advanced = $show_more_filters;
 $show_commercial_select   = $show_more_filters && $uses_admin_filters;
+$show_period_filters      = $show_more_filters && $uses_admin_filters;
+
+$period_current_year      = (int) current_time('Y');
+$period_current_month     = (int) current_time('n');
+$period_default_from_month = 1;
+$period_months            = [];
+
+if ($show_period_filters) {
+    for ($month_index = 1; $month_index <= 12; $month_index++) {
+        $timestamp = strtotime(sprintf('2000-%02d-01', $month_index));
+        $label = $timestamp ? wp_date('F', $timestamp) : '';
+        if ($label !== '') {
+            if (function_exists('mb_convert_case')) {
+                $label = mb_convert_case($label, MB_CASE_TITLE, 'UTF-8');
+            } else {
+                $label = ucwords($label);
+            }
+        } else {
+            $label = sprintf(__('Mes %d', 'garantias-online-360vo'), $month_index);
+        }
+        $period_months[$month_index] = $label;
+    }
+}
 
 $sort_presets = [];
 if ($show_order_button) {
@@ -110,12 +133,15 @@ $can_view_summary          = false;
 $show_kpi_grid             = $is_admin_user;
 
 $format_summary_number = static function ($value): string {
-    return number_format_i18n((int) $value);
+    $number = is_numeric($value) ? (float) $value : 0.0;
+
+    return number_format($number, 0, ',', '.');
 };
 
 $format_summary_currency = static function ($value): string {
     $amount = is_numeric($value) ? (float) $value : 0.0;
-    return number_format_i18n($amount, 2) . ' €';
+
+    return number_format($amount, 2, ',', '.') . '€';
 };
 
 $format_summary_guarantees = static function ($count) use ($format_summary_number): string {
@@ -390,6 +416,47 @@ if (($is_admin_user || $is_director)
                         <option value=""><?php esc_html_e('Todos los comerciales', 'garantias-online-360vo'); ?></option>
                     </select>
                 <?php endif; ?>
+
+                <?php if ($show_period_filters) : ?>
+                    <select
+                        class="guarantees-list__filter"
+                        data-filter="year"
+                        data-all-label="<?php esc_attr_e('Todos los años', 'garantias-online-360vo'); ?>"
+                        aria-label="<?php esc_attr_e('Año de inicio', 'garantias-online-360vo'); ?>">
+                        <option value=""><?php esc_html_e('Todos los años', 'garantias-online-360vo'); ?></option>
+                        <option value="<?php echo esc_attr($period_current_year); ?>" selected><?php echo esc_html($period_current_year); ?></option>
+                    </select>
+                    <div class="guarantees-list__filter-field">
+                        <label class="guarantees-list__filter-field-label" for="guarantees-filter-month-from">
+                            <?php esc_html_e('Desde', 'garantias-online-360vo'); ?>
+                        </label>
+                        <select
+                            id="guarantees-filter-month-from"
+                            class="guarantees-list__filter"
+                            data-filter="month-from">
+                            <?php foreach ($period_months as $month_number => $month_label) : ?>
+                                <option value="<?php echo esc_attr($month_number); ?>" <?php selected($month_number, $period_default_from_month); ?>>
+                                    <?php echo esc_html($month_label); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="guarantees-list__filter-field">
+                        <label class="guarantees-list__filter-field-label" for="guarantees-filter-month-to">
+                            <?php esc_html_e('Hasta', 'garantias-online-360vo'); ?>
+                        </label>
+                        <select
+                            id="guarantees-filter-month-to"
+                            class="guarantees-list__filter"
+                            data-filter="month-to">
+                            <?php foreach ($period_months as $month_number => $month_label) : ?>
+                                <option value="<?php echo esc_attr($month_number); ?>" <?php selected($month_number, $period_current_month); ?>>
+                                    <?php echo esc_html($month_label); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>
@@ -566,15 +633,79 @@ if (($is_admin_user || $is_director)
 
             $summary_active_amount = $context_amounts['activada'] ?? 0.0;
 
+            $summary_month_name = '';
+            if ($admin_summary_context_key === 'month') {
+                $raw_month_name = isset($admin_summary_default['month_name'])
+                    ? (string) $admin_summary_default['month_name']
+                    : '';
+                if ($raw_month_name !== '') {
+                    $summary_month_name = $raw_month_name;
+                }
+            }
+
             $summary_amount_label = $admin_summary_context_key === 'year'
                 ? __('Valor acumulado', 'garantias-online-360vo')
-                : ($admin_summary_label !== ''
-                    ? sprintf(__('Valor mensual (%s)', 'garantias-online-360vo'), $admin_summary_label)
+                : ($summary_month_name !== ''
+                    ? sprintf('%s %s', __('Valor mensual', 'garantias-online-360vo'), $summary_month_name)
                     : __('Valor mensual', 'garantias-online-360vo'));
 
             $summary_count_label = $admin_summary_context_key === 'year'
                 ? __('Total garantías', 'garantias-online-360vo')
-                : __('Garantías este mes', 'garantias-online-360vo');
+                : ($summary_month_name !== ''
+                    ? sprintf('%s %s', __('Garantías', 'garantias-online-360vo'), $summary_month_name)
+                    : __('Garantías este mes', 'garantias-online-360vo'));
+
+            $summary_trends = isset($admin_summary_default['trends']) && is_array($admin_summary_default['trends'])
+                ? $admin_summary_default['trends']
+                : [];
+
+            $amount_trend = isset($summary_trends['amount']) && is_array($summary_trends['amount'])
+                ? $summary_trends['amount']
+                : [];
+            $count_trend = isset($summary_trends['count']) && is_array($summary_trends['count'])
+                ? $summary_trends['count']
+                : [];
+
+            $trend_icon_up = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>';
+            $trend_icon_down = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>';
+
+            $amount_trend_direction = isset($amount_trend['direction']) ? (string) $amount_trend['direction'] : 'neutral';
+            $amount_trend_value = isset($amount_trend['formatted']) ? (string) $amount_trend['formatted'] : '0%';
+            $amount_trend_suffix = isset($amount_trend['label']) ? (string) $amount_trend['label'] : ($admin_summary_context_key === 'year'
+                ? __('vs año ant.', 'garantias-online-360vo')
+                : __('vs mes ant.', 'garantias-online-360vo'));
+            $amount_trend_text = trim($amount_trend_value . ' ' . $amount_trend_suffix);
+            if ($amount_trend_text === '') {
+                $amount_trend_text = '—';
+            }
+            $amount_trend_class = 'kpi-trend';
+            if ($amount_trend_direction === 'positive') {
+                $amount_trend_class .= ' positive';
+            } elseif ($amount_trend_direction === 'negative') {
+                $amount_trend_class .= ' negative';
+            } else {
+                $amount_trend_class .= ' neutral';
+            }
+            $amount_trend_icon = $amount_trend_direction === 'negative' ? $trend_icon_down : $trend_icon_up;
+
+            $count_trend_direction = isset($count_trend['direction']) ? (string) $count_trend['direction'] : 'neutral';
+            $count_trend_value = isset($count_trend['formatted']) ? (string) $count_trend['formatted'] : '0%';
+            $count_trend_suffix = isset($count_trend['label']) ? (string) $count_trend['label'] : ($admin_summary_context_key === 'year'
+                ? __('vs año ant.', 'garantias-online-360vo')
+                : __('vs mes ant.', 'garantias-online-360vo'));
+            $count_trend_text = trim($count_trend_value . ' ' . $count_trend_suffix);
+            if ($count_trend_text === '') {
+                $count_trend_text = '—';
+            }
+            $count_trend_class = 'kpi-trend';
+            if ($count_trend_direction === 'positive') {
+                $count_trend_class .= ' positive';
+            } elseif ($count_trend_direction === 'negative') {
+                $count_trend_class .= ' negative';
+            } else {
+                $count_trend_class .= ' neutral';
+            }
+            $count_trend_icon = $count_trend_direction === 'negative' ? $trend_icon_down : $trend_icon_up;
 
             $summary_active_amount_label = $has_admin_summary
                 ? $format_summary_currency($summary_active_amount)
@@ -633,9 +764,15 @@ if (($is_admin_user || $is_director)
                                     data-value="<?php echo esc_attr($summary_active_amount); ?>">
                                     <?php echo esc_html($summary_active_amount_label); ?>
                                 </div>
-                                <div class="kpi-trend positive" data-admin-summary-kpi-trend data-trend-type="amount">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>
-                                    <span>5.2% vs mes ant.</span>
+                                <div
+                                    class="<?php echo esc_attr($amount_trend_class); ?>"
+                                    data-admin-summary-kpi-trend
+                                    data-trend-type="amount"
+                                    data-direction="<?php echo esc_attr($amount_trend_direction); ?>">
+                                    <span class="kpi-trend__icon" data-admin-summary-trend-icon aria-hidden="true">
+                                        <?php echo $amount_trend_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                    </span>
+                                    <span data-admin-summary-trend-label><?php echo esc_html($amount_trend_text); ?></span>
                                 </div>
                             </article>
                             <article class="kpi-card" data-admin-summary-kpi="count">
@@ -650,9 +787,15 @@ if (($is_admin_user || $is_director)
                                     data-value="<?php echo esc_attr($admin_summary_total); ?>">
                                     <?php echo esc_html($summary_total_label); ?>
                                 </div>
-                                <div class="kpi-trend negative" data-admin-summary-kpi-trend data-trend-type="count">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>
-                                    <span>-5.2% vs mes ant.</span>
+                                <div
+                                    class="<?php echo esc_attr($count_trend_class); ?>"
+                                    data-admin-summary-kpi-trend
+                                    data-trend-type="count"
+                                    data-direction="<?php echo esc_attr($count_trend_direction); ?>">
+                                    <span class="kpi-trend__icon" data-admin-summary-trend-icon aria-hidden="true">
+                                        <?php echo $count_trend_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                    </span>
+                                    <span data-admin-summary-trend-label><?php echo esc_html($count_trend_text); ?></span>
                                 </div>
                             </article>
                         </section>
@@ -817,6 +960,73 @@ if (($is_admin_user || $is_director)
                     <?php esc_html_e('Siguiente', 'garantias-online-360vo'); ?>
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="certificate-modal" aria-hidden="true">
+    <div class="certificate-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="certificate-modal-title">
+        <button
+            type="button"
+            class="certificate-modal__close"
+            data-certificate-modal-close
+            aria-label="<?php esc_attr_e('Cerrar modificación de certificado', 'garantias-online-360vo'); ?>"
+        >
+            &times;
+        </button>
+        <div class="certificate-modal__body">
+            <aside class="certificate-modal__sidebar">
+                <h2 id="certificate-modal-title" class="certificate-modal__title">
+                    <?php esc_html_e('Modificar certificado', 'garantias-online-360vo'); ?>
+                </h2>
+                <div class="certificate-modal__alert" role="alert">
+                    <p class="certificate-modal__alert-text">
+                        <?php esc_html_e('Se eliminará el certificado actual y se creará uno nuevo.', 'garantias-online-360vo'); ?>
+                    </p>
+                    <p class="certificate-modal__alert-text">
+                        <?php esc_html_e('Se volverá a enviar a', 'garantias-online-360vo'); ?>
+                        <strong data-certificate-company>—</strong>.
+                        <?php esc_html_e('Asegúrate de que los datos sean correctos.', 'garantias-online-360vo'); ?>
+                    </p>
+                </div>
+                <div class="certificate-modal__instructions">
+                    <p class="certificate-modal__instructions-intro">
+                        <?php esc_html_e('Sigue estos pasos para actualizar el documento:', 'garantias-online-360vo'); ?>
+                    </p>
+                    <ol class="certificate-modal__steps">
+                        <li><?php esc_html_e('Modifica el documento BASE.', 'garantias-online-360vo'); ?></li>
+                        <li><?php esc_html_e('Revisa que los datos sean correctos.', 'garantias-online-360vo'); ?></li>
+                        <li><?php esc_html_e('Pulsa en “Generar nuevo certificado”.', 'garantias-online-360vo'); ?></li>
+                    </ol>
+                </div>
+                <button
+                    type="button"
+                    class="certificate-modal__action-btn"
+                    data-certificate-generate
+                    disabled
+                >
+                    <?php esc_html_e('Generar nuevo certificado', 'garantias-online-360vo'); ?>
+                </button>
+            </aside>
+            <section
+                class="certificate-modal__preview"
+                aria-label="<?php esc_attr_e('Vista previa del certificado base', 'garantias-online-360vo'); ?>"
+            >
+                <div class="certificate-modal__preview-frame">
+                    <div class="certificate-modal__preview-placeholder" data-certificate-preview-placeholder>
+                        <p>
+                            <?php esc_html_e('El documento base se mostrará aquí.', 'garantias-online-360vo'); ?>
+                        </p>
+                    </div>
+                    <iframe
+                        class="certificate-modal__iframe"
+                        src=""
+                        title="<?php esc_attr_e('Vista previa del certificado base', 'garantias-online-360vo'); ?>"
+                        data-certificate-preview
+                        hidden
+                    ></iframe>
+                </div>
+            </section>
         </div>
     </div>
 </div>

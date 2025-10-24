@@ -41,6 +41,10 @@ const ADD_DOC_KEY = "add-document";
                         ].includes(normalizedRole);
                 const canUploadDocuments =
                         ["administrator", "admin", "go_garantias"].includes(normalizedRole);
+                const canModifyCertificate =
+                        ["administrator", "admin", "go_garantias", "go_director_comercial"].includes(
+                                normalizedRole
+                        );
                 const isCoreAdmin =
                         normalizedRole === "administrator" || normalizedRole === "admin";
                 const isDirector = normalizedRole === "go_director_comercial";
@@ -77,16 +81,6 @@ const ADD_DOC_KEY = "add-document";
                                 muted: "var(--admin-summary-state-sin-finalizar-muted)",
                         },
                 };
-                const ADMIN_SUMMARY_KPI_TRENDS = {
-                        year: {
-                                amount: { label: "12.5% vs año ant.", type: "positive" },
-                                count: { label: "-5.2% vs mes ant.", type: "negative" },
-                        },
-                        month: {
-                                amount: { label: "5.2% vs mes ant.", type: "positive" },
-                                count: { label: "-5.2% vs mes ant.", type: "negative" },
-                        },
-                };
                 const ADMIN_SUMMARY_ACTION_ARROW_ICON =
                         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
                 const ADMIN_SUMMARY_ACTIONS = [
@@ -115,10 +109,16 @@ const ADD_DOC_KEY = "add-document";
                                 accent: "var(--admin-summary-action-collect)",
                         },
                 ];
-                const integerFormatter = new Intl.NumberFormat("es-ES");
-                const currencyFormatter = new Intl.NumberFormat("es-ES", {
+                const integerFormatter = new Intl.NumberFormat("de-DE", {
+                        useGrouping: true,
+                        maximumFractionDigits: 0,
+                });
+                const currencyFormatter = new Intl.NumberFormat("de-DE", {
                         style: "currency",
                         currency: "EUR",
+                        useGrouping: true,
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
                 });
                 let adminSummaryCache = null;
                 let adminSummaryPromise = null;
@@ -130,6 +130,7 @@ const ADD_DOC_KEY = "add-document";
                 const warningIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/></svg>';
                 const heartIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Zm0-108q96-86 158-147.5t98-107q36-45.5 50-81t14-70.5q0-60-40-100t-100-40q-47 0-87 26.5T518-680h-76q-15-41-55-67.5T300-774q-60 0-100 40t-40 100q0 35 14 70.5t50 81q36 45.5 98 107T480-228Zm0-273Z"/></svg>';
                 const shareIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M680-80q-50 0-85-35t-35-85q0-6 3-28L282-392q-16 15-37 23.5t-45 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q24 0 45 8.5t37 23.5l281-164q-2-7-2.5-13.5T560-760q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-24 0-45-8.5T598-672L317-508q2 7 2.5 13.5t.5 14.5q0 8-.5 14.5T317-452l281 164q16-15 37-23.5t45-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-200q0-17-11.5-28.5T680-240q-17 0-28.5 11.5T640-200q0 17 11.5 28.5T680-160ZM200-440q17 0 28.5-11.5T240-480q0-17-11.5-28.5T200-520q-17 0-28.5 11.5T160-480q0 17 11.5 28.5T200-440Zm480-280q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0 520ZM200-480Zm480-280Z"/></svg>';
+                const editIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
                 const personAddIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M720-400v-120H600v-80h120v-120h80v120h120v80H800v120h-80Zm-360-80q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm80-80h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T440-640q0-33-23.5-56.5T360-720q-33 0-56.5 23.5T280-640q0 33 23.5 56.5T360-560Zm0-80Zm0 400Z"/></svg>';
                 const personIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z"/></svg>';
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
@@ -144,10 +145,17 @@ const ADD_DOC_KEY = "add-document";
                 const arrowLeftIcon =
                         (goConfig.icons && goConfig.icons.arrowLeft) ||
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z"/></svg>';
+                const ADMIN_SUMMARY_TREND_ICON_UP =
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>';
+                const ADMIN_SUMMARY_TREND_ICON_DOWN =
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>';
 
                 let pendingConfirmContext = null;
                 const confirmModalController = setupConfirmModal(
                         document.querySelector(".confirm-modal")
+                );
+                const certificateModalController = setupCertificateModal(
+                        document.querySelector(".certificate-modal")
                 );
 
                 const PDF_CACHE_LIMIT = 12;
@@ -339,6 +347,14 @@ const ADD_DOC_KEY = "add-document";
                 const commercialSelect = document.querySelector(
                         '[data-filter="commercial"]'
                 );
+                const yearSelect = document.querySelector('[data-filter="year"]');
+                const monthFromSelect = document.querySelector('[data-filter="month-from"]');
+                const monthToSelect = document.querySelector('[data-filter="month-to"]');
+                const hasPeriodFilters = Boolean(
+                        yearSelect &&
+                        monthFromSelect &&
+                        monthToSelect
+                );
                 const clientsWrapper = document.querySelector(
                         "[data-clients-wrapper]"
                 );
@@ -361,7 +377,6 @@ const ADD_DOC_KEY = "add-document";
                 const orderLabelNode = orderRoot
                         ? orderRoot.querySelector("[data-order-label]")
                         : null;
-                const rootElement = document.documentElement;
                 let selectedEstado = "";
                 let selectedPlan = "";
                 let selectedCanal = "";
@@ -369,6 +384,65 @@ const ADD_DOC_KEY = "add-document";
                 let selectedVendorType = "";
                 let selectedPaymentMethod = "";
                 let selectedCommercial = "";
+                let selectedYear = "";
+                let selectedMonthFrom = "";
+                let selectedMonthTo = "";
+                const periodDefaults = {
+                        year: "",
+                        monthFrom: "",
+                        monthTo: "",
+                };
+                const rootElement = document.documentElement;
+                const htmlLang =
+                        (rootElement &&
+                                (rootElement.lang ||
+                                        rootElement.getAttribute("xml:lang"))) ||
+                        "es-ES";
+                const monthsByYear = new Map();
+                let availableYears = [];
+                let currentPeriodYear = new Date().getFullYear();
+                let currentPeriodMonth = new Date().getMonth() + 1;
+                let monthOptions = [];
+                if (hasPeriodFilters) {
+                        let monthFormatter = null;
+                        try {
+                                monthFormatter = new Intl.DateTimeFormat(htmlLang, {
+                                        month: "long",
+                                });
+                        } catch (e) {
+                                monthFormatter = null;
+                        }
+                        monthOptions = Array.from({ length: 12 }, (_, index) => {
+                                const monthIndex = index + 1;
+                                let formatted = "";
+                                if (monthFormatter) {
+                                        try {
+                                                formatted = monthFormatter.format(
+                                                        new Date(Date.UTC(2020, index, 1))
+                                                );
+                                        } catch (error) {
+                                                formatted = "";
+                                        }
+                                }
+                                if (typeof formatted !== "string" || formatted.length === 0) {
+                                        formatted = String(monthIndex);
+                                }
+                                const label =
+                                        formatted.charAt(0).toUpperCase() + formatted.slice(1);
+                                return {
+                                        value: String(monthIndex),
+                                        label,
+                                };
+                        });
+                        selectedYear = String(currentPeriodYear);
+                        selectedMonthFrom = "1";
+                        selectedMonthTo = String(
+                                Math.min(12, Math.max(1, currentPeriodMonth))
+                        );
+                        periodDefaults.year = selectedYear;
+                        periodDefaults.monthFrom = selectedMonthFrom;
+                        periodDefaults.monthTo = selectedMonthTo;
+                }
                 const defaultOrderKey = orderToggle
                         ? orderToggle.getAttribute("data-default-sort") || "created_desc"
                         : "created_desc";
@@ -423,10 +497,284 @@ const ADD_DOC_KEY = "add-document";
                 };
                 updateBaseFiltersHeight();
 
+                function populateMonthSelect(select) {
+                        if (!select || monthOptions.length === 0) {
+                                return;
+                        }
+                        select.innerHTML = "";
+                        monthOptions.forEach(({ value, label }) => {
+                                const option = document.createElement("option");
+                                option.value = value;
+                                option.textContent = label;
+                                select.appendChild(option);
+                        });
+                }
+
+                function populateYearOptions(yearValues, selectedValue) {
+                        if (!yearSelect) {
+                                return;
+                        }
+                        const allLabel =
+                                yearSelect.getAttribute("data-all-label") ||
+                                "Todos los años";
+                        yearSelect.innerHTML = "";
+                        const allOption = document.createElement("option");
+                        allOption.value = "";
+                        allOption.textContent = allLabel;
+                        yearSelect.appendChild(allOption);
+                        yearValues.forEach((year) => {
+                                const yearString = String(year);
+                                const option = document.createElement("option");
+                                option.value = yearString;
+                                option.textContent = yearString;
+                                yearSelect.appendChild(option);
+                        });
+                        yearSelect.value = selectedValue || "";
+                }
+
+                function getMonthsForYear(yearValue) {
+                        if (!yearValue) {
+                                return [];
+                        }
+                        const stored = monthsByYear.get(String(yearValue));
+                        if (!stored) {
+                                return [];
+                        }
+                        return stored.slice();
+                }
+
+                function getEarliestMonthForYear(yearValue) {
+                        const months = getMonthsForYear(yearValue);
+                        if (months.length === 0) {
+                                return 1;
+                        }
+                        const first = Number.parseInt(months[0], 10);
+                        return Number.isFinite(first) && first >= 1 ? first : 1;
+                }
+
+                function getLatestMonthForYear(yearValue) {
+                        const months = getMonthsForYear(yearValue);
+                        if (months.length === 0) {
+                                return 12;
+                        }
+                        const last = Number.parseInt(months[months.length - 1], 10);
+                        return Number.isFinite(last) && last >= 1 ? last : 12;
+                }
+
+                function normalizeMonthValue(value) {
+                        const intValue = Number.parseInt(value, 10);
+                        if (!Number.isFinite(intValue) || intValue < 1) {
+                                return "";
+                        }
+                        if (intValue > 12) {
+                                return "12";
+                        }
+                        return String(intValue);
+                }
+
+                function getPeriodCacheKeyParts() {
+                        if (!hasPeriodFilters) {
+                                return ["", "", ""];
+                        }
+                        const yearValue = selectedYear || "";
+                        if (!yearValue) {
+                                return ["", "", ""];
+                        }
+                        let monthFromValue = normalizeMonthValue(selectedMonthFrom) || "";
+                        let monthToValue = normalizeMonthValue(selectedMonthTo) || "";
+                        if (
+                                monthFromValue &&
+                                monthToValue &&
+                                Number(monthFromValue) > Number(monthToValue)
+                        ) {
+                                monthToValue = monthFromValue;
+                        }
+                        return [yearValue, monthFromValue, monthToValue];
+                }
+
+                function initializePeriodFilters() {
+                        if (!hasPeriodFilters) {
+                                return;
+                        }
+                        if (monthOptions.length > 0) {
+                                populateMonthSelect(monthFromSelect);
+                                populateMonthSelect(monthToSelect);
+                        }
+                        const initialYear = selectedYear || "";
+                        availableYears = initialYear ? [initialYear] : [];
+                        populateYearOptions(availableYears, initialYear);
+                        if (yearSelect) {
+                                yearSelect.value = initialYear;
+                        }
+                        if (monthFromSelect) {
+                                monthFromSelect.value = selectedMonthFrom || "";
+                        }
+                        if (monthToSelect) {
+                                monthToSelect.value = selectedMonthTo || "";
+                        }
+                }
+
+                function syncPeriodFilters(periods = {}) {
+                        if (!hasPeriodFilters) {
+                                return;
+                        }
+                        const previousYear = selectedYear;
+                        const previousFrom = selectedMonthFrom;
+                        const previousTo = selectedMonthTo;
+
+                        const normalizedYears = Array.isArray(periods.years)
+                                ? periods.years
+                                          .map((year) => Number.parseInt(year, 10))
+                                          .filter((year) =>
+                                                  Number.isFinite(year) && year > 0
+                                          )
+                                : [];
+
+                        const responseYear = Number.parseInt(
+                                periods.current_year,
+                                10
+                        );
+                        if (Number.isFinite(responseYear) && responseYear > 0) {
+                                currentPeriodYear = responseYear;
+                        }
+
+                        const responseMonth = Number.parseInt(
+                                periods.current_month,
+                                10
+                        );
+                        if (
+                                Number.isFinite(responseMonth) &&
+                                responseMonth >= 1 &&
+                                responseMonth <= 12
+                        ) {
+                                currentPeriodMonth = responseMonth;
+                        }
+
+                        if (!normalizedYears.includes(currentPeriodYear)) {
+                                normalizedYears.push(currentPeriodYear);
+                        }
+
+                        normalizedYears.sort((a, b) => b - a);
+                        availableYears = normalizedYears.map((year) => String(year));
+
+                        monthsByYear.clear();
+                        if (
+                                periods.year_months &&
+                                typeof periods.year_months === "object"
+                        ) {
+                                Object.entries(periods.year_months).forEach(
+                                        ([yearKey, monthsList]) => {
+                                                const yearInt = Number.parseInt(yearKey, 10);
+                                                if (!Number.isFinite(yearInt) || yearInt <= 0) {
+                                                        return;
+                                                }
+                                                const normalizedMonths = Array.isArray(monthsList)
+                                                        ? monthsList
+                                                                  .map((value) =>
+                                                                          Number.parseInt(
+                                                                                  value,
+                                                                                  10
+                                                                          )
+                                                                  )
+                                                                  .filter((value) =>
+                                                                          Number.isFinite(
+                                                                                  value
+                                                                          ) &&
+                                                                          value >= 1 &&
+                                                                          value <= 12
+                                                                  )
+                                                        : [];
+                                                normalizedMonths.sort((a, b) => a - b);
+                                                monthsByYear.set(
+                                                        String(yearInt),
+                                                        normalizedMonths.map((value) =>
+                                                                String(value)
+                                                        )
+                                                );
+                                        }
+                                );
+                        }
+
+                        const currentYearKey = String(currentPeriodYear);
+                        if (!monthsByYear.has(currentYearKey)) {
+                                monthsByYear.set(currentYearKey, []);
+                        }
+
+                        populateYearOptions(availableYears, currentYearKey);
+                        if (monthOptions.length > 0) {
+                                populateMonthSelect(monthFromSelect);
+                                populateMonthSelect(monthToSelect);
+                        }
+
+                        const defaultYearValue = currentYearKey;
+                        let defaultFromValue = String(
+                                getEarliestMonthForYear(defaultYearValue)
+                        );
+                        let defaultToValue;
+                        if (defaultYearValue === currentYearKey) {
+                                defaultToValue = String(currentPeriodMonth);
+                        } else {
+                                defaultToValue = String(
+                                        getLatestMonthForYear(defaultYearValue)
+                                );
+                        }
+                        const normalizedFrom =
+                                normalizeMonthValue(defaultFromValue) || "1";
+                        let normalizedTo =
+                                normalizeMonthValue(defaultToValue) || normalizedFrom;
+                        if (Number(normalizedFrom) > Number(normalizedTo)) {
+                                normalizedTo = normalizedFrom;
+                        }
+
+                        selectedYear = defaultYearValue;
+                        selectedMonthFrom = normalizedFrom;
+                        selectedMonthTo = normalizedTo;
+
+                        periodDefaults.year = defaultYearValue;
+                        periodDefaults.monthFrom = normalizedFrom;
+                        periodDefaults.monthTo = normalizedTo;
+
+                        if (yearSelect) {
+                                yearSelect.value = defaultYearValue;
+                        }
+                        if (monthFromSelect) {
+                                monthFromSelect.value = normalizedFrom;
+                        }
+                        if (monthToSelect) {
+                                monthToSelect.value = normalizedTo;
+                        }
+
+                        const periodChanged =
+                                previousYear !== selectedYear ||
+                                previousFrom !== selectedMonthFrom ||
+                                previousTo !== selectedMonthTo;
+
+                        if (periodChanged) {
+                                applyFilters();
+                        } else {
+                                updateResetVisibility();
+                        }
+                }
+
                 const hasActiveFilters = () => {
                         const hasSearch = Boolean((searchQuery || "").trim());
                         if (hasSearch) {
                                 return true;
+                        }
+                        if (hasPeriodFilters) {
+                                const defaultYear = periodDefaults.year || "";
+                                const defaultFrom = periodDefaults.monthFrom || "";
+                                const defaultTo = periodDefaults.monthTo || "";
+                                if (selectedYear !== defaultYear) {
+                                        return true;
+                                }
+                                if (
+                                        selectedYear &&
+                                        (selectedMonthFrom !== defaultFrom ||
+                                                selectedMonthTo !== defaultTo)
+                                ) {
+                                        return true;
+                                }
                         }
                         if (
                                 selectedEstado ||
@@ -452,6 +800,7 @@ const ADD_DOC_KEY = "add-document";
                         resetFiltersBtn.hidden = !hasActiveFilters();
                 };
 
+                initializePeriodFilters();
                 updateResetVisibility();
 
                 if (typeof ResizeObserver !== "undefined" && advancedPanel) {
@@ -514,7 +863,10 @@ const ADD_DOC_KEY = "add-document";
                         payment = "",
                         orderBy = "",
                         orderDirection = "",
-                        commercial = ""
+                        commercial = "",
+                        year = "",
+                        monthFrom = "",
+                        monthTo = ""
                 ) {
                         return [
                                 search,
@@ -527,6 +879,9 @@ const ADD_DOC_KEY = "add-document";
                                 orderBy,
                                 orderDirection,
                                 commercial,
+                                year,
+                                monthFrom,
+                                monthTo,
                         ].join("|");
                 }
 
@@ -1340,6 +1695,7 @@ const ADD_DOC_KEY = "add-document";
                 document.addEventListener("click", handleConfirmClick);
                 document.addEventListener("click", handleTransferReportClick);
                 document.addEventListener("click", handleShareClick);
+                document.addEventListener("click", handleModifyCertificateClick);
 
                 function setupConfirmModal(modal) {
                         if (!modal) return null;
@@ -1574,6 +1930,159 @@ const ADD_DOC_KEY = "add-document";
                                 open: openModal,
                                 close: closeModal,
                         };
+                }
+
+                function setupCertificateModal(modal) {
+                        if (!modal) {
+                                return null;
+                        }
+                        const dialog = modal.querySelector(
+                                ".certificate-modal__dialog"
+                        );
+                        if (!dialog) {
+                                return null;
+                        }
+                        const closeBtn = modal.querySelector(
+                                "[data-certificate-modal-close]"
+                        );
+                        const generateBtn = modal.querySelector(
+                                "[data-certificate-generate]"
+                        );
+                        const previewFrame = modal.querySelector(
+                                "[data-certificate-preview]"
+                        );
+                        const placeholder = modal.querySelector(
+                                "[data-certificate-preview-placeholder]"
+                        );
+                        const companyEl = modal.querySelector(
+                                "[data-certificate-company]"
+                        );
+                        const defaultCompany = companyEl
+                                ? (companyEl.textContent || "—").trim() || "—"
+                                : "—";
+                        let lastActiveElement = null;
+
+                        if (!dialog.hasAttribute("tabindex")) {
+                                dialog.setAttribute("tabindex", "-1");
+                        }
+
+                        function setAria(expanded) {
+                                modal.setAttribute("aria-hidden", expanded ? "false" : "true");
+                        }
+
+                        function setCompanyName(name) {
+                                if (!companyEl) {
+                                        return;
+                                }
+                                const value = typeof name === "string" && name.trim() !== ""
+                                        ? name.trim()
+                                        : defaultCompany;
+                                companyEl.textContent = value;
+                        }
+
+                        function setGenerateEnabled(enabled) {
+                                if (generateBtn) {
+                                        generateBtn.disabled = !enabled;
+                                }
+                        }
+
+                        function showPreview(src) {
+                                if (previewFrame) {
+                                        if (src) {
+                                                previewFrame.hidden = false;
+                                                if (previewFrame.src !== src) {
+                                                        previewFrame.src = src;
+                                                }
+                                        } else {
+                                                previewFrame.hidden = true;
+                                                if (previewFrame.src) {
+                                                        previewFrame.src = "";
+                                                }
+                                        }
+                                }
+                                if (placeholder) {
+                                        placeholder.hidden = Boolean(src);
+                                }
+                        }
+
+                        function reset() {
+                                setGenerateEnabled(false);
+                                showPreview("");
+                                setCompanyName("");
+                        }
+
+                        function open(companyName = "") {
+                                lastActiveElement =
+                                        document.activeElement instanceof HTMLElement
+                                                ? document.activeElement
+                                                : null;
+                                reset();
+                                setCompanyName(companyName);
+                                modal.classList.add("visible");
+                                setAria(true);
+                                requestAnimationFrame(() => {
+                                        if (typeof dialog.focus === "function") {
+                                                dialog.focus({ preventScroll: true });
+                                        }
+                                });
+                        }
+
+                        function close() {
+                                modal.classList.remove("visible");
+                                setAria(false);
+                                reset();
+                                if (
+                                        lastActiveElement &&
+                                        typeof lastActiveElement.focus === "function"
+                                ) {
+                                        lastActiveElement.focus();
+                                }
+                        }
+
+                        if (closeBtn) {
+                                closeBtn.addEventListener("click", (event) => {
+                                        event.preventDefault();
+                                        close();
+                                });
+                        }
+
+                        modal.addEventListener("click", (event) => {
+                                if (event.target === modal) {
+                                        close();
+                                }
+                        });
+
+                        document.addEventListener("keydown", (event) => {
+                                if (event.key === "Escape" && modal.classList.contains("visible")) {
+                                        close();
+                                }
+                        });
+
+                        return {
+                                open,
+                                close,
+                                reset,
+                                setCompanyName,
+                                setGenerateEnabled,
+                                showPreview,
+                        };
+                }
+
+                function handleModifyCertificateClick(event) {
+                        if (!certificateModalController) {
+                                return;
+                        }
+                        const trigger = event.target.closest(
+                                "[data-certificate-modal-trigger]"
+                        );
+                        if (!trigger) {
+                                return;
+                        }
+                        event.preventDefault();
+                        const companyName = trigger.getAttribute(
+                                "data-certificate-company"
+                        );
+                        certificateModalController.open(companyName || "");
                 }
 
                 function buildShareUrl(matricula) {
@@ -1893,7 +2402,7 @@ const ADD_DOC_KEY = "add-document";
                                                           .replace(",", ".")
                                           );
                         if (isNaN(num)) return String(value);
-                        return new Intl.NumberFormat("es-ES", {
+                        return new Intl.NumberFormat("de-DE", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                         }).format(num);
@@ -2343,7 +2852,8 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 function formatCurrencyValue(value) {
-                        return currencyFormatter.format(normalizeToFloat(value));
+                        const formatted = currencyFormatter.format(normalizeToFloat(value));
+                        return formatted.replace(/[\s\u00A0]*€$/, "€");
                 }
 
                 function formatGuaranteeCount(value) {
@@ -2420,6 +2930,22 @@ const ADD_DOC_KEY = "add-document";
                         valueNodes.forEach((node) => {
                                 node.textContent = "—";
                                 node.dataset.value = "0";
+                        });
+                        const trendNodes = root.querySelectorAll("[data-admin-summary-kpi-trend]");
+                        trendNodes.forEach((node) => {
+                                node.classList.remove("positive", "negative");
+                                node.classList.add("neutral");
+                                node.dataset.direction = "neutral";
+                                const iconHolder = node.querySelector("[data-admin-summary-trend-icon]");
+                                if (iconHolder) {
+                                        iconHolder.innerHTML = ADMIN_SUMMARY_TREND_ICON_UP;
+                                }
+                                const label = node.querySelector("[data-admin-summary-trend-label]");
+                                if (label) {
+                                        label.textContent = "—";
+                                } else {
+                                        node.textContent = "—";
+                                }
                         });
                 }
 
@@ -2763,6 +3289,59 @@ const ADD_DOC_KEY = "add-document";
                         return match && match.value ? match.value : null;
                 }
 
+                function applySummaryTrend(trendEl, trendData, fallbackLabel) {
+                        if (!trendEl) {
+                                return;
+                        }
+                        const rawDirection =
+                                trendData && typeof trendData.direction === "string"
+                                        ? trendData.direction.trim()
+                                        : "";
+                        const direction =
+                                rawDirection === "positive"
+                                        ? "positive"
+                                        : rawDirection === "negative"
+                                        ? "negative"
+                                        : "neutral";
+                        trendEl.dataset.direction = direction;
+                        trendEl.classList.toggle("positive", direction === "positive");
+                        trendEl.classList.toggle("negative", direction === "negative");
+                        trendEl.classList.toggle("neutral", direction === "neutral");
+                        const iconHolder = trendEl.querySelector("[data-admin-summary-trend-icon]");
+                        const iconHtml =
+                                direction === "negative"
+                                        ? ADMIN_SUMMARY_TREND_ICON_DOWN
+                                        : ADMIN_SUMMARY_TREND_ICON_UP;
+                        if (iconHolder) {
+                                iconHolder.innerHTML = iconHtml;
+                        }
+                        const labelNode =
+                                trendEl.querySelector("[data-admin-summary-trend-label]") || trendEl;
+                        const formattedRaw =
+                                trendData && typeof trendData.formatted === "string"
+                                        ? trendData.formatted.trim()
+                                        : "";
+                        const suffixRaw =
+                                trendData && typeof trendData.label === "string"
+                                        ? trendData.label.trim()
+                                        : "";
+                        const fallback =
+                                typeof fallbackLabel === "string" ? fallbackLabel.trim() : "";
+                        const suffix = suffixRaw || fallback;
+                        let formatted = formattedRaw;
+                        if (!formatted && suffix) {
+                                formatted = "0%";
+                        }
+                        const parts = [];
+                        if (formatted) {
+                                parts.push(formatted);
+                        }
+                        if (suffix) {
+                                parts.push(suffix);
+                        }
+                        labelNode.textContent = parts.length ? parts.join(" ") : "—";
+                }
+
                 function updateAdminSummaryKpis(root, context = {}) {
                         if (!root) {
                                 return;
@@ -2781,10 +3360,20 @@ const ADD_DOC_KEY = "add-document";
                                 context && typeof context.label === "string"
                                         ? context.label.trim()
                                         : "";
+                        const monthName =
+                                contextKey === "month" && context && typeof context.month_name === "string"
+                                        ? context.month_name.trim()
+                                        : "";
                         const countValue =
                                 typeof context.count === "number"
                                         ? context.count
                                         : 0;
+                        const trends =
+                                context && typeof context.trends === "object" && context.trends
+                                        ? context.trends
+                                        : {};
+                        const fallbackTrendLabel =
+                                contextKey === "year" ? "vs año ant." : "vs mes ant.";
 
                         const amountCard = container.querySelector(
                                 '[data-admin-summary-kpi="amount"]'
@@ -2797,8 +3386,8 @@ const ADD_DOC_KEY = "add-document";
                                         labelEl.textContent =
                                                 contextKey === "year"
                                                         ? "Valor acumulado"
-                                                        : contextLabel
-                                                        ? `Valor mensual (${contextLabel})`
+                                                        : monthName
+                                                        ? `Valor mensual ${monthName}`
                                                         : "Valor mensual";
                                 }
                                 const valueEl = amountCard.querySelector(
@@ -2815,23 +3404,7 @@ const ADD_DOC_KEY = "add-document";
                                         "[data-admin-summary-kpi-trend]"
                                 );
                                 if (trendEl) {
-                                        const trendData =
-                                                (ADMIN_SUMMARY_KPI_TRENDS[contextKey] || {}).amount || null;
-                                        const trendLabel = trendData && trendData.label ? trendData.label : "";
-                                        trendEl.classList.toggle(
-                                                "positive",
-                                                Boolean(trendData && trendData.type === "positive")
-                                        );
-                                        trendEl.classList.toggle(
-                                                "negative",
-                                                Boolean(trendData && trendData.type === "negative")
-                                        );
-                                        const span = trendEl.querySelector("span");
-                                        if (span) {
-                                                span.textContent = trendLabel;
-                                        } else {
-                                                trendEl.textContent = trendLabel;
-                                        }
+                                        applySummaryTrend(trendEl, trends.amount || null, fallbackTrendLabel);
                                 }
                         }
 
@@ -2846,6 +3419,8 @@ const ADD_DOC_KEY = "add-document";
                                         labelEl.textContent =
                                                 contextKey === "year"
                                                         ? "Total garantías"
+                                                        : monthName
+                                                        ? `Garantías ${monthName}`
                                                         : "Garantías este mes";
                                 }
                                 const valueEl = countCard.querySelector(
@@ -2858,23 +3433,7 @@ const ADD_DOC_KEY = "add-document";
                                         "[data-admin-summary-kpi-trend]"
                                 );
                                 if (trendEl) {
-                                        const trendData =
-                                                (ADMIN_SUMMARY_KPI_TRENDS[contextKey] || {}).count || null;
-                                        const trendLabel = trendData && trendData.label ? trendData.label : "";
-                                        trendEl.classList.toggle(
-                                                "positive",
-                                                Boolean(trendData && trendData.type === "positive")
-                                        );
-                                        trendEl.classList.toggle(
-                                                "negative",
-                                                Boolean(trendData && trendData.type === "negative")
-                                        );
-                                        const span = trendEl.querySelector("span");
-                                        if (span) {
-                                                span.textContent = trendLabel;
-                                        } else {
-                                                trendEl.textContent = trendLabel;
-                                        }
+                                        applySummaryTrend(trendEl, trends.count || null, fallbackTrendLabel);
                                 }
                         }
                 }
@@ -2886,6 +3445,15 @@ const ADD_DOC_KEY = "add-document";
                         const labelEl = root.querySelector("[data-admin-summary-label]");
                         const items = normalizeSummaryStates((context && context.states) || []);
                         const amountMap = normalizeSummaryAmounts((context && context.amounts) || []);
+                        const monthNameRaw =
+                                context && typeof context.month_name === "string"
+                                        ? context.month_name
+                                        : "";
+                        const monthName = monthNameRaw ? monthNameRaw.trim() : "";
+                        const trendsData =
+                                context && typeof context.trends === "object" && context.trends
+                                        ? context.trends
+                                        : {};
                         const total = items.reduce((sum, item) => sum + item.count, 0);
                         const totalCount =
                                 typeof context.count === "number" ? context.count : total;
@@ -2923,6 +3491,8 @@ const ADD_DOC_KEY = "add-document";
                                 label: contextLabel,
                                 count: totalCount,
                                 amountMap,
+                                month_name: monthName,
+                                trends: trendsData,
                         });
 
                         if (!legend) {
@@ -3527,6 +4097,36 @@ const ADD_DOC_KEY = "add-document";
                                 typeof options.orderDirection === "string" && options.orderDirection
                                         ? options.orderDirection
                                         : selectedOrderDirection;
+                        const year = hasPeriodFilters
+                                ? (typeof options.year !== "undefined"
+                                          ? String(options.year)
+                                          : selectedYear)
+                                : "";
+                        let monthFrom = hasPeriodFilters
+                                ? (typeof options.monthFrom !== "undefined"
+                                          ? String(options.monthFrom)
+                                          : selectedMonthFrom)
+                                : "";
+                        let monthTo = hasPeriodFilters
+                                ? (typeof options.monthTo !== "undefined"
+                                          ? String(options.monthTo)
+                                          : selectedMonthTo)
+                                : "";
+                        const normalizedYear = year || "";
+                        let normalizedMonthFrom = "";
+                        let normalizedMonthTo = "";
+                        if (normalizedYear) {
+                                normalizedMonthFrom = normalizeMonthValue(monthFrom) || "";
+                                normalizedMonthTo = normalizeMonthValue(monthTo) || "";
+                                if (
+                                        normalizedMonthFrom &&
+                                        normalizedMonthTo &&
+                                        Number(normalizedMonthFrom) >
+                                                Number(normalizedMonthTo)
+                                ) {
+                                        normalizedMonthTo = normalizedMonthFrom;
+                                }
+                        }
                         const cacheKey = buildListCacheKey(
                                 search,
                                 estado,
@@ -3537,7 +4137,10 @@ const ADD_DOC_KEY = "add-document";
                                 paymentMethod,
                                 orderBy,
                                 orderDirection,
-                                commercial
+                                commercial,
+                                normalizedYear,
+                                normalizedMonthFrom,
+                                normalizedMonthTo
                         );
                         try {
                                 if (currentListAbort) currentListAbort.abort();
@@ -3563,6 +4166,15 @@ const ADD_DOC_KEY = "add-document";
                                         params.append("order_by", orderBy);
                                 if (orderDirection)
                                         params.append("order", orderDirection);
+                                if (normalizedYear) {
+                                        params.append("year", normalizedYear);
+                                        if (normalizedMonthFrom) {
+                                                params.append("month_from", normalizedMonthFrom);
+                                        }
+                                        if (normalizedMonthTo) {
+                                                params.append("month_to", normalizedMonthTo);
+                                        }
+                                }
                                 let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
                                 const res = await fetch(url, {
                                         headers: { "X-WP-Nonce": restNonce },
@@ -4063,7 +4675,11 @@ const ADD_DOC_KEY = "add-document";
                 row: doc.row || "",
             };
         })
-        .filter((doc) => doc.url);
+        .filter((doc) => doc.url)
+        .filter((doc) => {
+            const docKey = typeof doc.key === "string" ? doc.key : "";
+            return docKey !== "cobertura" && docKey !== "condicionado";
+        });
     docsData.forEach((doc) => scheduleDocumentPreload(doc.url));
     const buyerFields = [
         "nombre_comprador",
@@ -4320,8 +4936,21 @@ const ADD_DOC_KEY = "add-document";
     const actionsHtml = combinedActionButtons.length
         ? `<div class="guarantee-detail__btn-container">${combinedActionButtons.join("")}</div>`
         : "";
+    const modifyCertificateButtonHtml = canModifyCertificate
+        ? `<div class="detail__certificate-edit">
+                <button
+                    type="button"
+                    class="guarantee-detail__btn guarantee-detail__btn--modify-certificate"
+                    data-certificate-modal-trigger
+                    data-certificate-company="${escapeHtml(adminEntityName)}"
+                >
+                    <span class="guarantee-detail__btn-icon">${editIcon}</span>
+                    <span class="guarantee-detail__btn-text">Modificar certificado</span>
+                </button>
+            </div>`
+        : "";
 
-    const { vendorDisplayHtml, adminEntityHtml } = (() => {
+    const { vendorDisplayHtml, adminEntityHtml, adminEntityName } = (() => {
         const vendorCompanyData =
             data && typeof data.vendor_company === "object" && data.vendor_company !== null
                 ? data.vendor_company
@@ -4334,9 +4963,11 @@ const ADD_DOC_KEY = "add-document";
         const vendorDisplayName =
             vendorTradeName || vendorCompanyLabel || normalizeName(vendorFallbackName) || vendorLegalName;
         const vendorDisplayHtml = vendorDisplayName ? `<strong>${escapeHtml(vendorDisplayName)}</strong>` : "";
+        const adminEntityName = vendorDisplayName || "El cliente";
         return {
             vendorDisplayHtml,
             adminEntityHtml: vendorDisplayHtml || "El cliente",
+            adminEntityName,
         };
     })();
     const deadlineLabelHtml = deadlineInfo.label ? escapeHtml(deadlineInfo.label) : "";
@@ -4535,6 +5166,7 @@ const ADD_DOC_KEY = "add-document";
                                 "email_comprador"
                         )}
                 </section>
+                ${modifyCertificateButtonHtml}
                 ${actionsHtml}
         </div>
     `;
@@ -4587,11 +5219,31 @@ function updateModalControls(modal) {
         const docButtons = buttons.filter((btn) => btn.dataset.docKey !== ADD_DOC_KEY);
         const download = modal.querySelector(".pdf-modal__download");
         const nav = modal.querySelector(".pdf-modal__nav");
+        const docList = modal.querySelector(".pdf-modal__docs-list");
+        const header = modal.querySelector(".pdf-modal__header");
+        const prevBtn = modal.querySelector(".pdf-modal__nav-btn--prev");
+        const nextBtn = modal.querySelector(".pdf-modal__nav-btn--next");
+        const hasSingleDoc = docButtons.length === 1;
+        const hideNav = docButtons.length <= 1;
         if (download) {
                 download.hidden = docButtons.length === 0;
         }
         if (nav) {
-                nav.hidden = docButtons.length <= 1;
+                nav.hidden = hideNav;
+        }
+        if (docList) {
+                docList.hidden = hasSingleDoc;
+        }
+        if (header) {
+                header.hidden = docButtons.length <= 1;
+        }
+        if (prevBtn) {
+                prevBtn.hidden = hideNav;
+                prevBtn.disabled = hideNav;
+        }
+        if (nextBtn) {
+                nextBtn.hidden = hideNav;
+                nextBtn.disabled = hideNav;
         }
 }
 
@@ -4810,9 +5462,14 @@ async function activateRow(row, options = {}) {
                                         (btn) => btn.dataset.docKey !== ADD_DOC_KEY
                                 );
                                 const hideNav = docButtons.length <= 1;
+                                const hideHeader = docButtons.length === 1;
+                                const docList = modal.querySelector(".pdf-modal__docs-list");
                                 if (navContainer) navContainer.hidden = hideNav;
                                 if (prevBtn) prevBtn.hidden = hideNav;
                                 if (nextBtn) nextBtn.hidden = hideNav;
+                                if (prevBtn) prevBtn.disabled = hideNav;
+                                if (nextBtn) nextBtn.disabled = hideNav;
+                                if (docList) docList.hidden = hideHeader;
                         }
 
                         function openDocByIndex(idx) {
@@ -5236,6 +5893,7 @@ async function activateRow(row, options = {}) {
                                         channels = [],
                                         vendor_types: vendorTypes = [],
                                         commercials = [],
+                                        periods = {},
                                 } = await res.json();
                                 if (estadoSelect) {
                                         estadoSelect
@@ -5327,6 +5985,7 @@ async function activateRow(row, options = {}) {
                                                 paymentSelect.appendChild(opt);
                                         });
                                 }
+                                syncPeriodFilters(periods);
                                 syncChannelOptionVisibility(channels, vendorTypes);
                                 refreshClientsVisibility();
                                 updateResetVisibility();
@@ -5343,6 +6002,8 @@ async function activateRow(row, options = {}) {
                         hasMore = true;
                         lastValidQuery = "";
                         lastValidResults = [];
+                        const [cacheYear, cacheMonthFrom, cacheMonthTo] =
+                                getPeriodCacheKeyParts();
                         const cacheKey = buildListCacheKey(
                                 searchQuery,
                                 selectedEstado,
@@ -5353,7 +6014,10 @@ async function activateRow(row, options = {}) {
                                 selectedPaymentMethod,
                                 selectedOrderBy,
                                 selectedOrderDirection,
-                                selectedCommercial
+                                selectedCommercial,
+                                cacheYear,
+                                cacheMonthFrom,
+                                cacheMonthTo
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
@@ -5401,6 +6065,138 @@ async function activateRow(row, options = {}) {
                 if (commercialSelect)
                         commercialSelect.addEventListener("change", () => {
                                 selectedCommercial = commercialSelect.value;
+                                applyFilters();
+                                updateResetVisibility();
+                        });
+
+                if (yearSelect)
+                        yearSelect.addEventListener("change", () => {
+                                const value = yearSelect.value || "";
+                                if (!value) {
+                                        selectedYear = "";
+                                        if (hasPeriodFilters) {
+                                                const defaultYear = periodDefaults.year || "";
+                                                const defaultFrom = periodDefaults.monthFrom || "";
+                                                const defaultTo = periodDefaults.monthTo || "";
+                                                selectedMonthFrom = defaultFrom;
+                                                selectedMonthTo = defaultTo;
+                                                if (monthFromSelect) {
+                                                        monthFromSelect.value = defaultFrom || "";
+                                                }
+                                                if (monthToSelect) {
+                                                        monthToSelect.value = defaultTo || "";
+                                                }
+                                                if (defaultYear && yearSelect.value !== defaultYear) {
+                                                        yearSelect.value = "";
+                                                }
+                                        }
+                                        applyFilters();
+                                        updateResetVisibility();
+                                        return;
+                                }
+                                selectedYear = value;
+                                const months = getMonthsForYear(value);
+                                let defaultFrom =
+                                        months.length > 0
+                                                ? months[0]
+                                                : periodDefaults.monthFrom || "1";
+                                let defaultTo =
+                                        value === String(currentPeriodYear)
+                                                ? String(currentPeriodMonth)
+                                                : months.length > 0
+                                                ? months[months.length - 1]
+                                                : periodDefaults.monthTo || "12";
+                                const normalizedFrom =
+                                        normalizeMonthValue(defaultFrom) || "1";
+                                let normalizedTo =
+                                        normalizeMonthValue(defaultTo) || normalizedFrom;
+                                if (Number(normalizedFrom) > Number(normalizedTo)) {
+                                        normalizedTo = normalizedFrom;
+                                }
+                                selectedMonthFrom = normalizedFrom;
+                                selectedMonthTo = normalizedTo;
+                                if (monthFromSelect) {
+                                        monthFromSelect.value = normalizedFrom;
+                                }
+                                if (monthToSelect) {
+                                        monthToSelect.value = normalizedTo;
+                                }
+                                applyFilters();
+                                updateResetVisibility();
+                        });
+
+                if (monthFromSelect)
+                        monthFromSelect.addEventListener("change", () => {
+                                if (!hasPeriodFilters) {
+                                        return;
+                                }
+                                if (!selectedYear) {
+                                        const defaultFrom = periodDefaults.monthFrom || "";
+                                        selectedMonthFrom = defaultFrom;
+                                        monthFromSelect.value = defaultFrom || "";
+                                        updateResetVisibility();
+                                        return;
+                                }
+                                const normalized = normalizeMonthValue(
+                                        monthFromSelect.value
+                                );
+                                if (!normalized) {
+                                        const defaultFrom = periodDefaults.monthFrom || "";
+                                        selectedMonthFrom = defaultFrom;
+                                        monthFromSelect.value = defaultFrom || "";
+                                } else {
+                                        selectedMonthFrom = normalized;
+                                        const normalizedTo = normalizeMonthValue(
+                                                selectedMonthTo
+                                        );
+                                        if (
+                                                normalizedTo &&
+                                                Number(normalized) > Number(normalizedTo)
+                                        ) {
+                                                selectedMonthTo = normalized;
+                                                if (monthToSelect) {
+                                                        monthToSelect.value = normalized;
+                                                }
+                                        }
+                                }
+                                applyFilters();
+                                updateResetVisibility();
+                        });
+
+                if (monthToSelect)
+                        monthToSelect.addEventListener("change", () => {
+                                if (!hasPeriodFilters) {
+                                        return;
+                                }
+                                if (!selectedYear) {
+                                        const defaultTo = periodDefaults.monthTo || "";
+                                        selectedMonthTo = defaultTo;
+                                        monthToSelect.value = defaultTo || "";
+                                        updateResetVisibility();
+                                        return;
+                                }
+                                const normalized = normalizeMonthValue(
+                                        monthToSelect.value
+                                );
+                                if (!normalized) {
+                                        const defaultTo = periodDefaults.monthTo || "";
+                                        selectedMonthTo = defaultTo;
+                                        monthToSelect.value = defaultTo || "";
+                                } else {
+                                        selectedMonthTo = normalized;
+                                        const normalizedFrom = normalizeMonthValue(
+                                                selectedMonthFrom
+                                        );
+                                        if (
+                                                normalizedFrom &&
+                                                Number(normalizedFrom) > Number(normalized)
+                                        ) {
+                                                selectedMonthFrom = normalized;
+                                                if (monthFromSelect) {
+                                                        monthFromSelect.value = normalized;
+                                                }
+                                        }
+                                }
                                 applyFilters();
                                 updateResetVisibility();
                         });
@@ -5489,6 +6285,23 @@ async function activateRow(row, options = {}) {
                                 selectedVendorType = "";
                                 selectedPaymentMethod = "";
                                 selectedCommercial = "";
+                                if (hasPeriodFilters) {
+                                        const defaultYear = periodDefaults.year || "";
+                                        const defaultFrom = periodDefaults.monthFrom || "";
+                                        const defaultTo = periodDefaults.monthTo || "";
+                                        selectedYear = defaultYear;
+                                        selectedMonthFrom = defaultFrom;
+                                        selectedMonthTo = defaultTo;
+                                        if (yearSelect) {
+                                                yearSelect.value = defaultYear || "";
+                                        }
+                                        if (monthFromSelect) {
+                                                monthFromSelect.value = defaultFrom || "";
+                                        }
+                                        if (monthToSelect) {
+                                                monthToSelect.value = defaultTo || "";
+                                        }
+                                }
                                 currentPage = 1;
                                 hasMore = true;
                                 refreshClientsVisibility();
@@ -5523,6 +6336,8 @@ async function activateRow(row, options = {}) {
                         searchQuery = query;
                         currentPage = 1;
                         hasMore = true;
+                        const [cacheYear, cacheMonthFrom, cacheMonthTo] =
+                                getPeriodCacheKeyParts();
                         const cacheKey = buildListCacheKey(
                                 searchQuery,
                                 selectedEstado,
@@ -5533,7 +6348,10 @@ async function activateRow(row, options = {}) {
                                 selectedPaymentMethod,
                                 selectedOrderBy,
                                 selectedOrderDirection,
-                                selectedCommercial
+                                selectedCommercial,
+                                cacheYear,
+                                cacheMonthFrom,
+                                cacheMonthTo
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
