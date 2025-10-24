@@ -421,7 +421,6 @@ body.scrolled .container {
 .guarantees-list__filter-field {
     position: relative;
     width: 100%;
-    padding-top: 0.625rem;
 }
 
 .guarantees-list__filter-field .guarantees-list__filter {
