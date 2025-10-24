@@ -4178,7 +4178,10 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                 }
                         } catch (err) {
-				console.error("❌ Error en loadPage:", err);
+                                if (err && typeof err === "object" && err.name === "AbortError") {
+                                        return;
+                                }
+                                console.error("❌ Error en loadPage:", err);
                         } finally {
                                 isLoading = false;
                                 spinner.style.display = hasMore ? "" : "none";
@@ -4406,6 +4409,12 @@ const ADD_DOC_KEY = "add-document";
         .map((val) => (typeof val === "string" ? val.trim() : ""))
         .find((val) => val) || "";
 
+    const isFilled = (val) => {
+        if (val === undefined || val === null) return false;
+        const str = String(val).trim();
+        return str !== "" && str !== "-" && str !== "#";
+    };
+
     const planName = pickField("plan", "-");
     const planParts = [];
     if (planName && planName !== "-") {
@@ -4475,12 +4484,6 @@ const ADD_DOC_KEY = "add-document";
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
-
-    const isFilled = (val) => {
-        if (val === undefined || val === null) return false;
-        const str = String(val).trim();
-        return str !== "" && str !== "-" && str !== "#";
-    };
     const docsSource = Array.isArray(data.documents)
         ? data.documents
         : Array.isArray(rowData.documents)
