@@ -2361,6 +2361,11 @@
                     }
 
                     const applied = applyPaymentsSnapshot(payload);
+                    const shouldForceReload = !document.querySelector('[data-sepa-download]');
+                    if (shouldForceReload) {
+                        window.location.reload();
+                        return;
+                    }
                     if (!applied) {
                         if (paymentActivation && typeof paymentActivation.__goSetGenerated === 'function') {
                             paymentActivation.__goSetGenerated(true);
