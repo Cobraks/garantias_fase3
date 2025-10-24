@@ -19,6 +19,9 @@ $is_director = in_array('go_director_comercial', $user_roles, true);
 $is_garantias = in_array('go_garantias', $user_roles, true);
 $is_admin_like = $is_admin || $is_director || $is_garantias;
 
+// Flag temporal: poner a true para recuperar el autocompletado automático de la fecha de inicio
+$fecha_automatica = false; // Mantener en false mientras la fecha de inicio debe introducirse manualmente
+
 error_log('[add-guarantee] template loaded for user ' . $current_user->ID);
 
 
@@ -348,7 +351,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
             <legend style="display:none" class="form__legend">Seleccionar garantía</legend>
             <div class="form__wrapper-inputs">
                 <div class="form__input-container form__input-container--corto">
-                    <input id="fecha_inicio_garantia" class="form__input" type="date" placeholder=" " min="1980-01-01" required />
+                    <input id="fecha_inicio_garantia" class="form__input" type="date" placeholder=" " min="1980-01-01" required data-auto-fill="<?php echo esc_attr($fecha_automatica ? '1' : '0'); ?>" />
                     <label for="fecha_inicio_garantia" class="form__placeholder">Fecha inicio garantía</label>
                 </div>
                 <div class="form__input-container form__input-container--corto">

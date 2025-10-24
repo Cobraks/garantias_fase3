@@ -418,6 +418,33 @@ body.scrolled .container {
     justify-content: flex-start;
 }
 
+.guarantees-list__filter-field {
+    position: relative;
+    width: 100%;
+}
+
+.guarantees-list__filter-field .guarantees-list__filter {
+    width: 100%;
+}
+
+.guarantees-list__filter-field-label {
+    position: absolute;
+    top: -7px;
+    left: 10px;
+    background: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    padding-inline: 0.35rem;
+    color: var(--go-color-475569);
+    z-index: 1;
+}
+
+:root[data-theme='dark'] .guarantees-list__filter-field-label {
+    color: rgba(226, 232, 240, 0.85);
+    background: var(--surface);
+}
+
 @keyframes guaranteesFiltersFade {
     from {
         opacity: 0;
@@ -979,6 +1006,10 @@ section.guarantees-list.sticky-active {
     list-style: none;
     padding: 0;
     margin: var(--spacing-2) 0 0;
+}
+
+.detail__docs-list[hidden] {
+    display: none;
 }
 
 .detail__section--docs .detail__docs-item {

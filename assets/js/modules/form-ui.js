@@ -53,12 +53,19 @@ function setupClearButtons() {
  * Pone el valor y el mínimo de fecha de la garantía al día de hoy
  */
 function setTodayForGarantia() {
-	const fechaInput = document.getElementById("fecha_inicio_garantia");
-	if (!fechaInput) return;
+        const fechaInput = document.getElementById("fecha_inicio_garantia");
+        if (!fechaInput) return;
 
-	const today = new Date().toISOString().split("T")[0];
-	fechaInput.value = today;
-	fechaInput.min = today;
+        const today = new Date().toISOString().split("T")[0];
+        const autoFillEnabled = fechaInput.dataset.autoFill !== "0";
+
+        fechaInput.min = today;
+        if (autoFillEnabled && !fechaInput.value) {
+                fechaInput.value = today;
+        }
+
+        updateNextButtonState();
+        debouncedUpdateSummary();
 }
 
 /**
