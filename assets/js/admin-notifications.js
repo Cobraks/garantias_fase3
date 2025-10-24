@@ -180,6 +180,10 @@
             return;
         }
 
+        if (loadMoreButton) {
+            loadMoreButton.hidden = true;
+        }
+
         const markIcon = decodeIcon(container.dataset.iconMark || '');
         const markIconRead = decodeIcon(container.dataset.iconMarkRead || '');
         const deleteIcon = decodeIcon(container.dataset.iconDelete || '');
@@ -423,7 +427,7 @@
             }
         };
 
-        const applyLoadMoreState = (button, { context = 'panel' } = {}) => {
+        const applyLoadMoreState = (button, { context = 'panel', wrapper = null } = {}) => {
             if (!button) {
                 return;
             }
@@ -431,6 +435,9 @@
             const hasPanelItems = filterPanelItems(state.items).length > 0;
             const shouldHidePanelButton = context === 'panel' && !hasPanelItems;
             if (shouldHidePanelButton || !state.hasMore) {
+                if (wrapper) {
+                    wrapper.hidden = true;
+                }
                 button.hidden = true;
                 button.disabled = false;
                 button.classList.remove('is-loading');
@@ -438,6 +445,9 @@
                 return;
             }
 
+            if (wrapper) {
+                wrapper.hidden = false;
+            }
             button.hidden = false;
             button.disabled = state.loadingMore;
             if (state.loadingMore) {
@@ -452,7 +462,10 @@
         const updateLoadMore = () => {
             applyLoadMoreState(loadMoreButton, { context: 'panel' });
             if (state.modalElements && state.modalElements.loadMore) {
-                applyLoadMoreState(state.modalElements.loadMore, { context: 'modal' });
+                applyLoadMoreState(state.modalElements.loadMore, {
+                    context: 'modal',
+                    wrapper: state.modalElements.loadMoreWrapper || null,
+                });
             }
         };
 
@@ -710,7 +723,7 @@
             const content = createElement('div', 'notifications-modal__content');
 
             const controls = createElement('div', 'notifications-modal__controls');
-            const modalMarkAll = createElement('button', 'notifications-panel__mark');
+            const modalMarkAll = createElement('button', 'notifications-panel__mark notifications-modal__mark');
             modalMarkAll.type = 'button';
             modalMarkAll.textContent = markAllButton ? markAllButton.textContent.trim() : 'Marcar todo como leído';
             controls.appendChild(modalMarkAll);
@@ -725,11 +738,14 @@
             const modalList = createElement('ul', 'notifications-panel__list');
             scrollArea.appendChild(modalList);
 
-            const modalLoadMore = createElement('button', 'notifications-panel__load-more');
+            const modalFooter = createElement('div', 'notifications-modal__footer');
+            modalFooter.hidden = true;
+
+            const modalLoadMore = createElement('button', 'notifications-panel__load-more notifications-modal__load-more');
             modalLoadMore.type = 'button';
-            modalLoadMore.hidden = true;
             modalLoadMore.textContent = loadMoreLabel;
-            scrollArea.appendChild(modalLoadMore);
+            modalFooter.appendChild(modalLoadMore);
+            scrollArea.appendChild(modalFooter);
 
             content.appendChild(scrollArea);
             body.appendChild(content);
@@ -743,6 +759,7 @@
                 list: modalList,
                 empty: modalEmpty,
                 loadMore: modalLoadMore,
+                loadMoreWrapper: modalFooter,
                 markAll: modalMarkAll,
                 scroll: scrollArea,
             };
