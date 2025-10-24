@@ -28,6 +28,9 @@
 .clients-page .guarantees-list__filter {
     width: 100%;
 }
+.clients-page .guarantees-table td {
+    padding: var(--spacing-1) var(--spacing-2);
+}
 .clients-page {
     --client-surface: var(--surface);
     --client-surface-alt: var(--surface-soft);
@@ -507,14 +510,14 @@
     color: var(--go-color-0f172a);
 }
 .clients-table__client-cell {
-    min-width: 360px;
+    min-width: 280px;
 }
 .clients-table__registered {
-    min-width: 72px;
+    min-width: 64px;
     white-space: nowrap;
 }
 .clients-table__meta--count {
-    min-width: 72px;
+    min-width: 64px;
     text-align: right;
 }
 .clients-table__meta--commercial {
