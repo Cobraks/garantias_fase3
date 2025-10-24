@@ -419,20 +419,31 @@ body.scrolled .container {
 }
 
 .guarantees-list__filter-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    position: relative;
+    width: 100%;
+    padding-top: 0.625rem;
+}
+
+.guarantees-list__filter-field .guarantees-list__filter {
+    width: 100%;
 }
 
 .guarantees-list__filter-field-label {
+    position: absolute;
+    top: -7px;
+    left: 10px;
+    background: white;
     font-size: 0.75rem;
     font-weight: 600;
     line-height: 1.2;
+    padding-inline: 0.35rem;
     color: var(--go-color-475569);
+    z-index: 1;
 }
 
 :root[data-theme='dark'] .guarantees-list__filter-field-label {
     color: rgba(226, 232, 240, 0.85);
+    background: var(--surface);
 }
 
 @keyframes guaranteesFiltersFade {
