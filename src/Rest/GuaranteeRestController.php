@@ -70,6 +70,9 @@ class GuaranteeRestController
                         'commercial'   => ['validate_callback' => 'absint'],
                         'order_by'     => ['sanitize_callback' => 'sanitize_key'],
                         'order'        => ['sanitize_callback' => 'sanitize_key'],
+                        'year'         => ['validate_callback' => 'absint'],
+                        'month_from'   => ['validate_callback' => 'absint'],
+                        'month_to'     => ['validate_callback' => 'absint'],
                     ],
                 ],
             ]
@@ -710,7 +713,7 @@ class GuaranteeRestController
         $static_docs = [
             [
                 'key'           => 'certificate',
-                'title'         => __('Certificado', 'garantias-online-360vo'),
+                'title'         => __('Certificado completo', 'garantias-online-360vo'),
                 'routeType'     => 'certificado',
                 'is_private'    => true,
                 'extension'     => 'pdf',
@@ -2294,90 +2297,42 @@ class GuaranteeRestController
 
     private static function collect_year_summary(array $statuses): array
     {
-        global $wpdb;
-
-        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
-        list($status_clause, $status_params) = self::build_in_clause($statuses);
-
         $timezone = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
         $now = new DateTimeImmutable('now', $timezone);
         $year_start = $now->modify('first day of January this year')->setTime(0, 0, 0);
-        $year_end = $year_start->modify('last day of December this year')->setTime(23, 59, 59);
-
-        $sql = "
-            SELECT state.meta_value AS state, price.meta_value AS price
-            FROM {$wpdb->posts} p
-            INNER JOIN {$wpdb->postmeta} state
-                ON state.post_id = p.ID
-                AND state.meta_key = 'estado_garantia_estado_contratacion'
-            LEFT JOIN {$wpdb->postmeta} price
-                ON price.post_id = p.ID
-                AND price.meta_key = 'garantia_contratada_precio'
-            WHERE p.post_type = %s
-              AND p.post_status IN ($status_clause)
-              AND p.post_date >= %s
-              AND p.post_date <= %s
-        ";
-
-        $params = array_merge(
-            [$post_type],
-            $status_params,
-            [$year_start->format('Y-m-d H:i:s'), $year_end->format('Y-m-d H:i:s')]
-        );
-
-        $rows = $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
-
-        $count = 0;
-        $amount_values = [];
-        $state_counts = [];
-        $state_amounts = [];
-
-        if (is_array($rows)) {
-            foreach ($rows as $row) {
-                $count++;
-                $normalized_price = self::normalize_price_amount($row['price'] ?? '');
-                $amount_values[] = $normalized_price;
-                $state = isset($row['state']) ? (string) $row['state'] : '';
-                if ($state === '') {
-                    continue;
-                }
-                if (! isset($state_counts[$state])) {
-                    $state_counts[$state] = 0;
-                }
-                $state_counts[$state]++;
-                if (! isset($state_amounts[$state])) {
-                    $state_amounts[$state] = 0.0;
-                }
-                $state_amounts[$state] += $normalized_price;
-            }
+        $year_end = $now->setTime(23, 59, 59);
+        if ($year_end < $year_start) {
+            $year_end = $year_start->setTime(23, 59, 59);
         }
 
-        $pending_collect = self::collect_pending_direct_debit_summary($statuses, [
-            'start_date' => $year_start->format('Y-m-d H:i:s'),
-            'end_date'   => $year_end->format('Y-m-d H:i:s'),
-        ]);
-        if ($pending_collect['count'] > 0) {
-            $state_counts['pendiente_cobro'] = ($state_counts['pendiente_cobro'] ?? 0) + $pending_collect['count'];
-            if (isset($state_counts['activada'])) {
-                $state_counts['activada'] = max(0, $state_counts['activada'] - $pending_collect['count']);
-            }
-            $state_amounts['pendiente_cobro'] = ($state_amounts['pendiente_cobro'] ?? 0.0) + $pending_collect['amount'];
-            if (isset($state_amounts['activada'])) {
-                $state_amounts['activada'] = max(0.0, $state_amounts['activada'] - $pending_collect['amount']);
-            }
+        $current = self::summarize_period($statuses, $year_start, $year_end);
+
+        $previous_start = $year_start->modify('-1 year');
+        $previous_end = $now->modify('-1 year')->setTime(23, 59, 59);
+        if ($previous_end < $previous_start) {
+            $previous_end = $previous_start->setTime(23, 59, 59);
         }
+        $previous = self::summarize_period($statuses, $previous_start, $previous_end);
 
-        $amount = self::sum_price_values($amount_values);
-        $states = self::aggregate_summary_states($state_counts);
-        $amounts = self::aggregate_summary_state_amounts($state_amounts);
-
-        return [
-            'label'  => $year_start->format('Y'),
-            'count'  => $count,
-            'amount' => $amount,
-            'states' => $states,
-            'amounts' => $amounts,
+        $trends = [
+            'amount' => self::build_summary_trend(
+                $current['amount_map']['activada'] ?? 0.0,
+                $previous['amount_map']['activada'] ?? 0.0,
+                __('vs año ant.', 'garantias-online-360vo')
+            ),
+            'count'  => self::build_summary_trend(
+                $current['count'] ?? 0,
+                $previous['count'] ?? 0,
+                __('vs año ant.', 'garantias-online-360vo')
+            ),
         ];
+
+        unset($current['amount_map'], $previous['amount_map']);
+
+        $current['label'] = $year_start->format('Y');
+        $current['trends'] = $trends;
+
+        return $current;
     }
 
     private static function get_summary_state_groups(): array
@@ -2607,15 +2562,55 @@ class GuaranteeRestController
 
     private static function collect_month_summary(array $statuses): array
     {
-        global $wpdb;
-
-        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
-        list($status_clause, $status_params) = self::build_in_clause($statuses);
-
         $timezone = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
         $now = new DateTimeImmutable('now', $timezone);
         $month_start = $now->modify('first day of this month')->setTime(0, 0, 0);
-        $month_end = $month_start->modify('last day of this month')->setTime(23, 59, 59);
+        $month_end = $now->setTime(23, 59, 59);
+        if ($month_end < $month_start) {
+            $month_end = $month_start->setTime(23, 59, 59);
+        }
+
+        $current = self::summarize_period($statuses, $month_start, $month_end);
+
+        $previous_start = $month_start->modify('-1 month');
+        $previous_end = $now->modify('-1 month')->setTime(23, 59, 59);
+        if ($previous_end < $previous_start) {
+            $previous_end = $previous_start->setTime(23, 59, 59);
+        }
+        $previous = self::summarize_period($statuses, $previous_start, $previous_end);
+
+        $trends = [
+            'amount' => self::build_summary_trend(
+                $current['amount_map']['activada'] ?? 0.0,
+                $previous['amount_map']['activada'] ?? 0.0,
+                __('vs mes ant.', 'garantias-online-360vo')
+            ),
+            'count'  => self::build_summary_trend(
+                $current['count'] ?? 0,
+                $previous['count'] ?? 0,
+                __('vs mes ant.', 'garantias-online-360vo')
+            ),
+        ];
+
+        unset($current['amount_map'], $previous['amount_map']);
+
+        $current['label'] = self::format_month_label($month_start);
+        $current['month_name'] = self::format_month_name($month_start);
+        $current['trends'] = $trends;
+
+        return $current;
+    }
+
+    private static function summarize_period(array $statuses, DateTimeImmutable $start, DateTimeImmutable $end): array
+    {
+        global $wpdb;
+
+        if ($end < $start) {
+            $end = $start;
+        }
+
+        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
+        list($status_clause, $status_params) = self::build_in_clause($statuses);
 
         $sql = "
             SELECT state.meta_value AS state, price.meta_value AS price
@@ -2635,7 +2630,7 @@ class GuaranteeRestController
         $params = array_merge(
             [$post_type],
             $status_params,
-            [$month_start->format('Y-m-d H:i:s'), $month_end->format('Y-m-d H:i:s')]
+            [$start->format('Y-m-d H:i:s'), $end->format('Y-m-d H:i:s')]
         );
 
         $rows = $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
@@ -2666,8 +2661,8 @@ class GuaranteeRestController
         }
 
         $pending_collect = self::collect_pending_direct_debit_summary($statuses, [
-            'start_date' => $month_start->format('Y-m-d H:i:s'),
-            'end_date'   => $month_end->format('Y-m-d H:i:s'),
+            'start_date' => $start->format('Y-m-d H:i:s'),
+            'end_date'   => $end->format('Y-m-d H:i:s'),
         ]);
         if ($pending_collect['count'] > 0) {
             $state_counts['pendiente_cobro'] = ($state_counts['pendiente_cobro'] ?? 0) + $pending_collect['count'];
@@ -2684,21 +2679,72 @@ class GuaranteeRestController
         $states = self::aggregate_summary_states($state_counts);
         $amounts = self::aggregate_summary_state_amounts($state_amounts);
 
+        $amount_map = [];
+        foreach ($amounts as $entry) {
+            $value = isset($entry['value']) ? (string) $entry['value'] : '';
+            if ($value === '') {
+                continue;
+            }
+            $amount_map[$value] = isset($entry['amount']) ? (float) $entry['amount'] : 0.0;
+        }
+
         $top = null;
         foreach ($states as $entry) {
-            if ($top === null || (isset($entry['count']) && $entry['count'] > $top['count'])) {
+            $entry_count = isset($entry['count']) ? (int) $entry['count'] : 0;
+            if ($top === null || $entry_count > (int) ($top['count'] ?? 0)) {
                 $top = $entry;
             }
         }
 
         return [
-            'label'     => self::format_month_label($month_start),
-            'count'     => $count,
-            'amount'    => $amount,
-            'states'    => $states,
-            'amounts'   => $amounts,
-            'top_state' => $top,
+            'count'      => (int) $count,
+            'amount'     => $amount,
+            'states'     => $states,
+            'amounts'    => $amounts,
+            'top_state'  => $top,
+            'amount_map' => $amount_map,
         ];
+    }
+
+    private static function build_summary_trend($current, $previous, string $label): array
+    {
+        $current_value = is_numeric($current) ? (float) $current : 0.0;
+        $previous_value = is_numeric($previous) ? (float) $previous : 0.0;
+
+        $percentage = 0.0;
+        if ($previous_value > 0.0) {
+            $percentage = (($current_value - $previous_value) / $previous_value) * 100.0;
+        } elseif ($current_value > 0.0) {
+            $percentage = 100.0;
+        }
+
+        $percentage = round($percentage, 1);
+        if (abs($percentage) < 0.05) {
+            $percentage = 0.0;
+        }
+
+        $direction = 'neutral';
+        if ($percentage > 0.0) {
+            $direction = 'positive';
+        } elseif ($percentage < 0.0) {
+            $direction = 'negative';
+        }
+
+        return [
+            'current'    => $current_value,
+            'previous'   => $previous_value,
+            'percentage' => $percentage,
+            'formatted'  => self::format_trend_percentage($percentage),
+            'direction'  => $direction,
+            'label'      => $label,
+        ];
+    }
+
+    private static function format_trend_percentage(float $percentage): string
+    {
+        $decimals = abs($percentage - (int) $percentage) < 0.05 ? 0 : 1;
+        $formatted = number_format($percentage, $decimals, '.', '');
+        return $formatted . '%';
     }
 
     private static function aggregate_summary_state_amounts(array $state_amounts): array
@@ -2892,6 +2938,21 @@ class GuaranteeRestController
         }
 
         return ucwords($label);
+    }
+
+    private static function format_month_name(DateTimeImmutable $date): string
+    {
+        $timestamp = $date->getTimestamp();
+        $label = wp_date('F', $timestamp);
+        if (! is_string($label) || $label === '') {
+            return '';
+        }
+
+        if (function_exists('mb_strtolower')) {
+            return mb_strtolower($label, 'UTF-8');
+        }
+
+        return strtolower($label);
     }
 
     private static function build_in_clause(array $values): array
@@ -3542,6 +3603,19 @@ class GuaranteeRestController
         $commercial    = isset($request['commercial']) ? absint($request['commercial']) : 0;
         $order_by      = isset($request['order_by']) ? sanitize_key($request['order_by']) : '';
         $order         = isset($request['order']) ? strtolower(sanitize_key($request['order'])) : '';
+        $year          = isset($request['year']) ? absint($request['year']) : 0;
+        $month_from    = isset($request['month_from']) ? absint($request['month_from']) : 0;
+        $month_to      = isset($request['month_to']) ? absint($request['month_to']) : 0;
+
+        $normalized_month_from = 0;
+        $normalized_month_to   = 0;
+        if ($year > 0) {
+            $normalized_month_from = ($month_from >= 1 && $month_from <= 12) ? $month_from : 1;
+            $normalized_month_to   = ($month_to >= 1 && $month_to <= 12) ? $month_to : 12;
+            if ($normalized_month_from > $normalized_month_to) {
+                $normalized_month_to = $normalized_month_from;
+            }
+        }
 
         if (! in_array($order, ['asc', 'desc'], true)) {
             $order = 'desc';
@@ -3575,6 +3649,11 @@ class GuaranteeRestController
         }
         if ($commercial) {
             $cache_key .= '_cm_' . $commercial;
+        }
+        if ($year > 0) {
+            $cache_key .= '_yr_' . $year;
+            $cache_key .= '_mf_' . $normalized_month_from;
+            $cache_key .= '_mt_' . $normalized_month_to;
         }
         if (! empty($sort_config['cache_suffix'])) {
             $cache_key .= $sort_config['cache_suffix'];
@@ -3730,6 +3809,21 @@ class GuaranteeRestController
                 'key'     => 'garantia_contratada_metodo_pago',
                 'value'   => $payment_method,
                 'compare' => 'LIKE',
+            ];
+        }
+
+        if ($year > 0) {
+            $start_month = $normalized_month_from > 0 ? $normalized_month_from : 1;
+            $end_month   = $normalized_month_to > 0 ? $normalized_month_to : 12;
+            $start_date  = sprintf('%04d-%02d-01', $year, $start_month);
+            $end_day     = cal_days_in_month(CAL_GREGORIAN, $end_month, $year);
+            $end_date    = sprintf('%04d-%02d-%02d', $year, $end_month, $end_day);
+
+            $meta_query[] = [
+                'key'     => 'estado_garantia_inicio',
+                'value'   => [$start_date, $end_date],
+                'compare' => 'BETWEEN',
+                'type'    => 'DATE',
             ];
         }
 
@@ -3893,6 +3987,8 @@ class GuaranteeRestController
         $plan_ids = [];
         $channels_map = [];
         $vendor_ids = [];
+        $start_dates_by_year = [];
+
         foreach ($q->posts as $post_id) {
             $e = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
             if ($e) {
@@ -3913,6 +4009,21 @@ class GuaranteeRestController
             $vendor_id = self::normalize_vendor_meta($vendor_raw);
             if ($vendor_id > 0) {
                 $vendor_ids[] = $vendor_id;
+            }
+
+            $start_raw = get_post_meta($post_id, 'estado_garantia_inicio', true);
+            if ($start_raw) {
+                $timestamp = strtotime($start_raw);
+                if ($timestamp !== false) {
+                    $year_value = (int) gmdate('Y', $timestamp);
+                    $month_value = (int) gmdate('n', $timestamp);
+                    if ($year_value > 0 && $month_value >= 1 && $month_value <= 12) {
+                        if (! isset($start_dates_by_year[$year_value])) {
+                            $start_dates_by_year[$year_value] = [];
+                        }
+                        $start_dates_by_year[$year_value][$month_value] = true;
+                    }
+                }
             }
         }
 
@@ -4108,6 +4219,19 @@ class GuaranteeRestController
             $vendor_types = [];
         }
 
+        $period_years = array_keys($start_dates_by_year);
+        rsort($period_years);
+
+        $period_year_months = [];
+        foreach ($start_dates_by_year as $year_value => $months_map) {
+            $month_numbers = array_keys($months_map);
+            sort($month_numbers);
+            $period_year_months[(string) $year_value] = array_values(array_map('intval', $month_numbers));
+        }
+
+        $current_year  = (int) current_time('Y');
+        $current_month = (int) current_time('n');
+
         $response = new WP_REST_Response([
             'estados'          => $estados,
             'planes'           => $planes,
@@ -4116,6 +4240,12 @@ class GuaranteeRestController
             'channels'         => $channels,
             'vendor_types'     => $vendor_types,
             'commercials'      => $commercials,
+            'periods'          => [
+                'years'        => array_values(array_map('intval', $period_years)),
+                'year_months'  => $period_year_months,
+                'current_year' => $current_year,
+                'current_month'=> $current_month,
+            ],
         ]);
 
         set_transient($cache_key, $response, 300);
