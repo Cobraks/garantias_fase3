@@ -227,6 +227,7 @@
             browserPermission: browserNotificationsSupported ? window.Notification.permission : 'denied',
             requestingBrowserPermission: false,
             lastBrowserNotified: Number(safeStorage.get(STORAGE_KEYS.browserLast) || '0'),
+            pendingMarks: new Map(),
         };
 
         if (Number.isFinite(state.lastBrowserNotified) && state.lastBrowserNotified > 0) {
@@ -432,13 +433,24 @@
                 return;
             }
 
-            const hasPanelItems = filterPanelItems(state.items).length > 0;
+            const panelItems = filterPanelItems(state.items);
+            const hasPanelItems = panelItems.length > 0;
             const isPanelEmpty = context === 'panel'
                 && emptyIndicator
                 && emptyIndicator.hidden === false;
+            const totalUnread = Number.isFinite(state.unread) && state.unread >= 0
+                ? state.unread
+                : state.panelUnread;
+            const hasPanelOverflow = state.hasMore
+                && hasPanelItems
+                && !isPanelEmpty
+                && totalUnread > perPage;
+            const hasModalOverflow = state.hasMore
+                && state.items.length > 0
+                && state.items.length >= perPage;
             const shouldShowButton = context === 'panel'
-                ? state.hasMore && hasPanelItems && !isPanelEmpty
-                : state.hasMore && state.items.length > 0;
+                ? hasPanelOverflow
+                : hasModalOverflow;
 
             if (!shouldShowButton) {
                 if (wrapper) {
@@ -791,7 +803,8 @@
                 if (!(target instanceof HTMLElement)) {
                     return;
                 }
-                if (target.dataset.modalClose === 'true') {
+                const closeTrigger = target.closest('[data-modal-close="true"]');
+                if (closeTrigger) {
                     event.preventDefault();
                     event.stopPropagation();
                     closeModal();
@@ -1202,29 +1215,67 @@
         };
 
         const markNotification = async (id) => {
-            if (!id) {
+            if (!id || !listEndpoint) {
                 return;
             }
-            try {
-                const endpoint = `${listEndpoint}/${id}`;
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'X-WP-Nonce': nonce,
-                    },
-                    credentials: 'same-origin',
-                });
-                if (!response.ok) {
-                    throw new Error('Mark failed');
-                }
-                const payload = await response.json();
-                if (payload.meta && typeof payload.meta.unread !== 'undefined') {
-                    state.unread = parseUnread(payload.meta.unread);
-                }
-            } catch (error) {
-                // eslint-disable-next-line no-console
-                console.error('GO360 notifications mark error', error);
+
+            const numericId = Number(id);
+            if (!Number.isFinite(numericId) || numericId <= 0) {
+                return;
             }
+
+            if (state.pendingMarks.has(numericId)) {
+                return state.pendingMarks.get(numericId);
+            }
+
+            const baseEndpoint = typeof listEndpoint === 'string'
+                ? listEndpoint.replace(/\/+$/, '')
+                : '';
+
+            if (!baseEndpoint) {
+                return;
+            }
+
+            const attemptRequest = async (attempt = 1) => {
+                try {
+                    const response = await fetch(`${baseEndpoint}/${numericId}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-WP-Nonce': nonce,
+                        },
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Mark failed (${response.status})`);
+                    }
+                    const payload = await response.json();
+                    if (payload.meta && typeof payload.meta.unread !== 'undefined') {
+                        state.unread = parseUnread(payload.meta.unread);
+                    }
+                } catch (error) {
+                    if (attempt < 2) {
+                        await new Promise((resolve) => {
+                            window.setTimeout(resolve, 400);
+                        });
+                        return attemptRequest(attempt + 1);
+                    }
+                    // eslint-disable-next-line no-console
+                    console.warn('GO360 notifications mark warning', error);
+                }
+                return null;
+            };
+
+            const request = attemptRequest();
+            state.pendingMarks.set(numericId, request);
+
+            try {
+                await request;
+            } finally {
+                state.pendingMarks.delete(numericId);
+            }
+
+            return request;
         };
 
         const deleteNotification = async (id) => {
