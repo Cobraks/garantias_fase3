@@ -427,18 +427,25 @@
             }
         };
 
-        const applyLoadMoreState = (button, { context = 'panel', wrapper = null } = {}) => {
+        const applyLoadMoreState = (button, { context = 'panel', wrapper = null, emptyIndicator = null } = {}) => {
             if (!button) {
                 return;
             }
 
             const hasPanelItems = filterPanelItems(state.items).length > 0;
-            const shouldHidePanelButton = context === 'panel' && !hasPanelItems;
-            if (shouldHidePanelButton || !state.hasMore) {
+            const isPanelEmpty = context === 'panel'
+                && emptyIndicator
+                && emptyIndicator.hidden === false;
+            const shouldShowButton = context === 'panel'
+                ? state.hasMore && hasPanelItems && !isPanelEmpty
+                : state.hasMore && state.items.length > 0;
+
+            if (!shouldShowButton) {
                 if (wrapper) {
                     wrapper.hidden = true;
                 }
                 button.hidden = true;
+                button.style.display = 'none';
                 button.disabled = false;
                 button.classList.remove('is-loading');
                 button.textContent = loadMoreLabel;
@@ -449,6 +456,7 @@
                 wrapper.hidden = false;
             }
             button.hidden = false;
+            button.style.display = '';
             button.disabled = state.loadingMore;
             if (state.loadingMore) {
                 button.classList.add('is-loading');
@@ -460,11 +468,12 @@
         };
 
         const updateLoadMore = () => {
-            applyLoadMoreState(loadMoreButton, { context: 'panel' });
+            applyLoadMoreState(loadMoreButton, { context: 'panel', emptyIndicator: empty });
             if (state.modalElements && state.modalElements.loadMore) {
                 applyLoadMoreState(state.modalElements.loadMore, {
                     context: 'modal',
                     wrapper: state.modalElements.loadMoreWrapper || null,
+                    emptyIndicator: state.modalElements.empty || null,
                 });
             }
         };
