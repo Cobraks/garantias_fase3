@@ -1,3 +1,5 @@
+const DEFAULT_ICON_URL = new URL('../images/logo-notify.png', self.location.href).href;
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -15,8 +17,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || 'Notificación';
   const options = {
     body: payload.body || '',
-    icon: payload.icon || '',
-    badge: payload.badge || payload.icon || '',
+    icon: DEFAULT_ICON_URL,
+    badge: DEFAULT_ICON_URL,
     data: {
       url: payload.link || '',
       notificationId: payload.id || 0,
