@@ -41,6 +41,10 @@ const ADD_DOC_KEY = "add-document";
                         ].includes(normalizedRole);
                 const canUploadDocuments =
                         ["administrator", "admin", "go_garantias"].includes(normalizedRole);
+                const canModifyCertificate =
+                        ["administrator", "admin", "go_garantias", "go_director_comercial"].includes(
+                                normalizedRole
+                        );
                 const isCoreAdmin =
                         normalizedRole === "administrator" || normalizedRole === "admin";
                 const isDirector = normalizedRole === "go_director_comercial";
@@ -126,6 +130,7 @@ const ADD_DOC_KEY = "add-document";
                 const warningIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/></svg>';
                 const heartIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Zm0-108q96-86 158-147.5t98-107q36-45.5 50-81t14-70.5q0-60-40-100t-100-40q-47 0-87 26.5T518-680h-76q-15-41-55-67.5T300-774q-60 0-100 40t-40 100q0 35 14 70.5t50 81q36 45.5 98 107T480-228Zm0-273Z"/></svg>';
                 const shareIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M680-80q-50 0-85-35t-35-85q0-6 3-28L282-392q-16 15-37 23.5t-45 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q24 0 45 8.5t37 23.5l281-164q-2-7-2.5-13.5T560-760q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-24 0-45-8.5T598-672L317-508q2 7 2.5 13.5t.5 14.5q0 8-.5 14.5T317-452l281 164q16-15 37-23.5t45-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-200q0-17-11.5-28.5T680-240q-17 0-28.5 11.5T640-200q0 17 11.5 28.5T680-160ZM200-440q17 0 28.5-11.5T240-480q0-17-11.5-28.5T200-520q-17 0-28.5 11.5T160-480q0 17 11.5 28.5T200-440Zm480-280q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0 520ZM200-480Zm480-280Z"/></svg>';
+                const editIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
                 const personAddIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M720-400v-120H600v-80h120v-120h80v120h120v80H800v120h-80Zm-360-80q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm80-80h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T440-640q0-33-23.5-56.5T360-720q-33 0-56.5 23.5T280-640q0 33 23.5 56.5T360-560Zm0-80Zm0 400Z"/></svg>';
                 const personIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z"/></svg>';
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
@@ -148,6 +153,9 @@ const ADD_DOC_KEY = "add-document";
                 let pendingConfirmContext = null;
                 const confirmModalController = setupConfirmModal(
                         document.querySelector(".confirm-modal")
+                );
+                const certificateModalController = setupCertificateModal(
+                        document.querySelector(".certificate-modal")
                 );
 
                 const PDF_CACHE_LIMIT = 12;
@@ -1687,6 +1695,7 @@ const ADD_DOC_KEY = "add-document";
                 document.addEventListener("click", handleConfirmClick);
                 document.addEventListener("click", handleTransferReportClick);
                 document.addEventListener("click", handleShareClick);
+                document.addEventListener("click", handleModifyCertificateClick);
 
                 function setupConfirmModal(modal) {
                         if (!modal) return null;
@@ -1921,6 +1930,159 @@ const ADD_DOC_KEY = "add-document";
                                 open: openModal,
                                 close: closeModal,
                         };
+                }
+
+                function setupCertificateModal(modal) {
+                        if (!modal) {
+                                return null;
+                        }
+                        const dialog = modal.querySelector(
+                                ".certificate-modal__dialog"
+                        );
+                        if (!dialog) {
+                                return null;
+                        }
+                        const closeBtn = modal.querySelector(
+                                "[data-certificate-modal-close]"
+                        );
+                        const generateBtn = modal.querySelector(
+                                "[data-certificate-generate]"
+                        );
+                        const previewFrame = modal.querySelector(
+                                "[data-certificate-preview]"
+                        );
+                        const placeholder = modal.querySelector(
+                                "[data-certificate-preview-placeholder]"
+                        );
+                        const companyEl = modal.querySelector(
+                                "[data-certificate-company]"
+                        );
+                        const defaultCompany = companyEl
+                                ? (companyEl.textContent || "—").trim() || "—"
+                                : "—";
+                        let lastActiveElement = null;
+
+                        if (!dialog.hasAttribute("tabindex")) {
+                                dialog.setAttribute("tabindex", "-1");
+                        }
+
+                        function setAria(expanded) {
+                                modal.setAttribute("aria-hidden", expanded ? "false" : "true");
+                        }
+
+                        function setCompanyName(name) {
+                                if (!companyEl) {
+                                        return;
+                                }
+                                const value = typeof name === "string" && name.trim() !== ""
+                                        ? name.trim()
+                                        : defaultCompany;
+                                companyEl.textContent = value;
+                        }
+
+                        function setGenerateEnabled(enabled) {
+                                if (generateBtn) {
+                                        generateBtn.disabled = !enabled;
+                                }
+                        }
+
+                        function showPreview(src) {
+                                if (previewFrame) {
+                                        if (src) {
+                                                previewFrame.hidden = false;
+                                                if (previewFrame.src !== src) {
+                                                        previewFrame.src = src;
+                                                }
+                                        } else {
+                                                previewFrame.hidden = true;
+                                                if (previewFrame.src) {
+                                                        previewFrame.src = "";
+                                                }
+                                        }
+                                }
+                                if (placeholder) {
+                                        placeholder.hidden = Boolean(src);
+                                }
+                        }
+
+                        function reset() {
+                                setGenerateEnabled(false);
+                                showPreview("");
+                                setCompanyName("");
+                        }
+
+                        function open(companyName = "") {
+                                lastActiveElement =
+                                        document.activeElement instanceof HTMLElement
+                                                ? document.activeElement
+                                                : null;
+                                reset();
+                                setCompanyName(companyName);
+                                modal.classList.add("visible");
+                                setAria(true);
+                                requestAnimationFrame(() => {
+                                        if (typeof dialog.focus === "function") {
+                                                dialog.focus({ preventScroll: true });
+                                        }
+                                });
+                        }
+
+                        function close() {
+                                modal.classList.remove("visible");
+                                setAria(false);
+                                reset();
+                                if (
+                                        lastActiveElement &&
+                                        typeof lastActiveElement.focus === "function"
+                                ) {
+                                        lastActiveElement.focus();
+                                }
+                        }
+
+                        if (closeBtn) {
+                                closeBtn.addEventListener("click", (event) => {
+                                        event.preventDefault();
+                                        close();
+                                });
+                        }
+
+                        modal.addEventListener("click", (event) => {
+                                if (event.target === modal) {
+                                        close();
+                                }
+                        });
+
+                        document.addEventListener("keydown", (event) => {
+                                if (event.key === "Escape" && modal.classList.contains("visible")) {
+                                        close();
+                                }
+                        });
+
+                        return {
+                                open,
+                                close,
+                                reset,
+                                setCompanyName,
+                                setGenerateEnabled,
+                                showPreview,
+                        };
+                }
+
+                function handleModifyCertificateClick(event) {
+                        if (!certificateModalController) {
+                                return;
+                        }
+                        const trigger = event.target.closest(
+                                "[data-certificate-modal-trigger]"
+                        );
+                        if (!trigger) {
+                                return;
+                        }
+                        event.preventDefault();
+                        const companyName = trigger.getAttribute(
+                                "data-certificate-company"
+                        );
+                        certificateModalController.open(companyName || "");
                 }
 
                 function buildShareUrl(matricula) {
@@ -4774,8 +4936,21 @@ const ADD_DOC_KEY = "add-document";
     const actionsHtml = combinedActionButtons.length
         ? `<div class="guarantee-detail__btn-container">${combinedActionButtons.join("")}</div>`
         : "";
+    const modifyCertificateButtonHtml = canModifyCertificate
+        ? `<div class="detail__certificate-edit">
+                <button
+                    type="button"
+                    class="guarantee-detail__btn guarantee-detail__btn--modify-certificate"
+                    data-certificate-modal-trigger
+                    data-certificate-company="${escapeHtml(adminEntityName)}"
+                >
+                    <span class="guarantee-detail__btn-icon">${editIcon}</span>
+                    <span class="guarantee-detail__btn-text">Modificar certificado</span>
+                </button>
+            </div>`
+        : "";
 
-    const { vendorDisplayHtml, adminEntityHtml } = (() => {
+    const { vendorDisplayHtml, adminEntityHtml, adminEntityName } = (() => {
         const vendorCompanyData =
             data && typeof data.vendor_company === "object" && data.vendor_company !== null
                 ? data.vendor_company
@@ -4788,9 +4963,11 @@ const ADD_DOC_KEY = "add-document";
         const vendorDisplayName =
             vendorTradeName || vendorCompanyLabel || normalizeName(vendorFallbackName) || vendorLegalName;
         const vendorDisplayHtml = vendorDisplayName ? `<strong>${escapeHtml(vendorDisplayName)}</strong>` : "";
+        const adminEntityName = vendorDisplayName || "El cliente";
         return {
             vendorDisplayHtml,
             adminEntityHtml: vendorDisplayHtml || "El cliente",
+            adminEntityName,
         };
     })();
     const deadlineLabelHtml = deadlineInfo.label ? escapeHtml(deadlineInfo.label) : "";
@@ -4989,6 +5166,7 @@ const ADD_DOC_KEY = "add-document";
                                 "email_comprador"
                         )}
                 </section>
+                ${modifyCertificateButtonHtml}
                 ${actionsHtml}
         </div>
     `;

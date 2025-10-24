@@ -964,6 +964,73 @@ if (($is_admin_user || $is_director)
     </div>
 </div>
 
+<div class="certificate-modal" aria-hidden="true">
+    <div class="certificate-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="certificate-modal-title">
+        <button
+            type="button"
+            class="certificate-modal__close"
+            data-certificate-modal-close
+            aria-label="<?php esc_attr_e('Cerrar modificación de certificado', 'garantias-online-360vo'); ?>"
+        >
+            &times;
+        </button>
+        <div class="certificate-modal__body">
+            <aside class="certificate-modal__sidebar">
+                <h2 id="certificate-modal-title" class="certificate-modal__title">
+                    <?php esc_html_e('Modificar certificado', 'garantias-online-360vo'); ?>
+                </h2>
+                <div class="certificate-modal__alert" role="alert">
+                    <p class="certificate-modal__alert-text">
+                        <?php esc_html_e('Se eliminará el certificado actual y se creará uno nuevo.', 'garantias-online-360vo'); ?>
+                    </p>
+                    <p class="certificate-modal__alert-text">
+                        <?php esc_html_e('Se volverá a enviar a', 'garantias-online-360vo'); ?>
+                        <strong data-certificate-company>—</strong>.
+                        <?php esc_html_e('Asegúrate de que los datos sean correctos.', 'garantias-online-360vo'); ?>
+                    </p>
+                </div>
+                <div class="certificate-modal__instructions">
+                    <p class="certificate-modal__instructions-intro">
+                        <?php esc_html_e('Sigue estos pasos para actualizar el documento:', 'garantias-online-360vo'); ?>
+                    </p>
+                    <ol class="certificate-modal__steps">
+                        <li><?php esc_html_e('Modifica el documento BASE.', 'garantias-online-360vo'); ?></li>
+                        <li><?php esc_html_e('Revisa que los datos sean correctos.', 'garantias-online-360vo'); ?></li>
+                        <li><?php esc_html_e('Pulsa en “Generar nuevo certificado”.', 'garantias-online-360vo'); ?></li>
+                    </ol>
+                </div>
+                <button
+                    type="button"
+                    class="certificate-modal__action-btn"
+                    data-certificate-generate
+                    disabled
+                >
+                    <?php esc_html_e('Generar nuevo certificado', 'garantias-online-360vo'); ?>
+                </button>
+            </aside>
+            <section
+                class="certificate-modal__preview"
+                aria-label="<?php esc_attr_e('Vista previa del certificado base', 'garantias-online-360vo'); ?>"
+            >
+                <div class="certificate-modal__preview-frame">
+                    <div class="certificate-modal__preview-placeholder" data-certificate-preview-placeholder>
+                        <p>
+                            <?php esc_html_e('El documento base se mostrará aquí.', 'garantias-online-360vo'); ?>
+                        </p>
+                    </div>
+                    <iframe
+                        class="certificate-modal__iframe"
+                        src=""
+                        title="<?php esc_attr_e('Vista previa del certificado base', 'garantias-online-360vo'); ?>"
+                        data-certificate-preview
+                        hidden
+                    ></iframe>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
 <div class="confirm-modal" aria-hidden="true">
     <div class="confirm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
         <button type="button" class="confirm-modal__close" aria-label="<?php esc_attr_e('Cerrar confirmación', 'garantias-online-360vo'); ?>">&times;</button>

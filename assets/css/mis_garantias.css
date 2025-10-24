@@ -1320,6 +1320,193 @@ section.guarantees-list.sticky-active {
     cursor: not-allowed;
 }
 
+/* Modal de modificación de certificado */
+.certificate-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(2px);
+    z-index: 10000;
+}
+
+.certificate-modal.visible {
+    display: flex;
+}
+
+.certificate-modal__dialog {
+    background: var(--surface);
+    width: 90%;
+    max-width: 1200px;
+    height: 95%;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(var(--go-color-0f172a-rgb), 0.22);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.certificate-modal__close {
+    position: absolute;
+    top: var(--spacing-2);
+    right: var(--spacing-2);
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.75rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    transition: background var(--transition-speed), color var(--transition-speed);
+}
+
+.certificate-modal__close:hover,
+.certificate-modal__close:focus-visible {
+    background: rgba(var(--go-color-2563eb-rgb), 0.12);
+    color: var(--primary-color);
+}
+
+.certificate-modal__body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+.certificate-modal__sidebar {
+    width: min(360px, 32%);
+    padding: var(--spacing-4);
+    background: var(--surface-soft);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+    overflow-y: auto;
+}
+
+.certificate-modal__title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.certificate-modal__alert {
+    background: rgba(var(--go-color-f97316-rgb), 0.12);
+    border: 1px solid rgba(var(--go-color-f97316-rgb), 0.4);
+    border-radius: 0.75rem;
+    padding: var(--spacing-3);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: var(--text-color);
+}
+
+.certificate-modal__alert-text {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.certificate-modal__instructions-intro {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--neutral30);
+}
+
+.certificate-modal__steps {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    color: var(--text-color);
+}
+
+.certificate-modal__steps li {
+    font-weight: 500;
+}
+
+.certificate-modal__action-btn {
+    margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.9rem 1.25rem;
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, var(--go-color-2563eb), var(--go-color-1d4ed8));
+    color: var(--go-color-f8fafc);
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 18px 36px -18px rgba(var(--go-color-1d4ed8-rgb), 0.45);
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed), background var(--transition-speed);
+}
+
+.certificate-modal__action-btn:hover,
+.certificate-modal__action-btn:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 22px 44px -18px rgba(var(--go-color-1d4ed8-rgb), 0.5);
+}
+
+.certificate-modal__action-btn:disabled {
+    background: var(--neutral95);
+    color: var(--neutral30);
+    border-color: var(--border-color);
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.certificate-modal__preview {
+    flex: 1;
+    display: flex;
+    padding: var(--spacing-4);
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.certificate-modal__preview-frame {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-soft);
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 16px 32px rgba(var(--go-color-0f172a-rgb), 0.12);
+    overflow: hidden;
+}
+
+.certificate-modal__iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 0.75rem;
+    background: #fff;
+}
+
+.certificate-modal__preview-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-4);
+    text-align: center;
+    color: var(--neutral30);
+    font-size: 1rem;
+    pointer-events: none;
+}
+
 /* --------------------------------------------------
    Fast Actions – detalle de garantía
 ---------------------------------------------------*/
@@ -1701,6 +1888,30 @@ tr.guarantees-table__row:not(.selected):hover td,
     border-color: rgba(15, 23, 42, 0.16);
     color: var(--go-color-111827);
     transform: translateY(-1px);
+}
+
+.detail__certificate-edit {
+    padding: 0 var(--spacing-3) var(--spacing-3);
+    display: flex;
+    justify-content: flex-start;
+}
+
+.detail__certificate-edit .guarantee-detail__btn {
+    width: 100%;
+    justify-content: center;
+}
+
+.guarantee-detail__btn--modify-certificate {
+    background: linear-gradient(135deg, var(--go-color-0f172a), var(--go-color-1f2937));
+    color: var(--go-color-f8fafc);
+    box-shadow: 0 20px 36px -18px rgba(var(--go-color-0f172a-rgb), 0.45);
+    border: 1px solid transparent;
+}
+
+.guarantee-detail__btn--modify-certificate:hover,
+.guarantee-detail__btn--modify-certificate:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 24px 44px -18px rgba(var(--go-color-0f172a-rgb), 0.5);
 }
 
 .detail__section--payment .detail__payment-note {
@@ -3009,6 +3220,74 @@ tr.guarantees-table__row:not(.selected):hover td,
     background: rgba(236, 240, 248, 0.22);
     border-color: rgba(148, 163, 184, 0.48);
     color: var(--text-color);
+}
+
+:root[data-theme='dark'] .guarantee-detail__btn--modify-certificate {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.96));
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    color: #f8fafc;
+    box-shadow: 0 28px 48px -18px rgba(15, 23, 42, 0.55);
+}
+
+:root[data-theme='dark'] .guarantee-detail__btn--modify-certificate:hover,
+:root[data-theme='dark'] .guarantee-detail__btn--modify-certificate:focus-visible {
+    box-shadow: 0 32px 56px -18px rgba(30, 41, 59, 0.58);
+}
+
+:root[data-theme='dark'] .certificate-modal__dialog {
+    background: var(--surface-alt);
+    box-shadow: 0 32px 60px rgba(var(--go-color-0f172a-rgb), 0.4);
+}
+
+:root[data-theme='dark'] .certificate-modal__sidebar {
+    background: rgba(15, 23, 42, 0.75);
+    border-color: rgba(148, 163, 184, 0.35);
+}
+
+:root[data-theme='dark'] .certificate-modal__alert {
+    background: rgba(253, 186, 116, 0.2);
+    border-color: rgba(253, 186, 116, 0.5);
+}
+
+:root[data-theme='dark'] .certificate-modal__instructions-intro {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+:root[data-theme='dark'] .certificate-modal__action-btn {
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.94), rgba(37, 99, 235, 0.95));
+    border-color: rgba(147, 197, 253, 0.6);
+    box-shadow: 0 30px 54px -18px rgba(37, 99, 235, 0.62);
+}
+
+:root[data-theme='dark'] .certificate-modal__action-btn:hover,
+:root[data-theme='dark'] .certificate-modal__action-btn:focus-visible {
+    box-shadow: 0 34px 60px -18px rgba(59, 130, 246, 0.66);
+}
+
+:root[data-theme='dark'] .certificate-modal__action-btn:disabled {
+    background: rgba(148, 163, 184, 0.25);
+    color: rgba(226, 232, 240, 0.7);
+    border-color: rgba(148, 163, 184, 0.4);
+}
+
+:root[data-theme='dark'] .certificate-modal__preview {
+    background: rgba(15, 23, 42, 0.85);
+}
+
+:root[data-theme='dark'] .certificate-modal__preview-frame {
+    background: rgba(15, 23, 42, 0.65);
+    border-color: rgba(148, 163, 184, 0.35);
+    box-shadow: 0 32px 58px rgba(15, 23, 42, 0.45);
+}
+
+:root[data-theme='dark'] .certificate-modal__preview-placeholder {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+:root[data-theme='dark'] .certificate-modal__close:hover,
+:root[data-theme='dark'] .certificate-modal__close:focus-visible {
+    background: rgba(96, 165, 250, 0.24);
+    color: #bfdbfe;
 }
 
 :root[data-theme='dark'] .guarantee-detail__btn--confirm,
