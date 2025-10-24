@@ -788,6 +788,9 @@
         })();
         const applyPaymentsSnapshot = (paymentsData) => {
             const payments = resolvePaymentsSnapshot(paymentsData);
+            if (!payments || typeof payments !== 'object') {
+                return false;
+            }
             const sepaData = payments && typeof payments === 'object' ? payments.sepa : null;
             const sepaController = documentUploadControllers.sepa_signed;
 
@@ -1135,7 +1138,11 @@
                     detailCard.setAttribute('data-generated', hasGeneratedMandate ? 'true' : 'false');
                 }
 
-                return;
+                if (window.go360Account && typeof window.go360Account === 'object') {
+                    window.go360Account.payments = payments;
+                }
+
+                return true;
             }
 
             sepaIbanController.setValue('');
@@ -1156,6 +1163,8 @@
             } else if (paymentDetail) {
                 paymentDetail.setAttribute('data-generated', 'false');
             }
+
+            return false;
         };
         const workshopToggle = document.querySelector('[data-workshop-toggle]');
         const workshopFieldKeys = [
@@ -1709,7 +1718,7 @@
                             }
                         }
 
-                        applyPaymentsSnapshot(data.payments);
+                        applyPaymentsSnapshot(data);
 
                         setStatus(strings.success || 'Cambios guardados correctamente.', 'success');
                         setSaveDisabled(true);
@@ -2032,6 +2041,71 @@
 
         const paymentActivation = document.querySelector('[data-payment-activation]');
         const paymentDetail = document.querySelector('[data-payment-detail]');
+        const ensurePaymentCardOverlay = (card) => {
+            if (!card) {
+                return null;
+            }
+
+            let overlay = card.querySelector('[data-payment-loading]');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'account-card__loading';
+                overlay.setAttribute('data-payment-loading', '');
+                overlay.setAttribute('hidden', '');
+                overlay.setAttribute('aria-hidden', 'true');
+                overlay.setAttribute('role', 'status');
+                overlay.setAttribute('aria-live', 'polite');
+
+                const spinner = document.createElement('div');
+                spinner.className = 'account-card__loading-spinner';
+                spinner.setAttribute('aria-hidden', 'true');
+                overlay.appendChild(spinner);
+
+                const text = document.createElement('p');
+                text.className = 'account-card__loading-text';
+                text.setAttribute('data-payment-loading-text', '');
+                text.textContent = strings.sepaGenerateLoading || 'Generando mandato…';
+                overlay.appendChild(text);
+
+                card.appendChild(overlay);
+            }
+
+            return overlay;
+        };
+
+        const setPaymentsLoading = (loading, message) => {
+            const resolvedMessage = typeof message === 'string' && message.trim() !== ''
+                ? message.trim()
+                : (strings.sepaGenerateLoading || 'Generando mandato…');
+
+            [paymentActivation, paymentDetail].forEach((card) => {
+                if (!card) {
+                    return;
+                }
+
+                const overlay = ensurePaymentCardOverlay(card);
+                if (!overlay) {
+                    return;
+                }
+
+                const textElement = overlay.querySelector('[data-payment-loading-text]');
+                if (textElement) {
+                    textElement.textContent = resolvedMessage;
+                }
+
+                if (loading) {
+                    overlay.hidden = false;
+                    overlay.setAttribute('aria-hidden', 'false');
+                    card.classList.add('account-card--loading');
+                    card.setAttribute('aria-busy', 'true');
+                } else {
+                    overlay.hidden = true;
+                    overlay.setAttribute('aria-hidden', 'true');
+                    card.classList.remove('account-card--loading');
+                    card.setAttribute('aria-busy', 'false');
+                }
+            });
+        };
         if (paymentActivation) {
             const checkbox = paymentActivation.querySelector('[data-payment-toggle]');
             const detail = paymentDetail;
@@ -2249,6 +2323,7 @@
                 generateButton.disabled = true;
                 generateButton.setAttribute('aria-disabled', 'true');
                 setGenerateLoading(true);
+                setPaymentsLoading(true);
                 setStatus(strings.sepaGenerateLoading || 'Generando mandato…', 'info');
 
                 try {
@@ -2285,7 +2360,19 @@
                         throw new Error(errorMessage || 'request_failed');
                     }
 
-                    applyPaymentsSnapshot(payload.payments);
+                    const applied = applyPaymentsSnapshot(payload);
+                    if (!applied) {
+                        if (paymentActivation && typeof paymentActivation.__goSetGenerated === 'function') {
+                            paymentActivation.__goSetGenerated(true);
+                        } else if (paymentDetail) {
+                            paymentDetail.setAttribute('data-generated', 'true');
+                        }
+                        if (paymentActivation && typeof paymentActivation.__goUpdatePanels === 'function') {
+                            paymentActivation.__goUpdatePanels('requested');
+                        } else if (paymentDetail) {
+                            paymentDetail.setAttribute('data-state', 'requested');
+                        }
+                    }
                     updateButtonState();
                     setStatus(
                         strings.sepaGenerateSuccess
@@ -2307,6 +2394,7 @@
                     return;
                 } finally {
                     setGenerateLoading(false);
+                    setPaymentsLoading(false);
                 }
             };
 
