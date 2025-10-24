@@ -39,6 +39,29 @@ $show_order_button   = ! $is_particular;
 $show_plan_in_advanced   = $show_more_filters && ! $is_professional;
 $show_payment_in_advanced = $show_more_filters;
 $show_commercial_select   = $show_more_filters && $uses_admin_filters;
+$show_period_filters      = $show_more_filters && $uses_admin_filters;
+
+$period_current_year      = (int) current_time('Y');
+$period_current_month     = (int) current_time('n');
+$period_default_from_month = 1;
+$period_months            = [];
+
+if ($show_period_filters) {
+    for ($month_index = 1; $month_index <= 12; $month_index++) {
+        $timestamp = strtotime(sprintf('2000-%02d-01', $month_index));
+        $label = $timestamp ? wp_date('F', $timestamp) : '';
+        if ($label !== '') {
+            if (function_exists('mb_convert_case')) {
+                $label = mb_convert_case($label, MB_CASE_TITLE, 'UTF-8');
+            } else {
+                $label = ucwords($label);
+            }
+        } else {
+            $label = sprintf(__('Mes %d', 'garantias-online-360vo'), $month_index);
+        }
+        $period_months[$month_index] = $label;
+    }
+}
 
 $sort_presets = [];
 if ($show_order_button) {
@@ -389,6 +412,47 @@ if (($is_admin_user || $is_director)
                         aria-label="<?php esc_attr_e('Garantías por comercial', 'garantias-online-360vo'); ?>">
                         <option value=""><?php esc_html_e('Todos los comerciales', 'garantias-online-360vo'); ?></option>
                     </select>
+                <?php endif; ?>
+
+                <?php if ($show_period_filters) : ?>
+                    <select
+                        class="guarantees-list__filter"
+                        data-filter="year"
+                        data-all-label="<?php esc_attr_e('Todos los años', 'garantias-online-360vo'); ?>"
+                        aria-label="<?php esc_attr_e('Año de inicio', 'garantias-online-360vo'); ?>">
+                        <option value=""><?php esc_html_e('Todos los años', 'garantias-online-360vo'); ?></option>
+                        <option value="<?php echo esc_attr($period_current_year); ?>" selected><?php echo esc_html($period_current_year); ?></option>
+                    </select>
+                    <div class="guarantees-list__filter-field">
+                        <label class="guarantees-list__filter-field-label" for="guarantees-filter-month-from">
+                            <?php esc_html_e('Desde', 'garantias-online-360vo'); ?>
+                        </label>
+                        <select
+                            id="guarantees-filter-month-from"
+                            class="guarantees-list__filter"
+                            data-filter="month-from">
+                            <?php foreach ($period_months as $month_number => $month_label) : ?>
+                                <option value="<?php echo esc_attr($month_number); ?>" <?php selected($month_number, $period_default_from_month); ?>>
+                                    <?php echo esc_html($month_label); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="guarantees-list__filter-field">
+                        <label class="guarantees-list__filter-field-label" for="guarantees-filter-month-to">
+                            <?php esc_html_e('Hasta', 'garantias-online-360vo'); ?>
+                        </label>
+                        <select
+                            id="guarantees-filter-month-to"
+                            class="guarantees-list__filter"
+                            data-filter="month-to">
+                            <?php foreach ($period_months as $month_number => $month_label) : ?>
+                                <option value="<?php echo esc_attr($month_number); ?>" <?php selected($month_number, $period_current_month); ?>>
+                                    <?php echo esc_html($month_label); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>

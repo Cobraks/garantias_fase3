@@ -339,6 +339,14 @@ const ADD_DOC_KEY = "add-document";
                 const commercialSelect = document.querySelector(
                         '[data-filter="commercial"]'
                 );
+                const yearSelect = document.querySelector('[data-filter="year"]');
+                const monthFromSelect = document.querySelector('[data-filter="month-from"]');
+                const monthToSelect = document.querySelector('[data-filter="month-to"]');
+                const hasPeriodFilters = Boolean(
+                        yearSelect &&
+                        monthFromSelect &&
+                        monthToSelect
+                );
                 const clientsWrapper = document.querySelector(
                         "[data-clients-wrapper]"
                 );
@@ -361,7 +369,6 @@ const ADD_DOC_KEY = "add-document";
                 const orderLabelNode = orderRoot
                         ? orderRoot.querySelector("[data-order-label]")
                         : null;
-                const rootElement = document.documentElement;
                 let selectedEstado = "";
                 let selectedPlan = "";
                 let selectedCanal = "";
@@ -369,6 +376,65 @@ const ADD_DOC_KEY = "add-document";
                 let selectedVendorType = "";
                 let selectedPaymentMethod = "";
                 let selectedCommercial = "";
+                let selectedYear = "";
+                let selectedMonthFrom = "";
+                let selectedMonthTo = "";
+                const periodDefaults = {
+                        year: "",
+                        monthFrom: "",
+                        monthTo: "",
+                };
+                const rootElement = document.documentElement;
+                const htmlLang =
+                        (rootElement &&
+                                (rootElement.lang ||
+                                        rootElement.getAttribute("xml:lang"))) ||
+                        "es-ES";
+                const monthsByYear = new Map();
+                let availableYears = [];
+                let currentPeriodYear = new Date().getFullYear();
+                let currentPeriodMonth = new Date().getMonth() + 1;
+                let monthOptions = [];
+                if (hasPeriodFilters) {
+                        let monthFormatter = null;
+                        try {
+                                monthFormatter = new Intl.DateTimeFormat(htmlLang, {
+                                        month: "long",
+                                });
+                        } catch (e) {
+                                monthFormatter = null;
+                        }
+                        monthOptions = Array.from({ length: 12 }, (_, index) => {
+                                const monthIndex = index + 1;
+                                let formatted = "";
+                                if (monthFormatter) {
+                                        try {
+                                                formatted = monthFormatter.format(
+                                                        new Date(Date.UTC(2020, index, 1))
+                                                );
+                                        } catch (error) {
+                                                formatted = "";
+                                        }
+                                }
+                                if (typeof formatted !== "string" || formatted.length === 0) {
+                                        formatted = String(monthIndex);
+                                }
+                                const label =
+                                        formatted.charAt(0).toUpperCase() + formatted.slice(1);
+                                return {
+                                        value: String(monthIndex),
+                                        label,
+                                };
+                        });
+                        selectedYear = String(currentPeriodYear);
+                        selectedMonthFrom = "1";
+                        selectedMonthTo = String(
+                                Math.min(12, Math.max(1, currentPeriodMonth))
+                        );
+                        periodDefaults.year = selectedYear;
+                        periodDefaults.monthFrom = selectedMonthFrom;
+                        periodDefaults.monthTo = selectedMonthTo;
+                }
                 const defaultOrderKey = orderToggle
                         ? orderToggle.getAttribute("data-default-sort") || "created_desc"
                         : "created_desc";
@@ -423,10 +489,284 @@ const ADD_DOC_KEY = "add-document";
                 };
                 updateBaseFiltersHeight();
 
+                function populateMonthSelect(select) {
+                        if (!select || monthOptions.length === 0) {
+                                return;
+                        }
+                        select.innerHTML = "";
+                        monthOptions.forEach(({ value, label }) => {
+                                const option = document.createElement("option");
+                                option.value = value;
+                                option.textContent = label;
+                                select.appendChild(option);
+                        });
+                }
+
+                function populateYearOptions(yearValues, selectedValue) {
+                        if (!yearSelect) {
+                                return;
+                        }
+                        const allLabel =
+                                yearSelect.getAttribute("data-all-label") ||
+                                "Todos los años";
+                        yearSelect.innerHTML = "";
+                        const allOption = document.createElement("option");
+                        allOption.value = "";
+                        allOption.textContent = allLabel;
+                        yearSelect.appendChild(allOption);
+                        yearValues.forEach((year) => {
+                                const yearString = String(year);
+                                const option = document.createElement("option");
+                                option.value = yearString;
+                                option.textContent = yearString;
+                                yearSelect.appendChild(option);
+                        });
+                        yearSelect.value = selectedValue || "";
+                }
+
+                function getMonthsForYear(yearValue) {
+                        if (!yearValue) {
+                                return [];
+                        }
+                        const stored = monthsByYear.get(String(yearValue));
+                        if (!stored) {
+                                return [];
+                        }
+                        return stored.slice();
+                }
+
+                function getEarliestMonthForYear(yearValue) {
+                        const months = getMonthsForYear(yearValue);
+                        if (months.length === 0) {
+                                return 1;
+                        }
+                        const first = Number.parseInt(months[0], 10);
+                        return Number.isFinite(first) && first >= 1 ? first : 1;
+                }
+
+                function getLatestMonthForYear(yearValue) {
+                        const months = getMonthsForYear(yearValue);
+                        if (months.length === 0) {
+                                return 12;
+                        }
+                        const last = Number.parseInt(months[months.length - 1], 10);
+                        return Number.isFinite(last) && last >= 1 ? last : 12;
+                }
+
+                function normalizeMonthValue(value) {
+                        const intValue = Number.parseInt(value, 10);
+                        if (!Number.isFinite(intValue) || intValue < 1) {
+                                return "";
+                        }
+                        if (intValue > 12) {
+                                return "12";
+                        }
+                        return String(intValue);
+                }
+
+                function getPeriodCacheKeyParts() {
+                        if (!hasPeriodFilters) {
+                                return ["", "", ""];
+                        }
+                        const yearValue = selectedYear || "";
+                        if (!yearValue) {
+                                return ["", "", ""];
+                        }
+                        let monthFromValue = normalizeMonthValue(selectedMonthFrom) || "";
+                        let monthToValue = normalizeMonthValue(selectedMonthTo) || "";
+                        if (
+                                monthFromValue &&
+                                monthToValue &&
+                                Number(monthFromValue) > Number(monthToValue)
+                        ) {
+                                monthToValue = monthFromValue;
+                        }
+                        return [yearValue, monthFromValue, monthToValue];
+                }
+
+                function initializePeriodFilters() {
+                        if (!hasPeriodFilters) {
+                                return;
+                        }
+                        if (monthOptions.length > 0) {
+                                populateMonthSelect(monthFromSelect);
+                                populateMonthSelect(monthToSelect);
+                        }
+                        const initialYear = selectedYear || "";
+                        availableYears = initialYear ? [initialYear] : [];
+                        populateYearOptions(availableYears, initialYear);
+                        if (yearSelect) {
+                                yearSelect.value = initialYear;
+                        }
+                        if (monthFromSelect) {
+                                monthFromSelect.value = selectedMonthFrom || "";
+                        }
+                        if (monthToSelect) {
+                                monthToSelect.value = selectedMonthTo || "";
+                        }
+                }
+
+                function syncPeriodFilters(periods = {}) {
+                        if (!hasPeriodFilters) {
+                                return;
+                        }
+                        const previousYear = selectedYear;
+                        const previousFrom = selectedMonthFrom;
+                        const previousTo = selectedMonthTo;
+
+                        const normalizedYears = Array.isArray(periods.years)
+                                ? periods.years
+                                          .map((year) => Number.parseInt(year, 10))
+                                          .filter((year) =>
+                                                  Number.isFinite(year) && year > 0
+                                          )
+                                : [];
+
+                        const responseYear = Number.parseInt(
+                                periods.current_year,
+                                10
+                        );
+                        if (Number.isFinite(responseYear) && responseYear > 0) {
+                                currentPeriodYear = responseYear;
+                        }
+
+                        const responseMonth = Number.parseInt(
+                                periods.current_month,
+                                10
+                        );
+                        if (
+                                Number.isFinite(responseMonth) &&
+                                responseMonth >= 1 &&
+                                responseMonth <= 12
+                        ) {
+                                currentPeriodMonth = responseMonth;
+                        }
+
+                        if (!normalizedYears.includes(currentPeriodYear)) {
+                                normalizedYears.push(currentPeriodYear);
+                        }
+
+                        normalizedYears.sort((a, b) => b - a);
+                        availableYears = normalizedYears.map((year) => String(year));
+
+                        monthsByYear.clear();
+                        if (
+                                periods.year_months &&
+                                typeof periods.year_months === "object"
+                        ) {
+                                Object.entries(periods.year_months).forEach(
+                                        ([yearKey, monthsList]) => {
+                                                const yearInt = Number.parseInt(yearKey, 10);
+                                                if (!Number.isFinite(yearInt) || yearInt <= 0) {
+                                                        return;
+                                                }
+                                                const normalizedMonths = Array.isArray(monthsList)
+                                                        ? monthsList
+                                                                  .map((value) =>
+                                                                          Number.parseInt(
+                                                                                  value,
+                                                                                  10
+                                                                          )
+                                                                  )
+                                                                  .filter((value) =>
+                                                                          Number.isFinite(
+                                                                                  value
+                                                                          ) &&
+                                                                          value >= 1 &&
+                                                                          value <= 12
+                                                                  )
+                                                        : [];
+                                                normalizedMonths.sort((a, b) => a - b);
+                                                monthsByYear.set(
+                                                        String(yearInt),
+                                                        normalizedMonths.map((value) =>
+                                                                String(value)
+                                                        )
+                                                );
+                                        }
+                                );
+                        }
+
+                        const currentYearKey = String(currentPeriodYear);
+                        if (!monthsByYear.has(currentYearKey)) {
+                                monthsByYear.set(currentYearKey, []);
+                        }
+
+                        populateYearOptions(availableYears, currentYearKey);
+                        if (monthOptions.length > 0) {
+                                populateMonthSelect(monthFromSelect);
+                                populateMonthSelect(monthToSelect);
+                        }
+
+                        const defaultYearValue = currentYearKey;
+                        let defaultFromValue = String(
+                                getEarliestMonthForYear(defaultYearValue)
+                        );
+                        let defaultToValue;
+                        if (defaultYearValue === currentYearKey) {
+                                defaultToValue = String(currentPeriodMonth);
+                        } else {
+                                defaultToValue = String(
+                                        getLatestMonthForYear(defaultYearValue)
+                                );
+                        }
+                        const normalizedFrom =
+                                normalizeMonthValue(defaultFromValue) || "1";
+                        let normalizedTo =
+                                normalizeMonthValue(defaultToValue) || normalizedFrom;
+                        if (Number(normalizedFrom) > Number(normalizedTo)) {
+                                normalizedTo = normalizedFrom;
+                        }
+
+                        selectedYear = defaultYearValue;
+                        selectedMonthFrom = normalizedFrom;
+                        selectedMonthTo = normalizedTo;
+
+                        periodDefaults.year = defaultYearValue;
+                        periodDefaults.monthFrom = normalizedFrom;
+                        periodDefaults.monthTo = normalizedTo;
+
+                        if (yearSelect) {
+                                yearSelect.value = defaultYearValue;
+                        }
+                        if (monthFromSelect) {
+                                monthFromSelect.value = normalizedFrom;
+                        }
+                        if (monthToSelect) {
+                                monthToSelect.value = normalizedTo;
+                        }
+
+                        const periodChanged =
+                                previousYear !== selectedYear ||
+                                previousFrom !== selectedMonthFrom ||
+                                previousTo !== selectedMonthTo;
+
+                        if (periodChanged) {
+                                applyFilters();
+                        } else {
+                                updateResetVisibility();
+                        }
+                }
+
                 const hasActiveFilters = () => {
                         const hasSearch = Boolean((searchQuery || "").trim());
                         if (hasSearch) {
                                 return true;
+                        }
+                        if (hasPeriodFilters) {
+                                const defaultYear = periodDefaults.year || "";
+                                const defaultFrom = periodDefaults.monthFrom || "";
+                                const defaultTo = periodDefaults.monthTo || "";
+                                if (selectedYear !== defaultYear) {
+                                        return true;
+                                }
+                                if (
+                                        selectedYear &&
+                                        (selectedMonthFrom !== defaultFrom ||
+                                                selectedMonthTo !== defaultTo)
+                                ) {
+                                        return true;
+                                }
                         }
                         if (
                                 selectedEstado ||
@@ -452,6 +792,7 @@ const ADD_DOC_KEY = "add-document";
                         resetFiltersBtn.hidden = !hasActiveFilters();
                 };
 
+                initializePeriodFilters();
                 updateResetVisibility();
 
                 if (typeof ResizeObserver !== "undefined" && advancedPanel) {
@@ -514,7 +855,10 @@ const ADD_DOC_KEY = "add-document";
                         payment = "",
                         orderBy = "",
                         orderDirection = "",
-                        commercial = ""
+                        commercial = "",
+                        year = "",
+                        monthFrom = "",
+                        monthTo = ""
                 ) {
                         return [
                                 search,
@@ -527,6 +871,9 @@ const ADD_DOC_KEY = "add-document";
                                 orderBy,
                                 orderDirection,
                                 commercial,
+                                year,
+                                monthFrom,
+                                monthTo,
                         ].join("|");
                 }
 
@@ -3527,6 +3874,36 @@ const ADD_DOC_KEY = "add-document";
                                 typeof options.orderDirection === "string" && options.orderDirection
                                         ? options.orderDirection
                                         : selectedOrderDirection;
+                        const year = hasPeriodFilters
+                                ? (typeof options.year !== "undefined"
+                                          ? String(options.year)
+                                          : selectedYear)
+                                : "";
+                        let monthFrom = hasPeriodFilters
+                                ? (typeof options.monthFrom !== "undefined"
+                                          ? String(options.monthFrom)
+                                          : selectedMonthFrom)
+                                : "";
+                        let monthTo = hasPeriodFilters
+                                ? (typeof options.monthTo !== "undefined"
+                                          ? String(options.monthTo)
+                                          : selectedMonthTo)
+                                : "";
+                        const normalizedYear = year || "";
+                        let normalizedMonthFrom = "";
+                        let normalizedMonthTo = "";
+                        if (normalizedYear) {
+                                normalizedMonthFrom = normalizeMonthValue(monthFrom) || "";
+                                normalizedMonthTo = normalizeMonthValue(monthTo) || "";
+                                if (
+                                        normalizedMonthFrom &&
+                                        normalizedMonthTo &&
+                                        Number(normalizedMonthFrom) >
+                                                Number(normalizedMonthTo)
+                                ) {
+                                        normalizedMonthTo = normalizedMonthFrom;
+                                }
+                        }
                         const cacheKey = buildListCacheKey(
                                 search,
                                 estado,
@@ -3537,7 +3914,10 @@ const ADD_DOC_KEY = "add-document";
                                 paymentMethod,
                                 orderBy,
                                 orderDirection,
-                                commercial
+                                commercial,
+                                normalizedYear,
+                                normalizedMonthFrom,
+                                normalizedMonthTo
                         );
                         try {
                                 if (currentListAbort) currentListAbort.abort();
@@ -3563,6 +3943,15 @@ const ADD_DOC_KEY = "add-document";
                                         params.append("order_by", orderBy);
                                 if (orderDirection)
                                         params.append("order", orderDirection);
+                                if (normalizedYear) {
+                                        params.append("year", normalizedYear);
+                                        if (normalizedMonthFrom) {
+                                                params.append("month_from", normalizedMonthFrom);
+                                        }
+                                        if (normalizedMonthTo) {
+                                                params.append("month_to", normalizedMonthTo);
+                                        }
+                                }
                                 let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
                                 const res = await fetch(url, {
                                         headers: { "X-WP-Nonce": restNonce },
@@ -4063,7 +4452,11 @@ const ADD_DOC_KEY = "add-document";
                 row: doc.row || "",
             };
         })
-        .filter((doc) => doc.url);
+        .filter((doc) => doc.url)
+        .filter((doc) => {
+            const docKey = typeof doc.key === "string" ? doc.key : "";
+            return docKey !== "cobertura" && docKey !== "condicionado";
+        });
     docsData.forEach((doc) => scheduleDocumentPreload(doc.url));
     const buyerFields = [
         "nombre_comprador",
@@ -4587,11 +4980,27 @@ function updateModalControls(modal) {
         const docButtons = buttons.filter((btn) => btn.dataset.docKey !== ADD_DOC_KEY);
         const download = modal.querySelector(".pdf-modal__download");
         const nav = modal.querySelector(".pdf-modal__nav");
+        const docList = modal.querySelector(".pdf-modal__docs-list");
+        const prevBtn = modal.querySelector(".pdf-modal__nav-btn--prev");
+        const nextBtn = modal.querySelector(".pdf-modal__nav-btn--next");
+        const hasSingleDoc = docButtons.length === 1;
+        const hideNav = docButtons.length <= 1;
         if (download) {
                 download.hidden = docButtons.length === 0;
         }
         if (nav) {
-                nav.hidden = docButtons.length <= 1;
+                nav.hidden = hideNav;
+        }
+        if (docList) {
+                docList.hidden = hasSingleDoc;
+        }
+        if (prevBtn) {
+                prevBtn.hidden = hideNav;
+                prevBtn.disabled = hideNav;
+        }
+        if (nextBtn) {
+                nextBtn.hidden = hideNav;
+                nextBtn.disabled = hideNav;
         }
 }
 
@@ -4810,9 +5219,14 @@ async function activateRow(row, options = {}) {
                                         (btn) => btn.dataset.docKey !== ADD_DOC_KEY
                                 );
                                 const hideNav = docButtons.length <= 1;
+                                const hideHeader = docButtons.length === 1;
+                                const docList = modal.querySelector(".pdf-modal__docs-list");
                                 if (navContainer) navContainer.hidden = hideNav;
                                 if (prevBtn) prevBtn.hidden = hideNav;
                                 if (nextBtn) nextBtn.hidden = hideNav;
+                                if (prevBtn) prevBtn.disabled = hideNav;
+                                if (nextBtn) nextBtn.disabled = hideNav;
+                                if (docList) docList.hidden = hideHeader;
                         }
 
                         function openDocByIndex(idx) {
@@ -5236,6 +5650,7 @@ async function activateRow(row, options = {}) {
                                         channels = [],
                                         vendor_types: vendorTypes = [],
                                         commercials = [],
+                                        periods = {},
                                 } = await res.json();
                                 if (estadoSelect) {
                                         estadoSelect
@@ -5327,6 +5742,7 @@ async function activateRow(row, options = {}) {
                                                 paymentSelect.appendChild(opt);
                                         });
                                 }
+                                syncPeriodFilters(periods);
                                 syncChannelOptionVisibility(channels, vendorTypes);
                                 refreshClientsVisibility();
                                 updateResetVisibility();
@@ -5343,6 +5759,8 @@ async function activateRow(row, options = {}) {
                         hasMore = true;
                         lastValidQuery = "";
                         lastValidResults = [];
+                        const [cacheYear, cacheMonthFrom, cacheMonthTo] =
+                                getPeriodCacheKeyParts();
                         const cacheKey = buildListCacheKey(
                                 searchQuery,
                                 selectedEstado,
@@ -5353,7 +5771,10 @@ async function activateRow(row, options = {}) {
                                 selectedPaymentMethod,
                                 selectedOrderBy,
                                 selectedOrderDirection,
-                                selectedCommercial
+                                selectedCommercial,
+                                cacheYear,
+                                cacheMonthFrom,
+                                cacheMonthTo
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
@@ -5401,6 +5822,138 @@ async function activateRow(row, options = {}) {
                 if (commercialSelect)
                         commercialSelect.addEventListener("change", () => {
                                 selectedCommercial = commercialSelect.value;
+                                applyFilters();
+                                updateResetVisibility();
+                        });
+
+                if (yearSelect)
+                        yearSelect.addEventListener("change", () => {
+                                const value = yearSelect.value || "";
+                                if (!value) {
+                                        selectedYear = "";
+                                        if (hasPeriodFilters) {
+                                                const defaultYear = periodDefaults.year || "";
+                                                const defaultFrom = periodDefaults.monthFrom || "";
+                                                const defaultTo = periodDefaults.monthTo || "";
+                                                selectedMonthFrom = defaultFrom;
+                                                selectedMonthTo = defaultTo;
+                                                if (monthFromSelect) {
+                                                        monthFromSelect.value = defaultFrom || "";
+                                                }
+                                                if (monthToSelect) {
+                                                        monthToSelect.value = defaultTo || "";
+                                                }
+                                                if (defaultYear && yearSelect.value !== defaultYear) {
+                                                        yearSelect.value = "";
+                                                }
+                                        }
+                                        applyFilters();
+                                        updateResetVisibility();
+                                        return;
+                                }
+                                selectedYear = value;
+                                const months = getMonthsForYear(value);
+                                let defaultFrom =
+                                        months.length > 0
+                                                ? months[0]
+                                                : periodDefaults.monthFrom || "1";
+                                let defaultTo =
+                                        value === String(currentPeriodYear)
+                                                ? String(currentPeriodMonth)
+                                                : months.length > 0
+                                                ? months[months.length - 1]
+                                                : periodDefaults.monthTo || "12";
+                                const normalizedFrom =
+                                        normalizeMonthValue(defaultFrom) || "1";
+                                let normalizedTo =
+                                        normalizeMonthValue(defaultTo) || normalizedFrom;
+                                if (Number(normalizedFrom) > Number(normalizedTo)) {
+                                        normalizedTo = normalizedFrom;
+                                }
+                                selectedMonthFrom = normalizedFrom;
+                                selectedMonthTo = normalizedTo;
+                                if (monthFromSelect) {
+                                        monthFromSelect.value = normalizedFrom;
+                                }
+                                if (monthToSelect) {
+                                        monthToSelect.value = normalizedTo;
+                                }
+                                applyFilters();
+                                updateResetVisibility();
+                        });
+
+                if (monthFromSelect)
+                        monthFromSelect.addEventListener("change", () => {
+                                if (!hasPeriodFilters) {
+                                        return;
+                                }
+                                if (!selectedYear) {
+                                        const defaultFrom = periodDefaults.monthFrom || "";
+                                        selectedMonthFrom = defaultFrom;
+                                        monthFromSelect.value = defaultFrom || "";
+                                        updateResetVisibility();
+                                        return;
+                                }
+                                const normalized = normalizeMonthValue(
+                                        monthFromSelect.value
+                                );
+                                if (!normalized) {
+                                        const defaultFrom = periodDefaults.monthFrom || "";
+                                        selectedMonthFrom = defaultFrom;
+                                        monthFromSelect.value = defaultFrom || "";
+                                } else {
+                                        selectedMonthFrom = normalized;
+                                        const normalizedTo = normalizeMonthValue(
+                                                selectedMonthTo
+                                        );
+                                        if (
+                                                normalizedTo &&
+                                                Number(normalized) > Number(normalizedTo)
+                                        ) {
+                                                selectedMonthTo = normalized;
+                                                if (monthToSelect) {
+                                                        monthToSelect.value = normalized;
+                                                }
+                                        }
+                                }
+                                applyFilters();
+                                updateResetVisibility();
+                        });
+
+                if (monthToSelect)
+                        monthToSelect.addEventListener("change", () => {
+                                if (!hasPeriodFilters) {
+                                        return;
+                                }
+                                if (!selectedYear) {
+                                        const defaultTo = periodDefaults.monthTo || "";
+                                        selectedMonthTo = defaultTo;
+                                        monthToSelect.value = defaultTo || "";
+                                        updateResetVisibility();
+                                        return;
+                                }
+                                const normalized = normalizeMonthValue(
+                                        monthToSelect.value
+                                );
+                                if (!normalized) {
+                                        const defaultTo = periodDefaults.monthTo || "";
+                                        selectedMonthTo = defaultTo;
+                                        monthToSelect.value = defaultTo || "";
+                                } else {
+                                        selectedMonthTo = normalized;
+                                        const normalizedFrom = normalizeMonthValue(
+                                                selectedMonthFrom
+                                        );
+                                        if (
+                                                normalizedFrom &&
+                                                Number(normalizedFrom) > Number(normalized)
+                                        ) {
+                                                selectedMonthFrom = normalized;
+                                                if (monthFromSelect) {
+                                                        monthFromSelect.value = normalized;
+                                                }
+                                        }
+                                }
                                 applyFilters();
                                 updateResetVisibility();
                         });
@@ -5489,6 +6042,23 @@ async function activateRow(row, options = {}) {
                                 selectedVendorType = "";
                                 selectedPaymentMethod = "";
                                 selectedCommercial = "";
+                                if (hasPeriodFilters) {
+                                        const defaultYear = periodDefaults.year || "";
+                                        const defaultFrom = periodDefaults.monthFrom || "";
+                                        const defaultTo = periodDefaults.monthTo || "";
+                                        selectedYear = defaultYear;
+                                        selectedMonthFrom = defaultFrom;
+                                        selectedMonthTo = defaultTo;
+                                        if (yearSelect) {
+                                                yearSelect.value = defaultYear || "";
+                                        }
+                                        if (monthFromSelect) {
+                                                monthFromSelect.value = defaultFrom || "";
+                                        }
+                                        if (monthToSelect) {
+                                                monthToSelect.value = defaultTo || "";
+                                        }
+                                }
                                 currentPage = 1;
                                 hasMore = true;
                                 refreshClientsVisibility();
@@ -5523,6 +6093,8 @@ async function activateRow(row, options = {}) {
                         searchQuery = query;
                         currentPage = 1;
                         hasMore = true;
+                        const [cacheYear, cacheMonthFrom, cacheMonthTo] =
+                                getPeriodCacheKeyParts();
                         const cacheKey = buildListCacheKey(
                                 searchQuery,
                                 selectedEstado,
@@ -5533,7 +6105,10 @@ async function activateRow(row, options = {}) {
                                 selectedPaymentMethod,
                                 selectedOrderBy,
                                 selectedOrderDirection,
-                                selectedCommercial
+                                selectedCommercial,
+                                cacheYear,
+                                cacheMonthFrom,
+                                cacheMonthTo
                         );
                         tbody.innerHTML = "";
                         loadedIds.clear();
