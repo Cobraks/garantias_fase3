@@ -423,26 +423,36 @@ if (($is_admin_user || $is_director)
                         <option value=""><?php esc_html_e('Todos los años', 'garantias-online-360vo'); ?></option>
                         <option value="<?php echo esc_attr($period_current_year); ?>" selected><?php echo esc_html($period_current_year); ?></option>
                     </select>
-                    <select
-                        class="guarantees-list__filter"
-                        data-filter="month-from"
-                        aria-label="<?php esc_attr_e('Mes desde', 'garantias-online-360vo'); ?>">
-                        <?php foreach ($period_months as $month_number => $month_label) : ?>
-                            <option value="<?php echo esc_attr($month_number); ?>" <?php selected($month_number, $period_default_from_month); ?>>
-                                <?php echo esc_html($month_label); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <select
-                        class="guarantees-list__filter"
-                        data-filter="month-to"
-                        aria-label="<?php esc_attr_e('Mes hasta', 'garantias-online-360vo'); ?>">
-                        <?php foreach ($period_months as $month_number => $month_label) : ?>
-                            <option value="<?php echo esc_attr($month_number); ?>" <?php selected($month_number, $period_current_month); ?>>
-                                <?php echo esc_html($month_label); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="guarantees-list__filter-field">
+                        <label class="guarantees-list__filter-field-label" for="guarantees-filter-month-from">
+                            <?php esc_html_e('Desde', 'garantias-online-360vo'); ?>
+                        </label>
+                        <select
+                            id="guarantees-filter-month-from"
+                            class="guarantees-list__filter"
+                            data-filter="month-from">
+                            <?php foreach ($period_months as $month_number => $month_label) : ?>
+                                <option value="<?php echo esc_attr($month_number); ?>" <?php selected($month_number, $period_default_from_month); ?>>
+                                    <?php echo esc_html($month_label); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="guarantees-list__filter-field">
+                        <label class="guarantees-list__filter-field-label" for="guarantees-filter-month-to">
+                            <?php esc_html_e('Hasta', 'garantias-online-360vo'); ?>
+                        </label>
+                        <select
+                            id="guarantees-filter-month-to"
+                            class="guarantees-list__filter"
+                            data-filter="month-to">
+                            <?php foreach ($period_months as $month_number => $month_label) : ?>
+                                <option value="<?php echo esc_attr($month_number); ?>" <?php selected($month_number, $period_current_month); ?>>
+                                    <?php echo esc_html($month_label); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
