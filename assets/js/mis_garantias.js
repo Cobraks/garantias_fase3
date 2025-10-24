@@ -4981,6 +4981,7 @@ function updateModalControls(modal) {
         const download = modal.querySelector(".pdf-modal__download");
         const nav = modal.querySelector(".pdf-modal__nav");
         const docList = modal.querySelector(".pdf-modal__docs-list");
+        const header = modal.querySelector(".pdf-modal__header");
         const prevBtn = modal.querySelector(".pdf-modal__nav-btn--prev");
         const nextBtn = modal.querySelector(".pdf-modal__nav-btn--next");
         const hasSingleDoc = docButtons.length === 1;
@@ -4993,6 +4994,9 @@ function updateModalControls(modal) {
         }
         if (docList) {
                 docList.hidden = hasSingleDoc;
+        }
+        if (header) {
+                header.hidden = docButtons.length <= 1;
         }
         if (prevBtn) {
                 prevBtn.hidden = hideNav;
