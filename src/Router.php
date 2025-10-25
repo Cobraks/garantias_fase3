@@ -39,6 +39,11 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
         }
 
         $is_admin_user = current_user_can('manage_options');
+        $current_user  = wp_get_current_user();
+        $current_roles = $current_user instanceof \WP_User ? (array) $current_user->roles : [];
+        $can_access_clients = $is_admin_user
+            || in_array('go_director_comercial', $current_roles, true)
+            || in_array('go_garantias', $current_roles, true);
 
         if (is_user_logged_in() && in_array($endpoint, ['login', 'lostpassword', 'resetpassword'], true)) {
             $destination = $is_admin_user
@@ -53,7 +58,12 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
             exit;
         }
 
-        if (in_array($endpoint, ['averias', 'averia', 'clientes'], true) && ! $is_admin_user) {
+        if (in_array($endpoint, ['averias', 'averia'], true) && ! $is_admin_user) {
+            wp_safe_redirect(home_url('/garantias-online/mis-garantias/'));
+            exit;
+        }
+
+        if ($endpoint === 'clientes' && ! $can_access_clients) {
             wp_safe_redirect(home_url('/garantias-online/mis-garantias/'));
             exit;
         }
