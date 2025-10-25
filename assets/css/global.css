@@ -690,6 +690,16 @@ text-decoration: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
 }
+:root[data-theme='dark'] .top-bar__notifications-button {
+  background: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.32);
+  color: rgba(226, 232, 240, 0.95);
+}
+:root[data-theme='dark'] .top-bar__notifications-button:hover {
+  background: rgba(148, 163, 184, 0.28);
+  border-color: rgba(226, 232, 240, 0.45);
+  color: #f8fafc;
+}
 
 .top-bar__notifications-button.is-toasting {
   background: #eef2ff;
