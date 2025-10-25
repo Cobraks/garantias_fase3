@@ -1143,7 +1143,7 @@ text-decoration: none;
   right: calc((100vw - min(100vw, 1440px)) / 2 + 1.5rem);
   width: min(22rem, 92vw);
   display: none;
-  z-index: 40000;
+  z-index: 2147483000;
   pointer-events: none;
   will-change: transform, opacity;
 }
