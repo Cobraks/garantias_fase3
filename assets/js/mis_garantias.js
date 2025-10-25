@@ -73,6 +73,11 @@
 		const urlMat = new URLSearchParams(window.location.search).get("matricula");
                 const detailCache = new Map();
 
+                const ICON_CONTINUE =
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24" height="24" fill="currentColor" class="guarantee-detail__btn-icon"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg>';
+                const ICON_DELETE =
+                        '<svg viewBox="0 0 24 24" width="24" height="24" class="guarantee-detail__btn-icon"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>';
+
                 function normalizeEstadoClase(estado) {
                         if (!estado) return "pendiente-pago";
                         return String(estado)
@@ -147,6 +152,18 @@
                         if (data.precio !== undefined) data.precio = formatPrice(data.precio);
                         if (data.precio_venta !== undefined)
                                 data.precio_venta = formatPrice(data.precio_venta);
+                        if (data.kilometros !== undefined) {
+                                const kms = parseInt(String(data.kilometros).replace(/[^0-9]/g, ""), 10);
+                                if (!isNaN(kms)) {
+                                        data.kilometros = new Intl.NumberFormat("es-ES").format(kms);
+                                }
+                        }
+                        if (data.cilindrada !== undefined) {
+                                const cc = parseInt(String(data.cilindrada).replace(/[^0-9]/g, ""), 10);
+                                if (!isNaN(cc)) {
+                                        data.cilindrada = new Intl.NumberFormat("es-ES").format(cc);
+                                }
+                        }
                         return data;
                 }
 
@@ -517,8 +534,9 @@
                                 precio_venta: "-",
 				combustible: "-",
 				cambio: "-",
-				potencia: "-",
-				cilindrada: "-",
+                                potencia: "-",
+                                potencia_kw: "-",
+                                cilindrada: "-",
 				telefono_vendedor: "-",
 				email_vendedor: "-",
 				contrato_url: "#",
@@ -541,8 +559,9 @@
 			"precio_venta",
 			"combustible",
 			"cambio",
-			"potencia",
-			"cilindrada",
+                        "potencia",
+                        "potencia_kw",
+                        "cilindrada",
 			"telefono_vendedor",
 			"email_vendedor",
 			"nombre_comprador",
@@ -553,13 +572,13 @@
 		];
 
 		function renderFastActions(vendedor, telefono, email, skeletons = []) {
-			const label = skeletons.includes("concesionario")
-				? `<span class="skeleton skeleton--nombre"></span>`
-				: vendedor ?? "-";
-			const tel = skeletons.includes("telefono_vendedor")
-				? ""
-				: telefono ?? "-";
-			const mail = skeletons.includes("email_vendedor") ? "" : email ?? "-";
+                        const label = skeletons.includes("concesionario")
+                                ? `<span class="skeleton skeleton--nombre"></span>`
+                                : vendedor || 'Incompleto';
+                        const tel = skeletons.includes("telefono_vendedor")
+                                ? ""
+                                : telefono || "-";
+                        const mail = skeletons.includes("email_vendedor") ? "" : email || "-";
 			return `
 				<ul class="fast-actions">
 					<li class="fast-actions__item">
@@ -581,15 +600,41 @@
                                 val && typeof val === "object" && "label" in val
                                         ? val.label
                                         : val;
-                        const skeleton = (field, fallback = "-") =>
-                                skeletons.includes(field)
-                                        ? `<span class="skeleton skeleton--${field}"></span>`
-                                        : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
+                        const renderField = (field, label, suffix = "") => {
+                                if (skeletons.includes(field)) {
+                                        return `<li><strong>${label}:</strong> <span class="skeleton skeleton--${field}"></span>${suffix}</li>`;
+                                }
+                                const val = getFieldText(data[field]) ?? getFieldText(rowData[field]);
+                                if (!val || val === "-") {
+                                        return `<li><strong>${label}:</strong> <span class="detail__value detail__value--missing">Incompleto</span></li>`;
+                                }
+                                return `<li><strong>${label}:</strong> ${val}${suffix}</li>`;
+                        };
+                        const renderPotencia = () => {
+                                const combVal =
+                                        (data.combustible && data.combustible.value) ||
+                                        (rowData.combustible && rowData.combustible.value) ||
+                                        "";
+                                const field = combVal === "electrico" ? "potencia_kw" : "potencia";
+                                const unit = combVal === "electrico" ? " kW" : " CV";
+                                if (skeletons.includes(field)) {
+                                        return `<li><strong>Potencia:</strong> <span class="skeleton skeleton--${field}"></span></li>`;
+                                }
+                                const val = getFieldText(data[field]) ?? getFieldText(rowData[field]);
+                                if (!val || val === "-") {
+                                        return `<li><strong>Potencia:</strong> <span class="detail__value detail__value--missing">Incompleto</span></li>`;
+                                }
+                                return `<li><strong>Potencia:</strong> ${val}${unit}</li>`;
+                        };
+                       const skeleton = (field, fallback = "-") =>
+                               skeletons.includes(field)
+                                       ? `<span class="skeleton skeleton--${field}"></span>`
+                                       : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
 
-                        const mesesTotales = getDurationMeses(data.desde, data.hasta);
-                        const mesesRestantes = getRestantesMeses(data.hasta);
+                       const mesesTotales = getDurationMeses(data.desde, data.hasta);
+                       const mesesRestantes = getRestantesMeses(data.hasta);
 
-                        const estadoValue =
+                       const estadoValue =
                                 (data.estado && data.estado.value) ||
                                 rowData.estadoclase ||
                                 "pendiente-pago";
@@ -597,73 +642,83 @@
                                 estadoValue
                         )}`;
 
-			const planTitle = `${data.plan ?? "-"}${
-				mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
-			}`;
+                        const planTitle =
+                                estadoValue === "sin_finalizar"
+                                        ? "Ninguna garantía seleccionada"
+                                        : `${data.plan ?? "-"}${
+                                                  mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
+                                          }`;
+                        const showDates = estadoValue !== "sin_finalizar";
 
-			return `
-				<div class="guarantee-detail__inner">
-					<div class="guarantee-detail__header">
-						<h2>Garantía ${skeleton("matricula")}</h2>
-						<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
-                                                <div>
+                        return `
+                                <div class="guarantee-detail__inner">
+                                        <div class="guarantee-detail__header">
+                                                <h2>Garantía ${skeleton("matricula")}</h2>
+                                                <h3 class="guarantee-detail__plan-title">${planTitle}</h3>
+                                                ${
+                                                        showDates
+                                                                ? `<div>
                                                         <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
-                                                        <span class="guarantee-detail__plan-duration">(${
-                                                                mesesRestantes !== "-"
-                                                                        ? mesesRestantes + " meses restantes"
-                                                                        : "-"
-                                                        })</span></p>
-                                                </div>
+                                                        <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p>
+                                                </div>`
+                                                                : ""
+                                                }
                                                 <div class="${badgeClase}">${skeleton(
                                                         "estado",
                                                         "Desconocido"
                                                 )}</div>
-					</div>
-					<div class="guarantee-detail__btn-container">
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
-
-							<span class="guarantee-detail__btn-text">Abrir expediente</span>
-						</button>
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
-					</div>
-					<section class="detail__section detail__section--fast-actions">
-						<h3 class="detail__section-title">Canal de venta</h3>
-							<p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
-							${renderFastActions(
-								data.concesionario ?? rowData.concesionario,
-								data.telefono_vendedor ?? rowData.telefono_vendedor,
-								data.email_vendedor ?? rowData.email_vendedor,
-								skeletons
-							)}
-					</section>
-					<section class="detail__section">
-						<h3>Datos del vehículo</h3>
-						<ul>
-							<li><strong>Marca/Modelo:</strong> ${skeleton("marca_modelo")}</li>
-							<li><strong>Tipo:</strong> ${skeleton("tipo", "-")}</li>
-							<li><strong>Kilómetros:</strong> ${skeleton("kilometros", "-")} km</li>
-							<li><strong>1ª Matriculación:</strong> ${skeleton(
-								"primera_matriculacion",
-								"-"
-							)}</li>
-							<li><strong>Matrícula:</strong> ${skeleton("matricula")}</li>
-							<li><strong>Nº Bastidor:</strong> ${skeleton("bastidor", "-")}</li>
-							<li><strong>Precio venta:</strong> ${skeleton("precio_venta", "-")} €</li>
-						</ul>
-					</section>
-					<section class="detail__section">
-						<h3>Detalles técnicos</h3>
-						<ul>
-							<li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
-							<li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
-							<li><strong>Potencia:</strong> ${skeleton("potencia", "-")}</li>
-							<li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")}</li>
-						</ul>
-					</section>
-					<section class="detail__section detail__section--docs">
-						<h3 class="detail__section-title">Documentación</h3>
-						<ul class="detail__docs-list">
+                                        </div>
+                                        ${
+                                                showDates
+                                                        ? `<div class="guarantee-detail__btn-container">
+                                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
+                                                        <span class="guarantee-detail__btn-text">Abrir expediente</span>
+                                                </button>
+                                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
+                                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
+                                        </div>`
+                                                        : `<div class="guarantee-detail__btn-container">
+                                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--continue">${ICON_CONTINUE}<span class="guarantee-detail__btn-text">Continuar garantía</span></button>
+                                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--delete">${ICON_DELETE}<span class="guarantee-detail__btn-text">Eliminar garantía</span></button>
+                                        </div>`
+                                        }
+                                        <section class="detail__section detail__section--fast-actions">
+                                                <h3 class="detail__section-title">Canal de venta</h3>
+                                                <ul>
+                                                        ${renderField("canal_venta", "Canal de venta")}
+                                                        ${renderField("concesionario", "Concesionario")}
+                                                </ul>
+                                                ${renderFastActions(
+                                                        getFieldText(data.concesionario) ?? getFieldText(rowData.concesionario),
+                                                        getFieldText(data.telefono_vendedor) ?? getFieldText(rowData.telefono_vendedor),
+                                                        getFieldText(data.email_vendedor) ?? getFieldText(rowData.email_vendedor),
+                                                        skeletons
+                                                )}
+                                        </section>
+                                        <section class="detail__section">
+                                                <h3>Datos del vehículo</h3>
+                                                <ul>
+                                                        ${renderField("marca_modelo", "Marca/Modelo")}
+                                                        ${renderField("tipo", "Tipo")}
+                                                        ${renderField("kilometros", "Kilómetros", " km")}
+                                                        ${renderField("primera_matriculacion", "1ª Matriculación")}
+                                                        ${renderField("matricula", "Matrícula")}
+                                                        ${renderField("bastidor", "Nº Bastidor")}
+                                                        ${renderField("precio_venta", "Precio venta", " €")}
+                                                </ul>
+                                        </section>
+                                        <section class="detail__section">
+                                                <h3>Detalles técnicos</h3>
+                                                <ul>
+                                                        ${renderField("combustible", "Combustible")}
+                                                        ${renderField("cambio", "Cambio")}
+                                                        ${renderPotencia()}
+                                                        ${renderField("cilindrada", "Cilindrada", " CC")}
+                                                </ul>
+                                        </section>
+                                        <section class="detail__section detail__section--docs">
+                                                <h3 class="detail__section-title">Documentación</h3>
+                                                <ul class="detail__docs-list">
 							<li class="detail__docs-item">
 								<button type="button" class="detail__docs-btn" data-doc-url="${skeleton(
 									"contrato_url",
@@ -697,32 +752,32 @@
 								</button>
 							</li>
 						</ul>
-					</section>
-					<section class="detail__section">
-						<h3>Datos del comprador</h3>
-						<ul>
-							<li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
-							<li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
-							<li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
-							<li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
-							<li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
-						</ul>
-						<ul class="fast-actions">
-							<li class="fast-actions__item">
-								<a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
-									<span class="fast-actions__label">Cliente</span>
-								</a>
-							</li>
-							<li class="fast-actions__item">
-								<a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
-									<span class="fast-actions__label">Cliente</span>
-								</a>
-							</li>
-						</ul>
-					</section>
-				</div>
-			`;
-		}
+                                        </section>
+                                        <section class="detail__section">
+                                                <h3>Datos del comprador</h3>
+                                                <ul>
+                                                        ${renderField("nombre_comprador", "Nombre")}
+                                                        ${renderField("dni_comprador", "DNI/NIE")}
+                                                        ${renderField("telefono_comprador", "Teléfono")}
+                                                        ${renderField("email_comprador", "Email")}
+                                                        ${renderField("direccion_comprador", "Dirección")}
+                                                </ul>
+                                                <ul class="fast-actions">
+                                                        <li class="fast-actions__item">
+                                                                <a href="tel:${skeleton("telefono_comprador", "-")}" class="fast-actions__link">
+                                                                        <span class="fast-actions__label">Cliente</span>
+                                                                </a>
+                                                        </li>
+                                                        <li class="fast-actions__item">
+                                                                <a href="mailto:${skeleton("email_comprador", "-")}" class="fast-actions__link">
+                                                                        <span class="fast-actions__label">Cliente</span>
+                                                                </a>
+                                                        </li>
+                                                </ul>
+                                        </section>
+                                </div>
+                        `;
+                }
 
 		function initRowSelection() {
 			tbody.addEventListener("click", async function (e) {
