@@ -354,6 +354,8 @@ class GuaranteeRestController
         }
 
         $meses_contratados = 0;
+        $gc = [];
+        $is_publishing = isset($data['post_status']) && sanitize_text_field($data['post_status']) === 'publish';
         if (isset($data['garantia_contratada']) && is_array($data['garantia_contratada'])) {
             $gc   = [];
             foreach ($data['garantia_contratada'] as $k => $v) {
@@ -417,6 +419,12 @@ class GuaranteeRestController
                     $gc['nivel_garantia'] = (int) $nivel_terms[0];
                 }
             }
+            if (isset($gc['tipo_garantia'])) {
+                wp_set_post_terms($post_id, [(int) $gc['tipo_garantia']], 'tipo_garantia');
+            }
+            if (isset($gc['nivel_garantia'])) {
+                wp_set_post_terms($post_id, [(int) $gc['nivel_garantia']], 'nivel_garantia');
+            }
             foreach ($gc as $k => $v) {
                 if (is_array($v)) {
                     foreach ($v as $subk => $subv) {
@@ -447,7 +455,9 @@ class GuaranteeRestController
             if (isset($data['estado_garantia']['finalizacion']) && empty($estado['finalizacion'])) {
                 $estado['finalizacion'] = sanitize_text_field($data['estado_garantia']['finalizacion']);
             }
-            if (isset($data['estado_garantia']['estado_contratacion'])) {
+            if ($is_publishing && ($gc['metodo_pago'] ?? '') === 'domiciliacion') {
+                $estado['estado_contratacion'] = 'activada';
+            } elseif (isset($data['estado_garantia']['estado_contratacion'])) {
                 $ec = sanitize_text_field($data['estado_garantia']['estado_contratacion']);
                 $valid = ['pendiente_pago', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto'];
                 if (in_array($ec, $valid, true)) {

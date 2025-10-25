@@ -597,7 +597,11 @@ export default function initAutosave() {
                 if (!payload.estado_garantia) payload.estado_garantia = {};
                 if (finalize) {
                         payload.post_status = "publish";
-                        payload.estado_garantia.estado_contratacion = "pendiente_pago";
+                        if (garantia.metodo_pago === "domiciliacion") {
+                                payload.estado_garantia.estado_contratacion = "activada";
+                        } else {
+                                payload.estado_garantia.estado_contratacion = "pendiente_pago";
+                        }
                 } else {
                         payload.estado_garantia.estado_contratacion = "sin_finalizar";
                 }
