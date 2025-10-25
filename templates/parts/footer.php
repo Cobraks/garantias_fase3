@@ -12,6 +12,12 @@ $example_data_enabled = false;
 if (! empty($is_add_guarantee)) {
     $example_data_enabled = FeatureFlags::is_example_data_enabled();
 }
+
+$notifications_allowed_roles = ['go_director_comercial', 'go_garantias'];
+$notifications_user = is_user_logged_in() ? wp_get_current_user() : null;
+$notifications_roles = $notifications_user instanceof \WP_User ? (array) $notifications_user->roles : [];
+$notifications_role_match = array_intersect($notifications_allowed_roles, $notifications_roles);
+$can_manage_notifications = current_user_can('manage_options') || ! empty($notifications_role_match);
 ?>
 </div> <!-- /.main-grid -->
 </div> <!-- /.container -->
@@ -68,7 +74,7 @@ if (! empty($is_add_guarantee)) {
 
 <?php if ($is_list_page ?? false) : ?>
     <?php
-    if (!isset($current_user) || !($current_user instanceof WP_User)) {
+    if (!isset($current_user) || !($current_user instanceof \WP_User)) {
         $current_user = wp_get_current_user();
     }
     $roles = (array) $current_user->roles;
@@ -133,12 +139,12 @@ if (! empty($is_add_guarantee)) {
 
 <?php if ($is_clients_page ?? false) : ?>
     <?php
-    if (!isset($current_user) || !($current_user instanceof WP_User)) {
+    if (!isset($current_user) || !($current_user instanceof \WP_User)) {
         $current_user = wp_get_current_user();
     }
 
     $is_admin = current_user_can('manage_options');
-    $current_roles = $current_user instanceof WP_User ? (array) $current_user->roles : [];
+    $current_roles = $current_user instanceof \WP_User ? (array) $current_user->roles : [];
     $has_client_manager_role = in_array('go_director_comercial', $current_roles, true)
         || in_array('go_garantias', $current_roles, true);
     $can_assign_commercials = $is_admin || $has_client_manager_role;
@@ -411,7 +417,7 @@ if (! empty($is_add_guarantee)) {
 <?php if (($is_add_guarantee ?? false)) : ?>
     <?php
     // Asegura que las variables existen (y previene errores)
-    if (!isset($current_user) || !($current_user instanceof WP_User)) {
+    if (!isset($current_user) || !($current_user instanceof \WP_User)) {
         $current_user = wp_get_current_user();
     }
     $roles = (array) $current_user->roles;
@@ -513,7 +519,7 @@ if (! empty($is_add_guarantee)) {
 <?php if ($is_account_page ?? false) : ?>
     <?php
     $push_config = null;
-    if (current_user_can('manage_options')) {
+    if ($can_manage_notifications) {
         $push_config = [
             'publicKey'             => apply_filters('go360/push/public_key', ''),
             'subscriptionEndpoint'  => esc_url_raw(rest_url('go/v1/push-subscriptions')),
@@ -563,17 +569,7 @@ if (! empty($is_add_guarantee)) {
     <?php endif; ?>
 <?php endif; ?>
 
-<?php
-$should_bootstrap_notifications = false;
-if (is_user_logged_in()) {
-    $notifications_user = wp_get_current_user();
-    $notifications_roles = $notifications_user instanceof WP_User ? (array) $notifications_user->roles : [];
-    $should_bootstrap_notifications = current_user_can('manage_options')
-        || in_array('go_director_comercial', $notifications_roles, true)
-        || in_array('go_garantias', $notifications_roles, true);
-}
-?>
-<?php if ($should_bootstrap_notifications) : ?>
+<?php if ($can_manage_notifications) : ?>
     <script>
         window.go360Notifications = {
             endpoints: {
@@ -584,6 +580,13 @@ if (is_user_logged_in()) {
             perPage: 10,
             pollInterval: 4000,
             toastDuration: 9000,
+            user: {
+                id: <?php echo (int) get_current_user_id(); ?>,
+            },
+            preferences: {
+                toast: true,
+                sound: true
+            }
         };
     </script>
     <script

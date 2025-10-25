@@ -180,6 +180,51 @@
         const pollInterval = Math.max(3000, Number(config.pollInterval || 6000));
         const toastDuration = Math.max(6000, Number(config.toastDuration || 8000));
 
+        const userConfig = config.user || {};
+        const userId = Number(userConfig.id || 0);
+        const preferenceDefaults = typeof config.preferences === 'object' && config.preferences !== null
+            ? config.preferences
+            : {};
+
+        const getPreferenceKey = (type) => {
+            const suffix = Number.isFinite(userId) && userId > 0 ? `_${userId}` : '';
+            return `go360_notifications_pref_${type}${suffix}`;
+        };
+
+        const readStoredPreference = (type, fallback) => {
+            const key = getPreferenceKey(type);
+            const raw = safeStorage.get(key);
+            if (raw === null || typeof raw === 'undefined') {
+                return fallback;
+            }
+            if (raw === '1' || raw === 'true') {
+                return true;
+            }
+            if (raw === '0' || raw === 'false') {
+                return false;
+            }
+            return fallback;
+        };
+
+        const persistPreference = (type, value) => {
+            const key = getPreferenceKey(type);
+            if (!key) {
+                return;
+            }
+            const normalized = value ? '1' : '0';
+            if (safeStorage.get(key) === normalized) {
+                return;
+            }
+            safeStorage.set(key, normalized);
+        };
+
+        const defaultToastPreference = typeof preferenceDefaults.toast === 'boolean'
+            ? preferenceDefaults.toast
+            : true;
+        const defaultSoundPreference = typeof preferenceDefaults.sound === 'boolean'
+            ? preferenceDefaults.sound
+            : true;
+
         const toastSoundSrc = container.dataset.toastSound || '';
         let toastAudio = null;
         let toastHideHandler = null;
@@ -228,7 +273,8 @@
             modalOpen: false,
             latestId: 0,
             isPolling: false,
-            toastEnabled: true,
+            toastEnabled: defaultToastPreference,
+            toastSoundEnabled: defaultSoundPreference,
             currentToastId: null,
             lastToastId: null,
             toastHistory: new Set(),
@@ -239,6 +285,12 @@
             lastBrowserNotified: Number(safeStorage.get(STORAGE_KEYS.browserLast) || '0'),
             pendingMarks: new Map(),
         };
+
+        state.userId = Number.isFinite(userId) ? userId : 0;
+        state.toastEnabled = readStoredPreference('toast', state.toastEnabled);
+        state.toastSoundEnabled = readStoredPreference('sound', state.toastSoundEnabled);
+        persistPreference('toast', state.toastEnabled);
+        persistPreference('sound', state.toastSoundEnabled);
 
         if (Number.isFinite(state.lastBrowserNotified) && state.lastBrowserNotified > 0) {
             state.browserHistory.add(state.lastBrowserNotified);
@@ -725,7 +777,7 @@
         };
 
         const playToastSound = () => {
-            if (!toastSoundSrc || document.hidden) {
+            if (!toastSoundSrc || document.hidden || !state.toastSoundEnabled) {
                 return;
             }
             if (!toastAudio) {
@@ -1729,6 +1781,28 @@
         };
 
         attachListEvents(list, 'panel');
+
+        window.addEventListener('go360:notifications:preferences', (event) => {
+            if (!event || typeof event.detail !== 'object' || event.detail === null) {
+                return;
+            }
+
+            const detail = event.detail;
+
+            if (typeof detail.toastEnabled === 'boolean') {
+                state.toastEnabled = detail.toastEnabled;
+                persistPreference('toast', state.toastEnabled);
+                if (!state.toastEnabled) {
+                    hideToast({ immediate: true });
+                    setToggleToastState(false);
+                }
+            }
+
+            if (typeof detail.soundEnabled === 'boolean') {
+                state.toastSoundEnabled = detail.soundEnabled;
+                persistPreference('sound', state.toastSoundEnabled);
+            }
+        });
 
         window.addEventListener('go360:notifications:refresh', () => {
             fetchNotifications({ append: false, background: !state.isOpen });
