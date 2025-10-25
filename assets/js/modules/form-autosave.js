@@ -669,6 +669,36 @@ export default function initAutosave() {
                                 localStorage.setItem("go_draft_uuid", draftUuid);
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
+                        let certificateUrl = "";
+                        if (finalize && json.template_url) {
+                                try {
+                                        const pdfBytes = await fetch(json.template_url).then((r) => r.arrayBuffer());
+                                        const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                                        const form = pdfDoc.getForm();
+                                        if (datosVehiculo.combustible)
+                                                form.getTextField("pdf_combustible").setText(datosVehiculo.combustible);
+                                        if (datosCliente.codigo_postal)
+                                                form.getTextField("pdf_cp").setText(datosCliente.codigo_postal);
+                                        if (datosCliente.nombre_y_apellidos)
+                                                form
+                                                        .getTextField("pdf_nombre_apellidos")
+                                                        .setText(datosCliente.nombre_y_apellidos);
+                                        form.flatten();
+                                        const filled = await pdfDoc.save();
+                                        const up = await fetch(
+                                                `${getRestRoot()}go/v1/guarantees/${draftId}/certificate`,
+                                                {
+                                                        method: "POST",
+                                                        headers: { "X-WP-Nonce": getRestNonce() },
+                                                        body: filled,
+                                                }
+                                        );
+                                        const upJson = await up.json();
+                                        certificateUrl = upJson.certificate_url || "";
+                                } catch (err) {
+                                        console.error("[AUTOSAVE] certificate upload error", err);
+                                }
+                        }
                         if (finalize) {
                                 showSuccess(
                                         garantia.metodo_pago,
@@ -676,7 +706,7 @@ export default function initAutosave() {
                                         garantia.precio,
                                         garantia.nivel_garantia,
                                         garantia.meses_contratados,
-                                        json.certificate_url
+                                        certificateUrl
                                 );
                         }
                         spinner.style.display = "none";
