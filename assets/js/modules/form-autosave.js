@@ -938,6 +938,61 @@ export default function initAutosave() {
                 }
         }
 
+        function normalizeDateForInput(value) {
+                if (value === undefined || value === null) {
+                        return "";
+                }
+                const str = String(value).trim();
+                if (!str || str === "-" || str === "#") {
+                        return "";
+                }
+                if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                        return str;
+                }
+                const separators = /[\/\-.]/;
+                if (separators.test(str)) {
+                        const parts = str.split(separators).filter(Boolean);
+                        if (parts.length === 3) {
+                                let [p1, p2, p3] = parts;
+                                let year;
+                                let month;
+                                let day;
+                                if (p1.length === 4 && p3.length <= 2) {
+                                        year = p1;
+                                        month = p2;
+                                        day = p3;
+                                } else {
+                                        day = p1;
+                                        month = p2;
+                                        year = p3;
+                                }
+                                const dayNum = parseInt(day, 10);
+                                const monthNum = parseInt(month, 10);
+                                let yearNum = parseInt(year, 10);
+                                if (Number.isNaN(dayNum) || Number.isNaN(monthNum) || Number.isNaN(yearNum)) {
+                                        return "";
+                                }
+                                if (year.length === 2) {
+                                        yearNum += yearNum >= 70 ? 1900 : 2000;
+                                }
+                                const iso = `${String(yearNum).padStart(4, "0")}-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+                                const date = new Date(iso);
+                                if (Number.isNaN(date.getTime())) {
+                                        return "";
+                                }
+                                return iso;
+                        }
+                }
+                const parsed = new Date(str);
+                if (!Number.isNaN(parsed.getTime())) {
+                        const year = parsed.getFullYear();
+                        const month = String(parsed.getMonth() + 1).padStart(2, "0");
+                        const day = String(parsed.getDate()).padStart(2, "0");
+                        return `${year}-${month}-${day}`;
+                }
+                return "";
+        }
+
         async function loadDraft() {
                 if (!draftId) return;
                 try {
@@ -956,8 +1011,12 @@ export default function initAutosave() {
                                 marca: data.marca,
                                 modelo: data.modelo,
                                 kilometros: data.kilometros,
-                                fecha_primera_matriculacion:
-                                        data.primera_matriculacion,
+                                fecha_primera_matriculacion: normalizeDateForInput(
+                                        data.fecha_primera_matriculacion ?? data.primera_matriculacion
+                                ),
+                                fecha_inicio_garantia: normalizeDateForInput(
+                                        data.desde ?? data.fecha_inicio ?? data.fecha_inicio_garantia
+                                ),
                                 matricula:
                                         data.matricula && data.matricula !== "-"
                                                 ? data.matricula
