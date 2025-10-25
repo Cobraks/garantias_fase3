@@ -1,5 +1,27 @@
 # Historial de cambios
 
+## 0.1.15 - 2025-08-16
+- Asegura que el rol administrador conserve las capacidades para editar garantías publicadas.
+- Mantiene la selección del estado personalizado en el editor al cargar la página.
+
+## 0.1.14 - 2025-08-16
+- Añade capacidades para editar y borrar garantías publicadas.
+- Elimina el uso de jQuery en el desplegable de estados personalizados.
+
+## 0.1.13 - 2025-08-16
+- Corrige la aparición de los estados personalizados en el editor de garantías.
+
+## 0.1.12 - 2025-08-16
+- Los estados personalizados se tratan como publicados y aparecen en el desplegable del metabox de publicación.
+- La vista "Todas" de garantías incluye también los estados personalizados.
+
+## 0.1.11 - 2025-08-16
+- Muestra los estados personalizados en el editor de garantías y oculta "Pendiente de revisión".
+
+## 0.1.10 - 2025-08-16
+- Registra estados personalizados de garantía y permite listarlas en cualquier estado.
+- Elimina el uso del campo ACF `estado_contratacion`.
+
 ## 0.1.9 - 2025-08-16
 - Evita la creación de borradores duplicados al modificar la matrícula durante una nueva garantía.
 
