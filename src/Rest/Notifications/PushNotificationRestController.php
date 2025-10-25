@@ -86,7 +86,19 @@ class PushNotificationRestController
 
     public function check_permissions(): bool
     {
-        return current_user_can('manage_options');
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $user = wp_get_current_user();
+        if (! ($user instanceof \WP_User)) {
+            return false;
+        }
+
+        $roles = (array) $user->roles;
+
+        return in_array('go_director_comercial', $roles, true)
+            || in_array('go_garantias', $roles, true);
     }
 
     public function list_notifications(WP_REST_Request $request)

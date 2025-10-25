@@ -335,28 +335,54 @@ export function validateDNI(value) {
 	return dni.slice(-1) === validLetter;
 }
 
+const COMPANY_NIF_INITIALS = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "J", "N", "P", "Q", "R", "S", "U", "V", "W"]);
+const COMPANY_NIF_REGEX = /^[ABCDEFGHJNPQRSUVW]\d{7}[A-Z0-9]$/;
+
 export function validateDNIField(input, showError, isHardCheck = false) {
 	if (!input) return false;
 	const value = input.value.trim().toUpperCase();
+	let documentType = null;
 	if (value.length > 0) {
 		if (/^[0-9]/.test(value)) {
+			documentType = "dni";
 			const digitsPart = value.slice(0, Math.min(value.length, 8));
 			if (!/^\d*$/.test(digitsPart)) {
 				if (showError) setError(input, "DNI incorrecto");
 				return false;
 			}
 		} else if (/^[XYZ]/.test(value)) {
+			documentType = "dni";
 			const numberPart = value.slice(1, Math.min(value.length, 8));
 			if (!/^\d*$/.test(numberPart)) {
 				if (showError) setError(input, "DNI incorrecto");
+				return false;
+			}
+		} else if (/^[A-Z]/.test(value)) {
+			const initial = value[0];
+			if (!COMPANY_NIF_INITIALS.has(initial)) {
+				if (showError) setError(input, "NIF no válido");
+				return false;
+			}
+			documentType = "nif";
+			const numericSegment = value.slice(1, Math.min(value.length, 8));
+			if (!/^\d*$/.test(numericSegment)) {
+				if (showError) setError(input, "NIF no válido");
+				return false;
+			}
+			if (value.length === 9 && !/^[A-Z0-9]$/.test(value.slice(-1))) {
+				if (showError) setError(input, "NIF no válido");
 				return false;
 			}
 		} else {
 			if (showError) setError(input, "Formato inicial inválido");
 			return false;
 		}
-		if (value.length === 9 && !validateDNI(value)) {
+		if (documentType === "dni" && value.length === 9 && !validateDNI(value)) {
 			if (showError) setError(input, "DNI incorrecto");
+			return false;
+		}
+		if (documentType === "nif" && value.length === 9 && !COMPANY_NIF_REGEX.test(value)) {
+			if (showError) setError(input, "NIF no válido");
 			return false;
 		}
 	}
@@ -369,8 +395,18 @@ export function validateDNIField(input, showError, isHardCheck = false) {
 			if (showError) setError(input, "Debe tener 9 caracteres");
 			return false;
 		}
-		if (!validateDNI(value)) {
-			if (showError) setError(input, "Letra de control incorrecta.");
+		if (documentType === "dni") {
+			if (!validateDNI(value)) {
+				if (showError) setError(input, "Letra de control incorrecta.");
+				return false;
+			}
+		} else if (documentType === "nif") {
+			if (!COMPANY_NIF_REGEX.test(value)) {
+				if (showError) setError(input, "NIF no válido");
+				return false;
+			}
+		} else {
+			if (showError) setError(input, "Formato inicial inválido");
 			return false;
 		}
 	}

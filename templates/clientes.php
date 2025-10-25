@@ -43,10 +43,10 @@ $current_user    = wp_get_current_user();
     <section class="guarantees-list">
         <table class="guarantees-table" style="view-transition-name: garantias-table">
             <colgroup>
-                <col class="guarantees-table__col guarantees-table__col--client" data-default-width="440">
-                <col class="guarantees-table__col guarantees-table__col--registered" data-default-width="80">
+                <col class="guarantees-table__col guarantees-table__col--client" data-default-width="360">
+                <col class="guarantees-table__col guarantees-table__col--registered" data-default-width="72">
                 <col class="guarantees-table__col guarantees-table__col--offers" data-default-width="220">
-                <col class="guarantees-table__col guarantees-table__col--guarantees" data-default-width="80">
+                <col class="guarantees-table__col guarantees-table__col--guarantees" data-default-width="72">
                 <col class="guarantees-table__col guarantees-table__col--commercial" data-default-width="220">
             </colgroup>
             <thead>

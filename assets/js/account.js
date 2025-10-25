@@ -1808,95 +1808,116 @@
 
         const notificationsCard = document.querySelector('[data-notifications-card]');
         if (notificationsCard) {
-            const requestButton = notificationsCard.querySelector('[data-notifications-request]');
+            const toastInput = notificationsCard.querySelector('[data-notification-preference="toast"]');
+            const soundInput = notificationsCard.querySelector('[data-notification-preference="sound"]');
             const statusElement = notificationsCard.querySelector('[data-notifications-status]');
-            const statusClasses = [
-                'account-status--info',
-                'account-status--success',
-                'account-status--warning',
-                'account-status--error',
-            ];
 
-            const setStatus = (message, variant = 'info') => {
-                if (!statusElement) {
-                    return;
-                }
+            if (statusElement && !statusElement.classList.contains('account-status')) {
+                statusElement.classList.add('account-status');
+            }
 
-                statusElement.textContent = message;
-                statusElement.classList.remove(...statusClasses);
-                if (!statusElement.classList.contains('account-status')) {
-                    statusElement.classList.add('account-status');
-                }
-                const className = `account-status--${variant}`;
-                if (statusClasses.includes(className)) {
-                    statusElement.classList.add(className);
-                }
-            };
+            const userIdAttr = notificationsCard.getAttribute('data-user-id') || '';
+            const parsedUserId = parseInt(userIdAttr, 10);
+            const storageSuffix = Number.isFinite(parsedUserId) && parsedUserId > 0 ? `_${parsedUserId}` : '';
 
-            const syncPermission = () => {
-                if (!statusElement) {
-                    return;
-                }
+            const buildStorageKey = (type) => `go360_notifications_pref_${type}${storageSuffix}`;
 
-                if (!('Notification' in window)) {
-                    setStatus('Tu navegador no admite notificaciones push.', 'error');
-                    if (requestButton) {
-                        requestButton.disabled = true;
+            const readPreference = (type, fallback = true) => {
+                try {
+                    const raw = window.localStorage.getItem(buildStorageKey(type));
+                    if (raw === null) {
+                        return fallback;
                     }
-                    return;
+                    if (raw === '1' || raw === 'true') {
+                        return true;
+                    }
+                    if (raw === '0' || raw === 'false') {
+                        return false;
+                    }
+                } catch (error) {
+                    return fallback;
                 }
-
-                switch (Notification.permission) {
-                    case 'granted':
-                        setStatus('Las notificaciones del navegador están activas en este dispositivo.', 'success');
-                        if (requestButton) {
-                            requestButton.disabled = true;
-                        }
-                        break;
-                    case 'denied':
-                        setStatus('Has bloqueado las notificaciones en tu navegador.', 'warning');
-                        if (requestButton) {
-                            requestButton.disabled = true;
-                        }
-                        break;
-                    default:
-                        setStatus('Puedes activar las notificaciones para recibir avisos inmediatos.', 'info');
-                        if (requestButton) {
-                            requestButton.disabled = false;
-                        }
-                        break;
-                }
+                return fallback;
             };
 
-            syncPermission();
-
-            if (requestButton) {
-                requestButton.addEventListener('click', () => {
-                    if (!('Notification' in window)) {
-                        syncPermission();
+            const writePreference = (type, value) => {
+                try {
+                    const key = buildStorageKey(type);
+                    const normalized = value ? '1' : '0';
+                    const current = window.localStorage.getItem(key);
+                    if (current === normalized) {
                         return;
                     }
+                    window.localStorage.setItem(key, normalized);
+                } catch (error) {
+                    // noop
+                }
+            };
 
-                    requestButton.disabled = true;
+            const dispatchPreferences = () => {
+                const detail = {
+                    toastEnabled: toastInput ? toastInput.checked : true,
+                    soundEnabled: soundInput ? soundInput.checked : true,
+                };
 
-                    Promise.resolve(Notification.requestPermission())
-                        .then((permission) => {
-                            if (permission === 'granted') {
-                                setStatus('Has activado las notificaciones en este navegador.', 'success');
-                            } else if (permission === 'denied') {
-                                setStatus('Has bloqueado las notificaciones para esta página.', 'warning');
-                            } else {
-                                setStatus('Aún no has decidido si quieres recibir notificaciones.', 'info');
-                            }
+                writePreference('toast', detail.toastEnabled);
+                writePreference('sound', detail.soundEnabled);
 
-                            syncPermission();
-                        })
-                        .catch(() => {
-                            setStatus('No se han podido actualizar los permisos. Inténtalo de nuevo.', 'error');
-                            syncPermission();
-                        });
+                let preferencesEvent;
+                if (typeof window.CustomEvent === 'function') {
+                    preferencesEvent = new CustomEvent('go360:notifications:preferences', { detail });
+                } else {
+                    preferencesEvent = document.createEvent('CustomEvent');
+                    preferencesEvent.initCustomEvent('go360:notifications:preferences', true, true, detail);
+                }
+
+                window.dispatchEvent(preferencesEvent);
+            };
+
+            const syncCheckboxes = () => {
+                const toastEnabled = readPreference('toast', true);
+                const soundEnabled = readPreference('sound', true);
+
+                if (toastInput) {
+                    toastInput.checked = toastEnabled;
+                }
+
+                if (soundInput) {
+                    soundInput.checked = soundEnabled;
+                }
+            };
+
+            const handleStorageChange = (event) => {
+                if (!event || typeof event.key !== 'string') {
+                    return;
+                }
+
+                const toastKey = buildStorageKey('toast');
+                const soundKey = buildStorageKey('sound');
+                if (event.key !== toastKey && event.key !== soundKey) {
+                    return;
+                }
+
+                syncCheckboxes();
+                dispatchPreferences();
+            };
+
+            syncCheckboxes();
+            dispatchPreferences();
+
+            if (toastInput) {
+                toastInput.addEventListener('change', () => {
+                    dispatchPreferences();
                 });
             }
+
+            if (soundInput) {
+                soundInput.addEventListener('change', () => {
+                    dispatchPreferences();
+                });
+            }
+
+            window.addEventListener('storage', handleStorageChange);
         }
 
         if (notificationsRepeater) {
