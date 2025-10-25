@@ -42,6 +42,8 @@ class PushMessageFactory
                 return $this->build_sepa_uploaded($activity_record);
             case 'sepa.activated':
                 return $this->build_sepa_activated($activity_record);
+            case 'client.commercials_updated':
+                return $this->build_client_commercials_updated($activity_record);
             default:
                 return null;
         }
@@ -630,6 +632,109 @@ class PushMessageFactory
         ];
     }
 
+    private function build_client_commercials_updated(array $record): ?array
+    {
+        $context = $this->decode_context($record['context'] ?? '');
+        $added = $this->extract_commercial_names($context['commercials_added'] ?? []);
+        $removed = $this->extract_commercial_names($context['commercials_removed'] ?? []);
+
+        if (empty($added) && empty($removed)) {
+            return null;
+        }
+
+        $client_id = isset($context['client_id']) ? (int) $context['client_id'] : 0;
+        if ($client_id <= 0 && isset($record['target_id'])) {
+            $client_id = (int) $record['target_id'];
+        }
+
+        $company_context = $context;
+        if (! isset($company_context['vendor_id'])) {
+            $company_context['vendor_id'] = $client_id;
+        }
+        if (! isset($company_context['vendor_name']) && ! empty($context['client_name'])) {
+            $company_context['vendor_name'] = $context['client_name'];
+        }
+
+        $company_label = $this->resolve_company_label($client_id, $company_context, '');
+        if ($company_label === '' && ! empty($context['client_name'])) {
+            $company_label = $this->sanitize_plain_text((string) $context['client_name']);
+        }
+        if ($company_label === '') {
+            $company_label = __('Cliente', 'garantias-online-360vo');
+        }
+
+        $client_url = $this->build_client_profile_url($client_id);
+        if ($client_url === '' && $client_id > 0) {
+            $client_url = admin_url('user-edit.php?user_id=' . $client_id);
+        }
+
+        $actor_label = $this->resolve_actor_label($record, $context);
+        $meta = [];
+        if ($actor_label !== '') {
+            $meta[] = $this->meta_entry(__('Usuario', 'garantias-online-360vo'), $actor_label, 'actor');
+        }
+
+        $actions = $client_url !== '' ? [
+            [
+                'action' => 'view-client',
+                'title'  => __('Ver ficha cliente', 'garantias-online-360vo'),
+                'url'    => $client_url,
+            ],
+        ] : [];
+
+        $title = '';
+        $tone = 'info';
+        $body_segments = [];
+
+        if (! empty($added)) {
+            $names = $this->format_human_list($added);
+            $body_segments[] = sprintf(
+                count($added) === 1
+                    ? __('%1$s ha sido asignado a <b>%2$s</b> como comercial.', 'garantias-online-360vo')
+                    : __('%1$s han sido asignados como comerciales para <b>%2$s</b>.', 'garantias-online-360vo'),
+                esc_html($names),
+                esc_html($company_label)
+            );
+            $title = __('Nuevo comercial asignado', 'garantias-online-360vo');
+            $tone = 'success';
+        }
+
+        if (! empty($removed)) {
+            $names = $this->format_human_list($removed);
+            $body_segments[] = sprintf(
+                count($removed) === 1
+                    ? __('%1$s ha sido desasignado como comercial de <b>%2$s</b>.', 'garantias-online-360vo')
+                    : __('%1$s han sido desasignados como comerciales de <b>%2$s</b>.', 'garantias-online-360vo'),
+                esc_html($names),
+                esc_html($company_label)
+            );
+
+            if ($title === '') {
+                $title = __('Comercial desasignado', 'garantias-online-360vo');
+            } elseif (! empty($added)) {
+                $title = __('Asignaciones de comerciales actualizadas', 'garantias-online-360vo');
+            }
+
+            $tone = empty($added) ? 'warning' : 'info';
+        }
+
+        $body_segments = array_values(array_filter($body_segments));
+        if (empty($body_segments)) {
+            return null;
+        }
+
+        return [
+            'title'     => $title !== '' ? $title : __('Asignaciones de comerciales actualizadas', 'garantias-online-360vo'),
+            'body'      => implode(' ', $body_segments),
+            'link'      => $client_url !== '' ? $client_url : admin_url('users.php'),
+            'icon'      => Svg::data_uri('person_add'),
+            'icon_slug' => 'person_add',
+            'tone'      => $tone,
+            'meta'      => $meta,
+            'actions'   => $actions,
+        ];
+    }
+
     private function build_client_profile_url(int $user_id): string
     {
         if ($user_id <= 0) {
@@ -854,6 +959,140 @@ class PushMessageFactory
         $value = wp_strip_all_tags($value);
 
         return trim($value);
+    }
+
+    /**
+     * @param array<int, mixed> $entries
+     * @return string[]
+     */
+    private function extract_commercial_names($entries): array
+    {
+        if (! is_array($entries) || empty($entries)) {
+            return [];
+        }
+
+        $names = [];
+
+        foreach ($entries as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $name = '';
+            if (! empty($entry['name'])) {
+                $name = $this->sanitize_plain_text((string) $entry['name']);
+            }
+            if ($name === '' && ! empty($entry['email'])) {
+                $name = sanitize_email((string) $entry['email']);
+            }
+            if ($name === '' && ! empty($entry['username'])) {
+                $name = sanitize_user((string) $entry['username'], true);
+            }
+
+            if ($name !== '') {
+                $names[] = $name;
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * @param string[] $items
+     */
+    private function format_human_list(array $items): string
+    {
+        $sanitized = [];
+
+        foreach ($items as $item) {
+            if (! is_string($item)) {
+                continue;
+            }
+
+            $clean = $this->sanitize_plain_text($item);
+            if ($clean !== '') {
+                $sanitized[] = $clean;
+            }
+        }
+
+        $count = count($sanitized);
+        if ($count === 0) {
+            return '';
+        }
+
+        if ($count === 1) {
+            return $sanitized[0];
+        }
+
+        if ($count === 2) {
+            return $sanitized[0] . ' y ' . $sanitized[1];
+        }
+
+        $last = array_pop($sanitized);
+
+        return implode(', ', $sanitized) . ' y ' . $last;
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     * @param array<string, mixed> $context
+     */
+    private function resolve_actor_label(array $record, array $context = []): string
+    {
+        if (! empty($record['actor_name'])) {
+            $label = $this->sanitize_plain_text((string) $record['actor_name']);
+            if ($label !== '') {
+                return $label;
+            }
+        }
+
+        if (! empty($context['actor_label']) && is_string($context['actor_label'])) {
+            $label = $this->sanitize_plain_text($context['actor_label']);
+            if ($label !== '') {
+                return $label;
+            }
+        }
+
+        if (! empty($record['actor_email'])) {
+            $email = sanitize_email((string) $record['actor_email']);
+            if ($email !== '') {
+                return $email;
+            }
+        }
+
+        $actor_id = isset($record['actor_id']) ? (int) $record['actor_id'] : 0;
+        if ($actor_id > 0) {
+            $resolved = UserProfileResolver::get_personal_name($actor_id);
+            if ($resolved !== '') {
+                return $this->sanitize_plain_text($resolved);
+            }
+
+            $user = get_user_by('id', $actor_id);
+            if ($user instanceof WP_User) {
+                if (! empty($user->display_name)) {
+                    $display = $this->sanitize_plain_text($user->display_name);
+                    if ($display !== '') {
+                        return $display;
+                    }
+                }
+
+                if (! empty($user->user_email)) {
+                    $email = sanitize_email((string) $user->user_email);
+                    if ($email !== '') {
+                        return $email;
+                    }
+                }
+
+                if (! empty($user->user_login)) {
+                    $username = sanitize_user((string) $user->user_login, true);
+                    if ($username !== '') {
+                        return $username;
+                    }
+                }
+            }
+        }
+
+        return '';
     }
 
     private function status_label(string $status): string

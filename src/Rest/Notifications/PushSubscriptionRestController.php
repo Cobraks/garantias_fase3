@@ -6,6 +6,7 @@ use GarantiasOnline360VO\Notifications\Push\PushSubscriptionRepository;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
+use WP_User;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -46,7 +47,28 @@ class PushSubscriptionRestController
 
     public function check_permissions(): bool
     {
-        return current_user_can('manage_options');
+        if (! is_user_logged_in()) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $user = wp_get_current_user();
+        if (! ($user instanceof WP_User)) {
+            return false;
+        }
+
+        $allowed_roles = ['go_director_comercial', 'go_garantias'];
+
+        foreach ($allowed_roles as $role) {
+            if (in_array($role, (array) $user->roles, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function create_subscription(WP_REST_Request $request)
@@ -99,12 +121,16 @@ class PushSubscriptionRestController
 
         $settings = get_field('ajustes_de_notificaciones', 'user_' . $user_id);
         if (! is_array($settings)) {
-            return false;
+            return true;
         }
 
         $system_group = $settings['notificaciones_del_sistema'] ?? [];
         if (! is_array($system_group)) {
-            return false;
+            return true;
+        }
+
+        if (! array_key_exists('activar_notificaciones_del_sistema', $system_group)) {
+            return true;
         }
 
         return ! empty($system_group['activar_notificaciones_del_sistema']);

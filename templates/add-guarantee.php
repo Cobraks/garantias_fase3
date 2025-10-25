@@ -246,7 +246,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                     </div>
                     <div class="form__input-container form__input-container--corto">
                         <input id="dni" class="form__input" type="text" placeholder=" " required />
-                        <label for="dni" class="form__placeholder">DNI / NIE</label>
+                        <label for="dni" class="form__placeholder">DNI / NIE o NIF</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
