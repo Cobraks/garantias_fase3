@@ -111,25 +111,24 @@ class PushNotificationService
             return;
         }
 
-        $admins = $this->get_target_admins();
-        if (empty($admins)) {
-            $this->pending = [];
-            return;
-        }
-
         foreach ($this->pending as $entry) {
+            $recipients = $this->get_recipients_for_event($entry['event']);
+            if (empty($recipients)) {
+                continue;
+            }
+
             $message = $this->message_factory->build_from_activity($entry['event'], $entry['record']);
             if (! is_array($message)) {
                 continue;
             }
 
-            foreach ($admins as $admin_id) {
+            foreach ($recipients as $user_id) {
                 $payload = $message;
-                $payload['user_id'] = $admin_id;
-                $notification_id = $this->notifications->create($admin_id, $payload);
+                $payload['user_id'] = $user_id;
+                $notification_id = $this->notifications->create($user_id, $payload);
 
-                if ($notification_id && $this->user_allows_push_notifications($admin_id)) {
-                    $this->dispatcher->dispatch($admin_id, $payload);
+                if ($notification_id && $this->user_allows_push_notifications($user_id)) {
+                    $this->dispatcher->dispatch($user_id, $payload);
                 }
             }
         }
@@ -141,10 +140,38 @@ class PushNotificationService
     /**
      * @return int[]
      */
-    private function get_target_admins(): array
+    private function get_recipients_for_event(string $event_type): array
     {
+        $administrators = $this->get_users_by_roles(['administrator']);
+
+        if (in_array($event_type, ['auth.login_success', 'auth.logout'], true)) {
+            return $administrators;
+        }
+
+        $managers = $this->get_users_by_roles(['go_director_comercial', 'go_garantias']);
+        $all = array_merge($administrators, $managers);
+
+        if (empty($all)) {
+            return [];
+        }
+
+        $all = array_map('intval', $all);
+
+        return array_values(array_unique($all));
+    }
+
+    /**
+     * @param string[] $roles
+     * @return int[]
+     */
+    private function get_users_by_roles(array $roles): array
+    {
+        if (empty($roles)) {
+            return [];
+        }
+
         $users = get_users([
-            'role__in' => ['administrator'],
+            'role__in' => $roles,
             'fields'   => 'ID',
         ]);
 
@@ -186,6 +213,7 @@ class PushNotificationService
             'sepa.pending_requested',
             'sepa.signed_uploaded',
             'sepa.activated',
+            'client.commercials_updated',
         ], true);
     }
 

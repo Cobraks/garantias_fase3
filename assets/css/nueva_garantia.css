@@ -1407,7 +1407,7 @@ background: var(--go-color-00c0ff);
 .form__plan-conditions-title {
   font-weight: 600;
   color: var(--text-color, var(--go-color-1f2937));
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   margin-bottom: 0.25rem;
 }
 
@@ -1424,6 +1424,7 @@ background: var(--go-color-00c0ff);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  font-size: 0.8rem;
 }
 
 .form__plan-conditions-item {
