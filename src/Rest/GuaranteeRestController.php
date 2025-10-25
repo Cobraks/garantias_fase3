@@ -623,10 +623,44 @@ class GuaranteeRestController
         // Clear cached list and detail responses so subsequent fetches reflect the update.
         self::clear_list_transients($post_id, null, true);
 
+        $vendor_id   = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
+        $firma_sello = [
+            'add_firma_sello' => false,
+            'firma'           => '',
+            'sello'           => '',
+        ];
+
+        if ($vendor_id) {
+            if (function_exists('get_field')) {
+                $add = get_field('documentos_firma_y_sello_add_firma_sello', 'user_' . $vendor_id);
+                if ($add) {
+                    $firma_id = get_field('documentos_firma_y_sello_firma', 'user_' . $vendor_id);
+                    $sello_id = get_field('documentos_firma_y_sello_sello', 'user_' . $vendor_id);
+                    $firma_sello = [
+                        'add_firma_sello' => true,
+                        'firma'           => $firma_id ? wp_get_attachment_url($firma_id) : '',
+                        'sello'           => $sello_id ? wp_get_attachment_url($sello_id) : '',
+                    ];
+                }
+            } else {
+                $add = get_user_meta($vendor_id, 'documentos_firma_y_sello_add_firma_sello', true);
+                if ($add) {
+                    $firma_id = get_user_meta($vendor_id, 'documentos_firma_y_sello_firma', true);
+                    $sello_id = get_user_meta($vendor_id, 'documentos_firma_y_sello_sello', true);
+                    $firma_sello = [
+                        'add_firma_sello' => true,
+                        'firma'           => $firma_id ? wp_get_attachment_url($firma_id) : '',
+                        'sello'           => $sello_id ? wp_get_attachment_url($sello_id) : '',
+                    ];
+                }
+            }
+        }
+
         return new WP_REST_Response([
-            'id' => $post_id,
-            'uuid' => $uuid,
+            'id'           => $post_id,
+            'uuid'         => $uuid,
             'template_url' => $template_url,
+            'firma_sello'  => $firma_sello,
         ]);
     }
 
