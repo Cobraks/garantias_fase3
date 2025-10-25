@@ -448,16 +448,23 @@ class ClientRestController
             );
         }
 
+        $desired_snapshot = self::format_offers_for_log($normalized);
         $result = update_field('ofertas_y_descuentos', ['ofertas' => $normalized], 'user_' . $user_id);
-        if ($result === false) {
-            return new WP_Error(
-                'go_offers_save_failed',
-                __('Ha ocurrido un error al guardar las ofertas.', 'garantias-online-360vo'),
-                ['status' => 500]
-            );
-        }
 
-        $updated_snapshot = self::format_offers_for_log($normalized);
+        if ($result === false) {
+            $stored_snapshot = self::format_offers_for_log(self::collect_user_offers($user_id));
+            if ($stored_snapshot !== $desired_snapshot) {
+                return new WP_Error(
+                    'go_offers_save_failed',
+                    __('Ha ocurrido un error al guardar las ofertas.', 'garantias-online-360vo'),
+                    ['status' => 500]
+                );
+            }
+
+            $updated_snapshot = $stored_snapshot;
+        } else {
+            $updated_snapshot = $desired_snapshot;
+        }
 
         if ($previous_snapshot !== $updated_snapshot) {
             $context = array_merge(
