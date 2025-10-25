@@ -6,6 +6,9 @@ use WP_REST_Server;
 use WP_Query;
 use WP_REST_Response;
 use WP_Error;
+use GarantiasOnline360VO\Docs\CertificateGenerator;
+use GarantiasOnline360VO\Docs\PrivateDocsManager;
+use GarantiasOnline360VO\GuaranteeLogger;
 
 class GuaranteeRestController
 {
@@ -97,10 +100,70 @@ class GuaranteeRestController
                 ],
             ]
         );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/document/(?P<type>[a-z_]+)',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'download_document'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
+                    'args'                => [
+                        'id'   => ['validate_callback' => 'absint'],
+                        'type' => ['sanitize_callback' => 'sanitize_text_field'],
+                    ],
+                ],
+            ]
+        );
+        add_filter('rest_pre_serve_request', [__CLASS__, 'serve_document'], 10, 4);
 
         // Limpieza de transients al guardar/borrar garantías
         add_action('save_post_' . \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE, [__CLASS__, 'clear_list_transients'], 10, 3);
         add_action('deleted_post', [__CLASS__, 'clear_list_transients_on_delete']);
+    }
+
+    public static function download_document($request)
+    {
+        $id   = (int) $request['id'];
+        $type = sanitize_key($request['type']);
+        switch ($type) {
+            case 'certificado':
+                $hash     = get_post_meta($id, 'documentacion_certificado_hash', true);
+                $filename = 'certificado.pdf';
+                break;
+            default:
+                return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+        }
+        if (!$hash) {
+            error_log('[download_document] no hash for ' . $id . ' type ' . $type);
+            return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+        }
+        error_log('[download_document] retrieving ' . $hash);
+        $binary = PrivateDocsManager::retrieve($hash, 'pdf');
+        if (!$binary) {
+            error_log('[download_document] retrieval failed ' . $hash);
+            return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+        }
+        GuaranteeLogger::log(get_current_user_id(), $id, 'document_downloaded', $type);
+        $response = new WP_REST_Response($binary, 200);
+        $response->header('Content-Type', 'application/pdf');
+        $response->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        return $response;
+    }
+
+    public static function serve_document($served, $result, $request, $server)
+    {
+        if ($result instanceof WP_REST_Response) {
+            $headers = $result->get_headers();
+            if (isset($headers['Content-Type']) && $headers['Content-Type'] === 'application/pdf') {
+                foreach ($headers as $k => $v) {
+                    header($k . ': ' . $v);
+                }
+                echo $result->get_data();
+                return true;
+            }
+        }
+        return $served;
     }
 
     public static function can_list($request)
@@ -191,6 +254,7 @@ class GuaranteeRestController
         $post_id = isset($request['id']) ? absint($request['id']) : 0;
         $uuid    = isset($request['uuid']) ? sanitize_text_field($request['uuid']) : '';
         $data    = isset($request['data']) && is_array($request['data']) ? $request['data'] : [];
+        $certificate_url = '';
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
@@ -489,6 +553,15 @@ class GuaranteeRestController
             $ps = sanitize_text_field($data['post_status']);
             if ($ps === 'publish') {
                 wp_update_post(['ID' => $post_id, 'post_status' => 'publish']);
+                error_log('[AUTOSAVE] generating certificate for ' . $post_id);
+                $hash = CertificateGenerator::generate($post_id);
+                error_log('[AUTOSAVE] certificate hash ' . $hash);
+                if ($hash) {
+                    update_post_meta($post_id, 'documentacion_certificado_hash', $hash);
+                    $certificate_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/document/certificado?_wpnonce=' . wp_create_nonce('wp_rest'));
+                } else {
+                    error_log('[AUTOSAVE] certificate generation failed');
+                }
             }
             unset($data['post_status']);
         }
@@ -504,7 +577,11 @@ class GuaranteeRestController
         // Clear cached list and detail responses so subsequent fetches reflect the update.
         self::clear_list_transients($post_id, null, true);
 
-        return new WP_REST_Response(['id' => $post_id, 'uuid' => $uuid]);
+        return new WP_REST_Response([
+            'id' => $post_id,
+            'uuid' => $uuid,
+            'certificate_url' => $certificate_url,
+        ]);
     }
 
     public static function check_plate($request)
