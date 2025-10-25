@@ -398,44 +398,8 @@ $current_month_spanish = $spanish_months[$current_month] ?? $current_month;
                 <div class="dashboard__module-header">
                     <h3 class="dashboard__module-title">Actividad Reciente</h3>
                 </div>
-                <div class="dashboard__activity-feed">
-                    <div class="dashboard__activity-item">
-                        <div class="dashboard__activity-time">Hace 15 min</div>
-                        <div class="dashboard__activity-content">
-                            <strong>Auto Premium Madrid</strong> renovó la garantía #4589
-                        </div>
-                    </div>
-                    <div class="dashboard__activity-item">
-                        <div class="dashboard__activity-time">Hace 42 min</div>
-                        <div class="dashboard__activity-content">
-                            <strong>Motor Total Valencia</strong> registró una nueva avería
-                        </div>
-                    </div>
-                    <div class="dashboard__activity-item">
-                        <div class="dashboard__activity-time">Hace 1 hora</div>
-                        <div class="dashboard__activity-content">
-                            Nueva garantía registrada por <strong>Coches Veloces Barcelona</strong>
-                        </div>
-                    </div>
-                    <div class="dashboard__activity-item">
-                        <div class="dashboard__activity-time">Hace 2 horas</div>
-                        <div class="dashboard__activity-content">
-                            <strong>Autosur Sevilla</strong> actualizó el estado de la garantía #3217
-                        </div>
-                    </div>
-                    <div class="dashboard__activity-item">
-                        <div class="dashboard__activity-time">Hace 3 horas</div>
-                        <div class="dashboard__activity-content">
-                            Documento añadido a la garantía #1245
-                        </div>
-                    </div>
-                    <div class="dashboard__activity-item">
-                        <div class="dashboard__activity-time">Hace 5 horas</div>
-                        <div class="dashboard__activity-content">
-                            <strong>Auto Premium Madrid</strong> cerró la avería #789
-                        </div>
-                    </div>
-                </div>
+                <div class="dashboard__activity-feed"></div>
+                <button class="dashboard__action-button" id="logs-load-more" style="display:none;">Cargar más</button>
             </div>
 
             <!-- Módulo Extra: Últimas Renovaciones -->

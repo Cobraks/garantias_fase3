@@ -24,7 +24,54 @@ import FormCache from "./form-cache.js";
 import FormUI from "./form-ui.js";
 import { updateNextButtonState } from "./form-navigation.js";
 import { getLimitesDinamicos } from "./form-state.js";
-import { getUserRole } from "./config.js";
+import { getUserRole, getRestRoot, getRestNonce } from "./config.js";
+
+let lastCheckedPlate = "";
+let plateCheckAbort = null;
+
+async function checkDuplicateMatricula(input) {
+        const value = input.value.trim().toUpperCase();
+        if (!validateMatriculaField(input, false, false)) {
+                input.dataset.duplicate = "pending";
+                updateNextButtonState();
+                return;
+        }
+        if (value === lastCheckedPlate) return;
+        lastCheckedPlate = value;
+        if (plateCheckAbort) plateCheckAbort.abort();
+        const controller = new AbortController();
+        plateCheckAbort = controller;
+        input.dataset.duplicate = "pending";
+        updateNextButtonState();
+        const current = value;
+        try {
+                const params = new URLSearchParams({ matricula: value });
+                const uuid = localStorage.getItem("go_draft_uuid");
+                if (uuid) params.append("exclude", uuid);
+                const res = await fetch(
+                        `${getRestRoot()}go/v1/guarantees/check-plate?${params.toString()}`,
+                        {
+                                headers: { "X-WP-Nonce": getRestNonce() },
+                                signal: controller.signal,
+                        }
+                );
+                if (controller.signal.aborted) return;
+                if (input.value.trim().toUpperCase() !== current) return;
+                if (res.status === 409) {
+                        setError(input, "Ya existe una garantía para este vehículo");
+                        input.dataset.duplicate = "true";
+                } else {
+                        input.dataset.duplicate = "false";
+                        clearError(input);
+                }
+        } catch (e) {
+                if (e.name !== "AbortError") {
+                        console.error("[checkDuplicateMatricula]", e);
+                        input.dataset.duplicate = "pending";
+                }
+        }
+        updateNextButtonState();
+}
 
 // === Helpers ===
 function isTipoCamion() {
@@ -189,8 +236,6 @@ const inputLimitsApplier = {
 const specialValidators = {
         numero_bastidor: (input, showError, isHardCheck) =>
                 validateNumeroBastidorField(input, showError, isHardCheck),
-        matricula: (input, showError, isHardCheck) =>
-                validateMatriculaField(input, showError, isHardCheck),
         dni: (input, showError, isHardCheck) =>
                 validateDNIField(input, showError, isHardCheck),
         telefono: (input, showError, isHardCheck) =>
@@ -205,7 +250,7 @@ const specialValidators = {
 
 // === Función principal de validación ===
 export function validateField(input, showError = false, isHardCheck = false) {
-	const id = input.id;
+        const id = input.id;
 
 	// Vendedor / profesional (usuario-rol) visible
 	if (id === "usuario-rol") {
@@ -312,10 +357,25 @@ export function validateField(input, showError = false, isHardCheck = false) {
 		return true;
 	}
 
-	// Validadores específicos
-	if (specialValidators[id]) {
-		return specialValidators[id](input, showError, isHardCheck);
-	}
+        // Matrícula: validar formato y duplicados
+        if (id === "matricula") {
+                const ok = validateMatriculaField(input, showError, isHardCheck);
+                if (!ok) return false;
+                if (input.dataset.duplicate !== "false") {
+                        if (showError && input.dataset.duplicate === "true")
+                                setError(
+                                        input,
+                                        "Ya existe una garantía para este vehículo"
+                                );
+                        return false;
+                }
+                return true;
+        }
+
+        // Validadores específicos
+        if (specialValidators[id]) {
+                return specialValidators[id](input, showError, isHardCheck);
+        }
 
 	// Numéricos con límites fijos
 	if (numericLimits[id]) {
@@ -353,39 +413,50 @@ export function removeAllDynamicErrors() {
 
 // === Inicialización del comportamiento de inputs ===
 function setupInputValidationBehavior(input) {
-	const id = input.id;
+        const id = input.id;
 
-	const handler = debounce(() => {
-		// Aplicar sanitización si toca
-		if (inputLimitsApplier[id]) {
-			inputLimitsApplier[id](input);
-		}
-		// Formatear número cuando toca
+        const handler = debounce(() => {
+                if (id === "matricula") {
+                        lastCheckedPlate = "";
+                        input.dataset.duplicate = "pending";
+                        clearError(input);
+                }
+                // Aplicar sanitización si toca
+                if (inputLimitsApplier[id]) {
+                        inputLimitsApplier[id](input);
+                }
+                // Formatear número cuando toca
                 if (numericLimits[id]) {
                         if (id === "precio_venta") formatCurrency(input, true);
                         else formatNumber(input);
                 }
-		// Validación ligera (sin hard check)
-		validateField(input, true, false);
-		// UI updates
-		FormUI.toggleClearButton(input);
-		updateNextButtonState();
-	}, 200);
+                // Validación ligera (sin hard check)
+                validateField(input, true, false);
+                // UI updates
+                FormUI.toggleClearButton(input);
+                updateNextButtonState();
+                if (id === "matricula") {
+                        checkDuplicateMatricula(input);
+                }
+        }, 200);
 
-	input.addEventListener("input", handler);
+        input.addEventListener("input", handler);
 
-	input.addEventListener("blur", () => {
-		if (inputLimitsApplier[id]) {
-			inputLimitsApplier[id](input);
-		}
+        input.addEventListener("blur", () => {
+                if (inputLimitsApplier[id]) {
+                        inputLimitsApplier[id](input);
+                }
                 if (numericLimits[id]) {
                         if (id === "precio_venta") formatCurrency(input);
                         else formatNumber(input);
                 }
-		validateField(input, true, true);
-		FormUI.toggleClearButton(input);
-		updateNextButtonState();
-	});
+                validateField(input, true, true);
+                FormUI.toggleClearButton(input);
+                updateNextButtonState();
+                if (id === "matricula") {
+                        checkDuplicateMatricula(input);
+                }
+        });
 
 	if (input.tagName === "SELECT") {
 		input.addEventListener("change", () => {
