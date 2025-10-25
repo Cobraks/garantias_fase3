@@ -16,7 +16,14 @@
                         (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.nonce) ||
                         (window.GO_REST && window.GO_REST.nonce) ||
                         "";
-		const DEFAULT_PER = 12;
+                const userRole =
+                        (window.__GO_CONFIG__ &&
+                                window.__GO_CONFIG__.user &&
+                                window.__GO_CONFIG__.user.role) ||
+                        "user";
+                const isAdmin =
+                        ["administrator", "admin", "go_garantias", "go_comercial"].includes(userRole);
+                const DEFAULT_PER = 12;
 		let perPage = DEFAULT_PER;
 		let currentPage = 1;
 		let totalPages = 1;
@@ -72,6 +79,30 @@
 		let prevIdx = null;
 		const urlMat = new URLSearchParams(window.location.search).get("matricula");
                 const detailCache = new Map();
+
+                document.addEventListener("click", (e) => {
+                        const btn = e.target.closest(
+                                ".guarantee-detail__btn--continue"
+                        );
+                        if (!btn) return;
+                        const panel = btn.closest(".guarantee-detail__panel");
+                        const id = panel?.dataset.loadedId;
+                        if (id) {
+                                localStorage.setItem("go_draft_id", id);
+                                const data = detailCache.get(id);
+                                if (data && data.uuid) {
+                                        localStorage.setItem(
+                                                "go_draft_uuid",
+                                                data.uuid
+                                        );
+                                }
+                        }
+                        const data = id ? detailCache.get(id) : null;
+                        const uuid = data && data.uuid ? data.uuid : "";
+                        window.location.href =
+                                "/garantias-online/nueva-garantia?uuid=" +
+                                encodeURIComponent(uuid);
+                });
 
                 function normalizeEstadoClase(estado) {
                         if (!estado) return "pendiente-pago";
@@ -147,6 +178,36 @@
                         if (data.precio !== undefined) data.precio = formatPrice(data.precio);
                         if (data.precio_venta !== undefined)
                                 data.precio_venta = formatPrice(data.precio_venta);
+                        if (data.kilometros !== undefined) {
+                                const num = parseInt(String(data.kilometros).replace(/[^0-9]/g, ""), 10);
+                                if (!isNaN(num)) {
+                                        data.kilometros = num.toLocaleString("es-ES");
+                                }
+                        }
+                        if (data.cilindrada === undefined && data.Cilindrada !== undefined) {
+                                data.cilindrada = data.Cilindrada;
+                        }
+                        if (data.cilindrada !== undefined) {
+                                const num = parseInt(String(data.cilindrada).replace(/[^0-9]/g, ""), 10);
+                                if (!isNaN(num)) {
+                                        data.cilindrada = num.toLocaleString("es-ES");
+                                }
+                        }
+                        if (data.potencia !== undefined) {
+                                const num = parseInt(String(data.potencia).replace(/[^0-9]/g, ""), 10);
+                                if (!isNaN(num)) {
+                                        data.potencia = num.toLocaleString("es-ES");
+                                }
+                        }
+                        if (data.combustible && typeof data.combustible === "object") {
+                                data.combustible = data.combustible.label || data.combustible.name || data.combustible.value || data.combustible;
+                        }
+                        if (data.cambio && typeof data.cambio === "object") {
+                                data.cambio = data.cambio.label || data.cambio.name || data.cambio.value || data.cambio;
+                        }
+                        if (data.tipo && typeof data.tipo === "object") {
+                                data.tipo = data.tipo.label || data.tipo.name || data.tipo.value || data.tipo;
+                        }
                         return data;
                 }
 
@@ -170,7 +231,7 @@
                         const { iso: desdeIso, display: desde } = formatDate(item.desde);
                         const { iso: hastaIso, display: hasta } = formatDate(item.hasta);
                         const vendedor_name = item.vendedor ?? "-";
-                        const plan = item.plan ?? "-";
+                        const plan = item.plan ?? "";
                         const precio = formatPrice(item.precio);
                         const canal_venta =
                                 item.canal_venta && item.canal_venta.label
@@ -178,55 +239,67 @@
                                         : "-";
                         const vendedor_type = canal_venta;
 
-			const tr = document.createElement("tr");
-			tr.className = "guarantees-table__row";
-			tr.tabIndex = 0;
-			tr.dataset.id = item.id;
+                        const hasPlan = plan !== "" && plan !== "-";
+                        const hasPeriod =
+                                desde !== "-" &&
+                                hasta !== "-" &&
+                                desde !== "" &&
+                                hasta !== "";
+
+                        const periodHtml = hasPeriod
+                                ? `<div class="guarantees-table__period">
+                                                <div><strong>Desde:</strong> <time>${desde}</time></div>
+                                                <div><strong>Hasta:</strong> <time>${hasta}</time></div>
+                                        </div>`
+                                : "-";
+                        const planHtml = hasPlan
+                                ? `<div class="guarantees-table__plan">
+                                                <span class="plan__name">${plan}</span>
+                                                <span class="plan__price">${precio}€</span>
+                                        </div>`
+                                : "";
+
+                        const tr = document.createElement("tr");
+                        tr.className = "guarantees-table__row";
+                        tr.tabIndex = 0;
+                        tr.dataset.id = item.id;
                         tr.dataset.matricula = mat;
                         tr.dataset.marca_modelo = marca_modelo;
-                        tr.dataset.plan = plan;
-                        tr.dataset.desde = desdeIso;
-                        tr.dataset.desdeFmt = desde;
-                        tr.dataset.hasta = hastaIso;
-                        tr.dataset.hastaFmt = hasta;
+                        tr.dataset.plan = hasPlan ? plan : "";
+                        tr.dataset.desde = hasPeriod ? desdeIso : "";
+                        tr.dataset.desdeFmt = hasPeriod ? desde : "";
+                        tr.dataset.hasta = hasPeriod ? hastaIso : "";
+                        tr.dataset.hastaFmt = hasPeriod ? hasta : "";
                         tr.dataset.estado = estadoLabel;
                         tr.dataset.estadoclase = estadoClase;
                         tr.dataset.vendedor_name = vendedor_name;
                         tr.dataset.vendedor_type = vendedor_type;
-                        tr.dataset.precio = precio;
-			tr.dataset.canalVenta = canal_venta;
+                        tr.dataset.precio = hasPlan ? precio : "";
+                        tr.dataset.canalVenta = canal_venta;
 
-			tr.innerHTML = `
-				<td data-label="Vehículo">
-					<div class="guarantees-table__vehiculo">
-						<strong>${marca_modelo}</strong>
-						<div class="vehiculo__mat">${mat}</div>
-					</div>
-				</td>
-				<td data-label="Validez">
-					<div class="guarantees-table__period">
-						<div><strong>Desde:</strong> <time>${desde}</time></div>
-						<div><strong>Hasta:</strong> <time>${hasta}</time></div>
-					</div>
-				</td>
-				<td data-label="Vendedor">
-					<div class="guarantees-table__vendedor">
-						<div class="vendedor__name">${vendedor_name}</div>
-						<div class="vendedor__type">${vendedor_type}</div>
-					</div>
-				</td>
-				<td data-label="Garantía">
-					<div class="guarantees-table__plan">
-						<span class="plan__name">${plan}</span>
-						<span class="plan__price">${precio}€</span>
-					</div>
+                        tr.innerHTML = `
+                                <td data-label="Vehículo">
+                                        <div class="guarantees-table__vehiculo">
+                                                <strong>${marca_modelo}</strong>
+                                                <div class="vehiculo__mat">${mat}</div>
+                                        </div>
+                                </td>
+                                <td data-label="Validez">${periodHtml}</td>
+                                <td data-label="Vendedor">
+                                        <div class="guarantees-table__vendedor">
+                                                <div class="vendedor__name">${vendedor_name}</div>
+                                                <div class="vendedor__type">${vendedor_type}</div>
+                                        </div>
+                                </td>
+                                <td data-label="Garantía">
+                                        ${planHtml}
                                           <span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
                                                   ${estadoLabel}
                                           </span>
-				</td>
-			`;
-			return tr;
-		}
+                                </td>
+                        `;
+                        return tr;
+                }
 
 		function renderEmptyDetail() {
 			return `
@@ -525,15 +598,18 @@
 				condicionado_url: "#",
 				cobertura_url: "#",
 				factura_url: "#",
-				nombre_comprador: "-",
-				dni_comprador: "-",
-				telefono_comprador: "-",
-				email_comprador: "-",
-				direccion_comprador: "-",
-			};
-		}
+                                nombre_comprador: "-",
+                                dni_comprador: "-",
+                                telefono_comprador: "-",
+                                email_comprador: "-",
+                                direccion_comprador: "-",
+                                localidad_comprador: "-",
+                                provincia_comprador: "-",
+                                codigo_postal_comprador: "-",
+                        };
+                }
 
-		const skeletonFields = [
+                const skeletonFields = [
 			"tipo",
 			"kilometros",
 			"primera_matriculacion",
@@ -545,21 +621,24 @@
 			"cilindrada",
 			"telefono_vendedor",
 			"email_vendedor",
-			"nombre_comprador",
-			"dni_comprador",
-			"telefono_comprador",
-			"email_comprador",
-			"direccion_comprador",
-		];
+                        "nombre_comprador",
+                        "dni_comprador",
+                        "telefono_comprador",
+                        "email_comprador",
+                        "direccion_comprador",
+                        "localidad_comprador",
+                        "provincia_comprador",
+                        "codigo_postal_comprador",
+                ];
 
 		function renderFastActions(vendedor, telefono, email, skeletons = []) {
 			const label = skeletons.includes("concesionario")
 				? `<span class="skeleton skeleton--nombre"></span>`
 				: vendedor ?? "-";
-			const tel = skeletons.includes("telefono_vendedor")
-				? ""
-				: telefono ?? "-";
-			const mail = skeletons.includes("email_vendedor") ? "" : email ?? "-";
+                        const tel = skeletons.includes("telefono_vendedor")
+                                ? ""
+                                : telefono ?? "";
+                        const mail = skeletons.includes("email_vendedor") ? "" : email ?? "";
 			return `
 				<ul class="fast-actions">
 					<li class="fast-actions__item">
@@ -577,154 +656,286 @@
 		}
 
                 function renderFullDetail(data, rowData, skeletons = []) {
-                        const getFieldText = (val) =>
-                                val && typeof val === "object" && "label" in val
-                                        ? val.label
-                                        : val;
-                        const skeleton = (field, fallback = "-") =>
-                                skeletons.includes(field)
-                                        ? `<span class="skeleton skeleton--${field}"></span>`
-                                        : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
+    const getFieldText = (val) =>
+        val && typeof val === "object" && "label" in val
+            ? val.label
+            : val;
+    const skeleton = (field, fallback = "-") =>
+        skeletons.includes(field)
+            ? `<span class="skeleton skeleton--${field}"></span>`
+            : getFieldText(data[field]) ?? getFieldText(rowData[field]) ?? fallback;
 
-                        const mesesTotales = getDurationMeses(data.desde, data.hasta);
-                        const mesesRestantes = getRestantesMeses(data.hasta);
+    const mesesTotales = getDurationMeses(data.desde, data.hasta);
+    const mesesRestantes = getRestantesMeses(data.hasta);
 
-                        const estadoValue =
-                                (data.estado && data.estado.value) ||
-                                rowData.estadoclase ||
-                                "pendiente-pago";
-                        const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
-                                estadoValue
-                        )}`;
+    const estadoValue =
+        (data.estado && data.estado.value) ||
+        rowData.estadoclase ||
+        "pendiente-pago";
+    const isSinFinalizar = estadoValue === "sin_finalizar";
+    const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${normalizeEstadoClase(
+        estadoValue
+    )}`;
 
-			const planTitle = `${data.plan ?? "-"}${
-				mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
-			}`;
+    const planTitle = `${data.plan ?? "-"}${
+        mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
+    }`;
+    const fuelRaw = (
+        data.combustible ?? rowData.combustible ?? ""
+    )
+        .toString()
+        .toLowerCase();
+    const isElectric = fuelRaw
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") === "electrico";
+    const potenciaUnidad = isElectric ? "kW" : "CV";
+    const canalVentaText =
+        getFieldText(data.canal_venta) ?? getFieldText(rowData.canal_venta);
+    const concesionarioText = data.concesionario ?? rowData.concesionario;
 
-			return `
-				<div class="guarantee-detail__inner">
-					<div class="guarantee-detail__header">
-						<h2>Garantía ${skeleton("matricula")}</h2>
-						<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
-                                                <div>
-                                                        <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
-                                                        <span class="guarantee-detail__plan-duration">(${
-                                                                mesesRestantes !== "-"
-                                                                        ? mesesRestantes + " meses restantes"
-                                                                        : "-"
-                                                        })</span></p>
-                                                </div>
-                                                <div class="${badgeClase}">${skeleton(
-                                                        "estado",
-                                                        "Desconocido"
-                                                )}</div>
-					</div>
-					<div class="guarantee-detail__btn-container">
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
+    const isFilled = (val) => {
+        if (val === undefined || val === null) return false;
+        const str = String(val).trim();
+        return str !== "" && str !== "-" && str !== "#";
+    };
+    const docFields = [
+        "contrato_url",
+        "condicionado_url",
+        "cobertura_url",
+        "factura_url",
+    ];
+    const buyerFields = [
+        "nombre_comprador",
+        "dni_comprador",
+        "telefono_comprador",
+        "email_comprador",
+        "direccion_comprador",
+        "localidad_comprador",
+        "provincia_comprador",
+        "codigo_postal_comprador",
+    ];
+    const hasGuaranteeInfo =
+        isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
+    const hasDocs = docFields.every((field) => isFilled(data[field]));
+    const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
+    const showChannelSection = isAdmin;
 
-							<span class="guarantee-detail__btn-text">Abrir expediente</span>
-						</button>
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
-						<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
-					</div>
-					<section class="detail__section detail__section--fast-actions">
-						<h3 class="detail__section-title">Canal de venta</h3>
-							<p>${skeleton("canal_venta")}, ${skeleton("concesionario")}</p>
-							${renderFastActions(
-								data.concesionario ?? rowData.concesionario,
-								data.telefono_vendedor ?? rowData.telefono_vendedor,
-								data.email_vendedor ?? rowData.email_vendedor,
-								skeletons
-							)}
-					</section>
-					<section class="detail__section">
-						<h3>Datos del vehículo</h3>
-						<ul>
-							<li><strong>Marca/Modelo:</strong> ${skeleton("marca_modelo")}</li>
-							<li><strong>Tipo:</strong> ${skeleton("tipo", "-")}</li>
-							<li><strong>Kilómetros:</strong> ${skeleton("kilometros", "-")} km</li>
-							<li><strong>1ª Matriculación:</strong> ${skeleton(
-								"primera_matriculacion",
-								"-"
-							)}</li>
-							<li><strong>Matrícula:</strong> ${skeleton("matricula")}</li>
-							<li><strong>Nº Bastidor:</strong> ${skeleton("bastidor", "-")}</li>
-							<li><strong>Precio venta:</strong> ${skeleton("precio_venta", "-")} €</li>
-						</ul>
-					</section>
-					<section class="detail__section">
-						<h3>Detalles técnicos</h3>
-						<ul>
-							<li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
-							<li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
-							<li><strong>Potencia:</strong> ${skeleton("potencia", "-")}</li>
-							<li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")}</li>
-						</ul>
-					</section>
-					<section class="detail__section detail__section--docs">
-						<h3 class="detail__section-title">Documentación</h3>
-						<ul class="detail__docs-list">
-							<li class="detail__docs-item">
-								<button type="button" class="detail__docs-btn" data-doc-url="${skeleton(
-									"contrato_url",
-									"#"
-								)}" aria-label="Ver documento Contrato">
-									<span class="detail__docs-label">Contrato</span>
-								</button>
-							</li>
-							<li class="detail__docs-item">
-								<button type="button" class="detail__docs-btn" data-doc-url="${skeleton(
-									"condicionado_url",
-									"#"
-								)}" aria-label="Ver documento Condicionado">
-									<span class="detail__docs-label">Condicionado</span>
-								</button>
-							</li>
-							<li class="detail__docs-item">
-								<button type="button" class="detail__docs-btn" data-doc-url="${skeleton(
-									"cobertura_url",
-									"#"
-								)}" aria-label="Ver documento Cobertura">
-									<span class="detail__docs-label">Cobertura</span>
-								</button>
-							</li>
-							<li class="detail__docs-item">
-								<button type="button" class="detail__docs-btn" data-doc-url="${skeleton(
-									"factura_url",
-									"#"
-								)}" aria-label="Ver documento Factura">
-									<span class="detail__docs-label">Factura</span>
-								</button>
-							</li>
-						</ul>
-					</section>
-					<section class="detail__section">
-						<h3>Datos del comprador</h3>
-						<ul>
-							<li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
-							<li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
-							<li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
-							<li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
-							<li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
-						</ul>
-						<ul class="fast-actions">
-							<li class="fast-actions__item">
-								<a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
-									<span class="fast-actions__label">Cliente</span>
-								</a>
-							</li>
-							<li class="fast-actions__item">
-								<a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
-									<span class="fast-actions__label">Cliente</span>
-								</a>
-							</li>
-						</ul>
-					</section>
-				</div>
-			`;
-		}
+    if (isSinFinalizar) {
+        return `
+        <div class="guarantee-detail__inner">
+                <div class="guarantee-detail__header">
+                        <h2>Garantía ${skeleton("matricula")}</h2>
+                        ${hasGuaranteeInfo
+                            ? `<h3 class="guarantee-detail__plan-title">${planTitle}</h3>
+                        <div><p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
+                                <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p></div>`
+                            : ""}
+                        <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
+                        <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
+                </div>
+                <div class="guarantee-detail__btn-container">
+                        <button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">
+                                <span class="guarantee-detail__btn-text">Continuar con la garantía</span>
+                        </button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
+                </div>
+                ${showChannelSection
+                        ? `<section class="detail__section detail__section--fast-actions">
+                                <h3 class="detail__section-title">Canal de venta</h3>
+                                <p>${canalVentaText ?? "-"}, ${concesionarioText ?? "-"}</p>
+                                ${renderFastActions(
+                                        concesionarioText,
+                                        data.telefono_vendedor ?? rowData.telefono_vendedor,
+                                        data.email_vendedor ?? rowData.email_vendedor,
+                                        skeletons
+                                )}
+                        </section>`
+                        : ""}
+                <section class="detail__section">
+                        <h3>Datos del vehículo</h3>
+                        <ul>
+                                <li><strong>Marca/Modelo:</strong> ${skeleton("marca_modelo")}</li>
+                                <li><strong>Tipo:</strong> ${skeleton("tipo", "-")}</li>
+                                <li><strong>Kilómetros:</strong> ${skeleton("kilometros", "-")} km</li>
+                                <li><strong>1ª Matriculación:</strong> ${skeleton("primera_matriculacion", "-")}</li>
+                                <li><strong>Matrícula:</strong> ${skeleton("matricula")}</li>
+                                <li><strong>Nº Bastidor:</strong> ${skeleton("bastidor", "-")}</li>
+                                <li><strong>Precio venta:</strong> ${skeleton("precio_venta", "-")} €</li>
+                        </ul>
+                </section>
+                <section class="detail__section">
+                        <h3>Detalles técnicos</h3>
+                        <ul>
+                                <li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
+                                <li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
+                                <li><strong>Potencia:</strong> ${skeleton("potencia", "-")} ${potenciaUnidad}</li>
+                                <li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")} CC</li>
+                        </ul>
+                </section>
+                <section class="detail__section detail__section--docs">
+                        <h3 class="detail__section-title">Documentación</h3>
+                        ${hasDocs
+                            ? `<ul class="detail__docs-list">
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("contrato_url", "#")}" aria-label="Ver documento Contrato">
+                                                <span class="detail__docs-label">Contrato</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" aria-label="Ver documento Condicionado">
+                                                <span class="detail__docs-label">Condicionado</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" aria-label="Ver documento Cobertura">
+                                                <span class="detail__docs-label">Cobertura</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" aria-label="Ver documento Factura">
+                                                <span class="detail__docs-label">Factura</span>
+                                        </button>
+                                </li>
+                        </ul>`
+                            : `<p class="detail__alert-section">Documentación no disponible</p>`}
+                </section>
+                <section class="detail__section">
+                        <h3>Datos del comprador</h3>
+                        ${hasBuyerInfo
+                            ? `<ul>
+                                <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
+                                <li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
+                                <li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
+                                <li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
+                                <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
+                                <li><strong>Localidad:</strong> ${skeleton("localidad_comprador", "-")}</li>
+                                <li><strong>Provincia:</strong> ${skeleton("provincia_comprador", "-")}</li>
+                                <li><strong>Código Postal:</strong> ${skeleton("codigo_postal_comprador", "-")}</li>
+                        </ul>
+                        <ul class="fast-actions">
+                                <li class="fast-actions__item">
+                                        <a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
+                                                <span class="fast-actions__label">Cliente</span>
+                                        </a>
+                                </li>
+                                <li class="fast-actions__item">
+                                        <a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
+                                                <span class="fast-actions__label">Cliente</span>
+                                        </a>
+                                </li>
+                        </ul>`
+                            : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
+                </section>
+        </div>`;
+    }
 
-		function initRowSelection() {
+    return `
+        <div class="guarantee-detail__inner">
+                <div class="guarantee-detail__header">
+                        <h2>Garantía ${skeleton("matricula")}</h2>
+                        <h3 class="guarantee-detail__plan-title">${planTitle}</h3>
+                        <div>
+                                <p>${skeleton("desde_fmt")} — ${skeleton("hasta_fmt")}
+                                <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p>
+                        </div>
+                        <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
+                </div>
+                <div class="guarantee-detail__btn-container">
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--report" aria-label="Abrir expediente para esta garantía">
+                                <span class="guarantee-detail__btn-text">Abrir expediente</span>
+                        </button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"></button>
+                        <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"></button>
+                </div>
+                ${showChannelSection
+                        ? `<section class="detail__section detail__section--fast-actions">
+                                <h3 class="detail__section-title">Canal de venta</h3>
+                                <p>${canalVentaText ?? "-"}, ${concesionarioText ?? "-"}</p>
+                                ${renderFastActions(
+                                        concesionarioText,
+                                        data.telefono_vendedor ?? rowData.telefono_vendedor,
+                                        data.email_vendedor ?? rowData.email_vendedor,
+                                        skeletons
+                                )}
+                        </section>`
+                        : ""}
+                <section class="detail__section">
+                        <h3>Datos del vehículo</h3>
+                        <ul>
+                                <li><strong>Marca/Modelo:</strong> ${skeleton("marca_modelo")}</li>
+                                <li><strong>Tipo:</strong> ${skeleton("tipo", "-")}</li>
+                                <li><strong>Kilómetros:</strong> ${skeleton("kilometros", "-")} km</li>
+                                <li><strong>1ª Matriculación:</strong> ${skeleton("primera_matriculacion", "-")}</li>
+                                <li><strong>Matrícula:</strong> ${skeleton("matricula")}</li>
+                                <li><strong>Nº Bastidor:</strong> ${skeleton("bastidor", "-")}</li>
+                                <li><strong>Precio venta:</strong> ${skeleton("precio_venta", "-")} €</li>
+                        </ul>
+                </section>
+                <section class="detail__section">
+                        <h3>Detalles técnicos</h3>
+                        <ul>
+                                <li><strong>Combustible:</strong> ${skeleton("combustible", "-")}</li>
+                                <li><strong>Cambio:</strong> ${skeleton("cambio", "-")}</li>
+                                <li><strong>Potencia:</strong> ${skeleton("potencia", "-")} ${potenciaUnidad}</li>
+                                <li><strong>Cilindrada:</strong> ${skeleton("cilindrada", "-")} CC</li>
+                        </ul>
+                </section>
+                <section class="detail__section detail__section--docs">
+                        <h3 class="detail__section-title">Documentación</h3>
+                        <ul class="detail__docs-list">
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("contrato_url", "#")}" aria-label="Ver documento Contrato">
+                                                <span class="detail__docs-label">Contrato</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" aria-label="Ver documento Condicionado">
+                                                <span class="detail__docs-label">Condicionado</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" aria-label="Ver documento Cobertura">
+                                                <span class="detail__docs-label">Cobertura</span>
+                                        </button>
+                                </li>
+                                <li class="detail__docs-item">
+                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" aria-label="Ver documento Factura">
+                                                <span class="detail__docs-label">Factura</span>
+                                        </button>
+                                </li>
+                        </ul>
+                </section>
+                <section class="detail__section">
+                        <h3>Datos del comprador</h3>
+                        <ul>
+                                <li><strong>Nombre:</strong> ${skeleton("nombre_comprador", "-")}</li>
+                                <li><strong>DNI/NIE:</strong> ${skeleton("dni_comprador", "-")}</li>
+                                <li><strong>Teléfono:</strong> ${skeleton("telefono_comprador", "-")}</li>
+                                <li><strong>Email:</strong> ${skeleton("email_comprador", "-")}</li>
+                                <li><strong>Dirección:</strong> ${skeleton("direccion_comprador", "-")}</li>
+                                <li><strong>Localidad:</strong> ${skeleton("localidad_comprador", "-")}</li>
+                                <li><strong>Provincia:</strong> ${skeleton("provincia_comprador", "-")}</li>
+                                <li><strong>Código Postal:</strong> ${skeleton("codigo_postal_comprador", "-")}</li>
+                        </ul>
+                        <ul class="fast-actions">
+                                <li class="fast-actions__item">
+                                        <a href="tel:${skeleton("telefono_comprador", "")}" class="fast-actions__link">
+                                                <span class="fast-actions__label">Cliente</span>
+                                        </a>
+                                </li>
+                                <li class="fast-actions__item">
+                                        <a href="mailto:${skeleton("email_comprador", "")}" class="fast-actions__link">
+                                                <span class="fast-actions__label">Cliente</span>
+                                        </a>
+                                </li>
+                        </ul>
+                </section>
+        </div>
+    `;
+}
+
+function initRowSelection() {
 			tbody.addEventListener("click", async function (e) {
 				const row = e.target.closest(".guarantees-table__row");
 				if (!row) return;
