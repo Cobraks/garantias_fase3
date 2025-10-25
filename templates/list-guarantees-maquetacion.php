@@ -305,7 +305,7 @@ use GarantiasOnline360VO\Svg;
 
             <!-- Sección: Comprador -->
             <section class="detail__section">
-                <h3><?php esc_html_e('Datos del comprador', 'garantias-online-360vo'); ?></h3>
+                <h3><?php esc_html_e('Datos del cliente', 'garantias-online-360vo'); ?></h3>
                 <ul>
                     <li><strong><?php esc_html_e('Nombre:',      'garantias-online-360vo'); ?></strong> Juan Pérez</li>
                     <li><strong><?php esc_html_e('DNI/NIE:',     'garantias-online-360vo'); ?></strong> 12345678Z</li>
@@ -317,17 +317,13 @@ use GarantiasOnline360VO\Svg;
                     <li class="fast-actions__item">
                         <a href="#" class="fast-actions__link">
                             <?php echo Svg::icon('phone', 'fast-actions__icon'); ?>
-                            <span class="fast-actions__label">
-                                <?php esc_html_e('Cliente', 'garantias-online-360vo'); ?>
-                            </span>
+                            <span class="fast-actions__label">61234567</span>
                         </a>
                     </li>
                     <li class="fast-actions__item">
                         <a href="#" class="fast-actions__link">
                             <?php echo Svg::icon('email', 'fast-actions__icon'); ?>
-                            <span class="fast-actions__label">
-                                <?php esc_html_e('Cliente', 'garantias-online-360vo'); ?>
-                            </span>
+                            <span class="fast-actions__label">correo@cliente.com</span>
                         </a>
                     </li>
                 </ul>
