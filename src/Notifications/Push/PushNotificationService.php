@@ -186,6 +186,7 @@ class PushNotificationService
             'sepa.pending_requested',
             'sepa.signed_uploaded',
             'sepa.activated',
+            'client.commercials_updated',
         ], true);
     }
 

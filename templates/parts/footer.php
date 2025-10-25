@@ -137,6 +137,15 @@ if (! empty($is_add_guarantee)) {
         $current_user = wp_get_current_user();
     }
 
+    $is_admin = current_user_can('manage_options');
+    $current_roles = $current_user instanceof WP_User ? (array) $current_user->roles : [];
+    $has_client_manager_role = in_array('go_director_comercial', $current_roles, true)
+        || in_array('go_garantias', $current_roles, true);
+    $can_assign_commercials = $is_admin || $has_client_manager_role;
+    $can_manage_offers = $is_admin;
+    $can_manage_sepa = $is_admin;
+    $can_view_admin_link = $is_admin;
+
     $clients_config = [
         'rest' => [
             'root'  => esc_url_raw(rest_url()),
@@ -146,7 +155,10 @@ if (! empty($is_add_guarantee)) {
             'perPage' => 20,
         ],
         'permissions' => [
-            'canAssignCommercials' => current_user_can('manage_options'),
+            'canAssignCommercials' => $can_assign_commercials,
+            'canManageOffers'      => $can_manage_offers,
+            'canManageSepa'        => $can_manage_sepa,
+            'canViewAdminLink'     => $can_view_admin_link,
         ],
         'router' => [
             'basePath' => trailingslashit(wp_make_link_relative(home_url('/garantias-online/clientes/'))),
@@ -343,52 +355,56 @@ if (! empty($is_add_guarantee)) {
         ],
     ];
     ?>
-    <div
-        class="confirm-modal confirm-modal--clients"
-        data-sepa-confirm-modal
-        aria-hidden="true"
-        hidden
-    >
+    <?php if ($can_manage_sepa) : ?>
         <div
-            class="confirm-modal__dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="client-sepa-confirm-title"
-            tabindex="-1"
+            class="confirm-modal confirm-modal--clients"
+            data-sepa-confirm-modal
+            aria-hidden="true"
+            hidden
         >
-            <button
-                type="button"
-                class="confirm-modal__close"
-                aria-label="<?php esc_attr_e('Cerrar confirmación', 'garantias-online-360vo'); ?>"
+            <div
+                class="confirm-modal__dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="client-sepa-confirm-title"
+                tabindex="-1"
             >
-                &times;
-            </button>
-            <div class="confirm-modal__intro">
-                <h2 id="client-sepa-confirm-title" class="confirm-modal__title"><?php esc_html_e('Confirmar SEPA', 'garantias-online-360vo'); ?></h2>
-                <p class="confirm-modal__subtitle"></p>
-                <p class="confirm-modal__message"></p>
-                <p class="confirm-modal__note"><?php esc_html_e('El método de pago por domiciliación bancaria se activará.', 'garantias-online-360vo'); ?></p>
-            </div>
-            <p class="confirm-modal__error" role="alert" hidden></p>
-            <div class="confirm-modal__field" data-confirm-reason hidden>
-                <label class="confirm-modal__field-label" for="client-sepa-confirm-reason"><?php esc_html_e('Notas', 'garantias-online-360vo'); ?></label>
-                <textarea id="client-sepa-confirm-reason" class="confirm-modal__textarea" rows="3"></textarea>
-                <p class="confirm-modal__field-help"></p>
-            </div>
-            <label class="confirm-modal__checkbox">
-                <input type="checkbox" class="confirm-modal__checkbox-input">
-                <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
-            </label>
-            <div class="confirm-modal__actions">
-                <button type="button" class="confirm-modal__btn confirm-modal__btn--cancel"><?php esc_html_e('Cancelar', 'garantias-online-360vo'); ?></button>
-                <button type="button" class="confirm-modal__btn confirm-modal__btn--confirm" disabled><?php esc_html_e('Activar domiciliación bancaria', 'garantias-online-360vo'); ?></button>
+                <button
+                    type="button"
+                    class="confirm-modal__close"
+                    aria-label="<?php esc_attr_e('Cerrar confirmación', 'garantias-online-360vo'); ?>"
+                >
+                    &times;
+                </button>
+                <div class="confirm-modal__intro">
+                    <h2 id="client-sepa-confirm-title" class="confirm-modal__title"><?php esc_html_e('Confirmar SEPA', 'garantias-online-360vo'); ?></h2>
+                    <p class="confirm-modal__subtitle"></p>
+                    <p class="confirm-modal__message"></p>
+                    <p class="confirm-modal__note"><?php esc_html_e('El método de pago por domiciliación bancaria se activará.', 'garantias-online-360vo'); ?></p>
+                </div>
+                <p class="confirm-modal__error" role="alert" hidden></p>
+                <div class="confirm-modal__field" data-confirm-reason hidden>
+                    <label class="confirm-modal__field-label" for="client-sepa-confirm-reason"><?php esc_html_e('Notas', 'garantias-online-360vo'); ?></label>
+                    <textarea id="client-sepa-confirm-reason" class="confirm-modal__textarea" rows="3"></textarea>
+                    <p class="confirm-modal__field-help"></p>
+                </div>
+                <label class="confirm-modal__checkbox">
+                    <input type="checkbox" class="confirm-modal__checkbox-input">
+                    <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
+                </label>
+                <div class="confirm-modal__actions">
+                    <button type="button" class="confirm-modal__btn confirm-modal__btn--cancel"><?php esc_html_e('Cancelar', 'garantias-online-360vo'); ?></button>
+                    <button type="button" class="confirm-modal__btn confirm-modal__btn--confirm" disabled><?php esc_html_e('Activar domiciliación bancaria', 'garantias-online-360vo'); ?></button>
+                </div>
             </div>
         </div>
-    </div>
+    <?php endif; ?>
     <script>
         window.__GO_CLIENTES__ = <?php echo wp_json_encode($clients_config); ?>;
     </script>
-    <script src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"></script>
+    <?php if ($can_manage_sepa) : ?>
+        <script src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"></script>
+    <?php endif; ?>
     <script src="<?php echo esc_url(plugins_url('assets/js/clientes.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 <?php endif; ?>
 
@@ -555,7 +571,7 @@ if (! empty($is_add_guarantee)) {
                 markAll: <?php echo wp_json_encode(esc_url_raw(rest_url('go/v1/push-notifications'))); ?>,
             },
             nonce: <?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>,
-            perPage: 8,
+            perPage: 10,
             pollInterval: 4000,
             toastDuration: 9000,
         };

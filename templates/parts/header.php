@@ -65,6 +65,10 @@ $profile_button = sprintf(
 
 $account_url = home_url('/garantias-online/mi-cuenta/');
 $is_admin_user = current_user_can('manage_options');
+$current_roles = $current_user instanceof \WP_User ? (array) $current_user->roles : [];
+$can_access_clients = $is_admin_user
+    || in_array('go_director_comercial', $current_roles, true)
+    || in_array('go_garantias', $current_roles, true);
 $home_destination = $is_admin_user
     ? home_url('/garantias-online')
     : home_url('/garantias-online/mis-garantias/');
@@ -282,6 +286,8 @@ $home_destination = $is_admin_user
                                     <?php esc_html_e('Averías', 'garantias-online-360vo'); ?>
                                 </a>
                             </li>
+                        <?php endif; ?>
+                        <?php if ($can_access_clients) : ?>
                             <li class="menu-item">
                                 <a href="<?php echo esc_url(home_url('/garantias-online/clientes/')); ?>">
                                     <?php echo Svg::icon('person', 'top-bar__icon'); ?>
@@ -468,7 +474,7 @@ $home_destination = $is_admin_user
         </div>
         <nav class="mobile-menu">
             <ul>
-                <?php if ($is_admin_user) : ?>
+                <?php if ($can_access_clients) : ?>
                     <li class="mobile-menu__item">
                         <a href="<?php echo esc_url(home_url('/garantias-online/clientes/')); ?>">
                             <?php esc_html_e('Clientes', 'garantias-online-360vo'); ?>
