@@ -555,7 +555,7 @@ if (! empty($is_add_guarantee)) {
                 markAll: <?php echo wp_json_encode(esc_url_raw(rest_url('go/v1/push-notifications'))); ?>,
             },
             nonce: <?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>,
-            perPage: 8,
+            perPage: 10,
             pollInterval: 4000,
             toastDuration: 9000,
         };

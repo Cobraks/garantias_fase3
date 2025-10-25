@@ -975,6 +975,83 @@
             `;
         }
 
+        function normalizeStatusKey(value) {
+            if (typeof value !== 'string') {
+                return '';
+            }
+
+            let normalized = value.trim().toLowerCase();
+            if (typeof normalized.normalize === 'function') {
+                normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            }
+
+            return normalized;
+        }
+
+        function resolveSepaBadgeVariant(sepa) {
+            if (!sepa || typeof sepa !== 'object') {
+                return 'muted';
+            }
+
+            const explicitVariant = typeof sepa.variant === 'string' ? sepa.variant.trim() : '';
+            if (explicitVariant !== '') {
+                return explicitVariant;
+            }
+
+            const statusCode = normalizeStatusKey(sepa.status_code);
+            const statusValue = normalizeStatusKey(sepa.status);
+            const activatedFlag = sepa.activated === true
+                || sepa.activated === '1'
+                || sepa.activated === 1;
+
+            const hasActiveMandate = activatedFlag
+                || statusCode.includes('activo')
+                || statusCode.includes('vigente')
+                || statusCode.includes('validado')
+                || statusCode.includes('aceptado')
+                || statusValue.includes('activo')
+                || statusValue.includes('vigente')
+                || statusValue.includes('validado')
+                || statusValue.includes('aceptado');
+
+            const awaitingValidation = Boolean(sepa.awaiting_validation)
+                || statusCode.includes('pendiente')
+                || statusCode.includes('validacion')
+                || statusCode.includes('documentacion')
+                || statusCode.includes('firma')
+                || statusValue.includes('pendiente');
+
+            const needsActivation = Boolean(sepa.needs_activation)
+                || statusCode.includes('deshabilit')
+                || statusCode.includes('desactiv')
+                || statusCode.includes('rechaz')
+                || statusCode.includes('cancel')
+                || statusCode.includes('bloque')
+                || statusCode.includes('caduc')
+                || statusCode.includes('expir')
+                || statusCode.includes('error')
+                || statusValue.includes('rechaz')
+                || statusValue.includes('cancel')
+                || statusValue.includes('bloque')
+                || statusValue.includes('caduc')
+                || statusValue.includes('expir')
+                || statusValue.includes('error');
+
+            if (hasActiveMandate) {
+                return 'success';
+            }
+
+            if (awaitingValidation && !needsActivation) {
+                return 'warning';
+            }
+
+            if (needsActivation) {
+                return 'error';
+            }
+
+            return 'muted';
+        }
+
         function renderBadge(label, variant = '') {
             if (typeof label !== 'string') {
                 return '';
@@ -996,7 +1073,7 @@
         function renderWorkshop(workshop) {
             const data = workshop && typeof workshop === 'object' ? workshop : {};
             const hasWorkshop = Boolean(data.has_workshop);
-            const statusClass = hasWorkshop ? 'client-detail__status--success' : 'client-detail__status--info';
+            const badgeVariant = hasWorkshop ? 'success' : 'error';
             const statusLabel = hasWorkshop
                 ? (strings.workshopYes || 'Con taller propio')
                 : (strings.workshopNo || 'Sin taller propio');
@@ -1048,7 +1125,7 @@
                 }
             }
 
-            const badge = renderBadge(statusLabel, statusClass.replace('client-detail__status--', ''));
+            const badge = renderBadge(statusLabel, badgeVariant);
 
             return `
                 <section class="client-detail__section client-detail__section--workshop">
@@ -2005,11 +2082,11 @@
             const addressLines = joinNonEmpty(addressParts, ', ');
             const addressHtml = addressLines !== '' ? escapeHtml(addressLines) : '';
 
-            const sepaVariantKey = typeof sepa.variant === 'string' ? sepa.variant.trim() : '';
             const sepaMessage = typeof sepa.label === 'string' && sepa.label.trim() !== ''
                 ? sepa.label.trim()
                 : (strings.sepaEmpty || 'Sin información del mandato');
-            const sepaBadge = renderBadge(sepaMessage, sepaVariantKey !== '' ? sepaVariantKey : 'muted');
+            const sepaBadgeVariant = resolveSepaBadgeVariant(sepa);
+            const sepaBadge = renderBadge(sepaMessage, sepaBadgeVariant);
             const sepaDisabledMessage = typeof sepa.disabled_message === 'string' ? sepa.disabled_message.trim() : '';
             const sepaNoticeHtml = sepaDisabledMessage !== ''
                 ? `<p class="client-detail__sepa-notice">${escapeHtml(sepaDisabledMessage)}</p>`
@@ -2021,7 +2098,7 @@
                 : offersCount === 1
                     ? (strings.offersBadgeSingular || '1 oferta activa')
                     : (strings.offersBadgePlural || '%s ofertas activas').replace('%s', offersCount);
-            const offersBadgeVariant = offersCount > 0 ? 'info' : 'muted';
+            const offersBadgeVariant = offersCount > 0 ? 'success' : 'error';
             const offersBadge = renderBadge(offersBadgeLabel, offersBadgeVariant);
             const commercials = Array.isArray(item.commercials) ? item.commercials : [];
             const commercialCount = commercials.length;
@@ -2030,7 +2107,7 @@
                 : commercialCount === 1
                     ? (strings.commercialsBadgeSingular || '1 comercial asignado')
                     : (strings.commercialsBadgePlural || '%s comerciales asignados').replace('%s', commercialCount);
-            const commercialBadgeVariant = commercialCount > 0 ? 'info' : 'muted';
+            const commercialBadgeVariant = commercialCount > 0 ? 'success' : 'error';
             const commercialBadge = renderBadge(commercialBadgeLabel, commercialBadgeVariant);
             const registeredLabel = strings.registered || 'Registro';
             const safeSalesChannel = salesChannelLabel !== '' ? escapeHtml(salesChannelLabel) : '—';
