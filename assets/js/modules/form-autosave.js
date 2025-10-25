@@ -542,6 +542,17 @@ export default function initAutosave() {
                         garantia.metodo_pago = metodoPagoEl.value;
                 }
 
+                if (garantia.precio === undefined || garantia.precio === "") {
+                        const resumenPrecioEl = document.querySelector(
+                                "#final-summary .item--destacado .valor"
+                        );
+                        if (resumenPrecioEl) {
+                                garantia.precio = normalizePrice(
+                                        resumenPrecioEl.textContent
+                                );
+                        }
+                }
+
                 if (userRole === "admin") {
                         const canal = document.getElementById("canal-venta");
                         if (canal && canal.value) {
