@@ -2171,17 +2171,25 @@
                         ${registrationBadge}
                     </header>
                     <div class="client-detail__stats">
-                        <div class="client-detail__stat client-detail__stat--guarantees">
-                            <span class="client-detail__stat-label">${escapeHtml(strings.guarantees || 'Nº Garantías')}</span>
-                            <span class="client-detail__stat-emphasis">${formatCount(guarantees.count)}</span>
+                        <div class="client-detail__stat client-detail__stat--spotlight">
+                            <div class="client-detail__stat-header">
+                                <span class="client-detail__stat-label">${escapeHtml(strings.guarantees || 'Nº Garantías')}</span>
+                                <span class="client-detail__stat-emphasis">${formatCount(guarantees.count)}</span>
+                            </div>
                         </div>
-                        <div class="client-detail__stat">
-                            <span class="client-detail__stat-label">${escapeHtml(strings.salesChannel || 'Canal de venta')}</span>
-                            <span class="client-detail__stat-tag${salesTagClass}">${safeSalesChannel}</span>
-                        </div>
-                        <div class="client-detail__stat">
-                            <span class="client-detail__stat-label">${escapeHtml(strings.paymentMethod || 'Método de pago')}</span>
-                            <span class="client-detail__stat-tag${paymentTagClass}">${paymentDisplay}</span>
+                        <div class="client-detail__stat-grid">
+                            <div class="client-detail__stat client-detail__stat--compact">
+                                <div class="client-detail__stat-header">
+                                    <span class="client-detail__stat-label">${escapeHtml(strings.salesChannel || 'Canal de venta')}</span>
+                                    <span class="client-detail__stat-tag${salesTagClass}">${safeSalesChannel}</span>
+                                </div>
+                            </div>
+                            <div class="client-detail__stat client-detail__stat--compact">
+                                <div class="client-detail__stat-header">
+                                    <span class="client-detail__stat-label">${escapeHtml(strings.paymentMethod || 'Método de pago')}</span>
+                                    <span class="client-detail__stat-tag${paymentTagClass}">${paymentDisplay}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <section class="client-detail__section">
