@@ -2385,6 +2385,19 @@ display: block;
   background: var(--primary-color);
 }
 
+:root[data-theme='dark'] .top-bar__profile-link {
+  background: #1f2937;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .top-bar__profile-icon {
+  background: #111827;
+  border-color: #334155;
+  box-shadow: 0 4px 14px rgba(2, 6, 23, 0.45);
+  fill: #e2e8f0;
+}
+
 :root[data-theme='dark'] .top-bar__profile-menu {
   background: var(--surface-alt);
   border: 1px solid rgba(96, 108, 132, 0.55);
