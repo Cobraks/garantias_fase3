@@ -1,7 +1,7 @@
 <?php
 namespace GarantiasOnline360VO\Docs;
 
-use setasign\Fpdi\Fpdi;
+use mikehaertl\pdftk\Pdf;
 use GarantiasOnline360VO\GuaranteeLogger;
 
 if (!defined('ABSPATH')) {
@@ -29,21 +29,23 @@ class CertificateGenerator
             return null;
         }
         try {
-            $pdf = new Fpdi();
-            $pdf->AddPage();
-            $pdf->setSourceFile($path);
-            $tpl = $pdf->importPage(1);
-            $pdf->useTemplate($tpl, 0, 0);
-
+            $data = [];
             $combustible = get_post_meta($guarantee_id, 'datos_vehiculo_combustible', true);
             error_log('[CertificateGenerator] combustible ' . $combustible);
             if ($combustible) {
-                $pdf->SetFont('Helvetica', '', 12);
-                $pdf->SetXY(10, 10);
-                $pdf->Write(5, (string) $combustible);
+                $data['pdf_combustible'] = (string) $combustible;
             }
 
-            $content = $pdf->Output('S');
+            $pdf = new Pdf($path);
+            if ($data) {
+                $pdf->fillForm($data)->flatten();
+            }
+
+            $content = $pdf->toString();
+            if ($content === false) {
+                error_log('[CertificateGenerator] pdftk error ' . $pdf->getError());
+                return null;
+            }
         } catch (\Throwable $e) {
             error_log('[CertificateGenerator] error ' . $e->getMessage());
             return null;
