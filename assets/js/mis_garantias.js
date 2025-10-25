@@ -6,9 +6,11 @@
                 const table = tbody.closest("table");
                 const listContainer = document.querySelector(".guarantees-list");
                 const scrollEnd = listContainer.querySelector("#scroll-end");
-                const spinner = scrollEnd.querySelector(".spinner");
+               const spinner = scrollEnd.querySelector(".spinner");
 
-                const restRoot =
+               initResizableColumns(table);
+
+               const restRoot =
                         (window.__GO_CONFIG__ && window.__GO_CONFIG__.rest && window.__GO_CONFIG__.rest.root) ||
                         (window.GO_REST && window.GO_REST.root) ||
                         "/wp-json/";
@@ -189,21 +191,31 @@
                                 "autosave-status--hidden"
                         );
                         let row;
+                        const metodo = cacheData?.metodo_pago || "";
+                        const body = {
+                                id,
+                                uuid,
+                                data: {
+                                        estado_garantia: {
+                                                estado_contratacion: "activada",
+                                        },
+                                },
+                        };
+                        if (
+                                typeof metodo === "string" &&
+                                metodo.toLowerCase().startsWith("domiciliacion")
+                        ) {
+                                body.data.garantia_contratada = {
+                                        estado_cobro: { cobro_realizado: true },
+                                };
+                        }
                         fetch(`${restRoot}go/v1/guarantees/autosave`, {
                                 method: "POST",
                                 headers: {
                                         "Content-Type": "application/json",
                                         "X-WP-Nonce": restNonce,
                                 },
-                                body: JSON.stringify({
-                                        id,
-                                        uuid,
-                                        data: {
-                                                estado_garantia: {
-                                                        estado_contratacion: "activada",
-                                                },
-                                        },
-                                }),
+                                body: JSON.stringify(body),
                         })
                                 .then((res) => {
                                         if (!res.ok) throw res.status;
@@ -214,6 +226,7 @@
                                         if (row) {
                                                 row.dataset.estadoclase = "activada";
                                                 row.dataset.estado = "Activada";
+                                                row.dataset.cobroRealizado = "1";
                                                 const badge = row.querySelector(
                                                         ".guarantees-list__badge"
                                                 );
@@ -221,6 +234,12 @@
                                                         badge.textContent = "Activada";
                                                         badge.className =
                                                                 "guarantees-list__badge guarantees-list__badge--activada";
+                                                }
+                                                const cobroBadge = row.querySelector(
+                                                        ".guarantees-list__badge--pend-cobro"
+                                                );
+                                                if (cobroBadge) {
+                                                        cobroBadge.remove();
                                                 }
                                         }
                                         return fetch(
@@ -301,15 +320,148 @@
                         }
                 });
 
-                function normalizeEstadoClase(estado) {
-                        if (!estado) return "pendiente-pago";
-                        return String(estado)
-                                .toLowerCase()
-                                .normalize("NFD")
-                                .replace(/[\u0300-\u036f]/g, "")
-                                .replace(/[^a-z0-9]+/g, "-")
-                                .replace(/^-+|-+$/g, "");
-                }
+               function normalizeEstadoClase(estado) {
+                       if (!estado) return "pendiente-pago";
+                       return String(estado)
+                               .toLowerCase()
+                               .normalize("NFD")
+                               .replace(/[\u0300-\u036f]/g, "")
+                               .replace(/[^a-z0-9]+/g, "-")
+                               .replace(/^-+|-+$/g, "");
+               }
+
+           function initResizableColumns(table) {
+                   if (window.innerWidth < 1024) return;
+                   const ths = Array.from(table.querySelectorAll("thead th"));
+                   if (!ths.length) return;
+
+                   let rows = Array.from(table.querySelectorAll("tbody tr"));
+
+                   const wrapper = table.parentElement;
+                   wrapper.style.position = "relative";
+                   table.style.position = "relative";
+
+                  const minWidths = ths.map((th, i) => {
+                          let max = 0;
+                          rows.forEach((tr) => {
+                                  const cell = tr.children[i];
+                                  if (cell) {
+                                          const style = getComputedStyle(cell);
+                                          const cellWidth =
+                                                  cell.scrollWidth +
+                                                  parseFloat(style.paddingLeft) +
+                                                  parseFloat(style.paddingRight);
+                                          max = Math.max(max, cellWidth);
+                                  }
+                          });
+                          return Math.max(50, Math.ceil(max));
+                  });
+
+                  const totalMin = minWidths.reduce((s, w) => s + w, 0);
+                  const available = wrapper.clientWidth;
+                  const extra = Math.max(0, available - totalMin);
+                  const widths = minWidths.map((w) =>
+                          w + (extra * w) / totalMin
+                  );
+                  table.style.tableLayout = "fixed";
+
+                  ths.forEach((th, i) => {
+                          const w = widths[i];
+                          th.style.width = `${w}px`;
+                          rows.forEach((tr) => {
+                                  if (tr.children[i]) {
+                                          tr.children[i].style.width = `${w}px`;
+                                  }
+                          });
+                  });
+
+                   const resizersWrap = document.createElement("div");
+                   resizersWrap.className = "column-resizers";
+                   wrapper.appendChild(resizersWrap);
+
+                   function updateResizers() {
+                           resizersWrap.style.width = `${table.offsetWidth}px`;
+                           resizersWrap.style.height = `${table.offsetHeight}px`;
+                           resizersWrap.style.top = `${table.offsetTop}px`;
+                           resizersWrap.style.left = `${table.offsetLeft}px`;
+                           let left = 0;
+                           ths.forEach((_, idx) => {
+                                   left += widths[idx];
+                                   const r = resizersWrap.children[idx];
+                                   if (r) r.style.left = `${left}px`;
+                           });
+                   }
+
+                   ths.forEach((th, i) => {
+                           if (i === ths.length - 1) return;
+                           const resizer = document.createElement("span");
+                           resizer.className = "column-resizer";
+                           resizersWrap.appendChild(resizer);
+
+                           resizer.addEventListener("mousedown", (e) => {
+                                   e.preventDefault();
+                                   const startX = e.pageX;
+                                   const startWidths = widths.slice();
+                                   const minLeft = minWidths[i];
+                                   const rightIndices = [];
+                                   for (let j = i + 1; j < ths.length; j++) rightIndices.push(j);
+                                   const sumRight = rightIndices.reduce((s, idx) => s + startWidths[idx], 0);
+                                   const sumMinRight = rightIndices.reduce((s, idx) => s + minWidths[idx], 0);
+
+                                   function applyWidths() {
+                                           ths.forEach((th, idx) => {
+                                                   th.style.width = `${widths[idx]}px`;
+                                           });
+                                           const affected = [i, ...rightIndices];
+                                           rows.forEach((tr) => {
+                                                   affected.forEach((idx) => {
+                                                           const cell = tr.children[idx];
+                                                           if (cell) cell.style.width = `${widths[idx]}px`;
+                                                   });
+                                           });
+                                           updateResizers();
+                                   }
+
+                                   function onMouseMove(ev) {
+                                           let dx = ev.pageX - startX;
+                                           let desired = startWidths[i] + dx;
+                                           if (desired < minLeft) desired = minLeft;
+                                           const maxLeft = startWidths[i] + (sumRight - sumMinRight);
+                                           if (desired > maxLeft) desired = maxLeft;
+                                           let delta = desired - widths[i];
+                                           widths[i] = desired;
+                                           if (delta > 0) {
+                                                   let remaining = delta;
+                                                   for (let j = i + 1; j < ths.length && remaining > 0; j++) {
+                                                           const avail = widths[j] - minWidths[j];
+                                                           const take = Math.min(avail, remaining);
+                                                           widths[j] -= take;
+                                                           remaining -= take;
+                                                   }
+                                           } else if (delta < 0) {
+                                                   widths[i + 1] += -delta;
+                                           }
+                                           applyWidths();
+                                   }
+
+                                   function onMouseUp() {
+                                           document.removeEventListener("mousemove", onMouseMove);
+                                           document.removeEventListener("mouseup", onMouseUp);
+                                   }
+
+                                   document.addEventListener("mousemove", onMouseMove);
+                                   document.addEventListener("mouseup", onMouseUp);
+                           });
+                   });
+
+                   updateResizers();
+                   const bodyObserver = new MutationObserver(() => {
+                           rows = Array.from(table.querySelectorAll("tbody tr"));
+                           updateResizers();
+                   });
+                   bodyObserver.observe(table.tBodies[0], { childList: true });
+                   window.addEventListener("resize", updateResizers);
+           }
 
                 function formatDate(value) {
                         if (!value) return { iso: "-", display: "-" };
@@ -322,26 +474,22 @@
                                 const date = new Date(iso);
                                 if (!isNaN(date)) {
                                         const display = new Intl.DateTimeFormat("es-ES", {
-                                                day: "numeric",
-                                                month: "long",
-                                                year: "numeric",
-                                        })
-                                                .format(date)
-                                                .replace(/ de /g, " ");
+                                                day: "2-digit",
+                                                month: "2-digit",
+                                                year: "2-digit",
+                                        }).format(date);
                                         return { iso, display };
                                 }
-                                return { iso, display: `${d}/${m}/${y}` };
+                                return { iso, display: `${d}/${m}/${y.slice(2)}` };
                         }
                         const date = new Date(value);
                         if (!isNaN(date)) {
                                 const iso = date.toISOString().slice(0, 10);
                                 const display = new Intl.DateTimeFormat("es-ES", {
-                                        day: "numeric",
-                                        month: "long",
-                                        year: "numeric",
-                                })
-                                        .format(date)
-                                        .replace(/ de /g, " ");
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "2-digit",
+                                }).format(date);
                                 return { iso, display };
                         }
                         return { iso: value, display: value };
@@ -473,12 +621,27 @@
                         tr.dataset.vendedor_type = vendedor_type;
                         tr.dataset.precio = hasPlan ? precio : "";
                         tr.dataset.canalVenta = canal_venta;
+                        tr.dataset.metodoPago = item.detail.metodo_pago || "";
+                        tr.dataset.cobroRealizado = item.detail.cobro_realizado ? "1" : "";
+                        tr.dataset.ibanVendedor = item.detail.iban_vendedor || "";
 
-                        tr.innerHTML = `
+                        const cobroBadgeHtml =
+                                isAdmin &&
+                                tr.dataset.metodoPago &&
+                                tr.dataset.metodoPago
+                                        .toLowerCase()
+                                        .startsWith("domiciliacion") &&
+                                !tr.dataset.cobroRealizado
+                                        ? `<span class="guarantees-list__badge guarantees-list__badge--pend-cobro">pend. cobro</span>`
+                                        : "";
+
+                        const estadoBadgeHtml = `<span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">${estadoLabel}</span>`;
+
+                       tr.innerHTML = `
                                 <td data-label="Vehículo">
                                         <div class="guarantees-table__vehiculo">
-                                                <strong>${marca_modelo}</strong>
                                                 <div class="vehiculo__mat">${mat}</div>
+                                                <div class="vehiculo__marca_modelo">${marca_modelo}</div>
                                         </div>
                                 </td>
                                 <td data-label="Validez">${periodHtml}</td>
@@ -488,15 +651,25 @@
                                                 <div class="vendedor__type">${vendedor_type}</div>
                                         </div>
                                 </td>
-                                <td data-label="Garantía">
-                                        ${planHtml}
-                                          <span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
-                                                  ${estadoLabel}
-                                          </span>
+                                <td data-label="Estado">
+                                        <div class="guarantees-table__estado">
+                                                ${estadoBadgeHtml}
+                                                ${cobroBadgeHtml}
+                                        </div>
                                 </td>
+                                <td data-label="Garantía">${planHtml}</td>
                         `;
-                        return tr;
-                }
+
+                       const headerCells = table.querySelectorAll("thead th");
+                       headerCells.forEach((th, i) => {
+                               const width = th.getBoundingClientRect().width;
+                               if (tr.children[i]) {
+                                       tr.children[i].style.width = `${width}px`;
+                               }
+                       });
+
+                       return tr;
+               }
 
 		function renderEmptyDetail() {
 			return `
@@ -795,6 +968,9 @@
                                 concesionario: row.dataset.vendedor_name ?? "-",
                                 canal_venta: row.dataset.vendedor_type ?? "-",
                                 precio: row.dataset.precio ?? "-",
+                                metodo_pago: row.dataset.metodoPago ?? "",
+                                cobro_realizado: row.dataset.cobroRealizado === "1",
+                                iban_vendedor: row.dataset.ibanVendedor ?? "",
                                 tipo: "-",
                                 kilometros: "-",
                                 primera_matriculacion: "-",
@@ -863,6 +1039,16 @@
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
+    const metodoPago = (
+        data.metodo_pago ?? rowData.metodo_pago ?? ""
+    )
+        .toString()
+        .toLowerCase()
+        .trim();
+    const cobroRealizado = [
+        data.cobro_realizado,
+        rowData.cobro_realizado,
+    ].some((v) => v === true || v === 1 || v === "1");
 
     const planTitle = `${data.plan ?? "-"}${
         mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
@@ -1020,12 +1206,16 @@
         </div>`;
     }
 
+    const showConfirmBtn =
+        showActions &&
+        isPendientePago &&
+        !(isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado);
     const actionsHtml = showActions
-        ? isPendientePago
+        ? showConfirmBtn
             ? `<div class="guarantee-detail__btn-container">
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="Confirmar pago">
                                 <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
-                                <span class="guarantee-detail__btn-text">Confirmar pago</span>
+                                <span class="guarantee-detail__btn-text">${metodoPago.startsWith("domiciliacion") ? "Marcar garantía como pagada" : "Confirmar pago"}</span>
                         </button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
@@ -1039,13 +1229,37 @@
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
                 </div>`
         : ``;
-    const paymentHtml = isPendientePago && !isAdmin
-        ? (() => {
-                if ((data.metodo_pago || rowData.metodo_pago) === "transferencia") {
-                        const concepto = `Garantía ${skeleton("matricula")}`;
-                        const cantidad = `${skeleton("precio", "0")} €`;
-                        const iban = "ES00 0000 0000 0000 0000 0000";
-                        return `<section class="detail__section detail__section--payment">
+
+    const paymentHtml = (() => {
+        if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
+            const concepto = `Garantía ${skeleton("matricula")}`;
+            const cantidad = `${skeleton("precio", "0")} €`;
+            const iban =
+                data.iban_vendedor ||
+                rowData.iban_vendedor ||
+                "ES00 0000 0000 0000 0000 0000";
+            return `<section class="detail__section detail__section--payment">
+                                <p class="detail__payment-note detail__payment-note--domiciliacion">Cobro pendiente por domiciliación bancaria.</p>
+                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm">
+                                        <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
+                                        <span class="guarantee-detail__btn-text">Marcar garantía como pagada</span>
+                                </button>
+                                <table class="detail__transfer-table">
+                                        <tbody>
+                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                        </tbody>
+                                </table>
+                                <div class="detail__copy-toast" aria-hidden="true"></div>
+                        </section>`;
+        }
+        if (!isAdmin && isPendientePago) {
+            if (metodoPago === "transferencia") {
+                const concepto = `Garantía ${skeleton("matricula")}`;
+                const cantidad = `${skeleton("precio", "0")} €`;
+                const iban = "ES00 0000 0000 0000 0000 0000";
+                return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note">Recuerda realizar la transferencia para activar tu garantía.</p>
                                 <table class="detail__transfer-table">
                                         <tbody>
@@ -1056,12 +1270,13 @@
                                 </table>
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
                         </section>`;
-                }
-                return `<section class="detail__section detail__section--payment">
+            }
+            return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note">El pago se procesará mediante domiciliación bancaria.</p>
                         </section>`;
-        })()
-        : ``;
+        }
+        return "";
+    })();
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
@@ -1073,8 +1288,8 @@
                         </div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                ${actionsHtml}
                 ${paymentHtml}
+                ${actionsHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">Canal de venta</h3>
