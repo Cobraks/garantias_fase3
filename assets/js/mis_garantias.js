@@ -189,21 +189,31 @@
                                 "autosave-status--hidden"
                         );
                         let row;
+                        const metodo = cacheData?.metodo_pago || "";
+                        const body = {
+                                id,
+                                uuid,
+                                data: {
+                                        estado_garantia: {
+                                                estado_contratacion: "activada",
+                                        },
+                                },
+                        };
+                        if (
+                                typeof metodo === "string" &&
+                                metodo.toLowerCase().startsWith("domiciliacion")
+                        ) {
+                                body.data.garantia_contratada = {
+                                        estado_cobro: { cobro_realizado: true },
+                                };
+                        }
                         fetch(`${restRoot}go/v1/guarantees/autosave`, {
                                 method: "POST",
                                 headers: {
                                         "Content-Type": "application/json",
                                         "X-WP-Nonce": restNonce,
                                 },
-                                body: JSON.stringify({
-                                        id,
-                                        uuid,
-                                        data: {
-                                                estado_garantia: {
-                                                        estado_contratacion: "activada",
-                                                },
-                                        },
-                                }),
+                                body: JSON.stringify(body),
                         })
                                 .then((res) => {
                                         if (!res.ok) throw res.status;
@@ -214,6 +224,7 @@
                                         if (row) {
                                                 row.dataset.estadoclase = "activada";
                                                 row.dataset.estado = "Activada";
+                                                row.dataset.cobroRealizado = "1";
                                                 const badge = row.querySelector(
                                                         ".guarantees-list__badge"
                                                 );
@@ -221,6 +232,12 @@
                                                         badge.textContent = "Activada";
                                                         badge.className =
                                                                 "guarantees-list__badge guarantees-list__badge--activada";
+                                                }
+                                                const cobroBadge = row.querySelector(
+                                                        ".guarantees-list__badge--pend-cobro"
+                                                );
+                                                if (cobroBadge) {
+                                                        cobroBadge.remove();
                                                 }
                                         }
                                         return fetch(
@@ -473,6 +490,19 @@
                         tr.dataset.vendedor_type = vendedor_type;
                         tr.dataset.precio = hasPlan ? precio : "";
                         tr.dataset.canalVenta = canal_venta;
+                        tr.dataset.metodoPago = item.detail.metodo_pago || "";
+                        tr.dataset.cobroRealizado = item.detail.cobro_realizado ? "1" : "";
+                        tr.dataset.ibanVendedor = item.detail.iban_vendedor || "";
+
+                        const cobroBadgeHtml =
+                                isAdmin &&
+                                tr.dataset.metodoPago &&
+                                tr.dataset.metodoPago
+                                        .toLowerCase()
+                                        .startsWith("domiciliacion") &&
+                                !tr.dataset.cobroRealizado
+                                        ? `<span class="guarantees-list__badge guarantees-list__badge--pend-cobro">pend. cobro</span>`
+                                        : "";
 
                         tr.innerHTML = `
                                 <td data-label="Vehículo">
@@ -493,6 +523,7 @@
                                           <span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">
                                                   ${estadoLabel}
                                           </span>
+                                          ${cobroBadgeHtml}
                                 </td>
                         `;
                         return tr;
@@ -795,6 +826,9 @@
                                 concesionario: row.dataset.vendedor_name ?? "-",
                                 canal_venta: row.dataset.vendedor_type ?? "-",
                                 precio: row.dataset.precio ?? "-",
+                                metodo_pago: row.dataset.metodoPago ?? "",
+                                cobro_realizado: row.dataset.cobroRealizado === "1",
+                                iban_vendedor: row.dataset.ibanVendedor ?? "",
                                 tipo: "-",
                                 kilometros: "-",
                                 primera_matriculacion: "-",
@@ -863,6 +897,16 @@
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
+    const metodoPago = (
+        data.metodo_pago ?? rowData.metodo_pago ?? ""
+    )
+        .toString()
+        .toLowerCase()
+        .trim();
+    const cobroRealizado = [
+        data.cobro_realizado,
+        rowData.cobro_realizado,
+    ].some((v) => v === true || v === 1 || v === "1");
 
     const planTitle = `${data.plan ?? "-"}${
         mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
@@ -1020,12 +1064,16 @@
         </div>`;
     }
 
+    const showConfirmBtn =
+        showActions &&
+        isPendientePago &&
+        !(isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado);
     const actionsHtml = showActions
-        ? isPendientePago
+        ? showConfirmBtn
             ? `<div class="guarantee-detail__btn-container">
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm" aria-label="Confirmar pago">
                                 <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
-                                <span class="guarantee-detail__btn-text">Confirmar pago</span>
+                                <span class="guarantee-detail__btn-text">${metodoPago.startsWith("domiciliacion") ? "Marcar garantía como pagada" : "Confirmar pago"}</span>
                         </button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos"><span class="guarantee-detail__btn-icon">${heartIcon}</span></button>
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
@@ -1039,13 +1087,37 @@
                         <button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir"><span class="guarantee-detail__btn-icon">${shareIcon}</span></button>
                 </div>`
         : ``;
-    const paymentHtml = isPendientePago && !isAdmin
-        ? (() => {
-                if ((data.metodo_pago || rowData.metodo_pago) === "transferencia") {
-                        const concepto = `Garantía ${skeleton("matricula")}`;
-                        const cantidad = `${skeleton("precio", "0")} €`;
-                        const iban = "ES00 0000 0000 0000 0000 0000";
-                        return `<section class="detail__section detail__section--payment">
+
+    const paymentHtml = (() => {
+        if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
+            const concepto = `Garantía ${skeleton("matricula")}`;
+            const cantidad = `${skeleton("precio", "0")} €`;
+            const iban =
+                data.iban_vendedor ||
+                rowData.iban_vendedor ||
+                "ES00 0000 0000 0000 0000 0000";
+            return `<section class="detail__section detail__section--payment">
+                                <p class="detail__payment-note detail__payment-note--domiciliacion">Cobro pendiente por domiciliación bancaria.</p>
+                                <button type="button" class="guarantee-detail__btn guarantee-detail__btn--confirm">
+                                        <span class="guarantee-detail__btn-icon">${paymentIcon}</span>
+                                        <span class="guarantee-detail__btn-text">Marcar garantía como pagada</span>
+                                </button>
+                                <table class="detail__transfer-table">
+                                        <tbody>
+                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                        </tbody>
+                                </table>
+                                <div class="detail__copy-toast" aria-hidden="true"></div>
+                        </section>`;
+        }
+        if (!isAdmin && isPendientePago) {
+            if (metodoPago === "transferencia") {
+                const concepto = `Garantía ${skeleton("matricula")}`;
+                const cantidad = `${skeleton("precio", "0")} €`;
+                const iban = "ES00 0000 0000 0000 0000 0000";
+                return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note">Recuerda realizar la transferencia para activar tu garantía.</p>
                                 <table class="detail__transfer-table">
                                         <tbody>
@@ -1056,12 +1128,13 @@
                                 </table>
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
                         </section>`;
-                }
-                return `<section class="detail__section detail__section--payment">
+            }
+            return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note">El pago se procesará mediante domiciliación bancaria.</p>
                         </section>`;
-        })()
-        : ``;
+        }
+        return "";
+    })();
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
@@ -1073,8 +1146,8 @@
                         </div>
                         <div class="${badgeClase}">${skeleton("estado", "Desconocido")}</div>
                 </div>
-                ${actionsHtml}
                 ${paymentHtml}
+                ${actionsHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">Canal de venta</h3>
