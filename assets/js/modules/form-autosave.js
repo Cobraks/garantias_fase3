@@ -100,7 +100,7 @@ export default function initAutosave() {
         let draftUuid = localStorage.getItem("go_draft_uuid");
         let saving = false;
 
-        async function sendAutosave() {
+        async function sendAutosave(finalize = false) {
                 if (saving) return;
                 saving = true;
 
@@ -289,6 +289,14 @@ export default function initAutosave() {
                         payload.estado_garantia = estado;
                 }
 
+                if (!payload.estado_garantia) payload.estado_garantia = {};
+                if (finalize) {
+                        payload.post_status = "publish";
+                        payload.estado_garantia.estado_contratacion = "pendiente_pago";
+                } else {
+                        payload.estado_garantia.estado_contratacion = "sin_finalizar";
+                }
+
                 console.log("[AUTOSAVE] payload", payload);
 
                 try {
@@ -338,7 +346,9 @@ export default function initAutosave() {
 
         const debounced = debounce(sendAutosave, 300);
 
-        FormCache.nextButton?.addEventListener("click", debounced);
-        FormCache.prevButton?.addEventListener("click", debounced);
-        FormCache.tabs?.forEach((tab) => tab.addEventListener("click", debounced));
+        FormCache.nextButton?.addEventListener("click", () =>
+                debounced(FormCache.currentTab === FormCache.fieldsets.length - 1)
+        );
+        FormCache.prevButton?.addEventListener("click", () => debounced(false));
+        FormCache.tabs?.forEach((tab) => tab.addEventListener("click", () => debounced(false)));
 }
