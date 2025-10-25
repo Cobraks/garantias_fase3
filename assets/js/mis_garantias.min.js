@@ -2543,6 +2543,7 @@ const ADD_DOC_KEY = "add-document";
                 cliente_telefono !== "" ? cliente_telefono : "-";
 
                         const hasPlan = plan !== "" && plan !== "-";
+                        const shouldShowPlan = hasPlan && estadoClase !== "sin-finalizar";
                         const hasPeriod =
                                 desde !== "-" &&
                                 hasta !== "-" &&
@@ -2555,10 +2556,11 @@ const ADD_DOC_KEY = "add-document";
                                                 <div><strong>Hasta:</strong> <time>${hasta}</time></div>
                                         </div>`
                                 : "-";
-                        const planHtml = hasPlan
+                        const planPriceLabel = precio && precio !== "-" ? `${precio}€` : "";
+                        const planHtml = shouldShowPlan
                                 ? `<div class="guarantees-table__plan">
                                                 <span class="plan__name">${plan}</span>
-                                                <span class="plan__price">${precio}€</span>
+                                                ${planPriceLabel ? `<span class="plan__price">${planPriceLabel}</span>` : ""}
                                         </div>`
                                 : "";
         const clientePhoneHtml =
@@ -2582,7 +2584,7 @@ const ADD_DOC_KEY = "add-document";
                         tr.dataset.id = item.id;
                         tr.dataset.matricula = mat;
                         tr.dataset.marca_modelo = marca_modelo;
-                        tr.dataset.plan = hasPlan ? plan : "";
+                        tr.dataset.plan = shouldShowPlan ? plan : "";
                         tr.dataset.desde = hasPeriod ? desdeIso : "";
                         tr.dataset.desdeRaw = hasPeriod ? rawDesde : "";
                         tr.dataset.desdeFmt = hasPeriod ? desde : "";
@@ -2597,7 +2599,7 @@ const ADD_DOC_KEY = "add-document";
                         tr.dataset.concesionario = vendedor_name;
                         tr.dataset.concesionario_personal =
                                 item.detail?.concesionario_personal ?? "";
-                        tr.dataset.precio = hasPlan ? precio : "";
+                        tr.dataset.precio = shouldShowPlan && precio && precio !== "-" ? precio : "";
                         tr.dataset.canalVenta = canal_venta;
                         tr.dataset.metodoPago = item.detail.metodo_pago || "";
                         tr.dataset.cobroRealizado = item.detail.cobro_realizado ? "1" : "";
@@ -4176,7 +4178,10 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                 }
                         } catch (err) {
-				console.error("❌ Error en loadPage:", err);
+                                if (err && typeof err === "object" && err.name === "AbortError") {
+                                        return;
+                                }
+                                console.error("❌ Error en loadPage:", err);
                         } finally {
                                 isLoading = false;
                                 spinner.style.display = hasMore ? "" : "none";
@@ -4404,6 +4409,12 @@ const ADD_DOC_KEY = "add-document";
         .map((val) => (typeof val === "string" ? val.trim() : ""))
         .find((val) => val) || "";
 
+    const isFilled = (val) => {
+        if (val === undefined || val === null) return false;
+        const str = String(val).trim();
+        return str !== "" && str !== "-" && str !== "#";
+    };
+
     const planName = pickField("plan", "-");
     const planParts = [];
     if (planName && planName !== "-") {
@@ -4412,13 +4423,25 @@ const ADD_DOC_KEY = "add-document";
     if (mesesTotales !== "-") {
         planParts.push(`${mesesTotales} meses`);
     }
-    const planPrimaryLabel = planParts.length > 0 ? planParts.join(" ") : planName || "-";
+    const planPrimaryLabel =
+        planParts.length > 0 ? planParts.join(" ") : planName && planName !== "-" ? planName : "";
     const planPriceRaw = pickField("precio", "");
     const planPrice = planPriceRaw && planPriceRaw !== "-" ? `${planPriceRaw} €` : "";
-    const planTitleHtml = `<h3 class="guarantee-detail__plan-title">` +
-        `<span class="guarantee-detail__plan-name">${planPrimaryLabel}</span>` +
-        `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
-        `</h3>`;
+    const hasPlanInfo = Boolean(planPrimaryLabel);
+    const hasCoverageInfo =
+        isFilled(pickField("desde_fmt", "")) &&
+        isFilled(pickField("hasta_fmt", ""));
+    const shouldShowPlanInfo = !isSinFinalizar && (hasPlanInfo || planPrice);
+    const planTitleHtml = shouldShowPlanInfo
+        ? `<h3 class="guarantee-detail__plan-title">` +
+              `${planPrimaryLabel ? `<span class=\"guarantee-detail__plan-name\">${planPrimaryLabel}</span>` : ""}` +
+              `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
+              `</h3>`
+        : "";
+    const coverageHtml = hasCoverageInfo
+        ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
+              `<span class=\"guarantee-detail__plan-duration\">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p></div>`
+        : "";
     const vendorChannelSummaryRaw = pickField("canal_venta_summary", "");
     const vendorChannelSummarySource =
         vendorChannelSummaryRaw !== ""
@@ -4461,12 +4484,6 @@ const ADD_DOC_KEY = "add-document";
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
-
-    const isFilled = (val) => {
-        if (val === undefined || val === null) return false;
-        const str = String(val).trim();
-        return str !== "" && str !== "-" && str !== "#";
-    };
     const docsSource = Array.isArray(data.documents)
         ? data.documents
         : Array.isArray(rowData.documents)
@@ -4529,10 +4546,6 @@ const ADD_DOC_KEY = "add-document";
         "provincia_comprador",
         "codigo_postal_comprador",
     ];
-    const hasGuaranteeInfo =
-        isFilled(pickField("plan", "")) &&
-        isFilled(pickField("desde_fmt", "")) &&
-        isFilled(pickField("hasta_fmt", ""));
     const hasDocs = docsData.length > 0;
     const docsButtonsHtml = docsData
         .map(
@@ -4588,6 +4601,12 @@ const ADD_DOC_KEY = "add-document";
     } else {
         docsListHtml = `<p class="detail__alert-section">Documentación no disponible</p>`;
     }
+    const docsSectionHtml = isSinFinalizar
+        ? ""
+        : `<section class="detail__section detail__section--docs">` +
+              `<h3 class="detail__section-title">Documentación</h3>` +
+              `${docsListHtml}` +
+          `</section>`;
     const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
@@ -4622,11 +4641,7 @@ const ADD_DOC_KEY = "add-document";
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
-                        ${hasGuaranteeInfo
-                            ? `${planTitleHtml}
-                        <div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}
-                                <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p></div>`
-                            : ""}
+                        ${coverageHtml}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
@@ -4683,10 +4698,7 @@ const ADD_DOC_KEY = "add-document";
                                 <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
                 </section>
-                <section class="detail__section detail__section--docs">
-                        <h3 class="detail__section-title">Documentación</h3>
-                        ${docsListHtml}
-                </section>
+                ${docsSectionHtml}
                 <section class="detail__section detail__section--datos_cliente">
                         <h3>Datos del cliente</h3>
                         ${hasBuyerInfo
@@ -4906,10 +4918,7 @@ const ADD_DOC_KEY = "add-document";
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
                         ${planTitleHtml}
-                        <div>
-                                <p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}
-                                <span class="guarantee-detail__plan-duration">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p>
-                        </div>
+                        ${coverageHtml}
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
                 ${paymentHtml}
@@ -4966,10 +4975,7 @@ const ADD_DOC_KEY = "add-document";
                                 <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
                 </section>
-                <section class="detail__section detail__section--docs">
-                        <h3 class="detail__section-title">Documentación</h3>
-                        ${docsListHtml}
-                </section>
+                ${docsSectionHtml}
                 <section class="detail__section detail__section--datos_cliente">
                         <h3>Datos del cliente</h3>
                         <ul>
