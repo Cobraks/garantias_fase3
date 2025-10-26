@@ -74,7 +74,7 @@ $home_destination = $is_admin_user
 
 
     <?php endif; ?>
-    <?php if (! empty($is_auth_page)) : ?>
+    <?php if (! empty($is_register_page)) : ?>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link

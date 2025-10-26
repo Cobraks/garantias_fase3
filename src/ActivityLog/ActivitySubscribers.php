@@ -8,6 +8,8 @@ if (! defined('ABSPATH')) {
 
 class ActivitySubscribers
 {
+    private static bool $login_failure_handled = false;
+
     public static function init(): void
     {
         add_action('wp_login', [__CLASS__, 'on_login'], 10, 2);
@@ -37,12 +39,22 @@ class ActivitySubscribers
 
     public static function on_login_failed(string $username): void
     {
+        if (self::$login_failure_handled) {
+            self::$login_failure_handled = false;
+            return;
+        }
+
         ActivityLogger::log('auth.login_failed', [
             'context' => [
                 'username' => $username,
             ],
             'level' => 'warning',
         ]);
+    }
+
+    public static function mark_login_failure_handled(): void
+    {
+        self::$login_failure_handled = true;
     }
 
     public static function on_logout(): void

@@ -27,6 +27,12 @@ class Rewrite
     public static function add_query_vars(array $vars): array
     {
         $vars[] = self::VAR_ENDPOINT;
+        $vars[] = 'error';
+        $vars[] = 'email';
+        $vars[] = 'remember';
+        $vars[] = 'redirect_to';
+        $vars[] = 'sent';
+        $vars[] = 'state';
         return $vars;
     }
 
@@ -41,6 +47,7 @@ class Rewrite
             '/nueva-garantia/?$'      => 'add',
             '/mis-garantias/?$'       => 'list',
             '/login/?$'               => 'login',
+            '/restablecer-clave/?$'   => 'lostpassword',
             '/registro/?$'            => 'register',
             '/averias/?$'             => 'averias',
         ];

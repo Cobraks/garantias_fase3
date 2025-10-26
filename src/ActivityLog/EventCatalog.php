@@ -25,6 +25,18 @@ class EventCatalog
             'level'    => 'warning',
             'message'  => 'Intento fallido de inicio de sesión con el usuario {{context.username}}.',
         ],
+        'auth.login_failed_invalid_password' => [
+            'label'    => 'Contraseña incorrecta',
+            'category' => 'auth',
+            'level'    => 'warning',
+            'message'  => 'Contraseña incorrecta para el usuario {{context.username}}.',
+        ],
+        'auth.login_failed_unknown_user' => [
+            'label'    => 'Intento con cuenta inexistente',
+            'category' => 'auth',
+            'level'    => 'warning',
+            'message'  => 'Intento de acceso con una cuenta no registrada ({{context.username}}).',
+        ],
         'auth.logout' => [
             'label'    => 'Cierre de sesión',
             'category' => 'auth',
@@ -60,6 +72,12 @@ class EventCatalog
             'category' => 'user',
             'level'    => 'warning',
             'message'  => 'Se solicitó el restablecimiento de contraseña para {{context.user_email}}.',
+        ],
+        'auth.password_recovery.invalid_user' => [
+            'label'    => 'Solicitud de restablecimiento sin cuenta',
+            'category' => 'auth',
+            'level'    => 'warning',
+            'message'  => 'Intento de restablecer contraseña para una cuenta no registrada ({{context.username}}).',
         ],
         'guarantee.created' => [
             'label'    => 'Inicio de nueva garantía',
