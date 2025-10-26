@@ -467,19 +467,54 @@ class GuaranteeRestController
      */
     private static function normalize_decimal($value)
     {
-        if (!is_numeric($value)) {
-            $value     = preg_replace('/[^0-9.,]/', '', (string) $value);
-            $lastComma = strrpos($value, ',');
-            $lastDot   = strrpos($value, '.');
-            $sep       = $lastComma > $lastDot ? ',' : '.';
-            $parts     = explode($sep, $value);
-            $intPart   = preg_replace('/[^0-9]/', '', $parts[0]);
-            $decPart   = isset($parts[1]) ? preg_replace('/[^0-9]/', '', $parts[1]) : '';
-            $value     = $decPart !== '' ? $intPart . '.' . $decPart : $intPart;
+        if ($value === null || $value === '') {
+            return '';
         }
 
-        if ($value === '' || $value === null) {
+        if (is_numeric($value)) {
+            $float = (float) $value;
+            $str   = (string) $float;
+            return strpos($str, '.') !== false ? rtrim(rtrim($str, '0'), '.') : $str;
+        }
+
+        $value = trim((string) $value);
+        if ($value === '') {
             return '';
+        }
+
+        $value = str_replace(["\xC2\xA0", ' '], '', $value);
+
+        $is_negative = strpos($value, '-') !== false;
+        $value       = str_replace('-', '', $value);
+
+        $value = preg_replace('/[^0-9.,]/', '', $value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (strpos($value, ',') !== false) {
+            $value = str_replace('.', '', $value);
+            $value = str_replace(',', '.', $value);
+        } elseif (strpos($value, '.') !== false) {
+            $lastDot = strrpos($value, '.');
+            $intPart = substr($value, 0, $lastDot);
+            $decPart = substr($value, $lastDot + 1);
+            $intPart = preg_replace('/[^0-9]/', '', $intPart);
+            $decPart = preg_replace('/[^0-9]/', '', $decPart);
+            if ($decPart !== '' && strlen($decPart) <= 2) {
+                $value = $intPart . '.' . $decPart;
+            } else {
+                $value = $intPart . $decPart;
+            }
+        }
+
+        $value = preg_replace('/[^0-9.]/', '', $value);
+        if ($value === '') {
+            return '';
+        }
+
+        if ($is_negative) {
+            $value = '-' . $value;
         }
 
         $float = (float) $value;
