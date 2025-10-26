@@ -93,20 +93,21 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                     <section class="form-section">
                         <h3 class="subsection-title">Selecciona el canal de venta</h3>
                         <div class="channel-selector">
-                            <div class="channel-btn" data-channel="professional">
+                            <div class="channel-btn" data-channel="compraventa">
                                 <div class="channel-icon"><?php echo Svg::icon('professional'); ?></div>
-                                <div class="channel-name">Profesional</div>
-                                <div class="channel-desc">Compraventas, concesionarios</div>
+                                <div class="channel-name">Compraventa</div>
+                            </div>
+                            <div class="channel-btn" data-channel="concesionario">
+                                <div class="channel-icon"><?php echo Svg::icon('car_tag'); ?></div>
+                                <div class="channel-name">Concesionario oficial</div>
                             </div>
                             <div class="channel-btn" data-channel="individual">
                                 <div class="channel-icon"><?php echo Svg::icon('individual'); ?></div>
                                 <div class="channel-name">Particular</div>
-                                <div class="channel-desc">Usuarios individuales</div>
                             </div>
                             <div class="channel-btn" data-channel="agency">
                                 <div class="channel-icon"><?php echo Svg::icon('agency'); ?></div>
                                 <div class="channel-name">Gestoría</div>
-                                <div class="channel-desc">Asesores y gestores</div>
                             </div>
                         </div>
                     </section>
@@ -199,6 +200,35 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             <div class="input-container">
                                 <input type="text" id="company_legal_name" class="form-input" placeholder=" ">
                                 <label for="company_legal_name" class="form-label">Razón social</label>
+                            </div>
+                        </div>
+
+                        <div class="form-grid form-grid--two">
+                            <div class="input-container">
+                                <input type="text" id="company_cif" class="form-input" placeholder=" ">
+                                <label for="company_cif" class="form-label">CIF</label>
+                            </div>
+
+                            <div class="input-container">
+                                <input type="text" id="company_address" class="form-input" placeholder=" ">
+                                <label for="company_address" class="form-label">Dirección</label>
+                            </div>
+                        </div>
+
+                        <div class="form-row form-row--four">
+                            <div class="input-container">
+                                <input type="text" id="company_postal_code" class="form-input" placeholder=" ">
+                                <label for="company_postal_code" class="form-label">Código postal</label>
+                            </div>
+
+                            <div class="input-container">
+                                <input type="text" id="company_city" class="form-input" placeholder=" ">
+                                <label for="company_city" class="form-label">Población</label>
+                            </div>
+
+                            <div class="input-container">
+                                <input type="text" id="company_province" class="form-input" placeholder=" ">
+                                <label for="company_province" class="form-label">Provincia</label>
                             </div>
                         </div>
                     </section>

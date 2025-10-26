@@ -48,10 +48,43 @@
       }
     };
 
+    const prefillSepaFields = () => {
+      const getValue = (id) => {
+        const element = document.getElementById(id);
+        return element ? element.value.trim() : '';
+      };
+
+      const sepaName = document.getElementById('sepa_name');
+      const sepaAddress = document.getElementById('sepa_address');
+      const sepaPostal = document.getElementById('sepa_postal_code');
+      const sepaCity = document.getElementById('sepa_city');
+      const sepaState = document.getElementById('sepa_state');
+
+      if (!sepaName || !sepaAddress || !sepaPostal || !sepaCity || !sepaState) {
+        return;
+      }
+
+      const fullName = [getValue('first_name'), getValue('last_name')]
+        .filter(Boolean)
+        .join(' ');
+
+      sepaName.value = fullName;
+      sepaAddress.value = getValue('company_address');
+      sepaPostal.value = getValue('company_postal_code');
+      sepaCity.value = getValue('company_city');
+      sepaState.value = getValue('company_province');
+    };
+
     nextButtons.forEach((button) => {
       button.addEventListener('click', () => {
         if (currentStep < totalSteps) {
+          const previousStep = currentStep;
           currentStep += 1;
+
+          if (previousStep === 1 && currentStep === 2) {
+            prefillSepaFields();
+          }
+
           goToStep(currentStep);
         }
       });
@@ -119,7 +152,7 @@
       });
 
       if (companySection) {
-        const showCompanyFields = channel === 'professional';
+        const showCompanyFields = ['compraventa', 'concesionario'].includes(channel);
         companySection.hidden = !showCompanyFields;
         companySection.setAttribute('aria-hidden', showCompanyFields ? 'false' : 'true');
       }
