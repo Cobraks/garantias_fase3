@@ -1416,8 +1416,9 @@
                 }
 
                 assignedSection.classList.remove('client-dialog__assigned--empty');
+                const labels = getResultLabels();
                 const removeTemplate = (strings.assignCommercialRemove || 'Eliminar asignación de %s').trim();
-                const removeLabel = removeTemplate.includes('%s')
+                const removeMessage = removeTemplate.includes('%s')
                     ? removeTemplate.replace('%s', resolvedCompany)
                     : `${removeTemplate} ${resolvedCompany}`.trim();
 
@@ -1428,33 +1429,36 @@
                     const emailLine = entry.email
                         ? `<span class="client-dialog__assigned-email">${escapeHtml(entry.email)}</span>`
                         : '';
+                    const cardLabel = `${removeMessage}: ${entry.name || entry.email || strings.commercials || 'Comercial'}`;
 
                     return `
-                        <article class="client-dialog__assigned-card">
+                        <article class="client-dialog__assigned-card" data-id="${entry.id}" role="button" tabindex="0" aria-pressed="true" aria-label="${escapeAttribute(cardLabel)}" title="${escapeAttribute(labels.remove)}">
                             <div class="client-dialog__assigned-media">${avatarHtml}</div>
                             <div class="client-dialog__assigned-info">
                                 <span class="client-dialog__assigned-name">${escapeHtml(entry.name || entry.email || strings.commercials || 'Comercial')}</span>
                                 ${emailLine}
                             </div>
-                            <button type="button" class="client-dialog__assigned-remove" data-remove-id="${entry.id}">
-                                ${escapeHtml(removeLabel)}
-                            </button>
+                            <span class="client-dialog__assigned-chip" aria-hidden="true">${escapeHtml(labels.selected)}</span>
                         </article>
                     `;
                 }).join('');
 
                 assignedList.innerHTML = itemsHtml;
-                assignedList.querySelectorAll('[data-remove-id]').forEach((button) => {
-                    button.addEventListener('click', () => {
-                        const id = Number(button.dataset.removeId) || 0;
-                        if (!id || !selectedIds.has(id)) {
-                            return;
+                assignedList.querySelectorAll('.client-dialog__assigned-card').forEach((card) => {
+                    const id = Number(card.dataset.id) || 0;
+                    if (!id || !selectedIds.has(id)) {
+                        return;
+                    }
+                    const handleRemoval = () => {
+                        const summary = selectedRecords.get(id) || null;
+                        toggleSelection(id, summary || null, null);
+                    };
+                    card.addEventListener('click', handleRemoval);
+                    card.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            handleRemoval();
                         }
-                        selectedIds.delete(id);
-                        selectedRecords.delete(id);
-                        updateSaveButton();
-                        renderAssignedList();
-                        syncCardStates();
                     });
                 });
             }
