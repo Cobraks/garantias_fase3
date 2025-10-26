@@ -1,5 +1,8 @@
+import { AVAILABLE_DOCS } from "./modules/docs-config.js";
+
 (() => {
-	document.addEventListener("DOMContentLoaded", () => {
+        "use strict";
+        document.addEventListener("DOMContentLoaded", () => {
 		console.log("DOM loaded — inicializando mis_garantias.js");
 
                 const tbody = document.querySelector("tbody[data-current-page]");
@@ -301,42 +304,106 @@
                 }
                 document.addEventListener("click", handleConfirmClick);
 
-                document.addEventListener("click", (e) => {
-                        const btn = e.target.closest("[data-copy]");
-                        if (!btn) return;
-                        const panel = btn.closest(".guarantee-detail__panel");
-                        const target = panel.querySelector(btn.dataset.copy);
+                function detailCopyText(text) {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                return navigator.clipboard.writeText(text);
+                        }
+                        const textarea = document.createElement("textarea");
+                        textarea.value = text;
+                        textarea.setAttribute("readonly", "true");
+                        textarea.style.position = "absolute";
+                        textarea.style.left = "-9999px";
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        try {
+                                document.execCommand("copy");
+                        } catch (err) {
+                                console.error("Fallback copy failed", err);
+                        }
+                        document.body.removeChild(textarea);
+                        return Promise.resolve();
+                }
+
+                function showDetailToast(panel, message) {
+                        const toast = panel.querySelector(".detail__copy-toast");
+                        if (!toast) return;
+                        toast.textContent = message || "Copiado al portapapeles.";
+                        toast.classList.add("show");
+                        setTimeout(() => toast.classList.remove("show"), 2000);
+                }
+
+                function handleDetailCopy(btn, panel) {
+                        if (!btn || !panel) return;
+                        const selector = btn.dataset.copy;
+                        if (!selector) return;
+                        const target = panel.querySelector(selector);
                         if (!target) return;
                         const text = target.textContent.trim();
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                                navigator.clipboard.writeText(text).then(() => {
-                                        const toast = panel.querySelector(
-                                                ".detail__copy-toast"
-                                        );
-                                        if (toast) {
-                                                toast.textContent =
-                                                        btn.dataset.toast || "Copiado";
-                                                toast.classList.add("show");
-                                                setTimeout(
-                                                        () => toast.classList.remove("show"),
-                                                        2000
-                                                );
-                                        }
-                                        const original = btn.getAttribute(
-                                                "aria-label"
-                                        );
-                                        const done = btn.dataset.done || "Copiado";
-                                        btn.setAttribute("aria-label", done);
+                        if (!text) return;
+                        const originalLabel = btn.getAttribute("aria-label") || "";
+                        const doneLabel = btn.dataset.done || "Copiado";
+                        const toastMessage = btn.dataset.toast || doneLabel;
+                        detailCopyText(text).then(() => {
+                                showDetailToast(panel, toastMessage);
+                                if (doneLabel) {
+                                        btn.setAttribute("aria-label", doneLabel);
                                         setTimeout(() => {
-                                                if (original) {
+                                                if (originalLabel) {
                                                         btn.setAttribute(
                                                                 "aria-label",
-                                                                original
+                                                                originalLabel
                                                         );
                                                 }
                                         }, 2000);
-                                });
+                                }
+                        });
+                }
+
+                document.addEventListener("click", (e) => {
+                        const button = e.target.closest(".detail__copy-btn");
+                        if (button) {
+                                const panel = button.closest(
+                                        ".guarantee-detail__panel"
+                                );
+                                if (panel) {
+                                        handleDetailCopy(button, panel);
+                                }
+                                return;
                         }
+
+                        const row = e.target.closest("tr[data-copy-row]");
+                        if (row) {
+                                const panel = row.closest(
+                                        ".guarantee-detail__panel"
+                                );
+                                if (!panel) {
+                                        return;
+                                }
+                                const proxyButton = row.querySelector(
+                                        ".detail__copy-btn"
+                                );
+                                if (!proxyButton) {
+                                        return;
+                                }
+                                handleDetailCopy(proxyButton, panel);
+                                return;
+                        }
+
+                        const cell = e.target.closest("[data-copy-cell]");
+                        if (!cell) {
+                                return;
+                        }
+                        const panel = cell.closest(".guarantee-detail__panel");
+                        if (!panel) {
+                                return;
+                        }
+                        const proxyButton = cell.querySelector(
+                                ".detail__copy-btn"
+                        );
+                        if (!proxyButton) {
+                                return;
+                        }
+                        handleDetailCopy(proxyButton, panel);
                 });
 
                function normalizeEstadoClase(estado) {
@@ -546,6 +613,9 @@
                         if (data.tipo && typeof data.tipo === "object") {
                                 data.tipo = data.tipo.label || data.tipo.name || data.tipo.value || data.tipo;
                         }
+                        if (typeof data.transfer_iban === "string") {
+                                data.transfer_iban = data.transfer_iban.trim();
+                        }
                         return data;
                 }
 
@@ -617,6 +687,7 @@
                         tr.dataset.metodoPago = item.detail.metodo_pago || "";
                         tr.dataset.cobroRealizado = item.detail.cobro_realizado ? "1" : "";
                         tr.dataset.ibanVendedor = item.detail.iban_vendedor || "";
+                        tr.dataset.transferIban = item.detail.transfer_iban || "";
 
                         const cobroBadgeHtml =
                                 isAdmin &&
@@ -991,6 +1062,7 @@
                                 metodo_pago: row.dataset.metodoPago ?? "",
                                 cobro_realizado: row.dataset.cobroRealizado === "1",
                                 iban_vendedor: row.dataset.ibanVendedor ?? "",
+                                transfer_iban: row.dataset.transferIban ?? "",
                                 tipo: "-",
                                 kilometros: "-",
                                 primera_matriculacion: "-",
@@ -1007,7 +1079,6 @@
                                 certificate_url: "#",
                                 condicionado_url: "#",
                                 cobertura_url: "#",
-                                factura_url: "#",
                                 nombre_comprador: "-",
                                 dni_comprador: "-",
                                 telefono_comprador: "-",
@@ -1043,6 +1114,12 @@
         val && typeof val === "object" && "label" in val
             ? val.label
             : val;
+    const escapeAttr = (value) =>
+        String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
     const skeleton = (field, fallback = "-") =>
         skeletons.includes(field)
             ? `<span class="skeleton skeleton--${field}"></span>`
@@ -1070,6 +1147,10 @@
         rowData.cobro_realizado,
     ].some((v) => v === true || v === 1 || v === "1");
 
+    const transferIban = [data.transfer_iban, rowData.transfer_iban]
+        .map((val) => (typeof val === "string" ? val.trim() : ""))
+        .find((val) => val) || "";
+
     const planTitle = `${data.plan ?? "-"}${
         mesesTotales !== "-" ? " " + mesesTotales + " meses" : ""
     }`;
@@ -1088,12 +1169,16 @@
         const str = String(val).trim();
         return str !== "" && str !== "-" && str !== "#";
     };
-    const docFields = [
-        "certificate_url",
-        "condicionado_url",
-        "cobertura_url",
-        "factura_url",
-    ];
+    const docsData = AVAILABLE_DOCS.map((doc) => {
+        const value = data?.[doc.field] ?? rowData?.[doc.field] ?? "";
+        const url = typeof value === "string" ? value : String(value ?? "");
+        return {
+            ...doc,
+            url,
+            available: isFilled(value),
+        };
+    });
+    const availableDocs = docsData.filter((doc) => doc.available);
     const buyerFields = [
         "nombre_comprador",
         "dni_comprador",
@@ -1106,7 +1191,23 @@
     ];
     const hasGuaranteeInfo =
         isFilled(data.plan) && isFilled(data.desde_fmt) && isFilled(data.hasta_fmt);
-    const hasDocs = docFields.every((field) => isFilled(data[field]));
+    const hasDocs = availableDocs.length > 0;
+    const docsActionsHtml = isAdmin
+        ? '<div class="detail__docs-actions"><button type="button" class="detail__docs-add">Añadir documentación</button></div>'
+        : "";
+    const docsListHtml = hasDocs
+        ? `<ul class="detail__docs-list">${availableDocs
+              .map(
+                  (doc, idx) =>
+                      `<li class="detail__docs-item">` +
+                      `<button type="button" class="detail__docs-btn" data-doc-url="${escapeAttr(doc.url)}" data-doc-index="${idx}" data-doc-key="${doc.key}" aria-label="Ver documento ${escapeAttr(doc.listLabel)}">` +
+                      `<span class="detail__docs-icon">${pdfIcon}</span>` +
+                      `<span class="detail__docs-label">${doc.listLabel}</span>` +
+                      `</button>` +
+                      `</li>`
+              )
+              .join("")}</ul>${docsActionsHtml}`
+        : `<p class="detail__alert-section">Documentación no disponible</p>${docsActionsHtml}`;
     const hasBuyerInfo = buyerFields.every((field) => isFilled(data[field]));
     const showChannelSection = isAdmin;
     const showActions = isAdmin;
@@ -1175,31 +1276,7 @@
                 </section>
                 <section class="detail__section detail__section--docs">
                         <h3 class="detail__section-title">Documentación</h3>
-                        ${hasDocs
-                            ? `<ul class="detail__docs-list">
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("certificate_url", "#")}" data-doc-index="0" aria-label="Ver documento Certificado Garantía">
-                                                <span class="detail__docs-icon">${pdfIcon}</span>
-                                                <span class="detail__docs-label">Certificado Garantía</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" data-doc-index="1" aria-label="Ver documento Condicionado">
-                                                <span class="detail__docs-label">Condicionado</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" data-doc-index="2" aria-label="Ver documento Cobertura">
-                                                <span class="detail__docs-label">Cobertura</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" data-doc-index="3" aria-label="Ver documento Factura">
-                                                <span class="detail__docs-label">Factura</span>
-                                        </button>
-                                </li>
-                        </ul>`
-                            : `<p class="detail__alert-section">Documentación no disponible</p>`}
+                        ${docsListHtml}
                 </section>
                 <section class="detail__section">
                         <h3>Datos del cliente</h3>
@@ -1267,9 +1344,9 @@
                                 </button>
                                 <table class="detail__transfer-table">
                                         <tbody>
-                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
-                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
-                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                                <tr data-copy-row><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr data-copy-row><th>Cantidad</th><td data-copy-cell data-tooltip="Copiar cantidad"><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                <tr data-copy-row><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
                                         </tbody>
                                 </table>
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
@@ -1279,14 +1356,16 @@
             if (metodoPago === "transferencia") {
                 const concepto = `Garantía ${skeleton("matricula")}`;
                 const cantidad = `${skeleton("precio", "0")} €`;
-                const iban = "ES00 0000 0000 0000 0000 0000";
+                const ibanRow = transferIban
+                    ? `<tr data-copy-row><th>IBAN</th><td data-copy-cell data-tooltip="Copiar IBAN"><span data-iban>${transferIban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>`
+                    : "";
                 return `<section class="detail__section detail__section--payment">
                                 <p class="detail__payment-note">Recuerda realizar la transferencia para activar tu garantía.</p>
                                 <table class="detail__transfer-table">
                                         <tbody>
-                                                <tr><th>Concepto</th><td><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
-                                                <tr><th>Cantidad</th><td><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
-                                                <tr><th>IBAN</th><td><span data-iban>${iban}</span><button type="button" class="detail__copy-btn" data-copy="[data-iban]" data-label="Copiar IBAN" data-done="IBAN copiado" data-toast="IBAN copiado al portapapeles." aria-label="Copiar IBAN">${copyIcon}</button></td></tr>
+                                                <tr data-copy-row><th>Concepto</th><td data-copy-cell data-tooltip="Copiar concepto"><span data-concepto>${concepto}</span><button type="button" class="detail__copy-btn" data-copy="[data-concepto]" data-label="Copiar concepto" data-done="Concepto copiado" data-toast="Concepto copiado al portapapeles." aria-label="Copiar concepto">${copyIcon}</button></td></tr>
+                                                <tr data-copy-row><th>Cantidad</th><td data-copy-cell data-tooltip="Copiar cantidad"><span data-amount>${cantidad}</span><button type="button" class="detail__copy-btn" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad">${copyIcon}</button></td></tr>
+                                                ${ibanRow}
                                         </tbody>
                                 </table>
                                 <div class="detail__copy-toast" aria-hidden="true"></div>
@@ -1354,29 +1433,7 @@
                 </section>
                 <section class="detail__section detail__section--docs">
                         <h3 class="detail__section-title">Documentación</h3>
-                        <ul class="detail__docs-list">
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("certificate_url", "#")}" data-doc-index="0" aria-label="Ver documento Certificado Garantía">
-                                                <span class="detail__docs-icon">${pdfIcon}</span>
-                                                <span class="detail__docs-label">Certificado Garantía</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("condicionado_url", "#")}" data-doc-index="1" aria-label="Ver documento Condicionado">
-                                                <span class="detail__docs-label">Condicionado</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("cobertura_url", "#")}" data-doc-index="2" aria-label="Ver documento Cobertura">
-                                                <span class="detail__docs-label">Cobertura</span>
-                                        </button>
-                                </li>
-                                <li class="detail__docs-item">
-                                        <button type="button" class="detail__docs-btn" data-doc-url="${skeleton("factura_url", "#")}" data-doc-index="3" aria-label="Ver documento Factura">
-                                                <span class="detail__docs-label">Factura</span>
-                                        </button>
-                                </li>
-                        </ul>
+                        ${docsListHtml}
                 </section>
                 <section class="detail__section">
                         <h3>Datos del cliente</h3>
@@ -1407,10 +1464,27 @@ function syncPdfModalDocs(panel) {
         if (!modal) return;
         const modalList = modal.querySelector(".pdf-modal__docs-list");
         const panelList = panel.querySelector(".detail__docs-list");
-        if (modalList && panelList) {
+        if (modalList) {
                 modalList.innerHTML = "";
-                panelList.querySelectorAll(".detail__docs-item").forEach((item) => {
-                        modalList.appendChild(item.cloneNode(true));
+        }
+        if (modalList && panelList) {
+                const panelButtons = Array.from(
+                        panelList.querySelectorAll(".detail__docs-btn")
+                );
+                panelButtons.forEach((btn, idx) => {
+                        btn.dataset.docIndex = String(idx);
+                });
+                panelButtons.forEach((btn, idx) => {
+                        const item = btn.closest(".detail__docs-item");
+                        if (!item) return;
+                        const clone = item.cloneNode(true);
+                        const cloneBtn = clone.querySelector(
+                                ".detail__docs-btn"
+                        );
+                        if (cloneBtn) {
+                                cloneBtn.dataset.docIndex = String(idx);
+                        }
+                        modalList.appendChild(clone);
                 });
         }
         const subtitle = modal.querySelector(".pdf-modal-subttitle");
@@ -1555,11 +1629,27 @@ function initRowSelection() {
                                 );
                         }
 
+                        function openDocByKey(key) {
+                                if (!key) return;
+                                const buttons = getButtons();
+                                const idx = buttons.findIndex(
+                                        (button) => button.dataset.docKey === key
+                                );
+                                if (idx !== -1) {
+                                        openDocByIndex(idx);
+                                }
+                        }
+
                         document.addEventListener("click", (e) => {
                                 const btn = e.target.closest(".detail__docs-btn");
                                 if (btn) {
-                                        const idx = parseInt(btn.dataset.docIndex || "0", 10);
-                                        openDocByIndex(idx);
+                                        const key = btn.dataset.docKey || "";
+                                        if (key) {
+                                                openDocByKey(key);
+                                        } else {
+                                                const idx = parseInt(btn.dataset.docIndex || "0", 10);
+                                                openDocByIndex(idx);
+                                        }
                                         modal.classList.add("visible");
                                 }
                         });
