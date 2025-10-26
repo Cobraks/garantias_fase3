@@ -13,6 +13,78 @@ $user             = $account['user'] ?? [];
 $commercials      = $account['commercials'] ?? [];
 $documents        = $account['documents'] ?? [];
 $payments         = $account['payments'] ?? [];
+$workshop        = is_array($account['workshop'] ?? null) ? $account['workshop'] : [];
+$workshop_defaults = [
+    'has_workshop'   => false,
+    'name'           => '',
+    'fiscal_name'    => '',
+    'tax_id'         => '',
+    'contact_person' => '',
+    'phone'          => '',
+    'email'          => '',
+    'address'        => '',
+];
+$workshop = array_merge($workshop_defaults, $workshop);
+$workshop_has = ! empty($workshop['has_workshop']);
+$workshop_fields = [
+    [
+        'key'          => 'name',
+        'label'        => 'Nombre del taller',
+        'id'           => 'account-workshop-name',
+        'type'         => 'text',
+        'autocomplete' => 'organization',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'fiscal_name',
+        'label'        => 'Denominación fiscal',
+        'id'           => 'account-workshop-fiscal-name',
+        'type'         => 'text',
+        'autocomplete' => 'organization',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'tax_id',
+        'label'        => 'CIF',
+        'id'           => 'account-workshop-tax-id',
+        'type'         => 'text',
+        'autocomplete' => '',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'contact_person',
+        'label'        => 'Persona de contacto del taller',
+        'id'           => 'account-workshop-contact',
+        'type'         => 'text',
+        'autocomplete' => 'name',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'phone',
+        'label'        => 'Teléfono del taller',
+        'id'           => 'account-workshop-phone',
+        'type'         => 'tel',
+        'autocomplete' => 'tel',
+        'inputmode'    => 'tel',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'email',
+        'label'        => 'Correo del taller',
+        'id'           => 'account-workshop-email',
+        'type'         => 'email',
+        'autocomplete' => 'email',
+        'class'        => 'account-form__field--half',
+    ],
+    [
+        'key'          => 'address',
+        'label'        => 'Dirección del taller',
+        'id'           => 'account-workshop-address',
+        'type'         => 'text',
+        'autocomplete' => 'street-address',
+        'class'        => 'account-form__field--full',
+    ],
+];
 $document_signature = is_array($documents['signature'] ?? null) ? $documents['signature'] : [];
 $document_seal       = is_array($documents['seal'] ?? null) ? $documents['seal'] : [];
 $signature_default_label   = esc_html__('+ Subir imagen de firma', 'garantias-online-360vo');
@@ -79,6 +151,7 @@ if (! empty($company['name'])) {
 $role_labels = [];
 $role_keys = array_map('sanitize_key', (array) ($user['roles'] ?? []));
 $is_admin_account = in_array('administrator', $role_keys, true);
+$is_professional_account = in_array('go_profesional', $role_keys, true);
 if ($role_keys && function_exists('wp_roles')) {
     $roles = wp_roles();
     foreach ($role_keys as $role_key) {
@@ -92,7 +165,7 @@ $company_type_label = isset($company['type']['label'])
     : '';
 $channel_label = '';
 
-if (in_array('go_profesional', $role_keys, true)) {
+if ($is_professional_account) {
     $channel_label = 'Profesional';
     if ($company_type_label !== '') {
         $channel_label .= ' - ' . $company_type_label;
@@ -201,6 +274,14 @@ $sections = [
         'icon'  => Svg::icon('check_shield', 'account-nav__icon'),
     ],
 ];
+
+if ($is_professional_account) {
+    $sections[] = [
+        'id'    => 'account-workshop',
+        'label' => 'Taller',
+        'icon'  => Svg::icon('taller', 'account-nav__icon'),
+    ];
+}
 
 $formatPhoneHref = static function ($phone) {
     if (! is_string($phone)) {
@@ -1273,6 +1354,75 @@ $formatPhoneHref = static function ($phone) {
                 <?php endif; ?>
             </div>
         </article>
+        <?php if ($is_professional_account) : ?>
+            <article id="account-workshop" class="account-section" tabindex="-1">
+                <header class="account-section__header">
+                    <?php echo Svg::icon('taller', 'account-section__icon'); ?>
+                    <div class="account-section__content">
+                        <h2>Taller</h2>
+                        <p>Indica si trabajas con un taller propio o asociado y revisa sus datos principales.</p>
+                    </div>
+                </header>
+                <div class="account-card-grid account-card-grid--workshop">
+                    <div class="account-card account-card--form account-card--workshop">
+                        <h3>Datos del taller</h3>
+                        <div class="account-field account-field--checkbox">
+                            <label class="account-checkbox account-checkbox--center" for="account-workshop-toggle">
+                                <input
+                                    type="checkbox"
+                                    id="account-workshop-toggle"
+                                    name="account_workshop[has_workshop]"
+                                    value="1"
+                                    data-workshop-toggle
+                                    aria-controls="account-workshop-details"
+                                    aria-expanded="<?php echo $workshop_has ? 'true' : 'false'; ?>"
+                                    <?php checked($workshop_has); ?>
+                                >
+                                <span>Dispongo de taller propio / asociado</span>
+                            </label>
+                        </div>
+                        <form
+                            class="account-form account-form--workshop"
+                            action="#"
+                            method="post"
+                            novalidate
+                            id="account-workshop-details"
+                            data-workshop-details
+                            <?php echo $workshop_has ? '' : 'hidden aria-hidden="true"'; ?>
+                        >
+                            <?php foreach ($workshop_fields as $field) : ?>
+                                <?php
+                                $field_value   = (string) ($workshop[$field['key']] ?? '');
+                                $field_classes = ['account-field', 'account-form__field'];
+                                if (! empty($field['class'])) {
+                                    $field_classes[] = $field['class'];
+                                }
+                                $autocomplete = isset($field['autocomplete']) ? (string) $field['autocomplete'] : '';
+                                $inputmode    = isset($field['inputmode']) ? (string) $field['inputmode'] : '';
+                                ?>
+                                <div class="<?php echo esc_attr(implode(' ', $field_classes)); ?>">
+                                    <div class="account-input-container">
+                                        <input
+                                            type="<?php echo esc_attr($field['type']); ?>"
+                                            id="<?php echo esc_attr($field['id']); ?>"
+                                            class="account-input"
+                                            name="account_workshop[<?php echo esc_attr($field['key']); ?>]"
+                                            value="<?php echo esc_attr($field_value); ?>"
+                                            placeholder=" "
+                                            <?php echo $autocomplete !== '' ? 'autocomplete="' . esc_attr($autocomplete) . '"' : ''; ?>
+                                            <?php echo $inputmode !== '' ? 'inputmode="' . esc_attr($inputmode) . '"' : ''; ?>
+                                        >
+                                        <label class="account-input__label" for="<?php echo esc_attr($field['id']); ?>">
+                                            <?php echo esc_html($field['label']); ?>
+                                        </label>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </form>
+                    </div>
+                </div>
+            </article>
+        <?php endif; ?>
     </section>
 </div>
 
