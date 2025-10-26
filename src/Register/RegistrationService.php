@@ -709,12 +709,24 @@ class RegistrationService
             return false;
         }
 
+        $profile_url = '';
+        $user        = get_user_by('id', $user_id);
+        if ($user instanceof WP_User) {
+            $slug = $user->user_nicename !== '' ? $user->user_nicename : $user->user_login;
+            $slug = sanitize_title($slug);
+
+            if ($slug !== '') {
+                $profile_url = trailingslashit(home_url('/garantias-online/clientes/' . rawurlencode($slug)));
+            }
+        }
+
         $context = [
             'user' => [
                 'name'   => $data['first_name'] . ' ' . $data['last_name'],
                 'email'  => $data['email'],
                 'phone'  => $data['phone'],
                 'channel'=> $data['channel_label'],
+                'profile_url' => $profile_url,
             ],
             'channel_key'   => $data['channel'],
             'channel_label' => $data['channel_label'],
