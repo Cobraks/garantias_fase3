@@ -1,168 +1,160 @@
-/* === Variables de color de marca === */
 :root {
-    --brand-red: #E02436;
-    --brand-red-dark: #C81B2A;
-    --bg-neutral: #F6F6F6;
-    --text-neutral: #1F2937;
-    --border-neutral: #E5E7EB;
-    --radius: 0.5rem;
-    --transition: 0.3s;
-    --spacing: 1rem;
-  }
-  
-body {
-    height: 100dvh;
-    border: solid green;
-    display: flex;
-    flex-direction: column;
+  --auth-surface: #f1f5f9;
+  --auth-surface-contrast: #ffffff;
+  --auth-accent: #2563eb;
+  --auth-accent-dark: #1e40af;
+  --auth-muted: #64748b;
 }
 
-  /* === Reset mínimo === */
-  .auth-body, .auth-wrapper, .auth-page, .auth-side, .auth-form, .auth-form-group {
-    margin: 0; padding: 0; box-sizing: border-box;
-  }
-  .auth-body {
-    background: var(--bg-neutral);
-    color: var(--text-neutral);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  /* === Layout === */
-  .auth-wrapper {
-    width: 100%;
-    max-width: 1440px;
-    background: #fff;
-    border-radius: 1rem;
-    /* box-shadow: 0 8px 24px rgba(0,0,0,0.1); */
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+.login-page {
+  --auth-accent: #c5444e;
+  --auth-accent-dark: #a8323c;
 }
 
-  /* === Panel lateral === */
-  .auth-side {
-    background: #111;
-    color: #fff;
-    padding: calc(var(--spacing)*2);
-    text-align: center;
-  }
-  .auth-logo {
-    max-width: 140px;
-    margin: 0 auto var(--spacing);
-  }
-  .auth-info {
-    font-size: 1rem;
-    line-height: 1.5;
-  }
-
-  
-  /* === Tarjeta de login === */
-  .auth-page {
-    flex: 1;
-    padding: calc(var(--spacing)*2);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  
-  /* Título */
-  .auth-page h1 {
-    font-size: 1.75rem;
-    color: var(--brand-red);
-    text-align: center;
-    margin-bottom: calc(var(--spacing)*1.5);
-  }
-  
-  /* Error */
-  .auth-error {
-    background: rgba(224,36,36,0.1);
-    color: #E02436;
-    padding: var(--spacing);
-    border-radius: var(--radius);
-    margin-bottom: var(--spacing);
-    text-align: center;
-  }
-  
-  /* === Formulario === */
-  .auth-form {
-    display: flex;
-    flex-direction: column;
-  }
-  .auth-form-group {
-    margin-bottom: var(--spacing);
-  }
-  .auth-form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-  }
-  .auth-form-group input {
-    width: 100%;
-    padding: var(--spacing);
-    font-size: 1rem;
-    border: 1px solid var(--border-neutral);
-    border-radius: var(--radius);
-    transition: border-color var(--transition), box-shadow var(--transition);
-  }
-  .auth-form-group input:focus {
-    border-color: var(--brand-red);
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(224,36,36,0.2);
-  }
-  
-  /* === Botón === */
-  .button-primary {
-    margin-top: var(--spacing);
-    padding: var(--spacing);
-    font-size: 1rem;
-    font-weight: 500;
-    color: #fff;
-    background: var(--brand-red);
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: background var(--transition);
-  }
-  .button-primary:hover {
-    background: var(--brand-red-dark);
-  }
-  
-  /* === Enlace alternativo === */
-  .auth-switch {
-    text-align: center;
-    margin-top: calc(var(--spacing)*1.5);
-    font-size: 0.875rem;
-  }
-  .auth-switch a {
-    color: var(--brand-red);
-    text-decoration: none;
-    font-weight: 500;
-  }
-  .auth-switch a:hover {
-    text-decoration: underline;
-  }
-
-.main-grid {
-    display: flex;
+.body--auth {
+  background: var(--auth-surface);
+  color: var(--text-primary, #1f2937);
 }
 
-.container {
-    margin-block: auto;
+.body--auth .container--auth {
+  padding-inline: clamp(1.5rem, 4vw, 3rem);
+}
+
+.login-page .form-panel,
+.register-page .info-panel {
+  background: var(--auth-surface-contrast);
+}
+
+.login-page .form-panel {
+  justify-content: center;
+  align-items: center;
+  padding-block: clamp(2.5rem, 6vh, 4rem);
+}
+
+.login-page .form-panel__inner {
+  width: min(100%, 420px);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.login-page .form-header {
+  gap: 0.75rem;
+}
+
+.login-page .info-panel {
+  gap: 1.25rem;
+}
+
+
+.login-page .auth-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.login-page .form-row.single {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.login-page .auth-form .form-input {
+  background-color: #fff;
+  border-color: var(--border);
+  border-radius: 12px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-page .input-container {
+  margin-bottom: 0;
+}
+
+.login-page .auth-form .form-input:focus {
+  border-color: var(--auth-accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+
+.login-page .form-footer {
+  margin-top: 1.25rem;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.login-page .form-footer .btn {
+  min-width: 160px;
+}
+
+.login-page .form-footer .form-link {
+  font-weight: 600;
+  color: var(--auth-accent);
+  text-decoration: none;
+}
+
+.login-page .form-footer .form-link:hover,
+.login-page .form-footer .form-link:focus-visible {
+  text-decoration: underline;
+}
+
+.login-page .btn-primary {
+  background: var(--auth-accent);
+  border: none;
+  transition: background 0.2s ease;
+}
+
+.login-page .btn-primary:hover,
+.login-page .btn-primary:focus-visible {
+  background: var(--auth-accent-dark);
+}
+
+.login-page .badge {
+  background: rgba(197, 68, 78, 0.12);
+  color: #c5444e;
+}
+
+.login-page .features-list li .feature-icon {
+  color: #c5444e;
+}
+
+.login-page a {
+  color: #c5444e;
+}
+
+.login-page a:hover,
+.login-page a:focus-visible {
+  color: #a8323c;
+}
+
+@media (max-width: 1024px) {
+  .login-page .form-panel {
+    order: 2;
+  }
+
+  .login-page .info-panel {
+    order: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .body--auth .container--auth {
+    padding-inline: clamp(1rem, 6vw, 2rem);
+  }
+
+  .login-page .form-panel,
+  .register-page .info-panel {
+    padding: clamp(1.75rem, 6vh, 2.5rem);
+  }
+
+  .login-page .form-footer {
+    flex-direction: column;
+  }
+
+  .login-page .form-footer .btn {
     width: 100%;
   }
-
-  @media (min-width: 768px) {
-    .auth-wrapper { flex-direction: row; }
-
-    .auth-side {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: calc(var(--spacing)*3);
-    }
-  }
+}

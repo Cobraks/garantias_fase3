@@ -505,7 +505,9 @@ $current_month_spanish = $spanish_months[$current_month] ?? $current_month;
 <?php else : ?>
     <?php
     // Si no está logueado, mostrar formulario de login
-    \GarantiasOnline360VO\TemplateLoader::load('login');
+    \GarantiasOnline360VO\TemplateLoader::load('login', [
+        'is_embedded' => true,
+    ]);
     ?>
 <?php endif; ?>
 
