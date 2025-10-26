@@ -15,7 +15,20 @@ use GarantiasOnline360VO\Svg;
         <span class="form-success__loading-text">Generando documentos…</span>
         <span class="form-success__loading-spinner" aria-hidden="true"></span>
     </div>
-    <a href="#" class="form-success__download" hidden></a>
+    <div class="form-success__docs" hidden>
+        <a href="#" class="document-card" data-doc="certificate" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+        <a href="#" class="document-card" data-doc="cobertura" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+        <a href="#" class="document-card" data-doc="condicionado" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+    </div>
     <a href="#" class="form-success__details-link">Ver garantía <span data-ref-text></span></a>
 
     <div class="form-success__payment" hidden>
