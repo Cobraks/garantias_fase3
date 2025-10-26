@@ -1003,7 +1003,10 @@ export default function initAutosave() {
                                         parts.push(months.trim());
                                 }
                         }
-                        plan.textContent = parts.join(" · ");
+                        const planDescription = parts.join(" ");
+                        plan.textContent = planDescription
+                                ? `Cobertura ${planDescription}`
+                                : "Cobertura";
                 }
                 const message = successBlock.querySelector(
                         ".form-success__message"
@@ -1138,6 +1141,31 @@ export default function initAutosave() {
                                                 ibanCopyBtn.setAttribute("aria-disabled", "true");
                                         }
                                 }
+
+                                const emailTarget = transfer.querySelector("[data-email]");
+                                if (emailTarget) {
+                                        const emailAddress =
+                                                emailTarget.dataset.copyValue ||
+                                                emailTarget.textContent.trim();
+                                        if (emailAddress) {
+                                                emailTarget.dataset.copyValue = emailAddress;
+                                                const emailLink = emailTarget.querySelector(
+                                                        "[data-email-link]"
+                                                );
+                                                if (emailLink) {
+                                                        const baseSubject =
+                                                                "Justificante de transferencia Garantía";
+                                                        const subject = plate
+                                                                ? `${baseSubject} ${plate.toUpperCase()}`
+                                                                : baseSubject;
+                                                        emailLink.href = `mailto:${emailAddress}?subject=${encodeURIComponent(
+                                                                subject
+                                                        )}`;
+                                                        emailLink.textContent =
+                                                                emailLink.dataset.emailBase || emailAddress;
+                                                }
+                                        }
+                                }
                         }
                 }
                 function copyText(text) {
@@ -1173,7 +1201,9 @@ export default function initAutosave() {
                         if (!selector) return;
                         const target = successBlock.querySelector(selector);
                         if (!target) return;
-                        const text = target.textContent.trim();
+                        const text = (
+                                target.dataset.copyValue || target.textContent || ""
+                        ).trim();
                         if (!text) return;
                         copyText(text).then(() => {
                                 const label = btn.querySelector(
