@@ -23,8 +23,35 @@ class GuaranteeEmailDataFactory
 
         $plate = sanitize_text_field($detail['matricula'] ?? '');
         $plan = sanitize_text_field($detail['plan'] ?? '');
-        $price = sanitize_text_field($detail['precio'] ?? '');
-        $payment = sanitize_text_field($detail['metodo_pago'] ?? '');
+
+        $vehicle_summary = $this->build_vehicle_summary($detail);
+        $vehicle = [
+            'type'     => sanitize_text_field($detail['tipo'] ?? ''),
+            'brand'    => sanitize_text_field($detail['marca'] ?? ''),
+            'model'    => sanitize_text_field($detail['modelo'] ?? ''),
+            'summary'  => $vehicle_summary,
+            'sentence' => $this->build_vehicle_sentence($detail, $vehicle_summary),
+        ];
+
+        $price_value = $this->parse_number($detail['precio'] ?? '');
+        $price_formatted = $price_value === null
+            ? ''
+            : $this->format_currency($price_value);
+
+        $payment_slug = sanitize_text_field($detail['metodo_pago'] ?? '');
+        $payment_label = $this->resolve_payment_label($payment_slug);
+
+        $from_date_raw = sanitize_text_field($detail['desde'] ?? '');
+        $to_date_raw   = sanitize_text_field($detail['hasta'] ?? '');
+
+        $dates = [
+            'raw_from' => $from_date_raw,
+            'raw_to'   => $to_date_raw,
+            'from'     => $this->format_date($from_date_raw),
+            'to'       => $this->format_date($to_date_raw),
+        ];
+
+        $deadline = $this->compute_payment_deadline($from_date_raw);
         $customer_name = sanitize_text_field($detail['nombre_comprador'] ?? '');
         $customer_email = sanitize_email($detail['email_comprador'] ?? '');
         $vendor_name = sanitize_text_field($detail['concesionario'] ?? '');
@@ -36,6 +63,11 @@ class GuaranteeEmailDataFactory
                 $vendor_email = sanitize_email($vendor_user->user_email);
             }
         }
+        error_log('[EMAIL] data_factory vendor ' . wp_json_encode([
+            'name'  => $vendor_name,
+            'id'    => $vendor_id,
+            'email' => $vendor_email,
+        ]));
         $state_value = sanitize_text_field($detail['estado']['value'] ?? '');
         $state_label = sanitize_text_field($detail['estado']['label'] ?? '');
 
@@ -48,16 +80,17 @@ class GuaranteeEmailDataFactory
             'id'          => $guarantee_id,
             'plate'       => $plate,
             'plan'        => $plan,
-            'price'       => $price,
-            'payment'     => $payment,
+            'vehicle'     => $vehicle,
+            'price'       => $price_formatted,
+            'price_raw'   => $price_value,
+            'payment'     => $payment_label,
+            'payment_slug'=> $payment_slug,
+            'payment_deadline' => $deadline,
             'state'       => [
                 'value' => $state_value,
                 'label' => $state_label,
             ],
-            'dates'       => [
-                'from' => sanitize_text_field($detail['desde'] ?? ''),
-                'to'   => sanitize_text_field($detail['hasta'] ?? ''),
-            ],
+            'dates'       => $dates,
             'customer'    => [
                 'name'  => $customer_name,
                 'email' => $customer_email,
@@ -67,12 +100,190 @@ class GuaranteeEmailDataFactory
                 'name'  => $vendor_name,
                 'email' => $vendor_email,
             ],
-            'documents'   => [
-                'certificate'  => esc_url_raw($detail['certificate_url'] ?? ''),
-                'cobertura'    => esc_url_raw($detail['cobertura_url'] ?? ''),
-                'condicionado' => esc_url_raw($detail['condicionado_url'] ?? ''),
+            'transfer'    => [
+                'iban'     => $this->sanitize_transfer_iban($detail['transfer_iban'] ?? ''),
+                'concept'  => $this->build_transfer_concept($plate, $guarantee_id),
+                'amount'   => $price_formatted,
+                'deadline' => $deadline['formatted'],
             ],
             'permalink'   => esc_url_raw($permalink),
         ];
+    }
+
+    private function parse_number($value): ?float
+    {
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        $normalized = preg_replace('/[^0-9,\.]/', '', $value);
+        if ($normalized === '') {
+            return null;
+        }
+
+        $last_comma = strrpos($normalized, ',');
+        $last_dot   = strrpos($normalized, '.');
+        $decimal_separator = $last_comma > $last_dot ? ',' : '.';
+
+        if ($decimal_separator === ',') {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        } else {
+            $normalized = str_replace(',', '', $normalized);
+        }
+
+        if (! is_numeric($normalized)) {
+            return null;
+        }
+
+        return (float) $normalized;
+    }
+
+    private function format_currency(float $value): string
+    {
+        return number_format($value, 2, ',', '.') . ' €';
+    }
+
+    private function resolve_payment_label(string $slug): string
+    {
+        $slug = trim($slug);
+        if ($slug === '') {
+            return '';
+        }
+
+        $map = [
+            'domiciliacion'          => __('Domiciliación bancaria', 'garantias-online-360vo'),
+            'domiciliacion_bancaria' => __('Domiciliación bancaria', 'garantias-online-360vo'),
+            'domiciliacion-bancaria' => __('Domiciliación bancaria', 'garantias-online-360vo'),
+            'transferencia'          => __('Transferencia bancaria', 'garantias-online-360vo'),
+            'transferencia_bancaria' => __('Transferencia bancaria', 'garantias-online-360vo'),
+        ];
+
+        if (isset($map[$slug])) {
+            return $map[$slug];
+        }
+
+        return ucfirst(str_replace('_', ' ', $slug));
+    }
+
+    private function format_date(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        $date = date_create($value);
+        if (! $date) {
+            return '';
+        }
+
+        return $date->format('d/m/Y');
+    }
+
+    private function compute_payment_deadline(string $from_date): array
+    {
+        $raw = '';
+        $formatted = '';
+
+        if ($from_date !== '') {
+            $date = date_create($from_date);
+            if ($date) {
+                $date->modify('+7 days');
+                $raw = $date->format('Y-m-d');
+                $formatted = $date->format('d/m/Y');
+            }
+        }
+
+        return [
+            'raw'       => $raw,
+            'formatted' => $formatted,
+        ];
+    }
+
+    private function sanitize_transfer_iban($value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        return trim($value);
+    }
+
+    private function build_vehicle_summary(array $detail): string
+    {
+        $parts = [];
+
+        $type = sanitize_text_field($detail['tipo'] ?? '');
+        if ($type !== '') {
+            $parts[] = trim($type);
+        }
+
+        $brand = sanitize_text_field($detail['marca'] ?? '');
+        if ($brand !== '') {
+            $parts[] = trim($brand);
+        }
+
+        $model = sanitize_text_field($detail['modelo'] ?? '');
+        if ($model !== '') {
+            $parts[] = trim($model);
+        }
+
+        if (! empty($parts)) {
+            return preg_replace('/\s+/', ' ', trim(implode(' ', $parts)));
+        }
+
+        $fallback = sanitize_text_field($detail['marca_modelo'] ?? '');
+
+        return $fallback !== '' ? $fallback : '';
+    }
+
+    private function build_vehicle_sentence(array $detail, string $summary): string
+    {
+        if ($summary === '') {
+            return '';
+        }
+
+        $type = sanitize_text_field($detail['tipo'] ?? '');
+        if ($type !== '') {
+            $lower = function_exists('mb_strtolower')
+                ? mb_strtolower($type, 'UTF-8')
+                : strtolower($type);
+
+            $brand = sanitize_text_field($detail['marca'] ?? '');
+            $model = sanitize_text_field($detail['modelo'] ?? '');
+
+            $pieces = array_filter([
+                $lower,
+                $brand,
+                $model,
+            ], static function ($value) {
+                return $value !== '';
+            });
+
+            if (! empty($pieces)) {
+                $summary = preg_replace('/\s+/', ' ', implode(' ', $pieces));
+            }
+        }
+
+        return sprintf(
+            /* translators: %s: vehicle description */
+            __('para un %s', 'garantias-online-360vo'),
+            $summary
+        );
+    }
+
+    private function build_transfer_concept(string $plate, int $guarantee_id): string
+    {
+        $reference = $plate !== '' ? $plate : ('#' . $guarantee_id);
+
+        return sprintf(
+            /* translators: %s: vehicle plate */
+            __('Garantía %s', 'garantias-online-360vo'),
+            $reference
+        );
     }
 }
