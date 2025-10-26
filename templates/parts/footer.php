@@ -61,6 +61,8 @@ if (! empty($is_add_guarantee)) {
     }
     $icon_pdf_html = Svg::icon('pdf');
     $icon_plus_html = Svg::icon('plus');
+    $icon_arrow_down_html = Svg::icon('arrow_drop_down');
+    $icon_arrow_up_html = Svg::icon('arrow_drop_up');
     $reclamation_url = ReclamationDocument::get_url();
     ?>
     <script>
@@ -74,7 +76,9 @@ if (! empty($is_add_guarantee)) {
             },
             icons: {
                 pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
-                plus: `<?php echo addslashes($icon_plus_html); ?>`
+                plus: `<?php echo addslashes($icon_plus_html); ?>`,
+                arrowDropDown: `<?php echo addslashes($icon_arrow_down_html); ?>`,
+                arrowDropUp: `<?php echo addslashes($icon_arrow_up_html); ?>`
             },
             pages: {
                 misGarantias: "<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>",

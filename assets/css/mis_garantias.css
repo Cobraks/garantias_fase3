@@ -534,7 +534,7 @@ section.guarantees-list.sticky-active {
 }
 
 .detail__section li strong {
-    font-weight: 500;
+    font-weight: 600;
 }
 .detail__actions {
     display: flex;
@@ -1148,6 +1148,79 @@ section.guarantees-list.sticky-active {
     margin-top: 0;
 }
 
+.detail__transfer-toggle {
+    margin-top: var(--spacing-2);
+    margin-bottom: var(--spacing-2);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    background: #f9fafb;
+    overflow: hidden;
+}
+
+.detail__transfer-toggle-summary {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #1f2937;
+    list-style: none;
+}
+
+.detail__transfer-toggle-summary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+    border-radius: inherit;
+}
+
+.detail__transfer-toggle-summary::-webkit-details-marker {
+    display: none;
+}
+
+.detail__transfer-toggle-summary svg {
+    display: block;
+}
+
+.detail__transfer-toggle-label {
+    flex: 1 1 auto;
+}
+
+.detail__transfer-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #4b5563;
+    transition: color var(--transition-speed);
+}
+
+.detail__transfer-toggle-icon--open {
+    display: none;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-summary {
+    border-bottom: 1px solid var(--border-color);
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon--closed {
+    display: none;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon--open {
+    display: inline-flex;
+}
+
+.detail__transfer-toggle[open] .detail__transfer-toggle-icon {
+    color: #111827;
+}
+
+.detail__transfer-toggle-content {
+    padding: 0.75rem 1rem 1rem;
+}
+
 .guarantee-detail__btn--report:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(224,36,36,0.5);
@@ -1332,6 +1405,13 @@ section.guarantees-list.sticky-active {
     border-left: 4px solid #f59e0b;
     border-radius: 6px;
     font-weight: 500;
+}
+.detail__payment-note--expired {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-left-color: #ef4444;
+    font-weight: 700;
+    font-size: 1.05rem;
 }
 .detail__payment-note--domiciliacion {
     background: #e0f2fe;
