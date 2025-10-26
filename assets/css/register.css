@@ -166,8 +166,8 @@ footer.footer .footer__wrapper {
 
 .register-page .info-panel h1 {
   font-size: 1.875rem;
-  margin: 2rem 0 1rem;
-  color: var(--text-primary);
+  margin: 0;
+  color: #000000;
   text-align: center;
 }
 
@@ -415,9 +415,33 @@ footer.footer .footer__wrapper {
   row-gap: 0;
 }
 
+.register-page .field-error {
+  color: var(--error);
+  font-size: 0.8rem;
+  margin: 0.35rem 0 0;
+  padding-left: 0.25rem;
+}
+
 .register-page .input-container {
   position: relative;
   margin-bottom: 1.5rem;
+}
+
+.register-page .input-container.error .form-input,
+.register-page .input-container.error .form-select,
+.register-page .input-container.error .form-textarea {
+  border-color: var(--error);
+}
+
+.register-page .input-container.error .form-label {
+  color: var(--error);
+}
+
+.register-page .input-container .error-message {
+  color: var(--error);
+  font-size: 0.8rem;
+  margin: 0.4rem 0 0;
+  padding-left: 0.25rem;
 }
 
 .register-page .input-container--with-toggle .form-input {
@@ -491,7 +515,7 @@ footer.footer .footer__wrapper {
 
 .register-page .channel-selector {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
@@ -502,14 +526,14 @@ footer.footer .footer__wrapper {
   align-items: center;
   justify-content: center;
   gap: 0;
-  padding: 1.5rem 1rem;
+  padding: 1.5rem 0.25rem;
   border: 2px solid var(--border);
   border-radius: var(--radius);
   background: #fff;
   cursor: pointer;
   transition: var(--transition);
   text-align: center;
-  color: var(--text-primary);
+  color: #a1a3a6;
 }
 
 .register-page .channel-btn:hover {
@@ -520,11 +544,6 @@ footer.footer .footer__wrapper {
 .register-page .channel-btn.active {
   border-color: var(--primary);
   background-color: transparent;
-  color: var(--primary);
-}
-
-.register-page .channel-btn:hover .channel-desc,
-.register-page .channel-btn.active .channel-desc {
   color: var(--primary);
 }
 
@@ -546,13 +565,7 @@ footer.footer .footer__wrapper {
 
 .register-page .channel-name {
   font-weight: 600;
-  margin-bottom: 0.25rem;
-  transition: color 0.2s ease;
-}
-
-.register-page .channel-desc {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+  margin-bottom: 0;
   transition: color 0.2s ease;
 }
 
@@ -683,6 +696,19 @@ footer.footer .footer__wrapper {
   margin-top: 0;
 }
 
+.register-page .checkbox-container--terms.error {
+  border: 1px solid var(--error);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.register-page .checkbox-error {
+  font-size: 0.8rem;
+  color: var(--error);
+  margin: 0.5rem 0 0 2rem;
+}
+
 .register-page .form-navigation {
   display: flex;
   justify-content: center;
@@ -706,6 +732,12 @@ footer.footer .footer__wrapper {
   font-size: 0.9rem;
 }
 
+.register-page .btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .register-page .btn-primary {
   background-color: var(--primary);
   color: #fff;
@@ -725,6 +757,25 @@ footer.footer .footer__wrapper {
   background-color: #f9fafb;
 }
 
+.register-page .btn-link {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  height: auto;
+  padding-inline: 0.5rem;
+  padding-block: 0.25rem;
+}
+
+.register-page .btn-link:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
+.register-page .btn-link[disabled] {
+  color: var(--text-tertiary);
+  text-decoration: none;
+}
+
 .register-page .file-upload {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
@@ -736,6 +787,17 @@ footer.footer .footer__wrapper {
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
+}
+
+.register-page .file-upload.error {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.register-page .file-upload .error-message {
+  color: var(--error);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
 }
 
 .register-page .file-upload:hover {
@@ -825,6 +887,8 @@ footer.footer .footer__wrapper {
 .register-page .verification-container {
   text-align: center;
   padding: 2rem;
+  max-width: 520px;
+  margin: 0 auto;
 }
 
 .register-page .verification-icon {
@@ -845,6 +909,74 @@ footer.footer .footer__wrapper {
   max-width: 500px;
   margin-left: auto;
   margin-right: auto;
+}
+
+.register-page .input-container--verification {
+  max-width: 320px;
+  margin: 0 auto 1.5rem;
+}
+
+.register-page .input-container--verification .form-input {
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  padding-inline: 1.5rem;
+}
+
+.register-page .verification-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.register-page .verification-feedback {
+  max-width: 460px;
+  margin: 0 auto 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary-dark);
+  text-align: center;
+}
+
+.register-page .verification-feedback--error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error);
+}
+
+.register-page .verification-feedback--success {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+}
+
+.register-page .verification-feedback--info {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary);
+}
+
+.register-page .verification-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.register-page .verification-success {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+}
+
+.register-page .verification-success p {
+  margin: 0 0 1rem;
+  font-weight: 600;
+}
+
+.register-page .verification-success .btn {
+  margin-top: 0.5rem;
 }
 
 .register-page .section-title {

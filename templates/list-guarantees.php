@@ -8,6 +8,11 @@ $is_list_page = true;
 \GarantiasOnline360VO\TemplateLoader::load_part('header', compact('is_list_page'));
 
 use GarantiasOnline360VO\Svg;
+
+$current_user = wp_get_current_user();
+$user_roles   = is_object($current_user) ? (array) $current_user->roles : [];
+$is_professional  = in_array('go_profesional', $user_roles, true);
+$show_channel_col = ! $is_professional;
 ?>
 
 
@@ -48,14 +53,22 @@ use GarantiasOnline360VO\Svg;
 </div>
 
 <div class="guarantees-container">
-    <!-- 2. LISTA: tabla semántica con columna “Garantía” al final y “Profesional” en vendedor -->
+    <!-- 2. LISTA: tabla semántica con columna “Garantía” al final y “Canal de venta” en vendedor -->
     <section class="guarantees-list">
         <table class="guarantees-table" style="view-transition-name: garantias-table">
             <thead>
                 <tr>
                     <th><?php esc_html_e('Vehículo',  'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Validez',   'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Vendedor',  'garantias-online-360vo'); ?></th>
+                    <th>
+                        <?php
+                        if ($show_channel_col) {
+                            esc_html_e('Canal de venta', 'garantias-online-360vo');
+                        } else {
+                            esc_html_e('Cliente', 'garantias-online-360vo');
+                        }
+                        ?>
+                    </th>
                     <th><?php esc_html_e('Estado',    'garantias-online-360vo'); ?></th>
                     <th><?php esc_html_e('Garantía',  'garantias-online-360vo'); ?></th>
                 </tr>
@@ -160,6 +173,24 @@ use GarantiasOnline360VO\Svg;
                     <?php esc_html_e('Siguiente', 'garantias-online-360vo'); ?>
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="confirm-modal" aria-hidden="true">
+    <div class="confirm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+        <button type="button" class="confirm-modal__close" aria-label="<?php esc_attr_e('Cerrar confirmación', 'garantias-online-360vo'); ?>">&times;</button>
+        <h2 id="confirm-modal-title" class="confirm-modal__title"></h2>
+        <p class="confirm-modal__subtitle"></p>
+        <p class="confirm-modal__message"></p>
+        <p class="confirm-modal__note" hidden></p>
+        <label class="confirm-modal__checkbox">
+            <input type="checkbox" class="confirm-modal__checkbox-input" />
+            <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
+        </label>
+        <div class="confirm-modal__actions">
+            <button type="button" class="confirm-modal__btn confirm-modal__btn--cancel"><?php esc_html_e('Cancelar', 'garantias-online-360vo'); ?></button>
+            <button type="button" class="confirm-modal__btn confirm-modal__btn--confirm" disabled><?php esc_html_e('Confirmar', 'garantias-online-360vo'); ?></button>
         </div>
     </div>
 </div>

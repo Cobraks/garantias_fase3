@@ -91,7 +91,7 @@ class GuaranteeEmailBuilder
         if (in_array($slug, ['domiciliacion', 'domiciliacion_bancaria', 'domiciliacion-bancaria'], true)) {
             return sprintf(
                 /* translators: %s: vehicle plate */
-                __('Nueva garantía %s pendiente de cobro', 'garantias-online-360vo'),
+                __('Nueva garantía %s pendiente de domiciliación', 'garantias-online-360vo'),
                 $plate
             );
         }
