@@ -130,47 +130,47 @@ body.scrolled .container {
 }
 
 .clients-page {
-    --client-surface: #ffffff;
-    --client-surface-alt: var(--go-color-f8fafc);
-    --client-panel-border: var(--go-color-e2e8f0);
-    --client-panel-border-strong: var(--go-color-cbd5e1);
+    --client-surface: var(--surface);
+    --client-surface-alt: var(--surface-soft);
+    --client-panel-border: var(--border-color);
+    --client-panel-border-strong: var(--border-color-strong);
     --client-panel-shadow: 0 24px 48px rgba(var(--go-color-0f172a-rgb), 0.12);
     --client-card-shadow: 0 10px 24px rgba(var(--go-color-0f172a-rgb), 0.08);
-    --client-accent: var(--go-color-2563eb);
+    --client-accent: var(--primary-color);
     --client-accent-rgb: var(--go-color-2563eb-rgb);
-    --client-accent-strong: var(--go-color-1d4ed8);
-    --client-accent-soft: rgba(var(--go-color-2563eb-rgb), 0.12);
-    --client-badge-text: var(--go-color-1d4ed8);
-    --client-tag-muted-bg: var(--go-color-e2e8f0);
+    --client-accent-strong: var(--primary-color-hover);
+    --client-accent-soft: var(--primary-color-soft);
+    --client-badge-text: var(--primary-color-hover);
+    --client-tag-muted-bg: var(--surface-alt);
     --client-tag-muted-text: var(--go-color-475569);
-    --client-contact-bg: var(--go-color-f8fafc);
-    --client-contact-border: var(--go-color-e2e8f0);
+    --client-contact-bg: var(--surface-soft);
+    --client-contact-border: var(--border-color);
     --client-contact-note: var(--text-secondary);
-    --client-avatar-border: var(--go-color-cbd5e1);
-    --client-action-bg: var(--go-color-f8fafc);
-    --client-action-border: var(--go-color-e2e8f0);
-    --client-action-hover-bg: var(--go-color-e2e8f0);
-    --client-action-hover-border: var(--go-color-cbd5e1);
-    --client-action-text: var(--go-color-0f172a);
-    --client-stat-border: var(--go-color-e2e8f0);
+    --client-avatar-border: var(--border-color-strong);
+    --client-action-bg: var(--surface);
+    --client-action-border: var(--border-color);
+    --client-action-hover-bg: var(--surface-alt);
+    --client-action-hover-border: var(--border-color-strong);
+    --client-action-text: var(--go-color-475569);
+    --client-stat-border: var(--border-color);
     --client-stat-label: var(--go-color-475569);
     --client-admin-text: var(--client-action-text);
-    --client-overlay: #000000c4;
+    --client-overlay: rgba(var(--go-color-0f172a-rgb), 0.65);
     --client-overlay-blur: blur(2px);
     --client-dialog-shadow: 0 32px 60px rgba(var(--go-color-0f172a-rgb), 0.18);
 }
 
 :root[data-theme='dark'] .clients-page {
-    --client-surface: #1f2937;
-    --client-surface-alt: #273447;
-    --client-panel-border: rgba(148, 163, 184, 0.28);
-    --client-panel-border-strong: rgba(191, 219, 254, 0.35);
+    --client-surface: var(--surface);
+    --client-surface-alt: var(--surface-alt);
+    --client-panel-border: rgba(148, 163, 184, 0.32);
+    --client-panel-border-strong: rgba(191, 219, 254, 0.45);
     --client-panel-shadow: 0 36px 72px rgba(0, 0, 0, 0.65);
     --client-card-shadow: 0 18px 36px rgba(0, 0, 0, 0.55);
-    --client-accent: #60a5fa;
-    --client-accent-rgb: 96 165 250;
-    --client-accent-strong: #3f83f8;
-    --client-accent-soft: rgba(96, 165, 250, 0.25);
+    --client-accent: var(--primary-color);
+    --client-accent-rgb: var(--go-color-2563eb-rgb);
+    --client-accent-strong: var(--primary-color-strong);
+    --client-accent-soft: var(--primary-color-soft);
     --client-badge-text: rgba(191, 219, 254, 0.92);
     --client-tag-muted-bg: rgba(71, 85, 105, 0.45);
     --client-tag-muted-text: rgba(226, 232, 240, 0.88);
@@ -186,7 +186,7 @@ body.scrolled .container {
     --client-stat-border: rgba(148, 163, 184, 0.35);
     --client-stat-label: rgba(203, 213, 225, 0.82);
     --client-admin-text: rgba(248, 250, 252, 0.96);
-    --client-overlay: #000000d0;
+    --client-overlay: rgba(0, 0, 0, 0.82);
     --client-overlay-blur: blur(2px);
     --client-dialog-shadow: 0 40px 80px rgba(0, 0, 0, 0.75);
 }
@@ -2002,9 +2002,9 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .guarantees-table thead th {
-    background: #1c1d24;
-    color: var(--go-color-ffffff);
-    border-color: rgba(148, 163, 184, 0.35);
+    background: var(--surface-alt);
+    color: var(--text-color);
+    border-color: var(--border-color);
 }
 
 :root[data-theme='dark'] .client-detail {
@@ -2055,6 +2055,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 :root[data-theme='dark'] .client-detail__registration {
     background: linear-gradient(135deg, rgba(96, 165, 250, 0.45), rgba(59, 130, 246, 0.75));
+    color: var(--text-inverse);
 }
 
 
@@ -2150,14 +2151,24 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .client-detail__commercial-media {
-    background: linear-gradient(135deg, rgba(var(--client-accent-rgb), 0.3), rgba(var(--client-accent-rgb), 0.5));
+    background: rgba(var(--client-accent-rgb), 0.2);
     color: var(--client-action-text);
-    box-shadow: inset 0 0 0 2px rgba(var(--client-accent-rgb), 0.35);
+    box-shadow: inset 0 0 0 1px rgba(var(--client-accent-rgb), 0.35);
 }
 
 :root[data-theme='dark'] .client-detail__commercial-action {
-    background: linear-gradient(135deg, var(--client-accent), var(--client-accent-strong));
-    box-shadow: 0 18px 32px rgba(var(--client-accent-rgb), 0.35);
+    background: var(--client-action-bg);
+    border-color: var(--client-action-border);
+    color: var(--client-action-text);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme='dark'] .client-detail__commercial-action:hover,
+:root[data-theme='dark'] .client-detail__commercial-action:focus-visible {
+    background: var(--client-action-hover-bg);
+    border-color: var(--client-action-hover-border);
+    color: var(--client-action-text);
+    box-shadow: 0 18px 32px rgba(0, 0, 0, 0.45);
 }
 
 :root[data-theme='dark'] .client-detail__status {
@@ -2320,7 +2331,13 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 :root[data-theme='dark'] .client-dialog__save {
-    background: linear-gradient(135deg, var(--client-accent), var(--client-accent-strong));
+    background: var(--primary-color);
+    color: var(--text-inverse);
+}
+
+:root[data-theme='dark'] .client-dialog__save:not(:disabled):hover,
+:root[data-theme='dark'] .client-dialog__save:not(:disabled):focus-visible {
+    background: var(--primary-color-hover);
 }
 
 :root[data-theme='dark'] .guarantee-detail {
@@ -3197,7 +3214,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
 .client-detail a {
-    color: var(--go-color-1d4ed8);
+    color: var(--primary-color);
     font-weight: 500;
     text-decoration: none;
     transition: color 0.2s ease, box-shadow 0.2s ease;
@@ -3205,15 +3222,25 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .client-detail a:hover,
 .client-detail a:focus-visible {
-    color: var(--go-color-1e3a8a);
+    color: var(--primary-color-hover);
     text-decoration: underline;
+}
+
+:root[data-theme='dark'] .client-detail a {
+    color: var(--client-action-text);
+}
+
+:root[data-theme='dark'] .client-detail a:hover,
+:root[data-theme='dark'] .client-detail a:focus-visible {
+    color: var(--client-action-text);
+    text-decoration: none;
 }
 
 .client-detail button {
     appearance: none;
     border: none;
     border-radius: 999px;
-    background: linear-gradient(135deg, var(--go-color-111827), var(--go-color-1f2937));
+    background: var(--primary-color);
     color: var(--text-inverse);
     font-weight: 600;
     font-size: 0.9rem;
@@ -3228,7 +3255,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .client-detail button:hover,
 .client-detail button:focus-visible {
-    background: linear-gradient(135deg, var(--go-color-0f172a), var(--go-color-111827));
+    background: var(--primary-color-hover);
     transform: translateY(-1px);
     box-shadow: 0 10px 20px rgba(var(--go-color-0f172a-rgb), 0.18);
 }
@@ -3438,6 +3465,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     font-weight: 600;
     font-size: 0.85rem;
     text-decoration: none;
+    box-shadow: 0 4px 10px rgba(var(--go-color-0f172a-rgb), 0.08);
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -3446,12 +3474,12 @@ tr.guarantees-table__row:not(.selected):hover td,
     background: var(--client-action-hover-bg);
     border-color: var(--client-action-hover-border);
     color: var(--client-action-text);
-    box-shadow: 0 10px 22px rgba(var(--client-accent-rgb), 0.18);
+    box-shadow: 0 10px 22px rgba(var(--go-color-0f172a-rgb), 0.12);
     text-decoration: none;
 }
 
 .client-detail__commercial-action:focus-visible {
-    outline: 2px solid rgba(var(--client-accent-rgb), 0.45);
+    outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
 }
 
@@ -4085,7 +4113,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     padding: 0.65rem 1.5rem;
     border-radius: 999px;
     border: none;
-    background: linear-gradient(135deg, var(--client-accent-strong), var(--client-accent));
+    background: var(--primary-color);
     color: var(--text-inverse);
     font-weight: 600;
     display: inline-flex;
@@ -4105,8 +4133,8 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .client-dialog__save:not(:disabled):hover,
 .client-dialog__save:not(:disabled):focus-visible {
-    background: linear-gradient(135deg, var(--client-accent), var(--client-accent-strong));
-    box-shadow: 0 12px 28px rgba(var(--client-accent-rgb), 0.18);
+    background: var(--primary-color-hover);
+    box-shadow: 0 12px 28px rgba(var(--go-color-0f172a-rgb), 0.12);
     outline: none;
 }
 
