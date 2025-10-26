@@ -11,6 +11,14 @@ $is_auth_page     = true;
 TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'));
 ?>
 
+<script>
+    window.__GO_REGISTER__ = {
+        rest: {
+            root: "<?php echo esc_url(rest_url('go/public/v1/')); ?>"
+        }
+    };
+</script>
+
 <main class="register-page" style="view-transition-name: register">
     <div class="container">
         <div class="info-panel" style="view-transition-name: header">
@@ -93,22 +101,24 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                     <section class="form-section">
                         <h3 class="subsection-title">Selecciona el canal de venta</h3>
                         <div class="channel-selector">
-                            <div class="channel-btn" data-channel="professional">
+                            <div class="channel-btn" data-channel="compraventa">
                                 <div class="channel-icon"><?php echo Svg::icon('professional'); ?></div>
-                                <div class="channel-name">Profesional</div>
-                                <div class="channel-desc">Compraventas, concesionarios</div>
+                                <div class="channel-name">Compraventa</div>
+                            </div>
+                            <div class="channel-btn" data-channel="concesionario">
+                                <div class="channel-icon"><?php echo Svg::icon('car_tag'); ?></div>
+                                <div class="channel-name">Concesionario oficial</div>
                             </div>
                             <div class="channel-btn" data-channel="individual">
                                 <div class="channel-icon"><?php echo Svg::icon('individual'); ?></div>
                                 <div class="channel-name">Particular</div>
-                                <div class="channel-desc">Usuarios individuales</div>
                             </div>
                             <div class="channel-btn" data-channel="agency">
                                 <div class="channel-icon"><?php echo Svg::icon('agency'); ?></div>
                                 <div class="channel-name">Gestoría</div>
-                                <div class="channel-desc">Asesores y gestores</div>
                             </div>
                         </div>
+                        <p class="field-error" id="channel-error" role="alert" hidden></p>
                     </section>
 
                     <section class="form-section">
@@ -201,11 +211,46 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                                 <label for="company_legal_name" class="form-label">Razón social</label>
                             </div>
                         </div>
+
+                        <div class="form-grid form-grid--two">
+                            <div class="input-container">
+                                <input type="text" id="company_cif" class="form-input" placeholder=" ">
+                                <label for="company_cif" class="form-label">CIF</label>
+                            </div>
+
+                            <div class="input-container">
+                                <input type="text" id="company_address" class="form-input" placeholder=" ">
+                                <label for="company_address" class="form-label">Dirección</label>
+                            </div>
+                        </div>
+
+                        <div class="form-row form-row--four">
+                            <div class="input-container">
+                                <input type="text" id="company_postal_code" class="form-input" placeholder=" ">
+                                <label for="company_postal_code" class="form-label">Código postal</label>
+                            </div>
+
+                            <div class="input-container">
+                                <input type="text" id="company_city" class="form-input" placeholder=" ">
+                                <label for="company_city" class="form-label">Población</label>
+                            </div>
+
+                            <div class="input-container">
+                                <input type="text" id="company_province" class="form-input" placeholder=" ">
+                                <label for="company_province" class="form-label">Provincia</label>
+                            </div>
+                        </div>
                     </section>
 
                     <div class="form-navigation">
                         <div></div>
-                        <button type="button" class="btn btn-primary" data-next-step>Siguiente</button>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            data-next-step
+                            disabled
+                            aria-disabled="true"
+                        >Siguiente</button>
                     </div>
                 </div>
 
@@ -462,51 +507,51 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             <div class="summary-title">Datos de cuenta</div>
                             <div class="summary-item">
                                 <span class="summary-label">Tipo:</span>
-                                <span class="summary-value" id="summary-channel">Profesional</span>
+                                <span class="summary-value" id="summary-channel">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Nombre comercial:</span>
-                                <span class="summary-value" id="summary-trade-name">Auto Solutions</span>
+                                <span class="summary-value" id="summary-trade-name">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Razón social:</span>
-                                <span class="summary-value" id="summary-legal-name">Auto Solutions S.A.</span>
+                                <span class="summary-value" id="summary-legal-name">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Nombre:</span>
-                                <span class="summary-value" id="summary-name">Juan Pérez</span>
+                                <span class="summary-value" id="summary-name">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Email:</span>
-                                <span class="summary-value" id="summary-email">juan@autosolutions.es</span>
+                                <span class="summary-value" id="summary-email">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Teléfono:</span>
-                                <span class="summary-value" id="summary-phone">+34 612 345 678</span>
+                                <span class="summary-value" id="summary-phone">—</span>
                             </div>
                         </div>
 
-                        <div class="summary-group" id="summary-workshop">
+                        <div class="summary-group" id="summary-workshop" hidden aria-hidden="true">
                             <div class="summary-title">Datos del taller</div>
                             <div class="summary-item">
                                 <span class="summary-label">Nombre:</span>
-                                <span class="summary-value" id="summary-workshop-name">Talleres Pérez</span>
+                                <span class="summary-value" id="summary-workshop-name">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Contacto:</span>
-                                <span class="summary-value" id="summary-workshop-contact">María González</span>
+                                <span class="summary-value" id="summary-workshop-contact">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Dirección:</span>
-                                <span class="summary-value" id="summary-workshop-address">Calle Talleres 45</span>
+                                <span class="summary-value" id="summary-workshop-address">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Teléfono:</span>
-                                <span class="summary-value" id="summary-workshop-phone">+34 912 345 678</span>
+                                <span class="summary-value" id="summary-workshop-phone">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Email:</span>
-                                <span class="summary-value" id="summary-workshop-email">taller@autosolutions.es</span>
+                                <span class="summary-value" id="summary-workshop-email">—</span>
                             </div>
                         </div>
 
@@ -514,38 +559,41 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                             <div class="summary-title">Preferencias</div>
                             <div class="summary-item">
                                 <span class="summary-label">Web 360VO:</span>
-                                <span class="summary-value" id="summary-web">https://autosolutions.es</span>
+                                <span class="summary-value" id="summary-web">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Firma automática:</span>
-                                <span class="summary-value" id="summary-signature">Activada</span>
+                                <span class="summary-value" id="summary-signature">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">Domiciliación:</span>
-                                <span class="summary-value" id="summary-sepa-status">Activada</span>
+                                <span class="summary-value" id="summary-sepa-status">—</span>
                             </div>
                         </div>
 
-                        <div class="summary-group" id="summary-sepa">
-                            <div class="summary-title">Datos para el SEPA</div>
-                            <div class="summary-item">
-                                <span class="summary-label">Titular:</span>
-                                <span class="summary-value" id="summary-sepa-name">Juan Pérez García</span>
-                            </div>
+                    <div class="summary-group" id="summary-sepa" hidden aria-hidden="true">
+                        <div class="summary-title">Datos para el SEPA</div>
+                        <div class="summary-item">
+                            <span class="summary-label">Titular:</span>
+                            <span class="summary-value" id="summary-sepa-name">—</span>
+                        </div>
                             <div class="summary-item">
                                 <span class="summary-label">Dirección:</span>
-                                <span class="summary-value" id="summary-sepa-address">Calle Principal 123 local A, 28001 Madrid, Madrid, España</span>
+                                <span class="summary-value" id="summary-sepa-address">—</span>
                             </div>
                             <div class="summary-item">
                                 <span class="summary-label">IBAN:</span>
-                                <span class="summary-value" id="summary-sepa-iban">ES12 3456 7890 1234 5678 9012</span>
+                                <span class="summary-value" id="summary-sepa-iban">—</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="checkbox-container checkbox-wrapper-14 checkbox-container--terms">
+                    <p class="form-error" id="register-error" hidden></p>
+
+                    <div class="checkbox-container checkbox-wrapper-14 checkbox-container--terms" id="terms-container">
                         <input type="checkbox" id="terms" required>
                         <label for="terms" class="checkbox-label">Acepto los <a href="#">términos y condiciones</a> y la <a href="#">política de privacidad</a>.</label>
+                        <p class="checkbox-error" id="terms-error" hidden>Debes aceptar los términos y condiciones para continuar.</p>
                     </div>
 
                     <div class="form-navigation">
@@ -558,15 +606,24 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                     <div class="verification-container">
                         <div class="verification-icon">✓</div>
                         <h2 class="verification-title">¡Cuenta creada con éxito!</h2>
-                        <p class="verification-text">Hemos enviado un código de verificación a <strong id="email-sent">juan@autosolutions.es</strong>. Por favor, introdúcelo a continuación para activar tu cuenta.</p>
+                        <p class="verification-text">Hemos enviado un código de verificación a <strong id="email-sent">juan@autosolutions.es</strong>. Introduce el código para activar tu cuenta. <span id="verification-expiry">Caduca en 24&nbsp;horas.</span></p>
 
-                        <div class="input-container" style="max-width: 300px; margin: 2rem auto;">
-                            <input type="text" id="verification_code" class="form-input" placeholder=" " required>
+                        <div class="verification-feedback" id="verification-feedback" role="alert" hidden></div>
+
+                        <div class="input-container input-container--verification">
+                            <input type="text" id="verification_code" class="form-input" placeholder=" " inputmode="numeric" autocomplete="one-time-code" required>
                             <label for="verification_code" class="form-label">Código de verificación</label>
                         </div>
 
-                        <div class="form-navigation" style="justify-content: center;">
+                        <div class="verification-actions">
                             <button type="button" class="btn btn-primary" id="verify-btn">Verificar cuenta</button>
+                            <button type="button" class="btn btn-link" id="resend-code-btn">Reenviar código</button>
+                        </div>
+                        <p class="verification-hint" id="resend-countdown" hidden></p>
+
+                        <div class="verification-success" id="verification-success" hidden>
+                            <p>Cuenta verificada. Ya puedes acceder a tu área de usuario.</p>
+                            <a href="<?php echo esc_url(home_url('/garantias-online/')); ?>" class="btn btn-secondary">Entrar a Mis garantías</a>
                         </div>
                     </div>
                 </div>

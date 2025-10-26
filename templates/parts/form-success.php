@@ -36,11 +36,32 @@ use GarantiasOnline360VO\Svg;
                         <th scope="row">Cantidad</th>
                         <td data-copy-cell data-tooltip="Copiar cantidad"><span class="form-success__copy-target" data-amount data-toast="Cantidad copiada al portapapeles."></span><button class="form-success__copy" data-copy="[data-amount]" data-label="Copiar cantidad" data-done="Cantidad copiada" data-toast="Cantidad copiada al portapapeles." aria-label="Copiar cantidad"><?php echo Svg::icon('copy', 'form-success__copy-icon'); ?></button></td>
                     </tr>
-                    <tr>
+                    <tr data-copy-row>
                         <th scope="row">Justificante</th>
-                        <td>
+                        <td data-copy-cell data-tooltip="Copiar dirección">
                             Envía el justificante de ingreso a
-                            <a href="mailto:garantias@360vo.es">garantias@360vo.es</a>.
+                            <span
+                                class="form-success__copy-target"
+                                data-email
+                                data-copy-value="garantias@460vo.es"
+                                data-toast="Dirección copiada al portapapeles"
+                            >
+                                <a
+                                    href="mailto:garantias@460vo.es"
+                                    data-email-link
+                                    data-email-base="garantias@460vo.es"
+                                >garantias@460vo.es</a>
+                            </span>
+                            <button
+                                class="form-success__copy"
+                                data-copy="[data-email]"
+                                data-label="Copiar dirección"
+                                data-done="Dirección copiada"
+                                data-toast="Dirección copiada al portapapeles"
+                                aria-label="Copiar dirección"
+                            >
+                                <?php echo Svg::icon('copy', 'form-success__copy-icon'); ?>
+                            </button>
                         </td>
                     </tr>
                 </tbody>
