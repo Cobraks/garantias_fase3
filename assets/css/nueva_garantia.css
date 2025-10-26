@@ -2033,6 +2033,7 @@ margin-top: .5rem;
     max-width: 800px;
     margin: 0 auto;
     padding: 1.5rem;
+    padding-bottom: 4rem;
   }
 
   .form-success.is-visible {
@@ -2060,15 +2061,21 @@ margin-top: .5rem;
     font-weight: 700;
     text-align: center;
     margin: 0 0 .5rem;
-    /* color: #2563eb; */
+    color: var(--color-primary);
   }
   .form-success__subtitle {
     margin: 0 0 1.5rem;
     text-align: center;
-    /* color: #1e40af; */
     font-size: 1.5rem;
-    font-style: italic;
-    font-weight: 500;
+    font-style: normal;
+    font-weight: 600;
+    color: var(--text-color, #1f2937);
+  }
+  .form-success__message {
+    margin: 0 0 1.5rem;
+    text-align: center;
+    color: var(--text-secondary, #64748b);
+    font-size: 1rem;
   }
   .form-success__loading {
     display: flex;
@@ -2081,7 +2088,7 @@ margin-top: .5rem;
     display: inline-block;
     width: 1rem;
     height: 1rem;
-    border: 2px solid #2563eb;
+    border: 2px solid var(--color-primary);
     border-top-color: transparent;
     border-radius: 50%;
     animation: form-success-spin 1s linear infinite;
@@ -2110,46 +2117,111 @@ margin-top: .5rem;
     grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
     gap: 1rem;
     margin: 1.5rem 0;
-  }
-
-  .form-success__details-link {
-    display: block;
-    text-align: center;
-    margin-top: 0.5rem;
-    color: #2563eb;
-    font-weight: 600;
-    text-decoration: none;
+    padding: 1.25rem;
+    background: #f8fafc;
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
   }
 
   .document-card {
     background: #fff;
-    border: 1px solid #e1ecff;
-    border-radius: 8px;
-    padding: 1.25rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
     text-align: center;
     text-decoration: none;
-    color: inherit;
-    transition: transform .3s ease, box-shadow .3s ease;
+    color: var(--text-color, #1f2937);
+    transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
 
   .document-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,86,179,.1);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(226,0,27,.12);
+    border-color: var(--color-primary);
+  }
+
+  .document-card:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
   }
 
   .document-card__icon {
     width: 2rem;
     height: 2rem;
     margin-bottom: .75rem;
+    color: var(--color-primary);
   }
 
   .document-card__title {
     font-size: 1rem;
-    margin: 0 0 .25rem;
-    font-weight: normal;
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .form-success__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.75rem;
+  }
+
+  .form-success__details-link,
+  .form-success__new {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 3rem;
+    padding: 0 1.75rem;
+    border-radius: .75rem;
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.2;
+    text-decoration: none;
+    transition: background-color var(--transition, 200ms ease-in-out),
+      color var(--transition, 200ms ease-in-out),
+      border-color var(--transition, 200ms ease-in-out),
+      box-shadow var(--transition, 200ms ease-in-out);
+  }
+
+  .form-success__details-link {
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    background: #fff;
+  }
+
+  .form-success__details-link:hover,
+  .form-success__details-link:focus-visible {
+    background: var(--color-primary);
+    color: #fff;
+  }
+
+  .form-success__details-link [data-ref-text] {
+    font-weight: 600;
+    margin-left: .35rem;
+  }
+
+  .form-success__new {
+    background: var(--color-primary);
+    color: #fff;
+    border: 1px solid transparent;
+    box-shadow: 0 10px 25px rgba(226,0,27,.18);
+  }
+
+  .form-success__new:hover,
+  .form-success__new:focus-visible {
+    background: #b80017;
+    box-shadow: 0 12px 28px rgba(226,0,27,.22);
+  }
+
+  .form-success__details-link:focus-visible,
+  .form-success__new:focus-visible {
+    outline: 2px solid rgba(226,0,27,.35);
+    outline-offset: 2px;
   }
 
   .form-success__payment {
@@ -2158,7 +2230,7 @@ margin-top: .5rem;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
     padding: 1.5rem;
-    margin-top: 1rem;
+    margin: 0 0 1.5rem;
   }
 
   .form-success__transfer-title {
@@ -2215,10 +2287,93 @@ margin-top: .5rem;
     display: flex;
     align-items: center;
     gap: .5rem;
+    position: relative;
   }
 
   .form-success__copy-target {
     cursor: pointer;
+  }
+
+  .form-success__transfer-table tr {
+    transition: background-color .2s ease, color .2s ease;
+  }
+
+  .form-success__transfer-table tr[data-copy-row] th,
+  .form-success__transfer-table tr[data-copy-row] td {
+    cursor: pointer;
+  }
+
+  .form-success__transfer-table tr[data-copy-row]:hover th,
+  .form-success__transfer-table tr[data-copy-row]:hover td,
+  .form-success__transfer-table tr[data-copy-row]:focus-within th,
+  .form-success__transfer-table tr[data-copy-row]:focus-within td {
+    background: #f3f4f6;
+    color: #1f2937;
+  }
+
+  .form-success__transfer-table tr[data-copy-row]:hover th,
+  .form-success__transfer-table tr[data-copy-row]:focus-within th {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+  }
+
+  .form-success__transfer-table tr[data-copy-row]:hover td,
+  .form-success__transfer-table tr[data-copy-row]:focus-within td {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+  }
+
+  .form-success__transfer-table [data-copy-cell] {
+    position: relative;
+    cursor: pointer;
+    overflow: visible;
+  }
+
+  .form-success__transfer-table [data-copy-cell]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 2.75rem;
+    top: -1.5rem;
+    transform: translateY(-8px);
+    background: rgba(17, 24, 39, .92);
+    color: #f9fafb;
+    font-size: .75rem;
+    line-height: 1.3;
+    padding: .35rem .75rem;
+    border-radius: .5rem;
+    white-space: nowrap;
+    font-weight: 500;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, .18);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 20;
+  }
+
+  .form-success__transfer-table [data-copy-cell]::before {
+    content: "";
+    position: absolute;
+    left: 4rem;
+    top: .19rem;
+    transform: translateY(-6px);
+    border-width: 6px;
+    border-style: solid;
+    border-color: rgba(17, 24, 39, .92) transparent transparent transparent;
+    opacity: 0;
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 20;
+  }
+
+  .form-success__transfer-table [data-copy-cell]:hover::after,
+  .form-success__transfer-table [data-copy-cell]:hover::before,
+  .form-success__transfer-table [data-copy-cell]:focus-within::after,
+  .form-success__transfer-table [data-copy-cell]:focus-within::before,
+  .form-success__transfer-table tr[data-copy-row]:hover [data-copy-cell]::after,
+  .form-success__transfer-table tr[data-copy-row]:hover [data-copy-cell]::before,
+  .form-success__transfer-table tr[data-copy-row]:focus-within [data-copy-cell]::after,
+  .form-success__transfer-table tr[data-copy-row]:focus-within [data-copy-cell]::before {
+    opacity: 1;
+    transform: translateY(0);
   }
 
   .form-success__copy {
@@ -2226,18 +2381,26 @@ margin-top: .5rem;
     background: none;
     border: none;
     padding: 0;
-    color: #2563eb;
+    color: #6b7280;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 1.5rem;
     height: 1.5rem;
     border-radius: 4px;
-    transition: background .2s ease;
+    transition: background .2s ease, color .2s ease, transform .2s ease;
   }
 
-  .form-success__copy:hover {
-    background: #e6f0ff;
+  .form-success__copy:hover,
+  .form-success__copy:focus-visible {
+    background: none;
+    color: var(--accent-color, #2563eb);
+  }
+
+  .form-success__transfer-table tr:hover .form-success__copy,
+  .form-success__transfer-table tr:focus-within .form-success__copy {
+    background: none;
+    color: var(--accent-color, #2563eb);
   }
 
   .form-success__copy-icon {
@@ -2246,19 +2409,25 @@ margin-top: .5rem;
   }
 
   .form-success__toast {
-    position: fixed;
-    bottom: 1.25rem;
+    position: absolute;
+    bottom: 1.5rem;
     left: 50%;
     transform: translateX(-50%);
-    background: #28a745;
-    color: #fff;
-    padding: .75rem 1.5rem;
-    border-radius: 999px;
-    box-shadow: 0 4px 12px rgba(0,0,0,.1);
+    background: rgba(17, 24, 39, .9);
+    color: #f9fafb;
+    padding: .65rem 1.25rem;
+    border-radius: .75rem;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .25);
     opacity: 0;
     transition: opacity .3s ease;
-    z-index: 1000;
+    z-index: 10;
     width: fit-content;
+    font-size: .9rem;
+    line-height: 1.3;
+    font-weight: 500;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    pointer-events: none;
   }
 
   .form-success__toast.show {

@@ -21,6 +21,10 @@ $profile_button = sprintf(
     '<button type="button" class="top-bar__profile-link">%s</button>',
     $avatar_html
 );
+$is_admin_user = current_user_can('manage_options');
+$home_destination = $is_admin_user
+    ? home_url('/garantias-online')
+    : home_url('/garantias-online/mis-garantias/');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -84,7 +88,7 @@ $profile_button = sprintf(
                 <span class="hamburger-line"></span>
             </button>
             <div class="top-bar__logo-container">
-                <a href="<?php echo esc_url(home_url('/garantias-online')); ?>">
+                <a href="<?php echo esc_url($home_destination); ?>">
                     <img src="<?php echo esc_url(
                                     plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FILE__)
                                 ); ?>"
@@ -138,12 +142,14 @@ $profile_button = sprintf(
             <?php if (is_user_logged_in()) : ?>
                 <nav class="top-bar__menu">
                     <ul>
-                        <li class="menu-item button-item">
-                            <a href="<?php echo esc_url(home_url('/garantias-online/averias/')); ?>">
-                                <?php echo Svg::icon('car_crash', 'top-bar__icon'); ?>
-                                <?php esc_html_e('Averías', 'garantias-online-360vo'); ?>
-                            </a>
-                        </li>
+                        <?php if ($is_admin_user) : ?>
+                            <li class="menu-item button-item">
+                                <a href="<?php echo esc_url(home_url('/garantias-online/averias/')); ?>">
+                                    <?php echo Svg::icon('car_crash', 'top-bar__icon'); ?>
+                                    <?php esc_html_e('Averías', 'garantias-online-360vo'); ?>
+                                </a>
+                            </li>
+                        <?php endif; ?>
                         <li class="menu-item">
                             <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>">
                                 <?php echo Svg::icon('shield', 'top-bar__icon'); ?>
