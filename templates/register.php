@@ -4,6 +4,7 @@ if (! defined('ABSPATH')) {
 }
 
 use GarantiasOnline360VO\TemplateLoader;
+use GarantiasOnline360VO\Svg;
 
 $is_register_page = true;
 TemplateLoader::load_part('header', compact('is_register_page'));
@@ -31,9 +32,6 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                 </li>
             </ul>
 
-            <p class="login-redirect">
-                ¿Ya tienes cuenta? <a href="<?php echo esc_url(home_url('/garantias-online/acceder/')); ?>">Inicia sesión aquí</a>
-            </p>
         </div>
 
         <div class="form-panel">
@@ -62,17 +60,17 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                     <div class="form-group">
                         <div class="channel-selector">
                             <div class="channel-btn" data-channel="professional">
-                                <div class="channel-icon"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M841-518v318q0 33-23.5 56.5T761-120H201q-33 0-56.5-23.5T121-200v-318q-23-21-35.5-54t-.5-72l42-136q8-26 28.5-43t47.5-17h556q27 0 47 16.5t29 43.5l42 136q12 39-.5 71T841-518Zm-272-42q27 0 41-18.5t11-41.5l-22-140h-78v148q0 21 14 36.5t34 15.5Zm-180 0q23 0 37.5-15.5T441-612v-148h-78l-22 140q-4 24 10.5 42t37.5 18Zm-178 0q18 0 31.5-13t16.5-33l22-154h-78l-40 134q-6 20 6.5 43t41.5 23Zm540 0q29 0 42-23t6-43l-42-134h-76l22 154q3 20 16.5 33t31.5 13ZM201-200h560v-282q-5 2-6.5 2H751q-27 0-47.5-9T663-518q-18 18-41 28t-49 10q-27 0-50.5-10T481-518q-17 18-39.5 28T393-480q-29 0-52.5-10T299-518q-21 21-41.5 29.5T211-480h-4.5q-2.5 0-5.5-2v282Zm560 0H201h560Z"/></svg></div>
+                                <div class="channel-icon"><?php echo Svg::icon('professional'); ?></div>
                                 <div class="channel-name">Profesional</div>
                                 <div class="channel-desc">Compraventas, concesionarios</div>
                             </div>
                             <div class="channel-btn" data-channel="individual">
-                                <div class="channel-icon"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm720 0v-120q0-44-24.5-84.5T666-434q51 6 96 20.5t84 35.5q36 20 55 44.5t19 53.5v120H760ZM360-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm400-160q0 66-47 113t-113 47q-11 0-28-2.5t-28-5.5q27-32 41.5-71t14.5-81q0-42-14.5-81T544-792q14-5 28-6.5t28-1.5q66 0 113 47t47 113ZM120-240h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T440-640q0-33-23.5-56.5T360-720q-33 0-56.5 23.5T280-640q0 33 23.5 56.5T360-560Zm0 320Zm0-400Z"/></svg></div>
+                                <div class="channel-icon"><?php echo Svg::icon('individual'); ?></div>
                                 <div class="channel-name">Particular</div>
                                 <div class="channel-desc">Usuarios individuales</div>
                             </div>
                             <div class="channel-btn" data-channel="agency">
-                                <div class="channel-icon"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-280v-280h80v280h-80Zm240 0v-280h80v280h-80ZM80-120v-80h800v80H80Zm600-160v-280h80v280h-80ZM80-640v-80l400-200 400 200v80H80Zm178-80h444-444Zm0 0h444L480-830 258-720Z"/></svg></div>
+                                <div class="channel-icon"><?php echo Svg::icon('agency'); ?></div>
                                 <div class="channel-name">Gestoría</div>
                                 <div class="channel-desc">Asesores y gestores</div>
                             </div>
@@ -114,14 +112,34 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                         <div class="input-container">
                             <input type="password" id="password" class="form-input input-with-icon" placeholder=" " required>
                             <label for="password" class="form-label">Contraseña</label>
-                            <button type="button" class="password-toggle" id="toggle-password">👁️</button>
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                id="toggle-password"
+                                aria-label="Mostrar contraseña"
+                                data-target="password"
+                            >
+                                <span class="password-toggle__icon password-toggle__icon--show"><?php echo Svg::icon('visibility'); ?></span>
+                                <span class="password-toggle__icon password-toggle__icon--hide"><?php echo Svg::icon('visibility_off'); ?></span>
+                                <span class="screen-reader-text">Alternar visibilidad de la contraseña</span>
+                            </button>
                             <p class="form-hint">Mínimo 8 caracteres con números y símbolos</p>
                         </div>
 
                         <div class="input-container">
                             <input type="password" id="confirm_password" class="form-input input-with-icon" placeholder=" " required>
                             <label for="confirm_password" class="form-label">Confirmar contraseña</label>
-                            <button type="button" class="password-toggle" id="toggle-confirm-password">👁️</button>
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                id="toggle-confirm-password"
+                                aria-label="Mostrar contraseña"
+                                data-target="confirm_password"
+                            >
+                                <span class="password-toggle__icon password-toggle__icon--show"><?php echo Svg::icon('visibility'); ?></span>
+                                <span class="password-toggle__icon password-toggle__icon--hide"><?php echo Svg::icon('visibility_off'); ?></span>
+                                <span class="screen-reader-text">Alternar visibilidad de la contraseña</span>
+                            </button>
                         </div>
                     </div>
 
@@ -140,10 +158,15 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                         <div>
                             <h3 class="subsection-title">Imagen de perfil</h3>
                             <div class="input-container">
-                                <div class="file-upload" id="avatar-upload">
-                                    <div class="file-label">+ Añadir imagen de perfil</div>
-                                    <p class="file-hint">Haz clic para subir una imagen (opcional)</p>
-                                    <input type="file" id="avatar" class="file-input" accept="image/*">
+                                <div class="profile-media">
+                                    <div class="avatar-preview" id="avatar-preview" hidden aria-hidden="true">
+                                        <img src="" alt="Previsualización de la imagen de perfil">
+                                    </div>
+                                    <div class="file-upload" id="avatar-upload">
+                                        <div class="file-label">+ Añadir imagen de perfil</div>
+                                        <p class="file-hint">Haz clic para subir una imagen (opcional)</p>
+                                        <input type="file" id="avatar" class="file-input" accept="image/*">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -151,12 +174,12 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                         <div>
                             <h3 class="subsection-title">Información profesional</h3>
                             <div class="checkbox-row">
-                                <div class="checkbox-container">
+                                <div class="checkbox-container checkbox-wrapper-14">
                                     <input type="checkbox" id="has_workshop">
                                     <label for="has_workshop" class="checkbox-label">Dispongo de taller</label>
                                 </div>
 
-                                <div class="checkbox-container">
+                                <div class="checkbox-container checkbox-wrapper-14">
                                     <input type="checkbox" id="has_web">
                                     <label for="has_web" class="checkbox-label">Tiene web con 360VO</label>
                                 </div>
@@ -173,7 +196,25 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                     </div>
 
                     <div class="conditional-field" id="workshop-fields">
-                        <h3 class="subsection-title">Datos del taller</h3>
+                        <div class="subsection-heading">
+                            <h3 class="subsection-title">Datos del taller</h3>
+                            <button
+                                type="button"
+                                class="help-trigger"
+                                aria-expanded="false"
+                                aria-controls="help-workshop"
+                                data-help-target="help-workshop"
+                            >
+                                <?php echo Svg::icon('help'); ?>
+                                <span class="screen-reader-text">Mostrar ayuda sobre los datos del taller</span>
+                            </button>
+                        </div>
+                        <div class="help-panel" id="help-workshop" hidden>
+                            <button type="button" class="help-panel__close" aria-label="Cerrar ayuda" data-help-dismiss>
+                                <?php echo Svg::icon('close'); ?>
+                            </button>
+                            <p>Completa esta información si cuentas con taller propio para atender a tus clientes de garantías.</p>
+                        </div>
                         <div class="form-row">
                             <div class="input-container">
                                 <input type="text" id="workshop_name" class="form-input" placeholder=" ">
@@ -203,19 +244,37 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                         <h3 class="subsection-title">Documentación y gestión de pagos</h3>
 
                         <div class="documents-payments-row">
-                            <div class="checkbox-container">
+                            <div class="checkbox-container checkbox-wrapper-14">
                                 <input type="checkbox" id="auto_signature">
                                 <label for="auto_signature" class="checkbox-label">Firma y sello para certificados</label>
                             </div>
 
-                            <div class="checkbox-container">
+                            <div class="checkbox-container checkbox-wrapper-14">
                                 <input type="checkbox" id="enable_sepa">
                                 <label for="enable_sepa" class="checkbox-label">Domiciliación Bancaria</label>
                             </div>
                         </div>
 
                         <div class="conditional-field" id="signature-fields">
-                            <h4 class="subsection-title">Firma y sello para certificados</h4>
+                            <div class="subsection-heading">
+                                <h4 class="subsection-title">Firma y sello para certificados</h4>
+                                <button
+                                    type="button"
+                                    class="help-trigger"
+                                    aria-expanded="false"
+                                    aria-controls="help-signature"
+                                    data-help-target="help-signature"
+                                >
+                                    <?php echo Svg::icon('help'); ?>
+                                    <span class="screen-reader-text">Mostrar ayuda sobre firma y sello</span>
+                                </button>
+                            </div>
+                            <div class="help-panel" id="help-signature" hidden>
+                                <button type="button" class="help-panel__close" aria-label="Cerrar ayuda" data-help-dismiss>
+                                    <?php echo Svg::icon('close'); ?>
+                                </button>
+                                <p>Sube la firma y el sello oficiales que se incluirán en los certificados generados automáticamente.</p>
+                            </div>
                             <div class="form-row">
                                 <div class="input-container">
                                     <div class="file-upload">
@@ -236,7 +295,25 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                         </div>
 
                         <div class="conditional-field" id="sepa-fields">
-                            <h4 class="subsection-title">Datos SEPA</h4>
+                            <div class="subsection-heading">
+                                <h4 class="subsection-title">Datos SEPA</h4>
+                                <button
+                                    type="button"
+                                    class="help-trigger"
+                                    aria-expanded="false"
+                                    aria-controls="help-sepa"
+                                    data-help-target="help-sepa"
+                                >
+                                    <?php echo Svg::icon('help'); ?>
+                                    <span class="screen-reader-text">Mostrar ayuda sobre los datos SEPA</span>
+                                </button>
+                            </div>
+                            <div class="help-panel" id="help-sepa" hidden>
+                                <button type="button" class="help-panel__close" aria-label="Cerrar ayuda" data-help-dismiss>
+                                    <?php echo Svg::icon('close'); ?>
+                                </button>
+                                <p>Introduce los datos del titular bancario tal como aparecen en el contrato de domiciliación.</p>
+                            </div>
                             <div class="info-text info-text--sepa">
                                 Rellena la siguiente información para cumplimentar la Orden de domiciliación de adeudo directo SEPA B2B
                             </div>
@@ -273,7 +350,7 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                                 <div class="input-container">
                                     <input type="text" id="sepa_iban" class="form-input input-with-icon" placeholder=" ">
                                     <label for="sepa_iban" class="form-label">Número de cuenta IBAN</label>
-                                    <span class="iban-icon">🏦</span>
+                                    <span class="iban-icon"><?php echo Svg::icon('iban'); ?></span>
                                 </div>
                             </div>
 
@@ -291,95 +368,94 @@ TemplateLoader::load_part('header', compact('is_register_page'));
                 </div>
 
                 <div class="form-step" id="step-3">
-                    <p class="form-hint" style="margin-bottom: 2rem;">Revisa que toda la información sea correcta antes de completar el registro</p>
+                    <p class="info-text info-text--notice">
+                        <span class="info-text__icon"><?php echo Svg::icon('info'); ?></span>
+                        <span>Revisa que toda la información sea correcta antes de completar el registro</span>
+                    </p>
 
                     <div class="summary-container">
-                        <div class="summary-column">
-                            <div class="summary-group">
-                                <div class="summary-title">Datos de cuenta</div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Tipo:</span>
-                                    <span class="summary-value" id="summary-channel">Profesional</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Empresa:</span>
-                                    <span class="summary-value" id="summary-company">Auto Solutions SL</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Nombre:</span>
-                                    <span class="summary-value" id="summary-name">Juan Pérez</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Email:</span>
-                                    <span class="summary-value" id="summary-email">juan@autosolutions.es</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Teléfono:</span>
-                                    <span class="summary-value" id="summary-phone">+34 612 345 678</span>
-                                </div>
+                        <div class="summary-group">
+                            <div class="summary-title">Datos de cuenta</div>
+                            <div class="summary-item">
+                                <span class="summary-label">Tipo:</span>
+                                <span class="summary-value" id="summary-channel">Profesional</span>
                             </div>
-
-                            <div class="summary-group" id="summary-workshop">
-                                <div class="summary-title">Datos del taller</div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Nombre:</span>
-                                    <span class="summary-value" id="summary-workshop-name">Talleres Pérez</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Contacto:</span>
-                                    <span class="summary-value" id="summary-workshop-contact">María González</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Teléfono:</span>
-                                    <span class="summary-value" id="summary-workshop-phone">+34 912 345 678</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Email:</span>
-                                    <span class="summary-value" id="summary-workshop-email">taller@autosolutions.es</span>
-                                </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Empresa:</span>
+                                <span class="summary-value" id="summary-company">Auto Solutions SL</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Nombre:</span>
+                                <span class="summary-value" id="summary-name">Juan Pérez</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Email:</span>
+                                <span class="summary-value" id="summary-email">juan@autosolutions.es</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Teléfono:</span>
+                                <span class="summary-value" id="summary-phone">+34 612 345 678</span>
                             </div>
                         </div>
 
-                        <div class="summary-column">
-                            <div class="summary-group">
-                                <div class="summary-title">Preferencias</div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Web 360VO:</span>
-                                    <span class="summary-value" id="summary-web">https://autosolutions.es</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Firma automática:</span>
-                                    <span class="summary-value" id="summary-signature">Activada</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Domiciliación:</span>
-                                    <span class="summary-value" id="summary-sepa-status">Activada</span>
-                                </div>
+                        <div class="summary-group" id="summary-workshop">
+                            <div class="summary-title">Datos del taller</div>
+                            <div class="summary-item">
+                                <span class="summary-label">Nombre:</span>
+                                <span class="summary-value" id="summary-workshop-name">Talleres Pérez</span>
                             </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Contacto:</span>
+                                <span class="summary-value" id="summary-workshop-contact">María González</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Teléfono:</span>
+                                <span class="summary-value" id="summary-workshop-phone">+34 912 345 678</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Email:</span>
+                                <span class="summary-value" id="summary-workshop-email">taller@autosolutions.es</span>
+                            </div>
+                        </div>
 
-                            <div class="summary-group" id="summary-sepa">
-                                <div class="summary-title">Datos bancarios</div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Titular:</span>
-                                    <span class="summary-value" id="summary-sepa-name">Juan Pérez García</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Dirección:</span>
-                                    <span class="summary-value" id="summary-sepa-address">Calle Principal 123, 28001 Madrid</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">Provincia:</span>
-                                    <span class="summary-value" id="summary-sepa-state">Madrid</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">IBAN:</span>
-                                    <span class="summary-value" id="summary-sepa-iban">ES12 3456 7890 1234 5678 9012</span>
-                                </div>
+                        <div class="summary-group">
+                            <div class="summary-title">Preferencias</div>
+                            <div class="summary-item">
+                                <span class="summary-label">Web 360VO:</span>
+                                <span class="summary-value" id="summary-web">https://autosolutions.es</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Firma automática:</span>
+                                <span class="summary-value" id="summary-signature">Activada</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Domiciliación:</span>
+                                <span class="summary-value" id="summary-sepa-status">Activada</span>
+                            </div>
+                        </div>
+
+                        <div class="summary-group" id="summary-sepa">
+                            <div class="summary-title">Datos bancarios</div>
+                            <div class="summary-item">
+                                <span class="summary-label">Titular:</span>
+                                <span class="summary-value" id="summary-sepa-name">Juan Pérez García</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Dirección:</span>
+                                <span class="summary-value" id="summary-sepa-address">Calle Principal 123, 28001 Madrid</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Provincia:</span>
+                                <span class="summary-value" id="summary-sepa-state">Madrid</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">IBAN:</span>
+                                <span class="summary-value" id="summary-sepa-iban">ES12 3456 7890 1234 5678 9012</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="checkbox-container" style="margin-top: 2rem;">
+                    <div class="checkbox-container checkbox-wrapper-14 checkbox-container--terms">
                         <input type="checkbox" id="terms" required>
                         <label for="terms" class="checkbox-label">Acepto los <a href="#">términos y condiciones</a> y la <a href="#">política de privacidad</a>.</label>
                     </div>

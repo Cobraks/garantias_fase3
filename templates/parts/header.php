@@ -207,6 +207,17 @@ $home_destination = $is_admin_user
                         </a>
                     </div>
                 </div>
+            <?php elseif (! empty($is_register_page)) : ?>
+                <nav class="top-bar__menu top-bar__menu--register">
+                    <ul>
+                        <li class="menu-item menu-item--login">
+                            <a href="<?php echo esc_url('http://garantas-fase-iii.local/garantias-online/'); ?>" class="top-bar__login-link">
+                                <?php echo Svg::icon('login', 'top-bar__icon'); ?>
+                                <?php esc_html_e('Inicia sesión', 'garantias-online-360vo'); ?>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
             <?php endif; ?>
         </div>
         <nav class="mobile-menu">
