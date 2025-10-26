@@ -1,516 +1,190 @@
 (() => {
-  class Stepper {
-    constructor(container) {
-      this.container = container;
-      this.steps = Array.from(container.querySelectorAll('[data-step]'));
-      this.triggers = Array.from(container.querySelectorAll('[data-step-trigger]'));
-      this.currentIndex = 0;
-      this.maxVisitedIndex = 0;
-      this.changeCallback = null;
-      this.connectors = Array.from(container.querySelectorAll('.tabs__connector .connector'));
+  document.addEventListener('DOMContentLoaded', () => {
+    const steps = document.querySelectorAll('.step');
+    const formSteps = document.querySelectorAll('.form-step');
+    const progressBar = document.getElementById('progress-bar');
+    const progressContainer = document.querySelector('.progress-container');
+    const nextButtons = document.querySelectorAll('[data-next-step]');
+    const prevButtons = document.querySelectorAll('[data-prev-step]');
+    const registerBtn = document.getElementById('register-btn');
+    const verifyBtn = document.getElementById('verify-btn');
 
-      this.triggers.forEach((trigger) => {
-        trigger.addEventListener('click', (event) => {
-          event.preventDefault();
-          const index = Number(trigger.dataset.stepTrigger);
-          if (!Number.isNaN(index) && index <= this.maxVisitedIndex + 1) {
-            this.goTo(index);
-          }
-        });
-      });
+    let currentStep = 1;
+    const totalSteps = 3;
 
-      this.update();
-    }
-
-    onChange(callback) {
-      this.changeCallback = callback;
-      this.emit();
-    }
-
-    getCurrentStep() {
-      return this.steps[this.currentIndex] ?? null;
-    }
-
-    isFirst() {
-      return this.currentIndex === 0;
-    }
-
-    isLast() {
-      return this.currentIndex === this.steps.length - 1;
-    }
-
-    next() {
-      if (!this.isLast()) {
-        this.goTo(this.currentIndex + 1);
-      }
-    }
-
-    prev() {
-      if (!this.isFirst()) {
-        this.goTo(this.currentIndex - 1);
-      }
-    }
-
-    goTo(index) {
-      if (index < 0 || index >= this.steps.length || index === this.currentIndex) {
-        return;
+    const updateProgress = () => {
+      if (progressBar) {
+        const progress = totalSteps > 1 ? ((currentStep - 1) / (totalSteps - 1)) * 100 : 0;
+        progressBar.style.width = `${progress}%`;
       }
 
-      this.currentIndex = index;
-      this.maxVisitedIndex = Math.max(this.maxVisitedIndex, index);
-      this.update();
-      this.emit();
-    }
-
-    update() {
-      this.steps.forEach((step, position) => {
-        const isActive = position === this.currentIndex;
-        step.classList.toggle('is-active', isActive);
-        step.toggleAttribute('hidden', !isActive);
-        step.dataset.stepCurrent = String(isActive);
-        step.setAttribute('aria-hidden', String(!isActive));
+      steps.forEach((step) => {
+        const stepNumber = Number(step.getAttribute('data-step'));
+        step.classList.remove('active', 'completed');
+        if (stepNumber < currentStep) {
+          step.classList.add('completed');
+        } else if (stepNumber === currentStep) {
+          step.classList.add('active');
+        }
       });
+    };
 
-      this.triggers.forEach((trigger, position) => {
-        const isActive = position === this.currentIndex;
-        trigger.classList.toggle('is-active', isActive);
-        trigger.classList.toggle('is-completed', position < this.currentIndex);
-        trigger.setAttribute('aria-current', isActive ? 'step' : 'false');
+    const showCurrentStep = () => {
+      formSteps.forEach((step) => {
+        step.classList.remove('active');
       });
-
-      this.connectors.forEach((connector, position) => {
-        connector.classList.toggle('is-active', position < this.currentIndex);
-      });
-    }
-
-    emit() {
-      if (typeof this.changeCallback === 'function') {
-        this.changeCallback({
-          index: this.currentIndex,
-          isFirst: this.isFirst(),
-          isLast: this.isLast(),
-          total: this.steps.length,
-        });
+      const activeStep = document.getElementById(`step-${currentStep}`);
+      if (activeStep) {
+        activeStep.classList.add('active');
       }
-    }
-  }
+    };
 
-  class ChannelFields {
-    constructor(form) {
-      this.form = form;
-      this.channelSelect = form.querySelector('[data-channel-select]');
-      this.stepIntro = form.querySelector('[data-channel-empty]');
-      this.sections = Array.from(form.querySelectorAll('[data-channel-section]'));
-      this.toggleControls = Array.from(form.querySelectorAll('[data-toggle-control]'));
-      this.channelElements = Array.from(form.querySelectorAll('[data-channel-visible]'));
-
-      if (this.channelSelect) {
-        this.channelSelect.addEventListener('change', () => this.handleChannelChange());
+    const goToStep = (stepNumber) => {
+      currentStep = Math.max(1, Math.min(stepNumber, totalSteps));
+      showCurrentStep();
+      updateProgress();
+      if (progressContainer) {
+        progressContainer.style.display = '';
       }
+    };
 
-      this.toggleControls.forEach((control) => {
-        control.addEventListener('change', () => this.handleToggle(control));
+    nextButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        if (currentStep < totalSteps) {
+          currentStep += 1;
+          goToStep(currentStep);
+        }
       });
+    });
 
-      this.handleChannelChange();
-    }
-
-    getSelectedChannel() {
-      return this.channelSelect?.value ?? '';
-    }
-
-    handleChannelChange() {
-      const channel = this.getSelectedChannel();
-      const hasChannel = Boolean(channel);
-
-      if (this.stepIntro) {
-        this.stepIntro.classList.toggle('is-hidden', hasChannel);
-      }
-
-      this.sections.forEach((section) => {
-        const allowedChannels = (section.dataset.channelSection || '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean);
-        const shouldDisplay = allowedChannels.length === 0 || allowedChannels.includes(channel);
-        const isVisible = shouldDisplay && hasChannel;
-        section.classList.toggle('is-active', isVisible);
-        section.toggleAttribute('hidden', !isVisible);
+    prevButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        if (currentStep > 1) {
+          currentStep -= 1;
+          goToStep(currentStep);
+        }
       });
+    });
 
-      this.channelElements.forEach((element) => {
-        const allowedChannels = (element.dataset.channelVisible || '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean);
-        const shouldDisplay = allowedChannels.length === 0 || allowedChannels.includes(channel);
-        const isVisible = shouldDisplay && hasChannel;
-
-        element.classList.toggle('is-active', isVisible);
-        element.toggleAttribute('hidden', !isVisible);
-
-        const inputs = Array.from(element.querySelectorAll('input, select, textarea'));
-        inputs.forEach((input) => {
-          if (!isVisible) {
-            if (input.type === 'checkbox' || input.type === 'radio') {
-              input.checked = false;
-            } else if (input.tagName === 'SELECT') {
-              input.selectedIndex = 0;
-            } else if (input.type !== 'file') {
-              input.value = '';
-            }
-          }
-
-          if (input.dataset.preserveDisabled !== 'true') {
-            input.disabled = !isVisible;
-          }
-        });
-      });
-
-      this.toggleControls.forEach((control) => {
-        const allowedChannel = control.dataset.channelOnly;
-        const restrictsChannel = Boolean(allowedChannel);
-        const isAllowed = !restrictsChannel || allowedChannel === channel;
-
-        control.disabled = !isAllowed;
-
-        if (!isAllowed) {
-          if (control.type === 'checkbox') {
-            control.checked = false;
-          } else {
-            control.value = '';
-          }
+    if (registerBtn) {
+      registerBtn.addEventListener('click', () => {
+        const terms = document.getElementById('terms');
+        if (terms && !terms.checked) {
+          window.alert('Debes aceptar los términos y condiciones para continuar.');
+          return;
         }
 
-        this.handleToggle(control);
-      });
-    }
-
-    handleToggle(control) {
-      const targetGroup = control.dataset.toggleControl;
-      if (!targetGroup) {
-        return;
-      }
-
-      const group = this.form.querySelector(`[data-toggle-group="${targetGroup}"]`);
-      if (!group) {
-        return;
-      }
-
-      const isActive = control.type === 'checkbox'
-        ? control.checked
-        : control.value.trim().length > 0;
-
-      group.classList.toggle('is-active', isActive && !control.disabled);
-      group.toggleAttribute('hidden', !(isActive && !control.disabled));
-
-      const inputs = Array.from(group.querySelectorAll('input, select, textarea'));
-      inputs.forEach((input) => {
-        if (control.dataset.toggleRequired === 'true') {
-          input.required = isActive && !control.disabled;
+        const step3 = document.getElementById('step-3');
+        const step4 = document.getElementById('step-4');
+        if (step3) {
+          step3.classList.remove('active');
+        }
+        if (step4) {
+          step4.classList.add('active');
+        }
+        if (progressContainer) {
+          progressContainer.style.display = 'none';
         }
 
-        if (!isActive || control.disabled) {
-          if (input.type === 'checkbox' || input.type === 'radio') {
-            input.checked = false;
-          } else if (input.tagName === 'SELECT') {
-            input.selectedIndex = 0;
-          } else if (input.type !== 'file') {
-            input.value = '';
-          }
+        const emailSent = document.getElementById('email-sent');
+        const emailField = document.getElementById('email');
+        if (emailSent && emailField) {
+          emailSent.textContent = emailField.value || emailSent.textContent;
         }
       });
     }
-  }
 
-  class Summary {
-    constructor(form) {
-      this.form = form;
-      this.summaryMap = new Map();
-      this.channelGroups = Array.from(form.querySelectorAll('[data-summary-channel]'));
+    if (verifyBtn) {
+      verifyBtn.addEventListener('click', () => {
+        const codeField = document.getElementById('verification_code');
+        if (codeField && !codeField.value) {
+          window.alert('Por favor, introduce el código de verificación.');
+          return;
+        }
 
-      form.querySelectorAll('[data-summary-field]').forEach((node) => {
-        this.summaryMap.set(node.dataset.summaryField, node);
-      });
-
-      this.handleInput = this.handleInput.bind(this);
-      form.addEventListener('input', this.handleInput);
-      form.addEventListener('change', this.handleInput);
-
-      this.refresh();
-    }
-
-    handleInput(event) {
-      const field = event.target;
-      this.updateField(field.id, field);
-    }
-
-    refresh() {
-      this.summaryMap.forEach((_, fieldId) => {
-        const field = this.form.querySelector(`#${fieldId}`);
-        this.updateField(fieldId, field);
+        window.alert('¡Cuenta verificada con éxito! Ahora puedes iniciar sesión.');
       });
     }
 
-    updateField(fieldId, field) {
-      const target = this.summaryMap.get(fieldId);
-      if (!target) {
-        return;
-      }
+    const channelButtons = document.querySelectorAll('.channel-btn');
+    const companyField = document.getElementById('company-field');
 
-      let value = '';
-      if (field) {
-        if (field.tagName === 'SELECT') {
-          const option = field.options[field.selectedIndex];
-          value = option ? option.textContent.trim() : '';
-        } else if (field.type === 'checkbox') {
-          value = field.checked ? (field.dataset.summaryOn || field.value || '✔') : '';
-        } else if (field.type === 'file') {
-          value = field.files && field.files.length > 0 ? field.files[0].name : '';
+    const updateChannel = (channel) => {
+      channelButtons.forEach((button) => {
+        button.classList.toggle('active', button.getAttribute('data-channel') === channel);
+      });
+
+      if (companyField) {
+        if (channel === 'professional') {
+          companyField.classList.add('visible');
         } else {
-          value = field.value.trim();
+          companyField.classList.remove('visible');
         }
       }
+    };
 
-      target.textContent = value;
-      target.dataset.summaryEmpty = value ? 'false' : 'true';
-
-      if (fieldId === 'register_channel') {
-        this.updateChannelGroups(field);
-      }
-    }
-
-    updateChannelGroups(field) {
-      const channel = field?.value ?? '';
-
-      this.channelGroups.forEach((group) => {
-        const allowed = (group.dataset.summaryChannel || '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean);
-
-        const isVisible = channel && (allowed.length === 0 || allowed.includes(channel));
-        group.dataset.summaryVisible = isVisible ? 'true' : 'false';
-        group.hidden = !isVisible;
-      });
-    }
-  }
-
-  class PasswordToggle {
-    constructor(form) {
-      this.form = form;
-      this.buttons = Array.from(form.querySelectorAll('[data-password-toggle]'));
-      this.buttons.forEach((button) => {
-        button.addEventListener('click', () => this.toggle(button));
-      });
-    }
-
-    toggle(button) {
-      const fieldId = button.dataset.passwordToggle;
-      if (!fieldId) {
-        return;
-      }
-
-      const input = this.form.querySelector(`#${fieldId}`);
-      if (!input) {
-        return;
-      }
-
-      const label = button.querySelector('[data-password-toggle-label]');
-      const isPassword = input.type === 'password';
-      input.type = isPassword ? 'text' : 'password';
-
-      const showText = button.dataset.showText || 'Mostrar';
-      const hideText = button.dataset.hideText || 'Ocultar';
-
-      if (label) {
-        label.textContent = isPassword ? hideText : showText;
-      }
-    }
-  }
-
-  const isFieldVisible = (field) => {
-    if (!field || field.type === 'hidden' || field.disabled) {
-      return false;
-    }
-
-    const conditional = field.closest('.register-conditional');
-    if (conditional && !conditional.classList.contains('is-active')) {
-      return false;
-    }
-
-    if (field.closest('[hidden]')) {
-      return false;
-    }
-
-    return true;
-  };
-
-  const setupMatchingFields = (form, pairs) => {
-    const validators = pairs
-      .map(({ primary, confirm, message }) => {
-        const primaryField = form.querySelector(`#${primary}`);
-        const confirmField = form.querySelector(`#${confirm}`);
-
-        if (!primaryField || !confirmField) {
-          return null;
-        }
-
-        const validate = () => {
-          if (!isFieldVisible(confirmField)) {
-            confirmField.setCustomValidity('');
-            return;
-          }
-
-          const primaryValue = primaryField.value.trim();
-          const confirmValue = confirmField.value.trim();
-
-          if (confirmValue && primaryValue && primaryValue !== confirmValue) {
-            confirmField.setCustomValidity(message);
-          } else {
-            confirmField.setCustomValidity('');
-          }
-        };
-
-        primaryField.addEventListener('input', validate);
-        confirmField.addEventListener('input', validate);
-        form.addEventListener('change', (event) => {
-          if (event.target === primaryField || event.target === confirmField) {
-            validate();
-          }
+    if (channelButtons.length) {
+      updateChannel(channelButtons[0].getAttribute('data-channel'));
+      channelButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const channel = button.getAttribute('data-channel');
+          updateChannel(channel);
         });
-
-        return validate;
-      })
-      .filter(Boolean);
-
-    return () => {
-      validators.forEach((validate) => validate());
-    };
-  };
-
-  const validateStep = (step) => {
-    if (!step) {
-      return true;
-    }
-
-    const fields = Array.from(step.querySelectorAll('input, select, textarea')).filter(isFieldVisible);
-    for (const field of fields) {
-      if (!field.checkValidity()) {
-        field.reportValidity();
-        field.focus();
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const setupRegisterForm = () => {
-    const container = document.querySelector('.register-page__card');
-    const form = document.querySelector('#register-form');
-
-    if (!container || !form) {
-      return;
-    }
-
-    const statusBox = container.querySelector('[data-register-status]');
-    const prevButton = container.querySelector('[data-step-prev]');
-    const nextButton = container.querySelector('[data-step-next]');
-    const nextLabel = container.querySelector('[data-step-next-label]');
-
-    const stepper = new Stepper(container);
-    const channelFields = new ChannelFields(form);
-    const summary = new Summary(form);
-    new PasswordToggle(form);
-
-    const runMatchingChecks = setupMatchingFields(form, [
-      {
-        primary: 'register_email',
-        confirm: 'register_email_confirm',
-        message: 'Los correos electrónicos no coinciden.',
-      },
-      {
-        primary: 'register_password',
-        confirm: 'register_password_confirm',
-        message: 'Las contraseñas no coinciden.',
-      },
-    ]);
-
-    runMatchingChecks();
-
-    const defaultNextLabel = nextLabel ? nextLabel.textContent.trim() : '';
-    const finalLabel = nextLabel?.dataset.finalLabel || 'Crear cuenta';
-
-    const setStatus = (message = '', type = 'info') => {
-      if (!statusBox) {
-        return;
-      }
-
-      statusBox.textContent = message;
-      statusBox.dataset.statusType = message ? type : '';
-    };
-
-    if (prevButton) {
-      prevButton.addEventListener('click', () => {
-        stepper.prev();
-        setStatus('');
       });
     }
 
-    if (nextButton) {
-      nextButton.addEventListener('click', () => {
-        const currentStep = stepper.getCurrentStep();
-        runMatchingChecks();
-        if (!validateStep(currentStep)) {
-          return;
-        }
-
-        if (stepper.isLast()) {
-          form.requestSubmit();
-          return;
-        }
-
-        stepper.next();
-        setStatus('');
-      });
-    }
-
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const currentStep = stepper.getCurrentStep();
-      runMatchingChecks();
-      if (!validateStep(currentStep)) {
+    const toggleVisibility = (checkboxId, fieldId) => {
+      const checkbox = document.getElementById(checkboxId);
+      const field = document.getElementById(fieldId);
+      if (!checkbox || !field) {
         return;
       }
 
-      summary.refresh();
-      setStatus(
-        'Recibimos tu solicitud de registro. Próximamente conectaremos este flujo con el servicio de alta.',
-        'success',
-      );
+      const update = () => {
+        field.classList.toggle('visible', checkbox.checked);
+      };
+
+      checkbox.addEventListener('change', update);
+      update();
+    };
+
+    toggleVisibility('has_workshop', 'workshop-fields');
+    toggleVisibility('has_web', 'web-field');
+    toggleVisibility('auto_signature', 'signature-fields');
+    toggleVisibility('enable_sepa', 'sepa-fields');
+
+    const avatarUpload = document.getElementById('avatar-upload');
+    const avatarInput = document.getElementById('avatar');
+    if (avatarUpload && avatarInput) {
+      avatarUpload.addEventListener('click', () => {
+        avatarInput.click();
+      });
+
+      avatarInput.addEventListener('change', () => {
+        const label = avatarUpload.querySelector('.file-label');
+        if (label) {
+          label.textContent = avatarInput.files && avatarInput.files.length
+            ? 'Imagen seleccionada'
+            : '+ Añadir imagen de perfil';
+        }
+      });
+    }
+
+    document.querySelectorAll('.password-toggle').forEach((toggle) => {
+      toggle.addEventListener('click', () => {
+        const targetId = toggle.getAttribute('id') === 'toggle-password' ? 'password' : 'confirm_password';
+        const input = document.getElementById(targetId);
+        if (!input) {
+          return;
+        }
+
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        toggle.textContent = isPassword ? '🔒' : '👁️';
+      });
     });
 
-    stepper.onChange((state) => {
-      if (prevButton) {
-        prevButton.disabled = state.isFirst;
-      }
-
-      if (nextButton) {
-        nextButton.dataset.stepLast = state.isLast ? 'true' : 'false';
-      }
-
-      if (nextLabel) {
-        nextLabel.textContent = state.isLast ? finalLabel : defaultNextLabel;
-      }
-
-      if (state.isLast) {
-        summary.refresh();
-      }
-    });
-
-    channelFields.handleChannelChange();
-  };
-
-  document.addEventListener('DOMContentLoaded', setupRegisterForm);
+    showCurrentStep();
+    updateProgress();
+  });
 })();
