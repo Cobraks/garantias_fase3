@@ -3,6 +3,7 @@
 namespace GarantiasOnline360VO;
 
 use GarantiasOnline360VO\ActivityLog\ActivityLogger;
+use GarantiasOnline360VO\Support\UserProfileResolver;
 use function __;
 
 if (! defined('ABSPATH')) {
@@ -70,6 +71,9 @@ class GuaranteeLogger
         if ($vendor['vendor_id']) {
             $context['vendor_id'] = $vendor['vendor_id'];
             $context['vendor_name'] = $vendor['vendor_name'];
+            if (! empty($vendor['vendor_person_name'])) {
+                $context['vendor_person_name'] = $vendor['vendor_person_name'];
+            }
         }
 
         $data = [
@@ -88,6 +92,9 @@ class GuaranteeLogger
         }
         if ($vendor['vendor_name'] !== '') {
             $data['vendor_name'] = $vendor['vendor_name'];
+        }
+        if (! empty($vendor['vendor_person_name'])) {
+            $data['vendor_person_name'] = $vendor['vendor_person_name'];
         }
 
         ActivityLogger::log($mapped, $data);
@@ -208,7 +215,13 @@ class GuaranteeLogger
     }
 
     /**
-     * @return array{channel: string, channel_label: string, vendor_id: int, vendor_name: string}
+     * @return array{
+     *     channel: string,
+     *     channel_label: string,
+     *     vendor_id: int,
+     *     vendor_name: string,
+     *     vendor_person_name: string
+     * }
      */
     private static function get_vendor_context(int $guarantee_id): array
     {
@@ -238,13 +251,23 @@ class GuaranteeLogger
             }
         }
 
-        $vendor_name = $vendor_id ? self::get_user_display_name($vendor_id) : '';
+        $vendor_name = '';
+        $vendor_person = '';
+        if ($vendor_id) {
+            $labels = UserProfileResolver::get_vendor_labels($vendor_id);
+            $vendor_name = $labels['company_name'] ?? '';
+            $vendor_person = $labels['personal_name'] ?? '';
+            if ($vendor_name === '' && $vendor_person !== '') {
+                $vendor_name = $vendor_person;
+            }
+        }
 
         return [
             'channel'       => $channel_value,
             'channel_label' => $channel_label,
             'vendor_id'     => $vendor_id,
             'vendor_name'   => $vendor_name,
+            'vendor_person_name' => $vendor_person,
         ];
     }
 
@@ -615,24 +638,12 @@ class GuaranteeLogger
             return ['name' => '', 'email' => ''];
         }
 
-        $name = $user->display_name ?: $user->user_login;
+        $name = UserProfileResolver::get_personal_name($user);
 
         return [
             'name'  => $name,
             'email' => $user->user_email ?: '',
         ];
-    }
-
-    private static function get_user_display_name(int $user_id): string
-    {
-        if (! $user_id) {
-            return '';
-        }
-        $user = get_userdata($user_id);
-        if (! $user) {
-            return '';
-        }
-        return $user->display_name ?: $user->user_login;
     }
 
 }
