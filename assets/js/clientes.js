@@ -9,12 +9,14 @@
         const restNonce = (config.rest && config.rest.nonce) || '';
         const perPage = (config.pagination && config.pagination.perPage) || 20;
         const strings = config.strings || {};
+        const icons = config.icons || {};
 
         const listContainer = document.querySelector('.guarantees-list');
         const table = document.querySelector('.guarantees-table');
         const tbody = table ? table.querySelector('tbody') : null;
         const searchInput = document.getElementById('clientes-search');
         const closeIcon = document.querySelector('.guarantees-list__close-icon');
+        const channelSelect = document.getElementById('clientes-channel-filter');
         const sentinel = document.getElementById('scroll-end');
         const spinner = sentinel ? sentinel.querySelector('.spinner') : null;
         const panel1 = document.getElementById('detail-panel-1');
@@ -36,12 +38,14 @@
             totalPages: 1,
             isLoading: false,
             search: '',
+            channel: '',
         };
 
         const cache = new Map();
         let selectedRow = null;
         let lastRowIndex = -1;
         let debounceTimer = null;
+        const COLUMN_COUNT = 5;
 
         function escapeHtml(value) {
             return String(value ?? '')
@@ -92,6 +96,72 @@
             const composed = [first, last].filter(Boolean).join(' ').trim();
 
             return full || composed || name;
+        }
+
+        function normalizeChannelOption(option) {
+            if (!option || typeof option !== 'object') {
+                return null;
+            }
+
+            const value = typeof option.value === 'string' ? option.value.trim() : '';
+            const label = typeof option.label === 'string' ? option.label.trim() : '';
+
+            if (value === '' || label === '') {
+                return null;
+            }
+
+            return { value, label };
+        }
+
+        function updateChannelFilterOptions(options) {
+            if (!channelSelect) {
+                return;
+            }
+
+            const normalized = Array.isArray(options)
+                ? options.map((option) => normalizeChannelOption(option)).filter(Boolean)
+                : [];
+
+            const seen = new Set();
+            const unique = [];
+
+            normalized.forEach((option) => {
+                if (seen.has(option.value)) {
+                    return;
+                }
+                seen.add(option.value);
+                unique.push(option);
+            });
+
+            const previousValue = state.channel || channelSelect.value || '';
+            const placeholder = typeof strings.channelFilterAll === 'string'
+                ? strings.channelFilterAll
+                : 'Todos los canales';
+
+            channelSelect.innerHTML = '';
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = placeholder;
+            channelSelect.appendChild(defaultOption);
+
+            unique.forEach((option) => {
+                const element = document.createElement('option');
+                element.value = option.value;
+                element.textContent = option.label;
+                channelSelect.appendChild(element);
+            });
+
+            if (previousValue && !seen.has(previousValue)) {
+                const fallbackOption = document.createElement('option');
+                fallbackOption.value = previousValue;
+                fallbackOption.textContent = previousValue;
+                channelSelect.appendChild(fallbackOption);
+                seen.add(previousValue);
+            }
+
+            channelSelect.value = previousValue && seen.has(previousValue) ? previousValue : '';
+            channelSelect.disabled = unique.length === 0;
         }
 
         function initResizableColumns(table) {
@@ -282,7 +352,6 @@
             const registered = item.registered || {};
             const salesChannel = item.sales_channel || {};
             const guarantees = item.guarantees || {};
-            const payment = item.payment || {};
             const commercials = item.commercials || [];
 
             const displayName = getDisplayName(name);
@@ -292,10 +361,17 @@
             const avatar = profile.avatar
                 ? `<img src="${escapeAttribute(profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="clients-table__avatar">`
                 : `<span class="clients-table__initials">${escapeHtml(profile.initials || '')}</span>`;
-
-            const companyLine = name.company ? `<span class="clients-table__company">${escapeHtml(name.company)}</span>` : '';
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+            const channelLabel = typeof salesChannel.label === 'string' ? salesChannel.label.trim() : '';
+            const channelHtml = channelLabel !== ''
+                ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
+                : '';
+            const identityLine = companyName !== ''
+                ? `<span class="clients-table__company">${escapeHtml(companyName)}${channelHtml}</span>`
+                : channelHtml;
             const offersHtml = formatOffers(item.offers);
             const commercialsText = formatCommercialSummary(commercials);
+            const registeredLabel = strings.registered || 'Registro';
 
             const tr = document.createElement('tr');
             tr.className = 'guarantees-table__row';
@@ -309,24 +385,18 @@
                         <div class="clients-table__avatar-wrapper">${avatar}</div>
                         <div class="clients-table__identity">
                             <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
-                            ${companyLine}
+                            ${identityLine || ''}
                         </div>
                     </div>
                 </td>
-                <td data-label="${escapeHtml(strings.registered || 'Registrado desde')}" class="clients-table__registered">
+                <td data-label="${escapeHtml(registeredLabel)}" class="clients-table__registered">
                     ${registered.display ? escapeHtml(registered.display) : '—'}
                 </td>
-                <td data-label="${escapeHtml(strings.salesChannel || 'Canal de venta')}" class="clients-table__meta">
-                    ${escapeHtml(salesChannel.label || '—')}
-                </td>
                 <td data-label="${escapeHtml(strings.offers || 'Ofertas activas')}" class="clients-table__offers">${offersHtml}</td>
-                <td data-label="${escapeHtml(strings.guarantees || 'Nº Garantías')}" class="clients-table__meta">
+                <td data-label="${escapeHtml(strings.guarantees || 'Nº Garantías')}" class="clients-table__meta clients-table__meta--count">
                     ${formatCount(guarantees.count)}
                 </td>
-                <td data-label="${escapeHtml(strings.paymentMethod || 'Método de pago')}" class="clients-table__meta">
-                    ${escapeHtml(payment.label || '—')}
-                </td>
-                <td data-label="${escapeHtml(strings.commercials || 'Comercial')}" class="clients-table__meta">
+                <td data-label="${escapeHtml(strings.commercials || 'Comercial')}" class="clients-table__meta clients-table__meta--commercial">
                     ${escapeHtml(commercialsText || '—')}
                 </td>
             `;
@@ -407,6 +477,156 @@
             return `<ul class="client-detail__commercials">${items.join('')}</ul>`;
         }
 
+        function formatMultiline(value) {
+            if (typeof value !== 'string') {
+                return '';
+            }
+
+            const trimmed = value.trim();
+            if (trimmed === '') {
+                return '';
+            }
+
+            return escapeHtml(trimmed).replace(/\n/g, '<br>');
+        }
+
+        function renderContactActions(contact) {
+            const loginEmail = typeof contact.login_email === 'string' && contact.login_email ? contact.login_email.trim() : '';
+            const fallbackEmail = typeof contact.email === 'string' && contact.email ? contact.email.trim() : '';
+            const baseEmail = loginEmail !== '' ? loginEmail : fallbackEmail;
+            const notificationEmail = typeof contact.notification_email === 'string' && contact.notification_email
+                ? contact.notification_email.trim()
+                : '';
+            const phone = typeof contact.phone === 'string' && contact.phone ? contact.phone.trim() : '';
+
+            const actions = [];
+
+            if (baseEmail !== '') {
+                actions.push({
+                    type: 'email',
+                    href: `mailto:${baseEmail}`,
+                    label: strings.loginEmail || 'Email de inicio de sesión',
+                    value: baseEmail,
+                    note: '',
+                });
+            }
+
+            if (notificationEmail !== '') {
+                const isSame = baseEmail !== '' && notificationEmail.toLowerCase() === baseEmail.toLowerCase();
+                actions.push({
+                    type: 'email',
+                    href: `mailto:${notificationEmail}`,
+                    label: strings.notificationEmail || 'Email de notificaciones',
+                    value: notificationEmail,
+                    note: isSame ? (strings.notificationEmailSame || '') : '',
+                });
+            }
+
+            if (phone !== '') {
+                const sanitized = phone.replace(/[^0-9+]/g, '');
+                actions.push({
+                    type: 'phone',
+                    href: `tel:${sanitized}`,
+                    label: strings.contactPhone || 'Teléfono de contacto',
+                    value: phone,
+                    note: '',
+                });
+            }
+
+            if (actions.length === 0) {
+                return `<p class="client-detail__contact-empty">${escapeHtml(strings.contactEmpty || 'No hay datos de contacto disponibles')}</p>`;
+            }
+
+            const items = actions.map((action) => {
+                const icon = action.type === 'phone' ? icons.phone : icons.email;
+                const note = action.note && action.note.trim() !== ''
+                    ? `<span class="client-detail__contact-note">${escapeHtml(action.note)}</span>`
+                    : '';
+
+                return `
+                    <li class="fast-actions__item">
+                        <a class="fast-actions__link" href="${escapeAttribute(action.href)}">
+                            <span class="fast-actions__icon" aria-hidden="true">${icon || ''}</span>
+                            <span class="fast-actions__label">
+                                ${escapeHtml(action.label)}
+                                <span class="client-detail__contact-value">${escapeHtml(action.value)}</span>
+                                ${note}
+                            </span>
+                        </a>
+                    </li>
+                `;
+            });
+
+            return `
+                <div class="client-detail__contact-actions">
+                    <ul class="fast-actions">${items.join('')}</ul>
+                </div>
+            `;
+        }
+
+        function renderWorkshop(workshop) {
+            const data = workshop && typeof workshop === 'object' ? workshop : {};
+            const hasWorkshop = Boolean(data.has_workshop);
+            const statusClass = hasWorkshop ? 'client-detail__status--success' : 'client-detail__status--info';
+            const statusLabel = hasWorkshop
+                ? (strings.workshopYes || 'Con taller propio')
+                : (strings.workshopNo || 'Sin taller propio');
+
+            let details = '';
+
+            if (hasWorkshop) {
+                const fields = [
+                    { key: 'name', label: strings.workshopName || 'Nombre del taller' },
+                    { key: 'contact_person', label: strings.workshopContact || 'Persona de contacto' },
+                    { key: 'phone', label: strings.workshopPhone || 'Teléfono', type: 'phone' },
+                    { key: 'email', label: strings.workshopEmail || 'Email', type: 'email' },
+                    { key: 'address', label: strings.workshopAddress || 'Dirección', formatter: formatMultiline },
+                    { key: 'tax_id', label: strings.workshopTaxId || 'CIF/NIF' },
+                ];
+
+                const items = fields.map((field) => {
+                    const raw = typeof data[field.key] === 'string' ? data[field.key].trim() : '';
+
+                    if (raw === '') {
+                        return '';
+                    }
+
+                    let valueHtml = '';
+                    if (field.type === 'phone') {
+                        valueHtml = formatLink('tel', raw);
+                    } else if (field.type === 'email') {
+                        valueHtml = formatLink('mailto', raw);
+                    } else if (typeof field.formatter === 'function') {
+                        valueHtml = field.formatter(raw);
+                        if (valueHtml === '') {
+                            return '';
+                        }
+                    } else {
+                        valueHtml = escapeHtml(raw);
+                    }
+
+                    return `
+                        <div class="client-detail__item">
+                            <dt>${escapeHtml(field.label)}</dt>
+                            <dd>${valueHtml}</dd>
+                        </div>
+                    `;
+                }).filter((item) => item !== '');
+
+                if (items.length > 0) {
+                    details = `<div class="client-detail__workshop-details">${items.join('')}</div>`;
+                }
+            }
+
+            return `
+                <section class="client-detail__section client-detail__section--workshop">
+                    <h4 class="client-detail__section-title">${escapeHtml(strings.workshop || 'Taller propio')}</h4>
+                    <p class="client-detail__status ${statusClass}">${escapeHtml(statusLabel)}</p>
+                    ${details}
+                </section>
+            `;
+        }
+
         function renderDetail(item) {
             const name = item.name || {};
             const registered = item.registered || {};
@@ -424,7 +644,9 @@
                 ? `<img src="${escapeAttribute(item.profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="client-detail__avatar">`
                 : `<span class="client-detail__avatar client-detail__avatar--initials">${escapeHtml(item.profile?.initials || '')}</span>`;
 
-            const companyLine = name.company ? `<p class="client-detail__company">${escapeHtml(name.company)}</p>` : '';
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+            const salesChannelLabel = typeof salesChannel.label === 'string' ? salesChannel.label.trim() : '';
+            const companyLine = companyName !== '' ? `<p class="client-detail__company">${escapeHtml(companyName)}</p>` : '';
             const addressLines = joinNonEmpty([
                 address.street || '',
                 joinNonEmpty([address.zip || '', address.city || ''], ' '),
@@ -433,6 +655,20 @@
 
             const sepaVariant = sepa.variant ? ` client-detail__status--${escapeHtml(sepa.variant)}` : '';
             const sepaMessage = sepa.label || strings.sepaEmpty || 'Sin información del mandato';
+            const registeredLabel = strings.registered || 'Registro';
+            const safeSalesChannel = salesChannelLabel !== '' ? escapeHtml(salesChannelLabel) : '—';
+            const salesTagClass = salesChannelLabel !== '' ? '' : ' client-detail__stat-tag--muted';
+            const paymentLabel = typeof payment.label === 'string' ? payment.label.trim() : '';
+            const paymentDisplay = paymentLabel !== '' ? escapeHtml(paymentLabel) : '—';
+            const paymentTagClass = paymentLabel !== '' ? '' : ' client-detail__stat-tag--muted';
+            const registrationBadge = `
+                <span class="client-detail__registration">
+                    ${escapeHtml(registeredLabel)}
+                    <time datetime="${escapeAttribute(registered.iso || '')}">${registered.display ? escapeHtml(registered.display) : '—'}</time>
+                </span>
+            `;
+            const contactActions = renderContactActions(contact);
+            const workshopSection = renderWorkshop(item.workshop);
 
             return `
                 <div class="client-detail">
@@ -441,43 +677,30 @@
                         <div class="client-detail__identity">
                             <h3 class="client-detail__title">${escapeHtml(displayName || strings.detailTitle || 'Detalles del cliente')}</h3>
                             ${companyLine}
-                            <p class="client-detail__meta-line">${escapeHtml(strings.registered || 'Registrado desde')}: <time datetime="${escapeAttribute(registered.iso || '')}">${escapeHtml(registered.display || '—')}</time></p>
                         </div>
+                        ${registrationBadge}
                     </header>
                     <div class="client-detail__stats">
-                        <div class="client-detail__stat">
+                        <div class="client-detail__stat client-detail__stat--guarantees">
                             <span class="client-detail__stat-label">${escapeHtml(strings.guarantees || 'Nº Garantías')}</span>
-                            <span class="client-detail__stat-value">${formatCount(guarantees.count)}</span>
+                            <span class="client-detail__stat-emphasis">${formatCount(guarantees.count)}</span>
                         </div>
                         <div class="client-detail__stat">
                             <span class="client-detail__stat-label">${escapeHtml(strings.salesChannel || 'Canal de venta')}</span>
-                            <span class="client-detail__stat-value">${escapeHtml(salesChannel.label || '—')}</span>
+                            <span class="client-detail__stat-tag${salesTagClass}">${safeSalesChannel}</span>
                         </div>
                         <div class="client-detail__stat">
                             <span class="client-detail__stat-label">${escapeHtml(strings.paymentMethod || 'Método de pago')}</span>
-                            <span class="client-detail__stat-value">${escapeHtml(payment.label || '—')}</span>
+                            <span class="client-detail__stat-tag${paymentTagClass}">${paymentDisplay}</span>
                         </div>
                     </div>
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.contact || 'Contacto')}</h4>
-                        <dl class="client-detail__list">
-                            <div class="client-detail__item">
-                                <dt>${escapeHtml(strings.contactEmail || 'Email de contacto')}</dt>
-                                <dd>${formatLink('mailto', contact.email)}</dd>
-                            </div>
-                            <div class="client-detail__item">
-                                <dt>${escapeHtml(strings.notificationEmail || 'Email de notificaciones')}</dt>
-                                <dd>${formatLink('mailto', contact.notification_email)}</dd>
-                            </div>
-                            <div class="client-detail__item">
-                                <dt>${escapeHtml(strings.contactPhone || 'Teléfono de contacto')}</dt>
-                                <dd>${formatLink('tel', contact.phone)}</dd>
-                            </div>
-                        </dl>
+                        ${contactActions}
                     </section>
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.company || 'Empresa')}</h4>
-                        <dl class="client-detail__list">
+                        <dl class="client-detail__list client-detail__list--columns">
                             <div class="client-detail__item">
                                 <dt>${escapeHtml(strings.company || 'Empresa')}</dt>
                                 <dd>${escapeHtml(company.name || '—')}</dd>
@@ -492,6 +715,7 @@
                             </div>
                         </dl>
                     </section>
+                    ${workshopSection}
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.offers || 'Ofertas activas')}</h4>
                         ${renderOffersList(item.offers)}
@@ -518,18 +742,57 @@
             nextPanel.innerHTML = content;
             nextPanel.dataset.loadedId = content ? 'loaded' : '';
 
-            nextPanel.classList.add('active', direction === 'backward' ? 'slide-in-left' : 'slide-in-right');
-            previousPanel.classList.add(direction === 'backward' ? 'slide-out-right' : 'slide-out-left');
+            const enterClass = direction === 'backward' ? 'slide-in-left' : 'slide-in-right';
+            const leaveClass = direction === 'backward' ? 'slide-out-right' : 'slide-out-left';
 
-            nextPanel.addEventListener('animationend', () => {
+            nextPanel.classList.add('active', enterClass);
+            previousPanel.classList.add(leaveClass);
+
+            const handleNextEnd = (event) => {
+                if (event.target !== nextPanel) {
+                    return;
+                }
+
                 nextPanel.classList.remove('slide-in-left', 'slide-in-right');
-            }, { once: true });
+                if (nextPanel.__goAnimationTimeout) {
+                    window.clearTimeout(nextPanel.__goAnimationTimeout);
+                    nextPanel.__goAnimationTimeout = null;
+                }
+                nextPanel.removeEventListener('animationend', handleNextEnd);
+            };
 
-            previousPanel.addEventListener('animationend', () => {
+            const handlePreviousEnd = (event) => {
+                if (event.target !== previousPanel) {
+                    return;
+                }
+
                 previousPanel.classList.remove('slide-out-left', 'slide-out-right');
                 previousPanel.classList.remove('active');
                 previousPanel.innerHTML = '';
-            }, { once: true });
+                if (previousPanel.__goAnimationTimeout) {
+                    window.clearTimeout(previousPanel.__goAnimationTimeout);
+                    previousPanel.__goAnimationTimeout = null;
+                }
+                previousPanel.removeEventListener('animationend', handlePreviousEnd);
+            };
+
+            nextPanel.addEventListener('animationend', handleNextEnd);
+            previousPanel.addEventListener('animationend', handlePreviousEnd);
+
+            if (nextPanel.__goAnimationTimeout) {
+                window.clearTimeout(nextPanel.__goAnimationTimeout);
+            }
+            if (previousPanel.__goAnimationTimeout) {
+                window.clearTimeout(previousPanel.__goAnimationTimeout);
+            }
+
+            nextPanel.__goAnimationTimeout = window.setTimeout(() => {
+                handleNextEnd({ target: nextPanel });
+            }, 400);
+
+            previousPanel.__goAnimationTimeout = window.setTimeout(() => {
+                handlePreviousEnd({ target: previousPanel });
+            }, 400);
 
             activePanel = nextPanel;
             inactivePanel = previousPanel;
@@ -549,7 +812,7 @@
             const content = `
                 <div class="guarantee-detail__empty">
                     <h3 class="guarantee-detail__title">${escapeHtml(strings.detailTitle || 'Detalles del cliente')}</h3>
-                    <p>${escapeHtml(strings.selectPrompt || 'Selecciona un cliente para ver la información.')}</p>
+                    <p>${escapeHtml(strings.selectPrompt || 'Selecciona un cliente para consultar su información, asignar comerciales, gestionar ofertas y más.')}</p>
                 </div>
             `;
             swapPanels(content, direction);
@@ -584,6 +847,9 @@
             if (state.search) {
                 params.set('search', state.search);
             }
+            if (state.channel) {
+                params.set('channel', state.channel);
+            }
 
             try {
                 const response = await fetch(`${restRoot}go/v1/clientes?${params.toString()}`, {
@@ -599,6 +865,10 @@
                 const data = await response.json();
                 const items = Array.isArray(data.items) ? data.items : [];
 
+                if (data && data.filters && data.filters.channels) {
+                    updateChannelFilterOptions(data.filters.channels);
+                }
+
                 state.page = Number.isFinite(data.page) ? data.page : page;
                 state.totalPages = Number.isFinite(data.total_pages) ? Math.max(1, data.total_pages) : state.totalPages;
                 tbody.dataset.currentPage = String(state.page);
@@ -607,7 +877,7 @@
                 if (!append && items.length === 0) {
                     const emptyRow = document.createElement('tr');
                     emptyRow.className = 'guarantees-table__row guarantees-table__row--empty';
-                    emptyRow.innerHTML = `<td colspan="7">${escapeHtml(strings.noResults || 'No se han encontrado clientes con los filtros actuales.')}</td>`;
+                    emptyRow.innerHTML = `<td colspan="${COLUMN_COUNT}">${escapeHtml(strings.noResults || 'No se han encontrado clientes con los filtros actuales.')}</td>`;
                     tbody.appendChild(emptyRow);
                     if (typeof table.__goUpdateColumnOverlay === 'function') {
                         table.__goUpdateColumnOverlay();
@@ -633,7 +903,7 @@
                 if (!append) {
                     const errorRow = document.createElement('tr');
                     errorRow.className = 'guarantees-table__row guarantees-table__row--empty';
-                    errorRow.innerHTML = `<td colspan="7">${escapeHtml(strings.error || 'No se ha podido cargar la información de clientes.')}</td>`;
+                    errorRow.innerHTML = `<td colspan="${COLUMN_COUNT}">${escapeHtml(strings.error || 'No se ha podido cargar la información de clientes.')}</td>`;
                     tbody.appendChild(errorRow);
                     if (typeof table.__goUpdateColumnOverlay === 'function') {
                         table.__goUpdateColumnOverlay();
@@ -678,6 +948,13 @@
                     event.preventDefault();
                     closeIcon.click();
                 }
+            });
+        }
+
+        if (channelSelect) {
+            channelSelect.addEventListener('change', () => {
+                state.channel = channelSelect.value;
+                loadPage(1, false);
             });
         }
 

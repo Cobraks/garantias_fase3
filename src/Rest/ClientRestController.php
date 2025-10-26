@@ -42,6 +42,9 @@ class ClientRestController
                         'search' => [
                             'sanitize_callback' => 'sanitize_text_field',
                         ],
+                        'channel' => [
+                            'sanitize_callback' => 'sanitize_key',
+                        ],
                     ],
                 ],
             ]
@@ -72,11 +75,11 @@ class ClientRestController
         $per_page = min($per_page, 50);
 
         $args = [
-            'role'    => 'go_profesional',
-            'number'  => $per_page,
-            'offset'  => ($page - 1) * $per_page,
-            'orderby' => 'registered',
-            'order'   => 'DESC',
+            'role__in' => self::get_supported_roles(),
+            'number'   => $per_page,
+            'offset'   => ($page - 1) * $per_page,
+            'orderby'  => 'registered',
+            'order'    => 'DESC',
         ];
 
         $search = $request->get_param('search');
@@ -84,6 +87,15 @@ class ClientRestController
             $search = trim($search);
             $args['search'] = '*' . esc_attr($search) . '*';
             $args['search_columns'] = ['user_login', 'user_email', 'user_nicename', 'display_name'];
+        }
+
+        $channel = $request->get_param('channel');
+        if (is_string($channel) && $channel !== '') {
+            $channel = sanitize_key($channel);
+            $role_for_channel = self::map_channel_to_role($channel);
+            if ($role_for_channel !== '') {
+                $args['role__in'] = [$role_for_channel];
+            }
         }
 
         $query   = new WP_User_Query($args);
@@ -107,6 +119,9 @@ class ClientRestController
             'total'       => $total,
             'total_pages' => $total_pages,
             'items'       => array_values(array_filter($items)),
+            'filters'     => [
+                'channels' => self::get_channel_filters(),
+            ],
         ];
 
         return new WP_REST_Response($response, 200);
@@ -134,7 +149,7 @@ class ClientRestController
             ? $profile_image
             : ($user_data['avatar_url'] ?? get_avatar_url($user->ID));
 
-        $sales_channel = self::format_sales_channel($user_data['company']['type'] ?? []);
+        $sales_channel = self::resolve_sales_channel($user_data['company']['type'] ?? [], $user);
         $offers        = self::get_active_offers((int) $user->ID);
         $guarantees    = self::count_guarantees((int) $user->ID);
         $commercials   = self::format_commercials($account['commercials'] ?? []);
@@ -142,9 +157,16 @@ class ClientRestController
         $payments     = $account['payments'] ?? [];
         $payment_info = self::format_payment($payments);
 
+        $login_email = sanitize_email($user->user_email);
+        $primary_email = sanitize_email($user_data['email'] ?? $login_email);
+        if ($primary_email === '') {
+            $primary_email = $login_email;
+        }
+
         $contact = [
-            'email'              => sanitize_email($user_data['email'] ?? $user->user_email),
-            'notification_email' => sanitize_email($user_data['notification_email'] ?? $user->user_email),
+            'login_email'        => $login_email,
+            'email'              => $primary_email,
+            'notification_email' => sanitize_email($user_data['notification_email'] ?? $primary_email ?: $login_email),
             'phone'              => self::clean_text($user_data['phone'] ?? ''),
         ];
 
@@ -192,6 +214,24 @@ class ClientRestController
             ],
             'address'      => $address,
             'sepa'         => $sepa_status,
+            'workshop'     => self::format_workshop($account['workshop'] ?? []),
+        ];
+    }
+
+    private static function format_workshop($workshop): array
+    {
+        if (! is_array($workshop)) {
+            $workshop = [];
+        }
+
+        return [
+            'has_workshop'   => ! empty($workshop['has_workshop']),
+            'name'           => self::clean_text($workshop['name'] ?? ''),
+            'tax_id'         => self::clean_text($workshop['tax_id'] ?? ''),
+            'contact_person' => self::clean_text($workshop['contact_person'] ?? ''),
+            'phone'          => self::clean_text($workshop['phone'] ?? ''),
+            'email'          => sanitize_email($workshop['email'] ?? ''),
+            'address'        => self::clean_text($workshop['address'] ?? ''),
         ];
     }
 
@@ -214,7 +254,7 @@ class ClientRestController
             ];
         }
 
-        $display = mysql2date(get_option('date_format', 'd/m/Y'), $value);
+        $display = mysql2date('d/m/y', $value);
         $iso     = mysql2date('c', $value);
 
         return [
@@ -246,6 +286,115 @@ class ClientRestController
             'value' => sanitize_key($value),
             'label' => $value,
         ];
+    }
+
+    private static function resolve_sales_channel($type, WP_User $user): array
+    {
+        $formatted = self::format_sales_channel($type);
+        $roles = array_map('strval', (array) $user->roles);
+        $channel_slug = self::map_role_to_channel_slug($roles);
+
+        if ($channel_slug !== '') {
+            $formatted['category'] = $channel_slug;
+
+            if (($formatted['value'] ?? '') === '') {
+                $formatted['value'] = $channel_slug;
+            }
+
+            if (($formatted['label'] ?? '') === '') {
+                $formatted['label'] = self::get_channel_label($channel_slug);
+            }
+        } else {
+            $formatted['category'] = '';
+        }
+
+        if (! isset($formatted['value'])) {
+            $formatted['value'] = '';
+        }
+
+        if (! isset($formatted['label'])) {
+            $formatted['label'] = '';
+        }
+
+        return $formatted;
+    }
+
+    private static function get_supported_roles(): array
+    {
+        return ['go_profesional', 'go_particular', 'go_gestoria'];
+    }
+
+    private static function get_channel_role_map(): array
+    {
+        return [
+            'profesional' => 'go_profesional',
+            'particular'  => 'go_particular',
+            'gestoria'    => 'go_gestoria',
+        ];
+    }
+
+    private static function map_channel_to_role(string $channel): string
+    {
+        $map = self::get_channel_role_map();
+
+        return $map[$channel] ?? '';
+    }
+
+    private static function map_role_to_channel_slug(array $roles): string
+    {
+        $map = self::get_channel_role_map();
+
+        foreach ($map as $channel => $role) {
+            if (in_array($role, $roles, true)) {
+                return $channel;
+            }
+        }
+
+        return '';
+    }
+
+    private static function get_channel_label(string $channel): string
+    {
+        switch ($channel) {
+            case 'gestoria':
+                return __('Gestoría', 'garantias-online-360vo');
+            case 'particular':
+                return __('Particular', 'garantias-online-360vo');
+            case 'profesional':
+                return __('Profesional', 'garantias-online-360vo');
+            default:
+                return '';
+        }
+    }
+
+    private static function get_channel_filters(): array
+    {
+        $filters = [];
+        $counts = count_users();
+        $available_roles = is_array($counts) && isset($counts['avail_roles']) ? (array) $counts['avail_roles'] : [];
+        $map = self::get_channel_role_map();
+
+        foreach ($map as $channel => $role) {
+            $count = (int) ($available_roles[$role] ?? 0);
+
+            if ($count <= 0) {
+                continue;
+            }
+
+            $label = self::get_channel_label($channel);
+
+            if ($label === '') {
+                continue;
+            }
+
+            $filters[] = [
+                'value' => $channel,
+                'label' => $label,
+                'count' => $count,
+            ];
+        }
+
+        return $filters;
     }
 
     private static function format_payment(array $payments): array
