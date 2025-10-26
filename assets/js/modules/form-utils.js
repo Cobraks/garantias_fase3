@@ -138,12 +138,55 @@ export function parseNumericFormValue(val) {
 }
 
 export function getAntiguedadFromDate(fechaISO) {
-	if (!fechaISO) return null;
-	const fecha = new Date(fechaISO);
-	if (isNaN(fecha.getTime())) return null;
-	const anioMatriculacion = fecha.getFullYear();
-	const anioActual = new Date().getFullYear();
-	return anioActual - anioMatriculacion;
+        if (!fechaISO) return null;
+        const partes = typeof fechaISO === "string" ? fechaISO.split("-") : null;
+        let fecha = null;
+        if (
+                Array.isArray(partes) &&
+                partes.length >= 3 &&
+                partes.every((p) => /^\d+$/.test(p))
+        ) {
+                const [anio, mes, dia] = partes.map((p) => Number.parseInt(p, 10));
+                fecha = new Date(anio, (mes || 1) - 1, dia || 1);
+        } else {
+                fecha = new Date(fechaISO);
+        }
+        if (isNaN(fecha.getTime())) return null;
+
+        const hoy = new Date();
+        const fechaMatriculacion = new Date(
+                fecha.getFullYear(),
+                fecha.getMonth(),
+                fecha.getDate()
+        );
+
+        if (hoy < fechaMatriculacion) return 0;
+
+        let anos = hoy.getFullYear() - fechaMatriculacion.getFullYear();
+        let meses = hoy.getMonth() - fechaMatriculacion.getMonth();
+        let dias = hoy.getDate() - fechaMatriculacion.getDate();
+        let baseDias = 0;
+
+        if (dias < 0) {
+                const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+                baseDias = mesAnterior.getDate();
+                dias += baseDias;
+                meses -= 1;
+        } else {
+                baseDias = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+        }
+
+        if (meses < 0) {
+                meses += 12;
+                anos -= 1;
+        }
+
+        const mesesTotales = anos * 12 + meses;
+        const fraccionMes = baseDias > 0 ? dias / baseDias : 0;
+        const antiguedad = (mesesTotales + fraccionMes) / 12;
+
+        const normalizado = antiguedad < 0 ? 0 : antiguedad;
+        return Number(normalizado.toFixed(6));
 }
 
 // ===============================
