@@ -9,6 +9,11 @@ use WP_Error;
 use DateTimeImmutable;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\GuaranteeLogger;
+use GarantiasOnline360VO\Notifications\Email\EmailMessage;
+use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
+use GarantiasOnline360VO\Notifications\Email\GuaranteeEmailDataFactory;
+use GarantiasOnline360VO\Notifications\Email\Mailer;
+use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
 use GarantiasOnline360VO\Support\UserProfileResolver;
@@ -19,6 +24,17 @@ class GuaranteeRestController
     const CONTRACT_NOTICE_EVENT = 'go360/guarantee/dispatch_contract_notice';
     const NAMESPACE = 'go/v1';
     const BASE      = 'guarantees';
+    const ADDITIONAL_DOCS_FIELD = 'garantia_contratada_documentacion_add_document';
+    const TRANSFER_RECEIPT_HASH_META = '_go360_transfer_receipt_hash';
+    const TRANSFER_RECEIPT_EXTENSION_META = '_go360_transfer_receipt_extension';
+    const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
+    const RECEIPT_ALLOWED_MIMES = [
+        'pdf'  => 'application/pdf',
+        'jpg'  => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png'  => 'image/png',
+    ];
+    const RECEIPT_MAX_BYTES = 10485760; // 10 MB
 
     public static function register_routes()
     {
@@ -107,6 +123,25 @@ class GuaranteeRestController
         );
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/document/extra/(?P<row>\d+)',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'download_document'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
+                    'args'                => [
+                        'id'  => ['validate_callback' => 'absint'],
+                        'row' => ['validate_callback' => 'absint'],
+                        'type' => [
+                            'default'           => 'extra',
+                            'sanitize_callback' => 'sanitize_text_field',
+                        ],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::BASE . '/(?P<id>\d+)/document/(?P<type>[a-z_]+)',
             [
                 [
@@ -116,6 +151,20 @@ class GuaranteeRestController
                     'args'                => [
                         'id'   => ['validate_callback' => 'absint'],
                         'type' => ['sanitize_callback' => 'sanitize_text_field'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/confirm-transfer',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'confirm_transfer'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
                     ],
                 ],
             ]
@@ -163,10 +212,72 @@ class GuaranteeRestController
 
     public static function download_document($request)
     {
-        $id   = (int) $request['id'];
-        $type = sanitize_key($request['type']);
+        $id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($id <= 0) {
+            return new WP_Error('invalid_id', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+        }
+
+        $type = isset($request['type']) ? sanitize_key($request['type']) : '';
+        $force_download = (bool) $request->get_param('download');
+
+        if ($type === 'extra') {
+            $row_index = isset($request['row']) ? (int) $request['row'] : 0;
+            if ($row_index <= 0) {
+                return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+            }
+
+            $document = self::locate_additional_document($id, $row_index);
+            if (!$document) {
+                return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+            }
+
+            if (!self::current_user_can_access_document($document)) {
+                return new WP_Error('forbidden_document', __('No tienes permisos para ver este documento.', 'garantias-online-360vo'), ['status' => 403]);
+            }
+
+            $filename = self::normalize_document_filename($document['filename'] ?? ($document['title'] ?? 'documento.pdf'));
+            $mime = 'application/octet-stream';
+            $binary = '';
+
+            if (!empty($document['is_private'])) {
+                $extension = isset($document['extension']) && $document['extension'] !== ''
+                    ? strtolower((string) $document['extension'])
+                    : 'pdf';
+                $hash = (string) ($document['hash'] ?? '');
+                if ($hash === '') {
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $binary = PrivateDocsManager::retrieve($hash, $extension);
+                if (!is_string($binary) || $binary === '') {
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $mime = self::map_extension_to_mime($extension);
+                if (!str_contains($filename, '.')) {
+                    $filename .= '.' . $extension;
+                }
+            } else {
+                $public = self::load_public_document_binary($document);
+                if (!$public) {
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+                $binary = $public['binary'];
+                $mime = $public['mime'];
+                $filename = self::normalize_document_filename($public['filename']);
+            }
+
+            GuaranteeLogger::log(get_current_user_id(), $id, 'document_downloaded', 'extra:' . ($document['key'] ?? $row_index));
+
+            $response = new WP_REST_Response($binary, 200);
+            $response->header('Content-Type', $mime);
+            $response->header('Content-Disposition', self::build_content_disposition_header($force_download, $filename));
+            $response->header('X-Go360-Binary', '1');
+
+            return $response;
+        }
+
         $binary = '';
         $filename = '';
+        $mime = 'application/pdf';
 
         switch ($type) {
             case 'certificado':
@@ -187,6 +298,7 @@ class GuaranteeRestController
                     $info['plan'],
                     $info['matricula']
                 ));
+                $mime = 'application/pdf';
                 break;
             case 'condicionado':
             case 'cobertura':
@@ -210,6 +322,7 @@ class GuaranteeRestController
                     $info['plan'],
                     $info['matricula']
                 ));
+                $mime = 'application/pdf';
                 break;
             default:
                 return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
@@ -217,17 +330,543 @@ class GuaranteeRestController
 
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_downloaded', $type);
         $response = new WP_REST_Response($binary, 200);
-        $response->header('Content-Type', 'application/pdf');
-        $force_download = $request->get_param('download');
+        $response->header('Content-Type', $mime);
+        $response->header('Content-Disposition', self::build_content_disposition_header($force_download, $filename));
+        $response->header('X-Go360-Binary', '1');
+
+        return $response;
+    }
+
+    private static function build_content_disposition_header($force_download, $filename)
+    {
+        $sanitized = $filename !== '' ? $filename : 'documento.pdf';
         $type_header = $force_download ? 'attachment' : 'inline';
-        $disposition = sprintf(
+
+        return sprintf(
             "%s; filename=\"%s\"; filename*=UTF-8''%s",
             $type_header,
-            $filename,
-            rawurlencode($filename)
+            $sanitized,
+            rawurlencode($sanitized)
         );
-        $response->header('Content-Disposition', $disposition);
-        return $response;
+    }
+
+    private static function map_extension_to_mime($extension)
+    {
+        $ext = strtolower((string) $extension);
+        return match ($ext) {
+            'pdf'  => 'application/pdf',
+            'jpg',
+            'jpeg' => 'image/jpeg',
+            'png'  => 'image/png',
+            default => 'application/octet-stream',
+        };
+    }
+
+    private static function load_public_document_binary(array $document)
+    {
+        $attachment_id = isset($document['attachment_id']) ? (int) $document['attachment_id'] : 0;
+        $attachment_url = isset($document['attachment_url']) ? trim((string) $document['attachment_url']) : '';
+        $fallback_filename = isset($document['filename']) ? (string) $document['filename'] : '';
+
+        if ($attachment_id > 0) {
+            $file_path = get_attached_file($attachment_id);
+            if ($file_path && file_exists($file_path)) {
+                $binary = file_get_contents($file_path);
+                if ($binary !== false) {
+                    $mime = get_post_mime_type($attachment_id);
+                    if (!$mime) {
+                        $filetype = wp_check_filetype($file_path);
+                        $mime = isset($filetype['type']) && $filetype['type']
+                            ? $filetype['type']
+                            : 'application/octet-stream';
+                    }
+                    $filename = $fallback_filename !== '' ? $fallback_filename : basename($file_path);
+                    return [
+                        'binary'   => $binary,
+                        'mime'     => $mime,
+                        'filename' => $filename,
+                    ];
+                }
+            }
+        }
+
+        if ($attachment_url !== '') {
+            $response = wp_remote_get($attachment_url, ['timeout' => 20]);
+            if (!is_wp_error($response)) {
+                $code = (int) wp_remote_retrieve_response_code($response);
+                if ($code === 200) {
+                    $body = wp_remote_retrieve_body($response);
+                    if (is_string($body) && $body !== '') {
+                        $content_type = wp_remote_retrieve_header($response, 'content-type');
+                        if (is_array($content_type)) {
+                            $content_type = reset($content_type);
+                        }
+                        $mime = is_string($content_type) && $content_type !== ''
+                            ? strtolower($content_type)
+                            : (isset($document['mime']) ? (string) $document['mime'] : 'application/octet-stream');
+                        $filename = $fallback_filename;
+                        if ($filename === '') {
+                            $path = parse_url($attachment_url, PHP_URL_PATH);
+                            $filename = $path ? basename($path) : 'documento';
+                        }
+                        return [
+                            'binary'   => $body,
+                            'mime'     => $mime,
+                            'filename' => $filename,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static function locate_additional_document(int $post_id, int $row_index): ?array
+    {
+        $rows = self::load_additional_documents_raw($post_id);
+        if (empty($rows)) {
+            return null;
+        }
+
+        $receipt_hash = get_post_meta($post_id, self::TRANSFER_RECEIPT_HASH_META, true);
+
+        foreach (array_values($rows) as $offset => $row) {
+            $normalized = self::normalize_additional_document_row(
+                $row,
+                $offset + 1,
+                $post_id,
+                ['receipt_hash' => $receipt_hash]
+            );
+            if (!$normalized) {
+                continue;
+            }
+            if ((int) $normalized['row'] === (int) $row_index) {
+                return $normalized;
+            }
+        }
+
+        return null;
+    }
+
+    private static function current_user_can_access_document(array $document)
+    {
+        if (!is_user_logged_in()) {
+            return false;
+        }
+
+        $current_user = wp_get_current_user();
+        if (!$current_user instanceof \WP_User) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $user_id = (int) $current_user->ID;
+        $user_roles = array_map('sanitize_key', (array) $current_user->roles);
+
+        $allowed_users = array_map('intval', $document['allowed_users'] ?? []);
+        if (!empty($allowed_users) && in_array($user_id, $allowed_users, true)) {
+            return true;
+        }
+
+        $allowed_roles = array_map('sanitize_key', $document['allowed_roles'] ?? []);
+        if (empty($allowed_roles)) {
+            return true;
+        }
+
+        foreach ($allowed_roles as $role) {
+            switch ($role) {
+                case 'admin':
+                    if (current_user_can('manage_options') || in_array('administrator', $user_roles, true) || in_array('admin', $user_roles, true)) {
+                        return true;
+                    }
+                    break;
+                case 'cliente':
+                    if (in_array('go_cliente', $user_roles, true) || in_array('customer', $user_roles, true)) {
+                        return true;
+                    }
+                    break;
+                case 'comercial':
+                    if (in_array('go_comercial', $user_roles, true)) {
+                        return true;
+                    }
+                    break;
+                case 'director_comercial':
+                    if (in_array('go_director_comercial', $user_roles, true)) {
+                        return true;
+                    }
+                    break;
+                case 'gestion_garantias':
+                    if (in_array('go_garantias', $user_roles, true)) {
+                        return true;
+                    }
+                    break;
+                case 'profesional':
+                    if (in_array('go_profesional', $user_roles, true) || in_array('profesional', $user_roles, true)) {
+                        return true;
+                    }
+                    break;
+                default:
+                    if (str_starts_with($role, 'user:')) {
+                        $maybe_id = (int) substr($role, 5);
+                        if ($maybe_id > 0 && $maybe_id === $user_id) {
+                            return true;
+                        }
+                    }
+                    if ($role !== '' && in_array($role, $user_roles, true)) {
+                        return true;
+                    }
+            }
+        }
+
+        return false;
+    }
+
+    private static function load_additional_documents_raw(int $post_id)
+    {
+        if (!function_exists('get_field')) {
+            return [];
+        }
+
+        $rows = get_field(self::ADDITIONAL_DOCS_FIELD, $post_id);
+        return is_array($rows) ? $rows : [];
+    }
+
+    private static function normalize_additional_document_row($row, int $index, int $post_id, array $context = [])
+    {
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $title = isset($row['titulo_documento']) ? sanitize_text_field((string) $row['titulo_documento']) : '';
+        $roles_raw = $row['rol_de_usuario'] ?? [];
+        $users_raw = $row['permisos_usuario'] ?? [];
+        $hash = isset($row['documento_privado_hash']) ? trim((string) $row['documento_privado_hash']) : '';
+        $extension = isset($row['documento_privado_extension']) ? strtolower((string) $row['documento_privado_extension']) : '';
+        $is_private_flag = !empty($row['documento_privado_es_privado']);
+        $file = isset($row['archivo_documento']) && is_array($row['archivo_documento']) ? $row['archivo_documento'] : [];
+        $attachment_id = isset($file['ID']) ? (int) $file['ID'] : 0;
+        $attachment_url = isset($file['url']) ? trim((string) $file['url']) : '';
+        $attachment_filename = isset($file['filename']) ? (string) $file['filename'] : '';
+        $attachment_mime = isset($file['mime_type']) ? (string) $file['mime_type'] : '';
+
+        if ($is_private_flag) {
+            if ($hash === '') {
+                return null;
+            }
+        } elseif ($attachment_id === 0 && $attachment_url === '') {
+            return null;
+        }
+
+        if ($extension === '' && $attachment_filename !== '') {
+            $derived_ext = strtolower(pathinfo($attachment_filename, PATHINFO_EXTENSION));
+            if ($derived_ext !== '') {
+                $extension = $derived_ext;
+            }
+        }
+
+        $roles = self::extract_role_slugs($roles_raw);
+        $users = self::extract_user_permissions($users_raw);
+
+        $filename = $attachment_filename !== '' ? $attachment_filename : ($title !== '' ? $title : 'documento-' . $index);
+        if ($extension !== '' && !str_contains($filename, '.')) {
+            $filename .= '.' . $extension;
+        }
+
+        $document = [
+            'key'            => 'extra-' . $index,
+            'row'            => $index,
+            'title'          => $title !== '' ? $title : sprintf(__('Documento %d', 'garantias-online-360vo'), $index),
+            'allowed_roles'  => $roles,
+            'allowed_users'  => $users,
+            'hash'           => $hash,
+            'extension'      => $extension,
+            'is_private'     => $is_private_flag && $hash !== '',
+            'attachment_id'  => $attachment_id,
+            'attachment_url' => $attachment_url,
+            'attachment_mime'=> $attachment_mime,
+            'filename'       => $filename,
+            'mime'           => $attachment_mime,
+            'source'         => 'repeater',
+            'url'            => '',
+        ];
+
+        $receipt_hash = isset($context['receipt_hash']) ? (string) $context['receipt_hash'] : '';
+        if ($receipt_hash !== '' && $receipt_hash === $hash) {
+            $document['kind'] = 'transfer_receipt';
+        } elseif ($document['is_private']) {
+            $document['kind'] = 'private';
+        } else {
+            $document['kind'] = 'general';
+        }
+
+        return $document;
+    }
+
+    private static function extract_role_slugs($raw)
+    {
+        $roles = [];
+        if (is_array($raw)) {
+            foreach ($raw as $entry) {
+                if (is_array($entry)) {
+                    if (isset($entry['value'])) {
+                        $value = sanitize_key((string) $entry['value']);
+                        if ($value !== '') {
+                            $roles[] = $value;
+                        }
+                    } elseif (isset($entry['role'])) {
+                        $value = sanitize_key((string) $entry['role']);
+                        if ($value !== '') {
+                            $roles[] = $value;
+                        }
+                    }
+                } elseif (is_string($entry)) {
+                    $value = sanitize_key($entry);
+                    if ($value !== '') {
+                        $roles[] = $value;
+                    }
+                }
+            }
+        } elseif (is_string($raw)) {
+            $value = sanitize_key($raw);
+            if ($value !== '') {
+                $roles[] = $value;
+            }
+        }
+
+        $normalized = [];
+        foreach ($roles as $role) {
+            if (str_starts_with($role, 'user:')) {
+                $maybe_id = (int) substr($role, 5);
+                if ($maybe_id > 0) {
+                    $normalized[] = 'user:' . $maybe_id;
+                }
+            } elseif ($role !== '') {
+                $normalized[] = $role;
+            }
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    private static function build_document_collection(int $post_id, bool $include_urls = true)
+    {
+        $documents = [];
+
+        $static_docs = [
+            [
+                'key'           => 'certificate',
+                'title'         => __('Certificado', 'garantias-online-360vo'),
+                'routeType'     => 'certificado',
+                'is_private'    => true,
+                'extension'     => 'pdf',
+                'allowed_roles' => [],
+                'allowed_users' => [],
+                'filename'      => '',
+                'source'        => 'static',
+            ],
+            [
+                'key'           => 'cobertura',
+                'title'         => __('Cobertura', 'garantias-online-360vo'),
+                'routeType'     => 'cobertura',
+                'is_private'    => false,
+                'extension'     => 'pdf',
+                'allowed_roles' => [],
+                'allowed_users' => [],
+                'filename'      => '',
+                'source'        => 'static',
+            ],
+            [
+                'key'           => 'condicionado',
+                'title'         => __('Condicionado', 'garantias-online-360vo'),
+                'routeType'     => 'condicionado',
+                'is_private'    => false,
+                'extension'     => 'pdf',
+                'allowed_roles' => [],
+                'allowed_users' => [],
+                'filename'      => '',
+                'source'        => 'static',
+            ],
+        ];
+
+        foreach ($static_docs as $doc) {
+            $url = $include_urls ? self::build_document_download_url($post_id, $doc['routeType']) : '';
+            $documents[] = array_merge($doc, [
+                'url'      => $url,
+                'mime'     => 'application/pdf',
+                'row'      => 0,
+                'kind'     => $doc['is_private'] ? 'private' : 'general',
+                'hash'     => '',
+                'attachment_id' => 0,
+                'attachment_url' => '',
+            ]);
+        }
+
+        $raw_rows = self::load_additional_documents_raw($post_id);
+        if (!empty($raw_rows)) {
+            $receipt_hash = get_post_meta($post_id, self::TRANSFER_RECEIPT_HASH_META, true);
+            foreach (array_values($raw_rows) as $offset => $row) {
+                $normalized = self::normalize_additional_document_row(
+                    $row,
+                    $offset + 1,
+                    $post_id,
+                    ['receipt_hash' => $receipt_hash]
+                );
+                if (!$normalized) {
+                    continue;
+                }
+                if ($include_urls) {
+                    $normalized['url'] = self::build_additional_document_url($post_id, (int) $normalized['row']);
+                } else {
+                    $normalized['url'] = '';
+                }
+                $documents[] = $normalized;
+            }
+        }
+
+        $filtered = [];
+        foreach ($documents as $doc) {
+            if ($doc['source'] === 'repeater' && !self::current_user_can_access_document($doc)) {
+                continue;
+            }
+            $filtered[] = $doc;
+        }
+
+        return array_values($filtered);
+    }
+
+    private static function build_additional_document_url(int $post_id, int $row_index, bool $with_nonce = true)
+    {
+        if ($post_id <= 0 || $row_index <= 0) {
+            return '';
+        }
+
+        $url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/document/extra/' . $row_index);
+        if ($with_nonce) {
+            $url = add_query_arg('_wpnonce', wp_create_nonce('wp_rest'), $url);
+        }
+        $scheme = wp_parse_url(home_url(), PHP_URL_SCHEME);
+
+        return set_url_scheme($url, $scheme);
+    }
+
+    private static function inject_document_collection(array $detail, int $post_id, bool $include_urls)
+    {
+        $documents = self::build_document_collection($post_id, $include_urls);
+        $detail['documents'] = $documents;
+
+        $detail['certificate_url'] = '';
+        $detail['cobertura_url'] = '';
+        $detail['condicionado_url'] = '';
+
+        foreach ($documents as $doc) {
+            if (!isset($doc['key'])) {
+                continue;
+            }
+            switch ($doc['key']) {
+                case 'certificate':
+                    $detail['certificate_url'] = $doc['url'] ?? '';
+                    break;
+                case 'cobertura':
+                    $detail['cobertura_url'] = $doc['url'] ?? '';
+                    break;
+                case 'condicionado':
+                    $detail['condicionado_url'] = $doc['url'] ?? '';
+                    break;
+            }
+        }
+
+        return $detail;
+    }
+
+    private static function upsert_transfer_receipt_document(int $post_id, string $title, string $hash, string $extension)
+    {
+        if (!function_exists('get_field') || !function_exists('update_field')) {
+            return;
+        }
+
+        $rows = get_field(self::ADDITIONAL_DOCS_FIELD, $post_id);
+        if (!is_array($rows)) {
+            $rows = [];
+        }
+
+        $previous_hash = get_post_meta($post_id, self::TRANSFER_RECEIPT_HASH_META, true);
+        $target_index = null;
+        foreach ($rows as $idx => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $row_hash = isset($row['documento_privado_hash']) ? (string) $row['documento_privado_hash'] : '';
+            if ($previous_hash !== '' && $row_hash === $previous_hash) {
+                $target_index = $idx;
+                break;
+            }
+        }
+
+        $row_payload = [
+            'titulo_documento'            => $title,
+            'archivo_documento'          => null,
+            'rol_de_usuario'             => ['admin'],
+            'documento_privado_hash'     => $hash,
+            'documento_privado_extension'=> $extension,
+            'documento_privado_es_privado' => 1,
+            'enviar_por_correo_documento'=> 0,
+            'permisos_usuario'           => [],
+        ];
+
+        if ($target_index !== null) {
+            $rows[$target_index] = array_merge(
+                is_array($rows[$target_index]) ? $rows[$target_index] : [],
+                $row_payload
+            );
+        } else {
+            $rows[] = $row_payload;
+            $target_index = count($rows) - 1;
+        }
+
+        $rows = array_values($rows);
+
+        $final_index = null;
+        foreach ($rows as $idx => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $row_hash = isset($row['documento_privado_hash']) ? (string) $row['documento_privado_hash'] : '';
+            if ($row_hash !== '' && hash_equals($row_hash, $hash)) {
+                $final_index = $idx;
+                break;
+            }
+        }
+
+        if ($final_index === null) {
+            $final_index = $target_index !== null ? (int) $target_index : count($rows) - 1;
+        }
+
+        update_field(self::ADDITIONAL_DOCS_FIELD, $rows, $post_id);
+        update_post_meta($post_id, self::TRANSFER_RECEIPT_HASH_META, $hash);
+        update_post_meta($post_id, self::TRANSFER_RECEIPT_EXTENSION_META, $extension);
+        update_post_meta($post_id, self::TRANSFER_RECEIPT_ROW_META, $final_index >= 0 ? $final_index + 1 : 0);
+    }
+
+    private static function extract_user_permissions($raw)
+    {
+        $ids = [];
+        if (is_array($raw)) {
+            foreach ($raw as $entry) {
+                if (is_array($entry) && isset($entry['ID'])) {
+                    $ids[] = (int) $entry['ID'];
+                } elseif (is_numeric($entry)) {
+                    $ids[] = (int) $entry;
+                }
+            }
+        } elseif (is_numeric($raw)) {
+            $ids[] = (int) $raw;
+        }
+
+        return array_values(array_unique(array_filter($ids, static fn ($id) => $id > 0)));
     }
 
     private static function get_plan_info($id)
@@ -348,18 +987,15 @@ class GuaranteeRestController
 
     private static function hydrate_detail_document_urls(array $detail, $id)
     {
-        $detail['condicionado_url'] = self::build_document_download_url($id, 'condicionado');
-        $detail['cobertura_url']    = self::build_document_download_url($id, 'cobertura');
-        $detail['certificate_url']  = self::build_document_download_url($id, 'certificado');
-
-        return $detail;
+        return self::inject_document_collection($detail, (int) $id, true);
     }
 
     public static function serve_document($served, $result, $request, $server)
     {
         if ($result instanceof WP_REST_Response) {
             $headers = $result->get_headers();
-            if (isset($headers['Content-Type']) && $headers['Content-Type'] === 'application/pdf') {
+            if (isset($headers['X-Go360-Binary']) && $headers['X-Go360-Binary'] === '1') {
+                unset($headers['X-Go360-Binary']);
                 foreach ($headers as $k => $v) {
                     header($k . ': ' . $v);
                 }
@@ -399,6 +1035,331 @@ class GuaranteeRestController
         $url = self::build_document_download_url($id, 'certificado');
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_uploaded', 'certificado');
         return new WP_REST_Response(['certificate_url' => $url], 201);
+    }
+
+    public static function confirm_transfer($request)
+    {
+        if (! is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para realizar esta acción.', 'garantias-online-360vo'),
+                ['status' => 401]
+            );
+        }
+
+        $id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($id <= 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $detail = self::get_detail_data($id, true);
+        if (! is_array($detail) || empty($detail)) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        $current_user = wp_get_current_user();
+        $user_id      = (int) $current_user->ID;
+        $roles        = (array) $current_user->roles;
+        $is_admin     = current_user_can('manage_options');
+        $is_profesional = in_array('go_profesional', $roles, true) || in_array('profesional', $roles, true);
+
+        if (! $is_profesional && ! $is_admin) {
+            return new WP_Error(
+                'rest_forbidden_role',
+                __('Solo el profesional puede confirmar la transferencia.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $vendor_id = isset($detail['vendor_id']) ? (int) $detail['vendor_id'] : 0;
+        if ($vendor_id > 0 && $user_id !== $vendor_id && ! $is_admin) {
+            return new WP_Error(
+                'rest_forbidden_owner',
+                __('No puedes modificar esta garantía.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $payment_method = sanitize_key($detail['metodo_pago'] ?? '');
+        if ($payment_method !== 'transferencia' && $payment_method !== 'transferencia_bancaria') {
+            return new WP_Error(
+                'invalid_method',
+                __('Solo puedes confirmar transferencias bancarias.', 'garantias-online-360vo'),
+                ['status' => 409]
+            );
+        }
+
+        $current_state = sanitize_key($detail['estado']['value'] ?? '');
+        if ($current_state === 'validacion_pendiente') {
+            $snapshot = self::collect_detail_snapshot($id, true);
+            return new WP_REST_Response(['detail' => $snapshot], 200);
+        }
+
+        if ($current_state !== 'pendiente_pago') {
+            return new WP_Error(
+                'invalid_state',
+                __('La garantía no está pendiente de pago.', 'garantias-online-360vo'),
+                ['status' => 409]
+            );
+        }
+
+        $concept = sanitize_text_field((string) $request->get_param('concept'));
+        $amount  = sanitize_text_field((string) $request->get_param('amount'));
+        $account = sanitize_text_field((string) $request->get_param('account'));
+
+        $file_params = $request->get_file_params();
+        $receipt_file = is_array($file_params) && isset($file_params['receipt']) ? $file_params['receipt'] : null;
+
+        if (!is_array($receipt_file)) {
+            return new WP_Error('receipt_missing', __('Debes adjuntar el justificante de la transferencia.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        if (!empty($receipt_file['error']) && (int) $receipt_file['error'] !== UPLOAD_ERR_OK) {
+            return new WP_Error('receipt_upload_error', __('No se pudo procesar el justificante de la transferencia.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $receipt_size = isset($receipt_file['size']) ? (int) $receipt_file['size'] : 0;
+        if ($receipt_size <= 0) {
+            return new WP_Error('receipt_empty', __('El justificante recibido está vacío.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+        if ($receipt_size > self::RECEIPT_MAX_BYTES) {
+            return new WP_Error('receipt_too_large', sprintf(
+                /* translators: %s: tamaño máximo en MB */
+                __('El justificante supera el tamaño máximo permitido (%s MB).', 'garantias-online-360vo'),
+                number_format_i18n(self::RECEIPT_MAX_BYTES / 1048576, 0)
+            ), ['status' => 413]);
+        }
+
+        $tmp_name = isset($receipt_file['tmp_name']) ? (string) $receipt_file['tmp_name'] : '';
+        if ($tmp_name === '' || !file_exists($tmp_name)) {
+            return new WP_Error('receipt_tmp_missing', __('No se pudo localizar el justificante subido.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $original_name = isset($receipt_file['name']) ? (string) $receipt_file['name'] : 'receipt';
+        $check = wp_check_filetype_and_ext($tmp_name, $original_name, self::RECEIPT_ALLOWED_MIMES);
+        $ext = isset($check['ext']) ? strtolower((string) $check['ext']) : '';
+        $type = isset($check['type']) ? strtolower((string) $check['type']) : '';
+        if ($ext === '' && $type !== '') {
+            foreach (self::RECEIPT_ALLOWED_MIMES as $allowed_ext => $allowed_mime) {
+                if ($allowed_mime === $type) {
+                    $ext = $allowed_ext;
+                    break;
+                }
+            }
+        }
+        if ($ext === '') {
+            $derived_ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+            if ($derived_ext !== '') {
+                $ext = $derived_ext;
+            }
+        }
+        if ($ext === 'jpeg') {
+            $ext = 'jpg';
+        }
+        if (!isset(self::RECEIPT_ALLOWED_MIMES[$ext])) {
+            return new WP_Error('receipt_invalid_type', __('Formato de justificante no admitido. Usa PDF, JPG o PNG.', 'garantias-online-360vo'), ['status' => 415]);
+        }
+
+        $binary = file_get_contents($tmp_name);
+        if (!is_string($binary) || $binary === '') {
+            return new WP_Error('receipt_read_error', __('No se pudo leer el justificante adjunto.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $hash = PrivateDocsManager::store($binary, $ext);
+        if ($hash === '') {
+            return new WP_Error('receipt_store_error', __('No se pudo guardar el justificante en el área privada.', 'garantias-online-360vo'), ['status' => 500]);
+        }
+
+        $receipt_title = sprintf(
+            __('Justificante %s', 'garantias-online-360vo'),
+            isset($detail['matricula']) && $detail['matricula'] !== '' ? $detail['matricula'] : $id
+        );
+        self::upsert_transfer_receipt_document($id, $receipt_title, $hash, $ext);
+
+        update_post_meta($id, 'estado_garantia_estado_contratacion', 'validacion_pendiente');
+        update_post_meta($id, '_go360_transfer_reported_at', current_time('mysql'));
+        update_post_meta($id, '_go360_transfer_reported_by', $user_id);
+
+        delete_transient('go_gdetail_' . $id);
+        self::clear_list_transients($id, null, true);
+
+        $log_payload = [
+            'method'     => 'transferencia',
+            'state'      => 'validacion_pendiente',
+            'actor_type' => 'vendor',
+        ];
+        if ($concept !== '') {
+            $log_payload['concept'] = $concept;
+        }
+        if ($amount !== '') {
+            $log_payload['amount'] = $amount;
+        }
+        if ($account !== '') {
+            $log_payload['account'] = $account;
+        }
+        if (! empty($detail['concesionario']) && $detail['concesionario'] !== '-') {
+            $log_payload['actor_label'] = sanitize_text_field($detail['concesionario']);
+        }
+
+        GuaranteeLogger::log(
+            $user_id,
+            $id,
+            'transfer_reported',
+            wp_json_encode($log_payload)
+        );
+
+        $data_factory   = new GuaranteeEmailDataFactory();
+        $guarantee_data = $data_factory->build($id);
+
+        $vendor_label = $detail['concesionario'] ?? '';
+        if ($vendor_label === '' && isset($guarantee_data['vendor']['company_name'])) {
+            $vendor_label = (string) $guarantee_data['vendor']['company_name'];
+        }
+        if ($vendor_label === '' && isset($guarantee_data['vendor']['name'])) {
+            $vendor_label = (string) $guarantee_data['vendor']['name'];
+        }
+        $vendor_label = $vendor_label !== ''
+            ? sanitize_text_field($vendor_label)
+            : __('el cliente', 'garantias-online-360vo');
+
+        $plate = isset($guarantee_data['plate'])
+            ? sanitize_text_field($guarantee_data['plate'])
+            : '';
+        $plate_label = $plate !== '' ? $plate : sprintf('#%d', $id);
+
+        $transfer_data    = isset($guarantee_data['transfer']) && is_array($guarantee_data['transfer'])
+            ? $guarantee_data['transfer']
+            : [];
+        $transfer_concept = $concept !== ''
+            ? $concept
+            : sanitize_text_field($transfer_data['concept'] ?? '');
+        $transfer_amount  = $amount !== ''
+            ? $amount
+            : sanitize_text_field($transfer_data['amount'] ?? '');
+        $transfer_account = $account !== ''
+            ? $account
+            : sanitize_text_field($transfer_data['iban'] ?? '');
+
+        $transfer_concept = $transfer_concept !== '' ? sanitize_text_field($transfer_concept) : '';
+        $transfer_amount  = $transfer_amount !== '' ? sanitize_text_field($transfer_amount) : '';
+        $transfer_account = $transfer_account !== '' ? sanitize_text_field($transfer_account) : '';
+
+        $permalink = isset($guarantee_data['permalink'])
+            ? esc_url_raw($guarantee_data['permalink'])
+            : '';
+        if ($permalink === '') {
+            $permalink = home_url('/garantias-online/mis-garantias/');
+            if ($plate !== '') {
+                $permalink = add_query_arg('matricula', rawurlencode($plate), $permalink);
+            }
+        }
+
+        $delivery = EmailNotificationService::resolve_admin_delivery(
+            $id,
+            [
+                'event'     => 'transfer_reported',
+                'initiator' => $user_id,
+            ]
+        );
+
+        $recipients = $delivery['to'] ?? [];
+        $bcc        = $delivery['bcc'] ?? [];
+
+        if (! empty($recipients) || ! empty($bcc)) {
+            $subject = sprintf(
+                /* translators: %s: vehicle plate */
+                __('Transferencia confirmada · Garantía %s', 'garantias-online-360vo'),
+                $plate_label
+            );
+
+            $renderer = new TemplateRenderer();
+            $body = $renderer->render(
+                'transfer-reported-admin',
+                [
+                    'vendor_name' => $vendor_label,
+                    'plate_label' => $plate_label,
+                    'permalink'   => $permalink,
+                    'transfer'    => [
+                        'amount'  => $transfer_amount,
+                        'account' => $transfer_account,
+                        'concept' => $transfer_concept,
+                    ],
+                ]
+            );
+
+            if ($body === '') {
+                ob_start();
+                ?>
+                <p>
+                    <?php
+                    printf(
+                        wp_kses(
+                            /* translators: %s: customer name */
+                            __('El cliente <strong>%s</strong> ha indicado que ha realizado la transferencia.', 'garantias-online-360vo'),
+                            ['strong' => []]
+                        ),
+                        esc_html($vendor_label)
+                    );
+                    ?>
+                </p>
+                <?php if ($transfer_amount !== '' || $transfer_account !== '' || $transfer_concept !== '') : ?>
+                    <ul>
+                        <?php if ($transfer_amount !== '') : ?>
+                            <li><strong><?php esc_html_e('Importe:', 'garantias-online-360vo'); ?></strong> <?php echo esc_html($transfer_amount); ?></li>
+                        <?php endif; ?>
+                        <?php if ($transfer_account !== '') : ?>
+                            <li><strong><?php esc_html_e('Cuenta:', 'garantias-online-360vo'); ?></strong> <?php echo esc_html($transfer_account); ?></li>
+                        <?php endif; ?>
+                        <?php if ($transfer_concept !== '') : ?>
+                            <li><strong><?php esc_html_e('Concepto:', 'garantias-online-360vo'); ?></strong> <?php echo esc_html($transfer_concept); ?></li>
+                        <?php endif; ?>
+                    </ul>
+                <?php endif; ?>
+                <p><?php esc_html_e('Revisa la operación y accede a la garantía para activarla.', 'garantias-online-360vo'); ?></p>
+                <?php if ($permalink !== '') : ?>
+                    <p><a href="<?php echo esc_url($permalink); ?>"><?php esc_html_e('Abrir garantía', 'garantias-online-360vo'); ?></a></p>
+                <?php endif; ?>
+                <?php
+                $body = trim((string) ob_get_clean());
+            }
+
+            $headers  = ['Content-Type: text/html; charset=UTF-8'];
+            $metadata = [];
+            if (! empty($bcc)) {
+                $metadata['bcc'] = $bcc;
+            }
+
+            $message = new EmailMessage($recipients, $subject, $body, $headers, [], $metadata);
+            $mailer  = new Mailer();
+            $sent    = $mailer->send($message);
+
+            $log_details = sprintf(
+                'transfer_reported|to:%s',
+                implode(',', $message->get_recipients())
+            );
+            if (! empty($metadata['bcc'])) {
+                $log_details .= '|bcc:' . implode(',', $metadata['bcc']);
+            }
+
+            GuaranteeLogger::log(
+                $user_id,
+                $id,
+                $sent ? 'email_sent' : 'email_failed',
+                $log_details
+            );
+        }
+
+        $snapshot = self::collect_detail_snapshot($id, true);
+
+        return new WP_REST_Response(['detail' => $snapshot], 200);
     }
 
     public static function can_list($request)
@@ -868,7 +1829,7 @@ class GuaranteeRestController
                 $estado['estado_contratacion'] = 'activada';
             } elseif (isset($data['estado_garantia']['estado_contratacion'])) {
                 $ec = sanitize_text_field($data['estado_garantia']['estado_contratacion']);
-                $valid = ['pendiente_pago', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto'];
+                $valid = ['pendiente_pago', 'validacion_pendiente', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto'];
                 if (in_array($ec, $valid, true)) {
                     $estado['estado_contratacion'] = $ec;
                 }
@@ -1460,6 +2421,7 @@ class GuaranteeRestController
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'validacion_pendiente' => __('Validación pendiente', 'garantias-online-360vo'),
             'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
             'activada'       => __('Activada', 'garantias-online-360vo'),
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
@@ -1638,11 +2600,7 @@ class GuaranteeRestController
             'codigo_postal_comprador' => $codigo_postal_comprador ?: '-',
         ];
 
-        if ($include_document_urls) {
-            $detail = self::hydrate_detail_document_urls($detail, $id);
-        }
-
-        return $detail;
+        return self::inject_document_collection($detail, $id, $include_document_urls);
     }
 
     public static function collect_detail_snapshot($id, $include_document_urls = true)
@@ -1941,6 +2899,7 @@ class GuaranteeRestController
         sort($estados);
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
+            'validacion_pendiente' => __('Validación pendiente', 'garantias-online-360vo'),
             'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
             'activada'       => __('Activada', 'garantias-online-360vo'),
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
