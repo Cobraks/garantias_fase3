@@ -10,7 +10,6 @@ $payment = $guarantee['payment'] ?? '';
 $dates = $guarantee['dates'] ?? [];
 $customer = $guarantee['customer'] ?? [];
 $vendor = $guarantee['vendor'] ?? [];
-$documents = $guarantee['documents'] ?? [];
 $permalink = $guarantee['permalink'] ?? '';
 ?>
 <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-top:16px;">
@@ -75,33 +74,3 @@ $permalink = $guarantee['permalink'] ?? '';
         <?php endif; ?>
     </tbody>
 </table>
-
-<?php if (! empty(array_filter($documents))) : ?>
-    <p style="margin-top:20px; font-size:14px; color:#111; font-weight:600;">
-        <?php esc_html_e('Documentación disponible', 'garantias-online-360vo'); ?>
-    </p>
-    <ul style="padding-left:18px; margin:8px 0 0; font-size:14px; color:#111;">
-        <?php foreach ($documents as $label => $url) :
-            if (! $url) {
-                continue;
-            }
-            switch ($label) {
-                case 'cobertura':
-                    $doc_label = __('Cobertura', 'garantias-online-360vo');
-                    break;
-                case 'condicionado':
-                    $doc_label = __('Condicionado', 'garantias-online-360vo');
-                    break;
-                default:
-                    $doc_label = __('Certificado', 'garantias-online-360vo');
-                    break;
-            }
-            ?>
-            <li style="margin:4px 0;">
-                <a href="<?php echo esc_url($url); ?>" style="color:#e2001b; text-decoration:none;">
-                    <?php echo esc_html($doc_label); ?>
-                </a>
-            </li>
-        <?php endforeach; ?>
-    </ul>
-<?php endif; ?>

@@ -12,6 +12,7 @@ use GarantiasOnline360VO\SettingsPage;
 
 class GuaranteeRestController
 {
+    const CONTRACT_NOTICE_META = '_go360_pending_contract_notice';
     const NAMESPACE = 'go/v1';
     const BASE      = 'guarantees';
 
@@ -125,6 +126,24 @@ class GuaranteeRestController
                     'permission_callback' => [__CLASS__, 'can_edit'],
                     'args'                => [
                         'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/notify',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'dispatch_notifications'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id'   => ['validate_callback' => 'absint'],
+                        'uuid' => [
+                            'required'          => true,
+                            'sanitize_callback' => 'sanitize_text_field',
+                        ],
                     ],
                 ],
             ]
@@ -466,8 +485,8 @@ class GuaranteeRestController
         $condicionado_source = '';
         $previous_contract_state = '';
         $new_contract_state      = '';
-        $just_created            = false;
-        $just_activated          = false;
+        $queued_contract_notice  = false;
+        $contract_notice_context = [];
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
@@ -543,6 +562,7 @@ class GuaranteeRestController
             update_post_meta($post_id, 'estado_garantia_uuid', $uuid);
             update_post_meta($post_id, 'estado_garantia_estado_contratacion', 'sin_finalizar');
             error_log('[AUTOSAVE] Created draft guarantee ID ' . $post_id);
+            error_log('[AUTOSAVE] guarantee created ' . $post_id);
         } elseif ($matricula) {
             wp_update_post([
                 'ID'         => $post_id,
@@ -802,8 +822,22 @@ class GuaranteeRestController
             }
         }
 
-        if ($new_contract_state === 'activada' && $previous_contract_state !== 'activada') {
-            $just_activated = true;
+        if (
+            in_array($new_contract_state, ['activada', 'pendiente_pago'], true)
+            && $new_contract_state !== $previous_contract_state
+        ) {
+            $queued_contract_notice  = true;
+            $contract_notice_context = [
+                'initiator'      => get_current_user_id(),
+                'previous_state' => $previous_contract_state,
+                'current_state'  => $new_contract_state,
+            ];
+            error_log(sprintf(
+                '[AUTOSAVE] Contract state changed from %s to %s for ID %d',
+                $previous_contract_state !== '' ? $previous_contract_state : '(none)',
+                $new_contract_state,
+                $post_id
+            ));
         }
 
         if (isset($data['post_status'])) {
@@ -871,6 +905,9 @@ class GuaranteeRestController
         $condicionado_url = self::build_document_download_url($post_id, 'condicionado');
         $transfer_iban = self::get_transfer_iban();
 
+        $notify_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/notify');
+        $scheme     = wp_parse_url(home_url(), PHP_URL_SCHEME);
+
         $response = [
             'id'               => $post_id,
             'uuid'             => $uuid,
@@ -879,24 +916,63 @@ class GuaranteeRestController
             'condicionado_url' => $condicionado_url,
             'transfer_iban'    => $transfer_iban['formatted'],
             'firma_sello'      => $firma_sello,
+            'notify_url'       => set_url_scheme($notify_url, $scheme),
         ];
 
-        if ($just_created) {
-            do_action('go360/guarantee/created', $post_id, [
-                'initiator' => get_current_user_id(),
-                'uuid'      => $uuid,
-            ]);
-        }
-
-        if ($just_activated) {
-            do_action('go360/guarantee/contracted', $post_id, [
-                'initiator'      => get_current_user_id(),
-                'previous_state' => $previous_contract_state,
-                'current_state'  => $new_contract_state,
-            ]);
+        if ($queued_contract_notice && ! empty($contract_notice_context)) {
+            update_post_meta($post_id, self::CONTRACT_NOTICE_META, $contract_notice_context);
+            GuaranteeLogger::log(
+                get_current_user_id(),
+                $post_id,
+                'contract_notice_queued',
+                wp_json_encode($contract_notice_context)
+            );
         }
 
         return new WP_REST_Response($response);
+    }
+
+    public static function dispatch_notifications($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+        $uuid    = isset($request['uuid']) ? sanitize_text_field($request['uuid']) : '';
+
+        if ($post_id <= 0 || get_post_type($post_id) !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error('invalid_id', __('ID de garantía no válido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $stored_uuid = get_post_meta($post_id, 'estado_garantia_uuid', true);
+        if (! $uuid || $stored_uuid !== $uuid) {
+            return new WP_Error('invalid_uuid', __('Identificador de sesión no válido', 'garantias-online-360vo'), ['status' => 403]);
+        }
+
+        $context = get_post_meta($post_id, self::CONTRACT_NOTICE_META, true);
+        if (! is_array($context) || empty($context)) {
+            return rest_ensure_response([
+                'dispatched' => false,
+            ]);
+        }
+
+        delete_post_meta($post_id, self::CONTRACT_NOTICE_META);
+
+        $context = [
+            'initiator'      => (int) ($context['initiator'] ?? get_current_user_id()),
+            'previous_state' => sanitize_text_field($context['previous_state'] ?? ''),
+            'current_state'  => sanitize_text_field($context['current_state'] ?? ''),
+        ];
+
+        do_action('go360/guarantee/contracted', $post_id, $context);
+
+        GuaranteeLogger::log(
+            get_current_user_id(),
+            $post_id,
+            'contract_notice_dispatched',
+            wp_json_encode($context)
+        );
+
+        return rest_ensure_response([
+            'dispatched' => true,
+        ]);
     }
 
     private static function get_modalidad_document_url($plan_id, $field_key, array $context = [])

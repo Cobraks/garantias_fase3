@@ -16,22 +16,7 @@ class GuaranteeEmailBuilder
         $this->renderer = $renderer;
     }
 
-    public function composeCreatedAdmin(array $data, array $recipients, array $context = []): ?EmailMessage
-    {
-        return $this->create_message(
-            $recipients,
-            sprintf(
-                /* translators: %s: vehicle plate */
-                __('Nueva garantía creada: %s', 'garantias-online-360vo'),
-                $this->resolve_plate_label($data)
-            ),
-            'guarantee-created-admin',
-            $data,
-            $context
-        );
-    }
-
-    public function composeContractedAdmin(array $data, array $recipients, array $context = []): ?EmailMessage
+    public function composeContractedAdmin(array $data, array $recipients, array $context = [], array $options = []): ?EmailMessage
     {
         return $this->create_message(
             $recipients,
@@ -42,11 +27,12 @@ class GuaranteeEmailBuilder
             ),
             'guarantee-contracted-admin',
             $data,
-            $context
+            $context,
+            $options
         );
     }
 
-    public function composeContractedProfessional(array $data, array $recipients, array $context = []): ?EmailMessage
+    public function composeContractedProfessional(array $data, array $recipients, array $context = [], array $options = []): ?EmailMessage
     {
         return $this->create_message(
             $recipients,
@@ -57,19 +43,31 @@ class GuaranteeEmailBuilder
             ),
             'guarantee-contracted-professional',
             $data,
-            $context
+            $context,
+            $options
         );
     }
 
-    private function create_message(array $recipients, string $subject, string $template, array $data, array $context = []): ?EmailMessage
+    private function create_message(array $recipients, string $subject, string $template, array $data, array $context = [], array $options = []): ?EmailMessage
     {
+        $headers = $options['headers'] ?? [];
+        $attachments = $options['attachments'] ?? [];
+        $metadata = [
+            'cc'       => $options['cc'] ?? [],
+            'bcc'      => $options['bcc'] ?? [],
+            'reply_to' => $options['reply_to'] ?? '',
+        ];
+
         $message = new EmailMessage(
             $recipients,
             $subject,
             $this->renderer->render($template, [
                 'guarantee' => $data,
                 'context'   => $context,
-            ])
+            ]),
+            $headers,
+            $attachments,
+            $metadata
         );
 
         if (! $message->has_recipients() || $message->get_body() === '') {
