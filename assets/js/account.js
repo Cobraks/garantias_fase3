@@ -418,69 +418,6 @@
             const keys = Object.keys(a);
             return keys.every((key) => (a[key] || '') === (b[key] || ''));
         };
-        const getFieldWidgets = (field) => {
-            if (!field?.acroField || typeof field.acroField.getWidgets !== 'function') {
-                return [];
-            }
-            try {
-                const widgets = field.acroField.getWidgets();
-                return Array.isArray(widgets) ? widgets : [];
-            } catch (error) {
-                console.warn('[account] Unable to read SEPA widgets', error);
-                return [];
-            }
-        };
-        const computeVerticalOffset = (field, text, fontSize = 9, lineHeight = null) => {
-            const widgets = getFieldWidgets(field);
-            if (!widgets.length) {
-                return 0;
-            }
-            const widget = widgets[0];
-            if (!widget || typeof widget.getRectangle !== 'function') {
-                return 0;
-            }
-            const rectangle = widget.getRectangle();
-            const height = rectangle && typeof rectangle.height === 'number' ? rectangle.height : 0;
-            if (!height || Number.isNaN(height)) {
-                return 0;
-            }
-            const lines = typeof text === 'string' && text ? text.split(/\r?\n/) : [''];
-            const resolvedFontSize = Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 9;
-            const resolvedLineHeight = Number.isFinite(lineHeight) && lineHeight > 0
-                ? lineHeight
-                : resolvedFontSize * 1.2;
-            const lineCount = Math.max(1, lines.length);
-            const textHeight = lineCount === 1
-                ? resolvedFontSize
-                : resolvedFontSize + (lineCount - 1) * resolvedLineHeight;
-            const offset = (height - textHeight) / 2;
-            if (!Number.isFinite(offset) || offset <= 0) {
-                return 0;
-            }
-            return offset;
-        };
-        const buildDefaultAppearance = (fontName, fontSize, textRise) => {
-            const safeFont = typeof fontName === 'string' && fontName ? fontName : 'Helvetica';
-            const safeSize = Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 9;
-            const base = `0 0 0 rg /${safeFont} ${safeSize} Tf`;
-            if (Number.isFinite(textRise) && Math.abs(textRise) > 0.01) {
-                return `${base} ${textRise.toFixed(2)} Ts`;
-            }
-            return base;
-        };
-        const createVerticalAppearanceProvider = (textRise) => {
-            if (!Number.isFinite(textRise) || textRise <= 0) {
-                return null;
-            }
-            const defaultProvider = PDFLib?.defaultTextFieldAppearanceProvider;
-            if (typeof defaultProvider !== 'function') {
-                return null;
-            }
-            return (field, widget, font, options = {}) => {
-                const nextOptions = { ...options, y: textRise };
-                return defaultProvider(field, widget, font, nextOptions);
-            };
-        };
         const createSepaMandate = async (snapshot) => {
             if (!sepaTemplateUrl) {
                 throw new Error('sepa_template_missing');
@@ -581,30 +518,15 @@
                     const fontSize = 9;
                     field.setText(stringValue);
                     field.setFontSize(fontSize);
-                    const verticalOffset = computeVerticalOffset(field, stringValue, fontSize);
                     if (field.acroField && typeof field.acroField.setDefaultAppearance === 'function') {
+                        const resolvedName = resolvedFontName || 'Helvetica';
                         field.acroField.setDefaultAppearance(
-                            buildDefaultAppearance(resolvedFontName, fontSize, verticalOffset),
+                            `0.5 0.5 0.5 rg /${resolvedName} ${fontSize} Tf`,
                         );
                     }
                     if (typeof field.updateAppearances === 'function') {
                         try {
-                            const appearanceOptions = {
-                                textColor: PDFLib?.rgb ? PDFLib.rgb(0, 0, 0) : undefined,
-                                fontSize,
-                            };
-                            const appearanceProvider = createVerticalAppearanceProvider(verticalOffset);
-                            if (PDFLib?.rgb) {
-                                if (appearanceProvider) {
-                                    field.updateAppearances(activeFont, appearanceOptions, appearanceProvider);
-                                } else {
-                                    field.updateAppearances(activeFont, appearanceOptions);
-                                }
-                            } else if (appearanceProvider) {
-                                field.updateAppearances(activeFont, undefined, appearanceProvider);
-                            } else {
-                                field.updateAppearances(activeFont);
-                            }
+                            field.updateAppearances(activeFont);
                         } catch (appearanceError) {
                             console.warn('[account] Unable to refresh field appearance', appearanceError);
                         }
