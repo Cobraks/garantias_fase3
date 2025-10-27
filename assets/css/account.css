@@ -1333,6 +1333,11 @@
   text-decoration: none;
   box-shadow: 0 22px 38px -24px rgba(220, 38, 38, 0.55);
   transition: transform var(--transition-speed), box-shadow var(--transition-speed), background-color var(--transition-speed), border-color var(--transition-speed);
+  width: fit-content;
+}
+
+:root[data-theme='dark'] .account-sepa-request__download {
+  color: #ffffff;
 }
 
 .account-sepa-request__download--emphasis {
