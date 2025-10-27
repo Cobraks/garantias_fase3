@@ -4,7 +4,7 @@
 ---------------------------------------------------*/
 
 /* 0) Evitar scroll global */
-body {
+body.body--guarantees {
     overflow-x: hidden;
     overflow-y: hidden;
 }
@@ -13,14 +13,14 @@ body {
     --go-advanced-filters-height: 0px;
 }
 
-body.scrolled .top-bar {
+body.body--guarantees.scrolled .top-bar {
     transform: translateY(-100%);
     transition: transform 400ms ease;
     /* top: 0; */
     z-index: 1;
 }
 
-footer {
+.body--guarantees footer {
     position: fixed;
     bottom: 0;
     left: 0;
@@ -28,7 +28,7 @@ footer {
     z-index: 999;
 }
 
-.footer__wrapper {
+.body--guarantees .footer__wrapper {
     background: var(--surface);
     height: fit-content;
     padding-inline: var(--spacing-3);
@@ -55,7 +55,7 @@ footer {
 }
 
 /* 2) Contenedor principal con ajuste al ocultar header */
-.container {
+.body--guarantees .container {
     position: absolute;
     top: var(--alturaHeader);
     bottom: var(--alturaFooter);
@@ -65,8 +65,7 @@ footer {
     grid-template-rows: auto 1fr;
     overflow: hidden;
     transition: top 300ms ease;
-}
-body.scrolled .container {
+.body--guarantees.scrolled .container {
     top: 0;
 }
 
@@ -79,6 +78,112 @@ body.scrolled .container {
     height: 100%;
     overflow: hidden;
     align-items: start;
+}
+
+@media (max-width: 1279px) {
+    body.body--guarantees {
+        overflow-y: auto;
+    }
+
+    .body--guarantees .container {
+        position: static;
+        top: auto;
+        bottom: auto;
+        left: auto;
+        right: auto;
+        display: block;
+        overflow: visible;
+        transition: none;
+        padding-top: calc(var(--alturaHeader) + var(--spacing-3));
+        padding-inline: var(--spacing-2);
+        padding-bottom: var(--spacing-5);
+    }
+
+    .body--guarantees.scrolled .container {
+        top: auto;
+    }
+
+    .body--guarantees .main-grid {
+        gap: var(--spacing-3);
+    }
+
+    .body--guarantees .guarantees-container {
+        grid-template-columns: 1fr;
+        height: auto;
+        overflow: visible;
+    }
+
+    .body--guarantees .guarantee-detail {
+        position: static;
+        margin-top: var(--spacing-4);
+    }
+
+    .body--guarantees .guarantees-list__filters {
+        grid-column: span 2;
+        top: calc(var(--alturaHeader) + var(--spacing-2));
+        padding: var(--spacing-2);
+    }
+
+    .body--guarantees .guarantees-list__filters-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-2);
+    }
+
+    .body--guarantees .guarantees-list__filters-row > select.guarantees-list__filter,
+    .body--guarantees .guarantees-list__filters-row > .guarantees-list__filter-wrapper {
+        flex: 1 1 100%;
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .body--guarantees .guarantees-list__filters-actions {
+        margin-left: 0;
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .body--guarantees .guarantees-list__filters-actions > .guarantees-list__order,
+    .body--guarantees .guarantees-list__filters-actions > .guarantees-list__reset-btn {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .body--guarantees .guarantees-list__filters-more {
+        justify-content: stretch;
+        width: 100%;
+    }
+
+    .body--guarantees .guarantees-list__filters-more > .guarantees-list__more-filters-btn {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .body--guarantees .guarantees-list__mobile-trigger {
+        flex: 1;
+    }
+
+    .body--guarantees section.guarantees-list {
+        max-height: none;
+        height: auto;
+        overflow: visible;
+    }
+
+    .body--guarantees section.guarantees-list.sticky-active {
+        max-height: none;
+    }
+
+    .body--guarantees footer {
+        position: static;
+        bottom: auto;
+        left: auto;
+        width: 100%;
+    }
+
+    .body--guarantees .footer__wrapper {
+        border-radius: 1rem 1rem 0 0;
+    }
 }
 
 /* 1) FILTROS full width bajo header */

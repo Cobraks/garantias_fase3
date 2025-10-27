@@ -5473,24 +5473,60 @@ async function activateRow(row, options = {}) {
                                 header = document.querySelector(".top-bar");
                         if (filters && header) {
                                 new IntersectionObserver(
-					([e]) => {
-						const a = !e.isIntersecting;
-						filters.classList.toggle("sticky-active", a);
-						listContainer.classList.toggle("sticky-active", a);
-						detail.classList.toggle("sticky-active", a);
-					},
-					{ root: null, threshold: 0, rootMargin: "-50px" }
-				).observe(header);
-			}
+                                        ([e]) => {
+                                                const a = !e.isIntersecting;
+                                                filters.classList.toggle("sticky-active", a);
+                                                listContainer.classList.toggle("sticky-active", a);
+                                                detail.classList.toggle("sticky-active", a);
+                                        },
+                                        { root: null, threshold: 0, rootMargin: "-50px" }
+                                ).observe(header);
+                        }
+                        const scrollMediaQuery = window.matchMedia("(max-width: 1279px)");
+                        let scrollSource = null;
+                        const getDocumentScrollTop = () =>
+                                window.pageYOffset ||
+                                document.documentElement.scrollTop ||
+                                document.body.scrollTop ||
+                                0;
+                        const getListScrollTop = () => {
+                                if (!scrollSource || scrollSource === window) {
+                                        return getDocumentScrollTop();
+                                }
+                                return scrollSource.scrollTop || 0;
+                        };
                         const onScroll = () => {
                                 const activePanel = detail.querySelector(".guarantee-detail__panel.active");
                                 const detailScrolled = activePanel ? activePanel.scrollTop > 10 : false;
                                 document.body.classList.toggle(
                                         "scrolled",
-                                        listContainer.scrollTop > 10 || detailScrolled
+                                        getListScrollTop() > 10 || detailScrolled
                                 );
                         };
-                        listContainer.addEventListener("scroll", onScroll);
+                        const updateScrollSource = () => {
+                                if (scrollSource === window) {
+                                        window.removeEventListener("scroll", onScroll);
+                                } else if (scrollSource) {
+                                        scrollSource.removeEventListener("scroll", onScroll);
+                                }
+                                if (scrollMediaQuery.matches) {
+                                        window.addEventListener("scroll", onScroll);
+                                        scrollSource = window;
+                                } else {
+                                        listContainer.addEventListener("scroll", onScroll);
+                                        scrollSource = listContainer;
+                                }
+                                onScroll();
+                        };
+                        const handleMediaQueryChange = () => {
+                                updateScrollSource();
+                        };
+                        updateScrollSource();
+                        if (typeof scrollMediaQuery.addEventListener === "function") {
+                                scrollMediaQuery.addEventListener("change", handleMediaQueryChange);
+                        } else if (typeof scrollMediaQuery.addListener === "function") {
+                                scrollMediaQuery.addListener(handleMediaQueryChange);
+                        }
                         detail.querySelectorAll(".guarantee-detail__panel").forEach((p) =>
                                 p.addEventListener("scroll", onScroll)
                         );
