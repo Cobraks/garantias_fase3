@@ -209,6 +209,19 @@ if ($role_keys && function_exists('wp_roles')) {
 $company_type_label = isset($company['type']['label'])
     ? trim((string) $company['type']['label'])
     : '';
+$company_type_value = isset($company['type']['value'])
+    ? trim((string) $company['type']['value'])
+    : '';
+if ($company_type_label === '' && $company_type_value !== '') {
+    $company_type_label = $company_type_value;
+}
+$company_type_key_source = $company_type_value !== '' ? $company_type_value : $company_type_label;
+$company_type_key = $company_type_key_source !== '' ? sanitize_key($company_type_key_source) : '';
+if ($company_type_key === 'concesionario') {
+    $company_type_label = 'Concesionario Oficial';
+} elseif ($company_type_key === 'compraventa') {
+    $company_type_label = 'Compraventa';
+}
 $channel_label = '';
 
 if ($is_director_account) {
