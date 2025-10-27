@@ -186,7 +186,8 @@ if (! empty($company['name'])) {
     $company_display_name = $user['name'] ?? '';
 }
 
-$role_labels = [];
+$role_labels      = [];
+$role_label_map   = [];
 $role_keys = array_map('sanitize_key', (array) ($user['roles'] ?? []));
 $is_admin_account = in_array('administrator', $role_keys, true);
 $is_professional_account = in_array('go_profesional', $role_keys, true);
@@ -196,8 +197,12 @@ $is_director_account = in_array('go_director_comercial', $role_keys, true);
 if ($role_keys && function_exists('wp_roles')) {
     $roles = wp_roles();
     foreach ($role_keys as $role_key) {
-        $label = $roles->roles[$role_key]['name'] ?? ucfirst(str_replace('_', ' ', (string) $role_key));
-        $role_labels[] = translate_user_role($label);
+        $label      = $roles->roles[$role_key]['name'] ?? ucfirst(str_replace('_', ' ', (string) $role_key));
+        $translated = translate_user_role($label);
+        $role_labels[] = $translated;
+        if ($translated !== '') {
+            $role_label_map[$role_key] = $translated;
+        }
     }
 }
 
@@ -209,14 +214,19 @@ $channel_label = '';
 if ($is_director_account) {
     $channel_label = 'Director Comercial';
 } elseif ($is_professional_account) {
-    $channel_label = 'Profesional';
     if ($company_type_label !== '') {
-        $channel_label .= ' - ' . $company_type_label;
+        $channel_label = $company_type_label;
+    } elseif (isset($role_label_map['go_profesional'])) {
+        $channel_label = $role_label_map['go_profesional'];
+    } else {
+        $channel_label = 'Profesional';
     }
 } elseif (in_array('go_gestor', $role_keys, true)) {
     $channel_label = 'Gestoría';
 } elseif ($is_commercial_account) {
     $channel_label = 'Comercial';
+} elseif ($is_individual_account) {
+    $channel_label = $role_label_map['go_particular'] ?? 'Particular';
 } elseif ($company_type_label !== '') {
     $channel_label = $company_type_label;
 }
