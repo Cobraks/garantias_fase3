@@ -369,6 +369,32 @@ const ADD_DOC_KEY = "add-document";
                 const orderLabelNode = orderRoot
                         ? orderRoot.querySelector("[data-order-label]")
                         : null;
+                const mobileFiltersPanel = filtersRoot
+                        ? filtersRoot.querySelector("[data-mobile-filters-body]")
+                        : null;
+                const mobileFiltersTrigger = filtersRoot
+                        ? filtersRoot.querySelector("[data-mobile-filters-trigger]")
+                        : null;
+                const mobileFiltersClose = filtersRoot
+                        ? filtersRoot.querySelector("[data-mobile-filters-close]")
+                        : null;
+                const mobileFiltersBackdrop = filtersRoot
+                        ? filtersRoot.querySelector("[data-mobile-filters-backdrop]")
+                        : null;
+                const mobileFiltersDefaultRole = mobileFiltersPanel
+                        ? mobileFiltersPanel.getAttribute("role") || ""
+                        : "";
+                const mobileFiltersDefaultAriaModal = mobileFiltersPanel
+                        ? mobileFiltersPanel.getAttribute("aria-modal") || ""
+                        : "";
+                const desktopFiltersQuery = window.matchMedia("(min-width: 1280px)");
+                const focusableSelector =
+                        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+                let previousFocusedElement = null;
+                let previousListOverflow = null;
+                let previousBodyOverflow = null;
+                let lockedScrollTarget = null;
+                let isMobileFiltersOpen = false;
                 let selectedEstado = "";
                 let selectedPlan = "";
                 let selectedCanal = "";
@@ -463,6 +489,15 @@ const ADD_DOC_KEY = "add-document";
                                         "0px"
                                 );
                                 baseFiltersHeight = 0;
+                                return;
+                        }
+
+                        if (!desktopFiltersQuery.matches) {
+                                updateBaseFiltersHeight();
+                                rootElement.style.setProperty(
+                                        "--go-advanced-filters-height",
+                                        "0px"
+                                );
                                 return;
                         }
 
@@ -2029,6 +2064,247 @@ const ADD_DOC_KEY = "add-document";
                                 }
                         });
                 }
+
+                if (mobileFiltersPanel && !mobileFiltersPanel.hasAttribute("tabindex")) {
+                        mobileFiltersPanel.setAttribute("tabindex", "-1");
+                }
+
+                const lockListScroll = (lock) => {
+                        if (lock) {
+                                const target = desktopFiltersQuery.matches ? "list" : "body";
+                                if (target === "list") {
+                                        if (!listContainer) {
+                                                lockedScrollTarget = null;
+                                                return;
+                                        }
+                                        if (previousListOverflow === null) {
+                                                previousListOverflow =
+                                                        listContainer.style.overflow || "";
+                                        }
+                                        listContainer.style.overflow = "hidden";
+                                } else {
+                                        if (previousBodyOverflow === null) {
+                                                previousBodyOverflow =
+                                                        document.body.style.overflow || "";
+                                        }
+                                        document.body.style.overflow = "hidden";
+                                }
+                                lockedScrollTarget = target;
+                                return;
+                        }
+
+                        if (lockedScrollTarget === "list") {
+                                if (listContainer) {
+                                        if (previousListOverflow !== null) {
+                                                listContainer.style.overflow = previousListOverflow;
+                                                previousListOverflow = null;
+                                        } else {
+                                                listContainer.style.removeProperty("overflow");
+                                        }
+                                }
+                        } else if (lockedScrollTarget === "body") {
+                                if (previousBodyOverflow !== null) {
+                                        document.body.style.overflow = previousBodyOverflow;
+                                        previousBodyOverflow = null;
+                                } else {
+                                        document.body.style.removeProperty("overflow");
+                                }
+                        } else {
+                                if (listContainer) {
+                                        listContainer.style.removeProperty("overflow");
+                                }
+                                document.body.style.removeProperty("overflow");
+                                previousBodyOverflow = null;
+                                previousListOverflow = null;
+                        }
+
+                        lockedScrollTarget = null;
+                };
+
+                const syncMobileFiltersAccessibility = () => {
+                        if (!mobileFiltersPanel) {
+                                return;
+                        }
+
+                        if (desktopFiltersQuery.matches) {
+                                if (mobileFiltersDefaultRole) {
+                                        mobileFiltersPanel.setAttribute("role", "presentation");
+                                } else {
+                                        mobileFiltersPanel.removeAttribute("role");
+                                }
+                                mobileFiltersPanel.setAttribute("aria-modal", "false");
+                                mobileFiltersPanel.removeAttribute("aria-hidden");
+                                if (mobileFiltersBackdrop) {
+                                        mobileFiltersBackdrop.setAttribute("aria-hidden", "true");
+                                }
+                                return;
+                        }
+
+                        if (mobileFiltersDefaultRole) {
+                                mobileFiltersPanel.setAttribute(
+                                        "role",
+                                        mobileFiltersDefaultRole
+                                );
+                        } else {
+                                mobileFiltersPanel.removeAttribute("role");
+                        }
+
+                        if (mobileFiltersDefaultAriaModal) {
+                                mobileFiltersPanel.setAttribute(
+                                        "aria-modal",
+                                        mobileFiltersDefaultAriaModal
+                                );
+                        } else {
+                                mobileFiltersPanel.removeAttribute("aria-modal");
+                        }
+
+                        mobileFiltersPanel.setAttribute(
+                                "aria-hidden",
+                                isMobileFiltersOpen ? "false" : "true"
+                        );
+
+                        if (mobileFiltersBackdrop) {
+                                mobileFiltersBackdrop.setAttribute(
+                                        "aria-hidden",
+                                        isMobileFiltersOpen ? "false" : "true"
+                                );
+                        }
+                };
+
+                const setMobileFiltersOpen = (open, { restoreFocus = true } = {}) => {
+                        if (!filtersRoot || !mobileFiltersPanel) {
+                                return;
+                        }
+                        if (open && desktopFiltersQuery.matches) {
+                                return;
+                        }
+                        if (isMobileFiltersOpen === open) {
+                                return;
+                        }
+
+                        isMobileFiltersOpen = open;
+
+                        filtersRoot.setAttribute(
+                                "data-mobile-open",
+                                open ? "true" : "false"
+                        );
+
+                        if (mobileFiltersTrigger) {
+                                mobileFiltersTrigger.setAttribute(
+                                        "aria-expanded",
+                                        open ? "true" : "false"
+                                );
+                        }
+
+                        lockListScroll(open);
+
+                        if (open) {
+                                previousFocusedElement =
+                                        document.activeElement instanceof HTMLElement
+                                                ? document.activeElement
+                                                : null;
+                                const focusable = mobileFiltersPanel.querySelectorAll(
+                                        focusableSelector
+                                );
+                                const firstFocusable =
+                                        mobileFiltersClose && typeof mobileFiltersClose.focus === "function"
+                                                ? mobileFiltersClose
+                                                : focusable[0];
+                                if (firstFocusable && typeof firstFocusable.focus === "function") {
+                                        firstFocusable.focus({ preventScroll: true });
+                                }
+                        } else {
+                                if (
+                                        restoreFocus &&
+                                        previousFocusedElement &&
+                                        typeof previousFocusedElement.focus === "function"
+                                ) {
+                                        previousFocusedElement.focus({ preventScroll: true });
+                                }
+                                previousFocusedElement = null;
+                        }
+
+                        syncMobileFiltersAccessibility();
+                        requestAnimationFrame(updateAdvancedHeight);
+                };
+
+                const closeMobileFilters = (options) => {
+                        setMobileFiltersOpen(false, options);
+                };
+
+                if (mobileFiltersTrigger) {
+                        mobileFiltersTrigger.addEventListener("click", () => {
+                                setMobileFiltersOpen(true);
+                        });
+                }
+
+                if (mobileFiltersClose) {
+                        mobileFiltersClose.addEventListener("click", () => {
+                                closeMobileFilters();
+                        });
+                }
+
+                if (mobileFiltersBackdrop) {
+                        mobileFiltersBackdrop.addEventListener("click", () => {
+                                closeMobileFilters();
+                        });
+                }
+
+                const handleMobileFiltersKeydown = (event) => {
+                        if (!isMobileFiltersOpen) {
+                                return;
+                        }
+                        if (event.key === "Escape") {
+                                event.preventDefault();
+                                closeMobileFilters();
+                                return;
+                        }
+                        if (event.key !== "Tab" || !mobileFiltersPanel) {
+                                return;
+                        }
+                        const focusable = Array.from(
+                                mobileFiltersPanel.querySelectorAll(focusableSelector)
+                        ).filter((element) => !element.hasAttribute("disabled"));
+                        if (focusable.length === 0) {
+                                return;
+                        }
+                        const firstElement = focusable[0];
+                        const lastElement = focusable[focusable.length - 1];
+                        const activeElement = document.activeElement;
+
+                        if (event.shiftKey) {
+                                if (activeElement === firstElement || activeElement === mobileFiltersPanel) {
+                                        event.preventDefault();
+                                        lastElement.focus();
+                                }
+                        } else if (activeElement === lastElement) {
+                                event.preventDefault();
+                                firstElement.focus();
+                        }
+                };
+
+                document.addEventListener("keydown", handleMobileFiltersKeydown);
+
+                const handleDesktopFiltersChange = (event) => {
+                        if (event.matches) {
+                                closeMobileFilters({ restoreFocus: false });
+                        }
+                        syncMobileFiltersAccessibility();
+                };
+
+                if (typeof desktopFiltersQuery.addEventListener === "function") {
+                        desktopFiltersQuery.addEventListener(
+                                "change",
+                                handleDesktopFiltersChange
+                        );
+                } else if (typeof desktopFiltersQuery.addListener === "function") {
+                        desktopFiltersQuery.addListener(handleDesktopFiltersChange);
+                }
+
+                if (desktopFiltersQuery.matches) {
+                        closeMobileFilters({ restoreFocus: false });
+                }
+                syncMobileFiltersAccessibility();
 
                 document.addEventListener("click", (e) => {
                         const button = e.target.closest(".detail__copy-btn");
@@ -5469,31 +5745,134 @@ async function activateRow(row, options = {}) {
                 })();
 
                 (() => {
-                        const filters = document.querySelector(".guarantees-list__filters"),
-                                header = document.querySelector(".top-bar");
-                        if (filters && header) {
-                                new IntersectionObserver(
-					([e]) => {
-						const a = !e.isIntersecting;
-						filters.classList.toggle("sticky-active", a);
-						listContainer.classList.toggle("sticky-active", a);
-						detail.classList.toggle("sticky-active", a);
-					},
-					{ root: null, threshold: 0, rootMargin: "-50px" }
-				).observe(header);
-			}
+                        const filters = filtersRoot || document.querySelector(".guarantees-list__filters");
+                        const header = document.querySelector(".top-bar");
+
+                        if (!filters || !header || !listContainer) {
+                                return;
+                        }
+
+                        const getDetailPanels = () =>
+                                detail
+                                        ? Array.from(
+                                                  detail.querySelectorAll(
+                                                          ".guarantee-detail__panel"
+                                                  )
+                                          )
+                                        : [];
+
+                        const observer =
+                                typeof IntersectionObserver === "function"
+                                        ? new IntersectionObserver(
+                                                  ([entry]) => {
+                                                          const isSticky = !entry.isIntersecting;
+                                                          filters.classList.toggle(
+                                                                  "sticky-active",
+                                                                  isSticky
+                                                          );
+                                                          listContainer.classList.toggle(
+                                                                  "sticky-active",
+                                                                  isSticky
+                                                          );
+                                                          if (detail) {
+                                                                  detail.classList.toggle(
+                                                                          "sticky-active",
+                                                                          isSticky
+                                                                  );
+                                                          }
+                                                  },
+                                                  { root: null, threshold: 0, rootMargin: "-50px" }
+                                          )
+                                        : null;
+
+                        let observerActive = false;
+                        const enableObserver = () => {
+                                if (!observer || observerActive) {
+                                        return;
+                                }
+                                observer.observe(header);
+                                observerActive = true;
+                        };
+                        const disableObserver = () => {
+                                if (!observer) {
+                                        return;
+                                }
+                                observer.disconnect();
+                                observerActive = false;
+                        };
+
                         const onScroll = () => {
-                                const activePanel = detail.querySelector(".guarantee-detail__panel.active");
-                                const detailScrolled = activePanel ? activePanel.scrollTop > 10 : false;
+                                const activePanel = detail
+                                        ? detail.querySelector(
+                                                  ".guarantee-detail__panel.active"
+                                          )
+                                        : null;
+                                const detailScrolled = activePanel
+                                        ? activePanel.scrollTop > 10
+                                        : false;
+                                const listScrolled = listContainer
+                                        ? listContainer.scrollTop > 10
+                                        : false;
                                 document.body.classList.toggle(
                                         "scrolled",
-                                        listContainer.scrollTop > 10 || detailScrolled
+                                        listScrolled || detailScrolled
                                 );
                         };
-                        listContainer.addEventListener("scroll", onScroll);
-                        detail.querySelectorAll(".guarantee-detail__panel").forEach((p) =>
-                                p.addEventListener("scroll", onScroll)
-                        );
+
+                        let scrollBound = false;
+                        let boundDetailPanels = [];
+
+                        const bindScroll = () => {
+                                if (scrollBound || !listContainer) {
+                                        return;
+                                }
+                                scrollBound = true;
+                                listContainer.addEventListener("scroll", onScroll);
+                                boundDetailPanels = getDetailPanels();
+                                boundDetailPanels.forEach((panel) =>
+                                        panel.addEventListener("scroll", onScroll)
+                                );
+                        };
+
+                        const unbindScroll = () => {
+                                if (!scrollBound || !listContainer) {
+                                        return;
+                                }
+                                scrollBound = false;
+                                listContainer.removeEventListener("scroll", onScroll);
+                                boundDetailPanels.forEach((panel) =>
+                                        panel.removeEventListener("scroll", onScroll)
+                                );
+                                boundDetailPanels = [];
+                        };
+
+                        const resetStickyState = () => {
+                                filters.classList.remove("sticky-active");
+                                listContainer.classList.remove("sticky-active");
+                                if (detail) {
+                                        detail.classList.remove("sticky-active");
+                                }
+                                document.body.classList.remove("scrolled");
+                        };
+
+                        const handleLayoutChange = () => {
+                                if (desktopFiltersQuery.matches) {
+                                        enableObserver();
+                                        bindScroll();
+                                } else {
+                                        disableObserver();
+                                        unbindScroll();
+                                        resetStickyState();
+                                }
+                        };
+
+                        handleLayoutChange();
+
+                        if (typeof desktopFiltersQuery.addEventListener === "function") {
+                                desktopFiltersQuery.addEventListener("change", handleLayoutChange);
+                        } else if (typeof desktopFiltersQuery.addListener === "function") {
+                                desktopFiltersQuery.addListener(handleLayoutChange);
+                        }
                 })();
 
                 function normalizeFilterValues(items) {

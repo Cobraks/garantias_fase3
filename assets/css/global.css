@@ -2032,6 +2032,10 @@ text-decoration: none;
         margin: 0 auto;
         /* padding: 0 var(--spacing-2); */
       }
+
+      body.body--guarantees .container.guarantees-page {
+        padding-inline: var(--spacing-2);
+      }
   
       /* Grid principal: formulario y sumario */
       .main-grid {
@@ -2279,6 +2283,12 @@ display: block;
 @media (min-width: 640px) {
   .account-card__actions {
     align-items: flex-start;
+  }
+}
+
+@media (min-width: 1280px) {
+  body.body--guarantees .container.guarantees-page {
+    padding-inline: 0;
   }
 }
 
