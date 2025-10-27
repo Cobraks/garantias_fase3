@@ -1726,16 +1726,43 @@ class AccountRestController
             $filename .= '.pdf';
         }
 
-        if (! function_exists('wp_tempnam')) {
+        if (! function_exists('wp_tempnam') || ! function_exists('wp_unique_filename')) {
             require_once ABSPATH . 'wp-admin/includes/file.php';
         }
 
         $temporary_files = [];
         $attachments = [];
         $tmp_file = wp_tempnam($filename);
-        if ($tmp_file && file_put_contents($tmp_file, $binary) !== false) {
-            $attachments[] = $tmp_file;
-            $temporary_files[] = $tmp_file;
+        $attachment_path = '';
+        if ($tmp_file) {
+            $temp_dir = dirname($tmp_file);
+            $unique_name = wp_unique_filename($temp_dir, $filename);
+            $candidate = $unique_name !== '' ? trailingslashit($temp_dir) . $unique_name : '';
+
+            if ($candidate !== '') {
+                $written = file_put_contents($candidate, $binary);
+                if ($written !== false) {
+                    $attachment_path = $candidate;
+                } elseif (file_exists($candidate)) {
+                    @unlink($candidate);
+                }
+            }
+
+            if ($attachment_path === '') {
+                $written = file_put_contents($tmp_file, $binary);
+                if ($written !== false) {
+                    $attachment_path = $tmp_file;
+                }
+            }
+
+            if ($attachment_path !== $tmp_file && file_exists($tmp_file)) {
+                @unlink($tmp_file);
+            }
+        }
+
+        if ($attachment_path !== '') {
+            $attachments[] = $attachment_path;
+            $temporary_files[] = $attachment_path;
         }
 
         $reference = isset($document['reference']) ? (string) $document['reference'] : '';
