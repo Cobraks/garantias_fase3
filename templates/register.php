@@ -222,7 +222,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                         <div class="form-grid form-grid--two">
                             <div class="input-container">
                                 <input type="text" id="company_cif" class="form-input" placeholder=" ">
-                                <label for="company_cif" class="form-label">CIF</label>
+                                <label for="company_cif" class="form-label">NIF empresa</label>
                             </div>
 
                             <div class="input-container">
