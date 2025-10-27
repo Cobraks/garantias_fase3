@@ -541,6 +541,13 @@
                     console.warn('[account] Missing PDF field', name, error);
                 }
             });
+            if (form && typeof form.updateFieldAppearances === 'function') {
+                try {
+                    form.updateFieldAppearances(activeFont);
+                } catch (error) {
+                    console.warn('[account] Unable to refresh form appearances', error);
+                }
+            }
             const paymentType = typeof sepaCreditor.payment_type === 'string'
                 ? sepaCreditor.payment_type.toLowerCase()
                 : 'recurrente';
@@ -591,7 +598,7 @@
                 }
             }
             const generatedAt = signatureDate.toISOString();
-            const filled = await pdfDoc.save({ updateFieldAppearances: false });
+            const filled = await pdfDoc.save({ updateFieldAppearances: true });
             const blob = new Blob([filled], { type: 'application/pdf' });
             const filename = buildSepaFilename(reference);
             return {

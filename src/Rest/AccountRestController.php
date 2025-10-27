@@ -1634,10 +1634,11 @@ class AccountRestController
 
         $attachments = [];
         $temporary_files = [];
-        $tmp = wp_tempnam($filename);
-        if ($tmp && file_put_contents($tmp, $binary) !== false) {
-            $attachments[] = $tmp;
-            $temporary_files[] = $tmp;
+
+        $attachment_path = self::create_temporary_pdf_attachment($filename, $binary);
+        if ($attachment_path !== '') {
+            $attachments[] = $attachment_path;
+            $temporary_files[] = $attachment_path;
         }
 
         $renderer = new TemplateRenderer();
@@ -1659,11 +1660,7 @@ class AccountRestController
 
         $body = $renderer->render('sepa-pending', $context);
         if ($body === '') {
-            foreach ($temporary_files as $file) {
-                if (is_string($file) && file_exists($file)) {
-                    @unlink($file);
-                }
-            }
+            self::cleanup_temporary_files($temporary_files);
             return;
         }
 
@@ -1686,11 +1683,7 @@ class AccountRestController
         ], $subject, $body, $headers, $attachments, $metadata);
         $mailer->send($message);
 
-        foreach ($temporary_files as $file) {
-            if (is_string($file) && file_exists($file)) {
-                @unlink($file);
-            }
-        }
+        self::cleanup_temporary_files($temporary_files);
     }
 
     private static function notify_admin_pending_mandate(int $user_id, array $document, string $binary): void
@@ -1726,40 +1719,10 @@ class AccountRestController
             $filename .= '.pdf';
         }
 
-        if (! function_exists('wp_tempnam') || ! function_exists('wp_unique_filename')) {
-            require_once ABSPATH . 'wp-admin/includes/file.php';
-        }
-
         $temporary_files = [];
         $attachments = [];
-        $tmp_file = wp_tempnam($filename);
-        $attachment_path = '';
-        if ($tmp_file) {
-            $temp_dir = dirname($tmp_file);
-            $unique_name = wp_unique_filename($temp_dir, $filename);
-            $candidate = $unique_name !== '' ? trailingslashit($temp_dir) . $unique_name : '';
 
-            if ($candidate !== '') {
-                $written = file_put_contents($candidate, $binary);
-                if ($written !== false) {
-                    $attachment_path = $candidate;
-                } elseif (file_exists($candidate)) {
-                    @unlink($candidate);
-                }
-            }
-
-            if ($attachment_path === '') {
-                $written = file_put_contents($tmp_file, $binary);
-                if ($written !== false) {
-                    $attachment_path = $tmp_file;
-                }
-            }
-
-            if ($attachment_path !== $tmp_file && file_exists($tmp_file)) {
-                @unlink($tmp_file);
-            }
-        }
-
+        $attachment_path = self::create_temporary_pdf_attachment($filename, $binary);
         if ($attachment_path !== '') {
             $attachments[] = $attachment_path;
             $temporary_files[] = $attachment_path;
@@ -1787,11 +1750,7 @@ class AccountRestController
 
         $body = $renderer->render('sepa-pending-admin', $context);
         if ($body === '') {
-            foreach ($temporary_files as $file) {
-                if (is_string($file) && file_exists($file)) {
-                    @unlink($file);
-                }
-            }
+            self::cleanup_temporary_files($temporary_files);
             return;
         }
 
@@ -1822,8 +1781,65 @@ class AccountRestController
 
         $mailer->send($message);
 
-        foreach ($temporary_files as $file) {
-            if (is_string($file) && file_exists($file)) {
+        self::cleanup_temporary_files($temporary_files);
+    }
+
+    private static function create_temporary_pdf_attachment(string $filename, string $binary): string
+    {
+        $safe_name = sanitize_file_name($filename);
+        if ($safe_name === '') {
+            $safe_name = 'mandato-sepa.pdf';
+        }
+        if (pathinfo($safe_name, PATHINFO_EXTENSION) === '') {
+            $safe_name .= '.pdf';
+        }
+
+        if (! function_exists('wp_tempnam') || ! function_exists('wp_unique_filename')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        $attachment_path = '';
+        $tmp_file = wp_tempnam($safe_name);
+        if ($tmp_file) {
+            $temp_dir = dirname($tmp_file);
+            $unique_name = wp_unique_filename($temp_dir, $safe_name);
+            $candidate = $unique_name !== '' ? trailingslashit($temp_dir) . $unique_name : '';
+
+            if ($candidate !== '') {
+                $written = file_put_contents($candidate, $binary);
+                if ($written !== false) {
+                    $attachment_path = $candidate;
+                } elseif (file_exists($candidate)) {
+                    @unlink($candidate);
+                }
+            }
+
+            if ($attachment_path === '') {
+                $written = file_put_contents($tmp_file, $binary);
+                if ($written !== false) {
+                    $attachment_path = $tmp_file;
+                }
+            }
+
+            if ($attachment_path !== $tmp_file && file_exists($tmp_file)) {
+                @unlink($tmp_file);
+            }
+        }
+
+        return $attachment_path;
+    }
+
+    /**
+     * @param list<string> $files
+     */
+    private static function cleanup_temporary_files(array $files): void
+    {
+        foreach ($files as $file) {
+            if (! is_string($file) || $file === '') {
+                continue;
+            }
+
+            if (file_exists($file)) {
                 @unlink($file);
             }
         }
