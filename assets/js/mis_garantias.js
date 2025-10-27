@@ -392,6 +392,8 @@ const ADD_DOC_KEY = "add-document";
                         'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
                 let previousFocusedElement = null;
                 let previousListOverflow = null;
+                let previousBodyOverflow = null;
+                let lockedScrollTarget = null;
                 let isMobileFiltersOpen = false;
                 let selectedEstado = "";
                 let selectedPlan = "";
@@ -487,6 +489,15 @@ const ADD_DOC_KEY = "add-document";
                                         "0px"
                                 );
                                 baseFiltersHeight = 0;
+                                return;
+                        }
+
+                        if (!desktopFiltersQuery.matches) {
+                                updateBaseFiltersHeight();
+                                rootElement.style.setProperty(
+                                        "--go-advanced-filters-height",
+                                        "0px"
+                                );
                                 return;
                         }
 
@@ -2059,22 +2070,55 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 const lockListScroll = (lock) => {
-                        if (!listContainer) {
+                        if (lock) {
+                                const target = desktopFiltersQuery.matches ? "list" : "body";
+                                if (target === "list") {
+                                        if (!listContainer) {
+                                                lockedScrollTarget = null;
+                                                return;
+                                        }
+                                        if (previousListOverflow === null) {
+                                                previousListOverflow =
+                                                        listContainer.style.overflow || "";
+                                        }
+                                        listContainer.style.overflow = "hidden";
+                                } else {
+                                        if (previousBodyOverflow === null) {
+                                                previousBodyOverflow =
+                                                        document.body.style.overflow || "";
+                                        }
+                                        document.body.style.overflow = "hidden";
+                                }
+                                lockedScrollTarget = target;
                                 return;
                         }
-                        if (lock) {
-                                if (previousListOverflow === null) {
-                                        previousListOverflow = listContainer.style.overflow || "";
+
+                        if (lockedScrollTarget === "list") {
+                                if (listContainer) {
+                                        if (previousListOverflow !== null) {
+                                                listContainer.style.overflow = previousListOverflow;
+                                                previousListOverflow = null;
+                                        } else {
+                                                listContainer.style.removeProperty("overflow");
+                                        }
                                 }
-                                listContainer.style.overflow = "hidden";
-                        } else {
-                                if (previousListOverflow !== null) {
-                                        listContainer.style.overflow = previousListOverflow;
-                                        previousListOverflow = null;
+                        } else if (lockedScrollTarget === "body") {
+                                if (previousBodyOverflow !== null) {
+                                        document.body.style.overflow = previousBodyOverflow;
+                                        previousBodyOverflow = null;
                                 } else {
+                                        document.body.style.removeProperty("overflow");
+                                }
+                        } else {
+                                if (listContainer) {
                                         listContainer.style.removeProperty("overflow");
                                 }
+                                document.body.style.removeProperty("overflow");
+                                previousBodyOverflow = null;
+                                previousListOverflow = null;
                         }
+
+                        lockedScrollTarget = null;
                 };
 
                 const syncMobileFiltersAccessibility = () => {
@@ -5701,31 +5745,134 @@ async function activateRow(row, options = {}) {
                 })();
 
                 (() => {
-                        const filters = document.querySelector(".guarantees-list__filters"),
-                                header = document.querySelector(".top-bar");
-                        if (filters && header) {
-                                new IntersectionObserver(
-					([e]) => {
-						const a = !e.isIntersecting;
-						filters.classList.toggle("sticky-active", a);
-						listContainer.classList.toggle("sticky-active", a);
-						detail.classList.toggle("sticky-active", a);
-					},
-					{ root: null, threshold: 0, rootMargin: "-50px" }
-				).observe(header);
-			}
+                        const filters = filtersRoot || document.querySelector(".guarantees-list__filters");
+                        const header = document.querySelector(".top-bar");
+
+                        if (!filters || !header || !listContainer) {
+                                return;
+                        }
+
+                        const getDetailPanels = () =>
+                                detail
+                                        ? Array.from(
+                                                  detail.querySelectorAll(
+                                                          ".guarantee-detail__panel"
+                                                  )
+                                          )
+                                        : [];
+
+                        const observer =
+                                typeof IntersectionObserver === "function"
+                                        ? new IntersectionObserver(
+                                                  ([entry]) => {
+                                                          const isSticky = !entry.isIntersecting;
+                                                          filters.classList.toggle(
+                                                                  "sticky-active",
+                                                                  isSticky
+                                                          );
+                                                          listContainer.classList.toggle(
+                                                                  "sticky-active",
+                                                                  isSticky
+                                                          );
+                                                          if (detail) {
+                                                                  detail.classList.toggle(
+                                                                          "sticky-active",
+                                                                          isSticky
+                                                                  );
+                                                          }
+                                                  },
+                                                  { root: null, threshold: 0, rootMargin: "-50px" }
+                                          )
+                                        : null;
+
+                        let observerActive = false;
+                        const enableObserver = () => {
+                                if (!observer || observerActive) {
+                                        return;
+                                }
+                                observer.observe(header);
+                                observerActive = true;
+                        };
+                        const disableObserver = () => {
+                                if (!observer) {
+                                        return;
+                                }
+                                observer.disconnect();
+                                observerActive = false;
+                        };
+
                         const onScroll = () => {
-                                const activePanel = detail.querySelector(".guarantee-detail__panel.active");
-                                const detailScrolled = activePanel ? activePanel.scrollTop > 10 : false;
+                                const activePanel = detail
+                                        ? detail.querySelector(
+                                                  ".guarantee-detail__panel.active"
+                                          )
+                                        : null;
+                                const detailScrolled = activePanel
+                                        ? activePanel.scrollTop > 10
+                                        : false;
+                                const listScrolled = listContainer
+                                        ? listContainer.scrollTop > 10
+                                        : false;
                                 document.body.classList.toggle(
                                         "scrolled",
-                                        listContainer.scrollTop > 10 || detailScrolled
+                                        listScrolled || detailScrolled
                                 );
                         };
-                        listContainer.addEventListener("scroll", onScroll);
-                        detail.querySelectorAll(".guarantee-detail__panel").forEach((p) =>
-                                p.addEventListener("scroll", onScroll)
-                        );
+
+                        let scrollBound = false;
+                        let boundDetailPanels = [];
+
+                        const bindScroll = () => {
+                                if (scrollBound || !listContainer) {
+                                        return;
+                                }
+                                scrollBound = true;
+                                listContainer.addEventListener("scroll", onScroll);
+                                boundDetailPanels = getDetailPanels();
+                                boundDetailPanels.forEach((panel) =>
+                                        panel.addEventListener("scroll", onScroll)
+                                );
+                        };
+
+                        const unbindScroll = () => {
+                                if (!scrollBound || !listContainer) {
+                                        return;
+                                }
+                                scrollBound = false;
+                                listContainer.removeEventListener("scroll", onScroll);
+                                boundDetailPanels.forEach((panel) =>
+                                        panel.removeEventListener("scroll", onScroll)
+                                );
+                                boundDetailPanels = [];
+                        };
+
+                        const resetStickyState = () => {
+                                filters.classList.remove("sticky-active");
+                                listContainer.classList.remove("sticky-active");
+                                if (detail) {
+                                        detail.classList.remove("sticky-active");
+                                }
+                                document.body.classList.remove("scrolled");
+                        };
+
+                        const handleLayoutChange = () => {
+                                if (desktopFiltersQuery.matches) {
+                                        enableObserver();
+                                        bindScroll();
+                                } else {
+                                        disableObserver();
+                                        unbindScroll();
+                                        resetStickyState();
+                                }
+                        };
+
+                        handleLayoutChange();
+
+                        if (typeof desktopFiltersQuery.addEventListener === "function") {
+                                desktopFiltersQuery.addEventListener("change", handleLayoutChange);
+                        } else if (typeof desktopFiltersQuery.addListener === "function") {
+                                desktopFiltersQuery.addListener(handleLayoutChange);
+                        }
                 })();
 
                 function normalizeFilterValues(items) {
