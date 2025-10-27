@@ -42,6 +42,7 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                     <tr>
                         <td style="padding:32px 28px 12px 28px;">
                             <?php
+                            $badge_text = __('Domiciliación pendiente de firma', 'garantias-online-360vo');
                             include __DIR__ . '/partials/header.php';
                             ?>
                             <h1 style="font-size:24px;margin:0 0 18px;color:#111827;font-weight:700;">

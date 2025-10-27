@@ -93,6 +93,40 @@
         let debounceTimer = null;
         const COLUMN_COUNT = 5;
 
+        const SALES_CHANNEL_LABEL_MAP = {
+            concesionario: 'Concesionario Oficial',
+            'concesionario-oficial': 'Concesionario Oficial',
+            compraventa: 'Compraventa',
+        };
+
+        function normalizeSalesChannelLabel(channel) {
+            if (!channel || typeof channel !== 'object') {
+                return '';
+            }
+
+            const rawLabel = typeof channel.label === 'string' ? channel.label.trim() : '';
+            const rawSlug = typeof channel.slug === 'string' ? channel.slug.trim() : '';
+            const normalizedSlug = rawSlug.toLowerCase();
+
+            if (normalizedSlug && Object.prototype.hasOwnProperty.call(SALES_CHANNEL_LABEL_MAP, normalizedSlug)) {
+                return SALES_CHANNEL_LABEL_MAP[normalizedSlug];
+            }
+
+            if (rawLabel !== '') {
+                const normalizedLabel = rawLabel.toLowerCase();
+                if (Object.prototype.hasOwnProperty.call(SALES_CHANNEL_LABEL_MAP, normalizedLabel)) {
+                    return SALES_CHANNEL_LABEL_MAP[normalizedLabel];
+                }
+                return rawLabel;
+            }
+
+            if (rawSlug !== '') {
+                return rawSlug;
+            }
+
+            return '';
+        }
+
         function uniqueId(prefix) {
             dialogIdCounter += 1;
             return `${prefix}-${dialogIdCounter}`;
@@ -696,7 +730,7 @@
                 ? `<img src="${escapeAttribute(profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="clients-table__avatar">`
                 : `<span class="clients-table__initials">${escapeHtml(profile.initials || '')}</span>`;
             const companyName = typeof name.company === 'string' ? name.company.trim() : '';
-            const channelLabel = typeof salesChannel.label === 'string' ? salesChannel.label.trim() : '';
+            const channelLabel = normalizeSalesChannelLabel(salesChannel);
             const channelHtml = channelLabel !== ''
                 ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
                 : '';
@@ -2073,7 +2107,7 @@
 
             const companyName = typeof name.company === 'string' ? name.company.trim() : '';
             const companyLegalName = typeof company.legal_name === 'string' ? company.legal_name.trim() : '';
-            const salesChannelLabel = typeof salesChannel.label === 'string' ? salesChannel.label.trim() : '';
+            const salesChannelLabel = normalizeSalesChannelLabel(salesChannel);
             const companyLine = companyName !== '' ? `<p class="client-detail__company">${escapeHtml(companyName)}</p>` : '';
             const loginEmail = typeof contact.login_email === 'string' && contact.login_email ? contact.login_email.trim() : '';
             const loginEmailLine = loginEmail !== ''
