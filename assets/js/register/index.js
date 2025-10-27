@@ -110,6 +110,22 @@
     return raw.replace(/(.{4})/g, '$1 ').trim();
   };
 
+  const maskIban = (value) => {
+    const sanitized = (value || '').replace(/\s+/g, '').toUpperCase();
+    if (!sanitized) {
+      return '';
+    }
+    const groups = sanitized.match(/.{1,4}/g) || [];
+    return groups
+      .map((group, index) => {
+        if (index <= 1 || index === groups.length - 1) {
+          return group;
+        }
+        return '****';
+      })
+      .join(' ');
+  };
+
   const isValidIban = (value) => {
     const sanitized = value.replace(/\s+/g, '').toUpperCase();
     if (!/^[A-Z0-9]{15,34}$/.test(sanitized)) {
@@ -182,6 +198,7 @@
 
     const sepaSwiftField = document.getElementById('sepa_swift');
     const sepaIbanField = document.getElementById('sepa_iban');
+    const sepaIbanToggle = document.getElementById('summary-sepa-iban-toggle');
     const sepaCountryField = document.getElementById('sepa_country');
 
     const hasWorkshopField = document.getElementById('has_workshop');
@@ -393,17 +410,26 @@
       if (!verificationExpiry) {
         return;
       }
+      const defaultMessage = 'Caduca en 5 minutos.';
       if (!state.verification.expiresAt) {
-        verificationExpiry.textContent = 'Caduca en 24 horas.';
+        verificationExpiry.textContent = defaultMessage;
         return;
       }
       const expiryDate = new Date(state.verification.expiresAt);
       if (Number.isNaN(expiryDate.getTime())) {
-        verificationExpiry.textContent = 'Caduca en 24 horas.';
+        verificationExpiry.textContent = defaultMessage;
         return;
       }
-      if (Date.now() >= expiryDate.getTime()) {
+      const timeRemaining = expiryDate.getTime() - Date.now();
+      if (timeRemaining <= 0) {
         verificationExpiry.textContent = 'El código actual ha caducado.';
+        return;
+      }
+      const minutesRemaining = Math.ceil(timeRemaining / 60000);
+      if (minutesRemaining <= 60) {
+        verificationExpiry.textContent = minutesRemaining === 1
+          ? 'Caduca en 1 minuto.'
+          : `Caduca en ${minutesRemaining} minutos.`;
         return;
       }
       const formatter = new Intl.DateTimeFormat('es-ES', {
@@ -1485,27 +1511,64 @@
           getValue('sepa_city'),
           getValue('sepa_state')
         );
-        if (summary.sepaSwift) {
-          const swiftValue = sepaSwiftField ? sepaSwiftField.value.trim() : '';
-          summary.sepaSwift.textContent = swiftValue || '—';
+      if (summary.sepaSwift) {
+        const swiftValue = sepaSwiftField ? sepaSwiftField.value.trim() : '';
+        summary.sepaSwift.textContent = swiftValue || '—';
+      }
+      const ibanValue = sepaIbanField ? sepaIbanField.value.trim() : '';
+      if (summary.sepaIban) {
+        const previousFull = summary.sepaIban.dataset.fullValue || '';
+        const formattedIban = ibanValue ? formatIban(ibanValue) : '';
+        const maskedIban = ibanValue ? maskIban(ibanValue) : '';
+        summary.sepaIban.dataset.fullValue = formattedIban;
+        summary.sepaIban.dataset.maskedValue = maskedIban;
+        if (sepaIbanToggle && formattedIban && formattedIban !== previousFull) {
+          sepaIbanToggle.setAttribute('aria-pressed', 'false');
         }
-        const ibanValue = sepaIbanField ? sepaIbanField.value.trim() : '';
-        summary.sepaIban.textContent = ibanValue ? formatIban(ibanValue) : '—';
-      } else if (summary.sepaGroup) {
-        if (summary.sepaName) {
-          summary.sepaName.textContent = '—';
+        const isRevealed = sepaIbanToggle && sepaIbanToggle.getAttribute('aria-pressed') === 'true';
+        summary.sepaIban.textContent = formattedIban
+          ? (isRevealed ? formattedIban : (maskedIban || formattedIban))
+          : '—';
+        if (sepaIbanToggle) {
+          const showLabel = sepaIbanToggle.dataset.labelShow || '';
+          const hideLabel = sepaIbanToggle.dataset.labelHide || '';
+          if (formattedIban) {
+            sepaIbanToggle.hidden = false;
+            sepaIbanToggle.setAttribute('aria-label', isRevealed ? hideLabel || showLabel : showLabel);
+          } else {
+            sepaIbanToggle.hidden = true;
+            sepaIbanToggle.setAttribute('aria-pressed', 'false');
+            if (showLabel) {
+              sepaIbanToggle.setAttribute('aria-label', showLabel);
+            }
+          }
         }
+      }
+    } else if (summary.sepaGroup) {
+      if (summary.sepaName) {
+        summary.sepaName.textContent = '—';
+      }
         if (summary.sepaAddress) {
           summary.sepaAddress.textContent = '—';
         }
-        if (summary.sepaSwift) {
-          summary.sepaSwift.textContent = '—';
-        }
-        if (summary.sepaIban) {
-          summary.sepaIban.textContent = '—';
+      if (summary.sepaSwift) {
+        summary.sepaSwift.textContent = '—';
+      }
+      if (summary.sepaIban) {
+        summary.sepaIban.textContent = '—';
+        summary.sepaIban.dataset.fullValue = '';
+        summary.sepaIban.dataset.maskedValue = '';
+      }
+      if (sepaIbanToggle) {
+        const showLabel = sepaIbanToggle.dataset.labelShow || '';
+        sepaIbanToggle.hidden = true;
+        sepaIbanToggle.setAttribute('aria-pressed', 'false');
+        if (showLabel) {
+          sepaIbanToggle.setAttribute('aria-label', showLabel);
         }
       }
-    };
+    }
+  };
 
     const setSepaStatus = (status) => {
       if (state.sepaMandateStatus !== status) {
@@ -2304,6 +2367,32 @@
         }
       });
     });
+
+    if (sepaIbanToggle) {
+      const defaultLabel = sepaIbanToggle.dataset.labelShow || '';
+      if (defaultLabel) {
+        sepaIbanToggle.setAttribute('aria-label', defaultLabel);
+      }
+      sepaIbanToggle.addEventListener('click', () => {
+        if (!summary.sepaIban) {
+          return;
+        }
+        const fullValue = summary.sepaIban.dataset.fullValue || '';
+        if (!fullValue) {
+          return;
+        }
+        const maskedValue = summary.sepaIban.dataset.maskedValue || '';
+        const isRevealed = sepaIbanToggle.getAttribute('aria-pressed') === 'true';
+        const nextRevealed = !isRevealed;
+        sepaIbanToggle.setAttribute('aria-pressed', nextRevealed ? 'true' : 'false');
+        const showLabel = sepaIbanToggle.dataset.labelShow || '';
+        const hideLabel = sepaIbanToggle.dataset.labelHide || '';
+        sepaIbanToggle.setAttribute('aria-label', nextRevealed ? (hideLabel || showLabel) : showLabel);
+        summary.sepaIban.textContent = nextRevealed
+          ? fullValue
+          : (maskedValue || fullValue);
+      });
+    }
 
     if (registerBtn) {
       registerBtn.addEventListener('click', handleRegister);

@@ -131,6 +131,146 @@
             awaitingMessage: strings.sepaAwaitingMessage || 'Tu SEPA firmado está pendiente de validación.',
             awaitingActivation: strings.sepaAwaitingActivation || 'Pendiente de domiciliación',
         };
+        const sepaSignedFallbackName = strings.sepaSignedFilename || 'Mandato SEPA firmado';
+        const formatIban = (value) => {
+            const raw = typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() : '';
+            if (!raw) {
+                return '';
+            }
+            return raw.replace(/(.{4})/g, '$1 ').trim();
+        };
+        const maskIban = (value) => {
+            const raw = typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() : '';
+            if (!raw) {
+                return '';
+            }
+            const groups = raw.match(/.{1,4}/g) || [];
+            return groups
+                .map((group, index) => {
+                    if (index <= 1 || index === groups.length - 1) {
+                        return group;
+                    }
+                    return '****';
+                })
+                .join(' ')
+                .trim();
+        };
+        const syncSignedDocumentBlocks = (documentData) => {
+            const blocks = document.querySelectorAll('[data-sepa-signed]');
+            if (!blocks.length) {
+                return;
+            }
+
+            const doc = documentData && typeof documentData === 'object' ? documentData : null;
+            const url = doc && typeof doc.url === 'string' ? doc.url.trim() : '';
+            const filename = doc
+                && typeof doc.filename === 'string'
+                && doc.filename.trim() !== ''
+                ? doc.filename.trim()
+                : sepaSignedFallbackName;
+            const hasDocument = Boolean(url || (doc && (doc.hash || doc.id)));
+
+            blocks.forEach((block) => {
+                if (!(block instanceof HTMLElement)) {
+                    return;
+                }
+
+                const link = block.querySelector('[data-sepa-signed-link]');
+                const name = block.querySelector('[data-sepa-signed-name]');
+
+                if (hasDocument) {
+                    block.hidden = false;
+                    block.setAttribute('aria-hidden', 'false');
+                    if (link instanceof HTMLAnchorElement) {
+                        link.hidden = false;
+                        link.setAttribute('aria-hidden', 'false');
+                        link.removeAttribute('tabindex');
+                        link.setAttribute('href', url || '#');
+                    }
+                    if (name) {
+                        name.textContent = filename;
+                    }
+                } else {
+                    block.hidden = true;
+                    block.setAttribute('aria-hidden', 'true');
+                    if (link instanceof HTMLAnchorElement) {
+                        link.hidden = true;
+                        link.setAttribute('aria-hidden', 'true');
+                        link.setAttribute('tabindex', '-1');
+                        link.setAttribute('href', '#');
+                    }
+                    if (name) {
+                        name.textContent = sepaSignedFallbackName;
+                    }
+                }
+            });
+        };
+        const sepaIbanController = (() => {
+            const valueElement = document.querySelector('[data-sepa-iban]');
+            const toggle = document.querySelector('[data-sepa-iban-toggle]');
+            if (!valueElement) {
+                return {
+                    setValue: () => {},
+                };
+            }
+
+            let revealed = toggle ? toggle.getAttribute('aria-pressed') === 'true' : false;
+
+            const apply = () => {
+                const fullValue = valueElement.getAttribute('data-full-value') || '';
+                const maskedValue = valueElement.getAttribute('data-masked-value') || '';
+                const hasValue = Boolean(fullValue || maskedValue);
+                const display = revealed ? (fullValue || maskedValue || '—') : (maskedValue || fullValue || '—');
+
+                valueElement.textContent = display || '—';
+
+                if (!toggle) {
+                    return;
+                }
+
+                if (hasValue) {
+                    toggle.hidden = false;
+                    toggle.setAttribute('aria-hidden', 'false');
+                    toggle.setAttribute('aria-pressed', revealed ? 'true' : 'false');
+                    const showLabel = toggle.getAttribute('data-label-show') || '';
+                    const hideLabel = toggle.getAttribute('data-label-hide') || '';
+                    toggle.setAttribute('aria-label', revealed ? (hideLabel || showLabel) : (showLabel || hideLabel));
+                } else {
+                    toggle.hidden = true;
+                    toggle.setAttribute('aria-hidden', 'true');
+                    toggle.setAttribute('aria-pressed', 'false');
+                    const showLabel = toggle.getAttribute('data-label-show') || '';
+                    if (showLabel) {
+                        toggle.setAttribute('aria-label', showLabel);
+                    }
+                }
+            };
+
+            if (toggle) {
+                toggle.addEventListener('click', () => {
+                    revealed = !revealed;
+                    apply();
+                });
+            }
+
+            apply();
+
+            return {
+                setValue: (value) => {
+                    const formatted = formatIban(value);
+                    const masked = maskIban(value);
+                    valueElement.setAttribute('data-full-value', formatted);
+                    valueElement.setAttribute('data-masked-value', masked);
+                    if (!formatted) {
+                        revealed = false;
+                        if (toggle) {
+                            toggle.setAttribute('aria-pressed', 'false');
+                        }
+                    }
+                    apply();
+                },
+            };
+        })();
         const workshopToggle = document.querySelector('[data-workshop-toggle]');
         const workshopFieldKeys = [
             'name',
@@ -695,72 +835,67 @@
                                 sepaController.applyServerState(sepaData.documents.signed);
                             }
 
+                            const sepaStatusCodeRaw = typeof sepaData.status_code === 'string'
+                                ? sepaData.status_code.trim().toLowerCase()
+                                : '';
+                            const sepaIsDisabled = sepaStatusCodeRaw === 'deshabilitado';
                             const awaitingValidation = Boolean(sepaData.awaiting_validation);
                             const needsActivation = Boolean(sepaData.needs_activation);
+                            const signedDocumentData = (!needsActivation && !sepaIsDisabled)
+                                && sepaData.documents
+                                ? sepaData.documents.signed
+                                : null;
+                            syncSignedDocumentBlocks(signedDocumentData);
                             const sepaIsActive = Boolean(sepaData.status);
+                            const sepaIsActivated = Boolean(sepaData.activated);
                             if (sepaController && typeof sepaController.setLocked === 'function') {
                                 sepaController.setLocked(awaitingValidation || needsActivation);
                             }
+                            const sepaFields = Array.isArray(sepaData.fields) ? sepaData.fields : [];
+                            const ibanField = sepaFields.find((field) => {
+                                if (!field || typeof field !== 'object') {
+                                    return false;
+                                }
+                                const name = typeof field.name === 'string' ? field.name : '';
+                                const altName = typeof field.field === 'string' ? field.field : '';
+                                return name === 'numero_cuenta' || altName === 'numero_cuenta';
+                            });
+                            const ibanValue = ibanField && typeof ibanField.value === 'string'
+                                ? ibanField.value
+                                : '';
+                            sepaIbanController.setValue(ibanValue);
                             const activationCard = document.querySelector('[data-payment-activation]');
                             const detailCard = document.querySelector('[data-payment-detail]');
-                            const sepaStatusRow = activationCard
-                                ? activationCard.querySelector('[data-sepa-status]')
-                                : null;
-                            const sepaSuccessRow = activationCard
-                                ? activationCard.querySelector('[data-sepa-success]')
-                                : null;
                             const toggleWrapper = activationCard
                                 ? activationCard.querySelector('[data-sepa-toggle]')
                                 : null;
                             const toggleInput = activationCard
                                 ? activationCard.querySelector('[data-payment-toggle]')
                                 : null;
-
-                            if (sepaSuccessRow) {
-                                sepaSuccessRow.hidden = !sepaIsActive;
-                                sepaSuccessRow.setAttribute('aria-hidden', sepaIsActive ? 'false' : 'true');
-                            }
-
-                            if (sepaStatusRow) {
-                                const isRequested = Boolean(sepaData.requested) || needsActivation;
-                                sepaStatusRow.hidden = !isRequested;
-                                sepaStatusRow.setAttribute('aria-hidden', isRequested ? 'false' : 'true');
-                                sepaStatusRow.setAttribute('data-sepa-requested', sepaData.requested ? 'true' : 'false');
-                                sepaStatusRow.setAttribute('data-sepa-awaiting', awaitingValidation ? 'true' : 'false');
-                                sepaStatusRow.setAttribute('data-sepa-needs-activation', needsActivation ? 'true' : 'false');
-                                sepaStatusRow.classList.toggle('account-card__status--sepa-success', awaitingValidation);
-
-                                const statusLabel = sepaStatusRow.querySelector('[data-sepa-status-label]');
-                                if (statusLabel) {
-                                    let statusText = '';
-                                    if (sepaData && typeof sepaData.status_label === 'string') {
-                                        statusText = sepaData.status_label.trim();
-                                    }
-                                    if (statusText === '') {
-                                        if (awaitingValidation) {
-                                            statusText = sepaText.awaitingValidation || 'Pendiente de validación';
-                                        } else if (needsActivation) {
-                                            statusText = sepaText.awaitingActivation || 'Pendiente de domiciliación';
-                                        } else {
-                                            statusText = sepaText.awaitingSignature || 'Pendiente de firma';
-                                        }
-                                    }
-                                    statusLabel.textContent = statusText;
-                                }
-                            }
+                            const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
+                            const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
 
                             if (toggleWrapper) {
-                                const shouldHideToggle = sepaIsActive || Boolean(sepaData.requested) || needsActivation;
+                                const shouldHideToggle = sepaIsActivated || Boolean(sepaData.requested) || needsActivation || sepaIsDisabled;
                                 toggleWrapper.hidden = shouldHideToggle;
                                 toggleWrapper.setAttribute('aria-hidden', shouldHideToggle ? 'true' : 'false');
                             }
 
                             if (toggleInput) {
-                                const shouldDisableToggle = sepaIsActive || awaitingValidation || Boolean(sepaData.requested) || needsActivation;
-                                if (sepaIsActive) {
+                                const shouldDisableToggle = sepaIsActivated
+                                    || awaitingValidation
+                                    || Boolean(sepaData.requested)
+                                    || needsActivation
+                                    || sepaIsDisabled;
+                                if (sepaIsActivated) {
                                     toggleInput.checked = true;
+                                } else if (!shouldDisableToggle) {
+                                    toggleInput.checked = false;
                                 }
                                 toggleInput.disabled = shouldDisableToggle;
+                                if (sepaIsDisabled) {
+                                    toggleInput.checked = false;
+                                }
                             }
 
                             if (activationCard) {
@@ -768,7 +903,9 @@
                                     ? data.payments.selected_method
                                     : 'transferencia';
                                 let nextState = 'disabled';
-                                if (sepaIsActive) {
+                                if (sepaIsDisabled) {
+                                    nextState = 'reactivation';
+                                } else if (sepaIsActive) {
                                     nextState = 'locked';
                                 } else if (sepaData.requested || needsActivation) {
                                     nextState = 'requested';
@@ -788,10 +925,26 @@
 
                             const awaitingMessage = document.querySelector('[data-sepa-awaiting-message]');
                             if (awaitingMessage) {
-                                awaitingMessage.hidden = !awaitingValidation;
-                                awaitingMessage.setAttribute('aria-hidden', awaitingValidation ? 'false' : 'true');
+                                const shouldShowAwaiting = awaitingValidation && !sepaIsDisabled;
+                                awaitingMessage.hidden = !shouldShowAwaiting;
+                                awaitingMessage.setAttribute('aria-hidden', shouldShowAwaiting ? 'false' : 'true');
                                 if (awaitingValidation) {
                                     awaitingMessage.textContent = sepaText.awaitingMessage;
+                                }
+                            }
+
+                            if (reactivationContainer) {
+                                const shouldShowReactivation = sepaIsDisabled;
+                                reactivationContainer.hidden = !shouldShowReactivation;
+                                reactivationContainer.setAttribute('aria-hidden', shouldShowReactivation ? 'false' : 'true');
+                            }
+
+                            if (reactivationStatus) {
+                                const shouldShowStatus = sepaIsDisabled;
+                                reactivationStatus.hidden = !shouldShowStatus;
+                                reactivationStatus.setAttribute('aria-hidden', shouldShowStatus ? 'false' : 'true');
+                                if (shouldShowStatus) {
+                                    reactivationStatus.textContent = 'La domiciliación bancaria ha sido desactivada. Ponte en contacto con garantias@360vo.es';
                                 }
                             }
 
@@ -896,8 +1049,22 @@
                                         removeButton.hidden = !hasServerDocument;
                                         removeButton.setAttribute('aria-hidden', hasServerDocument ? 'false' : 'true');
                                     }
-                                }
-                            }
+                        }
+                    }
+                } else {
+                    sepaIbanController.setValue('');
+                    syncSignedDocumentBlocks(null);
+                    const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
+                    const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
+                    if (reactivationContainer) {
+                        reactivationContainer.hidden = true;
+                        reactivationContainer.setAttribute('aria-hidden', 'true');
+                    }
+                    if (reactivationStatus) {
+                        reactivationStatus.hidden = true;
+                        reactivationStatus.setAttribute('aria-hidden', 'true');
+                        reactivationStatus.textContent = '';
+                    }
                         }
 
                         setStatus(strings.success || 'Cambios guardados correctamente.', 'success');
