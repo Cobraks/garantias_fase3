@@ -125,6 +125,25 @@
         const restEndpoint = accountConfig.rest && accountConfig.rest.endpoint ? accountConfig.rest.endpoint : '';
         const restNonce = accountConfig.rest && accountConfig.rest.nonce ? accountConfig.rest.nonce : '';
         const strings = accountConfig.strings || {};
+        const sepaConfig = accountConfig.sepa && typeof accountConfig.sepa === 'object'
+            ? accountConfig.sepa
+            : {};
+        const sepaTemplateUrl = typeof sepaConfig.templateUrl === 'string'
+            ? sepaConfig.templateUrl.trim()
+            : '';
+        const sepaFontkitUrl = typeof sepaConfig.fontkitUrl === 'string'
+            ? sepaConfig.fontkitUrl.trim()
+            : '';
+        const sepaFontUrl = typeof sepaConfig.fontUrl === 'string'
+            ? sepaConfig.fontUrl.trim()
+            : '';
+        const sepaReferencePrefix = typeof sepaConfig.referencePrefix === 'string'
+            && sepaConfig.referencePrefix.trim() !== ''
+            ? sepaConfig.referencePrefix.trim().toUpperCase()
+            : 'GO';
+        const sepaCreditor = sepaConfig.creditor && typeof sepaConfig.creditor === 'object'
+            ? sepaConfig.creditor
+            : {};
         const sepaText = {
             awaitingValidation: strings.sepaAwaitingValidation || 'Pendiente de validación',
             awaitingSignature: strings.sepaAwaitingSignature || 'Pendiente de firma',
@@ -132,6 +151,14 @@
             awaitingActivation: strings.sepaAwaitingActivation || 'Pendiente de domiciliación',
         };
         const sepaSignedFallbackName = strings.sepaSignedFilename || 'Mandato SEPA firmado';
+        const sepaPendingLink = document.querySelector('[data-sepa-pending-link]');
+        const sepaPendingLabel = document.querySelector('[data-sepa-pending-label]');
+        const sepaPendingDefaultHref = sepaPendingLink instanceof HTMLAnchorElement
+            ? sepaPendingLink.getAttribute('href') || '#'
+            : '#';
+        const sepaPendingDefaultLabel = sepaPendingLabel
+            ? sepaPendingLabel.textContent.trim()
+            : '';
         const formatIban = (value) => {
             const raw = typeof value === 'string' ? value.replace(/\s+/g, '').toUpperCase() : '';
             if (!raw) {
@@ -155,6 +182,380 @@
                 .join(' ')
                 .trim();
         };
+        const isValidIban = (value) => {
+            const sanitized = typeof value === 'string'
+                ? value.replace(/\s+/g, '').toUpperCase()
+                : '';
+            if (!/^[A-Z0-9]{15,34}$/.test(sanitized)) {
+                return false;
+            }
+            const rearranged = sanitized.slice(4) + sanitized.slice(0, 4);
+            const converted = rearranged.replace(/[A-Z]/g, (char) => String(char.charCodeAt(0) - 55));
+            let remainder = 0;
+            for (let index = 0; index < converted.length; index += 1) {
+                const digit = Number(converted[index]);
+                if (Number.isNaN(digit)) {
+                    return false;
+                }
+                remainder = (remainder * 10 + digit) % 97;
+            }
+            return remainder === 1;
+        };
+        const buildSepaFilename = (reference) => {
+            const safe = typeof reference === 'string'
+                ? reference.replace(/[^A-Za-z0-9-]/g, '').toLowerCase()
+                : '';
+            return safe ? `mandato-sepa-${safe}.pdf` : 'mandato-sepa.pdf';
+        };
+        const sepaMandateState = {
+            currentPromise: null,
+            templateBytes: null,
+            fontBytes: null,
+            fontkitRegistered: false,
+            fontSource: '',
+            snapshot: null,
+            reference: '',
+            generatedAt: '',
+            blob: null,
+            filename: '',
+            signatureLocality: '',
+            signatureDate: '',
+        };
+        const generateReferenceValue = () => {
+            const timestamp = Date.now().toString(36).toUpperCase();
+            const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+            const raw = `${sepaReferencePrefix}-${timestamp}-${random}`.replace(/[^A-Z0-9-]/g, '').slice(0, 40);
+            return raw || `${sepaReferencePrefix}-${timestamp}`;
+        };
+        const ensureSepaReference = () => {
+            if (!sepaMandateState.reference) {
+                sepaMandateState.reference = generateReferenceValue();
+            }
+            return sepaMandateState.reference;
+        };
+        const loadFontkit = async () => {
+            if (sepaMandateState.fontkitRegistered && window.fontkit) {
+                return true;
+            }
+            if (typeof window.fontkit !== 'undefined' && window.fontkit) {
+                sepaMandateState.fontkitRegistered = true;
+                return true;
+            }
+            if (!sepaFontkitUrl) {
+                return false;
+            }
+            const existing = document.querySelector('script[data-sepa-fontkit]');
+            if (existing && existing.getAttribute('data-loaded') === 'true') {
+                sepaMandateState.fontkitRegistered = Boolean(window.fontkit);
+                return Boolean(window.fontkit);
+            }
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = sepaFontkitUrl;
+                script.async = true;
+                script.setAttribute('data-sepa-fontkit', 'true');
+                script.addEventListener('load', () => {
+                    script.setAttribute('data-loaded', 'true');
+                    resolve();
+                });
+                script.addEventListener('error', reject);
+                document.head.appendChild(script);
+            }).catch((error) => {
+                console.warn('[account] fontkit load failed', error);
+            });
+            if (typeof window.fontkit !== 'undefined' && window.fontkit) {
+                sepaMandateState.fontkitRegistered = true;
+                return true;
+            }
+            return false;
+        };
+        const fetchArrayBuffer = async (url) => {
+            const response = await fetch(url, { credentials: 'same-origin' });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.arrayBuffer();
+        };
+        const getSepaSnapshotFromFields = (fieldElements) => {
+            const snapshot = {
+                nombre_deudor: '',
+                direccion_deudor: '',
+                codigo_postal: '',
+                poblacion: '',
+                provincia: '',
+                pais_deudor: '',
+                swift_bic: '',
+                numero_cuenta: '',
+            };
+            fieldElements.forEach((field) => {
+                if (!(field instanceof HTMLInputElement)) {
+                    return;
+                }
+                const key = field.dataset.sepaField || '';
+                if (!key || !(key in snapshot)) {
+                    return;
+                }
+                snapshot[key] = field.value ? field.value.trim() : '';
+            });
+            return snapshot;
+        };
+        const snapshotsAreEqual = (a, b) => {
+            if (!a || !b) {
+                return false;
+            }
+            const keys = Object.keys(a);
+            return keys.every((key) => (a[key] || '') === (b[key] || ''));
+        };
+        const createSepaMandate = async (snapshot) => {
+            if (!sepaTemplateUrl) {
+                throw new Error('sepa_template_missing');
+            }
+            if (typeof PDFLib === 'undefined' || !PDFLib.PDFDocument) {
+                throw new Error('pdf_lib_unavailable');
+            }
+            const reference = ensureSepaReference();
+            if (!sepaMandateState.templateBytes) {
+                sepaMandateState.templateBytes = await fetchArrayBuffer(sepaTemplateUrl);
+            }
+            const pdfDoc = await PDFLib.PDFDocument.load(sepaMandateState.templateBytes);
+            const fontkitLoaded = await loadFontkit();
+            if (fontkitLoaded && window.fontkit) {
+                try {
+                    pdfDoc.registerFontkit(window.fontkit);
+                } catch (error) {
+                    console.warn('[account] fontkit register failed', error);
+                }
+            }
+            if (!sepaMandateState.fontBytes && sepaFontUrl) {
+                try {
+                    sepaMandateState.fontBytes = await fetchArrayBuffer(sepaFontUrl);
+                    sepaMandateState.fontSource = sepaFontUrl;
+                } catch (error) {
+                    console.warn('[account] sepa font fetch failed', error);
+                }
+            }
+            let activeFont = null;
+            let appearanceFontName = '';
+            if (sepaMandateState.fontBytes) {
+                try {
+                    activeFont = await pdfDoc.embedFont(sepaMandateState.fontBytes);
+                    if (activeFont && typeof activeFont.name === 'string') {
+                        appearanceFontName = activeFont.name;
+                    }
+                } catch (error) {
+                    console.warn('[account] sepa custom font embed failed', error);
+                }
+            }
+            if (!activeFont) {
+                const fallbackName = (PDFLib.StandardFonts && PDFLib.StandardFonts.Helvetica)
+                    ? PDFLib.StandardFonts.Helvetica
+                    : 'Helvetica';
+                activeFont = await pdfDoc.embedStandardFont(fallbackName);
+                appearanceFontName = typeof fallbackName === 'string' ? fallbackName : 'Helvetica';
+            }
+            const resolvedFontName = appearanceFontName || 'Helvetica';
+            const form = pdfDoc.getForm();
+            if (form && PDFLib?.PDFName && PDFLib?.PDFBool && typeof pdfDoc.catalog?.lookup === 'function') {
+                try {
+                    const acroForm = pdfDoc.catalog.lookup(PDFLib.PDFName.of('AcroForm'));
+                    if (acroForm && typeof acroForm.set === 'function') {
+                        acroForm.set(PDFLib.PDFName.of('NeedAppearances'), PDFLib.PDFBool.True);
+                    }
+                } catch (error) {
+                    console.warn('[account] Unable to mark AcroForm for appearances', error);
+                }
+            }
+            const creditorCountry = typeof sepaCreditor.country === 'string' && sepaCreditor.country !== ''
+                ? sepaCreditor.country
+                : 'España';
+            const creditorPostal = typeof sepaCreditor.postal_code === 'string' ? sepaCreditor.postal_code : '';
+            const creditorCity = typeof sepaCreditor.city === 'string' ? sepaCreditor.city : '';
+            const creditorProvince = typeof sepaCreditor.province === 'string' ? sepaCreditor.province : '';
+            const debtorCountry = snapshot.pais_deudor || creditorCountry;
+            const signatureLocality = creditorProvince || snapshot.provincia || snapshot.poblacion || '';
+            const signatureDate = new Date();
+            const formattedSignatureDate = signatureDate.toLocaleDateString('es-ES');
+            const fieldMap = {
+                pdf_acreedor_referencia: reference,
+                pdf_acreedor_id: sepaCreditor.id || '',
+                pdf_acreedor_nombre: sepaCreditor.name || '',
+                pdf_acreedor_direccion: sepaCreditor.address || '',
+                pdf_acreedor_pais: creditorCountry,
+                pdf_acreedor_cp: creditorPostal,
+                pdf_acreedor_poblacion: creditorCity,
+                pdf_acreedor_provincia: creditorProvince,
+                pdf_deudor_nombre: snapshot.nombre_deudor,
+                pdf_deudor_direccion: snapshot.direccion_deudor,
+                pdf_deudor_pais: debtorCountry,
+                pdf_deudor_cp: snapshot.codigo_postal,
+                pdf_deudor_poblacion: snapshot.poblacion,
+                pdf_deudor_provincia: snapshot.provincia,
+                pdf_deudor_swift: snapshot.swift_bic,
+                pdf_deudor_iban: formatIban(snapshot.numero_cuenta || ''),
+                pdf_deudor_firma_fecha: formattedSignatureDate,
+                pdf_deudor_firma_localidad: signatureLocality,
+            };
+            const editableFields = new Set(['pdf_deudor_firma', 'pdf_deudor_firma_fecha', 'pdf_deudor_firma_localidad']);
+            Object.entries(fieldMap).forEach(([name, value]) => {
+                const stringValue = value === undefined || value === null ? '' : String(value);
+                if (stringValue === '') {
+                    return;
+                }
+                try {
+                    const field = form.getTextField(name);
+                    field.setText(stringValue);
+                    field.setFontSize(9);
+                    if (field.acroField && typeof field.acroField.setDefaultAppearance === 'function') {
+                        field.acroField.setDefaultAppearance(`0 0 0 rg /${resolvedFontName} 9 Tf`);
+                    }
+                    if (
+                        field.acroField
+                        && field.acroField.dict
+                        && PDFLib?.PDFName
+                        && typeof field.acroField.dict.delete === 'function'
+                    ) {
+                        try {
+                            field.acroField.dict.delete(PDFLib.PDFName.of('AP'));
+                        } catch (appearanceError) {
+                            console.warn('[account] Unable to clear existing field appearance', appearanceError);
+                        }
+                    }
+                    if (!editableFields.has(name) && typeof field.enableReadOnly === 'function') {
+                        field.enableReadOnly();
+                    }
+                } catch (error) {
+                    console.warn('[account] Missing PDF field', name, error);
+                }
+            });
+            const paymentType = typeof sepaCreditor.payment_type === 'string'
+                ? sepaCreditor.payment_type.toLowerCase()
+                : 'recurrente';
+            try {
+                const recurrentField = form.getCheckBox('pdf_deudor_pago_recurrente');
+                const uniqueField = form.getCheckBox('pdf_deudor_pago_unico');
+                if (paymentType === 'unico') {
+                    uniqueField.check();
+                    recurrentField.uncheck();
+                } else {
+                    recurrentField.check();
+                    uniqueField.uncheck();
+                }
+                if (typeof recurrentField.enableReadOnly === 'function') {
+                    recurrentField.enableReadOnly();
+                }
+                if (typeof uniqueField.enableReadOnly === 'function') {
+                    uniqueField.enableReadOnly();
+                }
+            } catch (error) {
+                console.warn('[account] Unable to set payment checkbox', error);
+            }
+            if (form && typeof form.getSignature === 'function') {
+                try {
+                    const signatureField = form.getSignature('pdf_deudor_firma');
+                    if (signatureField && typeof signatureField.disableReadOnly === 'function') {
+                        signatureField.disableReadOnly();
+                    }
+                    if (
+                        signatureField
+                        && signatureField.acroField
+                        && signatureField.acroField.dict
+                        && PDFLib?.PDFName
+                        && PDFLib?.PDFNumber
+                        && typeof signatureField.acroField.dict.set === 'function'
+                    ) {
+                        try {
+                            signatureField.acroField.dict.set(PDFLib.PDFName.of('Ff'), PDFLib.PDFNumber.of(0));
+                            if (typeof signatureField.acroField.dict.delete === 'function') {
+                                signatureField.acroField.dict.delete(PDFLib.PDFName.of('V'));
+                            }
+                        } catch (innerError) {
+                            console.warn('[account] Unable to reset signature field flags', innerError);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[account] Unable to keep signature field editable', error);
+                }
+            }
+            const generatedAt = signatureDate.toISOString();
+            const filled = await pdfDoc.save({ updateFieldAppearances: false });
+            const blob = new Blob([filled], { type: 'application/pdf' });
+            const filename = buildSepaFilename(reference);
+            return {
+                blob,
+                filename,
+                reference,
+                generatedAt,
+                signatureLocality,
+                signatureDate: formattedSignatureDate,
+            };
+        };
+        const ensureSepaMandateReady = async (fieldElements) => {
+            const snapshot = getSepaSnapshotFromFields(fieldElements);
+            if (
+                sepaMandateState.blob
+                && sepaMandateState.snapshot
+                && snapshotsAreEqual(sepaMandateState.snapshot, snapshot)
+            ) {
+                return {
+                    blob: sepaMandateState.blob,
+                    filename: sepaMandateState.filename || buildSepaFilename(ensureSepaReference()),
+                    reference: sepaMandateState.reference || ensureSepaReference(),
+                    generatedAt: sepaMandateState.generatedAt || new Date().toISOString(),
+                    signatureLocality: sepaMandateState.signatureLocality || '',
+                    signatureDate: sepaMandateState.signatureDate || new Date().toLocaleDateString('es-ES'),
+                };
+            }
+            if (!sepaMandateState.currentPromise) {
+                sepaMandateState.currentPromise = createSepaMandate(snapshot);
+            }
+            try {
+                const result = await sepaMandateState.currentPromise;
+                sepaMandateState.currentPromise = null;
+                sepaMandateState.blob = result.blob;
+                sepaMandateState.filename = result.filename;
+                sepaMandateState.snapshot = snapshot;
+                sepaMandateState.reference = result.reference;
+                sepaMandateState.generatedAt = result.generatedAt;
+                sepaMandateState.signatureLocality = result.signatureLocality;
+                sepaMandateState.signatureDate = result.signatureDate;
+                return result;
+            } catch (error) {
+                sepaMandateState.currentPromise = null;
+                sepaMandateState.blob = null;
+                sepaMandateState.filename = '';
+                sepaMandateState.snapshot = null;
+                sepaMandateState.reference = '';
+                sepaMandateState.generatedAt = '';
+                sepaMandateState.signatureLocality = '';
+                sepaMandateState.signatureDate = '';
+                throw error;
+            }
+        };
+        const buildSepaRequestFields = (fieldElements) => {
+            const values = {};
+            fieldElements.forEach((field) => {
+                if (!(field instanceof HTMLInputElement)) {
+                    return;
+                }
+                const key = field.dataset.sepaField || '';
+                if (!key) {
+                    return;
+                }
+                values[key] = field.value ? field.value.trim() : '';
+            });
+            if (values.numero_cuenta) {
+                values.numero_cuenta = values.numero_cuenta.replace(/\s+/g, '').toUpperCase();
+            }
+            if (values.swift_bic) {
+                values.swift_bic = values.swift_bic.toUpperCase();
+            }
+            if (values.pais_deudor) {
+                values.pais_deudor = values.pais_deudor.trim();
+            }
+            return values;
+        };
+        const POSTAL_CODE_REGEX = /^(0[1-9]|[1-4]\d|5[0-3])\d{3}$/;
+        const SWIFT_REGEX = /^[A-Za-z]{4}[A-Za-z]{2}[A-Za-z0-9]{2}([A-Za-z0-9]{3})?$/;
         const syncSignedDocumentBlocks = (documentData) => {
             const blocks = document.querySelectorAll('[data-sepa-signed]');
             if (!blocks.length) {
@@ -271,6 +672,323 @@
                 },
             };
         })();
+        const applyPaymentsSnapshot = (paymentsData) => {
+            const sepaData = paymentsData && typeof paymentsData === 'object' ? paymentsData.sepa : null;
+            const sepaController = documentUploadControllers.sepa_signed;
+
+            if (sepaData && typeof sepaData === 'object') {
+                if (
+                    sepaData.documents
+                    && sepaData.documents.signed
+                    && sepaController
+                    && typeof sepaController.applyServerState === 'function'
+                ) {
+                    sepaController.applyServerState(sepaData.documents.signed);
+                }
+
+                const sepaStatusCodeRaw = typeof sepaData.status_code === 'string'
+                    ? sepaData.status_code.trim().toLowerCase()
+                    : '';
+                const sepaIsDisabled = sepaStatusCodeRaw === 'deshabilitado';
+                const awaitingValidation = Boolean(sepaData.awaiting_validation);
+                const needsActivation = Boolean(sepaData.needs_activation);
+                const signedDocumentData = (!needsActivation && !sepaIsDisabled)
+                    && sepaData.documents
+                    ? sepaData.documents.signed
+                    : null;
+                syncSignedDocumentBlocks(signedDocumentData);
+                const sepaIsActive = Boolean(sepaData.status);
+                const sepaIsActivated = Boolean(sepaData.activated);
+                if (sepaController && typeof sepaController.setLocked === 'function') {
+                    sepaController.setLocked(awaitingValidation || needsActivation);
+                }
+                const sepaFields = Array.isArray(sepaData.fields) ? sepaData.fields : [];
+                const ibanField = sepaFields.find((field) => {
+                    if (!field || typeof field !== 'object') {
+                        return false;
+                    }
+                    const name = typeof field.name === 'string' ? field.name : '';
+                    const altName = typeof field.field === 'string' ? field.field : '';
+                    return name === 'numero_cuenta' || altName === 'numero_cuenta';
+                });
+                const ibanValue = ibanField && typeof ibanField.value === 'string'
+                    ? ibanField.value
+                    : '';
+                sepaIbanController.setValue(ibanValue);
+                const activationCard = paymentActivation;
+                const detailCard = paymentDetail;
+                const toggleWrapper = activationCard
+                    ? activationCard.querySelector('[data-sepa-toggle]')
+                    : null;
+                const toggleInput = activationCard
+                    ? activationCard.querySelector('[data-payment-toggle]')
+                    : null;
+                const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
+                const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
+
+                if (toggleWrapper) {
+                    const shouldHideToggle = sepaIsActivated || Boolean(sepaData.requested) || needsActivation || sepaIsDisabled;
+                    toggleWrapper.hidden = shouldHideToggle;
+                    toggleWrapper.setAttribute('aria-hidden', shouldHideToggle ? 'true' : 'false');
+                }
+
+                if (toggleInput) {
+                    const shouldDisableToggle = sepaIsActivated
+                        || awaitingValidation
+                        || Boolean(sepaData.requested)
+                        || needsActivation
+                        || sepaIsDisabled;
+                    if (sepaIsActivated) {
+                        toggleInput.checked = true;
+                    } else if (!shouldDisableToggle) {
+                        toggleInput.checked = false;
+                    }
+                    toggleInput.disabled = shouldDisableToggle;
+                    if (sepaIsDisabled) {
+                        toggleInput.checked = false;
+                    }
+                }
+
+                if (activationCard) {
+                    const selectedMethod = paymentsData && typeof paymentsData.selected_method === 'string'
+                        ? paymentsData.selected_method
+                        : 'transferencia';
+                    let nextState = 'disabled';
+                    if (sepaIsDisabled) {
+                        nextState = 'reactivation';
+                    } else if (sepaIsActive) {
+                        nextState = 'locked';
+                    } else if (sepaData.requested || needsActivation) {
+                        nextState = 'requested';
+                    } else if (selectedMethod === 'domiciliacion') {
+                        nextState = 'enabled';
+                    }
+
+                    activationCard.setAttribute('data-state', nextState);
+                    if (detailCard) {
+                        detailCard.setAttribute('data-state', nextState);
+                    }
+
+                    if (typeof activationCard.__goUpdatePanels === 'function') {
+                        activationCard.__goUpdatePanels(nextState);
+                    }
+                }
+
+                const awaitingMessage = document.querySelector('[data-sepa-awaiting-message]');
+                if (awaitingMessage) {
+                    const shouldShowAwaiting = awaitingValidation && !sepaIsDisabled;
+                    awaitingMessage.hidden = !shouldShowAwaiting;
+                    awaitingMessage.setAttribute('aria-hidden', shouldShowAwaiting ? 'false' : 'true');
+                    if (awaitingValidation) {
+                        awaitingMessage.textContent = sepaText.awaitingMessage;
+                    }
+                }
+
+                if (reactivationContainer) {
+                    const shouldShowReactivation = sepaIsDisabled;
+                    reactivationContainer.hidden = !shouldShowReactivation;
+                    reactivationContainer.setAttribute('aria-hidden', shouldShowReactivation ? 'false' : 'true');
+                }
+
+                if (reactivationStatus) {
+                    const shouldShowStatus = sepaIsDisabled;
+                    reactivationStatus.hidden = !shouldShowStatus;
+                    reactivationStatus.setAttribute('aria-hidden', shouldShowStatus ? 'false' : 'true');
+                    if (shouldShowStatus) {
+                        reactivationStatus.textContent = 'La domiciliación bancaria ha sido desactivada. Ponte en contacto con garantias@360vo.es';
+                    }
+                }
+
+                const downloadAction = document.querySelector('[data-sepa-download]');
+                if (downloadAction) {
+                    if (awaitingValidation) {
+                        downloadAction.hidden = true;
+                        downloadAction.setAttribute('aria-hidden', 'true');
+                    } else {
+                        const hideDownload = (
+                            typeof sepaData.requested !== 'undefined' && !sepaData.requested
+                        ) && !hasPendingDocument;
+                        downloadAction.hidden = hideDownload;
+                        downloadAction.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
+                    }
+                }
+
+                const downloadStep = document.querySelector('[data-sepa-step-download]');
+                if (downloadStep) {
+                    if (awaitingValidation) {
+                        downloadStep.hidden = true;
+                        downloadStep.setAttribute('aria-hidden', 'true');
+                    } else {
+                        const hideDownload = (
+                            typeof sepaData.requested !== 'undefined' && !sepaData.requested
+                        ) && !hasPendingDocument;
+                        downloadStep.hidden = hideDownload;
+                        downloadStep.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
+                    }
+                }
+
+                const uploadStep = document.querySelector('[data-sepa-step-upload]');
+                if (uploadStep) {
+                    if (awaitingValidation) {
+                        uploadStep.remove();
+                    } else {
+                        uploadStep.hidden = false;
+                        uploadStep.setAttribute('aria-hidden', 'false');
+                    }
+                }
+
+                const uploadAction = document.querySelector('[data-sepa-upload]');
+                if (uploadAction) {
+                    const uploadWrapper = uploadAction.querySelector('.account-sepa-request__upload');
+                    if (uploadWrapper) {
+                        if (awaitingValidation) {
+                            uploadWrapper.classList.add('account-sepa-request__upload--locked');
+                            uploadWrapper.setAttribute('data-locked', 'true');
+                        } else {
+                            uploadWrapper.classList.remove('account-sepa-request__upload--locked');
+                            uploadWrapper.removeAttribute('data-locked');
+                        }
+                    }
+
+                    const uploadContainer = uploadAction.querySelector('[data-document-upload]');
+                    if (uploadContainer) {
+                        uploadContainer.dataset.locked = awaitingValidation ? 'true' : 'false';
+                    }
+
+                    const fileLabel = uploadAction.querySelector('[data-document-label]');
+                    if (fileLabel) {
+                        if (awaitingValidation) {
+                            fileLabel.remove();
+                        } else {
+                            fileLabel.hidden = false;
+                            fileLabel.setAttribute('aria-hidden', 'false');
+                        }
+                    }
+
+                    const fileHint = uploadAction.querySelector('.file-hint');
+                    if (fileHint) {
+                        if (awaitingValidation) {
+                            fileHint.remove();
+                        } else {
+                            fileHint.hidden = false;
+                            fileHint.setAttribute('aria-hidden', 'false');
+                        }
+                    }
+
+                    const fileInput = uploadAction.querySelector('input[type="file"]');
+                    if (fileInput) {
+                        if (awaitingValidation) {
+                            fileInput.setAttribute('disabled', 'disabled');
+                            fileInput.setAttribute('hidden', '');
+                            fileInput.setAttribute('aria-hidden', 'true');
+                        } else {
+                            fileInput.removeAttribute('disabled');
+                            fileInput.removeAttribute('hidden');
+                            fileInput.setAttribute('aria-hidden', 'false');
+                        }
+                    }
+
+                    const removeButton = uploadAction.querySelector('[data-document-remove]');
+                    if (removeButton) {
+                        if (awaitingValidation) {
+                            removeButton.remove();
+                        } else {
+                            const hasServerDocument = Boolean(
+                                sepaData
+                                && sepaData.documents
+                                && sepaData.documents.signed
+                                && (
+                                    sepaData.documents.signed.url
+                                    || sepaData.documents.signed.filename
+                                    || sepaData.documents.signed.hash
+                                ),
+                            );
+                            removeButton.hidden = !hasServerDocument;
+                            removeButton.setAttribute('aria-hidden', hasServerDocument ? 'false' : 'true');
+                        }
+                    }
+                }
+
+                const pendingDocument = sepaData.documents && sepaData.documents.pending
+                    ? sepaData.documents.pending
+                    : null;
+                const hasPendingDocument = Boolean(
+                    pendingDocument
+                    && (pendingDocument.url || pendingDocument.hash || pendingDocument.filename),
+                );
+                const signedDocument = sepaData.documents && sepaData.documents.signed
+                    ? sepaData.documents.signed
+                    : null;
+                const hasSignedDocument = Boolean(
+                    signedDocument
+                    && (signedDocument.url || signedDocument.hash || signedDocument.filename),
+                );
+                if (sepaPendingLink instanceof HTMLAnchorElement) {
+                    if (hasPendingDocument) {
+                        const pendingUrl = typeof pendingDocument.url === 'string'
+                            ? pendingDocument.url.trim()
+                            : '';
+                        const resolvedUrl = pendingUrl || sepaPendingDefaultHref || '#';
+                        sepaPendingLink.href = resolvedUrl;
+                        sepaPendingLink.hidden = false;
+                        sepaPendingLink.setAttribute('aria-hidden', 'false');
+                        sepaPendingLink.removeAttribute('tabindex');
+                    } else {
+                        sepaPendingLink.href = sepaPendingDefaultHref || '#';
+                        sepaPendingLink.hidden = true;
+                        sepaPendingLink.setAttribute('aria-hidden', 'true');
+                        sepaPendingLink.setAttribute('tabindex', '-1');
+                    }
+                }
+                if (sepaPendingLabel) {
+                    const labelCandidates = [];
+                    if (hasPendingDocument) {
+                        const pendingLabel = typeof pendingDocument.label === 'string'
+                            ? pendingDocument.label.trim()
+                            : '';
+                        const pendingFilename = typeof pendingDocument.filename === 'string'
+                            ? pendingDocument.filename.trim()
+                            : '';
+                        if (pendingLabel) {
+                            labelCandidates.push(pendingLabel);
+                        }
+                        if (pendingFilename) {
+                            labelCandidates.push(pendingFilename);
+                        }
+                    }
+                    const nextLabel = labelCandidates.find((value) => value !== '') || sepaPendingDefaultLabel;
+                    sepaPendingLabel.textContent = nextLabel;
+                }
+                const hasGeneratedMandate = hasPendingDocument || hasSignedDocument || sepaData.status !== null;
+
+                if (paymentActivation && typeof paymentActivation.__goSetGenerated === 'function') {
+                    paymentActivation.__goSetGenerated(hasGeneratedMandate);
+                } else if (detailCard) {
+                    detailCard.setAttribute('data-generated', hasGeneratedMandate ? 'true' : 'false');
+                }
+
+                return;
+            }
+
+            sepaIbanController.setValue('');
+            syncSignedDocumentBlocks(null);
+            const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
+            const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
+            if (reactivationContainer) {
+                reactivationContainer.hidden = true;
+                reactivationContainer.setAttribute('aria-hidden', 'true');
+            }
+            if (reactivationStatus) {
+                reactivationStatus.hidden = true;
+                reactivationStatus.setAttribute('aria-hidden', 'true');
+                reactivationStatus.textContent = '';
+            }
+            if (paymentActivation && typeof paymentActivation.__goSetGenerated === 'function') {
+                paymentActivation.__goSetGenerated(false);
+            } else if (paymentDetail) {
+                paymentDetail.setAttribute('data-generated', 'false');
+            }
+        };
         const workshopToggle = document.querySelector('[data-workshop-toggle]');
         const workshopFieldKeys = [
             'name',
@@ -823,249 +1541,7 @@
                             }
                         }
 
-                        if (data.payments && data.payments.sepa) {
-                            const sepaData = data.payments.sepa;
-                            const sepaController = documentUploadControllers.sepa_signed;
-                            if (
-                                sepaData.documents
-                                && sepaData.documents.signed
-                                && sepaController
-                                && typeof sepaController.applyServerState === 'function'
-                            ) {
-                                sepaController.applyServerState(sepaData.documents.signed);
-                            }
-
-                            const sepaStatusCodeRaw = typeof sepaData.status_code === 'string'
-                                ? sepaData.status_code.trim().toLowerCase()
-                                : '';
-                            const sepaIsDisabled = sepaStatusCodeRaw === 'deshabilitado';
-                            const awaitingValidation = Boolean(sepaData.awaiting_validation);
-                            const needsActivation = Boolean(sepaData.needs_activation);
-                            const signedDocumentData = (!needsActivation && !sepaIsDisabled)
-                                && sepaData.documents
-                                ? sepaData.documents.signed
-                                : null;
-                            syncSignedDocumentBlocks(signedDocumentData);
-                            const sepaIsActive = Boolean(sepaData.status);
-                            const sepaIsActivated = Boolean(sepaData.activated);
-                            if (sepaController && typeof sepaController.setLocked === 'function') {
-                                sepaController.setLocked(awaitingValidation || needsActivation);
-                            }
-                            const sepaFields = Array.isArray(sepaData.fields) ? sepaData.fields : [];
-                            const ibanField = sepaFields.find((field) => {
-                                if (!field || typeof field !== 'object') {
-                                    return false;
-                                }
-                                const name = typeof field.name === 'string' ? field.name : '';
-                                const altName = typeof field.field === 'string' ? field.field : '';
-                                return name === 'numero_cuenta' || altName === 'numero_cuenta';
-                            });
-                            const ibanValue = ibanField && typeof ibanField.value === 'string'
-                                ? ibanField.value
-                                : '';
-                            sepaIbanController.setValue(ibanValue);
-                            const activationCard = document.querySelector('[data-payment-activation]');
-                            const detailCard = document.querySelector('[data-payment-detail]');
-                            const toggleWrapper = activationCard
-                                ? activationCard.querySelector('[data-sepa-toggle]')
-                                : null;
-                            const toggleInput = activationCard
-                                ? activationCard.querySelector('[data-payment-toggle]')
-                                : null;
-                            const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
-                            const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
-
-                            if (toggleWrapper) {
-                                const shouldHideToggle = sepaIsActivated || Boolean(sepaData.requested) || needsActivation || sepaIsDisabled;
-                                toggleWrapper.hidden = shouldHideToggle;
-                                toggleWrapper.setAttribute('aria-hidden', shouldHideToggle ? 'true' : 'false');
-                            }
-
-                            if (toggleInput) {
-                                const shouldDisableToggle = sepaIsActivated
-                                    || awaitingValidation
-                                    || Boolean(sepaData.requested)
-                                    || needsActivation
-                                    || sepaIsDisabled;
-                                if (sepaIsActivated) {
-                                    toggleInput.checked = true;
-                                } else if (!shouldDisableToggle) {
-                                    toggleInput.checked = false;
-                                }
-                                toggleInput.disabled = shouldDisableToggle;
-                                if (sepaIsDisabled) {
-                                    toggleInput.checked = false;
-                                }
-                            }
-
-                            if (activationCard) {
-                                const selectedMethod = data.payments && typeof data.payments.selected_method === 'string'
-                                    ? data.payments.selected_method
-                                    : 'transferencia';
-                                let nextState = 'disabled';
-                                if (sepaIsDisabled) {
-                                    nextState = 'reactivation';
-                                } else if (sepaIsActive) {
-                                    nextState = 'locked';
-                                } else if (sepaData.requested || needsActivation) {
-                                    nextState = 'requested';
-                                } else if (selectedMethod === 'domiciliacion') {
-                                    nextState = 'enabled';
-                                }
-
-                                activationCard.setAttribute('data-state', nextState);
-                                if (detailCard) {
-                                    detailCard.setAttribute('data-state', nextState);
-                                }
-
-                                if (typeof activationCard.__goUpdatePanels === 'function') {
-                                    activationCard.__goUpdatePanels(nextState);
-                                }
-                            }
-
-                            const awaitingMessage = document.querySelector('[data-sepa-awaiting-message]');
-                            if (awaitingMessage) {
-                                const shouldShowAwaiting = awaitingValidation && !sepaIsDisabled;
-                                awaitingMessage.hidden = !shouldShowAwaiting;
-                                awaitingMessage.setAttribute('aria-hidden', shouldShowAwaiting ? 'false' : 'true');
-                                if (awaitingValidation) {
-                                    awaitingMessage.textContent = sepaText.awaitingMessage;
-                                }
-                            }
-
-                            if (reactivationContainer) {
-                                const shouldShowReactivation = sepaIsDisabled;
-                                reactivationContainer.hidden = !shouldShowReactivation;
-                                reactivationContainer.setAttribute('aria-hidden', shouldShowReactivation ? 'false' : 'true');
-                            }
-
-                            if (reactivationStatus) {
-                                const shouldShowStatus = sepaIsDisabled;
-                                reactivationStatus.hidden = !shouldShowStatus;
-                                reactivationStatus.setAttribute('aria-hidden', shouldShowStatus ? 'false' : 'true');
-                                if (shouldShowStatus) {
-                                    reactivationStatus.textContent = 'La domiciliación bancaria ha sido desactivada. Ponte en contacto con garantias@360vo.es';
-                                }
-                            }
-
-                            const downloadAction = document.querySelector('[data-sepa-download]');
-                            if (downloadAction) {
-                                if (awaitingValidation) {
-                                    downloadAction.remove();
-                                } else {
-                                    const hideDownload = typeof sepaData.requested !== 'undefined' && !sepaData.requested;
-                                    downloadAction.hidden = hideDownload;
-                                    downloadAction.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
-                                }
-                            }
-
-                            const downloadStep = document.querySelector('[data-sepa-step-download]');
-                            if (downloadStep) {
-                                if (awaitingValidation) {
-                                    downloadStep.remove();
-                                } else {
-                                    const hideDownload = typeof sepaData.requested !== 'undefined' && !sepaData.requested;
-                                    downloadStep.hidden = hideDownload;
-                                    downloadStep.setAttribute('aria-hidden', hideDownload ? 'true' : 'false');
-                                }
-                            }
-
-                            const uploadStep = document.querySelector('[data-sepa-step-upload]');
-                            if (uploadStep) {
-                                if (awaitingValidation) {
-                                    uploadStep.remove();
-                                } else {
-                                    uploadStep.hidden = false;
-                                    uploadStep.setAttribute('aria-hidden', 'false');
-                                }
-                            }
-
-                            const uploadAction = document.querySelector('[data-sepa-upload]');
-                            if (uploadAction) {
-                                const uploadWrapper = uploadAction.querySelector('.account-sepa-request__upload');
-                                if (uploadWrapper) {
-                                    if (awaitingValidation) {
-                                        uploadWrapper.classList.add('account-sepa-request__upload--locked');
-                                        uploadWrapper.setAttribute('data-locked', 'true');
-                                    } else {
-                                        uploadWrapper.classList.remove('account-sepa-request__upload--locked');
-                                        uploadWrapper.removeAttribute('data-locked');
-                                    }
-                                }
-
-                                const uploadContainer = uploadAction.querySelector('[data-document-upload]');
-                                if (uploadContainer) {
-                                    uploadContainer.dataset.locked = awaitingValidation ? 'true' : 'false';
-                                }
-
-                                const fileLabel = uploadAction.querySelector('[data-document-label]');
-                                if (fileLabel) {
-                                    if (awaitingValidation) {
-                                        fileLabel.remove();
-                                    } else {
-                                        fileLabel.hidden = false;
-                                        fileLabel.setAttribute('aria-hidden', 'false');
-                                    }
-                                }
-
-                                const fileHint = uploadAction.querySelector('.file-hint');
-                                if (fileHint) {
-                                    if (awaitingValidation) {
-                                        fileHint.remove();
-                                    } else {
-                                        fileHint.hidden = false;
-                                        fileHint.setAttribute('aria-hidden', 'false');
-                                    }
-                                }
-
-                                const fileInput = uploadAction.querySelector('input[type="file"]');
-                                if (fileInput) {
-                                    if (awaitingValidation) {
-                                        fileInput.setAttribute('disabled', 'disabled');
-                                        fileInput.setAttribute('hidden', '');
-                                        fileInput.setAttribute('aria-hidden', 'true');
-                                    } else {
-                                        fileInput.removeAttribute('disabled');
-                                        fileInput.removeAttribute('hidden');
-                                        fileInput.setAttribute('aria-hidden', 'false');
-                                    }
-                                }
-
-                                const removeButton = uploadAction.querySelector('[data-document-remove]');
-                                if (removeButton) {
-                                    if (awaitingValidation) {
-                                        removeButton.remove();
-                                    } else {
-                                        const hasServerDocument = Boolean(
-                                            sepaData
-                                            && sepaData.documents
-                                            && sepaData.documents.signed
-                                            && (
-                                                sepaData.documents.signed.url
-                                                || sepaData.documents.signed.filename
-                                                || sepaData.documents.signed.hash
-                                            )
-                                        );
-                                        removeButton.hidden = !hasServerDocument;
-                                        removeButton.setAttribute('aria-hidden', hasServerDocument ? 'false' : 'true');
-                                    }
-                        }
-                    }
-                } else {
-                    sepaIbanController.setValue('');
-                    syncSignedDocumentBlocks(null);
-                    const reactivationContainer = document.querySelector('[data-sepa-reactivation]');
-                    const reactivationStatus = document.querySelector('[data-sepa-reactivation-status]');
-                    if (reactivationContainer) {
-                        reactivationContainer.hidden = true;
-                        reactivationContainer.setAttribute('aria-hidden', 'true');
-                    }
-                    if (reactivationStatus) {
-                        reactivationStatus.hidden = true;
-                        reactivationStatus.setAttribute('aria-hidden', 'true');
-                        reactivationStatus.textContent = '';
-                    }
-                        }
+                        applyPaymentsSnapshot(data.payments);
 
                         setStatus(strings.success || 'Cambios guardados correctamente.', 'success');
                         setSaveDisabled(true);
@@ -1387,9 +1863,10 @@
         }
 
         const paymentActivation = document.querySelector('[data-payment-activation]');
+        const paymentDetail = document.querySelector('[data-payment-detail]');
         if (paymentActivation) {
             const checkbox = paymentActivation.querySelector('[data-payment-toggle]');
-            const detail = document.querySelector('[data-payment-detail]');
+            const detail = paymentDetail;
             let generated = false;
             let currentState = 'disabled';
 
@@ -1460,16 +1937,190 @@
                 });
             }
 
-            if (detail) {
-                const generateButton = detail.querySelector('[data-payment-generate]');
-                if (generateButton) {
-                    generateButton.addEventListener('click', () => {
-                        generateButton.disabled = true;
-                        setGenerated(true);
-                    });
-                }
-            }
         }
+
+        (() => {
+            const detail = paymentDetail;
+            if (!detail) {
+                return;
+            }
+
+            const form = detail.querySelector('[data-sepa-form]');
+            if (!form) {
+                return;
+            }
+
+            const fields = Array.from(form.querySelectorAll('[data-sepa-field]'))
+                .filter((element) => element instanceof HTMLInputElement);
+            if (!fields.length) {
+                return;
+            }
+
+            const generateButton = detail.querySelector('[data-payment-generate]');
+            if (!(generateButton instanceof HTMLButtonElement)) {
+                return;
+            }
+
+            const getActivationState = () => detail.getAttribute('data-state') || 'disabled';
+            const isGenerated = () => detail.getAttribute('data-generated') === 'true';
+
+            const messages = {
+                required: strings.requiredField || 'Este campo es obligatorio.',
+                postalCode: strings.postalCode || 'Introduce un código postal válido.',
+                iban: strings.iban || 'Introduce un IBAN válido.',
+                swift: strings.swift || 'Introduce un código SWIFT/BIC válido.',
+            };
+
+            const validators = {
+                codigo_postal: (value) => POSTAL_CODE_REGEX.test(value),
+                numero_cuenta: (value) => isValidIban(value),
+                swift_bic: (value) => SWIFT_REGEX.test(value),
+            };
+
+            const validateField = (field, report = false) => {
+                const key = field.dataset.sepaField || '';
+                const rawValue = typeof field.value === 'string' ? field.value.trim() : '';
+                const required = field.hasAttribute('required');
+                let valid = true;
+                let message = '';
+
+                if (required && rawValue === '') {
+                    valid = false;
+                    message = messages.required;
+                } else if (rawValue !== '' && validators[key]) {
+                    valid = validators[key](rawValue);
+                    if (!valid) {
+                        if (key === 'codigo_postal') {
+                            message = messages.postalCode;
+                        } else if (key === 'numero_cuenta') {
+                            message = messages.iban;
+                        } else {
+                            message = messages.swift;
+                        }
+                    }
+                }
+
+                if (typeof field.setCustomValidity === 'function') {
+                    field.setCustomValidity(valid ? '' : message);
+                }
+
+                if (report && !valid && typeof field.reportValidity === 'function') {
+                    field.reportValidity();
+                }
+
+                return valid;
+            };
+
+            const validateForm = (report = false) => fields.every((field) => validateField(field, report));
+
+            const updateButtonState = () => {
+                const state = getActivationState();
+                const ready = state === 'enabled' && !isGenerated() && validateForm(false);
+                generateButton.disabled = !ready;
+                generateButton.setAttribute('aria-disabled', ready ? 'false' : 'true');
+            };
+
+            fields.forEach((field) => {
+                field.addEventListener('input', () => {
+                    validateField(field, false);
+                    updateButtonState();
+                });
+                field.addEventListener('blur', () => {
+                    validateField(field, true);
+                    updateButtonState();
+                });
+            });
+
+            const observer = new MutationObserver(() => {
+                updateButtonState();
+            });
+            observer.observe(detail, { attributes: true, attributeFilter: ['data-state', 'data-generated'] });
+
+            updateButtonState();
+
+            const setGenerateLoading = (loading) => {
+                generateButton.classList.toggle('account-button--loading', Boolean(loading));
+            };
+
+            const handleSepaGeneration = async () => {
+                if (generateButton.disabled) {
+                    return;
+                }
+                if (!restEndpoint || !restNonce) {
+                    const fallback = strings.error || strings.invalid || 'No se han podido guardar los cambios.';
+                    setStatus(fallback, 'error');
+                    updateButtonState();
+                    return;
+                }
+
+                generateButton.disabled = true;
+                generateButton.setAttribute('aria-disabled', 'true');
+                setGenerateLoading(true);
+                setStatus(strings.sepaGenerateLoading || 'Generando mandato…', 'info');
+
+                try {
+                    const mandate = await ensureSepaMandateReady(fields);
+                    if (!mandate || !mandate.blob) {
+                        throw new Error('mandate_generation_failed');
+                    }
+
+                    const fileName = mandate.filename || buildSepaFilename(mandate.reference || '');
+                    const pdfBlob = mandate.blob instanceof Blob
+                        ? mandate.blob
+                        : new Blob([mandate.blob], { type: 'application/pdf' });
+
+                    const formData = new FormData();
+                    formData.append('account_sepa_pending', pdfBlob, fileName);
+                    formData.append('reference', mandate.reference || '');
+                    formData.append('generated_at', mandate.generatedAt || '');
+                    formData.append('signature_locality', mandate.signatureLocality || '');
+                    formData.append('signature_date', mandate.signatureDate || '');
+                    formData.append('sepa', JSON.stringify(buildSepaRequestFields(fields)));
+
+                    const response = await fetch(`${restEndpoint}/sepa/generate`, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-WP-Nonce': restNonce,
+                        },
+                        body: formData,
+                    });
+
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok || !payload || payload.success !== true) {
+                        const errorMessage = payload && typeof payload.message === 'string' ? payload.message : '';
+                        throw new Error(errorMessage || 'request_failed');
+                    }
+
+                    applyPaymentsSnapshot(payload.payments);
+                    setStatus(
+                        strings.sepaGenerateSuccess
+                            || 'Mandato SEPA generado correctamente. Descárgalo para firmarlo.',
+                        'success',
+                    );
+                } catch (error) {
+                    console.error('[account] sepa generate error', error);
+                    const message = error && typeof error.message === 'string' && error.message !== 'request_failed'
+                        ? error.message
+                        : '';
+                    setStatus(
+                        message
+                            || strings.sepaGenerateError
+                            || 'No se ha podido generar el mandato SEPA. Revisa los datos e inténtalo de nuevo.',
+                        'error',
+                    );
+                    updateButtonState();
+                    return;
+                } finally {
+                    setGenerateLoading(false);
+                }
+            };
+
+            generateButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                handleSepaGeneration();
+            });
+        })();
 
         const formatBytes = (bytes) => {
             if (typeof bytes !== 'number' || Number.isNaN(bytes) || bytes <= 0) {
