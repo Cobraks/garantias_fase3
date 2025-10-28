@@ -242,37 +242,39 @@ if (($is_admin_user || $is_director)
 
 
 <!-- 1. FILTROS -->
-<div class="guarantees-list__toolbar">
-    <div class="guarantees-list__search-container">
-        <span class="guarantees-list__search-icon" aria-hidden="true">
-            <?php echo Svg::icon('search'); ?>
-        </span>
-        <input
-            type="text"
-            class="guarantees-list__search"
-            placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
-            aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>"
-            id="buscador_mis_garantias">
-        <span class="guarantees-list__close-icon" aria-hidden="true">
-            <?php echo Svg::icon('cerrar'); ?>
-        </span>
+<div class="guarantees-list__filters" style="view-transition-name: filtros" data-mobile-open="false">
+    <div class="guarantees-list__toolbar" data-mobile-toolbar>
+        <div class="guarantees-list__toolbar-slot" data-mobile-search-slot>
+            <div class="guarantees-list__search-container" data-search-field>
+                <span class="guarantees-list__search-icon" aria-hidden="true">
+                    <?php echo Svg::icon('search'); ?>
+                </span>
+                <input
+                    type="text"
+                    class="guarantees-list__search"
+                    placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
+                    aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>"
+                    id="buscador_mis_garantias">
+                <span class="guarantees-list__close-icon" aria-hidden="true">
+                    <?php echo Svg::icon('cerrar'); ?>
+                </span>
+            </div>
+        </div>
+
+        <button
+            type="button"
+            class="guarantees-list__filters-fab"
+            data-mobile-filters-toggle
+            aria-haspopup="dialog"
+            aria-expanded="false"
+            aria-controls="guarantees-list-base-filters">
+            <?php echo Svg::icon('filter_funnel', 'guarantees-list__filters-fab-icon'); ?>
+            <span class="guarantees-list__filters-fab-label">
+                <?php esc_html_e('Filtros', 'garantias-online-360vo'); ?>
+            </span>
+        </button>
     </div>
 
-    <button
-        type="button"
-        class="guarantees-list__filters-fab"
-        data-mobile-filters-toggle
-        aria-haspopup="dialog"
-        aria-expanded="false"
-        aria-controls="guarantees-list-base-filters">
-        <?php echo Svg::icon('filter_funnel', 'guarantees-list__filters-fab-icon'); ?>
-        <span class="guarantees-list__filters-fab-label">
-            <?php esc_html_e('Filtros', 'garantias-online-360vo'); ?>
-        </span>
-    </button>
-</div>
-
-<div class="guarantees-list__filters" style="view-transition-name: filtros" data-mobile-open="false">
     <div class="guarantees-list__filters-modal" data-mobile-filters-overlay>
         <div class="guarantees-list__filters-modal-backdrop" data-mobile-filters-dismiss></div>
 
@@ -299,6 +301,8 @@ if (($is_admin_user || $is_director)
 
             <div class="guarantees-list__filters-body">
                 <div class="guarantees-list__filters-controls">
+                    <div class="guarantees-list__filters-search-slot" data-desktop-search-slot></div>
+
                     <select
                         class="guarantees-list__filter"
                         data-filter="estado"
