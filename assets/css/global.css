@@ -523,6 +523,12 @@ body {
   transition: background-color var(--transition-speed), color var(--transition-speed);
 }
 
+body.has-mobile-filters-open,
+body.has-mobile-detail-open {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
 button,
 input,
 select,
