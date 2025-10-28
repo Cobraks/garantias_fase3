@@ -21,6 +21,25 @@ const ADD_DOC_KEY = "add-document";
                         : null;
                 const spinner = scrollEnd ? scrollEnd.querySelector(".spinner") : null;
 
+                let spinnerObserver = null;
+                let spinnerRaf = null;
+                let spinnerFallbackTimeout = null;
+
+                const clearSpinnerWatchers = () => {
+                        if (spinnerObserver) {
+                                spinnerObserver.disconnect();
+                                spinnerObserver = null;
+                        }
+                        if (spinnerRaf !== null && typeof cancelAnimationFrame === "function") {
+                                cancelAnimationFrame(spinnerRaf);
+                        }
+                        spinnerRaf = null;
+                        if (spinnerFallbackTimeout !== null) {
+                                clearTimeout(spinnerFallbackTimeout);
+                                spinnerFallbackTimeout = null;
+                        }
+                };
+
                 const syncSpinnerCompensation = () => {
                         if (!scrollEnd || !tableScrollContainer) {
                                 return;
@@ -41,6 +60,9 @@ const ADD_DOC_KEY = "add-document";
                                 return;
                         }
                         const show = Boolean(visible);
+                        if (show) {
+                                clearSpinnerWatchers();
+                        }
                         scrollEnd.classList.toggle("is-loading", show);
                         if (show) {
                                 scrollEnd.hidden = false;
@@ -65,50 +87,73 @@ const ADD_DOC_KEY = "add-document";
                         if (!scrollEnd) {
                                 return;
                         }
+                        clearSpinnerWatchers();
                         const targetCount = Math.max(0, previousCount) + Math.max(0, appendedRows);
-                        const waitForContent = (attempt = 0) => {
+                        const checkContentReady = () => {
                                 if (!tbody) {
-                                        setSpinnerVisible(false);
-                                        scrollEnd.hidden = !hasMore;
-                                        scrollEnd.setAttribute("aria-hidden", hasMore ? "false" : "true");
+                                        return true;
+                                }
+                                const currentRows = tbody.querySelectorAll(".guarantees-table__row").length;
+                                const hasEmptyRow = Boolean(
+                                        tbody.querySelector(".guarantees-table__empty-row")
+                                );
+                                const hasMessage = Boolean(
+                                        resultMessage &&
+                                        typeof resultMessage.textContent === "string" &&
+                                        resultMessage.textContent.trim().length > 0
+                                );
+
+                                if (appendedRows > 0) {
+                                        return currentRows >= targetCount;
+                                }
+
+                                if (currentRows > 0 || hasEmptyRow || hasMessage) {
+                                        return true;
+                                }
+
+                                return false;
+                        };
+
+                        let completed = false;
+                        const complete = () => {
+                                if (completed) {
                                         return;
                                 }
-
-                                const currentRows = tbody.querySelectorAll(".guarantees-table__row").length;
-                                const hasAnyContent =
-                                        currentRows > 0 ||
-                                        Boolean(tbody.querySelector(".guarantees-table__empty-row"));
-
-                                if (typeof requestAnimationFrame === "function") {
-                                        if (
-                                                appendedRows > 0 &&
-                                                currentRows < targetCount &&
-                                                attempt < 10
-                                        ) {
-                                                requestAnimationFrame(() => waitForContent(attempt + 1));
-                                                return;
-                                        }
-
-                                        if (
-                                                appendedRows === 0 &&
-                                                !hasAnyContent &&
-                                                attempt < 6
-                                        ) {
-                                                requestAnimationFrame(() => waitForContent(attempt + 1));
-                                                return;
-                                        }
-                                }
-
+                                completed = true;
+                                clearSpinnerWatchers();
                                 setSpinnerVisible(false);
                                 scrollEnd.hidden = !hasMore;
                                 scrollEnd.setAttribute("aria-hidden", hasMore ? "false" : "true");
                         };
 
-                        if (typeof requestAnimationFrame === "function") {
-                                requestAnimationFrame(() => waitForContent());
-                        } else {
-                                waitForContent();
+                        if (checkContentReady()) {
+                                complete();
+                                return;
                         }
+
+                        if (tbody) {
+                                spinnerObserver = new MutationObserver(() => {
+                                        if (checkContentReady()) {
+                                                complete();
+                                        }
+                                });
+                                spinnerObserver.observe(tbody, { childList: true });
+                        }
+
+                        if (typeof requestAnimationFrame === "function") {
+                                const rafCheck = () => {
+                                        if (checkContentReady()) {
+                                                complete();
+                                                return;
+                                        }
+                                        spinnerRaf = requestAnimationFrame(rafCheck);
+                                };
+                                spinnerRaf = requestAnimationFrame(rafCheck);
+                        }
+
+                        spinnerFallbackTimeout = window.setTimeout(() => {
+                                complete();
+                        }, 12000);
                 };
 
                 initResizableColumns(table);
@@ -4721,10 +4766,16 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                 }
                         } catch (err) {
-                                if (err && typeof err === "object" && err.name === "AbortError") {
-                                        return;
+                                const isAbort =
+                                        err && typeof err === "object" && err.name === "AbortError";
+                                if (isAbort) {
+                                        // Petición cancelada deliberadamente: no mostramos error.
+                                } else {
+                                        console.error("❌ Error en loadPage:", err);
+                                        setResultMessage(
+                                                "No hemos podido cargar las garantías. Vuelve a intentarlo en unos segundos."
+                                        );
                                 }
-                                console.error("❌ Error en loadPage:", err);
                         } finally {
                                 isLoading = false;
                                 finalizeSpinnerVisibility(previousRowCount, appendedRows);

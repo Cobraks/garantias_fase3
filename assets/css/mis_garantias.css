@@ -887,6 +887,7 @@ section.guarantees-list {
 
 .guarantees-table__vehiculo .vehiculo__mat {
     font-size: inherit;
+    font-weight: 700;
     letter-spacing: 0.08em;
     color: inherit;
     text-transform: uppercase;
@@ -912,7 +913,7 @@ section.guarantees-list {
 }
 
 .guarantees-table__plan {
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .guarantees-table__plan .plan__name,
@@ -1022,10 +1023,11 @@ section.guarantees-list {
 }
 
 .vehiculo__mat {
-    font-weight: 600;
+    font-weight: 700;
 }
 .vehiculo__marca_modelo {
-    font-size: .9rem;
+    font-size: 0.8125rem;
+    font-weight: 400;
 }
 .cliente__phone {
     font-size: .9rem;
@@ -1034,6 +1036,9 @@ section.guarantees-list {
 .vendedor__type {
     font-size: .9rem;
     font-style: italic;
+}
+.vendedor__name {
+    font-weight: 600;
 }
 
 .guarantees-table th {
@@ -1638,6 +1643,7 @@ section.guarantees-list {
 
 }
 
+
 .guarantees-table tr:nth-child(2n) {
     background: var(--table-row-zebra);
 }
@@ -1645,12 +1651,6 @@ section.guarantees-list {
 tr.guarantees-table__row:nth-child(even):not(.selected) td,
 .guarantees-table tbody tr:nth-child(even):not(.selected) td {
     background: var(--table-row-zebra);
-}
-
-.guarantees-table tr.selected:nth-child(2n),
-tr.guarantees-table__row.selected:nth-child(even) td,
-.guarantees-table tbody tr.selected:nth-child(even) td {
-    background: transparent;
 }
 
 tr.guarantees-table__row:not(.selected):hover td,
@@ -2562,7 +2562,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     }
 
     .guarantees-table thead th {
-        padding: 0.25rem 2rem;
+        padding: 0.25rem 1.25rem;
         text-align: left;
         font-weight: 700;
         font-size: 0.75rem;
@@ -4189,7 +4189,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
     .guarantees-table__estado {
         flex-direction: row;
         align-items: center;
-        gap: 3.5rem;
+        gap: 0.35rem;
     }
 
     .guarantee-detail {
