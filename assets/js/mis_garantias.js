@@ -13,8 +13,26 @@ const ADD_DOC_KEY = "add-document";
                 const RECEIPT_ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"];
                 const RECEIPT_MAX_BYTES = 10 * 1024 * 1024;
                 const listContainer = document.querySelector(".guarantees-list");
-                const scrollEnd = listContainer.querySelector("#scroll-end");
-                const spinner = scrollEnd.querySelector(".spinner");
+                const tableScrollContainer = document.querySelector(
+                        ".guarantees-table__scroll"
+                );
+                const scrollEnd = listContainer
+                        ? listContainer.querySelector("#scroll-end")
+                        : null;
+                const spinner = scrollEnd ? scrollEnd.querySelector(".spinner") : null;
+
+                const setSpinnerVisible = (visible) => {
+                        if (!scrollEnd) {
+                                return;
+                        }
+                        scrollEnd.classList.toggle("is-loading", Boolean(visible));
+                        const isVisible = Boolean(visible);
+                        scrollEnd.setAttribute("aria-hidden", isVisible ? "false" : "true");
+                        if (spinner) {
+                                spinner.hidden = !isVisible;
+                                spinner.setAttribute("aria-hidden", isVisible ? "false" : "true");
+                        }
+                };
 
                 initResizableColumns(table);
 
@@ -373,6 +391,13 @@ const ADD_DOC_KEY = "add-document";
                 const mobileFiltersDismissEls = document.querySelectorAll(
                         "[data-mobile-filters-dismiss]"
                 );
+                const mobileSearchSlot = document.querySelector(
+                        "[data-mobile-search-slot]"
+                );
+                const desktopSearchSlot = document.querySelector(
+                        "[data-desktop-search-slot]"
+                );
+                const searchField = document.querySelector("[data-search-field]");
                 const orderRoot = document.querySelector("[data-order-root]");
                 const orderToggle = orderRoot
                         ? orderRoot.querySelector("[data-order-toggle]")
@@ -466,7 +491,7 @@ const ADD_DOC_KEY = "add-document";
                 const desktopMediaQuery =
                         typeof window !== "undefined" &&
                         typeof window.matchMedia === "function"
-                                ? window.matchMedia("(min-width: 80rem)")
+                                ? window.matchMedia("(min-width: 1280px)")
                                 : null;
                 let mobileFiltersOpen = Boolean(
                         filtersRoot &&
@@ -631,7 +656,7 @@ const ADD_DOC_KEY = "add-document";
                                 infiniteScrollObserver.disconnect();
                         }
                         const observerOptions = {
-                                root: isDesktopView() ? listContainer : null,
+                                root: listContainer || null,
                                 threshold: 0.1,
                                 rootMargin: "200px 0px",
                         };
@@ -649,12 +674,36 @@ const ADD_DOC_KEY = "add-document";
                         infiniteScrollObserver.observe(scrollEnd);
                 }
 
+                const moveSearchFieldTo = (target) => {
+                        if (!target || !searchField) {
+                                return;
+                        }
+                        if (target.contains(searchField)) {
+                                return;
+                        }
+                        target.appendChild(searchField);
+                };
+
+                const syncSearchPlacement = () => {
+                        if (!searchField) {
+                                return;
+                        }
+                        const desktop = isDesktopView();
+                        const target = desktop ? desktopSearchSlot : mobileSearchSlot;
+                        if (!target) {
+                                return;
+                        }
+                        moveSearchFieldTo(target);
+                };
+
                 const syncMobileFiltersVisibility = () => {
                         if (!filtersRoot || !mobileFiltersPanel) {
                                 return;
                         }
                         const desktop = isDesktopView();
                         const shouldBeOpen = desktop || mobileFiltersOpen;
+
+                        syncSearchPlacement();
 
                         filtersRoot.setAttribute(
                                 "data-mobile-open",
@@ -824,6 +873,7 @@ const ADD_DOC_KEY = "add-document";
                                 syncMobileFiltersVisibility();
                                 syncMobileDetailVisibility();
                                 observeScrollEnd();
+                                syncSearchPlacement();
                         };
                         if (typeof desktopMediaQuery.addEventListener === "function") {
                                 desktopMediaQuery.addEventListener(
@@ -862,6 +912,7 @@ const ADD_DOC_KEY = "add-document";
                 });
 
                 syncMobileFiltersVisibility();
+                syncSearchPlacement();
                 mobileDetailOpen = isDesktopView();
                 syncMobileDetailVisibility();
                 observeScrollEnd();
@@ -1260,7 +1311,10 @@ const ADD_DOC_KEY = "add-document";
                         totalPages = cache.totalPages;
                         totalPosts = cache.totalPosts;
                         hasMore = currentPage < totalPages;
-                        spinner.style.display = hasMore ? "" : "none";
+                        if (scrollEnd) {
+                                scrollEnd.hidden = !hasMore;
+                        }
+                        setSpinnerVisible(false);
                         if (!hasActiveFilters() && (cache.totalPosts || 0) === 0) {
                                 setEmptyDetailPanel("forward", "no-results");
                         }
@@ -4295,7 +4349,10 @@ const ADD_DOC_KEY = "add-document";
                 async function loadPage(page = 1, options = {}) {
                         if (isLoading || !hasMore) return;
                         isLoading = true;
-                        spinner.style.display = "";
+                        if (scrollEnd) {
+                                scrollEnd.hidden = false;
+                        }
+                        setSpinnerVisible(true);
                         const search =
                                 typeof options.search === "string" ? options.search : searchQuery;
                         const estado =
@@ -4545,7 +4602,10 @@ const ADD_DOC_KEY = "add-document";
                                 console.error("❌ Error en loadPage:", err);
                         } finally {
                                 isLoading = false;
-                                spinner.style.display = hasMore ? "" : "none";
+                                setSpinnerVisible(false);
+                                if (scrollEnd) {
+                                        scrollEnd.hidden = !hasMore;
+                                }
                         }
                 }
 
@@ -5847,8 +5907,17 @@ async function activateRow(row, options = {}) {
 				).observe(header);
 			}
                         const getListScrollTop = () => {
-                                if (isDesktopView() && listContainer) {
-                                        return listContainer.scrollTop || 0;
+                                if (isDesktopView()) {
+                                        if (
+                                                tableScrollContainer &&
+                                                tableScrollContainer.scrollHeight >
+                                                        tableScrollContainer.clientHeight
+                                        ) {
+                                                return tableScrollContainer.scrollTop || 0;
+                                        }
+                                        if (listContainer) {
+                                                return listContainer.scrollTop || 0;
+                                        }
                                 }
                                 return (
                                         window.pageYOffset ||
@@ -5869,6 +5938,15 @@ async function activateRow(row, options = {}) {
                         };
                         if (listContainer) {
                                 listContainer.addEventListener("scroll", onScroll);
+                        }
+                        if (
+                                tableScrollContainer &&
+                                tableScrollContainer !== listContainer
+                        ) {
+                                tableScrollContainer.addEventListener(
+                                        "scroll",
+                                        onScroll
+                                );
                         }
                         if (detail) {
                                 detail.querySelectorAll(".guarantee-detail__panel").forEach((p) =>
@@ -6232,7 +6310,10 @@ async function activateRow(row, options = {}) {
                         tbody.innerHTML = "";
                         loadedIds.clear();
                         clearSelectionAndDetail();
-                        spinner.style.display = "";
+                        if (scrollEnd) {
+                                scrollEnd.hidden = false;
+                        }
+                        setSpinnerVisible(true);
                         if (currentListAbort) currentListAbort.abort();
                         isLoading = false;
                         if (listCache.has(cacheKey)) {
@@ -6569,7 +6650,10 @@ async function activateRow(row, options = {}) {
                         tbody.innerHTML = "";
                         loadedIds.clear();
                         clearSelectionAndDetail();
-                        spinner.style.display = "";
+                        if (scrollEnd) {
+                                scrollEnd.hidden = false;
+                        }
+                        setSpinnerVisible(true);
                         if (currentListAbort) currentListAbort.abort();
                         isLoading = false;
                         if (listCache.has(cacheKey)) {
