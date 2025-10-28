@@ -4627,7 +4627,7 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                 };
                                 if (typeof requestAnimationFrame === "function") {
-                                        requestAnimationFrame(finalizeSpinner);
+                                        requestAnimationFrame(() => requestAnimationFrame(finalizeSpinner));
                                 } else {
                                         finalizeSpinner();
                                 }
