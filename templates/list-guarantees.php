@@ -242,23 +242,37 @@ if (($is_admin_user || $is_director)
 
 
 <!-- 1. FILTROS -->
-<div class="guarantees-list__filters" style="view-transition-name: filtros" data-mobile-open="false">
-    <div class="guarantees-list__filters-row">
-        <div class="guarantees-list__search-container">
-            <span class="guarantees-list__search-icon" aria-hidden="true">
-                <?php echo Svg::icon('search'); ?>
-            </span>
-            <input
-                type="text"
-                class="guarantees-list__search"
-                placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
-                aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>" id="buscador_mis_garantias">
-            <span class="guarantees-list__close-icon" aria-hidden="true">
-                <?php echo Svg::icon('cerrar'); ?>
-            </span>
-        </div>
+<div class="guarantees-list__toolbar">
+    <div class="guarantees-list__search-container">
+        <span class="guarantees-list__search-icon" aria-hidden="true">
+            <?php echo Svg::icon('search'); ?>
+        </span>
+        <input
+            type="text"
+            class="guarantees-list__search"
+            placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
+            aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>"
+            id="buscador_mis_garantias">
+        <span class="guarantees-list__close-icon" aria-hidden="true">
+            <?php echo Svg::icon('cerrar'); ?>
+        </span>
     </div>
 
+    <button
+        type="button"
+        class="guarantees-list__filters-fab"
+        data-mobile-filters-toggle
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="guarantees-list-base-filters">
+        <?php echo Svg::icon('filter_funnel', 'guarantees-list__filters-fab-icon'); ?>
+        <span class="guarantees-list__filters-fab-label">
+            <?php esc_html_e('Filtros', 'garantias-online-360vo'); ?>
+        </span>
+    </button>
+</div>
+
+<div class="guarantees-list__filters" style="view-transition-name: filtros" data-mobile-open="false">
     <div class="guarantees-list__filters-modal" data-mobile-filters-overlay>
         <div class="guarantees-list__filters-modal-backdrop" data-mobile-filters-dismiss></div>
 
@@ -493,44 +507,33 @@ if (($is_admin_user || $is_director)
     </div>
 </div>
 
-<button
-    type="button"
-    class="guarantees-list__filters-fab"
-    data-mobile-filters-toggle
-    aria-haspopup="dialog"
-    aria-expanded="false"
-    aria-controls="guarantees-list-base-filters">
-    <?php echo Svg::icon('filter_funnel', 'guarantees-list__filters-fab-icon'); ?>
-    <span class="guarantees-list__filters-fab-label">
-        <?php esc_html_e('Filtros', 'garantias-online-360vo'); ?>
-    </span>
-</button>
-
 <div class="guarantees-container">
     <!-- 2. LISTA: tabla semántica con columna “Garantía” al final y “Canal de venta” en vendedor -->
     <section class="guarantees-list">
-        <table class="guarantees-table" style="view-transition-name: garantias-table">
-            <thead>
-                <tr>
-                    <th><?php esc_html_e('Vehículo',  'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Validez',   'garantias-online-360vo'); ?></th>
-                    <th>
-                        <?php
-                        if ($show_channel_col) {
-                            esc_html_e('Canal de venta', 'garantias-online-360vo');
-                        } else {
-                            esc_html_e('Cliente', 'garantias-online-360vo');
-                        }
-                        ?>
-                    </th>
-                    <th><?php esc_html_e('Estado',    'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Garantía',  'garantias-online-360vo'); ?></th>
-                </tr>
-            </thead>
-            <tbody data-current-page="0" data-total-pages="">
-                <!-- Aquí sólo los ítems cargados dinámicamente -->
-            </tbody>
-        </table>
+        <div class="guarantees-table__scroll">
+            <table class="guarantees-table" style="view-transition-name: garantias-table">
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e('Vehículo',  'garantias-online-360vo'); ?></th>
+                        <th><?php esc_html_e('Validez',   'garantias-online-360vo'); ?></th>
+                        <th>
+                            <?php
+                            if ($show_channel_col) {
+                                esc_html_e('Canal de venta', 'garantias-online-360vo');
+                            } else {
+                                esc_html_e('Cliente', 'garantias-online-360vo');
+                            }
+                            ?>
+                        </th>
+                        <th><?php esc_html_e('Estado',    'garantias-online-360vo'); ?></th>
+                        <th><?php esc_html_e('Garantía',  'garantias-online-360vo'); ?></th>
+                    </tr>
+                </thead>
+                <tbody data-current-page="0" data-total-pages="">
+                    <!-- Aquí sólo los ítems cargados dinámicamente -->
+                </tbody>
+            </table>
+        </div>
 
         <!-- Fila de carga fija, fuera del tbody para que no se elimine al vaciar -->
         <div id="scroll-end" class="scroll-sentinel">
