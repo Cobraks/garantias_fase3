@@ -648,6 +648,23 @@ const ADD_DOC_KEY = "add-document";
                         setMobileDetailOpen(false, options);
                 }
 
+                function getScrollRoot() {
+                        if (
+                                tableScrollContainer &&
+                                tableScrollContainer.scrollHeight >
+                                        tableScrollContainer.clientHeight
+                        ) {
+                                return tableScrollContainer;
+                        }
+                        if (
+                                listContainer &&
+                                listContainer.scrollHeight > listContainer.clientHeight
+                        ) {
+                                return listContainer;
+                        }
+                        return null;
+                }
+
                 function observeScrollEnd() {
                         if (!scrollEnd) {
                                 return;
@@ -655,10 +672,11 @@ const ADD_DOC_KEY = "add-document";
                         if (infiniteScrollObserver) {
                                 infiniteScrollObserver.disconnect();
                         }
+                        const scrollRoot = getScrollRoot();
                         const observerOptions = {
-                                root: listContainer || null,
+                                root: scrollRoot,
                                 threshold: 0.1,
-                                rootMargin: "200px 0px",
+                                rootMargin: scrollRoot ? "200px 0px" : "400px 0px",
                         };
                         infiniteScrollObserver = new IntersectionObserver((entries) => {
                                 if (
@@ -4602,9 +4620,16 @@ const ADD_DOC_KEY = "add-document";
                                 console.error("❌ Error en loadPage:", err);
                         } finally {
                                 isLoading = false;
-                                setSpinnerVisible(false);
-                                if (scrollEnd) {
-                                        scrollEnd.hidden = !hasMore;
+                                const finalizeSpinner = () => {
+                                        setSpinnerVisible(false);
+                                        if (scrollEnd) {
+                                                scrollEnd.hidden = !hasMore;
+                                        }
+                                };
+                                if (typeof requestAnimationFrame === "function") {
+                                        requestAnimationFrame(finalizeSpinner);
+                                } else {
+                                        finalizeSpinner();
                                 }
                         }
                 }
