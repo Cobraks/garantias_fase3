@@ -311,7 +311,7 @@ body.scrolled .container.guarantees-page {
 
     .container.guarantees-page {
         position: absolute;
-        top: var(--alturaHeader);
+        top: calc(var(--alturaHeader) + var(--spacing-3));
         bottom: var(--alturaFooter);
         left: 0;
         right: 0;
