@@ -947,14 +947,37 @@ if (($is_admin_user || $is_director)
     </div>
     <?php $empty_detail_no_results = ob_get_clean(); ?>
 
-    <aside class="guarantee-detail" style="view-transition-name: resume-derecha">
-        <!-- Panel 1: mensaje cuando no hay selección -->
-        <div class="guarantee-detail__panel active" id="detail-panel-1">
-            <?php echo $empty_detail_awaiting; ?>
-        </div>
+    <aside
+        class="guarantee-detail"
+        style="view-transition-name: resume-derecha"
+        data-mobile-open="false"
+        aria-hidden="true">
+        <div class="guarantee-detail__backdrop" data-mobile-detail-dismiss></div>
+        <div
+            class="guarantee-detail__dialog"
+            data-detail-dialog
+            role="dialog"
+            aria-modal="true"
+            aria-label="<?php esc_attr_e('Detalles de la garantía', 'garantias-online-360vo'); ?>"
+            tabindex="-1">
+            <button
+                type="button"
+                class="guarantee-detail__close"
+                data-mobile-detail-dismiss>
+                <?php echo Svg::icon('cerrar', 'guarantee-detail__close-icon'); ?>
+                <span class="screen-reader-text">
+                    <?php esc_html_e('Cerrar detalles de la garantía', 'garantias-online-360vo'); ?>
+                </span>
+            </button>
 
-        <!-- Panel 2: se rellenará desde JS -->
-        <div class="guarantee-detail__panel" id="detail-panel-2"></div>
+            <!-- Panel 1: mensaje cuando no hay selección -->
+            <div class="guarantee-detail__panel active" id="detail-panel-1">
+                <?php echo $empty_detail_awaiting; ?>
+            </div>
+
+            <!-- Panel 2: se rellenará desde JS -->
+            <div class="guarantee-detail__panel" id="detail-panel-2"></div>
+        </div>
     </aside>
 
     <div class="guarantee-detail__empty-templates" hidden>
