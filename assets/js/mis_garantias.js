@@ -359,6 +359,12 @@ const ADD_DOC_KEY = "add-document";
                 const resetFiltersBtn = document.querySelector(
                         "[data-reset-filters]"
                 );
+                const mobileFiltersToggle = document.querySelector(
+                        "[data-mobile-filters-toggle]"
+                );
+                const mobileFiltersPanel = document.querySelector(
+                        "[data-mobile-filters-panel]"
+                );
                 const orderRoot = document.querySelector("[data-order-root]");
                 const orderToggle = orderRoot
                         ? orderRoot.querySelector("[data-order-toggle]")
@@ -449,6 +455,15 @@ const ADD_DOC_KEY = "add-document";
                 const orderOptions = new Map();
                 let setAdvancedOpen = () => {};
                 let baseFiltersHeight = filtersRoot ? filtersRoot.offsetHeight || 0 : 0;
+                const desktopMediaQuery =
+                        typeof window !== "undefined" &&
+                        typeof window.matchMedia === "function"
+                                ? window.matchMedia("(min-width: 80rem)")
+                                : null;
+                let mobileFiltersOpen = Boolean(
+                        filtersRoot &&
+                                filtersRoot.getAttribute("data-mobile-open") === "true"
+                );
                 const updateBaseFiltersHeight = () => {
                         if (!filtersRoot) {
                                 baseFiltersHeight = 0;
@@ -488,6 +503,105 @@ const ADD_DOC_KEY = "add-document";
                         );
                 };
                 updateBaseFiltersHeight();
+
+                const isDesktopView = () =>
+                        desktopMediaQuery ? desktopMediaQuery.matches : true;
+
+                const syncMobileFiltersVisibility = () => {
+                        if (!filtersRoot || !mobileFiltersPanel) {
+                                return;
+                        }
+                        const desktop = isDesktopView();
+                        if (desktop) {
+                                mobileFiltersOpen = true;
+                                filtersRoot.setAttribute("data-mobile-open", "true");
+                                mobileFiltersPanel.removeAttribute("hidden");
+                                if (mobileFiltersToggle) {
+                                        mobileFiltersToggle.setAttribute(
+                                                "aria-expanded",
+                                                "true"
+                                        );
+                                }
+                        } else if (mobileFiltersOpen) {
+                                filtersRoot.setAttribute("data-mobile-open", "true");
+                                mobileFiltersPanel.removeAttribute("hidden");
+                                if (mobileFiltersToggle) {
+                                        mobileFiltersToggle.setAttribute(
+                                                "aria-expanded",
+                                                "true"
+                                        );
+                                }
+                        } else {
+                                filtersRoot.removeAttribute("data-mobile-open");
+                                mobileFiltersPanel.setAttribute("hidden", "");
+                                if (mobileFiltersToggle) {
+                                        mobileFiltersToggle.setAttribute(
+                                                "aria-expanded",
+                                                "false"
+                                        );
+                                }
+                                setAdvancedOpen(false);
+                                closeOrderMenu();
+                        }
+                        updateBaseFiltersHeight();
+                        requestAnimationFrame(updateAdvancedHeight);
+                };
+
+                const setMobileFiltersOpen = (open) => {
+                        if (!filtersRoot || !mobileFiltersPanel) {
+                                return;
+                        }
+                        if (isDesktopView()) {
+                                mobileFiltersOpen = true;
+                                syncMobileFiltersVisibility();
+                                return;
+                        }
+                        mobileFiltersOpen = Boolean(open);
+                        syncMobileFiltersVisibility();
+                };
+
+                if (mobileFiltersToggle && mobileFiltersPanel && filtersRoot) {
+                        mobileFiltersToggle.addEventListener("click", () => {
+                                if (isDesktopView()) {
+                                        return;
+                                }
+                                setMobileFiltersOpen(!mobileFiltersOpen);
+                        });
+                }
+
+                if (desktopMediaQuery) {
+                        const handleDesktopChange = (event) => {
+                                if (event.matches) {
+                                        mobileFiltersOpen = true;
+                                }
+                                syncMobileFiltersVisibility();
+                        };
+                        if (typeof desktopMediaQuery.addEventListener === "function") {
+                                desktopMediaQuery.addEventListener(
+                                        "change",
+                                        handleDesktopChange
+                                );
+                        } else if (
+                                typeof desktopMediaQuery.addListener === "function"
+                        ) {
+                                desktopMediaQuery.addListener(handleDesktopChange);
+                        }
+                }
+
+                document.addEventListener("keydown", (event) => {
+                        if (event.key !== "Escape") {
+                                return;
+                        }
+                        if (isDesktopView()) {
+                                return;
+                        }
+                        if (!mobileFiltersOpen) {
+                                return;
+                        }
+                        setMobileFiltersOpen(false);
+                });
+
+                syncMobileFiltersVisibility();
 
                 function populateMonthSelect(select) {
                         if (!select || monthOptions.length === 0) {
@@ -6075,6 +6189,9 @@ async function activateRow(row, options = {}) {
                         };
 
                         moreFiltersToggle.addEventListener("click", () => {
+                                if (!isDesktopView()) {
+                                        setMobileFiltersOpen(true);
+                                }
                                 const isOpen = !advancedPanel.hasAttribute("hidden");
                                 setAdvancedOpen(!isOpen);
                         });
