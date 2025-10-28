@@ -34,6 +34,24 @@ const ADD_DOC_KEY = "add-document";
                         }
                 };
 
+                const hideSpinnerAfterPaint = () => {
+                        const finalize = () => {
+                                setSpinnerVisible(false);
+                                if (scrollEnd) {
+                                        scrollEnd.hidden = !hasMore;
+                                }
+                        };
+                        if (typeof requestAnimationFrame === "function") {
+                                requestAnimationFrame(() => {
+                                        requestAnimationFrame(() => {
+                                                requestAnimationFrame(finalize);
+                                        });
+                                });
+                        } else {
+                                finalize();
+                        }
+                };
+
                 initResizableColumns(table);
 
                 const goConfig = window.__GO_CONFIG__ || {};
@@ -1329,10 +1347,7 @@ const ADD_DOC_KEY = "add-document";
                         totalPages = cache.totalPages;
                         totalPosts = cache.totalPosts;
                         hasMore = currentPage < totalPages;
-                        if (scrollEnd) {
-                                scrollEnd.hidden = !hasMore;
-                        }
-                        setSpinnerVisible(false);
+                        hideSpinnerAfterPaint();
                         if (!hasActiveFilters() && (cache.totalPosts || 0) === 0) {
                                 setEmptyDetailPanel("forward", "no-results");
                         }
@@ -4620,17 +4635,7 @@ const ADD_DOC_KEY = "add-document";
                                 console.error("❌ Error en loadPage:", err);
                         } finally {
                                 isLoading = false;
-                                const finalizeSpinner = () => {
-                                        setSpinnerVisible(false);
-                                        if (scrollEnd) {
-                                                scrollEnd.hidden = !hasMore;
-                                        }
-                                };
-                                if (typeof requestAnimationFrame === "function") {
-                                        requestAnimationFrame(() => requestAnimationFrame(finalizeSpinner));
-                                } else {
-                                        finalizeSpinner();
-                                }
+                                hideSpinnerAfterPaint();
                         }
                 }
 
