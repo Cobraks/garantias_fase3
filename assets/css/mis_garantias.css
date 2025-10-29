@@ -916,6 +916,10 @@ section.guarantees-list {
     font-weight: 500;
 }
 
+.guarantees-table__plan .plan__name {
+    font-weight: 600;
+}
+
 .guarantees-table__plan .plan__name,
 .guarantees-table__plan .plan__price {
     font-size: inherit;
@@ -1644,13 +1648,17 @@ section.guarantees-list {
 }
 
 
-.guarantees-table tr:nth-child(2n) {
+.guarantees-table tbody tr:nth-child(even):not(.selected) {
     background: var(--table-row-zebra);
 }
 
 tr.guarantees-table__row:nth-child(even):not(.selected) td,
 .guarantees-table tbody tr:nth-child(even):not(.selected) td {
     background: var(--table-row-zebra);
+}
+
+.guarantees-table tbody tr.selected:nth-child(even) td {
+    background: var(--table-row-selected-bg);
 }
 
 tr.guarantees-table__row:not(.selected):hover td,
@@ -4107,6 +4115,10 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
 
     .guarantees-table thead {
         display: table-header-group;
+    }
+
+    .guarantees-table thead th {
+        padding: 0.25rem 1.25rem;
     }
 
     .guarantees-table tbody {

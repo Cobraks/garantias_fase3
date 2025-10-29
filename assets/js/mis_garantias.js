@@ -24,6 +24,8 @@ const ADD_DOC_KEY = "add-document";
                 let spinnerObserver = null;
                 let spinnerRaf = null;
                 let spinnerFallbackTimeout = null;
+                let spinnerTokenCounter = 0;
+                let activeSpinnerToken = 0;
 
                 const clearSpinnerWatchers = () => {
                         if (spinnerObserver) {
@@ -55,36 +57,82 @@ const ADD_DOC_KEY = "add-document";
                         );
                 };
 
-                const setSpinnerVisible = (visible) => {
-                        if (!scrollEnd) {
-                                return;
-                        }
+                const setSpinnerVisible = (visible, token = null) => {
                         const show = Boolean(visible);
+                        let resolvedToken =
+                                typeof token === "number" && Number.isFinite(token)
+                                        ? token
+                                        : null;
+
                         if (show) {
+                                if (resolvedToken === null) {
+                                        resolvedToken = ++spinnerTokenCounter;
+                                } else {
+                                        spinnerTokenCounter = Math.max(
+                                                spinnerTokenCounter,
+                                                resolvedToken
+                                        );
+                                }
+                                activeSpinnerToken = resolvedToken;
                                 clearSpinnerWatchers();
+                                if (scrollEnd) {
+                                        scrollEnd.classList.add("is-loading");
+                                        scrollEnd.hidden = false;
+                                        syncSpinnerCompensation();
+                                        scrollEnd.setAttribute(
+                                                "aria-hidden",
+                                                hasMore || show ? "false" : "true"
+                                        );
+                                }
+                                if (spinner) {
+                                        spinner.hidden = false;
+                                        spinner.setAttribute("aria-hidden", "false");
+                                }
+                                return resolvedToken;
                         }
-                        scrollEnd.classList.toggle("is-loading", show);
-                        if (show) {
-                                scrollEnd.hidden = false;
-                                syncSpinnerCompensation();
-                        } else {
+
+                        resolvedToken =
+                                resolvedToken !== null ? resolvedToken : activeSpinnerToken;
+
+                        if (resolvedToken !== activeSpinnerToken) {
+                                return resolvedToken;
+                        }
+
+                        clearSpinnerWatchers();
+
+                        if (scrollEnd) {
+                                scrollEnd.classList.remove("is-loading");
                                 scrollEnd.style.removeProperty("--spinner-compensation");
                                 if (!hasMore) {
                                         scrollEnd.hidden = true;
                                 }
+                                scrollEnd.setAttribute(
+                                        "aria-hidden",
+                                        hasMore ? "false" : "true"
+                                );
                         }
-                        scrollEnd.setAttribute(
-                                "aria-hidden",
-                                show || hasMore ? "false" : "true"
-                        );
                         if (spinner) {
-                                spinner.hidden = !show;
-                                spinner.setAttribute("aria-hidden", show ? "false" : "true");
+                                spinner.hidden = true;
+                                spinner.setAttribute("aria-hidden", "true");
                         }
+                        activeSpinnerToken = 0;
+                        return resolvedToken;
                 };
 
-                const finalizeSpinnerVisibility = (previousCount, appendedRows) => {
+                const finalizeSpinnerVisibility = (
+                        previousCount,
+                        appendedRows,
+                        token = null
+                ) => {
                         if (!scrollEnd) {
+                                return;
+                        }
+                        const resolvedToken =
+                                typeof token === "number" && Number.isFinite(token)
+                                        ? token
+                                        : activeSpinnerToken;
+
+                        if (resolvedToken !== activeSpinnerToken) {
                                 return;
                         }
                         clearSpinnerWatchers();
@@ -121,9 +169,14 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 completed = true;
                                 clearSpinnerWatchers();
-                                setSpinnerVisible(false);
-                                scrollEnd.hidden = !hasMore;
-                                scrollEnd.setAttribute("aria-hidden", hasMore ? "false" : "true");
+                                setSpinnerVisible(false, resolvedToken);
+                                if (scrollEnd) {
+                                        scrollEnd.hidden = !hasMore;
+                                        scrollEnd.setAttribute(
+                                                "aria-hidden",
+                                                hasMore ? "false" : "true"
+                                        );
+                                }
                         };
 
                         if (checkContentReady()) {
@@ -137,7 +190,7 @@ const ADD_DOC_KEY = "add-document";
                                                 complete();
                                         }
                                 });
-                                spinnerObserver.observe(tbody, { childList: true });
+                                spinnerObserver.observe(tbody, { childList: true, subtree: true });
                         }
 
                         if (typeof requestAnimationFrame === "function") {
@@ -1465,7 +1518,7 @@ const ADD_DOC_KEY = "add-document";
                         ].join("|");
                 }
 
-                function renderFromCache(cache) {
+                function renderFromCache(cache, spinnerToken = null) {
                         const previousCount = tbody
                                 ? tbody.querySelectorAll(".guarantees-table__row").length
                                 : 0;
@@ -1478,7 +1531,7 @@ const ADD_DOC_KEY = "add-document";
                         totalPages = cache.totalPages;
                         totalPosts = cache.totalPosts;
                         hasMore = currentPage < totalPages;
-                        finalizeSpinnerVisibility(previousCount, appended);
+                        finalizeSpinnerVisibility(previousCount, appended, spinnerToken);
                         if (!hasActiveFilters() && (cache.totalPosts || 0) === 0) {
                                 setEmptyDetailPanel("forward", "no-results");
                         }
@@ -4516,7 +4569,12 @@ const ADD_DOC_KEY = "add-document";
                         if (scrollEnd) {
                                 scrollEnd.hidden = false;
                         }
-                        setSpinnerVisible(true);
+                        let spinnerToken = null;
+                        if (typeof options.spinnerToken === "number") {
+                                spinnerToken = setSpinnerVisible(true, options.spinnerToken);
+                        } else {
+                                spinnerToken = setSpinnerVisible(true);
+                        }
                         let previousRowCount = tbody
                                 ? tbody.querySelectorAll(".guarantees-table__row").length
                                 : 0;
@@ -4778,7 +4836,11 @@ const ADD_DOC_KEY = "add-document";
                                 }
                         } finally {
                                 isLoading = false;
-                                finalizeSpinnerVisibility(previousRowCount, appendedRows);
+                                finalizeSpinnerVisibility(
+                                        previousRowCount,
+                                        appendedRows,
+                                        spinnerToken
+                                );
                         }
                 }
 
@@ -6486,14 +6548,14 @@ async function activateRow(row, options = {}) {
                         if (scrollEnd) {
                                 scrollEnd.hidden = false;
                         }
-                        setSpinnerVisible(true);
+                        const spinnerToken = setSpinnerVisible(true);
                         if (currentListAbort) currentListAbort.abort();
                         isLoading = false;
                         if (listCache.has(cacheKey)) {
-                                renderFromCache(listCache.get(cacheKey));
+                                renderFromCache(listCache.get(cacheKey), spinnerToken);
                                 return;
                         }
-                        loadPage(1);
+                        loadPage(1, { spinnerToken });
                 }
 
                 if (estadoSelect)
@@ -6826,14 +6888,14 @@ async function activateRow(row, options = {}) {
                         if (scrollEnd) {
                                 scrollEnd.hidden = false;
                         }
-                        setSpinnerVisible(true);
+                        const spinnerToken = setSpinnerVisible(true);
                         if (currentListAbort) currentListAbort.abort();
                         isLoading = false;
                         if (listCache.has(cacheKey)) {
-                                renderFromCache(listCache.get(cacheKey));
+                                renderFromCache(listCache.get(cacheKey), spinnerToken);
                                 return;
                         }
-                        loadPage(1, { search: searchQuery });
+                        loadPage(1, { search: searchQuery, spinnerToken });
                         updateResetVisibility();
                 }
 
