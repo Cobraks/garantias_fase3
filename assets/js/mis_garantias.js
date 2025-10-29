@@ -135,10 +135,14 @@ const ADD_DOC_KEY = "add-document";
                         if (resolvedToken !== activeSpinnerToken) {
                                 return;
                         }
+
                         clearSpinnerWatchers();
                         const targetCount = Math.max(0, previousCount) + Math.max(0, appendedRows);
                         const checkContentReady = () => {
                                 if (!tbody) {
+                                        return true;
+                                }
+                                if (appendedRows <= 0) {
                                         return true;
                                 }
                                 const currentRows = tbody.querySelectorAll(".guarantees-table__row").length;
@@ -1625,6 +1629,149 @@ const ADD_DOC_KEY = "add-document";
                 const detailPromises = new Map();
                 const loadedIds = new Set();
                 const listCache = new Map();
+                const LIST_CACHE_STORAGE_KEY = "go:guarantees:list-cache:v1";
+                const LIST_CACHE_TTL_MS = 5 * 60 * 1000;
+                const LIST_CACHE_MAX_ENTRIES = 6;
+
+                function loadPersistentListCache() {
+                        if (typeof window === "undefined" || !window.sessionStorage) {
+                                return [];
+                        }
+                        try {
+                                const raw = window.sessionStorage.getItem(LIST_CACHE_STORAGE_KEY);
+                                if (!raw) {
+                                        return [];
+                                }
+                                const parsed = JSON.parse(raw);
+                                if (!Array.isArray(parsed)) {
+                                        return [];
+                                }
+                                const now = Date.now();
+                                const entries = [];
+                                for (const entry of parsed) {
+                                        if (!Array.isArray(entry) || entry.length < 2) {
+                                                continue;
+                                        }
+                                        const [key, value] = entry;
+                                        if (typeof key !== "string" || !value || typeof value !== "object") {
+                                                continue;
+                                        }
+                                        if (!Array.isArray(value.data)) {
+                                                continue;
+                                        }
+                                        const fetchedAt = typeof value.fetchedAt === "number" ? value.fetchedAt : 0;
+                                        if (fetchedAt && now - fetchedAt > LIST_CACHE_TTL_MS) {
+                                                continue;
+                                        }
+                                        const totalPagesNumber = Number(value.totalPages);
+                                        const totalPostsNumber = Number(value.totalPosts);
+                                        entries.push([
+                                                key,
+                                                {
+                                                        data: value.data,
+                                                        totalPages:
+                                                                Number.isFinite(totalPagesNumber) && totalPagesNumber > 0
+                                                                        ? Math.floor(totalPagesNumber)
+                                                                        : 1,
+                                                        totalPosts:
+                                                                Number.isFinite(totalPostsNumber) && totalPostsNumber >= 0
+                                                                        ? Math.floor(totalPostsNumber)
+                                                                        : 0,
+                                                        fetchedAt,
+                                                },
+                                        ]);
+                                }
+                                if (entries.length === 0 && parsed.length > 0) {
+                                        try {
+                                                window.sessionStorage.removeItem(LIST_CACHE_STORAGE_KEY);
+                                        } catch (storageError) {
+                                                console.warn(
+                                                        "No se pudo limpiar la caché de garantías caducada:",
+                                                        storageError
+                                                );
+                                        }
+                                }
+                                return entries;
+                        } catch (error) {
+                                console.warn("No se pudo recuperar la caché de garantías:", error);
+                                return [];
+                        }
+                }
+
+                function persistListCacheSnapshot(sourceMap) {
+                        if (typeof window === "undefined" || !window.sessionStorage) {
+                                return;
+                        }
+                        try {
+                                const entries = [];
+                                const now = Date.now();
+                                sourceMap.forEach((value, key) => {
+                                        if (!value || typeof value !== "object" || !Array.isArray(value.data)) {
+                                                return;
+                                        }
+                                        const totalPagesNumber = Number(value.totalPages);
+                                        const totalPostsNumber = Number(value.totalPosts);
+                                        const fetchedAt =
+                                                typeof value.fetchedAt === "number" && value.fetchedAt > 0
+                                                        ? value.fetchedAt
+                                                        : now;
+                                        entries.push([
+                                                key,
+                                                {
+                                                        data: value.data,
+                                                        totalPages:
+                                                                Number.isFinite(totalPagesNumber) && totalPagesNumber > 0
+                                                                        ? Math.floor(totalPagesNumber)
+                                                                        : 1,
+                                                        totalPosts:
+                                                                Number.isFinite(totalPostsNumber) && totalPostsNumber >= 0
+                                                                        ? Math.floor(totalPostsNumber)
+                                                                        : 0,
+                                                        fetchedAt,
+                                                },
+                                        ]);
+                                });
+                                if (entries.length === 0) {
+                                        window.sessionStorage.removeItem(LIST_CACHE_STORAGE_KEY);
+                                        return;
+                                }
+                                entries.sort((a, b) => (b[1].fetchedAt || 0) - (a[1].fetchedAt || 0));
+                                const limited = entries.slice(0, LIST_CACHE_MAX_ENTRIES);
+                                window.sessionStorage.setItem(
+                                        LIST_CACHE_STORAGE_KEY,
+                                        JSON.stringify(limited)
+                                );
+                        } catch (error) {
+                                console.warn("No se pudo guardar la caché de garantías:", error);
+                        }
+                }
+
+                function isCacheEntryUsable(entry) {
+                        return Boolean(
+                                entry &&
+                                        typeof entry === "object" &&
+                                        Array.isArray(entry.data)
+                        );
+                }
+
+                function isCacheEntryFresh(entry) {
+                        if (!entry || typeof entry !== "object") {
+                                return false;
+                        }
+                        const fetchedAt = typeof entry.fetchedAt === "number" ? entry.fetchedAt : 0;
+                        if (!fetchedAt) {
+                                return false;
+                        }
+                        return Date.now() - fetchedAt <= LIST_CACHE_TTL_MS;
+                }
+
+                const persistedListEntries = loadPersistentListCache();
+                if (persistedListEntries.length > 0) {
+                        for (const [cacheKey, value] of persistedListEntries) {
+                                listCache.set(cacheKey, value);
+                        }
+                        persistListCacheSnapshot(listCache);
+                }
 
                 function buildListCacheKey(
                         search = "",
@@ -1659,22 +1806,85 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 function renderFromCache(cache, spinnerToken = null) {
-                        const previousCount = tbody
-                                ? tbody.querySelectorAll(".guarantees-table__row").length
-                                : 0;
+                        if (!cache || !tbody || !Array.isArray(cache.data)) {
+                                finalizeSpinnerVisibility(0, 0, spinnerToken);
+                                return;
+                        }
+                        tbody.innerHTML = "";
                         let appended = 0;
                         for (const item of cache.data) {
                                 tbody.appendChild(renderRow(item));
-                                loadedIds.add(item.id);
+                                if (item && Object.prototype.hasOwnProperty.call(item, "id")) {
+                                        loadedIds.add(item.id);
+                                }
                                 appended += 1;
                         }
-                        totalPages = cache.totalPages;
-                        totalPosts = cache.totalPosts;
-                        hasMore = currentPage < totalPages;
-                        finalizeSpinnerVisibility(previousCount, appended, spinnerToken);
-                        if (!hasActiveFilters() && (cache.totalPosts || 0) === 0) {
+                        const totalPagesNumber = Number(cache.totalPages);
+                        const totalPostsNumber = Number(cache.totalPosts);
+                        totalPages = Number.isFinite(totalPagesNumber) && totalPagesNumber > 0
+                                ? Math.floor(totalPagesNumber)
+                                : 1;
+                        totalPosts = Number.isFinite(totalPostsNumber) && totalPostsNumber >= 0
+                                ? Math.floor(totalPostsNumber)
+                                : 0;
+                        const per = Math.max(perPage || DEFAULT_PER, 1);
+                        const computedPageCount = appended > 0
+                                ? Math.ceil(appended / per)
+                                : totalPosts > 0
+                                ? Math.ceil(totalPosts / per)
+                                : 0;
+                        currentPage = computedPageCount > 0
+                                ? Math.min(totalPages, computedPageCount)
+                                : totalPosts > 0
+                                ? Math.min(totalPages, 1)
+                                : 0;
+                        hasMore = currentPage > 0 && currentPage < totalPages;
+                        finalizeSpinnerVisibility(0, appended, spinnerToken);
+                        if (!hasMore && scrollEnd) {
+                                scrollEnd.hidden = true;
+                                scrollEnd.setAttribute("aria-hidden", "true");
+                        }
+                        if (!hasActiveFilters() && totalPosts === 0) {
                                 setEmptyDetailPanel("forward", "no-results");
                         }
+                        trySelectInitialMatricula().catch((error) => {
+                                console.error(
+                                        "❌ Error al seleccionar la garantía inicial desde la caché:",
+                                        error
+                                );
+                        });
+                }
+
+                async function trySelectInitialMatricula() {
+                        if (!pendingMatSelection || !initialMatQuery) {
+                                return;
+                        }
+                        const normalizedPlate = initialMatQuery
+                                .toString()
+                                .replace(/\s+/g, "")
+                                .toUpperCase();
+                        const rows = Array.from(
+                                document.querySelectorAll(".guarantees-table__row")
+                        );
+                        const match = rows.find((row) =>
+                                (row.dataset.matricula || "")
+                                        .toString()
+                                        .replace(/\s+/g, "")
+                                        .toUpperCase() === normalizedPlate
+                        );
+                        if (!match) {
+                                return;
+                        }
+                        try {
+                                await activateRow(match);
+                        } catch (error) {
+                                console.error(
+                                        "❌ Error al seleccionar la garantía inicial:",
+                                        error
+                                );
+                        }
+                        pendingMatSelection = false;
+                        initialMatQuery = "";
                 }
 
                 function getSelectedChannelData() {
@@ -4656,7 +4866,10 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 function clearSelectionAndDetail(options = {}) {
-                        const preserveQuery = Boolean(options.preserveQuery);
+                        const preserveQuery =
+                                typeof options.preserveQuery !== "undefined"
+                                        ? Boolean(options.preserveQuery)
+                                        : false;
                         const restoreFocus = options.restoreFocus !== false;
                         const lastRow = prevSelectedRow && prevSelectedRow.isConnected
                                 ? prevSelectedRow
@@ -4682,7 +4895,10 @@ const ADD_DOC_KEY = "add-document";
                         prevSelectedRow = null;
                         prevIdx = null;
                         setMobileSummaryOpen(false);
-                        if (!preserveQuery) {
+                        const shouldKeepQuery =
+                                preserveQuery || pendingMatSelection || Boolean(initialMatQuery);
+
+                        if (!shouldKeepQuery) {
                                 history.replaceState(null, "", window.location.pathname);
                                 pendingMatSelection = false;
                                 initialMatQuery = "";
@@ -4845,18 +5061,22 @@ const ADD_DOC_KEY = "add-document";
                                 const { data } = await res.json();
 
                                 const esNuevaBusqueda = page === 1;
+                                const now = Date.now();
                                 if (esNuevaBusqueda) {
                                         listCache.set(cacheKey, {
                                                 data: data.slice(),
                                                 totalPages,
                                                 totalPosts,
+                                                fetchedAt: now,
                                         });
                                 } else if (listCache.has(cacheKey)) {
                                         const cache = listCache.get(cacheKey);
                                         cache.data.push(...data);
                                         cache.totalPages = totalPages;
                                         cache.totalPosts = totalPosts;
+                                        cache.fetchedAt = now;
                                 }
+                                persistListCacheSnapshot(listCache);
                                 if (esNuevaBusqueda) {
                                         setResultMessage("");
                                         tbody.innerHTML = "";
@@ -4884,33 +5104,7 @@ const ADD_DOC_KEY = "add-document";
                                                 loadedIds.add(item.id);
                                                 appendedRows += 1;
                                         }
-                                        if (pendingMatSelection && initialMatQuery) {
-                                                const normalizedPlate = initialMatQuery
-                                                        .toString()
-                                                        .replace(/\s+/g, "")
-                                                        .toUpperCase();
-                                                const rows = Array.from(
-                                                        document.querySelectorAll(".guarantees-table__row")
-                                                );
-                                                const match = rows.find((row) =>
-                                                        (row.dataset.matricula || "")
-                                                                .toString()
-                                                                .replace(/\s+/g, "")
-                                                                .toUpperCase() === normalizedPlate
-                                                );
-                                                if (match) {
-                                                        try {
-                                                                await activateRow(match);
-                                                        } catch (error) {
-                                                                console.error(
-                                                                        "❌ Error al seleccionar la garantía inicial:",
-                                                                        error
-                                                                );
-                                                        }
-                                                        pendingMatSelection = false;
-                                                        initialMatQuery = "";
-                                                }
-                                        }
+                                        await trySelectInitialMatricula();
                                         setResultMessage("");
                                         // AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
                                         if (data.length === 1 && search && search.length > 0) {
@@ -7102,7 +7296,37 @@ async function activateRow(row, options = {}) {
                 if (pendingMatSelection && initialMatQuery) {
                         setEmptyDetailPanel("forward", "loading", { plate: initialMatQuery });
                 }
-                const initialLoadPromise = loadPage(1);
+                const [initialCacheYear, initialCacheMonthFrom, initialCacheMonthTo] =
+                        getPeriodCacheKeyParts();
+                const initialCacheKey = buildListCacheKey(
+                        searchQuery,
+                        selectedEstado,
+                        selectedPlan,
+                        selectedCanal,
+                        selectedConcesionario,
+                        selectedVendorType,
+                        selectedPaymentMethod,
+                        selectedOrderBy,
+                        selectedOrderDirection,
+                        selectedCommercial,
+                        initialCacheYear,
+                        initialCacheMonthFrom,
+                        initialCacheMonthTo
+                );
+                let initialLoadPromise;
+                const cachedInitialEntry = listCache.get(initialCacheKey);
+                if (isCacheEntryUsable(cachedInitialEntry)) {
+                        loadedIds.clear();
+                        renderFromCache(cachedInitialEntry);
+                        if (isCacheEntryFresh(cachedInitialEntry)) {
+                                initialLoadPromise = Promise.resolve();
+                        } else {
+                                const spinnerToken = setSpinnerVisible(true);
+                                initialLoadPromise = loadPage(1, { spinnerToken });
+                        }
+                } else {
+                        initialLoadPromise = loadPage(1);
+                }
                 if (initialMatQuery) {
                         initialLoadPromise
                                 .catch(() => {})
