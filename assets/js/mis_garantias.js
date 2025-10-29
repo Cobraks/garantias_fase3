@@ -124,9 +124,6 @@ const ADD_DOC_KEY = "add-document";
                         appendedRows,
                         token = null
                 ) => {
-                        if (!scrollEnd) {
-                                return;
-                        }
                         const resolvedToken =
                                 typeof token === "number" && Number.isFinite(token)
                                         ? token
@@ -135,78 +132,16 @@ const ADD_DOC_KEY = "add-document";
                         if (resolvedToken !== activeSpinnerToken) {
                                 return;
                         }
+
                         clearSpinnerWatchers();
-                        const targetCount = Math.max(0, previousCount) + Math.max(0, appendedRows);
-                        const checkContentReady = () => {
-                                if (!tbody) {
-                                        return true;
-                                }
-                                const currentRows = tbody.querySelectorAll(".guarantees-table__row").length;
-                                const hasEmptyRow = Boolean(
-                                        tbody.querySelector(".guarantees-table__empty-row")
+                        setSpinnerVisible(false, resolvedToken);
+                        if (scrollEnd) {
+                                scrollEnd.hidden = !hasMore;
+                                scrollEnd.setAttribute(
+                                        "aria-hidden",
+                                        hasMore ? "false" : "true"
                                 );
-                                const hasMessage = Boolean(
-                                        resultMessage &&
-                                        typeof resultMessage.textContent === "string" &&
-                                        resultMessage.textContent.trim().length > 0
-                                );
-
-                                if (appendedRows > 0) {
-                                        return currentRows >= targetCount;
-                                }
-
-                                if (currentRows > 0 || hasEmptyRow || hasMessage) {
-                                        return true;
-                                }
-
-                                return false;
-                        };
-
-                        let completed = false;
-                        const complete = () => {
-                                if (completed) {
-                                        return;
-                                }
-                                completed = true;
-                                clearSpinnerWatchers();
-                                setSpinnerVisible(false, resolvedToken);
-                                if (scrollEnd) {
-                                        scrollEnd.hidden = !hasMore;
-                                        scrollEnd.setAttribute(
-                                                "aria-hidden",
-                                                hasMore ? "false" : "true"
-                                        );
-                                }
-                        };
-
-                        if (checkContentReady()) {
-                                complete();
-                                return;
                         }
-
-                        if (tbody) {
-                                spinnerObserver = new MutationObserver(() => {
-                                        if (checkContentReady()) {
-                                                complete();
-                                        }
-                                });
-                                spinnerObserver.observe(tbody, { childList: true, subtree: true });
-                        }
-
-                        if (typeof requestAnimationFrame === "function") {
-                                const rafCheck = () => {
-                                        if (checkContentReady()) {
-                                                complete();
-                                                return;
-                                        }
-                                        spinnerRaf = requestAnimationFrame(rafCheck);
-                                };
-                                spinnerRaf = requestAnimationFrame(rafCheck);
-                        }
-
-                        spinnerFallbackTimeout = window.setTimeout(() => {
-                                complete();
-                        }, 12000);
                 };
 
                 initResizableColumns(table);
@@ -4656,7 +4591,10 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 function clearSelectionAndDetail(options = {}) {
-                        const preserveQuery = Boolean(options.preserveQuery);
+                        const preserveQuery =
+                                typeof options.preserveQuery !== "undefined"
+                                        ? Boolean(options.preserveQuery)
+                                        : false;
                         const restoreFocus = options.restoreFocus !== false;
                         const lastRow = prevSelectedRow && prevSelectedRow.isConnected
                                 ? prevSelectedRow
@@ -4682,7 +4620,10 @@ const ADD_DOC_KEY = "add-document";
                         prevSelectedRow = null;
                         prevIdx = null;
                         setMobileSummaryOpen(false);
-                        if (!preserveQuery) {
+                        const shouldKeepQuery =
+                                preserveQuery || pendingMatSelection || Boolean(initialMatQuery);
+
+                        if (!shouldKeepQuery) {
                                 history.replaceState(null, "", window.location.pathname);
                                 pendingMatSelection = false;
                                 initialMatQuery = "";

@@ -587,6 +587,17 @@ if (($is_admin_user || $is_director)
             animation: spinner-rotate .6s linear infinite;
         }
 
+        @media (max-width: 1280px) {
+            .scroll-sentinel {
+                height: auto;
+                padding-block: 1rem;
+            }
+
+            .scroll-sentinel.is-loading {
+                height: auto;
+            }
+        }
+
         @keyframes spinner-rotate {
             to {
                 transform: rotate(360deg);
