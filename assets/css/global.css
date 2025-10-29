@@ -523,6 +523,12 @@ body {
   transition: background-color var(--transition-speed), color var(--transition-speed);
 }
 
+body.has-mobile-filters-open,
+body.has-mobile-detail-open {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
 button,
 input,
 select,
@@ -549,7 +555,8 @@ textarea {
   /* Top Bar */
   .top-bar {
     background: var(--surface);
-    border-radius: 1rem;
+    border-radius: 0;
+    border-bottom: 1px solid var(--border-color);
     box-shadow: 0 2px 5px rgba(var(--go-color-000000-rgb), 0.1);
     max-width: 1440px;
     margin: 0 auto var(--spacing-3);
@@ -557,9 +564,8 @@ textarea {
     position: sticky;
     top: 0;
     margin-bottom: 0;
-    border-radius: 0;
     z-index: 14000;
-    transition: border-radius .3s ease-in-out, margin-bottom .3s ease-in-out;
+    transition: border-radius .3s ease-in-out, margin-bottom .3s ease-in-out, border-bottom .3s ease-in-out;
     width: 100%;
     display: flex;
     align-items: center;
@@ -2192,9 +2198,10 @@ text-decoration: none;
 
     .top-bar {
         border-radius: 1rem;
+        border-bottom: none;
         box-shadow: none;
         margin: 0 auto var(--spacing-3);
-      } 
+      }
 
         
   body {

@@ -243,20 +243,36 @@ if (($is_admin_user || $is_director)
 
 <!-- 1. FILTROS -->
 <div class="guarantees-list__filters" style="view-transition-name: filtros" data-mobile-open="false">
-    <div class="guarantees-list__filters-row">
-        <div class="guarantees-list__search-container">
-            <span class="guarantees-list__search-icon" aria-hidden="true">
-                <?php echo Svg::icon('search'); ?>
-            </span>
-            <input
-                type="text"
-                class="guarantees-list__search"
-                placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
-                aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>" id="buscador_mis_garantias">
-            <span class="guarantees-list__close-icon" aria-hidden="true">
-                <?php echo Svg::icon('cerrar'); ?>
-            </span>
+    <div class="guarantees-list__toolbar" data-mobile-toolbar>
+        <div class="guarantees-list__toolbar-slot" data-mobile-search-slot>
+            <div class="guarantees-list__search-container" data-search-field>
+                <span class="guarantees-list__search-icon" aria-hidden="true">
+                    <?php echo Svg::icon('search'); ?>
+                </span>
+                <input
+                    type="text"
+                    class="guarantees-list__search"
+                    placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
+                    aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>"
+                    id="buscador_mis_garantias">
+                <span class="guarantees-list__close-icon" aria-hidden="true">
+                    <?php echo Svg::icon('cerrar'); ?>
+                </span>
+            </div>
         </div>
+
+        <button
+            type="button"
+            class="guarantees-list__filters-fab"
+            data-mobile-filters-toggle
+            aria-haspopup="dialog"
+            aria-expanded="false"
+            aria-controls="guarantees-list-base-filters">
+            <?php echo Svg::icon('filter_funnel', 'guarantees-list__filters-fab-icon'); ?>
+            <span class="guarantees-list__filters-fab-label">
+                <?php esc_html_e('Filtros', 'garantias-online-360vo'); ?>
+            </span>
+        </button>
     </div>
 
     <div class="guarantees-list__filters-modal" data-mobile-filters-overlay>
@@ -285,6 +301,8 @@ if (($is_admin_user || $is_director)
 
             <div class="guarantees-list__filters-body">
                 <div class="guarantees-list__filters-controls">
+                    <div class="guarantees-list__filters-search-slot" data-desktop-search-slot></div>
+
                     <select
                         class="guarantees-list__filter"
                         data-filter="estado"
@@ -493,48 +511,38 @@ if (($is_admin_user || $is_director)
     </div>
 </div>
 
-<button
-    type="button"
-    class="guarantees-list__filters-fab"
-    data-mobile-filters-toggle
-    aria-haspopup="dialog"
-    aria-expanded="false"
-    aria-controls="guarantees-list-base-filters">
-    <?php echo Svg::icon('filter_funnel', 'guarantees-list__filters-fab-icon'); ?>
-    <span class="guarantees-list__filters-fab-label">
-        <?php esc_html_e('Filtros', 'garantias-online-360vo'); ?>
-    </span>
-</button>
-
 <div class="guarantees-container">
     <!-- 2. LISTA: tabla semántica con columna “Garantía” al final y “Canal de venta” en vendedor -->
     <section class="guarantees-list">
-        <table class="guarantees-table" style="view-transition-name: garantias-table">
-            <thead>
-                <tr>
-                    <th><?php esc_html_e('Vehículo',  'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Validez',   'garantias-online-360vo'); ?></th>
-                    <th>
-                        <?php
-                        if ($show_channel_col) {
-                            esc_html_e('Canal de venta', 'garantias-online-360vo');
-                        } else {
-                            esc_html_e('Cliente', 'garantias-online-360vo');
-                        }
-                        ?>
-                    </th>
-                    <th><?php esc_html_e('Estado',    'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Garantía',  'garantias-online-360vo'); ?></th>
-                </tr>
-            </thead>
-            <tbody data-current-page="0" data-total-pages="">
-                <!-- Aquí sólo los ítems cargados dinámicamente -->
-            </tbody>
-        </table>
-
-        <!-- Fila de carga fija, fuera del tbody para que no se elimine al vaciar -->
-        <div id="scroll-end" class="scroll-sentinel">
-            <div class="spinner" aria-hidden="true"></div>
+        <div class="guarantees-table__scroll">
+            <table class="guarantees-table" style="view-transition-name: garantias-table">
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e('Vehículo',  'garantias-online-360vo'); ?></th>
+                        <th><?php esc_html_e('Validez',   'garantias-online-360vo'); ?></th>
+                        <th>
+                            <?php
+                            if ($show_channel_col) {
+                                esc_html_e('Canal de venta', 'garantias-online-360vo');
+                            } else {
+                                esc_html_e('Cliente', 'garantias-online-360vo');
+                            }
+                            ?>
+                        </th>
+                        <th><?php esc_html_e('Estado',    'garantias-online-360vo'); ?></th>
+                        <th><?php esc_html_e('Garantía',  'garantias-online-360vo'); ?></th>
+                    </tr>
+                </thead>
+                <tbody data-current-page="0" data-total-pages="">
+                    <!-- Aquí sólo los ítems cargados dinámicamente -->
+                </tbody>
+            </table>
+            <!-- Fila de carga fija, fuera del tbody para que no se elimine al vaciar -->
+            <div id="scroll-end" class="scroll-sentinel" aria-hidden="true">
+                <div class="spinner" aria-hidden="true">
+                    <div class="spinner__inner" aria-hidden="true"></div>
+                </div>
+            </div>
         </div>
         <!-- <div class="scroll_up scroll_up--list">
             <button>^</button>
@@ -549,24 +557,58 @@ if (($is_admin_user || $is_director)
         }
 
         .scroll-sentinel {
+            position: relative;
+            width: 100%;
+            height: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            --spinner-compensation: 0px;
+        }
+
+        .scroll-sentinel .spinner {
+            display: none;
+        }
+
+        .scroll-sentinel.is-loading {
             height: 80px;
+        }
+
+        .scroll-sentinel.is-loading .spinner {
+            display: flex;
+        }
+
+        .scroll-sentinel .spinner {
+            width: 3rem;
+            height: 3rem;
+            margin: 0 auto;
+            position: sticky;
+            left: 50vw;
+            transform: translateX(calc(-50% + var(--spinner-compensation, 0px)));
+            pointer-events: none;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .spinner {
-            width: 3rem;
-            height: 3rem;
-            margin: 0 auto;
+        .scroll-sentinel .spinner__inner {
+            width: 100%;
+            height: 100%;
             border: 5px solid rgba(0, 0, 0, 0.1);
             border-top-color: rgba(255, 0, 0, 0.6);
             border-radius: 50%;
-            animation: spin .5s linear infinite;
-            /* display: none; */
+            animation: spinner-rotate .6s linear infinite;
         }
 
-        @keyframes spin {
+        @media (min-width: 1280px) {
+            .scroll-sentinel .spinner {
+                position: static;
+                left: auto;
+                transform: none;
+            }
+        }
+
+        @keyframes spinner-rotate {
             to {
                 transform: rotate(360deg);
             }
