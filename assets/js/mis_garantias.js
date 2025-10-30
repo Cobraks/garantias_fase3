@@ -5011,6 +5011,12 @@ const ADD_DOC_KEY = "add-document";
                         const currentActive = activePanel;
                         const nextPanel = activePanel === panel1 ? panel2 : panel1;
                         const isDesktop = isDesktopView();
+                        const normalizedMode =
+                                mode === "no-results"
+                                        ? "no-results"
+                                        : mode === "loading"
+                                        ? "loading"
+                                        : "awaiting";
                         let renderOptions = options;
                         if (normalizedMode === "loading") {
                                 renderOptions = Object.assign({}, options);
@@ -5018,12 +5024,6 @@ const ADD_DOC_KEY = "add-document";
                                         renderOptions.showHeader = !isDesktop;
                                 }
                         }
-                        const normalizedMode =
-                                mode === "no-results"
-                                        ? "no-results"
-                                        : mode === "loading"
-                                        ? "loading"
-                                        : "awaiting";
                         const activeHasSameMode =
                                 normalizedMode === currentEmptyMode &&
                                 currentActive &&
@@ -6354,6 +6354,8 @@ async function activateRow(row, options = {}) {
                         prevIdx = idx;
                         lastDetailTrigger = row;
                         openMobileDetail({ focus: true });
+                        pendingMatSelection = false;
+                        initialMatQuery = "";
 
                         const matricula = row.dataset.matricula || "";
                         if (options.updateHistory !== false) {
