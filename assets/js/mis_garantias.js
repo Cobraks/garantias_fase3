@@ -135,10 +135,14 @@ const ADD_DOC_KEY = "add-document";
                         if (resolvedToken !== activeSpinnerToken) {
                                 return;
                         }
+
                         clearSpinnerWatchers();
                         const targetCount = Math.max(0, previousCount) + Math.max(0, appendedRows);
                         const checkContentReady = () => {
                                 if (!tbody) {
+                                        return true;
+                                }
+                                if (appendedRows <= 0) {
                                         return true;
                                 }
                                 const currentRows = tbody.querySelectorAll(".guarantees-table__row").length;
@@ -799,9 +803,9 @@ const ADD_DOC_KEY = "add-document";
                                 return "summary";
                         }
                         if (mobileDetailOpen) {
-                                return "guarantees";
+                                return "detail";
                         }
-                        return mobileSummaryOpen ? "summary" : "guarantees";
+                        return "guarantees";
                 }
 
                 function syncMobileNavState(explicitState = null) {
@@ -896,6 +900,14 @@ const ADD_DOC_KEY = "add-document";
                                 });
                                 return;
                         }
+                        if (shouldOpen) {
+                                if (mobileFiltersOpen) {
+                                        mobileFiltersOpen = false;
+                                        syncMobileFiltersVisibility();
+                                }
+                                setMobileSummaryOpen(false);
+                        }
+
                         mobileDetailOpen = shouldOpen;
                         if (!shouldOpen) {
                                 setMobileSummaryOpen(false);
@@ -1625,6 +1637,149 @@ const ADD_DOC_KEY = "add-document";
                 const detailPromises = new Map();
                 const loadedIds = new Set();
                 const listCache = new Map();
+                const LIST_CACHE_STORAGE_KEY = "go:guarantees:list-cache:v1";
+                const LIST_CACHE_TTL_MS = 5 * 60 * 1000;
+                const LIST_CACHE_MAX_ENTRIES = 6;
+
+                function loadPersistentListCache() {
+                        if (typeof window === "undefined" || !window.sessionStorage) {
+                                return [];
+                        }
+                        try {
+                                const raw = window.sessionStorage.getItem(LIST_CACHE_STORAGE_KEY);
+                                if (!raw) {
+                                        return [];
+                                }
+                                const parsed = JSON.parse(raw);
+                                if (!Array.isArray(parsed)) {
+                                        return [];
+                                }
+                                const now = Date.now();
+                                const entries = [];
+                                for (const entry of parsed) {
+                                        if (!Array.isArray(entry) || entry.length < 2) {
+                                                continue;
+                                        }
+                                        const [key, value] = entry;
+                                        if (typeof key !== "string" || !value || typeof value !== "object") {
+                                                continue;
+                                        }
+                                        if (!Array.isArray(value.data)) {
+                                                continue;
+                                        }
+                                        const fetchedAt = typeof value.fetchedAt === "number" ? value.fetchedAt : 0;
+                                        if (fetchedAt && now - fetchedAt > LIST_CACHE_TTL_MS) {
+                                                continue;
+                                        }
+                                        const totalPagesNumber = Number(value.totalPages);
+                                        const totalPostsNumber = Number(value.totalPosts);
+                                        entries.push([
+                                                key,
+                                                {
+                                                        data: value.data,
+                                                        totalPages:
+                                                                Number.isFinite(totalPagesNumber) && totalPagesNumber > 0
+                                                                        ? Math.floor(totalPagesNumber)
+                                                                        : 1,
+                                                        totalPosts:
+                                                                Number.isFinite(totalPostsNumber) && totalPostsNumber >= 0
+                                                                        ? Math.floor(totalPostsNumber)
+                                                                        : 0,
+                                                        fetchedAt,
+                                                },
+                                        ]);
+                                }
+                                if (entries.length === 0 && parsed.length > 0) {
+                                        try {
+                                                window.sessionStorage.removeItem(LIST_CACHE_STORAGE_KEY);
+                                        } catch (storageError) {
+                                                console.warn(
+                                                        "No se pudo limpiar la caché de garantías caducada:",
+                                                        storageError
+                                                );
+                                        }
+                                }
+                                return entries;
+                        } catch (error) {
+                                console.warn("No se pudo recuperar la caché de garantías:", error);
+                                return [];
+                        }
+                }
+
+                function persistListCacheSnapshot(sourceMap) {
+                        if (typeof window === "undefined" || !window.sessionStorage) {
+                                return;
+                        }
+                        try {
+                                const entries = [];
+                                const now = Date.now();
+                                sourceMap.forEach((value, key) => {
+                                        if (!value || typeof value !== "object" || !Array.isArray(value.data)) {
+                                                return;
+                                        }
+                                        const totalPagesNumber = Number(value.totalPages);
+                                        const totalPostsNumber = Number(value.totalPosts);
+                                        const fetchedAt =
+                                                typeof value.fetchedAt === "number" && value.fetchedAt > 0
+                                                        ? value.fetchedAt
+                                                        : now;
+                                        entries.push([
+                                                key,
+                                                {
+                                                        data: value.data,
+                                                        totalPages:
+                                                                Number.isFinite(totalPagesNumber) && totalPagesNumber > 0
+                                                                        ? Math.floor(totalPagesNumber)
+                                                                        : 1,
+                                                        totalPosts:
+                                                                Number.isFinite(totalPostsNumber) && totalPostsNumber >= 0
+                                                                        ? Math.floor(totalPostsNumber)
+                                                                        : 0,
+                                                        fetchedAt,
+                                                },
+                                        ]);
+                                });
+                                if (entries.length === 0) {
+                                        window.sessionStorage.removeItem(LIST_CACHE_STORAGE_KEY);
+                                        return;
+                                }
+                                entries.sort((a, b) => (b[1].fetchedAt || 0) - (a[1].fetchedAt || 0));
+                                const limited = entries.slice(0, LIST_CACHE_MAX_ENTRIES);
+                                window.sessionStorage.setItem(
+                                        LIST_CACHE_STORAGE_KEY,
+                                        JSON.stringify(limited)
+                                );
+                        } catch (error) {
+                                console.warn("No se pudo guardar la caché de garantías:", error);
+                        }
+                }
+
+                function isCacheEntryUsable(entry) {
+                        return Boolean(
+                                entry &&
+                                        typeof entry === "object" &&
+                                        Array.isArray(entry.data)
+                        );
+                }
+
+                function isCacheEntryFresh(entry) {
+                        if (!entry || typeof entry !== "object") {
+                                return false;
+                        }
+                        const fetchedAt = typeof entry.fetchedAt === "number" ? entry.fetchedAt : 0;
+                        if (!fetchedAt) {
+                                return false;
+                        }
+                        return Date.now() - fetchedAt <= LIST_CACHE_TTL_MS;
+                }
+
+                const persistedListEntries = loadPersistentListCache();
+                if (persistedListEntries.length > 0) {
+                        for (const [cacheKey, value] of persistedListEntries) {
+                                listCache.set(cacheKey, value);
+                        }
+                        persistListCacheSnapshot(listCache);
+                }
 
                 function buildListCacheKey(
                         search = "",
@@ -1659,22 +1814,85 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 function renderFromCache(cache, spinnerToken = null) {
-                        const previousCount = tbody
-                                ? tbody.querySelectorAll(".guarantees-table__row").length
-                                : 0;
+                        if (!cache || !tbody || !Array.isArray(cache.data)) {
+                                finalizeSpinnerVisibility(0, 0, spinnerToken);
+                                return;
+                        }
+                        tbody.innerHTML = "";
                         let appended = 0;
                         for (const item of cache.data) {
                                 tbody.appendChild(renderRow(item));
-                                loadedIds.add(item.id);
+                                if (item && Object.prototype.hasOwnProperty.call(item, "id")) {
+                                        loadedIds.add(item.id);
+                                }
                                 appended += 1;
                         }
-                        totalPages = cache.totalPages;
-                        totalPosts = cache.totalPosts;
-                        hasMore = currentPage < totalPages;
-                        finalizeSpinnerVisibility(previousCount, appended, spinnerToken);
-                        if (!hasActiveFilters() && (cache.totalPosts || 0) === 0) {
+                        const totalPagesNumber = Number(cache.totalPages);
+                        const totalPostsNumber = Number(cache.totalPosts);
+                        totalPages = Number.isFinite(totalPagesNumber) && totalPagesNumber > 0
+                                ? Math.floor(totalPagesNumber)
+                                : 1;
+                        totalPosts = Number.isFinite(totalPostsNumber) && totalPostsNumber >= 0
+                                ? Math.floor(totalPostsNumber)
+                                : 0;
+                        const per = Math.max(perPage || DEFAULT_PER, 1);
+                        const computedPageCount = appended > 0
+                                ? Math.ceil(appended / per)
+                                : totalPosts > 0
+                                ? Math.ceil(totalPosts / per)
+                                : 0;
+                        currentPage = computedPageCount > 0
+                                ? Math.min(totalPages, computedPageCount)
+                                : totalPosts > 0
+                                ? Math.min(totalPages, 1)
+                                : 0;
+                        hasMore = currentPage > 0 && currentPage < totalPages;
+                        finalizeSpinnerVisibility(0, appended, spinnerToken);
+                        if (!hasMore && scrollEnd) {
+                                scrollEnd.hidden = true;
+                                scrollEnd.setAttribute("aria-hidden", "true");
+                        }
+                        if (!hasActiveFilters() && totalPosts === 0) {
                                 setEmptyDetailPanel("forward", "no-results");
                         }
+                        trySelectInitialMatricula().catch((error) => {
+                                console.error(
+                                        "❌ Error al seleccionar la garantía inicial desde la caché:",
+                                        error
+                                );
+                        });
+                }
+
+                async function trySelectInitialMatricula() {
+                        if (!pendingMatSelection || !initialMatQuery) {
+                                return;
+                        }
+                        const normalizedPlate = initialMatQuery
+                                .toString()
+                                .replace(/\s+/g, "")
+                                .toUpperCase();
+                        const rows = Array.from(
+                                document.querySelectorAll(".guarantees-table__row")
+                        );
+                        const match = rows.find((row) =>
+                                (row.dataset.matricula || "")
+                                        .toString()
+                                        .replace(/\s+/g, "")
+                                        .toUpperCase() === normalizedPlate
+                        );
+                        if (!match) {
+                                return;
+                        }
+                        try {
+                                await activateRow(match);
+                        } catch (error) {
+                                console.error(
+                                        "❌ Error al seleccionar la garantía inicial:",
+                                        error
+                                );
+                        }
+                        pendingMatSelection = false;
+                        initialMatQuery = "";
                 }
 
                 function getSelectedChannelData() {
@@ -2874,110 +3092,293 @@ const ADD_DOC_KEY = "add-document";
                }
 
            function initResizableColumns(table) {
-                   if (window.innerWidth < 1024 || !table) return;
-
-                   const wrapper = table.parentElement;
-                   wrapper.style.position = "relative";
-                   table.style.tableLayout = "fixed";
-
-                   const ths = Array.from(table.querySelectorAll("thead th"));
-                   if (!ths.length) return;
-
-                   const MIN_WIDTH = 140;
-                   const MAX_WIDTH = 300;
-                   const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
-
-                   // create colgroup for easier width management
-                   let colgroup = table.querySelector("colgroup");
-                   if (!colgroup) {
-                           colgroup = document.createElement("colgroup");
-                           ths.forEach(() => colgroup.appendChild(document.createElement("col")));
-                           table.insertBefore(colgroup, table.firstChild);
+                   if (!table) {
+                           return;
                    }
-                   const cols = Array.from(colgroup.children);
 
-                   // base widths with fixed min and max constraints
-                   let widths = ths.map((th) => clamp(th.getBoundingClientRect().width, MIN_WIDTH, MAX_WIDTH));
-                   widths.forEach((w, i) => (cols[i].style.width = `${w}px`));
-
-                   // overlay for handles
-                   const overlay = document.createElement("div");
-                   overlay.className = "column-resizers";
-                   wrapper.appendChild(overlay);
-
-                   const handles = [];
-                   function createHandles() {
-                           overlay.innerHTML = "";
-                           handles.length = 0;
-                           for (let i = 0; i < widths.length - 1; i++) {
-                                   const h = document.createElement("span");
-                                   h.className = "column-resizer";
-                                   overlay.appendChild(h);
-                                   handles.push(h);
-
-                                   h.addEventListener("mousedown", (e) => {
-                                           e.preventDefault();
-                                           const startX = e.pageX;
-                                           const startW = widths[i];
-                                           const startNext = widths[i + 1];
-
-                                           function onMove(ev) {
-                                                   const dx = ev.pageX - startX;
-                                                   const total = startW + startNext;
-                                                   let newW = clamp(startW + dx, MIN_WIDTH, MAX_WIDTH);
-                                                   let newNext = total - newW;
-                                                   if (newNext < MIN_WIDTH) {
-                                                           newNext = MIN_WIDTH;
-                                                           newW = total - newNext;
-                                                   }
-                                                   if (newNext > MAX_WIDTH) {
-                                                           newNext = MAX_WIDTH;
-                                                           newW = total - newNext;
-                                                   }
-                                                   widths[i] = newW;
-                                                   widths[i + 1] = newNext;
-                                                   cols[i].style.width = `${newW}px`;
-                                                   cols[i + 1].style.width = `${newNext}px`;
-                                                   updateOverlay();
-                                           }
-
-                                           function onUp() {
-                                                   document.removeEventListener("mousemove", onMove);
-                                                   document.removeEventListener("mouseup", onUp);
-                                           }
-
-                                           document.addEventListener("mousemove", onMove);
-                                           document.addEventListener("mouseup", onUp);
-                                   });
+                   const setup = () => {
+                           const wrapper = table.parentElement;
+                           const headerCells = Array.from(table.querySelectorAll("thead th"));
+                           const body = table.tBodies[0];
+                           if (!wrapper || headerCells.length === 0 || !body) {
+                                   return () => {};
                            }
-                           updateOverlay();
-                   }
 
-                   function updateOverlay() {
-                           overlay.style.width = `${table.offsetWidth}px`;
-                           overlay.style.height = `${table.offsetHeight}px`;
-                           overlay.style.top = `${table.offsetTop}px`;
-                           overlay.style.left = `${table.offsetLeft}px`;
-                           handles.forEach((h, i) => {
-                                   const th = ths[i];
-                                   const left = th.offsetLeft + th.offsetWidth;
-                                   h.style.left = `${left - 4}px`;
-                           });
-                   }
+                           const computed = window.getComputedStyle(wrapper);
+                           const hadInlinePosition =
+                                   typeof wrapper.style.position === "string" &&
+                                   wrapper.style.position.length > 0;
+                           const shouldRestorePosition = !hadInlinePosition && computed.position === "static";
 
-                   createHandles();
+                           const previousTableLayout = table.style.tableLayout;
 
-                   // observe body for new rows to keep overlay in sync
-                   const bodyObserver = new MutationObserver(() => {
-                           widths = ths.map((th) => clamp(th.getBoundingClientRect().width, MIN_WIDTH, MAX_WIDTH));
-                           widths.forEach((w, i) => (cols[i].style.width = `${w}px`));
-                           createHandles();
-                   });
-                   bodyObserver.observe(table.tBodies[0], { childList: true });
+                           if (shouldRestorePosition) {
+                                   wrapper.style.position = "relative";
+                           }
 
-                   window.addEventListener("resize", () => {
-                           updateOverlay();
-                   });
+                           let colgroup = table.querySelector("colgroup");
+                           if (!colgroup) {
+                                   colgroup = document.createElement("colgroup");
+                                   headerCells.forEach(() =>
+                                           colgroup.appendChild(document.createElement("col"))
+                                   );
+                                   table.insertBefore(colgroup, table.firstChild);
+                           }
+                           const cols = Array.from(colgroup.children);
+
+                           const MIN_WIDTH = 80;
+                           const MAX_WIDTH = 480;
+                           const clamp = (value, min, max) =>
+                                   Math.min(Math.max(value, min), max);
+                           const pointerSupported =
+                                   typeof window !== "undefined" && "PointerEvent" in window;
+
+                           let widths = [];
+                           const overlay = document.createElement("div");
+                           overlay.className = "column-resizers";
+                           wrapper.appendChild(overlay);
+
+                           const handles = [];
+                           const handleListeners = [];
+                           let rafId = null;
+
+                           const cancelScheduled = () => {
+                                   if (
+                                           rafId !== null &&
+                                           typeof cancelAnimationFrame === "function"
+                                   ) {
+                                           cancelAnimationFrame(rafId);
+                                   }
+                                   rafId = null;
+                           };
+
+                           const measureRects = () => {
+                                   const wrapperRect = wrapper.getBoundingClientRect();
+                                   const tableRect = table.getBoundingClientRect();
+                                   return {
+                                           wrapperRect,
+                                           tableRect,
+                                   };
+                           };
+
+                           const applyOverlayPosition = () => {
+                                   const { wrapperRect, tableRect } = measureRects();
+                                   overlay.style.width = `${tableRect.width}px`;
+                                   overlay.style.height = `${tableRect.height}px`;
+                                   overlay.style.top = `${
+                                           tableRect.top - wrapperRect.top + wrapper.scrollTop
+                                   }px`;
+                                   overlay.style.left = `${
+                                           tableRect.left - wrapperRect.left + wrapper.scrollLeft
+                                   }px`;
+                                   handles.forEach((handle, index) => {
+                                           const th = headerCells[index];
+                                           if (!th) {
+                                                   return;
+                                           }
+                                           const rect = th.getBoundingClientRect();
+                                           handle.style.left = `${
+                                                   rect.right - tableRect.left - handle.offsetWidth / 2
+                                           }px`;
+                                   });
+                           };
+
+                           const scheduleOverlayUpdate = () => {
+                                   if (typeof requestAnimationFrame === "function") {
+                                           cancelScheduled();
+                                           rafId = requestAnimationFrame(() => {
+                                                   rafId = null;
+                                                   applyOverlayPosition();
+                                           });
+                                           return;
+                                   }
+                                   applyOverlayPosition();
+                           };
+
+                           const applyWidths = () => {
+                                   widths.forEach((width, index) => {
+                                           if (cols[index]) {
+                                                   cols[index].style.width = `${width}px`;
+                                           }
+                                   });
+                           };
+
+                           const measureWidths = () => {
+                                   table.style.tableLayout = "auto";
+                                   widths = headerCells.map((th) =>
+                                           clamp(th.getBoundingClientRect().width, MIN_WIDTH, MAX_WIDTH)
+                                   );
+                                   table.style.tableLayout = "fixed";
+                                   applyWidths();
+                           };
+
+                           const detachHandleListeners = () => {
+                                   handleListeners.forEach(({ handle, type, listener }) => {
+                                           handle.removeEventListener(type, listener);
+                                   });
+                                   handleListeners.length = 0;
+                           };
+
+                           const createHandles = () => {
+                                   detachHandleListeners();
+                                   overlay.innerHTML = "";
+                                   handles.length = 0;
+                                   for (let i = 0; i < widths.length - 1; i++) {
+                                           const handle = document.createElement("span");
+                                           handle.className = "column-resizer";
+                                           overlay.appendChild(handle);
+                                           handles.push(handle);
+
+                                           const startResize = (event) => {
+                                                   if (event.button !== undefined && event.button !== 0) {
+                                                           return;
+                                                   }
+                                                   event.preventDefault();
+                                                   const isPointer = event.type === "pointerdown";
+                                                   const pointerId = isPointer ? event.pointerId : null;
+                                                   const startX = event.clientX ?? event.pageX ?? 0;
+                                                   const startWidth = widths[i];
+                                                   const nextWidth = widths[i + 1];
+                                                   const total = startWidth + nextWidth;
+
+                                                   const updateWidths = (clientX) => {
+                                                           const delta = clientX - startX;
+                                                           let current = clamp(
+                                                                   startWidth + delta,
+                                                                   MIN_WIDTH,
+                                                                   MAX_WIDTH
+                                                           );
+                                                           let sibling = total - current;
+                                                           if (sibling < MIN_WIDTH) {
+                                                                   sibling = MIN_WIDTH;
+                                                                   current = total - sibling;
+                                                           }
+                                                           if (sibling > MAX_WIDTH) {
+                                                                   sibling = MAX_WIDTH;
+                                                                   current = total - sibling;
+                                                           }
+                                                           widths[i] = current;
+                                                           widths[i + 1] = sibling;
+                                                           cols[i].style.width = `${current}px`;
+                                                           cols[i + 1].style.width = `${sibling}px`;
+                                                           scheduleOverlayUpdate();
+                                                   };
+
+                                                   const handleMove = (moveEvent) => {
+                                                           const clientX =
+                                                                   moveEvent.clientX ??
+                                                                   moveEvent.pageX ??
+                                                                   startX;
+                                                           updateWidths(clientX);
+                                                   };
+
+                                                   const stopResize = () => {
+                                                           if (isPointer && handle.releasePointerCapture) {
+                                                                   handle.releasePointerCapture(pointerId);
+                                                                   handle.removeEventListener(
+                                                                           "pointermove",
+                                                                           handleMove
+                                                                   );
+                                                                   handle.removeEventListener(
+                                                                           "pointerup",
+                                                                           stopResize
+                                                                   );
+                                                                   handle.removeEventListener(
+                                                                           "pointercancel",
+                                                                           stopResize
+                                                                   );
+                                                           } else {
+                                                                   document.removeEventListener(
+                                                                           "mousemove",
+                                                                           handleMove
+                                                                   );
+                                                                   document.removeEventListener(
+                                                                           "mouseup",
+                                                                           stopResize
+                                                                   );
+                                                           }
+                                                   };
+
+                                                   if (isPointer && handle.setPointerCapture) {
+                                                           handle.setPointerCapture(pointerId);
+                                                           handle.addEventListener("pointermove", handleMove);
+                                                           handle.addEventListener("pointerup", stopResize);
+                                                           handle.addEventListener(
+                                                                   "pointercancel",
+                                                                   stopResize
+                                                           );
+                                                   } else {
+                                                           document.addEventListener("mousemove", handleMove);
+                                                           document.addEventListener("mouseup", stopResize);
+                                                   }
+                                           };
+
+                                           const listenerType = pointerSupported
+                                                   ? "pointerdown"
+                                                   : "mousedown";
+                                           handle.addEventListener(listenerType, startResize);
+                                           handleListeners.push({
+                                                   handle,
+                                                   type: listenerType,
+                                                   listener: startResize,
+                                           });
+                                   }
+                                   scheduleOverlayUpdate();
+                           };
+
+			measureWidths();
+			createHandles();
+
+			const bodyObserver = new MutationObserver(() => {
+				measureWidths();
+				createHandles();
+			});
+			bodyObserver.observe(body, { childList: true });
+
+			let resizeObserver = null;
+			if (typeof ResizeObserver === "function") {
+				resizeObserver = new ResizeObserver(() => {
+					measureWidths();
+					scheduleOverlayUpdate();
+				});
+				resizeObserver.observe(table);
+			}
+
+			const onWrapperScroll = () => {
+				scheduleOverlayUpdate();
+			};
+			wrapper.addEventListener("scroll", onWrapperScroll);
+
+			const onWindowResize = () => {
+				measureWidths();
+				scheduleOverlayUpdate();
+			};
+			window.addEventListener("resize", onWindowResize);
+
+			scheduleOverlayUpdate();
+
+			return () => {
+				cancelScheduled();
+				detachHandleListeners();
+				bodyObserver.disconnect();
+				if (resizeObserver) {
+					resizeObserver.disconnect();
+				}
+				wrapper.removeEventListener("scroll", onWrapperScroll);
+                               window.removeEventListener("resize", onWindowResize);
+                               overlay.remove();
+                                if (previousTableLayout) {
+                                        table.style.tableLayout = previousTableLayout;
+                                } else {
+                                        table.style.removeProperty("table-layout");
+                                }
+                               if (shouldRestorePosition) {
+                                       wrapper.style.removeProperty("position");
+                               }
+                           };
+                   };
+
+                   setup();
            }
 
                 function formatDate(value) {
@@ -4656,7 +5057,10 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 function clearSelectionAndDetail(options = {}) {
-                        const preserveQuery = Boolean(options.preserveQuery);
+                        const preserveQuery =
+                                typeof options.preserveQuery !== "undefined"
+                                        ? Boolean(options.preserveQuery)
+                                        : false;
                         const restoreFocus = options.restoreFocus !== false;
                         const lastRow = prevSelectedRow && prevSelectedRow.isConnected
                                 ? prevSelectedRow
@@ -4682,7 +5086,10 @@ const ADD_DOC_KEY = "add-document";
                         prevSelectedRow = null;
                         prevIdx = null;
                         setMobileSummaryOpen(false);
-                        if (!preserveQuery) {
+                        const shouldKeepQuery =
+                                preserveQuery || pendingMatSelection || Boolean(initialMatQuery);
+
+                        if (!shouldKeepQuery) {
                                 history.replaceState(null, "", window.location.pathname);
                                 pendingMatSelection = false;
                                 initialMatQuery = "";
@@ -4845,18 +5252,22 @@ const ADD_DOC_KEY = "add-document";
                                 const { data } = await res.json();
 
                                 const esNuevaBusqueda = page === 1;
+                                const now = Date.now();
                                 if (esNuevaBusqueda) {
                                         listCache.set(cacheKey, {
                                                 data: data.slice(),
                                                 totalPages,
                                                 totalPosts,
+                                                fetchedAt: now,
                                         });
                                 } else if (listCache.has(cacheKey)) {
                                         const cache = listCache.get(cacheKey);
                                         cache.data.push(...data);
                                         cache.totalPages = totalPages;
                                         cache.totalPosts = totalPosts;
+                                        cache.fetchedAt = now;
                                 }
+                                persistListCacheSnapshot(listCache);
                                 if (esNuevaBusqueda) {
                                         setResultMessage("");
                                         tbody.innerHTML = "";
@@ -4884,33 +5295,7 @@ const ADD_DOC_KEY = "add-document";
                                                 loadedIds.add(item.id);
                                                 appendedRows += 1;
                                         }
-                                        if (pendingMatSelection && initialMatQuery) {
-                                                const normalizedPlate = initialMatQuery
-                                                        .toString()
-                                                        .replace(/\s+/g, "")
-                                                        .toUpperCase();
-                                                const rows = Array.from(
-                                                        document.querySelectorAll(".guarantees-table__row")
-                                                );
-                                                const match = rows.find((row) =>
-                                                        (row.dataset.matricula || "")
-                                                                .toString()
-                                                                .replace(/\s+/g, "")
-                                                                .toUpperCase() === normalizedPlate
-                                                );
-                                                if (match) {
-                                                        try {
-                                                                await activateRow(match);
-                                                        } catch (error) {
-                                                                console.error(
-                                                                        "❌ Error al seleccionar la garantía inicial:",
-                                                                        error
-                                                                );
-                                                        }
-                                                        pendingMatSelection = false;
-                                                        initialMatQuery = "";
-                                                }
-                                        }
+                                        await trySelectInitialMatricula();
                                         setResultMessage("");
                                         // AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
                                         if (data.length === 1 && search && search.length > 0) {
@@ -6272,17 +6657,46 @@ async function activateRow(row, options = {}) {
                 (() => {
                         const filters = document.querySelector(".guarantees-list__filters"),
                                 header = document.querySelector(".top-bar");
+                        let filtersSticky = filters
+                                ? filters.classList.contains("sticky-active")
+                                : false;
                         if (filters && header) {
                                 new IntersectionObserver(
-					([e]) => {
-						const a = !e.isIntersecting;
-						filters.classList.toggle("sticky-active", a);
-						listContainer.classList.toggle("sticky-active", a);
-						detail.classList.toggle("sticky-active", a);
-					},
-					{ root: null, threshold: 0, rootMargin: "-50px" }
-				).observe(header);
-			}
+                                        ([entry]) => {
+                                                const isSticky = !entry.isIntersecting;
+                                                filters.classList.toggle("sticky-active", isSticky);
+                                                if (listContainer) {
+                                                        listContainer.classList.toggle(
+                                                                "sticky-active",
+                                                                isSticky
+                                                        );
+                                                }
+                                                if (detail) {
+                                                        detail.classList.toggle(
+                                                                "sticky-active",
+                                                                isSticky
+                                                        );
+                                                }
+                                                if (isSticky && !filtersSticky) {
+                                                        if (
+                                                                typeof window !== "undefined" &&
+                                                                typeof window.dispatchEvent === "function"
+                                                        ) {
+                                                                window.dispatchEvent(
+                                                                        new CustomEvent(
+                                                                                "go360:notifications:close"
+                                                                        )
+                                                                );
+                                                                window.dispatchEvent(
+                                                                        new CustomEvent("go360:profile:close")
+                                                                );
+                                                        }
+                                                }
+                                                filtersSticky = isSticky;
+                                        },
+                                        { root: null, threshold: 0, rootMargin: "-50px" }
+                                ).observe(header);
+                        }
                         const getListScrollTop = () => {
                                 if (isDesktopView()) {
                                         if (
@@ -7102,7 +7516,37 @@ async function activateRow(row, options = {}) {
                 if (pendingMatSelection && initialMatQuery) {
                         setEmptyDetailPanel("forward", "loading", { plate: initialMatQuery });
                 }
-                const initialLoadPromise = loadPage(1);
+                const [initialCacheYear, initialCacheMonthFrom, initialCacheMonthTo] =
+                        getPeriodCacheKeyParts();
+                const initialCacheKey = buildListCacheKey(
+                        searchQuery,
+                        selectedEstado,
+                        selectedPlan,
+                        selectedCanal,
+                        selectedConcesionario,
+                        selectedVendorType,
+                        selectedPaymentMethod,
+                        selectedOrderBy,
+                        selectedOrderDirection,
+                        selectedCommercial,
+                        initialCacheYear,
+                        initialCacheMonthFrom,
+                        initialCacheMonthTo
+                );
+                let initialLoadPromise;
+                const cachedInitialEntry = listCache.get(initialCacheKey);
+                if (isCacheEntryUsable(cachedInitialEntry)) {
+                        loadedIds.clear();
+                        renderFromCache(cachedInitialEntry);
+                        if (isCacheEntryFresh(cachedInitialEntry)) {
+                                initialLoadPromise = Promise.resolve();
+                        } else {
+                                const spinnerToken = setSpinnerVisible(true);
+                                initialLoadPromise = loadPage(1, { spinnerToken });
+                        }
+                } else {
+                        initialLoadPromise = loadPage(1);
+                }
                 if (initialMatQuery) {
                         initialLoadPromise
                                 .catch(() => {})
