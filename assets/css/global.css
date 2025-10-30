@@ -764,9 +764,10 @@ textarea {
 }
 
 .notifications-panel {
-  position: absolute;
-  top: calc(100% + 0.75rem);
-  right: 0;
+  position: fixed;
+  top: calc(var(--alturaHeader) + 0.75rem);
+  left: 50%;
+  right: auto;
   width: min(26rem, 92vw);
   max-height: 28rem;
   display: none;
@@ -777,6 +778,17 @@ textarea {
   padding: 1rem 1rem 0.75rem;
   z-index: 13500;
   box-shadow: 0 22px 45px rgba(15, 23, 42, 0.16);
+  transform: translate(-50%, 0);
+}
+
+@media (min-width: 1280px) {
+  .notifications-panel {
+    position: absolute;
+    top: calc(100% + 0.75rem);
+    left: auto;
+    right: 0;
+    transform: none;
+  }
 }
 
 .notifications-panel[aria-hidden='false'] {
@@ -2266,9 +2278,9 @@ textarea {
 
   .top-bar__menu {
     flex: 2;
-    justify-content: center;
+    justify-content: flex-end;
     gap: var(--spacing-2);
-    margin-right: var(--spacing-2);
+    margin-right: 0;
   }
 
   .top-bar__menu ul {
@@ -2276,7 +2288,7 @@ textarea {
   }
 
   .top-bar__notifications {
-    margin-left: var(--spacing-2);
+    margin-left: 0;
   }
 }
 
