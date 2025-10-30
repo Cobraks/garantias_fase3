@@ -1154,11 +1154,11 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 const shouldOpen = !mobileSummaryOpen;
                                 setMobileFiltersOpen(false);
-                                clearSelectionAndDetail({
-                                        preserveQuery: true,
-                                        restoreFocus: false,
-                                });
                                 if (shouldOpen) {
+                                        clearSelectionAndDetail({
+                                                preserveQuery: false,
+                                                restoreFocus: false,
+                                        });
                                         setMobileSummaryOpen(true);
                                         openMobileDetail({
                                                 focus: false,
@@ -1183,7 +1183,10 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 setMobileFiltersOpen(false);
                                 setMobileSummaryOpen(false);
-                                closeMobileDetail({ focus: false, restoreFocus: false });
+                                clearSelectionAndDetail({
+                                        preserveQuery: false,
+                                        restoreFocus: false,
+                                });
                                 syncMobileNavState("guarantees");
                         });
                 }
@@ -1200,7 +1203,9 @@ const ADD_DOC_KEY = "add-document";
                                         } else {
                                                 lastDetailTrigger = trigger;
                                         }
-                                        clearSelectionAndDetail({ preserveQuery: true });
+                                        clearSelectionAndDetail({
+                                                preserveQuery: isDesktopView(),
+                                        });
                                 });
                         });
                 }
@@ -1244,7 +1249,9 @@ const ADD_DOC_KEY = "add-document";
                                 if (prevSelectedRow && prevSelectedRow.isConnected) {
                                         lastDetailTrigger = prevSelectedRow;
                                 }
-                                clearSelectionAndDetail({ preserveQuery: true });
+                                clearSelectionAndDetail({
+                                        preserveQuery: isDesktopView(),
+                                });
                                 handled = true;
                         }
                         if (mobileFiltersOpen) {

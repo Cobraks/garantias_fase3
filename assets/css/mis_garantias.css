@@ -1100,7 +1100,7 @@ section.guarantees-list {
 .column-resizers {
     position: absolute;
     pointer-events: none;
-    z-index: 20;
+    z-index: 2;
     transition: opacity var(--transition-speed) ease-out;
 }
 
@@ -1110,7 +1110,7 @@ section.guarantees-list {
     bottom: 0;
     width: 8px;
     cursor: col-resize;
-    z-index: 10;
+    z-index: 2;
     touch-action: none;
     pointer-events: auto;
 }
@@ -1120,6 +1120,7 @@ section.guarantees-list {
     body.has-mobile-detail-open .column-resizers,
     body.has-mobile-summary-open .column-resizers {
         opacity: 0;
+        visibility: hidden;
     }
 
     body.has-mobile-filters-open .column-resizer,
