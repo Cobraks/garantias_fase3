@@ -1099,32 +1099,32 @@ section.guarantees-list {
     border-right: 1px solid var(--border-color);
 }
 
-.column-resizers {
-    position: absolute;
-    pointer-events: none;
-    z-index: 2;
-    transition: opacity var(--transition-speed) ease-out;
+
+.guarantees-table thead th {
+    position: relative;
+}
+
+.guarantees-table thead th:not(:last-child),
+.guarantees-table tbody td:not(:last-child) {
+    border-right: 1px solid var(--border-color);
 }
 
 .column-resizer {
     position: absolute;
     top: 0;
+    right: -6px;
     bottom: 0;
-    width: 8px;
+    width: 12px;
     cursor: col-resize;
-    z-index: 2;
     touch-action: none;
     pointer-events: auto;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    z-index: 4;
 }
 
 @media (max-width: 1279.98px) {
-    body.has-mobile-filters-open .column-resizers,
-    body.has-mobile-detail-open .column-resizers,
-    body.has-mobile-summary-open .column-resizers {
-        opacity: 0;
-        visibility: hidden;
-    }
-
     body.has-mobile-filters-open .column-resizer,
     body.has-mobile-detail-open .column-resizer,
     body.has-mobile-summary-open .column-resizer {
@@ -1134,23 +1134,19 @@ section.guarantees-list {
 
 .column-resizer::after {
     content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
     width: 1px;
-    background: #b1b1b1;
+    background: var(--border-color-strong, var(--border-color));
+    opacity: 0;
+    transition: opacity var(--transition-speed) ease-out;
 }
 
-@supports (mix-blend-mode: difference) {
-    .column-resizer::after {
-        opacity: 0.35;
-        mix-blend-mode: difference;
-    }
+.column-resizer:hover::after,
+.column-resizer:focus-visible::after {
+    opacity: 1;
 }
 
 :root[data-theme='dark'] .column-resizer::after {
-    background: #6a6a6a;
+    background: rgba(148, 163, 184, 0.65);
 }
 
 .guarantees-table__row > td:last-child {
@@ -2957,43 +2953,19 @@ tr.guarantees-table__row:not(.selected):hover td,
         max-width: none;
     }
 
-    .column-resizers {
-        position: absolute;
-        pointer-events: none;
-        z-index: 20;
+    .guarantees-table tbody td:first-child {
+        border-right: 1px solid var(--border-color);
     }
 
     .column-resizer {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 8px;
-        cursor: col-resize;
-        z-index: 10;
-        touch-action: none;
-        pointer-events: auto;
+        right: -4px;
+        width: 10px;
+        z-index: 6;
     }
 
     .column-resizer::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 50%;
-        width: 1px;
-        background: #b1b1b1;
+        background: var(--border-color-strong, var(--border-color));
     }
-
-    @supports (mix-blend-mode: difference) {
-        .column-resizer::after {
-            opacity: 0.35;
-            mix-blend-mode: difference;
-        }
-    }
-
-:root[data-theme='dark'] .column-resizer::after {
-    background: #6a6a6a;
-}
 
     .guarantees-table td::before {
         content: none;

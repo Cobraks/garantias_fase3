@@ -3110,24 +3110,13 @@ const ADD_DOC_KEY = "add-document";
                    }
 
                    const setup = () => {
-                           const wrapper = table.parentElement;
                            const headerCells = Array.from(table.querySelectorAll("thead th"));
                            const body = table.tBodies[0];
-                           if (!wrapper || headerCells.length === 0 || !body) {
+                           if (headerCells.length === 0 || !body) {
                                    return () => {};
                            }
 
-                           const computed = window.getComputedStyle(wrapper);
-                           const hadInlinePosition =
-                                   typeof wrapper.style.position === "string" &&
-                                   wrapper.style.position.length > 0;
-                           const shouldRestorePosition = !hadInlinePosition && computed.position === "static";
-
                            const previousTableLayout = table.style.tableLayout;
-
-                           if (shouldRestorePosition) {
-                                   wrapper.style.position = "relative";
-                           }
 
                            let colgroup = table.querySelector("colgroup");
                            if (!colgroup) {
@@ -3147,70 +3136,7 @@ const ADD_DOC_KEY = "add-document";
                                    typeof window !== "undefined" && "PointerEvent" in window;
 
                            let widths = [];
-                           const overlay = document.createElement("div");
-                           overlay.className = "column-resizers";
-                           wrapper.appendChild(overlay);
-
-                           const handles = [];
                            const handleListeners = [];
-                           let rafId = null;
-
-                           const cancelScheduled = () => {
-                                   if (
-                                           rafId !== null &&
-                                           typeof cancelAnimationFrame === "function"
-                                   ) {
-                                           cancelAnimationFrame(rafId);
-                                   }
-                                   rafId = null;
-                           };
-
-                           const measureRects = () => {
-                                   const wrapperRect = wrapper.getBoundingClientRect();
-                                   const tableRect = table.getBoundingClientRect();
-                                   return {
-                                           wrapperRect,
-                                           tableRect,
-                                   };
-                           };
-
-                           const applyOverlayPosition = () => {
-                                   const { wrapperRect, tableRect } = measureRects();
-                                   const scrollLeft = wrapper.scrollLeft || 0;
-                                   overlay.style.width = `${tableRect.width}px`;
-                                   overlay.style.height = `${tableRect.height}px`;
-                                   overlay.style.top = `${
-                                           tableRect.top - wrapperRect.top + wrapper.scrollTop
-                                   }px`;
-                                   overlay.style.left = `${
-                                           tableRect.left - wrapperRect.left + scrollLeft
-                                   }px`;
-                                   handles.forEach((handle, index) => {
-                                           const th = headerCells[index];
-                                           if (!th) {
-                                                   return;
-                                           }
-                                            const rect = th.getBoundingClientRect();
-                                            handle.style.left = `${
-                                                    rect.right -
-                                                    tableRect.left -
-                                                    scrollLeft -
-                                                    handle.offsetWidth / 2
-                                            }px`;
-                                   });
-                           };
-
-                           const scheduleOverlayUpdate = () => {
-                                   if (typeof requestAnimationFrame === "function") {
-                                           cancelScheduled();
-                                           rafId = requestAnimationFrame(() => {
-                                                   rafId = null;
-                                                   applyOverlayPosition();
-                                           });
-                                           return;
-                                   }
-                                   applyOverlayPosition();
-                           };
 
                            const applyWidths = () => {
                                    widths.forEach((width, index) => {
@@ -3238,13 +3164,26 @@ const ADD_DOC_KEY = "add-document";
 
                            const createHandles = () => {
                                    detachHandleListeners();
-                                   overlay.innerHTML = "";
-                                   handles.length = 0;
-                                   for (let i = 0; i < widths.length - 1; i++) {
-                                           const handle = document.createElement("span");
+                                   headerCells.forEach((th, index) => {
+                                           const existingHandle = th.querySelector(".column-resizer");
+                                           if (index === headerCells.length - 1) {
+                                                   if (existingHandle) {
+                                                           existingHandle.remove();
+                                                   }
+                                                   return;
+                                           }
+
+                                           if (!th.style.position || th.style.position === "static") {
+                                                   th.style.position = "relative";
+                                           }
+
+                                           const handle = existingHandle || document.createElement("span");
                                            handle.className = "column-resizer";
-                                           overlay.appendChild(handle);
-                                           handles.push(handle);
+                                           handle.dataset.columnIndex = String(index);
+
+                                           if (!existingHandle) {
+                                                   th.appendChild(handle);
+                                           }
 
                                            const startResize = (event) => {
                                                    if (event.button !== undefined && event.button !== 0) {
@@ -3254,8 +3193,9 @@ const ADD_DOC_KEY = "add-document";
                                                    const isPointer = event.type === "pointerdown";
                                                    const pointerId = isPointer ? event.pointerId : null;
                                                    const startX = event.clientX ?? event.pageX ?? 0;
-                                                   const startWidth = widths[i];
-                                                   const nextWidth = widths[i + 1];
+                                                   const columnIndex = Number(handle.dataset.columnIndex || index);
+                                                   const startWidth = widths[columnIndex];
+                                                   const nextWidth = widths[columnIndex + 1];
                                                    const total = startWidth + nextWidth;
 
                                                    const updateWidths = (clientX) => {
@@ -3274,11 +3214,10 @@ const ADD_DOC_KEY = "add-document";
                                                                    sibling = MAX_WIDTH;
                                                                    current = total - sibling;
                                                            }
-                                                           widths[i] = current;
-                                                           widths[i + 1] = sibling;
-                                                           cols[i].style.width = `${current}px`;
-                                                           cols[i + 1].style.width = `${sibling}px`;
-                                                           scheduleOverlayUpdate();
+                                                           widths[columnIndex] = current;
+                                                           widths[columnIndex + 1] = sibling;
+                                                           cols[columnIndex].style.width = `${current}px`;
+                                                           cols[columnIndex + 1].style.width = `${sibling}px`;
                                                    };
 
                                                    const handleMove = (moveEvent) => {
@@ -3339,59 +3278,50 @@ const ADD_DOC_KEY = "add-document";
                                                    type: listenerType,
                                                    listener: startResize,
                                            });
-                                   }
-                                   scheduleOverlayUpdate();
+                                   });
                            };
 
-			measureWidths();
-			createHandles();
+                           measureWidths();
+                           createHandles();
 
-			const bodyObserver = new MutationObserver(() => {
-				measureWidths();
-				createHandles();
-			});
-			bodyObserver.observe(body, { childList: true });
+                           const bodyObserver = new MutationObserver(() => {
+                                   measureWidths();
+                                   createHandles();
+                           });
+                           bodyObserver.observe(body, { childList: true });
 
-			let resizeObserver = null;
-			if (typeof ResizeObserver === "function") {
-				resizeObserver = new ResizeObserver(() => {
-					measureWidths();
-					scheduleOverlayUpdate();
-				});
-				resizeObserver.observe(table);
-			}
+                           let resizeObserver = null;
+                           if (typeof ResizeObserver === "function") {
+                                   resizeObserver = new ResizeObserver(() => {
+                                           measureWidths();
+                                   });
+                                   resizeObserver.observe(table);
+                           }
 
-			const onWrapperScroll = () => {
-				scheduleOverlayUpdate();
-			};
-			wrapper.addEventListener("scroll", onWrapperScroll);
+                           const onWindowResize = () => {
+                                   measureWidths();
+                                   createHandles();
+                           };
+                           window.addEventListener("resize", onWindowResize);
 
-			const onWindowResize = () => {
-				measureWidths();
-				scheduleOverlayUpdate();
-			};
-			window.addEventListener("resize", onWindowResize);
-
-			scheduleOverlayUpdate();
-
-			return () => {
-				cancelScheduled();
-				detachHandleListeners();
-				bodyObserver.disconnect();
-				if (resizeObserver) {
-					resizeObserver.disconnect();
-				}
-				wrapper.removeEventListener("scroll", onWrapperScroll);
-                               window.removeEventListener("resize", onWindowResize);
-                               overlay.remove();
-                                if (previousTableLayout) {
-                                        table.style.tableLayout = previousTableLayout;
-                                } else {
-                                        table.style.removeProperty("table-layout");
-                                }
-                               if (shouldRestorePosition) {
-                                       wrapper.style.removeProperty("position");
-                               }
+                           return () => {
+                                   detachHandleListeners();
+                                   bodyObserver.disconnect();
+                                   if (resizeObserver) {
+                                           resizeObserver.disconnect();
+                                   }
+                                   window.removeEventListener("resize", onWindowResize);
+                                   headerCells.forEach((th) => {
+                                           const handle = th.querySelector(".column-resizer");
+                                           if (handle) {
+                                                   handle.remove();
+                                           }
+                                   });
+                                   if (previousTableLayout) {
+                                           table.style.tableLayout = previousTableLayout;
+                                   } else {
+                                           table.style.removeProperty("table-layout");
+                                   }
                            };
                    };
 
