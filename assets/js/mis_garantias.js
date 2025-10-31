@@ -715,8 +715,30 @@ const ADD_DOC_KEY = "add-document";
                 let currentMobileNavState = "guarantees";
                 let lastDetailTrigger = null;
                 let infiniteScrollObserver = null;
+                let mobileHideEmpty = false;
+                const syncMobileEmptyHidden = () => {
+                        if (!detail) {
+                                return;
+                        }
+                        if (!desktopMediaQuery || desktopMediaQuery.matches) {
+                                detail.classList.remove("guarantee-detail--hide-empty");
+                                return;
+                        }
+                        detail.classList.toggle(
+                                "guarantee-detail--hide-empty",
+                                mobileHideEmpty
+                        );
+                };
+                const setMobileEmptyHidden = (hidden) => {
+                        mobileHideEmpty = Boolean(hidden);
+                        syncMobileEmptyHidden();
+                        return mobileHideEmpty;
+                };
                 const setMobileSummaryOpen = (open) => {
                         mobileSummaryOpen = Boolean(open);
+                        if (mobileSummaryOpen) {
+                                setMobileEmptyHidden(false);
+                        }
                         if (bodyElement) {
                                 bodyElement.classList.toggle(
                                         "has-mobile-summary-open",
@@ -726,6 +748,7 @@ const ADD_DOC_KEY = "add-document";
                         return mobileSummaryOpen;
                 };
                 setMobileSummaryOpen(false);
+                syncMobileEmptyHidden();
                 const updateBaseFiltersHeight = () => {
                         if (!filtersRoot) {
                                 baseFiltersHeight = 0;
@@ -821,6 +844,7 @@ const ADD_DOC_KEY = "add-document";
                                 return;
                         }
                         const desktop = isDesktopView();
+                        syncMobileEmptyHidden();
                         const shouldBeOpen = desktop || mobileDetailOpen;
                         detail.setAttribute(
                                 "data-mobile-open",
@@ -916,6 +940,7 @@ const ADD_DOC_KEY = "add-document";
                         mobileDetailOpen = shouldOpen;
                         if (!shouldOpen) {
                                 setMobileSummaryOpen(false);
+                                setMobileEmptyHidden(false);
                         }
                         syncMobileDetailVisibility({
                                 focus: shouldOpen && focus,
@@ -1650,6 +1675,9 @@ const ADD_DOC_KEY = "add-document";
                 const detailPromises = new Map();
                 const loadedIds = new Set();
                 const listCache = new Map();
+                const detailPreloadQueue = new Set();
+                let detailPreloadScheduled = false;
+                let detailPreloadProcessing = false;
                 const LIST_CACHE_STORAGE_KEY = "go:guarantees:list-cache:v1";
                 const LIST_CACHE_TTL_MS = 5 * 60 * 1000;
                 const LIST_CACHE_MAX_ENTRIES = 6;
@@ -1826,6 +1854,96 @@ const ADD_DOC_KEY = "add-document";
                         ].join("|");
                 }
 
+                function scheduleDetailPreload() {
+                        if (detailPreloadScheduled) {
+                                return;
+                        }
+                        detailPreloadScheduled = true;
+                        const scheduler =
+                                typeof window !== "undefined" &&
+                                typeof window.requestIdleCallback === "function"
+                                        ? window.requestIdleCallback
+                                        : (callback) => setTimeout(callback, 100);
+                        scheduler(() => {
+                                detailPreloadScheduled = false;
+                                processDetailPreloadQueue();
+                        });
+                }
+
+                async function processDetailPreloadQueue() {
+                        if (detailPreloadProcessing) {
+                                return;
+                        }
+                        detailPreloadProcessing = true;
+                        try {
+                                while (detailPreloadQueue.size > 0) {
+                                        const iterator = detailPreloadQueue.values();
+                                        const id = iterator.next().value;
+                                        detailPreloadQueue.delete(id);
+                                        try {
+                                                await fetchDetail(id);
+                                        } catch (error) {
+                                                console.error(
+                                                        "❌ Error precargando detalle:",
+                                                        error
+                                                );
+                                        }
+                                }
+                        } finally {
+                                detailPreloadProcessing = false;
+                                if (detailPreloadQueue.size > 0) {
+                                        scheduleDetailPreload();
+                                }
+                        }
+                }
+
+                function queueDetailPreload(id) {
+                        if (id == null) {
+                                return;
+                        }
+                        const normalizedId =
+                                typeof id === "number" || typeof id === "string"
+                                        ? String(id)
+                                        : "";
+                        if (!normalizedId) {
+                                return;
+                        }
+                        if (
+                                detailCache.has(normalizedId) ||
+                                detailPromises.has(normalizedId) ||
+                                detailPreloadQueue.has(normalizedId)
+                        ) {
+                                return;
+                        }
+                        detailPreloadQueue.add(normalizedId);
+                        scheduleDetailPreload();
+                }
+
+                function ensureDetailPreloaded(item) {
+                        if (!item || typeof item !== "object") {
+                                return;
+                        }
+                        const hasId = Object.prototype.hasOwnProperty.call(item, "id");
+                        if (!hasId) {
+                                return;
+                        }
+                        const normalizedId =
+                                typeof item.id === "number" || typeof item.id === "string"
+                                        ? String(item.id)
+                                        : "";
+                        if (!normalizedId) {
+                                return;
+                        }
+                        if (item.detail) {
+                                detailCache.set(
+                                        normalizedId,
+                                        normalizeDetailData(item.detail)
+                                );
+                                return;
+                        }
+                        queueDetailPreload(normalizedId);
+                }
+
                 function renderFromCache(cache, spinnerToken = null) {
                         if (!cache || !tbody || !Array.isArray(cache.data)) {
                                 finalizeSpinnerVisibility(0, 0, spinnerToken);
@@ -1835,6 +1953,7 @@ const ADD_DOC_KEY = "add-document";
                         let appended = 0;
                         for (const item of cache.data) {
                                 tbody.appendChild(renderRow(item));
+                                ensureDetailPreloaded(item);
                                 if (item && Object.prototype.hasOwnProperty.call(item, "id")) {
                                         loadedIds.add(item.id);
                                 }
@@ -5153,6 +5272,7 @@ const ADD_DOC_KEY = "add-document";
                         prevSelectedRow = null;
                         prevIdx = null;
                         setMobileSummaryOpen(false);
+                        setMobileEmptyHidden(false);
                         const shouldKeepQuery =
                                 pendingMatSelection ||
                                 Boolean(initialMatQuery) ||
@@ -5356,9 +5476,7 @@ const ADD_DOC_KEY = "add-document";
 
                                 if (data.length > 0) {
                                         for (const item of data) {
-                                                if (item.detail) {
-                                                        detailCache.set(String(item.id), normalizeDetailData(item.detail));
-                                                }
+                                                ensureDetailPreloaded(item);
                                                 if (loadedIds.has(item.id)) continue;
                                                 tbody.appendChild(renderRow(item));
                                                 loadedIds.add(item.id);
@@ -6329,6 +6447,9 @@ function updateModalControls(modal) {
 async function activateRow(row, options = {}) {
                         if (!row) {
                                 return;
+                        }
+                        if (!isDesktopView()) {
+                                setMobileEmptyHidden(true);
                         }
                         setMobileSummaryOpen(false);
                         const rows = Array.from(
