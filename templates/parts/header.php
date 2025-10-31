@@ -310,81 +310,80 @@ $home_destination = $is_admin_user
                                 <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
                             </a>
                         </li>
+                        <?php if ($can_access_notifications) : ?>
+                            <?php
+                            // Update the toast notification sound by adjusting the data attribute below once the dedicated audio is available.
+                            ?>
+                            <li
+                                class="menu-item menu-item--notifications"
+                                data-admin-notifications
+                                data-icon-mark="<?php echo esc_attr(base64_encode(Svg::icon('visibility_off', 'notifications-panel__action-icon'))); ?>"
+                                data-icon-mark-read="<?php echo esc_attr(base64_encode(Svg::icon('visibility', 'notifications-panel__action-icon'))); ?>"
+                                data-icon-delete="<?php echo esc_attr(base64_encode(Svg::icon('delete', 'notifications-panel__action-icon'))); ?>"
+                                data-icon-close="<?php echo esc_attr(base64_encode(Svg::icon('close', 'notifications-modal__close-icon'))); ?>"
+                                data-mark-label="<?php echo esc_attr__('Sin leer', 'garantias-online-360vo'); ?>"
+                                data-marked-label="<?php echo esc_attr__('Leída', 'garantias-online-360vo'); ?>"
+                                data-delete-label="<?php echo esc_attr__('Eliminar', 'garantias-online-360vo'); ?>"
+                                data-load-more-label="<?php echo esc_attr__('Cargar más', 'garantias-online-360vo'); ?>"
+                                data-loading-label="<?php echo esc_attr__('Cargando…', 'garantias-online-360vo'); ?>"
+                                data-view-all-label="<?php echo esc_attr__('Ver todas las notificaciones', 'garantias-online-360vo'); ?>"
+                                data-toast-open-label="<?php echo esc_attr__('Ver ahora', 'garantias-online-360vo'); ?>"
+                                data-toast-dismiss-label="<?php echo esc_attr__('Descartar', 'garantias-online-360vo'); ?>"
+                                data-modal-placeholder="<?php echo esc_attr__('Muy pronto podrás gestionar todas tus notificaciones desde aquí.', 'garantias-online-360vo'); ?>"
+                                data-modal-close-label="<?php echo esc_attr__('Cerrar', 'garantias-online-360vo'); ?>"
+                                data-toast-sound="<?php echo esc_attr(plugins_url('assets/sounds/notify_toast.mp3', GARANTIAS360VO__FILE__)); ?>"
+                                data-browser-icon="<?php echo esc_attr(plugins_url('assets/images/logo.png', GARANTIAS360VO__FILE__)); ?>"
+                            >
+                                <button
+                                    type="button"
+                                    class="top-bar__notifications-button"
+                                    aria-haspopup="true"
+                                    aria-expanded="false"
+                                    aria-controls="top-bar-notifications-panel"
+                                    data-notifications-toggle
+                                >
+                                    <?php echo Svg::icon('notifications', 'top-bar__icon top-bar__icon--notifications'); ?>
+                                    <span class="top-bar__notifications-badge" data-notifications-badge hidden></span>
+                                    <span class="screen-reader-text"><?php esc_html_e('Abrir bandeja de notificaciones', 'garantias-online-360vo'); ?></span>
+                                </button>
+                                <div
+                                    class="notifications-panel"
+                                    id="top-bar-notifications-panel"
+                                    role="region"
+                                    aria-live="polite"
+                                    aria-hidden="true"
+                                    data-notifications-panel
+                                >
+                                    <div class="notifications-panel__header">
+                                        <div class="notifications-panel__header-main">
+                                            <h4 class="notifications-panel__title"><?php esc_html_e('Notificaciones', 'garantias-online-360vo'); ?></h4>
+                                        </div>
+                                        <button type="button" class="notifications-panel__mark" data-notifications-mark-all>
+                                            <?php esc_html_e('Marcar todo como leído', 'garantias-online-360vo'); ?>
+                                        </button>
+                                    </div>
+                                    <div class="notifications-panel__content" data-notifications-scroll>
+                                        <p class="notifications-panel__empty" data-notifications-empty hidden>
+                                            <?php esc_html_e('No tienes notificaciones nuevas.', 'garantias-online-360vo'); ?>
+                                        </p>
+                                        <ul class="notifications-panel__list" data-notifications-list></ul>
+                                        <button type="button" class="notifications-panel__load-more" data-notifications-load-more hidden>
+                                            <?php esc_html_e('Cargar más', 'garantias-online-360vo'); ?>
+                                        </button>
+                                    </div>
+                                    <div class="notifications-panel__footer">
+                                        <div class="notifications-panel__footer-controls">
+                                            <button type="button" class="notifications-panel__view-all" data-notifications-view-all>
+                                                <?php esc_html_e('Ver todas las notificaciones', 'garantias-online-360vo'); ?>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="notifications-toast" data-notifications-toast hidden></div>
+                            </li>
+                        <?php endif; ?>
                     </ul>
                 </nav>
-                <?php if ($can_access_notifications) : ?>
-                    <?php
-                    // Update the toast notification sound by adjusting the data attribute below once the dedicated audio is available.
-                    ?>
-                    <div
-                        class="top-bar__notifications"
-                        data-admin-notifications
-                        data-icon-mark="<?php echo esc_attr(base64_encode(Svg::icon('visibility_off', 'notifications-panel__action-icon'))); ?>"
-                        data-icon-mark-read="<?php echo esc_attr(base64_encode(Svg::icon('visibility', 'notifications-panel__action-icon'))); ?>"
-                        data-icon-delete="<?php echo esc_attr(base64_encode(Svg::icon('delete', 'notifications-panel__action-icon'))); ?>"
-                        data-icon-close="<?php echo esc_attr(base64_encode(Svg::icon('close', 'notifications-modal__close-icon'))); ?>"
-                        data-mark-label="<?php echo esc_attr__('Sin leer', 'garantias-online-360vo'); ?>"
-                        data-marked-label="<?php echo esc_attr__('Leída', 'garantias-online-360vo'); ?>"
-                        data-delete-label="<?php echo esc_attr__('Eliminar', 'garantias-online-360vo'); ?>"
-                        data-load-more-label="<?php echo esc_attr__('Cargar más', 'garantias-online-360vo'); ?>"
-                        data-loading-label="<?php echo esc_attr__('Cargando…', 'garantias-online-360vo'); ?>"
-                        data-view-all-label="<?php echo esc_attr__('Ver todas las notificaciones', 'garantias-online-360vo'); ?>"
-                        data-toast-open-label="<?php echo esc_attr__('Ver ahora', 'garantias-online-360vo'); ?>"
-                        data-toast-dismiss-label="<?php echo esc_attr__('Descartar', 'garantias-online-360vo'); ?>"
-                        data-modal-placeholder="<?php echo esc_attr__('Muy pronto podrás gestionar todas tus notificaciones desde aquí.', 'garantias-online-360vo'); ?>"
-                        data-modal-close-label="<?php echo esc_attr__('Cerrar', 'garantias-online-360vo'); ?>"
-                        data-toast-sound="<?php echo esc_attr(plugins_url('assets/sounds/notify_toast.mp3', GARANTIAS360VO__FILE__)); ?>"
-                        data-browser-icon="<?php echo esc_attr(plugins_url('assets/images/logo.png', GARANTIAS360VO__FILE__)); ?>"
-                    >
-                        <button
-                            type="button"
-                            class="top-bar__notifications-button"
-                            aria-haspopup="true"
-                            aria-expanded="false"
-                            aria-controls="top-bar-notifications-panel"
-                            data-notifications-toggle
-                        >
-                            <?php echo Svg::icon('notifications', 'top-bar__icon top-bar__icon--notifications'); ?>
-                            <span class="top-bar__notifications-badge" data-notifications-badge hidden></span>
-                            <span class="screen-reader-text"><?php esc_html_e('Abrir bandeja de notificaciones', 'garantias-online-360vo'); ?></span>
-                        </button>
-                        <div
-                            class="notifications-panel"
-                            id="top-bar-notifications-panel"
-                            role="region"
-                            aria-live="polite"
-                            aria-hidden="true"
-                            data-notifications-panel
-                        >
-                            <div class="notifications-panel__header">
-                                <div class="notifications-panel__header-main">
-                                    <h4 class="notifications-panel__title"><?php esc_html_e('Notificaciones', 'garantias-online-360vo'); ?></h4>
-                                </div>
-                                <button type="button" class="notifications-panel__mark" data-notifications-mark-all>
-                                    <?php esc_html_e('Marcar todo como leído', 'garantias-online-360vo'); ?>
-                                </button>
-                            </div>
-                            <div class="notifications-panel__content" data-notifications-scroll>
-                                <p class="notifications-panel__empty" data-notifications-empty hidden>
-                                    <?php esc_html_e('No tienes notificaciones nuevas.', 'garantias-online-360vo'); ?>
-                                </p>
-                                <ul class="notifications-panel__list" data-notifications-list></ul>
-                                <button type="button" class="notifications-panel__load-more" data-notifications-load-more hidden>
-                                    <?php esc_html_e('Cargar más', 'garantias-online-360vo'); ?>
-                                </button>
-                            </div>
-                            <div class="notifications-panel__footer">
-                                <div class="notifications-panel__footer-controls">
-                                    <button type="button" class="notifications-panel__view-all" data-notifications-view-all>
-                                        <?php esc_html_e('Ver todas las notificaciones', 'garantias-online-360vo'); ?>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="notifications-toast" data-notifications-toast hidden></div>
-                    </div>
-                <?php endif; ?>
-                <?php $tiene_foto = false; ?>
                 <?php $tiene_foto = false; ?>
                 <div class="top-bar__profile">
                     <?php echo $profile_button; ?>
