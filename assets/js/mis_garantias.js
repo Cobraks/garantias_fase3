@@ -13,201 +13,8 @@ const ADD_DOC_KEY = "add-document";
                 const RECEIPT_ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"];
                 const RECEIPT_MAX_BYTES = 10 * 1024 * 1024;
                 const listContainer = document.querySelector(".guarantees-list");
-                const tableScrollContainer = document.querySelector(
-                        ".guarantees-table__scroll"
-                );
-                const scrollEnd = listContainer
-                        ? listContainer.querySelector("#scroll-end")
-                        : null;
-                const spinner = scrollEnd ? scrollEnd.querySelector(".spinner") : null;
-
-                let spinnerObserver = null;
-                let spinnerRaf = null;
-                let spinnerFallbackTimeout = null;
-                let spinnerTokenCounter = 0;
-                let activeSpinnerToken = 0;
-
-                const clearSpinnerWatchers = () => {
-                        if (spinnerObserver) {
-                                spinnerObserver.disconnect();
-                                spinnerObserver = null;
-                        }
-                        if (spinnerRaf !== null && typeof cancelAnimationFrame === "function") {
-                                cancelAnimationFrame(spinnerRaf);
-                        }
-                        spinnerRaf = null;
-                        if (spinnerFallbackTimeout !== null) {
-                                clearTimeout(spinnerFallbackTimeout);
-                                spinnerFallbackTimeout = null;
-                        }
-                };
-
-                const syncSpinnerCompensation = () => {
-                        if (!scrollEnd || !tableScrollContainer) {
-                                return;
-                        }
-                        if (desktopMediaQuery && desktopMediaQuery.matches) {
-                                scrollEnd.style.removeProperty("--spinner-compensation");
-                                return;
-                        }
-                        const offset = tableScrollContainer.scrollLeft || 0;
-                        scrollEnd.style.setProperty(
-                                "--spinner-compensation",
-                                `${offset}px`
-                        );
-                };
-
-                const setSpinnerVisible = (visible, token = null) => {
-                        const show = Boolean(visible);
-                        let resolvedToken =
-                                typeof token === "number" && Number.isFinite(token)
-                                        ? token
-                                        : null;
-
-                        if (show) {
-                                if (resolvedToken === null) {
-                                        resolvedToken = ++spinnerTokenCounter;
-                                } else {
-                                        spinnerTokenCounter = Math.max(
-                                                spinnerTokenCounter,
-                                                resolvedToken
-                                        );
-                                }
-                                activeSpinnerToken = resolvedToken;
-                                clearSpinnerWatchers();
-                                if (scrollEnd) {
-                                        scrollEnd.classList.add("is-loading");
-                                        scrollEnd.hidden = false;
-                                        syncSpinnerCompensation();
-                                        scrollEnd.setAttribute(
-                                                "aria-hidden",
-                                                hasMore || show ? "false" : "true"
-                                        );
-                                }
-                                if (spinner) {
-                                        spinner.hidden = false;
-                                        spinner.setAttribute("aria-hidden", "false");
-                                }
-                                return resolvedToken;
-                        }
-
-                        resolvedToken =
-                                resolvedToken !== null ? resolvedToken : activeSpinnerToken;
-
-                        if (resolvedToken !== activeSpinnerToken) {
-                                return resolvedToken;
-                        }
-
-                        clearSpinnerWatchers();
-
-                        if (scrollEnd) {
-                                scrollEnd.classList.remove("is-loading");
-                                scrollEnd.style.removeProperty("--spinner-compensation");
-                                if (!hasMore) {
-                                        scrollEnd.hidden = true;
-                                }
-                                scrollEnd.setAttribute(
-                                        "aria-hidden",
-                                        hasMore ? "false" : "true"
-                                );
-                        }
-                        if (spinner) {
-                                spinner.hidden = true;
-                                spinner.setAttribute("aria-hidden", "true");
-                        }
-                        activeSpinnerToken = 0;
-                        return resolvedToken;
-                };
-
-                const finalizeSpinnerVisibility = (
-                        previousCount,
-                        appendedRows,
-                        token = null
-                ) => {
-                        if (!scrollEnd) {
-                                return;
-                        }
-                        const resolvedToken =
-                                typeof token === "number" && Number.isFinite(token)
-                                        ? token
-                                        : activeSpinnerToken;
-
-                        if (resolvedToken !== activeSpinnerToken) {
-                                return;
-                        }
-                        clearSpinnerWatchers();
-                        const targetCount = Math.max(0, previousCount) + Math.max(0, appendedRows);
-                        const checkContentReady = () => {
-                                if (!tbody) {
-                                        return true;
-                                }
-                                const currentRows = tbody.querySelectorAll(".guarantees-table__row").length;
-                                const hasEmptyRow = Boolean(
-                                        tbody.querySelector(".guarantees-table__empty-row")
-                                );
-                                const hasMessage = Boolean(
-                                        resultMessage &&
-                                        typeof resultMessage.textContent === "string" &&
-                                        resultMessage.textContent.trim().length > 0
-                                );
-
-                                if (appendedRows > 0) {
-                                        return currentRows >= targetCount;
-                                }
-
-                                if (currentRows > 0 || hasEmptyRow || hasMessage) {
-                                        return true;
-                                }
-
-                                return false;
-                        };
-
-                        let completed = false;
-                        const complete = () => {
-                                if (completed) {
-                                        return;
-                                }
-                                completed = true;
-                                clearSpinnerWatchers();
-                                setSpinnerVisible(false, resolvedToken);
-                                if (scrollEnd) {
-                                        scrollEnd.hidden = !hasMore;
-                                        scrollEnd.setAttribute(
-                                                "aria-hidden",
-                                                hasMore ? "false" : "true"
-                                        );
-                                }
-                        };
-
-                        if (checkContentReady()) {
-                                complete();
-                                return;
-                        }
-
-                        if (tbody) {
-                                spinnerObserver = new MutationObserver(() => {
-                                        if (checkContentReady()) {
-                                                complete();
-                                        }
-                                });
-                                spinnerObserver.observe(tbody, { childList: true, subtree: true });
-                        }
-
-                        if (typeof requestAnimationFrame === "function") {
-                                const rafCheck = () => {
-                                        if (checkContentReady()) {
-                                                complete();
-                                                return;
-                                        }
-                                        spinnerRaf = requestAnimationFrame(rafCheck);
-                                };
-                                spinnerRaf = requestAnimationFrame(rafCheck);
-                        }
-
-                        spinnerFallbackTimeout = window.setTimeout(() => {
-                                complete();
-                        }, 12000);
-                };
+                const scrollEnd = listContainer.querySelector("#scroll-end");
+                const spinner = scrollEnd.querySelector(".spinner");
 
                 initResizableColumns(table);
 
@@ -239,14 +46,6 @@ const ADD_DOC_KEY = "add-document";
                 const isDirector = normalizedRole === "go_director_comercial";
                 const isProfesional =
                         normalizedRole === "go_profesional" || normalizedRole === "profesional";
-                const canSeeVerifyCollectStates =
-                        [
-                                "administrator",
-                                "admin",
-                                "go_director_comercial",
-                                "go_garantias",
-                        ].includes(normalizedRole);
-                const shouldRestrictEmptyStateOptions = !canSeeVerifyCollectStates;
                 const canManageDetailActions =
                         ["administrator", "admin", "go_garantias"].includes(normalizedRole);
                 const canViewAdminSummary = isCoreAdmin || isDirector;
@@ -518,8 +317,6 @@ const ADD_DOC_KEY = "add-document";
                         initializeAdminSummary(panel1);
                 }
                 let currentEmptyMode = "awaiting";
-                let prevSelectedRow = null;
-                let prevIdx = null;
 
                 const filtersRoot = document.querySelector(
                         ".guarantees-list__filters"
@@ -562,43 +359,6 @@ const ADD_DOC_KEY = "add-document";
                 const resetFiltersBtn = document.querySelector(
                         "[data-reset-filters]"
                 );
-                const mobileFiltersToggle = document.querySelector(
-                        "[data-mobile-filters-toggle]"
-                );
-                const mobileFiltersPanel = document.querySelector(
-                        "[data-mobile-filters-panel]"
-                );
-                const mobileFiltersOverlay = document.querySelector(
-                        "[data-mobile-filters-overlay]"
-                );
-                const mobileFiltersDismissEls = document.querySelectorAll(
-                        "[data-mobile-filters-dismiss]"
-                );
-                const mobileSearchSlot = document.querySelector(
-                        "[data-mobile-search-slot]"
-                );
-                const desktopSearchSlot = document.querySelector(
-                        "[data-desktop-search-slot]"
-                );
-                const searchField = document.querySelector("[data-search-field]");
-                const bottomBar = document.querySelector("[data-mobile-bottom-bar]");
-                const bottomNavButtons = bottomBar
-                        ? Array.from(
-                                  bottomBar.querySelectorAll(
-                                          "[data-mobile-nav-action]"
-                                  )
-                          )
-                        : [];
-                const summaryNavButton = bottomBar
-                        ? bottomBar.querySelector(
-                                  "[data-mobile-nav-action=\"summary\"]"
-                          )
-                        : null;
-                const listNavButton = bottomBar
-                        ? bottomBar.querySelector(
-                                  "[data-mobile-nav-action=\"guarantees\"]"
-                          )
-                        : null;
                 const orderRoot = document.querySelector("[data-order-root]");
                 const orderToggle = orderRoot
                         ? orderRoot.querySelector("[data-order-toggle]")
@@ -689,39 +449,6 @@ const ADD_DOC_KEY = "add-document";
                 const orderOptions = new Map();
                 let setAdvancedOpen = () => {};
                 let baseFiltersHeight = filtersRoot ? filtersRoot.offsetHeight || 0 : 0;
-                const desktopMediaQuery =
-                        typeof window !== "undefined" &&
-                        typeof window.matchMedia === "function"
-                                ? window.matchMedia("(min-width: 1280px)")
-                                : null;
-                let mobileFiltersOpen = Boolean(
-                        filtersRoot &&
-                                filtersRoot.getAttribute("data-mobile-open") === "true"
-                );
-                let lastMobileOpenState = mobileFiltersOpen;
-                const bodyElement = document.body;
-                const detailDialog = detail
-                        ? detail.querySelector("[data-detail-dialog]")
-                        : null;
-                const detailDismissTriggers = detail
-                        ? detail.querySelectorAll("[data-mobile-detail-dismiss]")
-                        : [];
-                let mobileDetailOpen = false;
-                let mobileSummaryOpen = false;
-                let currentMobileNavState = "guarantees";
-                let lastDetailTrigger = null;
-                let infiniteScrollObserver = null;
-                const setMobileSummaryOpen = (open) => {
-                        mobileSummaryOpen = Boolean(open);
-                        if (bodyElement) {
-                                bodyElement.classList.toggle(
-                                        "has-mobile-summary-open",
-                                        mobileSummaryOpen
-                                );
-                        }
-                        return mobileSummaryOpen;
-                };
-                setMobileSummaryOpen(false);
                 const updateBaseFiltersHeight = () => {
                         if (!filtersRoot) {
                                 baseFiltersHeight = 0;
@@ -761,516 +488,6 @@ const ADD_DOC_KEY = "add-document";
                         );
                 };
                 updateBaseFiltersHeight();
-
-                const isDesktopView = () =>
-                        desktopMediaQuery ? desktopMediaQuery.matches : true;
-
-                function setMobileNavState(state) {
-                        if (typeof state !== "string" || state.length === 0) {
-                                return currentMobileNavState;
-                        }
-                        currentMobileNavState = state;
-                        if (bottomNavButtons.length === 0) {
-                                return currentMobileNavState;
-                        }
-                        bottomNavButtons.forEach((button) => {
-                                const action = button.getAttribute("data-mobile-nav-action");
-                                const isActive = action === state;
-                                button.classList.toggle("is-active", isActive);
-                                button.setAttribute("aria-pressed", isActive ? "true" : "false");
-                                if (action === "filters" && button.hasAttribute("aria-expanded")) {
-                                        button.setAttribute(
-                                                "aria-expanded",
-                                                isActive ? "true" : "false"
-                                        );
-                                }
-                        });
-                        return currentMobileNavState;
-                }
-
-                function computeMobileNavState() {
-                        if (!bottomBar || isDesktopView()) {
-                                return "guarantees";
-                        }
-                        if (mobileFiltersOpen) {
-                                return "filters";
-                        }
-                        if (mobileSummaryOpen) {
-                                return "summary";
-                        }
-                        if (mobileDetailOpen) {
-                                return "guarantees";
-                        }
-                        return mobileSummaryOpen ? "summary" : "guarantees";
-                }
-
-                function syncMobileNavState(explicitState = null) {
-                        const target =
-                                explicitState && typeof explicitState === "string"
-                                        ? explicitState
-                                        : computeMobileNavState();
-                        return setMobileNavState(target);
-                }
-
-                function syncMobileDetailVisibility({ focus = false, restoreFocus = false } = {}) {
-                        if (!detail) {
-                                return;
-                        }
-                        const desktop = isDesktopView();
-                        const shouldBeOpen = desktop || mobileDetailOpen;
-                        detail.setAttribute(
-                                "data-mobile-open",
-                                shouldBeOpen ? "true" : "false"
-                        );
-
-                        if (desktop) {
-                                detail.removeAttribute("aria-hidden");
-                                if (detailDialog) {
-                                        detailDialog.setAttribute("role", "region");
-                                        detailDialog.removeAttribute("aria-modal");
-                                        detailDialog.removeAttribute("tabindex");
-                                }
-                                if (bodyElement) {
-                                        bodyElement.classList.remove("has-mobile-detail-open");
-                                }
-                                return;
-                        }
-
-                        if (detailDialog) {
-                                detailDialog.setAttribute("role", "dialog");
-                                detailDialog.setAttribute("aria-modal", "true");
-                                detailDialog.setAttribute("tabindex", "-1");
-                        }
-
-                        if (shouldBeOpen) {
-                                detail.removeAttribute("aria-hidden");
-                                if (bodyElement) {
-                                        bodyElement.classList.add("has-mobile-detail-open");
-                                }
-                                if (focus && detailDialog && typeof detailDialog.focus === "function") {
-                                        requestAnimationFrame(() => {
-                                                try {
-                                                        detailDialog.focus({ preventScroll: true });
-                                                } catch (error) {
-                                                        detailDialog.focus();
-                                                }
-                                        });
-                                }
-                        } else {
-                                detail.setAttribute("aria-hidden", "true");
-                                if (bodyElement) {
-                                        bodyElement.classList.remove("has-mobile-detail-open");
-                                }
-                                if (
-                                        restoreFocus &&
-                                        lastDetailTrigger &&
-                                        typeof lastDetailTrigger.focus === "function"
-                                ) {
-                                        requestAnimationFrame(() => {
-                                                try {
-                                                        lastDetailTrigger.focus({ preventScroll: true });
-                                                } catch (error) {
-                                                        lastDetailTrigger.focus();
-                                                }
-                                        });
-                                }
-                        }
-
-                        syncMobileNavState();
-                }
-
-                function setMobileDetailOpen(open, { focus = true, restoreFocus = true } = {}) {
-                        if (!detail) {
-                                return;
-                        }
-                        if (isDesktopView()) {
-                                mobileDetailOpen = true;
-                                syncMobileDetailVisibility();
-                                return;
-                        }
-                        const shouldOpen = Boolean(open);
-                        if (mobileDetailOpen === shouldOpen) {
-                                syncMobileDetailVisibility({
-                                        focus: shouldOpen && focus,
-                                        restoreFocus: !shouldOpen && restoreFocus,
-                                });
-                                return;
-                        }
-                        mobileDetailOpen = shouldOpen;
-                        if (!shouldOpen) {
-                                setMobileSummaryOpen(false);
-                        }
-                        syncMobileDetailVisibility({
-                                focus: shouldOpen && focus,
-                                restoreFocus: !shouldOpen && restoreFocus,
-                        });
-                }
-
-                function openMobileDetail(options = {}) {
-                        setMobileDetailOpen(true, options);
-                }
-
-                function closeMobileDetail(options = {}) {
-                        setMobileDetailOpen(false, options);
-                }
-
-                function getScrollRoot() {
-                        if (
-                                tableScrollContainer &&
-                                tableScrollContainer.scrollHeight >
-                                        tableScrollContainer.clientHeight
-                        ) {
-                                return tableScrollContainer;
-                        }
-                        if (
-                                listContainer &&
-                                listContainer.scrollHeight > listContainer.clientHeight
-                        ) {
-                                return listContainer;
-                        }
-                        return null;
-                }
-
-                function observeScrollEnd() {
-                        if (!scrollEnd) {
-                                return;
-                        }
-                        if (infiniteScrollObserver) {
-                                infiniteScrollObserver.disconnect();
-                        }
-                        const scrollRoot = getScrollRoot();
-                        const observerOptions = {
-                                root: scrollRoot,
-                                threshold: 0.1,
-                                rootMargin: scrollRoot ? "200px 0px" : "400px 0px",
-                        };
-                        infiniteScrollObserver = new IntersectionObserver((entries) => {
-                                if (
-                                        entries &&
-                                        entries[0] &&
-                                        entries[0].isIntersecting &&
-                                        hasMore &&
-                                        !isLoading
-                                ) {
-                                        loadPage(currentPage + 1);
-                                }
-                        }, observerOptions);
-                        infiniteScrollObserver.observe(scrollEnd);
-                }
-
-                const moveSearchFieldTo = (target) => {
-                        if (!target || !searchField) {
-                                return;
-                        }
-                        if (target.contains(searchField)) {
-                                return;
-                        }
-                        target.appendChild(searchField);
-                };
-
-                const syncSearchPlacement = () => {
-                        if (!searchField) {
-                                return;
-                        }
-                        const desktop = isDesktopView();
-                        const target = desktop ? desktopSearchSlot : mobileSearchSlot;
-                        if (!target) {
-                                return;
-                        }
-                        moveSearchFieldTo(target);
-                };
-
-                const syncMobileFiltersVisibility = () => {
-                        if (!filtersRoot || !mobileFiltersPanel) {
-                                return;
-                        }
-                        const desktop = isDesktopView();
-                        const shouldBeOpen = desktop || mobileFiltersOpen;
-
-                        syncSearchPlacement();
-
-                        filtersRoot.setAttribute(
-                                "data-mobile-open",
-                                shouldBeOpen ? "true" : "false"
-                        );
-
-                        if (mobileFiltersToggle) {
-                                mobileFiltersToggle.setAttribute(
-                                        "aria-expanded",
-                                        shouldBeOpen ? "true" : "false"
-                                );
-                        }
-
-                        if (desktop) {
-                                mobileFiltersPanel.setAttribute("role", "region");
-                                mobileFiltersPanel.removeAttribute("aria-modal");
-                                mobileFiltersPanel.removeAttribute("aria-hidden");
-                        } else {
-                                mobileFiltersPanel.setAttribute("role", "dialog");
-                                mobileFiltersPanel.setAttribute("aria-modal", "true");
-                                if (shouldBeOpen) {
-                                        mobileFiltersPanel.removeAttribute("aria-hidden");
-                                } else {
-                                        mobileFiltersPanel.setAttribute(
-                                                "aria-hidden",
-                                                "true"
-                                        );
-                                }
-                        }
-
-                        if (mobileFiltersOverlay) {
-                                if (desktop) {
-                                        mobileFiltersOverlay.removeAttribute("aria-hidden");
-                                } else if (shouldBeOpen) {
-                                        mobileFiltersOverlay.removeAttribute(
-                                                "aria-hidden"
-                                        );
-                                } else {
-                                        mobileFiltersOverlay.setAttribute(
-                                                "aria-hidden",
-                                                "true"
-                                        );
-                                }
-                        }
-
-                        if (bodyElement) {
-                                bodyElement.classList.toggle(
-                                        "has-mobile-filters-open",
-                                        shouldBeOpen && !desktop
-                                );
-                        }
-
-                        if (!desktop && !shouldBeOpen) {
-                                setAdvancedOpen(false);
-                                closeOrderMenu();
-                        }
-
-                        updateBaseFiltersHeight();
-                        requestAnimationFrame(updateAdvancedHeight);
-
-                        if (!desktop && shouldBeOpen && !lastMobileOpenState) {
-                                requestAnimationFrame(() => {
-                                        const focusTarget = mobileFiltersPanel.querySelector(
-                                                "select, input, button, [href], [tabindex]:not([tabindex='-1'])"
-                                        );
-                                        if (focusTarget && typeof focusTarget.focus === "function") {
-                                                try {
-                                                        focusTarget.focus({
-                                                                preventScroll: true,
-                                                        });
-                                                } catch (error) {
-                                                        focusTarget.focus();
-                                                }
-                                        } else if (
-                                                typeof mobileFiltersPanel.focus === "function"
-                                        ) {
-                                                try {
-                                                        mobileFiltersPanel.focus({
-                                                                preventScroll: true,
-                                                        });
-                                                } catch (error) {
-                                                        mobileFiltersPanel.focus();
-                                                }
-                                        }
-                                });
-                        } else if (
-                                !desktop &&
-                                !shouldBeOpen &&
-                                lastMobileOpenState &&
-                                mobileFiltersToggle &&
-                                typeof mobileFiltersToggle.focus === "function"
-                        ) {
-                                requestAnimationFrame(() => {
-                                        try {
-                                                mobileFiltersToggle.focus({
-                                                        preventScroll: true,
-                                                });
-                                        } catch (error) {
-                                                mobileFiltersToggle.focus();
-                                        }
-                                });
-                        }
-
-                        syncMobileNavState();
-                        lastMobileOpenState = shouldBeOpen;
-                };
-
-                const setMobileFiltersOpen = (open) => {
-                        if (!filtersRoot || !mobileFiltersPanel) {
-                                return;
-                        }
-                        if (isDesktopView()) {
-                                mobileFiltersOpen = true;
-                                syncMobileFiltersVisibility();
-                                return;
-                        }
-                        mobileFiltersOpen = Boolean(open);
-                        if (mobileFiltersOpen) {
-                                setMobileSummaryOpen(false);
-                        }
-                        syncMobileFiltersVisibility();
-                };
-
-                if (mobileFiltersToggle && mobileFiltersPanel && filtersRoot) {
-                        mobileFiltersToggle.addEventListener("click", () => {
-                                if (isDesktopView()) {
-                                        return;
-                                }
-                                if (!mobileFiltersOpen) {
-                                        closeMobileDetail({ focus: false, restoreFocus: false });
-                                }
-                                setMobileFiltersOpen(!mobileFiltersOpen);
-                        });
-                }
-
-                if (mobileFiltersDismissEls && mobileFiltersDismissEls.length > 0) {
-                        mobileFiltersDismissEls.forEach((trigger) => {
-                                trigger.addEventListener("click", (event) => {
-                                        if (isDesktopView()) {
-                                                return;
-                                        }
-                                        event.preventDefault();
-                                        setMobileFiltersOpen(false);
-                                });
-                        });
-                }
-
-                if (summaryNavButton) {
-                        summaryNavButton.addEventListener("click", () => {
-                                if (isDesktopView()) {
-                                        return;
-                                }
-                                const shouldOpen = !mobileSummaryOpen;
-                                setMobileFiltersOpen(false);
-                                clearSelectionAndDetail({
-                                        preserveQuery: true,
-                                        restoreFocus: false,
-                                });
-                                if (shouldOpen) {
-                                        setMobileSummaryOpen(true);
-                                        openMobileDetail({
-                                                focus: false,
-                                                restoreFocus: false,
-                                        });
-                                        syncMobileNavState("summary");
-                                        return;
-                                }
-                                setMobileSummaryOpen(false);
-                                closeMobileDetail({
-                                        focus: false,
-                                        restoreFocus: false,
-                                });
-                                syncMobileNavState("guarantees");
-                        });
-                }
-
-                if (listNavButton) {
-                        listNavButton.addEventListener("click", () => {
-                                if (isDesktopView()) {
-                                        return;
-                                }
-                                setMobileFiltersOpen(false);
-                                setMobileSummaryOpen(false);
-                                closeMobileDetail({ focus: false, restoreFocus: false });
-                                syncMobileNavState("guarantees");
-                        });
-                }
-
-                if (detailDismissTriggers && detailDismissTriggers.length > 0) {
-                        detailDismissTriggers.forEach((trigger) => {
-                                trigger.addEventListener("click", (event) => {
-                                        if (isDesktopView()) {
-                                                return;
-                                        }
-                                        event.preventDefault();
-                                        if (prevSelectedRow && prevSelectedRow.isConnected) {
-                                                lastDetailTrigger = prevSelectedRow;
-                                        } else {
-                                                lastDetailTrigger = trigger;
-                                        }
-                                        clearSelectionAndDetail({ preserveQuery: true });
-                                });
-                        });
-                }
-
-                if (desktopMediaQuery) {
-                        const handleDesktopChange = (event) => {
-                                if (event.matches) {
-                                        mobileFiltersOpen = true;
-                                        mobileDetailOpen = true;
-                                } else {
-                                        mobileFiltersOpen = false;
-                                        mobileDetailOpen = prevSelectedRow ? true : false;
-                                }
-                                syncMobileFiltersVisibility();
-                                syncMobileDetailVisibility();
-                                observeScrollEnd();
-                                syncSearchPlacement();
-                                syncSpinnerCompensation();
-                        };
-                        if (typeof desktopMediaQuery.addEventListener === "function") {
-                                desktopMediaQuery.addEventListener(
-                                        "change",
-                                        handleDesktopChange
-                                );
-                        } else if (
-                                typeof desktopMediaQuery.addListener === "function"
-                        ) {
-                                desktopMediaQuery.addListener(handleDesktopChange);
-                        }
-                }
-
-                document.addEventListener("keydown", (event) => {
-                        if (event.key !== "Escape") {
-                                return;
-                        }
-                        if (isDesktopView()) {
-                                return;
-                        }
-                        let handled = false;
-                        if (mobileDetailOpen) {
-                                if (prevSelectedRow && prevSelectedRow.isConnected) {
-                                        lastDetailTrigger = prevSelectedRow;
-                                }
-                                clearSelectionAndDetail({ preserveQuery: true });
-                                handled = true;
-                        }
-                        if (mobileFiltersOpen) {
-                                setMobileFiltersOpen(false);
-                                handled = true;
-                        }
-                        if (handled) {
-                                event.preventDefault();
-                        }
-                });
-
-                syncMobileFiltersVisibility();
-                syncSearchPlacement();
-                mobileDetailOpen = isDesktopView();
-                syncMobileDetailVisibility();
-                syncMobileNavState();
-                observeScrollEnd();
-
-                if (tableScrollContainer) {
-                        tableScrollContainer.addEventListener(
-                                "scroll",
-                                () => {
-                                        if (desktopMediaQuery && desktopMediaQuery.matches) {
-                                                return;
-                                        }
-                                        syncSpinnerCompensation();
-                                },
-                                { passive: true }
-                        );
-                }
-
-                if (typeof window !== "undefined") {
-                        window.addEventListener("resize", syncSpinnerCompensation, {
-                                passive: true,
-                        });
-                }
-
-                syncSpinnerCompensation();
 
                 function populateMonthSelect(select) {
                         if (!select || monthOptions.length === 0) {
@@ -1614,10 +831,12 @@ const ADD_DOC_KEY = "add-document";
                         panel2 = document.getElementById("detail-panel-2");
                 }
 
-                let activePanel = panel1;
-                let inactivePanel = panel2;
-                activePanel.classList.add("active");
-                inactivePanel.classList.remove("active");
+		let activePanel = panel1;
+		let inactivePanel = panel2;
+		activePanel.classList.add("active");
+		inactivePanel.classList.remove("active");
+                let prevSelectedRow = null;
+                let prevIdx = null;
                 const urlMat = new URLSearchParams(window.location.search).get("matricula");
                 let pendingMatSelection = Boolean(urlMat);
                 let initialMatQuery = typeof urlMat === "string" ? urlMat.trim() : "";
@@ -1658,20 +877,15 @@ const ADD_DOC_KEY = "add-document";
                         ].join("|");
                 }
 
-                function renderFromCache(cache, spinnerToken = null) {
-                        const previousCount = tbody
-                                ? tbody.querySelectorAll(".guarantees-table__row").length
-                                : 0;
-                        let appended = 0;
+                function renderFromCache(cache) {
                         for (const item of cache.data) {
                                 tbody.appendChild(renderRow(item));
                                 loadedIds.add(item.id);
-                                appended += 1;
                         }
                         totalPages = cache.totalPages;
                         totalPosts = cache.totalPosts;
                         hasMore = currentPage < totalPages;
-                        finalizeSpinnerVisibility(previousCount, appended, spinnerToken);
+                        spinner.style.display = hasMore ? "" : "none";
                         if (!hasActiveFilters() && (cache.totalPosts || 0) === 0) {
                                 setEmptyDetailPanel("forward", "no-results");
                         }
@@ -4641,26 +3855,15 @@ const ADD_DOC_KEY = "add-document";
                                 () => {
                                         currentActive.classList.remove("slide-out-left", "slide-out-right");
                                         nextPanel.classList.remove("slide-in-left", "slide-in-right");
-                                },
-                                { once: true }
-                        );
+				},
+				{ once: true }
+			);
                         lastEmptyPanel = nextPanel;
                         currentEmptyMode = normalizedMode;
-                        if (!isDesktopView()) {
-                                if (normalizedMode === "loading") {
-                                        openMobileDetail({ focus: false });
-                                } else {
-                                        closeMobileDetail({ focus: false, restoreFocus: false });
-                                }
-                        }
                 }
 
                 function clearSelectionAndDetail(options = {}) {
                         const preserveQuery = Boolean(options.preserveQuery);
-                        const restoreFocus = options.restoreFocus !== false;
-                        const lastRow = prevSelectedRow && prevSelectedRow.isConnected
-                                ? prevSelectedRow
-                                : null;
                         const requestedMode =
                                 typeof options.emptyMode === "string" ? options.emptyMode : "";
                         const shouldShowLoading =
@@ -4681,22 +3884,12 @@ const ADD_DOC_KEY = "add-document";
                         rows.forEach((r) => r.classList.remove("selected"));
                         prevSelectedRow = null;
                         prevIdx = null;
-                        setMobileSummaryOpen(false);
                         if (!preserveQuery) {
                                 history.replaceState(null, "", window.location.pathname);
                                 pendingMatSelection = false;
                                 initialMatQuery = "";
                         }
                         setEmptyDetailPanel("forward", desiredMode, emptyOptions); // Mantén la dirección como prefieras
-                        if (!isDesktopView()) {
-                                if (desiredMode === "loading") {
-                                        lastDetailTrigger = lastRow || lastDetailTrigger;
-                                        openMobileDetail({ focus: false });
-                                } else {
-                                        lastDetailTrigger = lastRow || lastDetailTrigger;
-                                        closeMobileDetail({ focus: false, restoreFocus });
-                                }
-                        }
                 }
 
 		function setResultMessage(msg = "") {
@@ -4707,19 +3900,7 @@ const ADD_DOC_KEY = "add-document";
                 async function loadPage(page = 1, options = {}) {
                         if (isLoading || !hasMore) return;
                         isLoading = true;
-                        if (scrollEnd) {
-                                scrollEnd.hidden = false;
-                        }
-                        let spinnerToken = null;
-                        if (typeof options.spinnerToken === "number") {
-                                spinnerToken = setSpinnerVisible(true, options.spinnerToken);
-                        } else {
-                                spinnerToken = setSpinnerVisible(true);
-                        }
-                        let previousRowCount = tbody
-                                ? tbody.querySelectorAll(".guarantees-table__row").length
-                                : 0;
-                        let appendedRows = 0;
+                        spinner.style.display = "";
                         const search =
                                 typeof options.search === "string" ? options.search : searchQuery;
                         const estado =
@@ -4857,10 +4038,9 @@ const ADD_DOC_KEY = "add-document";
                                         cache.totalPages = totalPages;
                                         cache.totalPosts = totalPosts;
                                 }
-                                if (esNuevaBusqueda) {
-                                        setResultMessage("");
-                                        tbody.innerHTML = "";
-                                        previousRowCount = 0;
+				if (esNuevaBusqueda) {
+					setResultMessage("");
+					tbody.innerHTML = "";
                                         clearSelectionAndDetail({ preserveQuery: pendingMatSelection }); // Limpiar selección SIEMPRE que se cambia el listado (así evitas seleccionados fantasmas)
 					if (data.length > 0) {
 						listContainer.scrollTop = 0;
@@ -4882,7 +4062,6 @@ const ADD_DOC_KEY = "add-document";
                                                 if (loadedIds.has(item.id)) continue;
                                                 tbody.appendChild(renderRow(item));
                                                 loadedIds.add(item.id);
-                                                appendedRows += 1;
                                         }
                                         if (pendingMatSelection && initialMatQuery) {
                                                 const normalizedPlate = initialMatQuery
@@ -4912,20 +4091,54 @@ const ADD_DOC_KEY = "add-document";
                                                 }
                                         }
                                         setResultMessage("");
-                                        // AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
-                                        if (data.length === 1 && search && search.length > 0) {
-                                                const row = tbody.querySelector(".guarantees-table__row");
-                                                if (row && !row.classList.contains("selected")) {
-                                                        try {
-                                                                await activateRow(row, { updateHistory: false });
-                                                        } catch (error) {
-                                                                console.error(
-                                                                        "❌ Error al activar la garantía automática:",
-                                                                        error
+					// AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
+					if (data.length === 1 && search && search.length > 0) {
+						const row = tbody.querySelector(".guarantees-table__row");
+						if (row && !row.classList.contains("selected")) {
+							row.classList.add("selected");
+							const id = row.dataset.id;
+							const rowData = buildRowData(row);
+							const currentActive = activePanel;
+							const nextPanel = activePanel === panel1 ? panel2 : panel1;
+
+                                                        if (detailCache.has(id)) {
+                                                                const dataDetalle = detailCache.get(id);
+                                                                nextPanel.innerHTML = renderFullDetail(
+                                                                        dataDetalle,
+                                                                        rowData
                                                                 );
+                                                                setupTransferCountdown(nextPanel);
+                                                                nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
+                                                                syncPdfModalDocs(nextPanel);
+                                                        } else {
+                                                                nextPanel.innerHTML = renderFullDetail({}, rowData);
+                                                                nextPanel.dataset.matricula = rowData.matricula || "";
+                                                                nextPanel.dataset.plan = rowData.plan || "";
+                                                                syncPdfModalDocs(nextPanel);
+                                                                fetchDetail(id)
+                                                                        .then((dataDetalle) => {
+                                                                                if (nextPanel.dataset.loadedId === String(id)) {
+                                                                                        nextPanel.innerHTML = renderFullDetail(
+                                                                                                dataDetalle,
+                                                                                                rowData
+                                                                                        );
+                                                                                        setupTransferCountdown(nextPanel);
+                                                                                        nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
+                                                                                        syncPdfModalDocs(nextPanel);
+                                                                                }
+                                                                        })
+                                                                        .catch(() => {})
+                                                                        .finally(() => {
+                                                                                nextPanel.classList.remove("loading");
+                                                                        });
                                                         }
-                                                }
-                                        }
+                                                        nextPanel.dataset.loadedId = id;
+                                                        activePanel = nextPanel;
+                                                        inactivePanel = currentActive;
+                                                        currentActive.classList.remove("active");
+                                                        nextPanel.classList.add("active");
+						}
+					}
 				} else {
 					// Solo mostramos resultados previos si búsqueda >= 3 caracteres y pocos resultados
 					if (
@@ -4965,23 +4178,13 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                 }
                         } catch (err) {
-                                const isAbort =
-                                        err && typeof err === "object" && err.name === "AbortError";
-                                if (isAbort) {
-                                        // Petición cancelada deliberadamente: no mostramos error.
-                                } else {
-                                        console.error("❌ Error en loadPage:", err);
-                                        setResultMessage(
-                                                "No hemos podido cargar las garantías. Vuelve a intentarlo en unos segundos."
-                                        );
+                                if (err && typeof err === "object" && err.name === "AbortError") {
+                                        return;
                                 }
+                                console.error("❌ Error en loadPage:", err);
                         } finally {
                                 isLoading = false;
-                                finalizeSpinnerVisibility(
-                                        previousRowCount,
-                                        appendedRows,
-                                        spinnerToken
-                                );
+                                spinner.style.display = hasMore ? "" : "none";
                         }
                 }
 
@@ -5876,7 +5079,6 @@ async function activateRow(row, options = {}) {
                         if (!row) {
                                 return;
                         }
-                        setMobileSummaryOpen(false);
                         const rows = Array.from(
                                 document.querySelectorAll(".guarantees-table__row")
                         );
@@ -5904,8 +5106,6 @@ async function activateRow(row, options = {}) {
 
                         prevSelectedRow = row;
                         prevIdx = idx;
-                        lastDetailTrigger = row;
-                        openMobileDetail({ focus: true });
 
                         const matricula = row.dataset.matricula || "";
                         if (options.updateHistory !== false) {
@@ -5998,7 +5198,6 @@ async function activateRow(row, options = {}) {
                                 const previousIdx = prevIdx;
 
                                 if (row.classList.contains("selected")) {
-                                        lastDetailTrigger = row;
                                         rows.forEach((r) => r.classList.remove("selected"));
                                         prevSelectedRow = null;
                                         prevIdx = null;
@@ -6283,54 +5482,18 @@ async function activateRow(row, options = {}) {
 					{ root: null, threshold: 0, rootMargin: "-50px" }
 				).observe(header);
 			}
-                        const getListScrollTop = () => {
-                                if (isDesktopView()) {
-                                        if (
-                                                tableScrollContainer &&
-                                                tableScrollContainer.scrollHeight >
-                                                        tableScrollContainer.clientHeight
-                                        ) {
-                                                return tableScrollContainer.scrollTop || 0;
-                                        }
-                                        if (listContainer) {
-                                                return listContainer.scrollTop || 0;
-                                        }
-                                }
-                                return (
-                                        window.pageYOffset ||
-                                        document.documentElement.scrollTop ||
-                                        document.body.scrollTop ||
-                                        0
-                                );
-                        };
                         const onScroll = () => {
-                                const activePanel = detail
-                                        ? detail.querySelector(".guarantee-detail__panel.active")
-                                        : null;
+                                const activePanel = detail.querySelector(".guarantee-detail__panel.active");
                                 const detailScrolled = activePanel ? activePanel.scrollTop > 10 : false;
                                 document.body.classList.toggle(
                                         "scrolled",
-                                        getListScrollTop() > 10 || detailScrolled
+                                        listContainer.scrollTop > 10 || detailScrolled
                                 );
                         };
-                        if (listContainer) {
-                                listContainer.addEventListener("scroll", onScroll);
-                        }
-                        if (
-                                tableScrollContainer &&
-                                tableScrollContainer !== listContainer
-                        ) {
-                                tableScrollContainer.addEventListener(
-                                        "scroll",
-                                        onScroll
-                                );
-                        }
-                        if (detail) {
-                                detail.querySelectorAll(".guarantee-detail__panel").forEach((p) =>
-                                        p.addEventListener("scroll", onScroll)
-                                );
-                        }
-                        window.addEventListener("scroll", onScroll, { passive: true });
+                        listContainer.addEventListener("scroll", onScroll);
+                        detail.querySelectorAll(".guarantee-detail__panel").forEach((p) =>
+                                p.addEventListener("scroll", onScroll)
+                        );
                 })();
 
                 function normalizeFilterValues(items) {
@@ -6568,39 +5731,14 @@ async function activateRow(row, options = {}) {
                                                 const opt = document.createElement("option");
                                                 const val = typeof est === "object" ? est.value : est;
                                                 const lbl = typeof est === "object" ? est.label : est;
-                                                const normalizedValue = String(val);
                                                 if (
                                                         isProfesional &&
-                                                        normalizedValue === "expira_pronto"
-                                                ) {
-                                                        return;
-                                                }
-                                                if (
-                                                        !canSeeVerifyCollectStates &&
                                                         [
+                                                                "expira_pronto",
                                                                 "pendiente_cobro",
-                                                                "validacion_pendiente",
-                                                        ].includes(normalizedValue)
+                                                        ].includes(String(val))
                                                 ) {
                                                         return;
-                                                }
-                                                if (shouldRestrictEmptyStateOptions) {
-                                                        const rawCount =
-                                                                typeof est === "object" &&
-                                                                est !== null &&
-                                                                Object.prototype.hasOwnProperty.call(
-                                                                        est,
-                                                                        "count"
-                                                                )
-                                                                        ? Number(est.count)
-                                                                        : null;
-                                                        if (
-                                                                rawCount !== null &&
-                                                                !Number.isNaN(rawCount) &&
-                                                                rawCount <= 0
-                                                        ) {
-                                                                return;
-                                                        }
                                                 }
                                                 opt.value = val;
                                                 opt.textContent = lbl;
@@ -6712,17 +5850,14 @@ async function activateRow(row, options = {}) {
                         tbody.innerHTML = "";
                         loadedIds.clear();
                         clearSelectionAndDetail();
-                        if (scrollEnd) {
-                                scrollEnd.hidden = false;
-                        }
-                        const spinnerToken = setSpinnerVisible(true);
+                        spinner.style.display = "";
                         if (currentListAbort) currentListAbort.abort();
                         isLoading = false;
                         if (listCache.has(cacheKey)) {
-                                renderFromCache(listCache.get(cacheKey), spinnerToken);
+                                renderFromCache(listCache.get(cacheKey));
                                 return;
                         }
-                        loadPage(1, { spinnerToken });
+                        loadPage(1);
                 }
 
                 if (estadoSelect)
@@ -6940,9 +6075,6 @@ async function activateRow(row, options = {}) {
                         };
 
                         moreFiltersToggle.addEventListener("click", () => {
-                                if (!isDesktopView()) {
-                                        setMobileFiltersOpen(true);
-                                }
                                 const isOpen = !advancedPanel.hasAttribute("hidden");
                                 setAdvancedOpen(!isOpen);
                         });
@@ -7052,17 +6184,14 @@ async function activateRow(row, options = {}) {
                         tbody.innerHTML = "";
                         loadedIds.clear();
                         clearSelectionAndDetail();
-                        if (scrollEnd) {
-                                scrollEnd.hidden = false;
-                        }
-                        const spinnerToken = setSpinnerVisible(true);
+                        spinner.style.display = "";
                         if (currentListAbort) currentListAbort.abort();
                         isLoading = false;
                         if (listCache.has(cacheKey)) {
-                                renderFromCache(listCache.get(cacheKey), spinnerToken);
+                                renderFromCache(listCache.get(cacheKey));
                                 return;
                         }
-                        loadPage(1, { search: searchQuery, spinnerToken });
+                        loadPage(1, { search: searchQuery });
                         updateResetVisibility();
                 }
 
@@ -7098,6 +6227,15 @@ async function activateRow(row, options = {}) {
                         loadPage(1);
                         updateResetVisibility();
                 });
+
+                new IntersectionObserver(
+                        (entries) => {
+                                if (entries[0].isIntersecting && hasMore && !isLoading) {
+                                        loadPage(currentPage + 1);
+                                }
+                        },
+                        { root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }
+                ).observe(scrollEnd);
 
                 if (pendingMatSelection && initialMatQuery) {
                         setEmptyDetailPanel("forward", "loading", { plate: initialMatQuery });
