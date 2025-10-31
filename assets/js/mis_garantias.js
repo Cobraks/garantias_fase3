@@ -3176,23 +3176,27 @@ const ADD_DOC_KEY = "add-document";
 
                            const applyOverlayPosition = () => {
                                    const { wrapperRect, tableRect } = measureRects();
+                                   const scrollLeft = wrapper.scrollLeft || 0;
                                    overlay.style.width = `${tableRect.width}px`;
                                    overlay.style.height = `${tableRect.height}px`;
                                    overlay.style.top = `${
                                            tableRect.top - wrapperRect.top + wrapper.scrollTop
                                    }px`;
                                    overlay.style.left = `${
-                                           tableRect.left - wrapperRect.left + wrapper.scrollLeft
+                                           tableRect.left - wrapperRect.left + scrollLeft
                                    }px`;
                                    handles.forEach((handle, index) => {
                                            const th = headerCells[index];
                                            if (!th) {
                                                    return;
                                            }
-                                           const rect = th.getBoundingClientRect();
-                                           handle.style.left = `${
-                                                   rect.right - tableRect.left - handle.offsetWidth / 2
-                                           }px`;
+                                            const rect = th.getBoundingClientRect();
+                                            handle.style.left = `${
+                                                    rect.right -
+                                                    tableRect.left -
+                                                    scrollLeft -
+                                                    handle.offsetWidth / 2
+                                            }px`;
                                    });
                            };
 
@@ -6359,7 +6363,6 @@ async function activateRow(row, options = {}) {
                         prevSelectedRow = row;
                         prevIdx = idx;
                         lastDetailTrigger = row;
-                        openMobileDetail({ focus: true });
                         pendingMatSelection = false;
                         initialMatQuery = "";
 
@@ -6446,6 +6449,8 @@ async function activateRow(row, options = {}) {
                                 nextPanel.classList.remove("slide-in-left", "slide-in-right");
                                 nextPanel.classList.add("active");
                         }
+
+                        openMobileDetail({ focus: true });
 
                         if (cacheKey && !cachedDetail) {
                                 try {

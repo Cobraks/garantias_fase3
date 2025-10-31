@@ -1516,6 +1516,13 @@ body.has-mobile-summary-open .guarantee-detail__dialog {
     border-radius: 1.5rem 1.5rem 0 0;
 }
 
+@media (max-width: 1279.98px) {
+    body.has-mobile-detail-open:not(.has-mobile-summary-open)
+        .guarantee-detail__panel .guarantee-detail__empty[data-empty-mode='awaiting'] {
+        display: none;
+    }
+}
+
 .guarantee-detail__plan-title {
     display: flex;
     align-items: baseline;
