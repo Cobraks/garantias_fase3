@@ -715,8 +715,30 @@ const ADD_DOC_KEY = "add-document";
                 let currentMobileNavState = "guarantees";
                 let lastDetailTrigger = null;
                 let infiniteScrollObserver = null;
+                let mobileHideEmpty = false;
+                const syncMobileEmptyHidden = () => {
+                        if (!detail) {
+                                return;
+                        }
+                        if (!desktopMediaQuery || desktopMediaQuery.matches) {
+                                detail.classList.remove("guarantee-detail--hide-empty");
+                                return;
+                        }
+                        detail.classList.toggle(
+                                "guarantee-detail--hide-empty",
+                                mobileHideEmpty
+                        );
+                };
+                const setMobileEmptyHidden = (hidden) => {
+                        mobileHideEmpty = Boolean(hidden);
+                        syncMobileEmptyHidden();
+                        return mobileHideEmpty;
+                };
                 const setMobileSummaryOpen = (open) => {
                         mobileSummaryOpen = Boolean(open);
+                        if (mobileSummaryOpen) {
+                                setMobileEmptyHidden(false);
+                        }
                         if (bodyElement) {
                                 bodyElement.classList.toggle(
                                         "has-mobile-summary-open",
@@ -726,6 +748,7 @@ const ADD_DOC_KEY = "add-document";
                         return mobileSummaryOpen;
                 };
                 setMobileSummaryOpen(false);
+                syncMobileEmptyHidden();
                 const updateBaseFiltersHeight = () => {
                         if (!filtersRoot) {
                                 baseFiltersHeight = 0;
@@ -768,6 +791,49 @@ const ADD_DOC_KEY = "add-document";
 
                 const isDesktopView = () =>
                         desktopMediaQuery ? desktopMediaQuery.matches : true;
+
+                function syncBottomBarState({ measure = false } = {}) {
+                        if (!rootElement) {
+                                return;
+                        }
+                        if (!bottomBar) {
+                                rootElement.style.setProperty(
+                                        "--guarantees-bottom-bar-height",
+                                        "0px"
+                                );
+                                return;
+                        }
+                        const desktop = isDesktopView();
+                        if (desktop) {
+                                bottomBar.hidden = true;
+                                bottomBar.style.position = "";
+                                bottomBar.style.left = "";
+                                bottomBar.style.right = "";
+                                bottomBar.style.bottom = "";
+                                rootElement.style.setProperty(
+                                        "--guarantees-bottom-bar-height",
+                                        "0px"
+                                );
+                                return;
+                        }
+                        bottomBar.hidden = false;
+                        bottomBar.style.position = "fixed";
+                        bottomBar.style.left = "0";
+                        bottomBar.style.right = "0";
+                        bottomBar.style.bottom = "0";
+                        const updateHeight = () => {
+                                const height = bottomBar.offsetHeight || 0;
+                                rootElement.style.setProperty(
+                                        "--guarantees-bottom-bar-height",
+                                        `${height}px`
+                                );
+                        };
+                        if (measure && typeof requestAnimationFrame === "function") {
+                                requestAnimationFrame(updateHeight);
+                        } else {
+                                updateHeight();
+                        }
+                }
 
                 function setMobileNavState(state) {
                         if (typeof state !== "string" || state.length === 0) {
@@ -813,7 +879,9 @@ const ADD_DOC_KEY = "add-document";
                                 explicitState && typeof explicitState === "string"
                                         ? explicitState
                                         : computeMobileNavState();
-                        return setMobileNavState(target);
+                        const state = setMobileNavState(target);
+                        syncBottomBarState({ measure: true });
+                        return state;
                 }
 
                 function syncMobileDetailVisibility({ focus = false, restoreFocus = false } = {}) {
@@ -821,6 +889,7 @@ const ADD_DOC_KEY = "add-document";
                                 return;
                         }
                         const desktop = isDesktopView();
+                        syncMobileEmptyHidden();
                         const shouldBeOpen = desktop || mobileDetailOpen;
                         detail.setAttribute(
                                 "data-mobile-open",
@@ -916,6 +985,7 @@ const ADD_DOC_KEY = "add-document";
                         mobileDetailOpen = shouldOpen;
                         if (!shouldOpen) {
                                 setMobileSummaryOpen(false);
+                                setMobileEmptyHidden(false);
                         }
                         syncMobileDetailVisibility({
                                 focus: shouldOpen && focus,
@@ -1230,6 +1300,7 @@ const ADD_DOC_KEY = "add-document";
                                 observeScrollEnd();
                                 syncSearchPlacement();
                                 syncSpinnerCompensation();
+                                syncBottomBarState({ measure: true });
                         };
                         if (typeof desktopMediaQuery.addEventListener === "function") {
                                 desktopMediaQuery.addEventListener(
@@ -1293,9 +1364,15 @@ const ADD_DOC_KEY = "add-document";
                         window.addEventListener("resize", syncSpinnerCompensation, {
                                 passive: true,
                         });
+                        const handleResize = () =>
+                                syncBottomBarState({ measure: true });
+                        window.addEventListener("resize", handleResize, {
+                                passive: true,
+                        });
                 }
 
                 syncSpinnerCompensation();
+                syncBottomBarState({ measure: true });
 
                 function populateMonthSelect(select) {
                         if (!select || monthOptions.length === 0) {
@@ -1650,6 +1727,9 @@ const ADD_DOC_KEY = "add-document";
                 const detailPromises = new Map();
                 const loadedIds = new Set();
                 const listCache = new Map();
+                const detailPreloadQueue = new Set();
+                let detailPreloadScheduled = false;
+                let detailPreloadProcessing = false;
                 const LIST_CACHE_STORAGE_KEY = "go:guarantees:list-cache:v1";
                 const LIST_CACHE_TTL_MS = 5 * 60 * 1000;
                 const LIST_CACHE_MAX_ENTRIES = 6;
@@ -1826,6 +1906,96 @@ const ADD_DOC_KEY = "add-document";
                         ].join("|");
                 }
 
+                function scheduleDetailPreload() {
+                        if (detailPreloadScheduled) {
+                                return;
+                        }
+                        detailPreloadScheduled = true;
+                        const scheduler =
+                                typeof window !== "undefined" &&
+                                typeof window.requestIdleCallback === "function"
+                                        ? window.requestIdleCallback
+                                        : (callback) => setTimeout(callback, 100);
+                        scheduler(() => {
+                                detailPreloadScheduled = false;
+                                processDetailPreloadQueue();
+                        });
+                }
+
+                async function processDetailPreloadQueue() {
+                        if (detailPreloadProcessing) {
+                                return;
+                        }
+                        detailPreloadProcessing = true;
+                        try {
+                                while (detailPreloadQueue.size > 0) {
+                                        const iterator = detailPreloadQueue.values();
+                                        const id = iterator.next().value;
+                                        detailPreloadQueue.delete(id);
+                                        try {
+                                                await fetchDetail(id);
+                                        } catch (error) {
+                                                console.error(
+                                                        "❌ Error precargando detalle:",
+                                                        error
+                                                );
+                                        }
+                                }
+                        } finally {
+                                detailPreloadProcessing = false;
+                                if (detailPreloadQueue.size > 0) {
+                                        scheduleDetailPreload();
+                                }
+                        }
+                }
+
+                function queueDetailPreload(id) {
+                        if (id == null) {
+                                return;
+                        }
+                        const normalizedId =
+                                typeof id === "number" || typeof id === "string"
+                                        ? String(id)
+                                        : "";
+                        if (!normalizedId) {
+                                return;
+                        }
+                        if (
+                                detailCache.has(normalizedId) ||
+                                detailPromises.has(normalizedId) ||
+                                detailPreloadQueue.has(normalizedId)
+                        ) {
+                                return;
+                        }
+                        detailPreloadQueue.add(normalizedId);
+                        scheduleDetailPreload();
+                }
+
+                function ensureDetailPreloaded(item) {
+                        if (!item || typeof item !== "object") {
+                                return;
+                        }
+                        const hasId = Object.prototype.hasOwnProperty.call(item, "id");
+                        if (!hasId) {
+                                return;
+                        }
+                        const normalizedId =
+                                typeof item.id === "number" || typeof item.id === "string"
+                                        ? String(item.id)
+                                        : "";
+                        if (!normalizedId) {
+                                return;
+                        }
+                        if (item.detail) {
+                                detailCache.set(
+                                        normalizedId,
+                                        normalizeDetailData(item.detail)
+                                );
+                                return;
+                        }
+                        queueDetailPreload(normalizedId);
+                }
+
                 function renderFromCache(cache, spinnerToken = null) {
                         if (!cache || !tbody || !Array.isArray(cache.data)) {
                                 finalizeSpinnerVisibility(0, 0, spinnerToken);
@@ -1835,6 +2005,7 @@ const ADD_DOC_KEY = "add-document";
                         let appended = 0;
                         for (const item of cache.data) {
                                 tbody.appendChild(renderRow(item));
+                                ensureDetailPreloaded(item);
                                 if (item && Object.prototype.hasOwnProperty.call(item, "id")) {
                                         loadedIds.add(item.id);
                                 }
@@ -3104,295 +3275,342 @@ const ADD_DOC_KEY = "add-document";
                                .replace(/^-+|-+$/g, "");
                }
 
-           function initResizableColumns(table) {
-                   if (!table) {
-                           return;
+   function initResizableColumns(table) {
+           if (!table) {
+                   return;
+           }
+
+           let teardown = null;
+
+           const setup = () => {
+                   const wrapper = table.parentElement;
+                   const headerCells = Array.from(table.querySelectorAll("thead th"));
+                   const body = table.tBodies[0];
+                   if (!wrapper || headerCells.length === 0 || !body) {
+                           return () => {};
                    }
 
-                   const setup = () => {
-                           const wrapper = table.parentElement;
-                           const headerCells = Array.from(table.querySelectorAll("thead th"));
-                           const body = table.tBodies[0];
-                           if (!wrapper || headerCells.length === 0 || !body) {
-                                   return () => {};
+                   const computed = window.getComputedStyle(wrapper);
+                   const hadInlinePosition =
+                           typeof wrapper.style.position === "string" &&
+                           wrapper.style.position.length > 0;
+                   const shouldRestorePosition = !hadInlinePosition && computed.position === "static";
+
+                   const previousTableLayout = table.style.tableLayout;
+
+                   if (shouldRestorePosition) {
+                           wrapper.style.position = "relative";
+                   }
+
+                   let colgroup = table.querySelector("colgroup");
+                   if (!colgroup) {
+                           colgroup = document.createElement("colgroup");
+                           headerCells.forEach(() =>
+                                   colgroup.appendChild(document.createElement("col"))
+                           );
+                           table.insertBefore(colgroup, table.firstChild);
+                   }
+                   const cols = Array.from(colgroup.children);
+
+                   const MIN_WIDTH = 80;
+                   const MAX_WIDTH = 480;
+                   const clamp = (value, min, max) =>
+                           Math.min(Math.max(value, min), max);
+                   const pointerSupported =
+                           typeof window !== "undefined" && "PointerEvent" in window;
+
+                   let widths = [];
+                   const overlay = document.createElement("div");
+                   overlay.className = "column-resizers";
+                   wrapper.appendChild(overlay);
+
+                   const handles = [];
+                   const handleListeners = [];
+                   let rafId = null;
+
+                   const cancelScheduled = () => {
+                           if (
+                                   rafId !== null &&
+                                   typeof cancelAnimationFrame === "function"
+                           ) {
+                                   cancelAnimationFrame(rafId);
                            }
+                           rafId = null;
+                   };
 
-                           const computed = window.getComputedStyle(wrapper);
-                           const hadInlinePosition =
-                                   typeof wrapper.style.position === "string" &&
-                                   wrapper.style.position.length > 0;
-                           const shouldRestorePosition = !hadInlinePosition && computed.position === "static";
-
-                           const previousTableLayout = table.style.tableLayout;
-
-                           if (shouldRestorePosition) {
-                                   wrapper.style.position = "relative";
-                           }
-
-                           let colgroup = table.querySelector("colgroup");
-                           if (!colgroup) {
-                                   colgroup = document.createElement("colgroup");
-                                   headerCells.forEach(() =>
-                                           colgroup.appendChild(document.createElement("col"))
-                                   );
-                                   table.insertBefore(colgroup, table.firstChild);
-                           }
-                           const cols = Array.from(colgroup.children);
-
-                           const MIN_WIDTH = 80;
-                           const MAX_WIDTH = 480;
-                           const clamp = (value, min, max) =>
-                                   Math.min(Math.max(value, min), max);
-                           const pointerSupported =
-                                   typeof window !== "undefined" && "PointerEvent" in window;
-
-                           let widths = [];
-                           const overlay = document.createElement("div");
-                           overlay.className = "column-resizers";
-                           wrapper.appendChild(overlay);
-
-                           const handles = [];
-                           const handleListeners = [];
-                           let rafId = null;
-
-                           const cancelScheduled = () => {
-                                   if (
-                                           rafId !== null &&
-                                           typeof cancelAnimationFrame === "function"
-                                   ) {
-                                           cancelAnimationFrame(rafId);
-                                   }
-                                   rafId = null;
+                   const measureRects = () => {
+                           const wrapperRect = wrapper.getBoundingClientRect();
+                           const tableRect = table.getBoundingClientRect();
+                           return {
+                                   wrapperRect,
+                                   tableRect,
                            };
+                   };
 
-                           const measureRects = () => {
-                                   const wrapperRect = wrapper.getBoundingClientRect();
-                                   const tableRect = table.getBoundingClientRect();
-                                   return {
-                                           wrapperRect,
-                                           tableRect,
-                                   };
-                           };
-
-                           const applyOverlayPosition = () => {
-                                   const { wrapperRect, tableRect } = measureRects();
-                                   overlay.style.width = `${tableRect.width}px`;
-                                   overlay.style.height = `${tableRect.height}px`;
-                                   overlay.style.top = `${
-                                           tableRect.top - wrapperRect.top + wrapper.scrollTop
-                                   }px`;
-                                   overlay.style.left = `${
-                                           tableRect.left - wrapperRect.left + wrapper.scrollLeft
-                                   }px`;
-                                   handles.forEach((handle, index) => {
-                                           const th = headerCells[index];
-                                           if (!th) {
-                                                   return;
-                                           }
-                                           const rect = th.getBoundingClientRect();
-                                           handle.style.left = `${
-                                                   rect.right - tableRect.left - handle.offsetWidth / 2
-                                           }px`;
-                                   });
-                           };
-
-                           const scheduleOverlayUpdate = () => {
-                                   if (typeof requestAnimationFrame === "function") {
-                                           cancelScheduled();
-                                           rafId = requestAnimationFrame(() => {
-                                                   rafId = null;
-                                                   applyOverlayPosition();
-                                           });
+                   const applyOverlayPosition = () => {
+                           const { wrapperRect, tableRect } = measureRects();
+                           overlay.style.width = `${tableRect.width}px`;
+                           overlay.style.height = `${tableRect.height}px`;
+                           overlay.style.top = `${
+                                   tableRect.top - wrapperRect.top + wrapper.scrollTop
+                           }px`;
+                           overlay.style.left = `${
+                                   tableRect.left - wrapperRect.left + wrapper.scrollLeft
+                           }px`;
+                           handles.forEach((handle, index) => {
+                                   const th = headerCells[index];
+                                   if (!th) {
                                            return;
                                    }
-                                   applyOverlayPosition();
-                           };
+                                   const rect = th.getBoundingClientRect();
+                                   handle.style.left = `${
+                                           rect.right - tableRect.left - handle.offsetWidth / 2
+                                   }px`;
+                           });
+                   };
 
-                           const applyWidths = () => {
-                                   widths.forEach((width, index) => {
-                                           if (cols[index]) {
-                                                   cols[index].style.width = `${width}px`;
+                   const scheduleOverlayUpdate = () => {
+                           if (typeof requestAnimationFrame === "function") {
+                                   cancelScheduled();
+                                   rafId = requestAnimationFrame(() => {
+                                           rafId = null;
+                                           applyOverlayPosition();
+                                   });
+                                   return;
+                           }
+                           applyOverlayPosition();
+                   };
+
+                   const applyWidths = () => {
+                           widths.forEach((width, index) => {
+                                   if (cols[index]) {
+                                           cols[index].style.width = `${width}px`;
+                                   }
+                           });
+                   };
+
+                   const measureWidths = (options = {}) => {
+                           const { reset = false } = options;
+                           if (reset) {
+                                   cols.forEach((col) => {
+                                           if (col && col.style) {
+                                                   col.style.removeProperty("width");
                                            }
                                    });
-                           };
+                           }
+                           table.style.tableLayout = "auto";
+                           widths = headerCells.map((th) =>
+                                   clamp(th.getBoundingClientRect().width, MIN_WIDTH, MAX_WIDTH)
+                           );
+                           table.style.tableLayout = "fixed";
+                           applyWidths();
+                   };
 
-                           const measureWidths = () => {
-                                   table.style.tableLayout = "auto";
-                                   widths = headerCells.map((th) =>
-                                           clamp(th.getBoundingClientRect().width, MIN_WIDTH, MAX_WIDTH)
-                                   );
-                                   table.style.tableLayout = "fixed";
-                                   applyWidths();
-                           };
+                   const detachHandleListeners = () => {
+                           handleListeners.forEach(({ handle, type, listener }) => {
+                                   handle.removeEventListener(type, listener);
+                           });
+                           handleListeners.length = 0;
+                   };
 
-                           const detachHandleListeners = () => {
-                                   handleListeners.forEach(({ handle, type, listener }) => {
-                                           handle.removeEventListener(type, listener);
-                                   });
-                                   handleListeners.length = 0;
-                           };
+                   const createHandles = () => {
+                           detachHandleListeners();
+                           overlay.innerHTML = "";
+                           handles.length = 0;
+                           for (let i = 0; i < widths.length - 1; i++) {
+                                   const handle = document.createElement("span");
+                                   handle.className = "column-resizer";
+                                   overlay.appendChild(handle);
+                                   handles.push(handle);
 
-                           const createHandles = () => {
-                                   detachHandleListeners();
-                                   overlay.innerHTML = "";
-                                   handles.length = 0;
-                                   for (let i = 0; i < widths.length - 1; i++) {
-                                           const handle = document.createElement("span");
-                                           handle.className = "column-resizer";
-                                           overlay.appendChild(handle);
-                                           handles.push(handle);
+                                   const startResize = (event) => {
+                                           if (event.button !== undefined && event.button !== 0) {
+                                                   return;
+                                           }
+                                           event.preventDefault();
+                                           const isPointer = event.type === "pointerdown";
+                                           const pointerId = isPointer ? event.pointerId : null;
+                                           const startX = event.clientX ?? event.pageX ?? 0;
+                                           const startWidth = widths[i];
+                                           const nextWidth = widths[i + 1];
+                                           const total = startWidth + nextWidth;
 
-                                           const startResize = (event) => {
-                                                   if (event.button !== undefined && event.button !== 0) {
-                                                           return;
+                                           const updateWidths = (clientX) => {
+                                                   const delta = clientX - startX;
+                                                   let current = clamp(
+                                                           startWidth + delta,
+                                                           MIN_WIDTH,
+                                                           MAX_WIDTH
+                                                   );
+                                                   let sibling = total - current;
+                                                   if (sibling < MIN_WIDTH) {
+                                                           sibling = MIN_WIDTH;
+                                                           current = total - sibling;
                                                    }
-                                                   event.preventDefault();
-                                                   const isPointer = event.type === "pointerdown";
-                                                   const pointerId = isPointer ? event.pointerId : null;
-                                                   const startX = event.clientX ?? event.pageX ?? 0;
-                                                   const startWidth = widths[i];
-                                                   const nextWidth = widths[i + 1];
-                                                   const total = startWidth + nextWidth;
+                                                   if (sibling > MAX_WIDTH) {
+                                                           sibling = MAX_WIDTH;
+                                                           current = total - sibling;
+                                                   }
+                                                   widths[i] = current;
+                                                   widths[i + 1] = sibling;
+                                                   cols[i].style.width = `${current}px`;
+                                                   cols[i + 1].style.width = `${sibling}px`;
+                                                   scheduleOverlayUpdate();
+                                           };
 
-                                                   const updateWidths = (clientX) => {
-                                                           const delta = clientX - startX;
-                                                           let current = clamp(
-                                                                   startWidth + delta,
-                                                                   MIN_WIDTH,
-                                                                   MAX_WIDTH
+                                           const handleMove = (moveEvent) => {
+                                                   const clientX =
+                                                           moveEvent.clientX ??
+                                                           moveEvent.pageX ??
+                                                           startX;
+                                                   updateWidths(clientX);
+                                           };
+
+                                           const stopResize = () => {
+                                                   if (isPointer && handle.releasePointerCapture) {
+                                                           handle.releasePointerCapture(pointerId);
+                                                           handle.removeEventListener(
+                                                                   "pointermove",
+                                                                   handleMove
                                                            );
-                                                           let sibling = total - current;
-                                                           if (sibling < MIN_WIDTH) {
-                                                                   sibling = MIN_WIDTH;
-                                                                   current = total - sibling;
-                                                           }
-                                                           if (sibling > MAX_WIDTH) {
-                                                                   sibling = MAX_WIDTH;
-                                                                   current = total - sibling;
-                                                           }
-                                                           widths[i] = current;
-                                                           widths[i + 1] = sibling;
-                                                           cols[i].style.width = `${current}px`;
-                                                           cols[i + 1].style.width = `${sibling}px`;
-                                                           scheduleOverlayUpdate();
-                                                   };
-
-                                                   const handleMove = (moveEvent) => {
-                                                           const clientX =
-                                                                   moveEvent.clientX ??
-                                                                   moveEvent.pageX ??
-                                                                   startX;
-                                                           updateWidths(clientX);
-                                                   };
-
-                                                   const stopResize = () => {
-                                                           if (isPointer && handle.releasePointerCapture) {
-                                                                   handle.releasePointerCapture(pointerId);
-                                                                   handle.removeEventListener(
-                                                                           "pointermove",
-                                                                           handleMove
-                                                                   );
-                                                                   handle.removeEventListener(
-                                                                           "pointerup",
-                                                                           stopResize
-                                                                   );
-                                                                   handle.removeEventListener(
-                                                                           "pointercancel",
-                                                                           stopResize
-                                                                   );
-                                                           } else {
-                                                                   document.removeEventListener(
-                                                                           "mousemove",
-                                                                           handleMove
-                                                                   );
-                                                                   document.removeEventListener(
-                                                                           "mouseup",
-                                                                           stopResize
-                                                                   );
-                                                           }
-                                                   };
-
-                                                   if (isPointer && handle.setPointerCapture) {
-                                                           handle.setPointerCapture(pointerId);
-                                                           handle.addEventListener("pointermove", handleMove);
-                                                           handle.addEventListener("pointerup", stopResize);
-                                                           handle.addEventListener(
+                                                           handle.removeEventListener(
+                                                                   "pointerup",
+                                                                   stopResize
+                                                           );
+                                                           handle.removeEventListener(
                                                                    "pointercancel",
                                                                    stopResize
                                                            );
                                                    } else {
-                                                           document.addEventListener("mousemove", handleMove);
-                                                           document.addEventListener("mouseup", stopResize);
+                                                           document.removeEventListener(
+                                                                   "mousemove",
+                                                                   handleMove
+                                                           );
+                                                           document.removeEventListener(
+                                                                   "mouseup",
+                                                                   stopResize
+                                                           );
                                                    }
                                            };
 
-                                           const listenerType = pointerSupported
-                                                   ? "pointerdown"
-                                                   : "mousedown";
-                                           handle.addEventListener(listenerType, startResize);
-                                           handleListeners.push({
-                                                   handle,
-                                                   type: listenerType,
-                                                   listener: startResize,
-                                           });
-                                   }
-                                   scheduleOverlayUpdate();
-                           };
+                                           if (isPointer && handle.setPointerCapture) {
+                                                   handle.setPointerCapture(pointerId);
+                                                   handle.addEventListener("pointermove", handleMove);
+                                                   handle.addEventListener("pointerup", stopResize);
+                                                   handle.addEventListener(
+                                                           "pointercancel",
+                                                           stopResize
+                                                   );
+                                           } else {
+                                                   document.addEventListener("mousemove", handleMove);
+                                                   document.addEventListener("mouseup", stopResize);
+                                           }
+                                   };
 
-			measureWidths();
-			createHandles();
-
-			const bodyObserver = new MutationObserver(() => {
-				measureWidths();
-				createHandles();
-			});
-			bodyObserver.observe(body, { childList: true });
-
-			let resizeObserver = null;
-			if (typeof ResizeObserver === "function") {
-				resizeObserver = new ResizeObserver(() => {
-					measureWidths();
-					scheduleOverlayUpdate();
-				});
-				resizeObserver.observe(table);
-			}
-
-			const onWrapperScroll = () => {
-				scheduleOverlayUpdate();
-			};
-			wrapper.addEventListener("scroll", onWrapperScroll);
-
-			const onWindowResize = () => {
-				measureWidths();
-				scheduleOverlayUpdate();
-			};
-			window.addEventListener("resize", onWindowResize);
-
-			scheduleOverlayUpdate();
-
-			return () => {
-				cancelScheduled();
-				detachHandleListeners();
-				bodyObserver.disconnect();
-				if (resizeObserver) {
-					resizeObserver.disconnect();
-				}
-				wrapper.removeEventListener("scroll", onWrapperScroll);
-                               window.removeEventListener("resize", onWindowResize);
-                               overlay.remove();
-                                if (previousTableLayout) {
-                                        table.style.tableLayout = previousTableLayout;
-                                } else {
-                                        table.style.removeProperty("table-layout");
-                                }
-                               if (shouldRestorePosition) {
-                                       wrapper.style.removeProperty("position");
-                               }
-                           };
+                                   const listenerType = pointerSupported
+                                           ? "pointerdown"
+                                           : "mousedown";
+                                   handle.addEventListener(listenerType, startResize);
+                                   handleListeners.push({
+                                           handle,
+                                           type: listenerType,
+                                           listener: startResize,
+                                   });
+                           }
+                           scheduleOverlayUpdate();
                    };
 
-                   setup();
+                   measureWidths({ reset: true });
+                   createHandles();
+
+                   const bodyObserver = new MutationObserver(() => {
+                           measureWidths();
+                           createHandles();
+                   });
+                   bodyObserver.observe(body, { childList: true });
+
+                   let resizeObserver = null;
+                   if (typeof ResizeObserver === "function") {
+                           resizeObserver = new ResizeObserver(() => {
+                                   measureWidths({ reset: true });
+                                   scheduleOverlayUpdate();
+                           });
+                           resizeObserver.observe(table);
+                   }
+
+                   const onWrapperScroll = () => {
+                           scheduleOverlayUpdate();
+                   };
+                   wrapper.addEventListener("scroll", onWrapperScroll);
+
+                   const onWindowResize = () => {
+                           measureWidths({ reset: true });
+                           scheduleOverlayUpdate();
+                   };
+                   window.addEventListener("resize", onWindowResize);
+
+                   scheduleOverlayUpdate();
+
+                   return () => {
+                           cancelScheduled();
+                           detachHandleListeners();
+                           bodyObserver.disconnect();
+                           if (resizeObserver) {
+                                   resizeObserver.disconnect();
+                           }
+                           wrapper.removeEventListener("scroll", onWrapperScroll);
+                           window.removeEventListener("resize", onWindowResize);
+                           overlay.remove();
+                           cols.forEach((col) => {
+                                   if (col && col.style) {
+                                           col.style.removeProperty("width");
+                                   }
+                           });
+                           if (previousTableLayout) {
+                                   table.style.tableLayout = previousTableLayout;
+                           } else {
+                                   table.style.removeProperty("table-layout");
+                           }
+                           if (shouldRestorePosition) {
+                                   wrapper.style.removeProperty("position");
+                           }
+                   };
+           };
+
+           const ensureResizableColumns = () => {
+                   if (!teardown) {
+                           teardown = setup();
+                   }
+           };
+
+           const rebuildResizableColumns = () => {
+                   if (teardown) {
+                           teardown();
+                           teardown = null;
+                   }
+                   teardown = setup();
+           };
+
+           ensureResizableColumns();
+
+           const viewportQuery =
+                   typeof window !== "undefined" &&
+                   typeof window.matchMedia === "function"
+                           ? window.matchMedia("(min-width: 1280px)")
+                           : null;
+
+           if (viewportQuery) {
+                   const handleViewportChange = () => {
+                           rebuildResizableColumns();
+                   };
+
+                   if (typeof viewportQuery.addEventListener === "function") {
+                           viewportQuery.addEventListener("change", handleViewportChange);
+                   } else if (typeof viewportQuery.addListener === "function") {
+                           viewportQuery.addListener(handleViewportChange);
+                   }
            }
+   }
 
                 function formatDate(value) {
                         if (!value) return { iso: "-", display: "-" };
@@ -5153,6 +5371,7 @@ const ADD_DOC_KEY = "add-document";
                         prevSelectedRow = null;
                         prevIdx = null;
                         setMobileSummaryOpen(false);
+                        setMobileEmptyHidden(false);
                         const shouldKeepQuery =
                                 pendingMatSelection ||
                                 Boolean(initialMatQuery) ||
@@ -5356,9 +5575,7 @@ const ADD_DOC_KEY = "add-document";
 
                                 if (data.length > 0) {
                                         for (const item of data) {
-                                                if (item.detail) {
-                                                        detailCache.set(String(item.id), normalizeDetailData(item.detail));
-                                                }
+                                                ensureDetailPreloaded(item);
                                                 if (loadedIds.has(item.id)) continue;
                                                 tbody.appendChild(renderRow(item));
                                                 loadedIds.add(item.id);
@@ -6329,6 +6546,9 @@ function updateModalControls(modal) {
 async function activateRow(row, options = {}) {
                         if (!row) {
                                 return;
+                        }
+                        if (!isDesktopView()) {
+                                setMobileEmptyHidden(true);
                         }
                         setMobileSummaryOpen(false);
                         const rows = Array.from(
