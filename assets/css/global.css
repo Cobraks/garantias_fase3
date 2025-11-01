@@ -2024,29 +2024,99 @@ textarea {
   
   /* Menú móvil */
   .mobile-menu {
-    display: none;
     position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
+    top: calc(100% + 0.75rem);
+    right: var(--spacing-3);
+    display: none;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    width: min(20rem, calc(100vw - 2 * var(--spacing-3)));
+    padding: 1.25rem;
     background: var(--surface);
-    border-top: 1px solid var(--border-color);
-    padding: var(--spacing-2);
+    border-radius: 1rem;
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.08),
+      0 2px 8px rgba(0, 0, 0, 0.04),
+      0 0 0 1px rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(12px);
+    z-index: 14000;
   }
-  .mobile-menu ul {
+
+  .mobile-menu--visible {
+    display: flex;
+  }
+
+  .mobile-menu__list {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-1);
+    gap: var(--spacing-2);
+    margin: 0;
+    padding: 0;
   }
+
   .mobile-menu__item {
     display: flex;
-    align-items: center;
-    padding: var(--spacing-1) 0;
-    cursor: pointer;
   }
-  .mobile-menu__item svg {
-    margin-right: 0.5rem;
+
+  .mobile-menu__link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--card-border);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: background-color var(--transition-speed), border-color var(--transition-speed), color var(--transition-speed), box-shadow var(--transition-speed);
+  }
+
+  .mobile-menu__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: inherit;
+  }
+
+  .mobile-menu__icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .mobile-menu__link:hover,
+  .mobile-menu__link:focus-visible {
+    background: var(--go-color-f1f5f9);
+    border-color: var(--go-color-cbd5e1);
+    color: var(--text-color);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--go-color-2563eb-rgb), 0.15);
+  }
+
+  .mobile-menu__item--primary .mobile-menu__link {
+    background: var(--primary-color);
+    color: var(--text-inverse);
+    border-color: var(--primary-color);
+    box-shadow: 0 12px 24px -18px rgba(var(--go-color-2563eb-rgb), 0.45);
+  }
+
+  .mobile-menu__item--primary .mobile-menu__link:hover,
+  .mobile-menu__item--primary .mobile-menu__link:focus-visible {
+    background: var(--primary-color-hover);
+    border-color: var(--primary-color-hover);
+    color: var(--text-inverse);
+    box-shadow: 0 12px 24px -12px rgba(var(--go-color-2563eb-rgb), 0.45);
+  }
+
+  .mobile-menu__item--button .mobile-menu__link {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--card-border);
   }
   
   
@@ -2467,6 +2537,41 @@ textarea {
 
 :root[data-theme='dark'] .profile-menu__footer {
   border-color: rgba(104, 116, 140, 0.45);
+}
+
+:root[data-theme='dark'] .mobile-menu {
+  background: var(--surface-alt);
+  border-color: rgba(51, 65, 85, 0.65);
+  box-shadow: 0 22px 48px -28px rgba(2, 6, 23, 0.85);
+}
+
+:root[data-theme='dark'] .mobile-menu__link {
+  background: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.32);
+  color: rgba(226, 232, 240, 0.95);
+}
+
+:root[data-theme='dark'] .mobile-menu__link:hover,
+:root[data-theme='dark'] .mobile-menu__link:focus-visible {
+  background: rgba(148, 163, 184, 0.28);
+  border-color: rgba(226, 232, 240, 0.45);
+  color: #f8fafc;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+}
+
+:root[data-theme='dark'] .mobile-menu__item--primary .mobile-menu__link {
+  background: #0b005a82;
+  border-color: #321dd2;
+  color: #fff;
+  box-shadow: none;
+}
+
+:root[data-theme='dark'] .mobile-menu__item--primary .mobile-menu__link:hover,
+:root[data-theme='dark'] .mobile-menu__item--primary .mobile-menu__link:focus-visible {
+  background: #3f3df5;
+  border-color: #6366f1;
+  color: #fff;
+  box-shadow: 0 12px 24px -12px rgba(99, 102, 241, 0.55);
 }
 
 :root[data-theme='dark'] .top-bar__menu li a {
