@@ -742,6 +742,7 @@ const ADD_DOC_KEY = "add-document";
                         const touchMoveOptions = { passive: false };
                         const edgeTolerance = 2;
                         let touchState = null;
+                        let documentScrollPrimed = false;
 
                         const normalizeWheelDelta = (event) => {
                                 if (!event) {
@@ -770,13 +771,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (!Number.isFinite(deltaY) || deltaY === 0) {
                                         return false;
                                 }
-                                if (!tableAllowsVerticalScroll()) {
-                                        return true;
-                                }
                                 const { scrollTop, maxScrollTop } = getScrollMetrics();
-                                if (maxScrollTop <= edgeTolerance) {
-                                        return true;
-                                }
                                 if (deltaY < 0 && scrollTop <= edgeTolerance) {
                                         return true;
                                 }
@@ -786,10 +781,25 @@ const ADD_DOC_KEY = "add-document";
                                 return false;
                         };
 
-                        const delegateMovement = (deltaY) => {
-                                if (!shouldDelegateMovement(deltaY)) {
-                                        return false;
+                        const primeDocumentScroll = () => {
+                                if (documentScrollPrimed) {
+                                        return;
                                 }
+                                if (typeof window === "undefined" || typeof window.scrollBy !== "function") {
+                                        documentScrollPrimed = true;
+                                        return;
+                                }
+                                documentScrollPrimed = true;
+                                try {
+                                        window.scrollBy({ top: 1, left: 0 });
+                                        window.scrollBy({ top: -1, left: 0 });
+                                } catch (error) {
+                                        window.scrollBy(0, 1);
+                                        window.scrollBy(0, -1);
+                                }
+                        };
+
+                        const delegateMovement = (deltaY) => {
                                 if (typeof window === "undefined" || typeof window.scrollBy !== "function") {
                                         return false;
                                 }
@@ -805,7 +815,10 @@ const ADD_DOC_KEY = "add-document";
                                 if (!deltaY) {
                                         return;
                                 }
-                                if (delegateMovement(deltaY)) {
+                                if (deltaY > 0 && !documentScrollPrimed) {
+                                        primeDocumentScroll();
+                                }
+                                if (shouldDelegateMovement(deltaY) && delegateMovement(deltaY)) {
                                         event.preventDefault();
                                 }
                         };
@@ -852,7 +865,13 @@ const ADD_DOC_KEY = "add-document";
                                 if (touchState.mode === "vertical") {
                                         const incrementalDelta = touchState.lastY - touch.clientY;
                                         touchState.lastY = touch.clientY;
-                                        if (delegateMovement(incrementalDelta)) {
+                                        if (incrementalDelta > 0 && !documentScrollPrimed) {
+                                                primeDocumentScroll();
+                                        }
+                                        if (
+                                                shouldDelegateMovement(incrementalDelta) &&
+                                                delegateMovement(incrementalDelta)
+                                        ) {
                                                 event.preventDefault();
                                         }
                                         return;
@@ -863,6 +882,15 @@ const ADD_DOC_KEY = "add-document";
 
                         const resetTouchState = () => {
                                 touchState = null;
+                        };
+
+                        const handleScroll = () => {
+                                if (documentScrollPrimed) {
+                                        return;
+                                }
+                                if (tableScrollContainer.scrollTop > edgeTolerance) {
+                                        primeDocumentScroll();
+                                }
                         };
 
                         tableScrollContainer.addEventListener(
@@ -890,6 +918,9 @@ const ADD_DOC_KEY = "add-document";
                                 resetTouchState,
                                 touchStartOptions
                         );
+                        tableScrollContainer.addEventListener("scroll", handleScroll, {
+                                passive: true,
+                        });
 
                         return () => {
                                 tableScrollContainer.removeEventListener(
@@ -916,6 +947,10 @@ const ADD_DOC_KEY = "add-document";
                                         "touchcancel",
                                         resetTouchState,
                                         touchStartOptions
+                                );
+                                tableScrollContainer.removeEventListener(
+                                        "scroll",
+                                        handleScroll
                                 );
                                 touchState = null;
                         };

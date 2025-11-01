@@ -978,10 +978,10 @@ section.guarantees-list {
     padding-inline: 0;
     padding-bottom: var(--spacing-2);
     overflow-x: auto;
-    overflow-y: visible;
+    overflow-y: auto;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-x;
+    touch-action: pan-x pan-y;
     width: 100%;
 }
 
