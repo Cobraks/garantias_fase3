@@ -109,12 +109,98 @@ console.log("GO360 script cargado");
                 }
 
                 // Toggle menú móvil
-                const btn = document.querySelector(".top-bar__hamburger");
-                const menu = document.querySelector(".mobile-menu");
-                if (btn && menu) {
-                        btn.addEventListener("click", () => {
-                                menu.style.display = menu.style.display === "block" ? "none" : "block";
+                const mobileToggle = document.querySelector(".top-bar__hamburger");
+                const mobileMenu = document.querySelector(".mobile-menu");
+                if (mobileToggle && mobileMenu) {
+                        const dispatchWindowEvent = (name) => {
+                                if (typeof window === "undefined") {
+                                        return;
+                                }
+                                let customEvent = null;
+                                if (typeof window.CustomEvent === "function") {
+                                        customEvent = new CustomEvent(name);
+                                } else if (
+                                        typeof document !== "undefined" &&
+                                        typeof document.createEvent === "function"
+                                ) {
+                                        customEvent = document.createEvent("CustomEvent");
+                                        customEvent.initCustomEvent(name, false, false, {});
+                                }
+                                if (customEvent) {
+                                        window.dispatchEvent(customEvent);
+                                }
+                        };
+
+                        const isMenuOpen = () => mobileMenu.classList.contains("mobile-menu--visible");
+
+                        const closeOtherPanels = () => {
+                                dispatchWindowEvent("go360:notifications:close");
+                                dispatchWindowEvent("go360:profile:close");
+                        };
+
+                        const openMenu = () => {
+                                if (isMenuOpen()) {
+                                        return;
+                                }
+                                closeOtherPanels();
+                                mobileMenu.classList.add("mobile-menu--visible");
+                                mobileMenu.setAttribute("aria-hidden", "false");
+                                mobileToggle.setAttribute("aria-expanded", "true");
+                                dispatchWindowEvent("go360:mobile-menu:opened");
+                        };
+
+                        const closeMenu = () => {
+                                if (!isMenuOpen()) {
+                                        return;
+                                }
+                                mobileMenu.classList.remove("mobile-menu--visible");
+                                mobileMenu.setAttribute("aria-hidden", "true");
+                                mobileToggle.setAttribute("aria-expanded", "false");
+                                dispatchWindowEvent("go360:mobile-menu:closed");
+                        };
+
+                        const handleToggle = (event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                if (isMenuOpen()) {
+                                        closeMenu();
+                                } else {
+                                        openMenu();
+                                }
+                        };
+
+                        const handleDocumentClick = (event) => {
+                                if (!isMenuOpen()) {
+                                        return;
+                                }
+                                if (!mobileMenu.contains(event.target) && event.target !== mobileToggle && !mobileToggle.contains(event.target)) {
+                                        closeMenu();
+                                }
+                        };
+
+                        const handleKeydown = (event) => {
+                                if (event.key === "Escape" && isMenuOpen()) {
+                                        closeMenu();
+                                        mobileToggle.focus();
+                                }
+                        };
+
+                        const handleResize = () => {
+                                if (window.innerWidth >= 1024) {
+                                        closeMenu();
+                                }
+                        };
+
+                        mobileToggle.addEventListener("click", handleToggle);
+                        mobileMenu.addEventListener("click", (event) => {
+                                event.stopPropagation();
                         });
+                        document.addEventListener("click", handleDocumentClick);
+                        document.addEventListener("keydown", handleKeydown);
+                        window.addEventListener("resize", handleResize);
+                        window.addEventListener("go360:notifications:opened", closeMenu);
+                        window.addEventListener("go360:profile:opened", closeMenu);
+                        window.addEventListener("go360:mobile-menu:close", closeMenu);
                 }
 
                 // Toggle menú de perfil
