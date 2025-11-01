@@ -950,7 +950,11 @@ section.guarantees-list {
     gap: var(--spacing-3);
     box-shadow: none;
     width: 100%;
-    height: calc(100dvh - var(--guarantees-toolbar-height) - var(--guarantees-bottom-bar-height) - var(--alturaHeader));
+    min-height: calc(
+        100dvh - var(--guarantees-toolbar-height) - var(--guarantees-bottom-bar-height) - var(--alturaHeader)
+    );
+    padding-bottom: calc(var(--spacing-3) + var(--guarantees-bottom-bar-height));
+    overflow: visible;
     overflow-x: hidden;
     box-sizing: border-box;
 }
@@ -975,7 +979,7 @@ section.guarantees-list {
     flex-direction: column;
     margin-inline: 0;
     padding-inline: 0;
-    padding-bottom: var(--spacing-2);
+    padding-bottom: calc(var(--spacing-2) + var(--guarantees-bottom-bar-height));
     overflow-x: auto;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;

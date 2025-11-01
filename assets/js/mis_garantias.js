@@ -1026,6 +1026,9 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 function getScrollRoot() {
+                        if (!isDesktopView()) {
+                                return null;
+                        }
                         if (
                                 tableScrollContainer &&
                                 tableScrollContainer.scrollHeight >
