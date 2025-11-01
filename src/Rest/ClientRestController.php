@@ -195,12 +195,45 @@ class ClientRestController
 
     public static function permissions_check($request = null): bool
     {
-        return current_user_can('manage_options');
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $current_user = wp_get_current_user();
+        if (! $current_user instanceof WP_User) {
+            return false;
+        }
+
+        $roles = array_map('strval', (array) $current_user->roles);
+        $has_client_access = in_array('go_director_comercial', $roles, true)
+            || in_array('go_garantias', $roles, true);
+
+        if (! $has_client_access) {
+            return false;
+        }
+
+        if (! $request instanceof WP_REST_Request) {
+            return true;
+        }
+
+        $method = strtoupper($request->get_method());
+        if (in_array($method, ['GET', 'HEAD', 'OPTIONS'], true)) {
+            return true;
+        }
+
+        $route = (string) $request->get_route();
+        if ($method === 'POST' || $method === 'PUT' || $method === 'PATCH') {
+            if (preg_match('#/clientes/\d+/commercials/?$#', $route)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function get_user_offers(WP_REST_Request $request)
     {
-        if (! self::permissions_check()) {
+        if (! self::permissions_check($request)) {
             return new WP_REST_Response(
                 ['message' => __('Acceso denegado', 'garantias-online-360vo')],
                 403
@@ -231,7 +264,7 @@ class ClientRestController
 
     public static function update_user_offers(WP_REST_Request $request)
     {
-        if (! self::permissions_check()) {
+        if (! self::permissions_check($request)) {
             return new WP_REST_Response(
                 ['message' => __('Acceso denegado', 'garantias-online-360vo')],
                 403
@@ -455,7 +488,7 @@ class ClientRestController
 
     public static function generate_pending_sepa(WP_REST_Request $request)
     {
-        if (! self::permissions_check()) {
+        if (! self::permissions_check($request)) {
             return new WP_REST_Response(
                 ['message' => __('Acceso denegado', 'garantias-online-360vo')],
                 403
@@ -600,7 +633,7 @@ class ClientRestController
 
     public static function activate_sepa(WP_REST_Request $request)
     {
-        if (! self::permissions_check()) {
+        if (! self::permissions_check($request)) {
             return new WP_REST_Response(
                 ['message' => __('Acceso denegado', 'garantias-online-360vo')],
                 403
@@ -729,7 +762,7 @@ class ClientRestController
 
     public static function deactivate_sepa(WP_REST_Request $request)
     {
-        if (! self::permissions_check()) {
+        if (! self::permissions_check($request)) {
             return new WP_REST_Response(
                 ['message' => __('Acceso denegado', 'garantias-online-360vo')],
                 403
@@ -850,7 +883,7 @@ class ClientRestController
 
     public static function upload_signed_sepa(WP_REST_Request $request)
     {
-        if (! self::permissions_check()) {
+        if (! self::permissions_check($request)) {
             return new WP_REST_Response(
                 ['message' => __('Acceso denegado', 'garantias-online-360vo')],
                 403
@@ -994,7 +1027,7 @@ class ClientRestController
 
     public static function get_items(WP_REST_Request $request)
     {
-        if (! self::permissions_check()) {
+        if (! self::permissions_check($request)) {
             return new WP_REST_Response(
                 ['message' => __('Acceso denegado', 'garantias-online-360vo')],
                 403
@@ -1065,7 +1098,7 @@ class ClientRestController
 
     public static function search_commercials(WP_REST_Request $request)
     {
-        if (! self::permissions_check()) {
+        if (! self::permissions_check($request)) {
             return new WP_REST_Response(
                 ['message' => __('Acceso denegado', 'garantias-online-360vo')],
                 403
@@ -1111,7 +1144,7 @@ class ClientRestController
 
     public static function update_commercials(WP_REST_Request $request)
     {
-        if (! self::permissions_check()) {
+        if (! self::permissions_check($request)) {
             return new WP_REST_Response(
                 ['message' => __('Acceso denegado', 'garantias-online-360vo')],
                 403
@@ -1216,6 +1249,7 @@ class ClientRestController
             'client_email'    => sanitize_email($user->user_email),
             'client_username' => sanitize_user($user->user_login, true),
             'client_roles'    => array_values(array_filter($roles)),
+            'vendor_id'       => (int) $user->ID,
         ];
     }
 
@@ -1402,6 +1436,11 @@ class ClientRestController
             'country' => self::clean_text($address['country'] ?? ''),
         ];
 
+        $links = [];
+        if (current_user_can('manage_options')) {
+            $links['admin'] = esc_url_raw(get_edit_user_link($user->ID));
+        }
+
         return [
             'id'      => (int) $user->ID,
             'username' => sanitize_user($user->user_login, true),
@@ -1440,9 +1479,7 @@ class ClientRestController
             'services'     => [
                 'web360' => $web360,
             ],
-            'links'        => [
-                'admin' => esc_url_raw(get_edit_user_link($user->ID)),
-            ],
+            'links'        => $links,
         ];
     }
 

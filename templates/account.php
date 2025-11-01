@@ -1887,8 +1887,19 @@ $formatPhoneHref = static function ($phone) {
                     <?php endif; ?>
                 </div>
 
-                <?php if (current_user_can('manage_options')) : ?>
-                    <div class="account-card account-card--notifications" data-notifications-card>
+                <?php
+                $notifications_user = is_user_logged_in() ? wp_get_current_user() : null;
+                $notifications_roles = $notifications_user instanceof \WP_User ? (array) $notifications_user->roles : [];
+                $notifications_allowed_roles = ['go_director_comercial', 'go_garantias'];
+                $notifications_role_match = array_intersect($notifications_allowed_roles, $notifications_roles);
+                $can_manage_notifications = current_user_can('manage_options') || ! empty($notifications_role_match);
+                ?>
+                <?php if ($can_manage_notifications) : ?>
+                    <div
+                        class="account-card account-card--notifications"
+                        data-notifications-card
+                        data-user-id="<?php echo esc_attr(get_current_user_id()); ?>"
+                    >
                         <h3 class="account-card__title">
                             Notificaciones del navegador
                             <span class="account-card__badge account-card__badge--beta">beta</span>
@@ -1898,21 +1909,39 @@ $formatPhoneHref = static function ($phone) {
                         </p>
                         <div class="account-card__actions">
                             <div class="account-card__buttons">
-                                <button type="button" class="account-button account-button--menu" data-notifications-request>
-                                    <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
-                                    <span data-notifications-label>Activar notificaciones</span>
-                                </button>
                                 <button
                                     type="button"
-                                    class="account-button account-button--ghost"
-                                    data-notifications-test
+                                    class="account-button account-button--menu"
+                                    data-notifications-request
                                 >
-                                    Probar notificación
+                                    <?php echo Svg::icon('notifications', 'account-button__icon'); ?>
+                                    <span data-notifications-label>Activar notificaciones</span>
                                 </button>
                             </div>
                             <p class="account-status account-status--info" data-notifications-status>
                                 Revisa los permisos disponibles en tu navegador.
                             </p>
+                        </div>
+                        <div class="account-card__preferences">
+                            <p class="account-card__preferences-title">Preferencias de avisos</p>
+                            <label class="account-toggle">
+                                <input
+                                    type="checkbox"
+                                    class="account-toggle__input"
+                                    data-notification-preference="toast"
+                                    checked
+                                >
+                                <span class="account-toggle__label">Mostrar avisos emergentes</span>
+                            </label>
+                            <label class="account-toggle">
+                                <input
+                                    type="checkbox"
+                                    class="account-toggle__input"
+                                    data-notification-preference="sound"
+                                    checked
+                                >
+                                <span class="account-toggle__label">Reproducir sonido</span>
+                            </label>
                         </div>
                     </div>
                 <?php endif; ?>
