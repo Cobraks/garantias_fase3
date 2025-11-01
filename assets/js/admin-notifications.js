@@ -159,6 +159,15 @@
             return;
         }
 
+        const panelHistory =
+            typeof window !== 'undefined' && window.go360PanelHistory
+                ? window.go360PanelHistory
+                : null;
+        const hasPanelHistory =
+            panelHistory &&
+            typeof panelHistory.push === 'function' &&
+            typeof panelHistory.close === 'function';
+
         const toggle = container.querySelector(SELECTORS.toggle);
         const panel = container.querySelector(SELECTORS.panel);
         const list = container.querySelector(SELECTORS.list);
@@ -1526,7 +1535,11 @@
             }
         };
 
-        const closePanel = () => {
+        const closePanel = (options = {}) => {
+            const silent =
+                options && typeof options === 'object' && !Array.isArray(options)
+                    ? Boolean(options.silent)
+                    : false;
             if (!state.isOpen) {
                 return;
             }
@@ -1534,6 +1547,9 @@
             panel.setAttribute('aria-hidden', 'true');
             toggle.setAttribute('aria-expanded', 'false');
             window.dispatchEvent(new CustomEvent('go360:notifications:closed'));
+            if (hasPanelHistory && !silent) {
+                panelHistory.close('notifications-panel');
+            }
         };
 
         const openPanel = () => {
@@ -1551,6 +1567,11 @@
             window.dispatchEvent(new CustomEvent('go360:profile:close'));
             window.dispatchEvent(new CustomEvent('go360:notifications:opened'));
             fetchNotifications({ append: false, background: false });
+            if (hasPanelHistory) {
+                panelHistory.push('notifications-panel', () => {
+                    closePanel({ silent: true });
+                });
+            }
         };
 
         const togglePanel = () => {

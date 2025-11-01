@@ -506,19 +506,37 @@ if (($is_admin_user || $is_director)
             <table class="guarantees-table" style="view-transition-name: garantias-table">
                 <thead>
                     <tr>
-                        <th><?php esc_html_e('Vehículo',  'garantias-online-360vo'); ?></th>
-                        <th><?php esc_html_e('Validez',   'garantias-online-360vo'); ?></th>
                         <th>
-                            <?php
-                            if ($show_channel_col) {
-                                esc_html_e('Canal de venta', 'garantias-online-360vo');
-                            } else {
-                                esc_html_e('Cliente', 'garantias-online-360vo');
-                            }
-                            ?>
+                            <span class="guarantees-table__header-label">
+                                <?php esc_html_e('Vehículo',  'garantias-online-360vo'); ?>
+                            </span>
                         </th>
-                        <th><?php esc_html_e('Estado',    'garantias-online-360vo'); ?></th>
-                        <th><?php esc_html_e('Garantía',  'garantias-online-360vo'); ?></th>
+                        <th>
+                            <span class="guarantees-table__header-label guarantees-table__header-label--sticky">
+                                <?php esc_html_e('Validez',   'garantias-online-360vo'); ?>
+                            </span>
+                        </th>
+                        <th>
+                            <span class="guarantees-table__header-label guarantees-table__header-label--sticky">
+                                <?php
+                                if ($show_channel_col) {
+                                    esc_html_e('Canal de venta', 'garantias-online-360vo');
+                                } else {
+                                    esc_html_e('Cliente', 'garantias-online-360vo');
+                                }
+                                ?>
+                            </span>
+                        </th>
+                        <th>
+                            <span class="guarantees-table__header-label guarantees-table__header-label--sticky">
+                                <?php esc_html_e('Estado',    'garantias-online-360vo'); ?>
+                            </span>
+                        </th>
+                        <th>
+                            <span class="guarantees-table__header-label guarantees-table__header-label--sticky">
+                                <?php esc_html_e('Garantía',  'garantias-online-360vo'); ?>
+                            </span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody data-current-page="0" data-total-pages="">
