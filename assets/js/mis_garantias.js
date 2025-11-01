@@ -1025,10 +1025,7 @@ const ADD_DOC_KEY = "add-document";
                         setMobileDetailOpen(false, options);
                 }
 
-                function getScrollRoot() {
-                        if (!isDesktopView()) {
-                                return null;
-                        }
+                function getActiveScrollContainer() {
                         if (
                                 tableScrollContainer &&
                                 tableScrollContainer.scrollHeight >
@@ -1043,6 +1040,10 @@ const ADD_DOC_KEY = "add-document";
                                 return listContainer;
                         }
                         return null;
+                }
+
+                function getScrollRoot() {
+                        return getActiveScrollContainer();
                 }
 
                 function observeScrollEnd() {
@@ -1350,6 +1351,9 @@ const ADD_DOC_KEY = "add-document";
                                 syncSearchPlacement();
                                 syncSpinnerCompensation();
                                 syncBottomBarState({ measure: true });
+                                updateScrollDirectionState(getListScrollTop(), {
+                                        force: true,
+                                });
                         };
                         if (typeof desktopMediaQuery.addEventListener === "function") {
                                 desktopMediaQuery.addEventListener(
@@ -5683,13 +5687,16 @@ const ADD_DOC_KEY = "add-document";
                                         tbody.innerHTML = "";
                                         previousRowCount = 0;
                                         clearSelectionAndDetail({ preserveQuery: pendingMatSelection }); // Limpiar selección SIEMPRE que se cambia el listado (así evitas seleccionados fantasmas)
-					if (data.length > 0) {
-						listContainer.scrollTop = 0;
-						// Solo guardamos resultados válidos si búsqueda >= 3 caracteres y pocos resultados
-						if (search.length >= 3 && data.length > 0 && data.length <= 20) {
-							lastValidQuery = search;
-							lastValidResults = data.slice();
-						}
+                                        if (data.length > 0) {
+                                                listContainer.scrollTop = 0;
+                                                updateScrollDirectionState(0, {
+                                                        force: true,
+                                                });
+                                                // Solo guardamos resultados válidos si búsqueda >= 3 caracteres y pocos resultados
+                                                if (search.length >= 3 && data.length > 0 && data.length <= 20) {
+                                                        lastValidQuery = search;
+                                                        lastValidResults = data.slice();
+                                                }
 					}
 				}
 				currentPage = page;
@@ -7135,18 +7142,106 @@ async function activateRow(row, options = {}) {
                                         { root: null, threshold: 0, rootMargin: "-50px" }
                                 ).observe(header);
                         }
-                        const getListScrollTop = () => {
+                        let lastKnownListScrollTop = 0;
+                        let lastListScrollDirection = "up";
+                        let currentScrollDirectionAttr = null;
+                        let currentScrollEdgeAttr = null;
+                        const LIST_SCROLL_DIRECTION_THRESHOLD = 6;
+
+                        const syncScrollDirectionState = ({
+                                direction = null,
+                                atTop = false,
+                                atBottom = false,
+                        } = {}) => {
+                                if (!bodyElement) {
+                                        return;
+                                }
+                                if (!direction) {
+                                        if (currentScrollDirectionAttr !== null) {
+                                                bodyElement.removeAttribute(
+                                                        "data-guarantees-scroll-direction"
+                                                );
+                                                currentScrollDirectionAttr = null;
+                                        }
+                                        if (currentScrollEdgeAttr !== null) {
+                                                bodyElement.removeAttribute(
+                                                        "data-guarantees-scroll-edge"
+                                                );
+                                                currentScrollEdgeAttr = null;
+                                        }
+                                        bodyElement.classList.remove("guarantees-scroll-at-top");
+                                        bodyElement.classList.remove(
+                                                "guarantees-scroll-at-bottom"
+                                        );
+                                        return;
+                                }
+                                const edge = atBottom ? "bottom" : atTop ? "top" : "middle";
+                                if (currentScrollDirectionAttr !== direction) {
+                                        bodyElement.setAttribute(
+                                                "data-guarantees-scroll-direction",
+                                                direction
+                                        );
+                                        currentScrollDirectionAttr = direction;
+                                }
+                                if (currentScrollEdgeAttr !== edge) {
+                                        bodyElement.setAttribute(
+                                                "data-guarantees-scroll-edge",
+                                                edge
+                                        );
+                                        currentScrollEdgeAttr = edge;
+                                }
+                                bodyElement.classList.toggle(
+                                        "guarantees-scroll-at-top",
+                                        atTop
+                                );
+                                bodyElement.classList.toggle(
+                                        "guarantees-scroll-at-bottom",
+                                        atBottom
+                                );
+                        };
+
+                        const updateScrollDirectionState = (
+                                currentScrollTop,
+                                { force = false } = {}
+                        ) => {
+                                if (!bodyElement) {
+                                        return;
+                                }
                                 if (isDesktopView()) {
-                                        if (
-                                                tableScrollContainer &&
-                                                tableScrollContainer.scrollHeight >
-                                                        tableScrollContainer.clientHeight
-                                        ) {
-                                                return tableScrollContainer.scrollTop || 0;
-                                        }
-                                        if (listContainer) {
-                                                return listContainer.scrollTop || 0;
-                                        }
+                                        lastKnownListScrollTop = currentScrollTop;
+                                        lastListScrollDirection = "up";
+                                        syncScrollDirectionState();
+                                        return;
+                                }
+                                const scrollContainer = getActiveScrollContainer();
+                                if (!scrollContainer) {
+                                        lastKnownListScrollTop = currentScrollTop;
+                                        lastListScrollDirection = "up";
+                                        syncScrollDirectionState();
+                                        return;
+                                }
+                                const atTop = currentScrollTop <= 4;
+                                const maxScroll =
+                                        scrollContainer.scrollHeight - scrollContainer.clientHeight;
+                                const atBottom =
+                                        maxScroll > 0 && currentScrollTop >= maxScroll - 4;
+                                const delta = currentScrollTop - lastKnownListScrollTop;
+                                let direction = lastListScrollDirection;
+                                if (force || Math.abs(delta) >= LIST_SCROLL_DIRECTION_THRESHOLD) {
+                                        direction = delta > 0 ? "down" : "up";
+                                }
+                                if (atTop) {
+                                        direction = "up";
+                                }
+                                lastKnownListScrollTop = currentScrollTop;
+                                lastListScrollDirection = direction;
+                                syncScrollDirectionState({ direction, atTop, atBottom });
+                        };
+
+                        const getListScrollTop = () => {
+                                const activeScrollContainer = getActiveScrollContainer();
+                                if (activeScrollContainer) {
+                                        return activeScrollContainer.scrollTop || 0;
                                 }
                                 return (
                                         window.pageYOffset ||
@@ -7155,15 +7250,30 @@ async function activateRow(row, options = {}) {
                                         0
                                 );
                         };
-                        const onScroll = () => {
+                        const onScroll = (event) => {
                                 const activePanel = detail
                                         ? detail.querySelector(".guarantee-detail__panel.active")
                                         : null;
-                                const detailScrolled = activePanel ? activePanel.scrollTop > 10 : false;
+                                const detailScrolled = activePanel
+                                        ? activePanel.scrollTop > 10
+                                        : false;
+                                const listScrollTop = getListScrollTop();
                                 document.body.classList.toggle(
                                         "scrolled",
-                                        getListScrollTop() > 10 || detailScrolled
+                                        listScrollTop > 10 || detailScrolled
                                 );
+                                const target = event ? event.target : null;
+                                if (
+                                        !event ||
+                                        target === window ||
+                                        target === document ||
+                                        target === document.documentElement ||
+                                        target === document.body ||
+                                        target === tableScrollContainer ||
+                                        target === listContainer
+                                ) {
+                                        updateScrollDirectionState(listScrollTop);
+                                }
                         };
                         if (listContainer) {
                                 listContainer.addEventListener("scroll", onScroll);
@@ -7183,6 +7293,7 @@ async function activateRow(row, options = {}) {
                                 );
                         }
                         window.addEventListener("scroll", onScroll, { passive: true });
+                        updateScrollDirectionState(getListScrollTop(), { force: true });
                 })();
 
                 function normalizeFilterValues(items) {
