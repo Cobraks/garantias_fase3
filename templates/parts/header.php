@@ -210,7 +210,13 @@ $home_destination = $is_admin_user
     <?php if (! $is_auth_template) : ?>
     <header class="top-bar" style="view-transition-name: header">
         <div class="top-bar__wrapper">
-            <button class="top-bar__hamburger" aria-label="Menú">
+            <button
+                class="top-bar__hamburger"
+                type="button"
+                aria-label="Menú"
+                aria-expanded="false"
+                aria-controls="mobile-menu-panel"
+            >
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
@@ -476,25 +482,38 @@ $home_destination = $is_admin_user
                 </nav>
             <?php endif; ?>
         </div>
-        <nav class="mobile-menu">
-            <ul>
+        <nav class="mobile-menu" id="mobile-menu-panel" aria-hidden="true">
+            <ul class="mobile-menu__list">
+                <?php if ($is_admin_user) : ?>
+                    <li class="mobile-menu__item mobile-menu__item--button">
+                        <a class="mobile-menu__link" href="<?php echo esc_url(home_url('/garantias-online/averias/')); ?>">
+                            <?php echo Svg::icon('car_crash', 'mobile-menu__icon'); ?>
+                            <span class="mobile-menu__text"><?php esc_html_e('Averías', 'garantias-online-360vo'); ?></span>
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <?php if ($can_access_clients) : ?>
                     <li class="mobile-menu__item">
-                        <a href="<?php echo esc_url(home_url('/garantias-online/clientes/')); ?>">
-                            <?php esc_html_e('Clientes', 'garantias-online-360vo'); ?>
+                        <a class="mobile-menu__link" href="<?php echo esc_url(home_url('/garantias-online/clientes/')); ?>">
+                            <?php echo Svg::icon('person', 'mobile-menu__icon'); ?>
+                            <span class="mobile-menu__text"><?php esc_html_e('Clientes', 'garantias-online-360vo'); ?></span>
                         </a>
                     </li>
                 <?php endif; ?>
                 <li class="mobile-menu__item">
-                    <a href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>">
-
-                        <?php esc_html_e('Mis Garantías', 'garantias-online-360vo'); ?>
+                    <a class="mobile-menu__link" href="<?php echo esc_url(home_url('/garantias-online/mis-garantias/')); ?>">
+                        <?php echo Svg::icon('shield', 'mobile-menu__icon'); ?>
+                        <span class="mobile-menu__text"><?php esc_html_e('Mis Garantías', 'garantias-online-360vo'); ?></span>
                     </a>
                 </li>
-                <li class="mobile-menu__item">
-                    <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" data-reset-draft>
-
-                        <?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?>
+                <li class="mobile-menu__item mobile-menu__item--primary">
+                    <a
+                        class="mobile-menu__link"
+                        href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>"
+                        data-reset-draft
+                    >
+                        <?php echo Svg::icon('new_shield', 'mobile-menu__icon'); ?>
+                        <span class="mobile-menu__text"><?php esc_html_e('Nueva Garantía', 'garantias-online-360vo'); ?></span>
                     </a>
                 </li>
             </ul>
