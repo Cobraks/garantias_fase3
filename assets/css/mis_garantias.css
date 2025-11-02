@@ -75,6 +75,9 @@ footer {
     background: var(--surface);
     z-index: 14000;
     transition: transform 300ms ease;
+
+    /*Intento mejorar*/
+    position: sticky;
 }
 
 /* 2) Contenedor principal con ajuste al ocultar header */
@@ -190,6 +193,10 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     animation: go-spin 0.6s linear infinite;
 }
 
+
+
+
+
 @media (min-width: 1280px) {
     .scroll-sentinel {
         padding-block: 1rem;
@@ -215,6 +222,7 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     padding-bottom: var(--spacing-1);
     background: #ffffff;
     box-sizing: border-box;
+   padding: 0;
 }
 
 .guarantees-list__filters-modal {
@@ -1031,6 +1039,11 @@ section.guarantees-list {
     height: calc(100dvh - var(--guarantees-toolbar-height) - var(--guarantees-bottom-bar-height) - var(--alturaHeader));
     overflow-x: hidden;
     box-sizing: border-box;
+    /* Intento mejorar*/
+    position: sticky;
+    top: var(--alturaHeader);
+height: calc(100dvh - var(--alturaHeader));
+    
 }
 
 :root[data-theme='dark'] section.guarantees-list {
