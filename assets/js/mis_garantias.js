@@ -586,6 +586,74 @@ const ADD_DOC_KEY = "add-document";
                 const orderLabelNode = orderRoot
                         ? orderRoot.querySelector("[data-order-label]")
                         : null;
+                let selectedEstado = "";
+                let selectedPlan = "";
+                let selectedCanal = "";
+                let selectedConcesionario = "";
+                let selectedVendorType = "";
+                let selectedPaymentMethod = "";
+                let selectedCommercial = "";
+                let selectedYear = "";
+                let selectedMonthFrom = "";
+                let selectedMonthTo = "";
+                const periodDefaults = {
+                        year: "",
+                        monthFrom: "",
+                        monthTo: "",
+                };
+                const rootElement = document.documentElement;
+                const rootStyle = rootElement ? rootElement.style : null;
+                const mobileViewportOffsetVar = "--mobile-viewport-bottom-offset";
+                const htmlLang =
+                        (rootElement &&
+                                (rootElement.lang ||
+                                        rootElement.getAttribute("xml:lang"))) ||
+                        "es-ES";
+                const monthsByYear = new Map();
+                let availableYears = [];
+                let currentPeriodYear = new Date().getFullYear();
+                let currentPeriodMonth = new Date().getMonth() + 1;
+                let monthOptions = [];
+                if (hasPeriodFilters) {
+                        let monthFormatter = null;
+                        try {
+                                monthFormatter = new Intl.DateTimeFormat(htmlLang, {
+                                        month: "long",
+                                });
+                        } catch (e) {
+                                monthFormatter = null;
+                        }
+                        monthOptions = Array.from({ length: 12 }, (_, index) => {
+                                const monthIndex = index + 1;
+                                let formatted = "";
+                                if (monthFormatter) {
+                                        try {
+                                                formatted = monthFormatter.format(
+                                                        new Date(Date.UTC(2020, index, 1))
+                                                );
+                                        } catch (error) {
+                                                formatted = "";
+                                        }
+                                }
+                                if (typeof formatted !== "string" || formatted.length === 0) {
+                                        formatted = String(monthIndex);
+                                }
+                                const label =
+                                        formatted.charAt(0).toUpperCase() + formatted.slice(1);
+                                return {
+                                        value: String(monthIndex),
+                                        label,
+                                };
+                        });
+                        selectedYear = String(currentPeriodYear);
+                        selectedMonthFrom = "1";
+                        selectedMonthTo = String(
+                                Math.min(12, Math.max(1, currentPeriodMonth))
+                        );
+                        periodDefaults.year = selectedYear;
+                        periodDefaults.monthFrom = selectedMonthFrom;
+                        periodDefaults.monthTo = selectedMonthTo;
+                }
                 const desktopMediaQuery =
                         typeof window !== "undefined" &&
                         typeof window.matchMedia === "function"
