@@ -1046,7 +1046,7 @@ section.guarantees-list {
     /* Intento mejorar*/
     position: sticky;
     top: var(--alturaHeader);
-height: calc(100dvh - var(--alturaHeader));
+/* height: calc(100dvh - var(--alturaHeader)); */
     
 }
 
