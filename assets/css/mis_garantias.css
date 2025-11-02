@@ -92,14 +92,18 @@ footer {
     align-items: stretch;
     width: 100%;
     box-sizing: border-box;
+    padding-top: 0;
 }
 
 body.scrolled .container.guarantees-page {
     padding-top: var(--spacing-4);
+
+    padding-top: 0;
 }
 
 body.scrolled .guarantees-list__toolbar {
     top: var(--alturaHeader);
+    
 }
 
 .main-grid.guarantees-page {
