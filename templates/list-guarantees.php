@@ -242,8 +242,12 @@ if (($is_admin_user || $is_director)
 
 
 <!-- 1. FILTROS -->
-<div class="guarantees-list__filters" style="view-transition-name: filtros" data-mobile-open="false">
-    <div class="guarantees-list__toolbar" data-mobile-toolbar>
+<div
+    class="guarantees-list__filters"
+    style="view-transition-name: filtros"
+    data-mobile-open="false"
+    data-mobile-search-open="false">
+    <div class="guarantees-list__toolbar" data-mobile-toolbar data-mobile-search-panel>
         <div class="guarantees-list__toolbar-slot" data-mobile-search-slot>
             <div class="guarantees-list__search-container" data-search-field>
                 <span class="guarantees-list__search-icon" aria-hidden="true">
@@ -986,19 +990,20 @@ if (($is_admin_user || $is_director)
         </button>
         <button
             type="button"
-            class="guarantees-bottom-bar__button is-active"
-            data-mobile-nav-action="guarantees"
-            aria-pressed="true">
+            class="guarantees-bottom-bar__button"
+            data-mobile-nav-action="search"
+            data-mobile-search-toggle
+            aria-pressed="false">
             <span class="guarantees-bottom-bar__icon" aria-hidden="true">
                 <span class="guarantees-bottom-bar__icon-graphic guarantees-bottom-bar__icon-graphic--default">
-                    <?php echo Svg::icon('shield'); ?>
+                    <?php echo Svg::icon('search'); ?>
                 </span>
                 <span class="guarantees-bottom-bar__icon-graphic guarantees-bottom-bar__icon-graphic--active">
-                    <?php echo Svg::icon('shield_filled'); ?>
+                    <?php echo Svg::icon('search_filled'); ?>
                 </span>
             </span>
             <span class="guarantees-bottom-bar__label">
-                <?php esc_html_e('Garantías', 'garantias-online-360vo'); ?>
+                <?php esc_html_e('Buscar', 'garantias-online-360vo'); ?>
             </span>
         </button>
         <button

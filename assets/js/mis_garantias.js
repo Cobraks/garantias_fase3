@@ -589,6 +589,12 @@ const ADD_DOC_KEY = "add-document";
                         "[data-desktop-search-slot]"
                 );
                 const searchField = document.querySelector("[data-search-field]");
+                const mobileSearchPanel = document.querySelector(
+                        "[data-mobile-search-panel]"
+                );
+                const searchInput = searchField
+                        ? searchField.querySelector("input")
+                        : null;
                 const bottomBar = document.querySelector("[data-mobile-bottom-bar]");
                 const bottomNavButtons = bottomBar
                         ? Array.from(
@@ -597,6 +603,9 @@ const ADD_DOC_KEY = "add-document";
                                   )
                           )
                         : [];
+                const mobileSearchToggle = bottomBar
+                        ? bottomBar.querySelector("[data-mobile-search-toggle]")
+                        : null;
                 const summaryNavButton = bottomBar
                         ? bottomBar.querySelector(
                                   "[data-mobile-nav-action=\"summary\"]"
@@ -633,6 +642,8 @@ const ADD_DOC_KEY = "add-document";
                         monthTo: "",
                 };
                 const rootElement = document.documentElement;
+                const rootStyle = rootElement ? rootElement.style : null;
+                const mobileViewportOffsetVar = "--mobile-viewport-bottom-offset";
                 const htmlLang =
                         (rootElement &&
                                 (rootElement.lang ||
@@ -716,6 +727,8 @@ const ADD_DOC_KEY = "add-document";
                         : [];
                 let mobileDetailOpen = false;
                 let mobileSummaryOpen = false;
+                let mobileSearchOpen = false;
+                let lastMobileSearchVisible = false;
                 let currentMobileNavState = "guarantees";
                 let lastDetailTrigger = null;
                 let infiniteScrollObserver = null;
@@ -741,6 +754,9 @@ const ADD_DOC_KEY = "add-document";
                 const setMobileSummaryOpen = (open, options = {}) => {
                         const previous = mobileSummaryOpen;
                         mobileSummaryOpen = Boolean(open);
+                        if (mobileSummaryOpen) {
+                                setMobileSearchOpen(false, { silent: true });
+                        }
                         if (mobileSummaryOpen) {
                                 setMobileEmptyHidden(false);
                         }
@@ -816,6 +832,41 @@ const ADD_DOC_KEY = "add-document";
                 const isDesktopView = () =>
                         desktopMediaQuery ? desktopMediaQuery.matches : true;
 
+                function syncMobileViewportOffset() {
+                        if (!rootStyle) {
+                                return;
+                        }
+                        if (isDesktopView()) {
+                                rootStyle.setProperty(mobileViewportOffsetVar, "0px");
+                                return;
+                        }
+                        if (
+                                typeof window === "undefined" ||
+                                !window.visualViewport ||
+                                typeof window.visualViewport.height !== "number"
+                        ) {
+                                rootStyle.setProperty(mobileViewportOffsetVar, "0px");
+                                return;
+                        }
+                        const viewport = window.visualViewport;
+                        const layoutViewportHeight =
+                                typeof window.innerHeight === "number"
+                                        ? window.innerHeight
+                                        : viewport.height;
+                        const visualHeight = viewport.height;
+                        const offsetTop =
+                                typeof viewport.offsetTop === "number"
+                                        ? viewport.offsetTop
+                                        : 0;
+                        const availableHeight = visualHeight + offsetTop;
+                        const delta = layoutViewportHeight - availableHeight;
+                        const offset = Number.isFinite(delta) && delta > 0 ? delta : 0;
+                        rootStyle.setProperty(
+                                mobileViewportOffsetVar,
+                                `${Math.round(offset)}px`
+                        );
+                }
+
                 function syncBottomBarState({ measure = false } = {}) {
                         if (!rootElement) {
                                 return;
@@ -825,6 +876,12 @@ const ADD_DOC_KEY = "add-document";
                                         "--guarantees-bottom-bar-height",
                                         "0px"
                                 );
+                                if (rootStyle) {
+                                        rootStyle.setProperty(
+                                                mobileViewportOffsetVar,
+                                                "0px"
+                                        );
+                                }
                                 return;
                         }
                         const desktop = isDesktopView();
@@ -838,13 +895,14 @@ const ADD_DOC_KEY = "add-document";
                                         "--guarantees-bottom-bar-height",
                                         "0px"
                                 );
+                                syncMobileViewportOffset();
                                 return;
                         }
                         bottomBar.hidden = false;
                         bottomBar.style.position = "fixed";
                         bottomBar.style.left = "0";
                         bottomBar.style.right = "0";
-                        bottomBar.style.bottom = "0";
+                        bottomBar.style.bottom = "";
                         const updateHeight = () => {
                                 const height = bottomBar.offsetHeight || 0;
                                 rootElement.style.setProperty(
@@ -857,6 +915,7 @@ const ADD_DOC_KEY = "add-document";
                         } else {
                                 updateHeight();
                         }
+                        syncMobileViewportOffset();
                 }
 
                 function setMobileNavState(state) {
@@ -888,6 +947,9 @@ const ADD_DOC_KEY = "add-document";
                         }
                         if (mobileFiltersOpen) {
                                 return "filters";
+                        }
+                        if (mobileSearchOpen) {
+                                return "search";
                         }
                         if (mobileSummaryOpen) {
                                 return "summary";
@@ -1001,6 +1063,7 @@ const ADD_DOC_KEY = "add-document";
                                         mobileFiltersOpen = false;
                                         syncMobileFiltersVisibility();
                                 }
+                                setMobileSearchOpen(false, { silent: true });
                                 if (!preserveSummary) {
                                         setMobileSummaryOpen(false);
                                 }
@@ -1091,6 +1154,93 @@ const ADD_DOC_KEY = "add-document";
                         moveSearchFieldTo(target);
                 };
 
+                const syncMobileSearchVisibility = ({ focus = false } = {}) => {
+                        if (!filtersRoot || !mobileSearchPanel) {
+                                return;
+                        }
+                        const desktop = isDesktopView();
+                        const shouldBeOpen = desktop || mobileSearchOpen;
+
+                        filtersRoot.setAttribute(
+                                "data-mobile-search-open",
+                                shouldBeOpen ? "true" : "false"
+                        );
+
+                        if (mobileSearchPanel) {
+                                if (desktop) {
+                                        mobileSearchPanel.removeAttribute("aria-hidden");
+                                } else {
+                                        mobileSearchPanel.setAttribute(
+                                                "aria-hidden",
+                                                shouldBeOpen ? "false" : "true"
+                                        );
+                                }
+                        }
+
+                        if (!desktop && shouldBeOpen && focus && searchInput) {
+                                requestAnimationFrame(() => {
+                                        try {
+                                                searchInput.focus({ preventScroll: true });
+                                        } catch (error) {
+                                                searchInput.focus();
+                                        }
+                                        if (typeof searchInput.select === "function") {
+                                                searchInput.select();
+                                        }
+                                });
+                        } else if (
+                                !desktop &&
+                                !shouldBeOpen &&
+                                lastMobileSearchVisible &&
+                                searchInput &&
+                                typeof searchInput.blur === "function"
+                        ) {
+                                searchInput.blur();
+                        }
+
+                        lastMobileSearchVisible = shouldBeOpen;
+                };
+
+                const setMobileSearchOpen = (open, options = {}) => {
+                        if (!filtersRoot || !mobileSearchPanel) {
+                                return mobileSearchOpen;
+                        }
+                        const desktop = isDesktopView();
+                        if (desktop) {
+                                mobileSearchOpen = false;
+                                syncMobileSearchVisibility();
+                                return mobileSearchOpen;
+                        }
+                        const shouldOpen = Boolean(open);
+                        const previous = mobileSearchOpen;
+                        if (previous === shouldOpen) {
+                                if (shouldOpen && options.focus === true) {
+                                        syncMobileSearchVisibility({ focus: true });
+                                }
+                                return mobileSearchOpen;
+                        }
+                        mobileSearchOpen = shouldOpen;
+                        syncMobileSearchVisibility({ focus: shouldOpen });
+
+                        const historyAvailable =
+                                panelHistory &&
+                                typeof panelHistory.push === "function" &&
+                                (!desktopMediaQuery || !desktopMediaQuery.matches);
+
+                        if (historyAvailable && !options.silent) {
+                                if (shouldOpen && !previous) {
+                                        panelHistory.push("mobile-search", () => {
+                                                setMobileSearchOpen(false, { silent: true });
+                                        });
+                                } else if (!shouldOpen && previous) {
+                                        panelHistory.close("mobile-search");
+                                }
+                        }
+
+                        syncMobileNavState();
+                        return mobileSearchOpen;
+                };
+
                 const syncMobileFiltersVisibility = () => {
                         if (!filtersRoot || !mobileFiltersPanel) {
                                 return;
@@ -1099,6 +1249,7 @@ const ADD_DOC_KEY = "add-document";
                         const shouldBeOpen = desktop || mobileFiltersOpen;
 
                         syncSearchPlacement();
+                        syncMobileSearchVisibility();
 
                         filtersRoot.setAttribute(
                                 "data-mobile-open",
@@ -1226,6 +1377,7 @@ const ADD_DOC_KEY = "add-document";
                         mobileFiltersOpen = Boolean(open);
                         if (mobileFiltersOpen) {
                                 setMobileSummaryOpen(false);
+                                setMobileSearchOpen(false, { silent: true });
                         }
                         syncMobileFiltersVisibility();
 
@@ -1275,6 +1427,7 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 const shouldOpen = !mobileSummaryOpen;
                                 setMobileFiltersOpen(false);
+                                setMobileSearchOpen(false, { silent: true });
                                 if (shouldOpen) {
                                         clearSelectionAndDetail({
                                                 preserveQuery: false,
@@ -1295,6 +1448,24 @@ const ADD_DOC_KEY = "add-document";
                                         restoreFocus: false,
                                 });
                                 syncMobileNavState("guarantees");
+                        });
+                }
+
+                if (mobileSearchToggle) {
+                        mobileSearchToggle.addEventListener("click", () => {
+                                if (isDesktopView()) {
+                                        return;
+                                }
+                                const shouldOpen = !mobileSearchOpen;
+                                setMobileFiltersOpen(false);
+                                setMobileSummaryOpen(false);
+                                if (shouldOpen) {
+                                        closeMobileDetail({
+                                                focus: false,
+                                                restoreFocus: false,
+                                        });
+                                }
+                                setMobileSearchOpen(shouldOpen);
                         });
                 }
 
@@ -1337,9 +1508,11 @@ const ADD_DOC_KEY = "add-document";
                                 if (event.matches) {
                                         mobileFiltersOpen = true;
                                         mobileDetailOpen = true;
+                                        mobileSearchOpen = false;
                                 } else {
                                         mobileFiltersOpen = false;
                                         mobileDetailOpen = prevSelectedRow ? true : false;
+                                        mobileSearchOpen = false;
                                 }
                                 syncMobileFiltersVisibility();
                                 syncMobileDetailVisibility();
@@ -1347,6 +1520,7 @@ const ADD_DOC_KEY = "add-document";
                                 syncSearchPlacement();
                                 syncSpinnerCompensation();
                                 syncBottomBarState({ measure: true });
+                                syncMobileViewportOffset();
                         };
                         if (typeof desktopMediaQuery.addEventListener === "function") {
                                 desktopMediaQuery.addEventListener(
@@ -1381,6 +1555,10 @@ const ADD_DOC_KEY = "add-document";
                                 setMobileFiltersOpen(false);
                                 handled = true;
                         }
+                        if (mobileSearchOpen) {
+                                setMobileSearchOpen(false);
+                                handled = true;
+                        }
                         if (handled) {
                                 event.preventDefault();
                         }
@@ -1410,15 +1588,28 @@ const ADD_DOC_KEY = "add-document";
                         window.addEventListener("resize", syncSpinnerCompensation, {
                                 passive: true,
                         });
-                        const handleResize = () =>
+                        const handleResize = () => {
                                 syncBottomBarState({ measure: true });
+                                syncMobileViewportOffset();
+                        };
                         window.addEventListener("resize", handleResize, {
                                 passive: true,
                         });
+                        if (window.visualViewport) {
+                                window.visualViewport.addEventListener(
+                                        "resize",
+                                        syncMobileViewportOffset
+                                );
+                                window.visualViewport.addEventListener(
+                                        "scroll",
+                                        syncMobileViewportOffset
+                                );
+                        }
                 }
 
                 syncSpinnerCompensation();
                 syncBottomBarState({ measure: true });
+                syncMobileViewportOffset();
 
                 function populateMonthSelect(select) {
                         if (!select || monthOptions.length === 0) {
