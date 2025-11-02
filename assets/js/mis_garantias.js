@@ -3543,58 +3543,13 @@ const ADD_DOC_KEY = "add-document";
 
            const setup = () => {
                    const wrapper = table.parentElement;
-                   const headerCells = Array.from(table.querySelectorAll("thead th"));
-                   const stickyHeaderLabels = Array.from(
-                           table.querySelectorAll(
-                                   ".guarantees-table__header-label--sticky"
-                           )
-                   );
+           const headerCells = Array.from(table.querySelectorAll("thead th"));
                    const body = table.tBodies[0];
                    if (!wrapper || headerCells.length === 0 || !body) {
                            return () => {};
                    }
 
-                   const clearStickyLabelOffsets = () => {
-                           stickyHeaderLabels.forEach((label) => {
-                                   label.style.removeProperty("left");
-                           });
-                   };
-
-                   const updateHeaderStickyOffsets = () => {
-                           if (!table || headerCells.length === 0) {
-                                   if (table && table.style) {
-                                           table.style.removeProperty(
-                                                   "--guarantees-vehicle-column-width"
-                                           );
-                                   }
-                                   clearStickyLabelOffsets();
-                                   return;
-                           }
-                           const vehicleHeader = headerCells[0];
-                           if (!vehicleHeader) {
-                                   table.style.removeProperty("--guarantees-vehicle-column-width");
-                                   clearStickyLabelOffsets();
-                                   return;
-                           }
-                           const rect = vehicleHeader.getBoundingClientRect();
-                           if (!rect || !Number.isFinite(rect.width) || rect.width <= 0) {
-                                   table.style.removeProperty("--guarantees-vehicle-column-width");
-                                   clearStickyLabelOffsets();
-                                   return;
-                           }
-                           table.style.setProperty(
-                                   "--guarantees-vehicle-column-width",
-                                   `${Math.round(rect.width)}px`
-                           );
-                           const stickyLeft = `${
-                                   Math.round(rect.width * 1000) / 1000
-                           }px`;
-                           stickyHeaderLabels.forEach((label) => {
-                                   label.style.left = stickyLeft;
-                           });
-                   };
-
-                   const computed = window.getComputedStyle(wrapper);
+           const computed = window.getComputedStyle(wrapper);
                    const hadInlinePosition =
                            typeof wrapper.style.position === "string" &&
                            wrapper.style.position.length > 0;
@@ -3661,18 +3616,17 @@ const ADD_DOC_KEY = "add-document";
                            overlay.style.left = `${
                                    tableRect.left - wrapperRect.left + wrapper.scrollLeft
                            }px`;
-                           handles.forEach((handle, index) => {
-                                   const th = headerCells[index];
-                                   if (!th) {
-                                           return;
-                                   }
-                                   const rect = th.getBoundingClientRect();
-                                   handle.style.left = `${
-                                           rect.right - tableRect.left - handle.offsetWidth / 2
-                                   }px`;
-                           });
-                           updateHeaderStickyOffsets();
-                   };
+                          handles.forEach((handle, index) => {
+                                  const th = headerCells[index];
+                                  if (!th) {
+                                          return;
+                                  }
+                                  const rect = th.getBoundingClientRect();
+                                  handle.style.left = `${
+                                          rect.right - tableRect.left - handle.offsetWidth / 2
+                                  }px`;
+                          });
+                  };
 
                    const scheduleOverlayUpdate = () => {
                            if (typeof requestAnimationFrame === "function") {
@@ -3708,8 +3662,7 @@ const ADD_DOC_KEY = "add-document";
                                    clamp(th.getBoundingClientRect().width, MIN_WIDTH, MAX_WIDTH)
                            );
                            table.style.tableLayout = "fixed";
-                           applyWidths();
-                           updateHeaderStickyOffsets();
+                          applyWidths();
                    };
 
                    const detachHandleListeners = () => {
