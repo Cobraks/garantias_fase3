@@ -506,6 +506,9 @@ if (($is_admin_user || $is_director)
 <div class="guarantees-container">
     <!-- 2. LISTA: tabla semántica con columna “Garantía” al final y “Canal de venta” en vendedor -->
     <section class="guarantees-list">
+        <div style="padding: 1rem">
+            <h1>Mis garantías</h1>
+        </div>
         <div class="guarantees-table__scroll">
             <table class="guarantees-table" style="view-transition-name: garantias-table">
                 <thead>
