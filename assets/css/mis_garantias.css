@@ -410,6 +410,57 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.35);
 }
 
+@media (max-width: 1279px) {
+    body[data-guarantees-scroll-direction] .top-bar,
+    body[data-guarantees-scroll-direction] .guarantees-list__toolbar,
+    body[data-guarantees-scroll-direction] .guarantees-bottom-bar,
+    body[data-guarantees-scroll-direction] footer {
+        transition: transform 280ms ease, opacity 220ms ease;
+    }
+
+    body[data-guarantees-scroll-direction="down"] .top-bar {
+        transform: translate3d(0, calc(-1 * var(--alturaHeader)), 0);
+        pointer-events: none;
+    }
+
+    body[data-guarantees-scroll-direction="down"] .guarantees-list__toolbar {
+        transform: translate3d(0, -110%, 0);
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    body[data-guarantees-scroll-direction="down"] .guarantees-bottom-bar {
+        transform: translate3d(
+            0,
+            calc(100% + env(safe-area-inset-bottom, 0px)),
+            0
+        );
+        pointer-events: none;
+    }
+
+    body[data-guarantees-scroll-direction="down"][data-guarantees-scroll-edge="bottom"]
+        .guarantees-bottom-bar {
+        transform: translate3d(0, 0, 0);
+        pointer-events: auto;
+    }
+
+    body[data-guarantees-scroll-direction] footer {
+        transform: translate3d(0, 100%, 0);
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    body[data-guarantees-scroll-edge="bottom"] footer {
+        transform: translate3d(0, 0, 0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    body[data-guarantees-scroll-direction="down"] .guarantees-list__filters {
+        pointer-events: none;
+    }
+}
+
 .guarantees-bottom-bar__button:focus-visible {
     outline: 2px solid rgba(255, 255, 255, 0.65);
     outline-offset: 2px;
@@ -950,7 +1001,9 @@ section.guarantees-list {
     gap: var(--spacing-3);
     box-shadow: none;
     width: 100%;
-    height: calc(100dvh - var(--guarantees-toolbar-height) - var(--guarantees-bottom-bar-height) - var(--alturaHeader));
+    height: calc(
+        100dvh - var(--guarantees-toolbar-height) - var(--guarantees-bottom-bar-height) - var(--alturaHeader)
+    );
     overflow-x: hidden;
     box-sizing: border-box;
 }
