@@ -2256,6 +2256,22 @@ tr.guarantees-table__row:not(.selected):hover td,
     z-index: 2;
 }
 
+@media (max-width: 1279px) {
+    .guarantee-detail__dialog {
+        padding-top: 0;
+        padding-inline: 1rem;
+    }
+
+    .guarantee-detail__btn-container {
+        position: fixed;
+        padding-inline: 1rem;
+    }
+
+    .detail__section {
+        padding-inline: 1rem;
+    }
+}
+
 .guarantee-detail__btn {
     display: inline-flex;
     align-items: center;
