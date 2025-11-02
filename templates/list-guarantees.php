@@ -537,64 +537,6 @@ if (($is_admin_user || $is_director)
         </div> -->
     </section>
 
-    <style>
-        /* Fila de carga al fondo */
-        .loading-row {
-            text-align: center;
-            padding: 1rem;
-        }
-
-        .scroll-sentinel {
-            position: relative;
-            width: 100%;
-            height: 1px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            --spinner-compensation: 0px;
-        }
-
-        .scroll-sentinel .spinner {
-            display: none;
-        }
-
-        .scroll-sentinel.is-loading {
-            height: 80px;
-        }
-
-        .scroll-sentinel.is-loading .spinner {
-            display: flex;
-        }
-
-        .scroll-sentinel .spinner {
-            width: 3rem;
-            height: 3rem;
-            margin: 0 auto;
-            position: static;
-            pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transform: translateX(calc(var(--spinner-compensation, 0px) * -1));
-        }
-
-        .scroll-sentinel .spinner__inner {
-            width: 100%;
-            height: 100%;
-            border: 5px solid rgba(220, 38, 38, 0.15);
-            border-top-color: var(--go-color-dc2626);
-            border-radius: 50%;
-            animation: spinner-rotate .6s linear infinite;
-        }
-
-        @keyframes spinner-rotate {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-    </style>
-
-
     <!-- 3. DETALLE: dos paneles -->
     <?php ob_start(); ?>
     <div class="guarantee-detail__empty" data-empty-detail data-empty-mode="awaiting">
@@ -1013,7 +955,12 @@ if (($is_admin_user || $is_director)
             data-mobile-nav-action="summary"
             aria-pressed="false">
             <span class="guarantees-bottom-bar__icon" aria-hidden="true">
-                <?php echo Svg::icon('filter_funnel'); ?>
+                <span class="guarantees-bottom-bar__icon-graphic guarantees-bottom-bar__icon-graphic--default">
+                    <?php echo Svg::icon('summary_outline'); ?>
+                </span>
+                <span class="guarantees-bottom-bar__icon-graphic guarantees-bottom-bar__icon-graphic--active">
+                    <?php echo Svg::icon('summary_filled'); ?>
+                </span>
             </span>
             <span class="guarantees-bottom-bar__label">
                 <?php esc_html_e('Resumen', 'garantias-online-360vo'); ?>
@@ -1025,7 +972,12 @@ if (($is_admin_user || $is_director)
             data-mobile-nav-action="guarantees"
             aria-pressed="true">
             <span class="guarantees-bottom-bar__icon" aria-hidden="true">
-                <?php echo Svg::icon('filter_funnel'); ?>
+                <span class="guarantees-bottom-bar__icon-graphic guarantees-bottom-bar__icon-graphic--default">
+                    <?php echo Svg::icon('shield'); ?>
+                </span>
+                <span class="guarantees-bottom-bar__icon-graphic guarantees-bottom-bar__icon-graphic--active">
+                    <?php echo Svg::icon('shield_filled'); ?>
+                </span>
             </span>
             <span class="guarantees-bottom-bar__label">
                 <?php esc_html_e('Garantías', 'garantias-online-360vo'); ?>
@@ -1041,7 +993,12 @@ if (($is_admin_user || $is_director)
             aria-controls="guarantees-list-base-filters"
             aria-expanded="false">
             <span class="guarantees-bottom-bar__icon" aria-hidden="true">
-                <?php echo Svg::icon('filter_funnel'); ?>
+                <span class="guarantees-bottom-bar__icon-graphic guarantees-bottom-bar__icon-graphic--default">
+                    <?php echo Svg::icon('filter_funnel'); ?>
+                </span>
+                <span class="guarantees-bottom-bar__icon-graphic guarantees-bottom-bar__icon-graphic--active">
+                    <?php echo Svg::icon('filter_funnel_filled'); ?>
+                </span>
             </span>
             <span class="guarantees-bottom-bar__label">
                 <?php esc_html_e('Filtros', 'garantias-online-360vo'); ?>
