@@ -18,6 +18,7 @@ body.has-mobile-filters-open {
     --go-advanced-filters-height: 0px;
     --guarantees-toolbar-height: 86px;
     --guarantees-bottom-bar-height: 80px;
+    --mobile-viewport-bottom-offset: 0px;
 }
 
 body.scrolled .top-bar {
@@ -496,11 +497,18 @@ section.guarantees-list::-webkit-scrollbar-thumb,
 }
 
 @media (max-width: 1279px) {
+    .guarantees-bottom-bar {
+        bottom: var(--mobile-viewport-bottom-offset, 0px);
+    }
+
     .guarantees-list__toolbar[data-mobile-search-panel] {
         position: fixed;
         left: 0;
         right: 0;
-        bottom: calc(var(--guarantees-bottom-bar-height));
+        bottom: calc(
+                var(--guarantees-bottom-bar-height) +
+                var(--mobile-viewport-bottom-offset, 0px)
+        );
         top: auto;
         display: flex;
         align-items: center;
@@ -517,11 +525,14 @@ section.guarantees-list::-webkit-scrollbar-thumb,
         visibility: hidden;
         pointer-events: none;
         transform: translateY(1.25rem);
-        transition: opacity var(--transition-speed), transform var(--transition-speed), visibility 0s linear var(--transition-speed);
+        transition: opacity var(--transition-speed),
+            transform var(--transition-speed),
+            visibility 0s linear var(--transition-speed);
         transition-delay: 0s, 0s, var(--transition-speed);
     }
 
-    .guarantees-list__filters[data-mobile-search-open="true"] .guarantees-list__toolbar[data-mobile-search-panel] {
+    .guarantees-list__filters[data-mobile-search-open="true"]
+        .guarantees-list__toolbar[data-mobile-search-panel] {
         opacity: 1;
         visibility: visible;
         pointer-events: auto;
@@ -529,12 +540,14 @@ section.guarantees-list::-webkit-scrollbar-thumb,
         transition-delay: 0s, 0s, 0s;
     }
 
-    .guarantees-list__filters[data-mobile-search-open="true"] .guarantees-list__toolbar-slot {
+    .guarantees-list__filters[data-mobile-search-open="true"]
+        .guarantees-list__toolbar-slot {
         width: 100%;
         max-width: 28rem;
     }
 
-    .guarantees-list__filters[data-mobile-search-open="true"] .guarantees-list__search-container {
+    .guarantees-list__filters[data-mobile-search-open="true"]
+        .guarantees-list__search-container {
         box-shadow: 0 18px 36px rgba(15, 23, 42, 0.22);
     }
 }

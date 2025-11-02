@@ -642,6 +642,8 @@ const ADD_DOC_KEY = "add-document";
                         monthTo: "",
                 };
                 const rootElement = document.documentElement;
+                const rootStyle = rootElement ? rootElement.style : null;
+                const mobileViewportOffsetVar = "--mobile-viewport-bottom-offset";
                 const htmlLang =
                         (rootElement &&
                                 (rootElement.lang ||
@@ -830,6 +832,41 @@ const ADD_DOC_KEY = "add-document";
                 const isDesktopView = () =>
                         desktopMediaQuery ? desktopMediaQuery.matches : true;
 
+                function syncMobileViewportOffset() {
+                        if (!rootStyle) {
+                                return;
+                        }
+                        if (isDesktopView()) {
+                                rootStyle.setProperty(mobileViewportOffsetVar, "0px");
+                                return;
+                        }
+                        if (
+                                typeof window === "undefined" ||
+                                !window.visualViewport ||
+                                typeof window.visualViewport.height !== "number"
+                        ) {
+                                rootStyle.setProperty(mobileViewportOffsetVar, "0px");
+                                return;
+                        }
+                        const viewport = window.visualViewport;
+                        const layoutViewportHeight =
+                                typeof window.innerHeight === "number"
+                                        ? window.innerHeight
+                                        : viewport.height;
+                        const visualHeight = viewport.height;
+                        const offsetTop =
+                                typeof viewport.offsetTop === "number"
+                                        ? viewport.offsetTop
+                                        : 0;
+                        const availableHeight = visualHeight + offsetTop;
+                        const delta = layoutViewportHeight - availableHeight;
+                        const offset = Number.isFinite(delta) && delta > 0 ? delta : 0;
+                        rootStyle.setProperty(
+                                mobileViewportOffsetVar,
+                                `${Math.round(offset)}px`
+                        );
+                }
+
                 function syncBottomBarState({ measure = false } = {}) {
                         if (!rootElement) {
                                 return;
@@ -839,6 +876,12 @@ const ADD_DOC_KEY = "add-document";
                                         "--guarantees-bottom-bar-height",
                                         "0px"
                                 );
+                                if (rootStyle) {
+                                        rootStyle.setProperty(
+                                                mobileViewportOffsetVar,
+                                                "0px"
+                                        );
+                                }
                                 return;
                         }
                         const desktop = isDesktopView();
@@ -852,13 +895,14 @@ const ADD_DOC_KEY = "add-document";
                                         "--guarantees-bottom-bar-height",
                                         "0px"
                                 );
+                                syncMobileViewportOffset();
                                 return;
                         }
                         bottomBar.hidden = false;
                         bottomBar.style.position = "fixed";
                         bottomBar.style.left = "0";
                         bottomBar.style.right = "0";
-                        bottomBar.style.bottom = "0";
+                        bottomBar.style.bottom = "";
                         const updateHeight = () => {
                                 const height = bottomBar.offsetHeight || 0;
                                 rootElement.style.setProperty(
@@ -871,6 +915,7 @@ const ADD_DOC_KEY = "add-document";
                         } else {
                                 updateHeight();
                         }
+                        syncMobileViewportOffset();
                 }
 
                 function setMobileNavState(state) {
@@ -1475,6 +1520,7 @@ const ADD_DOC_KEY = "add-document";
                                 syncSearchPlacement();
                                 syncSpinnerCompensation();
                                 syncBottomBarState({ measure: true });
+                                syncMobileViewportOffset();
                         };
                         if (typeof desktopMediaQuery.addEventListener === "function") {
                                 desktopMediaQuery.addEventListener(
@@ -1542,15 +1588,28 @@ const ADD_DOC_KEY = "add-document";
                         window.addEventListener("resize", syncSpinnerCompensation, {
                                 passive: true,
                         });
-                        const handleResize = () =>
+                        const handleResize = () => {
                                 syncBottomBarState({ measure: true });
+                                syncMobileViewportOffset();
+                        };
                         window.addEventListener("resize", handleResize, {
                                 passive: true,
                         });
+                        if (window.visualViewport) {
+                                window.visualViewport.addEventListener(
+                                        "resize",
+                                        syncMobileViewportOffset
+                                );
+                                window.visualViewport.addEventListener(
+                                        "scroll",
+                                        syncMobileViewportOffset
+                                );
+                        }
                 }
 
                 syncSpinnerCompensation();
                 syncBottomBarState({ measure: true });
+                syncMobileViewportOffset();
 
                 function populateMonthSelect(select) {
                         if (!select || monthOptions.length === 0) {
