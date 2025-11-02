@@ -60,7 +60,6 @@
 
         const button = card.querySelector('[data-notifications-request]');
         const label = button ? button.querySelector('[data-notifications-label]') : null;
-        const testButton = card.querySelector('[data-notifications-test]');
         const status = card.querySelector('[data-notifications-status]');
         const accountConfig = window.go360Account || {};
         const pushConfig = accountConfig.push || {};
@@ -85,45 +84,26 @@
 
         if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
             button.disabled = true;
-            if (testButton) {
-                testButton.disabled = true;
-            }
             setStatus('Tu navegador no soporta notificaciones push.', 'error');
             return;
         }
 
         if (!window.isSecureContext) {
             button.disabled = true;
-            if (testButton) {
-                testButton.disabled = true;
-            }
             setStatus('Accede mediante HTTPS para activar las notificaciones.', 'error');
             return;
         }
 
         if (!pushConfig.publicKey || !pushConfig.subscriptionEndpoint || !pushConfig.serviceWorker) {
             button.disabled = true;
-            if (testButton) {
-                testButton.disabled = true;
-            }
             setStatus('La configuración de notificaciones no está disponible.', 'error');
             return;
         }
 
         const publicKey = pushConfig.publicKey;
         const subscriptionEndpoint = pushConfig.subscriptionEndpoint;
-        const testEndpoint = pushConfig.testEndpoint || '';
         const serviceWorkerUrl = pushConfig.serviceWorker;
         const restNonce = restConfig.nonce || '';
-
-        let testIcon = pushConfig.testIcon || '';
-        if (!testIcon && serviceWorkerUrl) {
-            try {
-                testIcon = new URL('../images/logo-notify.png', serviceWorkerUrl).href;
-            } catch (error) {
-                testIcon = '';
-            }
-        }
 
         let isActive = false;
         let isProcessing = false;
@@ -141,14 +121,6 @@
             } else {
                 button.textContent = active ? 'Desactivar notificaciones' : 'Activar notificaciones';
             }
-
-            if (testButton) {
-                const shouldDisableTest = !active || isProcessing;
-                testButton.disabled = shouldDisableTest;
-                if (!shouldDisableTest) {
-                    testButton.removeAttribute('disabled');
-                }
-            }
         };
 
         const setProcessing = (processing) => {
@@ -157,20 +129,10 @@
             if (!processing) {
                 button.removeAttribute('disabled');
             }
-            if (testButton) {
-                const shouldDisableTest = processing || !isActive;
-                testButton.disabled = shouldDisableTest;
-                if (!shouldDisableTest) {
-                    testButton.removeAttribute('disabled');
-                }
-            }
         };
 
         button.disabled = false;
         button.removeAttribute('disabled');
-        if (testButton) {
-            testButton.disabled = true;
-        }
 
         const refreshUI = async () => {
             try {
@@ -302,61 +264,6 @@
             }
         };
 
-        const sendTestNotification = async () => {
-            if (!testButton || !testEndpoint) {
-                return;
-            }
-
-            try {
-                setStatus('Enviando notificación de prueba…', 'info');
-                testButton.disabled = true;
-                const response = await fetch(testEndpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-WP-Nonce': restNonce,
-                    },
-                    body: JSON.stringify({}),
-                });
-                if (!response.ok) {
-                    throw new Error('Request failed');
-                }
-                setStatus('Hemos enviado una notificación de prueba. Revisa tu navegador y la campana del panel.', 'success');
-                try {
-                    const registration = await getRegistration(serviceWorkerUrl);
-                    if (registration && typeof registration.showNotification === 'function') {
-                        registration.showNotification('Notificación de prueba', {
-                            body: 'Todo funciona correctamente. Recibirás avisos en cuanto haya novedades importantes.',
-                            icon: testIcon,
-                            badge: testIcon,
-                            data: {
-                                url: window.location.href,
-                            },
-                        });
-                    }
-                } catch (notificationError) {
-                    // eslint-disable-next-line no-console
-                    console.error('GO360 push local notification error', notificationError);
-                }
-                if (window.dispatchEvent) {
-                    let refreshEvent;
-                    try {
-                        refreshEvent = new CustomEvent('go360:notifications:refresh');
-                    } catch (eventError) {
-                        refreshEvent = document.createEvent('Event');
-                        refreshEvent.initEvent('go360:notifications:refresh', true, true);
-                    }
-                    window.dispatchEvent(refreshEvent);
-                }
-            } catch (error) {
-                setStatus('No se pudo enviar la notificación de prueba. Comprueba la consola.', 'error');
-                // eslint-disable-next-line no-console
-                console.error('GO360 push error', error);
-            } finally {
-                testButton.disabled = !isActive;
-            }
-        };
-
         button.addEventListener('click', () => {
             if (isActive) {
                 unsubscribe();
@@ -364,12 +271,6 @@
                 requestPermissionAndSubscribe();
             }
         });
-
-        if (testButton) {
-            testButton.addEventListener('click', () => {
-                sendTestNotification();
-            });
-        }
 
         refreshUI();
     });

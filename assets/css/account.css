@@ -1830,6 +1830,27 @@
   align-items: flex-start;
 }
 
+.account-card__preferences {
+  margin-top: var(--spacing-3);
+  padding-top: var(--spacing-2);
+  width: 100%;
+  border-top: 1px solid var(--border-color);
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.account-card__preferences-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.account-card__preferences .account-toggle {
+  margin-top: 0;
+}
+
 .account-button {
   display: inline-flex;
   align-items: center;

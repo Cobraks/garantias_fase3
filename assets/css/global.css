@@ -690,6 +690,43 @@ text-decoration: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
 }
+:root[data-theme='dark'] .top-bar__notifications-button {
+  background: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.32);
+  color: rgba(226, 232, 240, 0.95);
+}
+:root[data-theme='dark'] .top-bar__notifications-button:hover {
+  background: rgba(148, 163, 184, 0.28);
+  border-color: rgba(226, 232, 240, 0.45);
+  color: #f8fafc;
+}
+
+.top-bar__notifications-button.is-toasting {
+  background: #eef2ff;
+  border-color: #6366f1;
+  color: #4338ca;
+  box-shadow: 0 14px 34px -20px rgba(79, 70, 229, 0.6);
+}
+
+.top-bar__notifications-button.is-toasting .top-bar__icon--notifications {
+  animation: notifications-bell-ring 0.85s ease-in-out infinite;
+  transform-origin: 50% 8%;
+}
+
+.top-bar__notifications-button.is-toasting .top-bar__notifications-badge {
+  box-shadow: 0 0 0 2px #eef2ff;
+}
+
+:root[data-theme='dark'] .top-bar__notifications-button.is-toasting {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: rgba(99, 102, 241, 0.65);
+  color: #c7d2fe;
+  box-shadow: 0 18px 38px -20px rgba(99, 102, 241, 0.55);
+}
+
+:root[data-theme='dark'] .top-bar__notifications-button.is-toasting .top-bar__notifications-badge {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.22);
+}
 
 .top-bar__notifications-badge {
   position: absolute;
@@ -1101,17 +1138,25 @@ text-decoration: none;
 }
 
 .notifications-toast {
-  position: absolute;
-  top: calc(100% + 0.75rem);
-  right: 0;
-  width: min(20rem, 88vw);
+  position: fixed;
+  top: 5.5rem;
+  right: calc((100vw - min(100vw, 1440px)) / 2 + 1.5rem);
+  width: min(22rem, 92vw);
   display: none;
-  z-index: 13600;
+  z-index: 2147483000;
+  pointer-events: none;
+  will-change: transform, opacity;
 }
 
 .notifications-toast--visible {
   display: block;
-  animation: notifications-toast-in 0.25s ease;
+  pointer-events: auto;
+  animation: notifications-toast-in 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.notifications-toast--visible.notifications-toast--hiding {
+  animation: notifications-toast-out 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
 }
 
 
@@ -1120,11 +1165,15 @@ text-decoration: none;
   display: flex;
   gap: 0.85rem;
   background: #0f172a;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid #1f2937;
-  padding: 0.85rem 1rem;
+  padding: 0.95rem 1.1rem;
   cursor: pointer;
   color: #f8fafc;
+  box-shadow:
+    0 26px 65px -28px rgba(15, 23, 42, 0.55),
+    0 18px 40px -30px rgba(15, 23, 42, 0.4),
+    0 0 0 1px rgba(15, 23, 42, 0.1);
 }
 
 .notifications-toast__icon {
@@ -1234,13 +1283,55 @@ text-decoration: none;
 }
 
 @keyframes notifications-toast-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translate3d(14px, -12px, 0) scale(0.96);
   }
-  to {
+  55% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(-2px, 3px, 0) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes notifications-toast-out {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(12px, -10px, 0) scale(0.94);
+  }
+}
+
+@keyframes notifications-bell-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(16deg);
+  }
+  30% {
+    transform: rotate(-14deg);
+  }
+  45% {
+    transform: rotate(10deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(4deg);
+  }
+  90% {
+    transform: rotate(-2deg);
+  }
+  100% {
+    transform: rotate(0deg);
   }
 }
 
@@ -1633,8 +1724,6 @@ text-decoration: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
     padding: 0;
     border: 1px solid transparent;
     border-radius: 9999px;
@@ -2255,7 +2344,6 @@ display: block;
 :root[data-theme='dark'] .profile-menu,
 :root[data-theme='dark'] .mobile-menu,
 :root[data-theme='dark'] .profile-menu__item,
-:root[data-theme='dark'] .profile-menu__footer,
 :root[data-theme='dark'] .profile-menu__link {
   background-color: var(--surface);
   color: var(--text-color);
@@ -2293,6 +2381,19 @@ display: block;
 
 :root[data-theme='dark'] .footer__theme-toggle[aria-checked='true'] .footer__theme-thumb {
   background: var(--primary-color);
+}
+
+:root[data-theme='dark'] .top-bar__profile-link {
+  background: #1f2937;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .top-bar__profile-icon {
+  background: #111827;
+  border-color: #334155;
+  box-shadow: 0 4px 14px rgba(2, 6, 23, 0.45);
+  fill: #e2e8f0;
 }
 
 :root[data-theme='dark'] .top-bar__profile-menu {
