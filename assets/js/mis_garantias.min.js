@@ -3836,7 +3836,6 @@ const ADD_DOC_KEY = "add-document";
                            if (table && table.style) {
                                    table.style.removeProperty("--guarantees-vehicle-column-width");
                            }
-                           clearStickyLabelOffsets();
                    };
            };
 
