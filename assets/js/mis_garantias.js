@@ -16,6 +16,14 @@ const ADD_DOC_KEY = "add-document";
                 const tableScrollContainer = document.querySelector(
                         ".guarantees-table__scroll"
                 );
+                const mobileCardsRoot = document.querySelector("[data-mobile-cards]");
+                const mobileCardsList = mobileCardsRoot
+                        ? mobileCardsRoot.querySelector("[data-mobile-cards-list]")
+                        : null;
+                const mobileCardsEmpty = mobileCardsRoot
+                        ? mobileCardsRoot.querySelector("[data-mobile-cards-empty]")
+                        : null;
+                const mobileCardsMap = new Map();
                 const scrollEnd = listContainer
                         ? listContainer.querySelector("#scroll-end")
                         : null;
@@ -1166,15 +1174,18 @@ const ADD_DOC_KEY = "add-document";
                                 shouldBeOpen ? "true" : "false"
                         );
 
-                        if (mobileSearchPanel) {
-                                if (desktop) {
-                                        mobileSearchPanel.removeAttribute("aria-hidden");
-                                } else {
-                                        mobileSearchPanel.setAttribute(
-                                                "aria-hidden",
-                                                shouldBeOpen ? "false" : "true"
-                                        );
-                                }
+                        if (desktop) {
+                                mobileSearchPanel.classList.remove("is-visible");
+                                mobileSearchPanel.removeAttribute("aria-hidden");
+                        } else {
+                                mobileSearchPanel.classList.toggle(
+                                        "is-visible",
+                                        shouldBeOpen
+                                );
+                                mobileSearchPanel.setAttribute(
+                                        "aria-hidden",
+                                        shouldBeOpen ? "false" : "true"
+                                );
                         }
 
                         if (!desktop && shouldBeOpen && focus && searchInput) {
@@ -2239,6 +2250,7 @@ const ADD_DOC_KEY = "add-document";
                                 return;
                         }
                         tbody.innerHTML = "";
+                        resetMobileCards();
                         let appended = 0;
                         for (const item of cache.data) {
                                 tbody.appendChild(renderRow(item));
@@ -3543,58 +3555,13 @@ const ADD_DOC_KEY = "add-document";
 
            const setup = () => {
                    const wrapper = table.parentElement;
-                   const headerCells = Array.from(table.querySelectorAll("thead th"));
-                   const stickyHeaderLabels = Array.from(
-                           table.querySelectorAll(
-                                   ".guarantees-table__header-label--sticky"
-                           )
-                   );
+           const headerCells = Array.from(table.querySelectorAll("thead th"));
                    const body = table.tBodies[0];
                    if (!wrapper || headerCells.length === 0 || !body) {
                            return () => {};
                    }
 
-                   const clearStickyLabelOffsets = () => {
-                           stickyHeaderLabels.forEach((label) => {
-                                   label.style.removeProperty("left");
-                           });
-                   };
-
-                   const updateHeaderStickyOffsets = () => {
-                           if (!table || headerCells.length === 0) {
-                                   if (table && table.style) {
-                                           table.style.removeProperty(
-                                                   "--guarantees-vehicle-column-width"
-                                           );
-                                   }
-                                   clearStickyLabelOffsets();
-                                   return;
-                           }
-                           const vehicleHeader = headerCells[0];
-                           if (!vehicleHeader) {
-                                   table.style.removeProperty("--guarantees-vehicle-column-width");
-                                   clearStickyLabelOffsets();
-                                   return;
-                           }
-                           const rect = vehicleHeader.getBoundingClientRect();
-                           if (!rect || !Number.isFinite(rect.width) || rect.width <= 0) {
-                                   table.style.removeProperty("--guarantees-vehicle-column-width");
-                                   clearStickyLabelOffsets();
-                                   return;
-                           }
-                           table.style.setProperty(
-                                   "--guarantees-vehicle-column-width",
-                                   `${Math.round(rect.width)}px`
-                           );
-                           const stickyLeft = `${
-                                   Math.round(rect.width * 1000) / 1000
-                           }px`;
-                           stickyHeaderLabels.forEach((label) => {
-                                   label.style.left = stickyLeft;
-                           });
-                   };
-
-                   const computed = window.getComputedStyle(wrapper);
+           const computed = window.getComputedStyle(wrapper);
                    const hadInlinePosition =
                            typeof wrapper.style.position === "string" &&
                            wrapper.style.position.length > 0;
@@ -3661,18 +3628,17 @@ const ADD_DOC_KEY = "add-document";
                            overlay.style.left = `${
                                    tableRect.left - wrapperRect.left + wrapper.scrollLeft
                            }px`;
-                           handles.forEach((handle, index) => {
-                                   const th = headerCells[index];
-                                   if (!th) {
-                                           return;
-                                   }
-                                   const rect = th.getBoundingClientRect();
-                                   handle.style.left = `${
-                                           rect.right - tableRect.left - handle.offsetWidth / 2
-                                   }px`;
-                           });
-                           updateHeaderStickyOffsets();
-                   };
+                          handles.forEach((handle, index) => {
+                                  const th = headerCells[index];
+                                  if (!th) {
+                                          return;
+                                  }
+                                  const rect = th.getBoundingClientRect();
+                                  handle.style.left = `${
+                                          rect.right - tableRect.left - handle.offsetWidth / 2
+                                  }px`;
+                          });
+                  };
 
                    const scheduleOverlayUpdate = () => {
                            if (typeof requestAnimationFrame === "function") {
@@ -3708,8 +3674,7 @@ const ADD_DOC_KEY = "add-document";
                                    clamp(th.getBoundingClientRect().width, MIN_WIDTH, MAX_WIDTH)
                            );
                            table.style.tableLayout = "fixed";
-                           applyWidths();
-                           updateHeaderStickyOffsets();
+                          applyWidths();
                    };
 
                    const detachHandleListeners = () => {
@@ -3883,7 +3848,6 @@ const ADD_DOC_KEY = "add-document";
                            if (table && table.style) {
                                    table.style.removeProperty("--guarantees-vehicle-column-width");
                            }
-                           clearStickyLabelOffsets();
                    };
            };
 
@@ -4226,8 +4190,112 @@ const ADD_DOC_KEY = "add-document";
                         return data;
                 }
 
-                function renderRow(item) {
-                        const estadoData = item.estado || "";
+                const CARD_DATE_FORMATTER = new Intl.DateTimeFormat("es-ES", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                });
+                const CARD_DAYS_FORMATTER = new Intl.NumberFormat("es-ES");
+
+                function syncMobileCardsEmptyState() {
+                        if (!mobileCardsRoot || !mobileCardsEmpty) {
+                                return;
+                        }
+                        const hasCards = Boolean(
+                                mobileCardsList && mobileCardsList.children.length > 0
+                        );
+                        mobileCardsEmpty.hidden = hasCards;
+                        if (hasCards) {
+                                mobileCardsEmpty.setAttribute("aria-hidden", "true");
+                        } else {
+                                mobileCardsEmpty.removeAttribute("aria-hidden");
+                        }
+                }
+
+                function resetMobileCards() {
+                        mobileCardsMap.clear();
+                        if (!mobileCardsList) {
+                                return;
+                        }
+                        mobileCardsList.innerHTML = "";
+                        syncMobileCardsEmptyState();
+                }
+
+                function buildRowSelectorById(id) {
+                        const normalized = String(id ?? "");
+                        const escaped = normalized
+                                .replace(/\\/g, "\\\\")
+                                .replace(/"/g, '\\"')
+                                .replace(/]/g, "\\]");
+                        return `.guarantees-table__row[data-id="${escaped}"]`;
+                }
+
+                function findRowById(id) {
+                        if (!tbody || id === undefined || id === null) {
+                                return null;
+                        }
+                        const selector = buildRowSelectorById(id);
+                        return tbody.querySelector(selector);
+                }
+
+                function getCardInitials(value) {
+                        if (value === null || value === undefined) {
+                                return "";
+                        }
+                        const normalized = String(value).trim();
+                        if (!normalized) {
+                                return "";
+                        }
+                        const words = normalized.split(/\s+/).filter(Boolean);
+                        if (words.length === 0) {
+                                return "";
+                        }
+                        const initials = words.slice(0, 2).map((word) => word.charAt(0));
+                        return initials.join("").toUpperCase();
+                }
+
+                function formatCardDateLabel(iso) {
+                        if (!iso || iso === "-") {
+                                return "";
+                        }
+                        const date = new Date(iso);
+                        if (Number.isNaN(date.getTime())) {
+                                return "";
+                        }
+                        return CARD_DATE_FORMATTER.format(date);
+                }
+
+                function computeRemainingDaysLabel(estadoClase, hastaIso) {
+                        if (!hastaIso || hastaIso === "-") {
+                                return "";
+                        }
+                        const target = new Date(hastaIso);
+                        if (Number.isNaN(target.getTime())) {
+                                return "";
+                        }
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        target.setHours(0, 0, 0, 0);
+                        const diffMs = target.getTime() - today.getTime();
+                        const diffDays = Math.round(diffMs / 86400000);
+                        if (diffDays < 0 || estadoClase === "expirada") {
+                                return "Expirada";
+                        }
+                        if (diffDays === 0) {
+                                return "(Caduca hoy)";
+                        }
+                        const formatted = CARD_DAYS_FORMATTER.format(diffDays);
+                        if (diffDays === 1) {
+                                return "(1 día restante)";
+                        }
+                        return `(${formatted} días restantes)`;
+                }
+
+                function buildGuaranteeViewModel(item) {
+                        if (!item || typeof item !== "object") {
+                                return null;
+                        }
+                        const estadoData = item.estado ?? "";
                         const estadoValue =
                                 typeof estadoData === "object" && estadoData.value
                                         ? estadoData.value
@@ -4241,142 +4309,311 @@ const ADD_DOC_KEY = "add-document";
                                         ? estadoData.label
                                         : estadoValue || "Desconocido";
                         const estadoClase = normalizeEstadoClase(estadoValue);
-                        const marca_modelo = item.marca ?? "-";
-                        const mat = item.mat ?? item.matricula ?? "-";
+                        const marcaModelo = item.marca ?? "-";
+                        const matricula = item.mat ?? item.matricula ?? "-";
                         const rawDesde = item.desde ?? "";
                         const rawHasta = item.hasta ?? "";
-                        const { iso: desdeIso, display: desde } = formatDate(rawDesde);
-                        const { iso: hastaIso, display: hasta } = formatDate(rawHasta);
-                        const vendedor_name = item.vendedor ?? "-";
-                        const plan = item.plan ?? "";
+                        const { iso: desdeIsoRaw, display: desdeDisplayRaw } = formatDate(rawDesde);
+                        const { iso: hastaIsoRaw, display: hastaDisplayRaw } = formatDate(rawHasta);
+                        const hasPeriod =
+                                desdeDisplayRaw !== "-" &&
+                                hastaDisplayRaw !== "-" &&
+                                desdeDisplayRaw !== "" &&
+                                hastaDisplayRaw !== "";
+                        const vendedorName = item.vendedor ?? "-";
+                        const planName = item.plan ?? "";
                         const precio = formatPrice(item.precio);
-                        const canal_venta =
+                        const planPriceLabel = precio && precio !== "-" ? `${precio}€` : "";
+                        const canalVenta =
                                 item.canal_venta && item.canal_venta.label
                                         ? item.canal_venta.label
                                         : "-";
-                        const canal_venta_summary =
+                        const canalVentaSummary =
                                 (item.detail && item.detail.canal_venta_summary)
                                         ? item.detail.canal_venta_summary
-                                        : canal_venta;
-                        const vendedor_type_raw = canal_venta_summary;
-                        const vendedor_type_clean = extractVendorType(vendedor_type_raw);
-                        const vendedor_type = vendedor_type_clean || vendedor_type_raw || "-";
-        const cliente_nombre = item.detail?.nombre_comprador ?? "-";
-        const cliente_telefono_raw = item.detail?.telefono_comprador ?? "";
-        const cliente_telefono =
-                cliente_telefono_raw && cliente_telefono_raw !== "-"
-                        ? cliente_telefono_raw
-                        : "";
-        const cliente_telefono_dataset =
-                cliente_telefono !== "" ? cliente_telefono : "-";
-
-                        const hasPlan = plan !== "" && plan !== "-";
-                        const shouldShowPlan = hasPlan && estadoClase !== "sin-finalizar";
-                        const hasPeriod =
-                                desde !== "-" &&
-                                hasta !== "-" &&
-                                desde !== "" &&
-                                hasta !== "";
-
+                                        : canalVenta;
+                        const vendedorTypeRaw = canalVentaSummary;
+                        const vendedorTypeClean = extractVendorType(vendedorTypeRaw);
+                        const vendedorType = vendedorTypeClean || vendedorTypeRaw || "-";
+                        const clienteNombre = item.detail?.nombre_comprador ?? "-";
+                        const clienteTelefonoRaw = item.detail?.telefono_comprador ?? "";
+                        const clienteTelefono =
+                                clienteTelefonoRaw && clienteTelefonoRaw !== "-"
+                                        ? clienteTelefonoRaw
+                                        : "";
+                        const clienteTelefonoDataset = clienteTelefono !== "" ? clienteTelefono : "-";
+                        const shouldShowPlan =
+                                planName !== "" && planName !== "-" && estadoClase !== "sin-finalizar";
                         const periodHtml = hasPeriod
                                 ? `<div class="guarantees-table__period">
-                                                <div><strong>Desde:</strong> <time>${desde}</time></div>
-                                                <div><strong>Hasta:</strong> <time>${hasta}</time></div>
+                                                <div><strong>Desde:</strong> <time>${desdeDisplayRaw}</time></div>
+                                                <div><strong>Hasta:</strong> <time>${hastaDisplayRaw}</time></div>
                                         </div>`
                                 : "-";
-                        const planPriceLabel = precio && precio !== "-" ? `${precio}€` : "";
                         const planHtml = shouldShowPlan
                                 ? `<div class="guarantees-table__plan">
-                                                <span class="plan__name">${plan}</span>
+                                                <span class="plan__name">${planName}</span>
                                                 ${planPriceLabel ? `<span class="plan__price">${planPriceLabel}</span>` : ""}
                                         </div>`
                                 : "";
-        const clientePhoneHtml =
-                cliente_telefono !== ""
-                        ? `<div class="cliente__phone">${cliente_telefono}</div>`
-                        : "";
-        const thirdColumnLabel = isProfesional ? "Cliente" : "Canal de venta";
-        const thirdColumnHtml = isProfesional
-                ? `<div class="guarantees-table__cliente">
-                                <div class="cliente__name">${cliente_nombre}</div>
+                        const clientePhoneHtml =
+                                clienteTelefono !== ""
+                                        ? `<div class="cliente__phone">${clienteTelefono}</div>`
+                                        : "";
+                        const thirdColumnLabel = isProfesional ? "Cliente" : "Canal de venta";
+                        const thirdColumnHtml = isProfesional
+                                ? `<div class="guarantees-table__cliente">
+                                <div class="cliente__name">${clienteNombre}</div>
                                 ${clientePhoneHtml}
                         </div>`
-                : `<div class="guarantees-table__vendedor">
-                                <div class="vendedor__name">${vendedor_name}</div>
-                                <div class="vendedor__type">${vendedor_type}</div>
+                                : `<div class="guarantees-table__vendedor">
+                                <div class="vendedor__name">${vendedorName}</div>
+                                <div class="vendedor__type">${vendedorType}</div>
                         </div>`;
+                        const metodoPago = item.detail?.metodo_pago || "";
+                        const cobroRealizado = item.detail?.cobro_realizado ? "1" : "";
+                        const cobroBadgeHtml =
+                                isAdmin &&
+                                metodoPago &&
+                                metodoPago.toLowerCase().startsWith("domiciliacion") &&
+                                !cobroRealizado
+                                        ? `<span class="guarantees-list__badge guarantees-list__badge--pend-cobro">Pend. Domiciliación</span>`
+                                        : "";
+                        const estadoBadgeHtml = `<span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">${estadoLabel}</span>`;
+                        const cardDesde = hasPeriod ? formatCardDateLabel(desdeIsoRaw) : "";
+                        const cardHasta = hasPeriod ? formatCardDateLabel(hastaIsoRaw) : "";
+                        const cardValidityRange =
+                                cardDesde && cardHasta ? `${cardDesde} - ${cardHasta}` : "";
+                        const cardValidityDays = hasPeriod
+                                ? computeRemainingDaysLabel(estadoClase, hastaIsoRaw)
+                                : "";
+                        const cardEntityName = isProfesional ? clienteNombre : vendedorName;
+                        let cardEntityMeta = isProfesional
+                                ? clienteTelefono || vendedorType
+                                : vendedorType;
+                        if (!cardEntityMeta || cardEntityMeta === "-") {
+                                cardEntityMeta = isProfesional ? vendedorType : "—";
+                        }
+                        const cardEntityIconSource =
+                                (cardEntityName && cardEntityName !== "-" ? cardEntityName : "") ||
+                                (vendedorName && vendedorName !== "-" ? vendedorName : "") ||
+                                matricula;
+                        const cardEntityIcon = getCardInitials(cardEntityIconSource);
+                        const datasetPrecio = shouldShowPlan && precio && precio !== "-" ? precio : "";
+                        return {
+                                id: Object.prototype.hasOwnProperty.call(item, "id")
+                                        ? String(item.id)
+                                        : "",
+                                estadoLabel,
+                                estadoClase,
+                                marcaModelo,
+                                matricula,
+                                rawDesde,
+                                rawHasta,
+                                desdeIso: hasPeriod ? desdeIsoRaw : "",
+                                hastaIso: hasPeriod ? hastaIsoRaw : "",
+                                desdeDisplay: hasPeriod ? desdeDisplayRaw : "",
+                                hastaDisplay: hasPeriod ? hastaDisplayRaw : "",
+                                vendedorName,
+                                vendedorType,
+                                vendedorTypeRaw,
+                                canalVenta,
+                                canalVentaSummary,
+                                clienteNombre,
+                                clienteTelefono,
+                                clienteTelefonoDataset,
+                                shouldShowPlan,
+                                hasPeriod,
+                                periodHtml,
+                                planHtml,
+                                planName,
+                                planPriceLabel,
+                                thirdColumnLabel,
+                                thirdColumnHtml,
+                                cobroBadgeHtml,
+                                estadoBadgeHtml,
+                                cardValidityRange,
+                                cardValidityDays,
+                                cardEntityName:
+                                        cardEntityName && cardEntityName !== "-" ? cardEntityName : "—",
+                                cardEntityMeta:
+                                        cardEntityMeta && cardEntityMeta !== "-" ? cardEntityMeta : "—",
+                                cardEntityIcon,
+                                cardPlanName: shouldShowPlan ? planName : "",
+                                cardPlanPrice: shouldShowPlan ? planPriceLabel : "",
+                                datasetPrecio,
+                                canalVentaValue: canalVenta,
+                                metodoPago,
+                                cobroRealizado,
+                                concesionarioPersonal: item.detail?.concesionario_personal ?? "",
+                                ibanVendedor: item.detail?.iban_vendedor || "",
+                                transferIban: item.detail?.transfer_iban || "",
+                        };
+                }
 
+                function createCardElement(view) {
+                        const card = document.createElement("article");
+                        card.className = "guarantee-card";
+                        if (view.id) {
+                                card.dataset.id = view.id;
+                        }
+                        const statusClasses = ["guarantee-card__status"];
+                        if (view.estadoClase) {
+                                statusClasses.push(`guarantee-card__status--${view.estadoClase}`);
+                        }
+                        const statusClassAttr = statusClasses.join(" ");
+                        const validitySegments = [];
+                        if (view.cardValidityRange) {
+                                validitySegments.push(
+                                        `<span class="guarantee-card__dates">${escapeHtml(view.cardValidityRange)}</span>`
+                                );
+                        }
+                        if (view.cardValidityDays) {
+                                validitySegments.push(
+                                        `<span class="guarantee-card__days">${escapeHtml(view.cardValidityDays)}</span>`
+                                );
+                        }
+                        const validityHtml = validitySegments.length
+                                ? `<div class="guarantee-card__validity">${validitySegments.join(" ")}</div>`
+                                : "";
+                        const planHtml = view.cardPlanName || view.cardPlanPrice
+                                ? `<div class="guarantee-card__plan">
+                                        ${
+                                                view.cardPlanName
+                                                        ? `<span class="guarantee-card__plan-name">${escapeHtml(view.cardPlanName)}</span>`
+                                                        : ""
+                                        }${
+                                                view.cardPlanPrice
+                                                        ? `<span class="guarantee-card__plan-price">${escapeHtml(view.cardPlanPrice)}</span>`
+                                                        : ""
+                                        }
+                                </div>`
+                                : "";
+                        card.innerHTML = `
+                                <div class="guarantee-card__header">
+                                        <div class="guarantee-card__vehicle">
+                                                <div class="guarantee-card__mat">${escapeHtml(view.matricula || "-")}</div>
+                                                <div class="guarantee-card__model">${escapeHtml(view.marcaModelo || "-")}</div>
+                                        </div>
+                                        <span class="${statusClassAttr}">${escapeHtml(view.estadoLabel || "")}</span>
+                                </div>
+                                <div class="guarantee-card__details">
+                                        <div class="guarantee-card__vendor">
+                                                <div class="guarantee-card__vendor-icon" aria-hidden="true">${escapeHtml(view.cardEntityIcon)}</div>
+                                                <div class="guarantee-card__vendor-info">
+                                                        <span class="guarantee-card__vendor-name">${escapeHtml(view.cardEntityName)}</span>
+                                                        <span class="guarantee-card__vendor-meta">${escapeHtml(view.cardEntityMeta)}</span>
+                                                </div>
+                                        </div>
+                                        ${validityHtml}
+                                </div>
+                                <div class="guarantee-card__footer">
+                                        ${planHtml}
+                                        <button type="button" class="guarantee-card__action" data-mobile-detail-trigger>Ver garantía</button>
+                                </div>
+                        `;
+                        if (!view.cardPlanName && !view.cardPlanPrice) {
+                                const planEl = card.querySelector(".guarantee-card__plan");
+                                if (planEl) {
+                                        planEl.setAttribute("hidden", "hidden");
+                                }
+                        }
+                        if (!validityHtml) {
+                                const validityEl = card.querySelector(".guarantee-card__validity");
+                                if (validityEl) {
+                                        validityEl.remove();
+                                }
+                        }
+                        const iconEl = card.querySelector(".guarantee-card__vendor-icon");
+                        if (iconEl && !view.cardEntityIcon) {
+                                iconEl.textContent = "";
+                        }
+                        return card;
+                }
+
+                function upsertMobileCard(view, { prepend = false } = {}) {
+                        if (!mobileCardsList || !view || !view.id) {
+                                return;
+                        }
+                        const card = createCardElement(view);
+                        const existing = mobileCardsMap.get(view.id);
+                        if (existing && existing.parentElement) {
+                                existing.replaceWith(card);
+                        } else if (prepend && mobileCardsList.firstChild) {
+                                mobileCardsList.insertBefore(card, mobileCardsList.firstChild);
+                        } else {
+                                mobileCardsList.appendChild(card);
+                        }
+                        mobileCardsMap.set(view.id, card);
+                        syncMobileCardsEmptyState();
+                }
+
+                function renderRow(item, options = {}) {
+                        const view = options.viewModel || buildGuaranteeViewModel(item);
+                        if (!view) {
+                                return document.createElement("tr");
+                        }
                         const tr = document.createElement("tr");
                         tr.className = "guarantees-table__row";
                         tr.tabIndex = 0;
-                        tr.dataset.id = item.id;
-                        tr.dataset.matricula = mat;
-                        tr.dataset.marca_modelo = marca_modelo;
-                        tr.dataset.plan = shouldShowPlan ? plan : "";
-                        tr.dataset.desde = hasPeriod ? desdeIso : "";
-                        tr.dataset.desdeRaw = hasPeriod ? rawDesde : "";
-                        tr.dataset.desdeFmt = hasPeriod ? desde : "";
-                        tr.dataset.hasta = hasPeriod ? hastaIso : "";
-                        tr.dataset.hastaRaw = hasPeriod ? rawHasta : "";
-                        tr.dataset.hastaFmt = hasPeriod ? hasta : "";
-                        tr.dataset.estado = estadoLabel;
-                        tr.dataset.estadoclase = estadoClase;
-                        tr.dataset.vendedor_name = vendedor_name;
-                        tr.dataset.vendedor_type = vendedor_type;
-                        tr.dataset.canal_venta_summary = canal_venta_summary;
-                        tr.dataset.concesionario = vendedor_name;
-                        tr.dataset.concesionario_personal =
-                                item.detail?.concesionario_personal ?? "";
-                        tr.dataset.precio = shouldShowPlan && precio && precio !== "-" ? precio : "";
-                        tr.dataset.canalVenta = canal_venta;
-                        tr.dataset.metodoPago = item.detail.metodo_pago || "";
-                        tr.dataset.cobroRealizado = item.detail.cobro_realizado ? "1" : "";
-                        tr.dataset.ibanVendedor = item.detail.iban_vendedor || "";
-                        tr.dataset.transferIban = item.detail.transfer_iban || "";
-        tr.dataset.compradorNombre = cliente_nombre || "-";
-        tr.dataset.compradorTelefono = cliente_telefono_dataset;
+                        if (view.id) {
+                                tr.dataset.id = view.id;
+                        }
+                        tr.dataset.matricula = view.matricula || "-";
+                        tr.dataset.marca_modelo = view.marcaModelo || "-";
+                        tr.dataset.plan = view.shouldShowPlan ? view.planName : "";
+                        tr.dataset.desde = view.hasPeriod ? view.desdeIso : "";
+                        tr.dataset.desdeRaw = view.hasPeriod ? view.rawDesde : "";
+                        tr.dataset.desdeFmt = view.hasPeriod ? view.desdeDisplay : "";
+                        tr.dataset.hasta = view.hasPeriod ? view.hastaIso : "";
+                        tr.dataset.hastaRaw = view.hasPeriod ? view.rawHasta : "";
+                        tr.dataset.hastaFmt = view.hasPeriod ? view.hastaDisplay : "";
+                        tr.dataset.estado = view.estadoLabel || "";
+                        tr.dataset.estadoclase = view.estadoClase || "";
+                        tr.dataset.vendedor_name = view.vendedorName || "";
+                        tr.dataset.vendedor_type = view.vendedorType || "";
+                        tr.dataset.canal_venta_summary = view.canalVentaSummary || "";
+                        tr.dataset.concesionario = view.vendedorName || "";
+                        tr.dataset.concesionario_personal = view.concesionarioPersonal || "";
+                        tr.dataset.precio = view.datasetPrecio || "";
+                        tr.dataset.canalVenta = view.canalVentaValue || "";
+                        tr.dataset.metodoPago = view.metodoPago || "";
+                        tr.dataset.cobroRealizado = view.cobroRealizado || "";
+                        tr.dataset.ibanVendedor = view.ibanVendedor || "";
+                        tr.dataset.transferIban = view.transferIban || "";
+                        tr.dataset.compradorNombre = view.clienteNombre || "-";
+                        tr.dataset.compradorTelefono = view.clienteTelefonoDataset || "-";
 
-                        const cobroBadgeHtml =
-                                isAdmin &&
-                                tr.dataset.metodoPago &&
-                                tr.dataset.metodoPago
-                                        .toLowerCase()
-                                        .startsWith("domiciliacion") &&
-                                !tr.dataset.cobroRealizado
-                                        ? `<span class="guarantees-list__badge guarantees-list__badge--pend-cobro">Pend. Domiciliación</span>`
-                                        : "";
-
-                        const estadoBadgeHtml = `<span class="guarantees-list__badge guarantees-list__badge--${estadoClase}">${estadoLabel}</span>`;
-
-                       tr.innerHTML = `
+                        tr.innerHTML = `
                                 <td data-label="Vehículo">
                                         <div class="guarantees-table__vehiculo">
-                                                <div class="vehiculo__mat">${mat}</div>
-                                                <div class="vehiculo__marca_modelo">${marca_modelo}</div>
+                                                <div class="vehiculo__mat">${view.matricula || "-"}</div>
+                                                <div class="vehiculo__marca_modelo">${view.marcaModelo || "-"}</div>
                                         </div>
                                 </td>
-                                <td data-label="Validez">${periodHtml}</td>
-                                <td data-label="${thirdColumnLabel}">${thirdColumnHtml}</td>
+                                <td data-label="Validez">${view.periodHtml}</td>
+                                <td data-label="${view.thirdColumnLabel}">${view.thirdColumnHtml}</td>
                                 <td data-label="Estado">
                                         <div class="guarantees-table__estado">
-                                                ${estadoBadgeHtml}
-                                                ${cobroBadgeHtml}
+                                                ${view.estadoBadgeHtml}
+                                                ${view.cobroBadgeHtml}
                                         </div>
                                 </td>
-                                <td data-label="Garantía">${planHtml}</td>
+                                <td data-label="Garantía">${view.planHtml}</td>
                         `;
 
-                       const headerCells = table.querySelectorAll("thead th");
-                       headerCells.forEach((th, i) => {
-                               const width = th.getBoundingClientRect().width;
-                               if (tr.children[i]) {
-                                       tr.children[i].style.width = `${width}px`;
-                               }
-                       });
+                        const headerCells = table ? table.querySelectorAll("thead th") : [];
+                        headerCells.forEach((th, i) => {
+                                const width = th.getBoundingClientRect().width;
+                                if (tr.children[i]) {
+                                        tr.children[i].style.width = `${width}px`;
+                                }
+                        });
 
-                       return tr;
-               }
+                        upsertMobileCard(view, { prepend: Boolean(options.prepend) });
 
+                        return tr;
+                }
                 function renderEmptyRow() {
                         const tr = document.createElement("tr");
                         tr.className = "guarantees-table__empty-row";
@@ -5869,6 +6106,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (esNuevaBusqueda) {
                                         setResultMessage("");
                                         tbody.innerHTML = "";
+                                        resetMobileCards();
                                         previousRowCount = 0;
                                         clearSelectionAndDetail({ preserveQuery: pendingMatSelection }); // Limpiar selección SIEMPRE que se cambia el listado (así evitas seleccionados fantasmas)
 					if (data.length > 0) {
@@ -5996,7 +6234,7 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 let row = tbody.querySelector(`.guarantees-table__row[data-id="${id}"]`);
                                 if (!row) {
-                                        row = renderRow(item);
+                                        row = renderRow(item, { prepend: true });
                                         tbody.insertBefore(row, tbody.firstChild);
                                         loadedIds.add(id);
                                 }
@@ -7039,7 +7277,31 @@ async function activateRow(row, options = {}) {
                                 if (row) row.click();
                         });
                 }
-		initRowSelection();
+                initRowSelection();
+
+                if (mobileCardsList) {
+                        mobileCardsList.addEventListener("click", async (event) => {
+                                const trigger = event.target.closest("[data-mobile-detail-trigger]");
+                                if (!trigger) {
+                                        return;
+                                }
+                                const card = trigger.closest(".guarantee-card");
+                                if (!card || !card.dataset.id) {
+                                        return;
+                                }
+                                const row = findRowById(card.dataset.id);
+                                if (!row) {
+                                        return;
+                                }
+                                try {
+                                        await activateRow(row, { direction: "forward" });
+                                } catch (error) {
+                                        console.error("❌ Error al abrir la garantía desde la tarjeta:", error);
+                                }
+                        });
+                }
+
+                syncMobileCardsEmptyState();
 
                 (() => {
                         const modal = document.querySelector(".pdf-modal");
