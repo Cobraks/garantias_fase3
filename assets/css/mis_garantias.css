@@ -357,7 +357,7 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 240;
+    z-index: 16000;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1876,9 +1876,11 @@ body.has-mobile-summary-open .column-resizer {
 }
 
 body.has-mobile-summary-open .guarantee-detail {
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: stretch;
     justify-content: flex-start;
     padding-top: var(--alturaHeader);
+    padding-inline: 0;
 }
 
 body.has-mobile-summary-open .guarantees-list__filters {
@@ -1897,6 +1899,7 @@ body.has-mobile-summary-open .guarantee-detail__dialog {
     height: calc(100vh - var(--alturaHeader) - var(--guarantees-toolbar-height) + 1rem);
     max-height: none;
     border-radius: 1.5rem 1.5rem 0 0;
+    margin-inline: auto;
     transform: translateY(-100%);
 }
 
@@ -2564,7 +2567,8 @@ tr.guarantees-table__row:not(.selected):hover td,
     flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
-    padding: 1.5rem var(--spacing-3);
+    padding-block: 1.5rem;
+    padding-inline: 0;
     background-color: transparent;
     backdrop-filter: none;
     box-shadow: none;
@@ -3773,7 +3777,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     will-change: transform, opacity;
     border-radius: 0;
     background: var(--surface);
-    transform: translateY(100%);
+    transform: translateX(100%);
 }
 
 .guarantee-detail__panel.loading {
@@ -4378,7 +4382,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     position: relative;
     z-index: 2;
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
@@ -4388,7 +4392,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     z-index: 1;
     opacity: 0;
     pointer-events: none;
-    transform: translateY(100%);
+    transform: translateX(100%);
 }
 
 @media (min-width: 1280px) {
@@ -5203,7 +5207,8 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         background: var(--surface);
         border-top: 1px solid var(--border-color);
         box-shadow: none;
-        padding: 1.5rem var(--spacing-4);
+        padding-block: 1.5rem;
+        padding-inline: var(--spacing-4);
     }
 
     .guarantee-detail__close {
