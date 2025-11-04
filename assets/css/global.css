@@ -1538,6 +1538,18 @@ textarea {
   border-bottom: 1px solid #1f2937;
 }
 
+:root[data-theme='dark'] .notifications-modal__filter {
+  color: #e2e8f0;
+  background-color: #111827;
+  border-color: #1f2937;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.6);
+  background-image: linear-gradient(45deg, transparent 50%, #94a3b8 50%), linear-gradient(135deg, #94a3b8 50%, transparent 50%), linear-gradient(90deg, transparent calc(100% - 2rem), rgba(148, 163, 184, 0.18) calc(100% - 2rem));
+}
+
+:root[data-theme='dark'] .notifications-modal__filter:focus {
+  outline-color: rgba(59, 130, 246, 0.45);
+}
+
 :root[data-theme='dark'] .notifications-modal__mark {
   color: #94a3b8;
 }
@@ -1653,13 +1665,46 @@ textarea {
 .notifications-modal__controls {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
   padding: 0.25rem 0;
   position: sticky;
   top: 0;
   z-index: 2;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, #ffffff 38%, rgba(255, 255, 255, 0.92) 100%);
   border-bottom: 1px solid #e2e8f0;
+}
+
+.notifications-modal__controls--solo {
+  justify-content: flex-end;
+}
+
+.notifications-modal__controls--with-filter {
+  justify-content: space-between;
+}
+
+.notifications-modal__filter {
+  min-width: 10rem;
+  max-width: 100%;
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--go-color-0f172a, #0f172a);
+  background-color: #ffffff;
+  border: 1px solid #cbd5f5;
+  border-radius: 0.5rem;
+  padding: 0.35rem 2rem 0.35rem 0.75rem;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #64748b 50%), linear-gradient(135deg, #64748b 50%, transparent 50%), linear-gradient(90deg, transparent calc(100% - 2rem), rgba(148, 163, 184, 0.2) calc(100% - 2rem));
+  background-position: calc(100% - 1.2rem) 50%, calc(100% - 0.8rem) 50%, 50% 50%;
+  background-size: 0.45rem 0.45rem, 0.45rem 0.45rem, 100% 100%;
+  background-repeat: no-repeat;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.notifications-modal__filter:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
 }
 
 .notifications-modal__scroll {
@@ -1691,19 +1736,17 @@ textarea {
 }
 
 .notifications-modal__footer {
-  margin-top: auto;
-  position: sticky;
-  bottom: 0;
+  margin-top: 1rem;
   padding-top: 0.75rem;
-  padding-bottom: 0.35rem;
-  background: linear-gradient(0deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.88) 42%, rgba(255, 255, 255, 0) 100%);
+  padding-bottom: 0.75rem;
   display: flex;
   justify-content: center;
 }
 
 .notifications-modal__load-more {
   margin: 0;
-  width: 100%;
+  width: auto;
+  min-width: 12rem;
 }
 
 @keyframes notifications-spinner {

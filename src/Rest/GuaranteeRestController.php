@@ -3819,12 +3819,47 @@ class GuaranteeRestController
             $end_day     = cal_days_in_month(CAL_GREGORIAN, $end_month, $year);
             $end_date    = sprintf('%04d-%02d-%02d', $year, $end_month, $end_day);
 
-            $meta_query[] = [
+            $date_range_query = [
                 'key'     => 'estado_garantia_inicio',
                 'value'   => [$start_date, $end_date],
                 'compare' => 'BETWEEN',
                 'type'    => 'DATE',
             ];
+
+            if ($estado === '' || $estado === 'sin_finalizar') {
+                $meta_query[] = array_merge(
+                    ['relation' => 'OR'],
+                    [
+                        $date_range_query,
+                        [
+                            'relation' => 'AND',
+                            [
+                                'key'   => 'estado_garantia_estado_contratacion',
+                                'value' => 'sin_finalizar',
+                            ],
+                            [
+                                'relation' => 'OR',
+                                [
+                                    'key'     => 'estado_garantia_inicio',
+                                    'compare' => 'NOT EXISTS',
+                                ],
+                                [
+                                    'key'     => 'estado_garantia_inicio',
+                                    'value'   => '',
+                                    'compare' => '=',
+                                ],
+                                [
+                                    'key'     => 'estado_garantia_inicio',
+                                    'value'   => '0000-00-00',
+                                    'compare' => '=',
+                                ],
+                            ],
+                        ],
+                    ]
+                );
+            } else {
+                $meta_query[] = $date_range_query;
+            }
         }
 
         // ---- SEARCH ----

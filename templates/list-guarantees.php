@@ -247,26 +247,6 @@ if (($is_admin_user || $is_director)
     style="view-transition-name: filtros"
     data-mobile-open="false"
     data-mobile-search-open="false">
-    <div class="guarantees-list__toolbar" data-mobile-toolbar data-mobile-search-panel>
-        <div class="guarantees-list__toolbar-slot" data-mobile-search-slot>
-            <div class="guarantees-list__search-container" data-search-field>
-                <span class="guarantees-list__search-icon" aria-hidden="true">
-                    <?php echo Svg::icon('search'); ?>
-                </span>
-                <input
-                    type="text"
-                    class="guarantees-list__search"
-                    placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
-                    aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>"
-                    id="buscador_mis_garantias">
-                <span class="guarantees-list__close-icon" aria-hidden="true">
-                    <?php echo Svg::icon('cerrar'); ?>
-                </span>
-            </div>
-        </div>
-
-    </div>
-
     <div class="guarantees-list__filters-modal" data-mobile-filters-overlay>
         <div class="guarantees-list__filters-modal-backdrop" data-mobile-filters-dismiss></div>
 
@@ -506,6 +486,13 @@ if (($is_admin_user || $is_director)
 <div class="guarantees-container">
     <!-- 2. LISTA: tabla semántica con columna “Garantía” al final y “Canal de venta” en vendedor -->
     <section class="guarantees-list">
+        <div class="guarantees-cards" data-mobile-cards>
+            <div class="guarantees-cards__list" data-mobile-cards-list></div>
+            <div class="guarantees-cards__empty" data-mobile-cards-empty hidden>
+                <p><?php esc_html_e('Todavía no hay garantías.', 'garantias-online-360vo'); ?></p>
+            </div>
+        </div>
+
         <div class="guarantees-table__scroll">
             <table class="guarantees-table" style="view-transition-name: garantias-table">
                 <thead>
@@ -548,15 +535,17 @@ if (($is_admin_user || $is_director)
                 </tbody>
             </table>
             <!-- Fila de carga fija, fuera del tbody para que no se elimine al vaciar -->
-            <div id="scroll-end" class="scroll-sentinel" aria-hidden="true">
-                <div class="spinner" aria-hidden="true">
-                    <div class="spinner__inner" aria-hidden="true"></div>
-                </div>
-            </div>
+
         </div>
         <!-- <div class="scroll_up scroll_up--list">
             <button>^</button>
         </div> -->
+        <!-- Aquí el sentinel -->
+        <div id="scroll-end" class="scroll-sentinel" aria-hidden="true">
+            <div class="spinner" aria-hidden="true">
+                <div class="spinner__inner" aria-hidden="true"></div>
+            </div>
+        </div>
     </section>
 
     <!-- 3. DETALLE: dos paneles -->
@@ -783,7 +772,9 @@ if (($is_admin_user || $is_director)
                         <section class="kpi-grid" data-admin-summary-kpis>
                             <article class="kpi-card" data-admin-summary-kpi="amount">
                                 <div class="kpi-label">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)">
+                                        <path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z" />
+                                    </svg>
                                     <span data-admin-summary-kpi-label><?php echo esc_html($summary_amount_label); ?></span>
                                 </div>
                                 <div
@@ -799,14 +790,17 @@ if (($is_admin_user || $is_director)
                                     data-trend-type="amount"
                                     data-direction="<?php echo esc_attr($amount_trend_direction); ?>">
                                     <span class="kpi-trend__icon" data-admin-summary-trend-icon aria-hidden="true">
-                                        <?php echo $amount_trend_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                        <?php echo $amount_trend_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped 
+                                        ?>
                                     </span>
                                     <span data-admin-summary-trend-label><?php echo esc_html($amount_trend_text); ?></span>
                                 </div>
                             </article>
                             <article class="kpi-card" data-admin-summary-kpi="count">
                                 <div class="kpi-label">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)"><path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)">
+                                        <path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z" />
+                                    </svg>
                                     <span data-admin-summary-kpi-label><?php echo esc_html($summary_count_label); ?></span>
                                 </div>
                                 <div
@@ -822,7 +816,8 @@ if (($is_admin_user || $is_director)
                                     data-trend-type="count"
                                     data-direction="<?php echo esc_attr($count_trend_direction); ?>">
                                     <span class="kpi-trend__icon" data-admin-summary-trend-icon aria-hidden="true">
-                                        <?php echo $count_trend_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                        <?php echo $count_trend_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped 
+                                        ?>
                                     </span>
                                     <span data-admin-summary-trend-label><?php echo esc_html($count_trend_text); ?></span>
                                 </div>
@@ -876,14 +871,16 @@ if (($is_admin_user || $is_director)
                                         data-summary-action="<?php echo esc_attr($action['key']); ?>"
                                         data-filter="<?php echo esc_attr($action['filter']); ?>">
                                         <span class="action-icon" aria-hidden="true" style="background-color: <?php echo esc_attr($action['accent']); ?>">
-                                            <?php echo $action['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                            <?php echo $action['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped 
+                                            ?>
                                         </span>
                                         <div class="action-details">
                                             <span class="action-label"><?php echo esc_html($action['label']); ?></span>
                                             <span class="action-sublabel"><?php echo esc_html($subtitle); ?></span>
                                         </div>
                                         <span class="action-cta" aria-hidden="true">
-                                            <?php echo $action_arrow_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                            <?php echo $action_arrow_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped 
+                                            ?>
                                         </span>
                                     </li>
                                 <?php endforeach; ?>
@@ -899,7 +896,10 @@ if (($is_admin_user || $is_director)
                     <p><?php esc_html_e('No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.', 'garantias-online-360vo'); ?></p>
                 </div>
                 <?php if ($admin_summary_json !== '') : ?>
-                    <script type="application/json" data-admin-summary-preload><?php echo $admin_summary_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></script>
+                    <script type="application/json" data-admin-summary-preload>
+                        <?php echo $admin_summary_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped 
+                        ?>
+                    </script>
                 <?php endif; ?>
             </section>
         <?php endif; ?>
@@ -968,6 +968,25 @@ if (($is_admin_user || $is_director)
     <div class="guarantee-detail__empty-templates" hidden>
         <div data-empty-template="awaiting"><?php echo $empty_detail_awaiting; ?></div>
         <div data-empty-template="no-results"><?php echo $empty_detail_no_results; ?></div>
+    </div>
+
+    <div class="guarantees-mobile-search" data-mobile-search-panel>
+        <div class="guarantees-mobile-search__slot" data-mobile-search-slot>
+            <div class="guarantees-list__search-container" data-search-field>
+                <span class="guarantees-list__search-icon" aria-hidden="true">
+                    <?php echo Svg::icon('search'); ?>
+                </span>
+                <input
+                    type="text"
+                    class="guarantees-list__search"
+                    placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
+                    aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>"
+                    id="buscador_mis_garantias">
+                <span class="guarantees-list__close-icon" aria-hidden="true">
+                    <?php echo Svg::icon('cerrar'); ?>
+                </span>
+            </div>
+        </div>
     </div>
 
     <nav class="guarantees-bottom-bar" data-mobile-bottom-bar>

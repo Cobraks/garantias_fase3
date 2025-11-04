@@ -569,7 +569,49 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
     <?php endif; ?>
 <?php endif; ?>
 
-<?php if ($can_manage_notifications) : ?>
+<?php if ($can_manage_notifications) :
+    $can_view_login_notifications = current_user_can('administrator');
+    $can_view_management_notifications = $can_view_login_notifications || current_user_can('go_director_comercial') || current_user_can('go_garantias');
+
+    $notification_category_definitions = [
+        [
+            'key'   => 'login',
+            'label' => __('Inicio de sesión', 'garantias-online-360vo'),
+            'icons' => ['login', 'logout'],
+            'allowed' => $can_view_login_notifications,
+        ],
+        [
+            'key'   => 'payments',
+            'label' => __('Pagos', 'garantias-online-360vo'),
+            'icons' => ['payment', 'sell', 'iban'],
+            'allowed' => $can_view_management_notifications,
+        ],
+        [
+            'key'   => 'guarantees',
+            'label' => __('Garantías', 'garantias-online-360vo'),
+            'icons' => ['new_shield'],
+            'allowed' => $can_view_management_notifications,
+        ],
+        [
+            'key'   => 'registrations',
+            'label' => __('Registros', 'garantias-online-360vo'),
+            'icons' => ['check_shield', 'person_add'],
+            'allowed' => $can_view_management_notifications,
+        ],
+    ];
+
+    $notification_categories = array_values(array_filter(array_map(static function ($category) {
+        if (empty($category['allowed'])) {
+            return null;
+        }
+
+        return [
+            'key'   => $category['key'],
+            'label' => $category['label'],
+            'icons' => $category['icons'],
+        ];
+    }, $notification_category_definitions)));
+    ?>
     <script>
         window.go360Notifications = {
             endpoints: {
@@ -586,6 +628,10 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             preferences: {
                 toast: true,
                 sound: true
+            },
+            filters: {
+                allLabel: <?php echo wp_json_encode(__('Todas', 'garantias-online-360vo')); ?>,
+                categories: <?php echo wp_json_encode($notification_categories); ?>
             }
         };
     </script>
