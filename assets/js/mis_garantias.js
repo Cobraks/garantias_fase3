@@ -624,6 +624,9 @@ const ADD_DOC_KEY = "add-document";
                                   "[data-mobile-nav-action=\"guarantees\"]"
                           )
                         : null;
+                const mobileQuickAdd = document.querySelector(
+                        "[data-mobile-quick-add]"
+                );
                 const orderRoot = document.querySelector("[data-order-root]");
                 const orderToggle = orderRoot
                         ? orderRoot.querySelector("[data-order-toggle]")
@@ -652,6 +655,7 @@ const ADD_DOC_KEY = "add-document";
                 const rootElement = document.documentElement;
                 const rootStyle = rootElement ? rootElement.style : null;
                 const mobileViewportOffsetVar = "--mobile-viewport-bottom-offset";
+                const mobileHeaderCompensationVar = "--mobile-header-compensation";
                 const htmlLang =
                         (rootElement &&
                                 (rootElement.lang ||
@@ -721,6 +725,8 @@ const ADD_DOC_KEY = "add-document";
                         typeof window.matchMedia === "function"
                                 ? window.matchMedia("(min-width: 1280px)")
                                 : null;
+                const isDesktopView = () =>
+                        desktopMediaQuery ? desktopMediaQuery.matches : true;
                 let mobileFiltersOpen = Boolean(
                         filtersRoot &&
                                 filtersRoot.getAttribute("data-mobile-open") === "true"
@@ -738,6 +744,8 @@ const ADD_DOC_KEY = "add-document";
                 let mobileSummaryOpen = false;
                 let mobileSearchOpen = false;
                 let lastMobileSearchVisible = false;
+                let notificationsPanelOpen = false;
+                let notificationsModalOpen = false;
                 let currentMobileNavState = "guarantees";
                 let lastDetailTrigger = null;
                 let infiniteScrollObserver = null;
@@ -795,6 +803,7 @@ const ADD_DOC_KEY = "add-document";
                                 }
                         }
 
+                        syncMobileNavState();
                         return mobileSummaryOpen;
                 };
                 setMobileSummaryOpen(false);
@@ -839,8 +848,31 @@ const ADD_DOC_KEY = "add-document";
                 };
                 updateBaseFiltersHeight();
 
-                const isDesktopView = () =>
-                        desktopMediaQuery ? desktopMediaQuery.matches : true;
+                function syncMobileHeaderCompensation() {
+                        if (!rootStyle) {
+                                return;
+                        }
+                        if (isDesktopView()) {
+                                rootStyle.setProperty(mobileHeaderCompensationVar, "0px");
+                                return;
+                        }
+                        let viewportOffset = 0;
+                        if (
+                                typeof window !== "undefined" &&
+                                window.visualViewport &&
+                                typeof window.visualViewport.offsetTop === "number"
+                        ) {
+                                viewportOffset = window.visualViewport.offsetTop;
+                        }
+                        const compensation = Math.max(
+                                0,
+                                Math.round(viewportOffset)
+                        );
+                        rootStyle.setProperty(
+                                mobileHeaderCompensationVar,
+                                `${compensation}px`
+                        );
+                }
 
                 function syncMobileViewportOffset() {
                         if (!rootStyle) {
@@ -848,6 +880,7 @@ const ADD_DOC_KEY = "add-document";
                         }
                         if (isDesktopView()) {
                                 rootStyle.setProperty(mobileViewportOffsetVar, "0px");
+                                syncMobileHeaderCompensation();
                                 return;
                         }
                         if (
@@ -856,6 +889,7 @@ const ADD_DOC_KEY = "add-document";
                                 typeof window.visualViewport.height !== "number"
                         ) {
                                 rootStyle.setProperty(mobileViewportOffsetVar, "0px");
+                                syncMobileHeaderCompensation();
                                 return;
                         }
                         const viewport = window.visualViewport;
@@ -875,6 +909,7 @@ const ADD_DOC_KEY = "add-document";
                                 mobileViewportOffsetVar,
                                 `${Math.round(offset)}px`
                         );
+                        syncMobileHeaderCompensation();
                 }
 
                 function syncBottomBarState({ measure = false } = {}) {
@@ -892,6 +927,7 @@ const ADD_DOC_KEY = "add-document";
                                                 "0px"
                                         );
                                 }
+                                syncMobileHeaderCompensation();
                                 return;
                         }
                         const desktop = isDesktopView();
@@ -955,6 +991,9 @@ const ADD_DOC_KEY = "add-document";
                         if (!bottomBar || isDesktopView()) {
                                 return "guarantees";
                         }
+                        if (notificationsModalOpen || notificationsPanelOpen) {
+                                return "notifications";
+                        }
                         if (mobileFiltersOpen) {
                                 return "filters";
                         }
@@ -977,7 +1016,49 @@ const ADD_DOC_KEY = "add-document";
                                         : computeMobileNavState();
                         const state = setMobileNavState(target);
                         syncBottomBarState({ measure: true });
+                        syncMobileQuickAddVisibility(state);
                         return state;
+                }
+
+                function syncMobileQuickAddVisibility(state = computeMobileNavState()) {
+                        if (!mobileQuickAdd) {
+                                return;
+                        }
+                        const desktop = isDesktopView();
+                        const shouldShow =
+                                !desktop && Boolean(bottomBar) && state === "guarantees";
+                        mobileQuickAdd.classList.toggle("is-hidden", !shouldShow);
+                        mobileQuickAdd.setAttribute(
+                                "aria-hidden",
+                                shouldShow ? "false" : "true"
+                        );
+                        if (shouldShow) {
+                                mobileQuickAdd.removeAttribute("tabindex");
+                        } else {
+                                mobileQuickAdd.setAttribute("tabindex", "-1");
+                        }
+                }
+
+                if (typeof window !== "undefined") {
+                        window.addEventListener("go360:notifications:opened", () => {
+                                notificationsModalOpen = false;
+                                notificationsPanelOpen = true;
+                                syncMobileNavState();
+                        });
+                        window.addEventListener("go360:notifications:closed", () => {
+                                notificationsPanelOpen = false;
+                                notificationsModalOpen = false;
+                                syncMobileNavState();
+                        });
+                        window.addEventListener("go360:notifications:modal-opened", () => {
+                                notificationsPanelOpen = false;
+                                notificationsModalOpen = true;
+                                syncMobileNavState();
+                        });
+                        window.addEventListener("go360:notifications:modal-closed", () => {
+                                notificationsModalOpen = false;
+                                syncMobileNavState();
+                        });
                 }
 
                 function syncMobileDetailVisibility({ focus = false, restoreFocus = false } = {}) {
@@ -1655,6 +1736,13 @@ const ADD_DOC_KEY = "add-document";
                         window.addEventListener("resize", handleResize, {
                                 passive: true,
                         });
+                        window.addEventListener(
+                                "scroll",
+                                () => {
+                                        syncMobileHeaderCompensation();
+                                },
+                                { passive: true }
+                        );
                         if (window.visualViewport) {
                                 window.visualViewport.addEventListener(
                                         "resize",
@@ -1994,15 +2082,31 @@ const ADD_DOC_KEY = "add-document";
                         }
                 });
 
-		let resultMessage = document.querySelector(
-			".guarantees-list__result-message"
-		);
-		if (!resultMessage) {
-			resultMessage = document.createElement("div");
-			resultMessage.className = "guarantees-list__result-message";
-			resultMessage.style.display = "none";
-			table.insertAdjacentElement("afterend", resultMessage);
-		}
+                let resultMessage =
+                        document.querySelector("[data-search-result-message]") ||
+                        document.querySelector(".guarantees-list__result-message");
+                if (resultMessage) {
+                        resultMessage.classList.add("guarantees-list__result-message");
+                        if (!resultMessage.hasAttribute("aria-live")) {
+                                resultMessage.setAttribute("aria-live", "polite");
+                        }
+                        resultMessage.setAttribute("aria-hidden", "true");
+                        resultMessage.hidden = true;
+                } else if (table) {
+                        resultMessage = document.createElement("div");
+                        resultMessage.className = "guarantees-list__result-message";
+                        resultMessage.setAttribute("aria-live", "polite");
+                        resultMessage.setAttribute("aria-hidden", "true");
+                        resultMessage.hidden = true;
+                        const target = listContainer || table.parentElement;
+                        if (target && table.parentElement === target) {
+                                table.insertAdjacentElement("afterend", resultMessage);
+                        } else if (target && typeof target.appendChild === "function") {
+                                target.appendChild(resultMessage);
+                        } else {
+                                table.insertAdjacentElement("afterend", resultMessage);
+                        }
+                }
 
                 if (!panel1 || !panel2) {
                         detail.innerHTML =
@@ -3517,7 +3621,10 @@ const ADD_DOC_KEY = "add-document";
                         if (!selector) return;
                         const target = panel.querySelector(selector);
                         if (!target) return;
-                        const text = target.textContent.trim();
+                        let text = (target.textContent || '').trim();
+                        if (target.hasAttribute('data-amount')) {
+                                text = text.replace(/[\s\u00A0]*€$/u, '').replace(/^€[\s\u00A0]*/u, '').trim();
+                        }
                         if (!text) return;
                         const originalLabel = btn.getAttribute("aria-label") || "";
                         const doneLabel = btn.dataset.done || "Copiado";
@@ -5196,6 +5303,13 @@ const ADD_DOC_KEY = "add-document";
                         labelNode.textContent = parts.length ? parts.join(" ") : "—";
                 }
 
+                const stripYearSuffix = (label) => {
+                        if (typeof label !== "string") {
+                                return "";
+                        }
+                        return label.replace(/\s+\d{4}$/u, "").trim();
+                };
+
                 function updateAdminSummaryKpis(root, context = {}) {
                         if (!root) {
                                 return;
@@ -5214,10 +5328,11 @@ const ADD_DOC_KEY = "add-document";
                                 context && typeof context.label === "string"
                                         ? context.label.trim()
                                         : "";
-                        const monthName =
+                        const monthNameRaw =
                                 contextKey === "month" && context && typeof context.month_name === "string"
                                         ? context.month_name.trim()
                                         : "";
+                        const monthName = monthNameRaw ? stripYearSuffix(monthNameRaw) : "";
                         const countValue =
                                 typeof context.count === "number"
                                         ? context.count
@@ -5241,8 +5356,8 @@ const ADD_DOC_KEY = "add-document";
                                                 contextKey === "year"
                                                         ? "Valor acumulado"
                                                         : monthName
-                                                        ? `Valor mensual ${monthName}`
-                                                        : "Valor mensual";
+                                                        ? `Acumulado ${monthName}`
+                                                        : "Acumulado";
                                 }
                                 const valueEl = amountCard.querySelector(
                                         "[data-admin-summary-kpi-value]"
@@ -5303,7 +5418,7 @@ const ADD_DOC_KEY = "add-document";
                                 context && typeof context.month_name === "string"
                                         ? context.month_name
                                         : "";
-                        const monthName = monthNameRaw ? monthNameRaw.trim() : "";
+                        const monthName = monthNameRaw ? stripYearSuffix(monthNameRaw.trim()) : "";
                         const trendsData =
                                 context && typeof context.trends === "object" && context.trends
                                         ? context.trends
@@ -5315,8 +5430,9 @@ const ADD_DOC_KEY = "add-document";
                         const defaultLabel = labelEl
                                 ? labelEl.getAttribute("data-default-label") || "Total"
                                 : "Total";
-                        const contextLabel =
+                        const contextLabelRaw =
                                 context && typeof context.label === "string" ? context.label.trim() : "";
+                        const contextLabel = contextLabelRaw ? stripYearSuffix(contextLabelRaw) : "";
 
                         if (labelEl) {
                                 const effectiveLabel = contextLabel || defaultLabel;
@@ -5990,10 +6106,19 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
-		function setResultMessage(msg = "") {
-			resultMessage.innerHTML = msg;
-			resultMessage.style.display = msg ? "block" : "none";
-		}
+                function setResultMessage(msg = "") {
+                        if (!resultMessage) {
+                                return;
+                        }
+                        const message = typeof msg === "string" ? msg : "";
+                        resultMessage.innerHTML = message;
+                        const shouldShow = message.trim().length > 0;
+                        resultMessage.hidden = !shouldShow;
+                        resultMessage.setAttribute(
+                                "aria-hidden",
+                                shouldShow ? "false" : "true"
+                        );
+                }
 
                 async function loadPage(page = 1, options = {}) {
                         if (isLoading || !hasMore) return;
@@ -7519,6 +7644,37 @@ async function activateRow(row, options = {}) {
                                         });
                         }
 
+                        const canUseHistory = () =>
+                                panelHistory &&
+                                typeof panelHistory.push === "function" &&
+                                (!desktopMediaQuery || !desktopMediaQuery.matches);
+                        let modalHistoryRegistered = false;
+
+                        function ensureModalHistory() {
+                                if (!canUseHistory() || modalHistoryRegistered) {
+                                        return;
+                                }
+                                modalHistoryRegistered = true;
+                                panelHistory.push("detail-docs", () => {
+                                        closeModal({ silentHistory: true });
+                                });
+                        }
+
+                        function releaseModalHistory({ silent = false } = {}) {
+                                if (!modalHistoryRegistered) {
+                                        return;
+                                }
+                                if (canUseHistory() && !silent) {
+                                        panelHistory.close("detail-docs");
+                                }
+                                modalHistoryRegistered = false;
+                        }
+
+                        function openModal() {
+                                modal.classList.add("visible");
+                                ensureModalHistory();
+                        }
+
                         function openDocByKey(key) {
                                 if (!key) return;
                                 const buttons = getButtons();
@@ -7540,16 +7696,19 @@ async function activateRow(row, options = {}) {
                                                 const idx = parseInt(btn.dataset.docIndex || "0", 10);
                                                 openDocByIndex(idx);
                                         }
-                                        modal.classList.add("visible");
+                                        openModal();
                                 }
                         });
 
                         prevBtn.addEventListener("click", () => openDocByIndex(currentIdx - 1));
                         nextBtn.addEventListener("click", () => openDocByIndex(currentIdx + 1));
 
-                        function closeModal() {
+                        function closeModal(options = {}) {
+                                const silentHistory = Boolean(options.silentHistory);
                                 modal.classList.remove("visible");
-                                iframe.src = "";
+                                if (iframe) {
+                                        iframe.src = "";
+                                }
                                 if (dl) {
                                         dl.href = "#";
                                 }
@@ -7577,6 +7736,7 @@ async function activateRow(row, options = {}) {
                                 if (spinner) spinner.classList.remove("active");
                                 getButtons().forEach((b) => b.classList.remove("active"));
                                 updateModalControls(modal);
+                                releaseModalHistory({ silent: silentHistory });
                         }
 
                         modal.querySelector(".pdf-modal__close").addEventListener("click", closeModal);
