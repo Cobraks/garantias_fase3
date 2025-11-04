@@ -167,6 +167,10 @@
             panelHistory &&
             typeof panelHistory.push === 'function' &&
             typeof panelHistory.close === 'function';
+        const desktopMediaQuery =
+            typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+                ? window.matchMedia('(min-width: 1280px)')
+                : null;
 
         const toggle = container.querySelector(SELECTORS.toggle);
         const panel = container.querySelector(SELECTORS.panel);
@@ -290,6 +294,66 @@
             return items.filter((item) => item.category === key);
         };
 
+        const getModalCategoryState = (categoryKey) => {
+            const key = typeof categoryKey === 'string' && categoryKey !== '' ? categoryKey : 'all';
+            if (key === 'all') {
+                return null;
+            }
+            if (!state.categoryData.has(key)) {
+                state.categoryData.set(key, {
+                    items: [],
+                    page: 0,
+                    hasMore: true,
+                    loading: false,
+                    loadingMore: false,
+                });
+            }
+            return state.categoryData.get(key);
+        };
+
+        const getModalDataset = () => {
+            const category = state.modalCategory || 'all';
+            if (category === 'all') {
+                return {
+                    items: filterByCategory(state.items, 'all'),
+                    hasMore: state.hasMore,
+                    loadingMore: state.loadingMore,
+                };
+            }
+            const categoryState = getModalCategoryState(category);
+            if (!categoryState) {
+                return { items: [], hasMore: false, loadingMore: false };
+            }
+            return {
+                items: Array.isArray(categoryState.items) ? categoryState.items : [],
+                hasMore: Boolean(categoryState.hasMore),
+                loadingMore: Boolean(categoryState.loadingMore),
+            };
+        };
+
+        const canUseModalHistory = () =>
+            hasPanelHistory && (!desktopMediaQuery || !desktopMediaQuery.matches);
+
+        const registerModalHistory = () => {
+            if (!canUseModalHistory() || state.modalHistoryRegistered) {
+                return;
+            }
+            state.modalHistoryRegistered = true;
+            panelHistory.push('notifications-modal', () => {
+                closeModal({ silentHistory: true });
+            });
+        };
+
+        const releaseModalHistory = (silent = false) => {
+            if (!state.modalHistoryRegistered) {
+                return;
+            }
+            if (canUseModalHistory() && !silent) {
+                panelHistory.close('notifications-modal');
+            }
+            state.modalHistoryRegistered = false;
+        };
+
         const getPreferenceKey = (type) => {
             const suffix = Number.isFinite(userId) && userId > 0 ? `_${userId}` : '';
             return `go360_notifications_pref_${type}${suffix}`;
@@ -352,6 +416,7 @@
         const deleteLabel = container.dataset.deleteLabel || 'Eliminar';
         const loadMoreLabel = container.dataset.loadMoreLabel || 'Cargar más';
         const loadingLabel = container.dataset.loadingLabel || 'Cargando…';
+        const modalLoadingLabel = container.dataset.modalLoadingLabel || loadingLabel;
         const viewAllLabel = container.dataset.viewAllLabel || 'Ver todas las notificaciones';
         const toastDismissLabel = container.dataset.toastDismissLabel || 'Descartar';
         const modalPlaceholder = container.dataset.modalPlaceholder || '';
@@ -395,6 +460,9 @@
             modalCategory: 'all',
             modalReachedEnd: false,
             modalFilteredCount: 0,
+            modalLoading: false,
+            categoryData: new Map(),
+            modalHistoryRegistered: false,
         };
 
         state.userId = Number.isFinite(userId) ? userId : 0;
@@ -598,7 +666,44 @@
                 empty.hidden = panelItems.length > 0;
             }
             if (state.modalElements && state.modalElements.empty) {
-                state.modalElements.empty.hidden = state.modalFilteredCount > 0;
+                state.modalElements.empty.hidden = state.modalFilteredCount > 0 || state.modalLoading;
+            }
+        };
+
+        const setModalLoadingState = (loading, label = modalLoadingLabel) => {
+            state.modalLoading = Boolean(loading);
+            if (!state.modalElements) {
+                return;
+            }
+            const {
+                placeholder,
+                placeholderText,
+                list: modalList,
+                empty: modalEmpty,
+                loadMore: modalLoadMore,
+                loadMoreWrapper,
+            } = state.modalElements;
+            if (placeholder) {
+                if (typeof label === 'string' && label !== '' && placeholderText) {
+                    placeholderText.textContent = label;
+                }
+                placeholder.hidden = !state.modalLoading;
+                placeholder.setAttribute('aria-hidden', state.modalLoading ? 'false' : 'true');
+            }
+            if (modalList) {
+                modalList.hidden = state.modalLoading;
+            }
+            if (modalEmpty) {
+                modalEmpty.hidden = true;
+            }
+            if (modalLoadMore) {
+                if (state.modalLoading) {
+                    modalLoadMore.hidden = true;
+                    modalLoadMore.style.display = 'none';
+                }
+            }
+            if (loadMoreWrapper && state.modalLoading) {
+                loadMoreWrapper.hidden = true;
             }
         };
 
@@ -619,12 +724,16 @@
                 && hasPanelItems
                 && !isPanelEmpty
                 && totalUnread > perPage;
-            const hasModalOverflow = state.hasMore
-                && state.items.length > 0
-                && state.items.length >= perPage;
+            const modalData = getModalDataset();
+            const hasModalOverflow = modalData.hasMore
+                && Array.isArray(modalData.items)
+                && modalData.items.length > 0;
             const shouldShowButton = context === 'panel'
                 ? hasPanelOverflow
                 : hasModalOverflow && state.modalReachedEnd;
+            const loadingMoreState = context === 'panel'
+                ? state.loadingMore
+                : modalData.loadingMore;
 
             if (!shouldShowButton) {
                 if (wrapper) {
@@ -643,8 +752,8 @@
             }
             button.hidden = false;
             button.style.display = '';
-            button.disabled = state.loadingMore;
-            if (state.loadingMore) {
+            button.disabled = Boolean(loadingMoreState);
+            if (loadingMoreState) {
                 button.classList.add('is-loading');
                 button.innerHTML = `<span class="notifications-panel__load-more-spinner" aria-hidden="true"></span><span class="notifications-panel__load-more-text">${loadingLabel}</span>`;
             } else {
@@ -1063,15 +1172,31 @@
                     state.modalCategory = selected;
                     state.modalFilteredCount = 0;
                     state.modalReachedEnd = false;
+                    if (selected !== 'all') {
+                        const categoryState = getModalCategoryState(selected);
+                        if (categoryState) {
+                            categoryState.items = [];
+                            categoryState.page = 0;
+                            categoryState.hasMore = true;
+                            categoryState.loading = false;
+                            categoryState.loadingMore = false;
+                        }
+                    }
                     if (state.modalElements && state.modalElements.scroll) {
                         state.modalElements.scroll.scrollTop = 0;
                     }
+                    setModalLoadingState(true, modalLoadingLabel);
                     synchronizeInterface({
                         persist: false,
                         preservePanelScroll: state.isOpen,
                         preserveModalScroll: false,
                     });
                     updateLoadMore();
+                    fetchNotifications({
+                        append: false,
+                        background: false,
+                        category: selected,
+                    });
                 });
 
                 controls.appendChild(modalFilter);
@@ -1090,6 +1215,19 @@
             const modalEmpty = createElement('p', 'notifications-panel__empty', emptyMessage);
             modalEmpty.hidden = true;
             scrollArea.appendChild(modalEmpty);
+
+            const modalPlaceholderEl = createElement('p', 'notifications-modal__placeholder');
+            modalPlaceholderEl.hidden = true;
+            modalPlaceholderEl.setAttribute('role', 'status');
+            modalPlaceholderEl.setAttribute('aria-live', 'polite');
+            const modalPlaceholderSpinner = createElement('span', 'notifications-panel__load-more-spinner');
+            modalPlaceholderSpinner.setAttribute('aria-hidden', 'true');
+            modalPlaceholderEl.appendChild(modalPlaceholderSpinner);
+            const modalPlaceholderText = document.createElement('span');
+            modalPlaceholderText.className = 'notifications-modal__placeholder-text';
+            modalPlaceholderText.textContent = modalLoadingLabel;
+            modalPlaceholderEl.appendChild(modalPlaceholderText);
+            scrollArea.appendChild(modalPlaceholderEl);
 
             const modalList = createElement('ul', 'notifications-panel__list');
             scrollArea.appendChild(modalList);
@@ -1114,6 +1252,8 @@
             state.modalElements = {
                 list: modalList,
                 empty: modalEmpty,
+                placeholder: modalPlaceholderEl,
+                placeholderText: modalPlaceholderText,
                 loadMore: modalLoadMore,
                 loadMoreWrapper: modalFooter,
                 markAll: modalMarkAll,
@@ -1143,10 +1283,15 @@
             });
 
             modalLoadMore.addEventListener('click', () => {
-                if (state.loadingMore || !state.hasMore) {
+                const modalData = getModalDataset();
+                if (modalData.loadingMore || !modalData.hasMore) {
                     return;
                 }
-                fetchNotifications({ append: true, background: state.isOpen === false && state.modalOpen === false });
+                fetchNotifications({
+                    append: true,
+                    background: state.isOpen === false && state.modalOpen === false,
+                    category: state.modalCategory || 'all',
+                });
             });
 
             modal.addEventListener('click', (event) => {
@@ -1173,6 +1318,7 @@
             modal.classList.add('notifications-modal--visible');
             state.modalOpen = true;
             state.modalReachedEnd = false;
+            setModalLoadingState(state.modalLoading, modalLoadingLabel);
             if (state.modalElements && state.modalElements.filter) {
                 state.modalElements.filter.value = state.modalCategory || 'all';
             }
@@ -1181,18 +1327,23 @@
                 preservePanelScroll: state.isOpen,
                 preserveModalScroll: false,
             });
+            registerModalHistory();
+            window.dispatchEvent(new CustomEvent('go360:notifications:modal-opened'));
         };
 
-        const closeModal = () => {
+        function closeModal(options = {}) {
             if (!state.modal) {
                 return;
             }
+            const silentHistory = Boolean(options.silentHistory);
             state.modal.hidden = true;
             state.modal.setAttribute('aria-hidden', 'true');
             state.modal.classList.remove('notifications-modal--visible');
             state.modalOpen = false;
             state.modalReachedEnd = false;
-        };
+            releaseModalHistory(silentHistory);
+            window.dispatchEvent(new CustomEvent('go360:notifications:modal-closed'));
+        }
 
         const buildMetaLine = (entry) => {
             if (!entry || typeof entry.text !== 'string' || entry.text === '') {
@@ -1353,7 +1504,8 @@
             preservePanelScroll = state.isOpen,
             preserveModalScroll = state.modalOpen,
         } = {}) => {
-            const modalItems = filterByCategory(state.items, state.modalCategory);
+            const modalData = getModalDataset();
+            const modalItems = modalData.items;
             state.modalFilteredCount = modalItems.length;
 
             if (list) {
@@ -1451,22 +1603,51 @@
             }
         };
 
-        const fetchNotifications = async ({ append = false, background = false } = {}) => {
-            if (state.isLoading) {
-                return;
-            }
-            state.isLoading = true;
-
-            if (append) {
-                state.loadingMore = true;
-                updateLoadMore();
+        const fetchNotifications = async ({ append = false, background = false, category = 'all' } = {}) => {
+            const targetCategory = typeof category === 'string' && category !== '' ? category : 'all';
+            const categoryState = targetCategory === 'all' ? null : getModalCategoryState(targetCategory);
+            if (targetCategory === 'all') {
+                if (state.isLoading) {
+                    return;
+                }
+                state.isLoading = true;
+                if (append) {
+                    state.loadingMore = true;
+                    updateLoadMore();
+                } else {
+                    state.modalReachedEnd = false;
+                }
+                if (!append && !background && state.modalOpen && state.modalCategory === targetCategory) {
+                    setModalLoadingState(true, modalLoadingLabel);
+                }
+            } else {
+                if (!categoryState || categoryState.loading) {
+                    return;
+                }
+                categoryState.loading = true;
+                if (append) {
+                    categoryState.loadingMore = true;
+                    updateLoadMore();
+                } else {
+                    state.modalReachedEnd = false;
+                }
+                if (!append && !background && state.modalOpen && state.modalCategory === targetCategory) {
+                    setModalLoadingState(true, modalLoadingLabel);
+                }
             }
 
             try {
-                const page = append ? state.page + 1 : 1;
+                const page = append
+                    ? targetCategory === 'all'
+                        ? state.page + 1
+                        : (categoryState?.page || 0) + 1
+                    : 1;
                 const url = new URL(listEndpoint, window.location.origin);
                 url.searchParams.set('page', String(page));
                 url.searchParams.set('per_page', String(perPage));
+                if (targetCategory !== 'all') {
+                    url.searchParams.set('category', targetCategory);
+                }
                 url.searchParams.set('_', String(Date.now()));
 
                 const response = await fetch(url.toString(), {
@@ -1488,38 +1669,69 @@
                     ? meta.latest_id
                     : Number(meta.latest_id);
 
-                if (append) {
-                    state.page = page;
-                    state.hasMore = Boolean(meta.has_more);
-                    state.items = dedupeById(state.items.concat(items));
-                    items.forEach((item) => state.knownIds.add(item.id));
-                } else {
-                    const previousItems = state.items.slice();
-                    state.page = 1;
-                    state.hasMore = Boolean(meta.has_more);
-                    state.items = items;
-                    handleNewItems(items, { allowToast: background, previousItems });
+                if (targetCategory === 'all') {
+                    if (append) {
+                        state.page = page;
+                        state.hasMore = Boolean(meta.has_more);
+                        state.items = dedupeById(state.items.concat(items));
+                        items.forEach((item) => state.knownIds.add(item.id));
+                    } else {
+                        const previousItems = state.items.slice();
+                        state.page = 1;
+                        state.hasMore = Boolean(meta.has_more);
+                        state.items = items;
+                        handleNewItems(items, { allowToast: background, previousItems });
+                    }
+
+                    if (typeof meta.unread !== 'undefined') {
+                        state.unread = parseUnread(meta.unread);
+                    }
+
+                    synchronizeInterface({
+                        preservePanelScroll: append && state.isOpen,
+                        preserveModalScroll: append && state.modalOpen,
+                    });
+
+                    updateLatestId(items, Number.isFinite(latestFromMeta) ? latestFromMeta : null);
+                } else if (categoryState) {
+                    if (append) {
+                        categoryState.page = page;
+                        categoryState.hasMore = Boolean(meta.has_more);
+                        categoryState.items = dedupeById(categoryState.items.concat(items));
+                    } else {
+                        categoryState.page = 1;
+                        categoryState.hasMore = Boolean(meta.has_more);
+                        categoryState.items = items;
+                    }
+                    if (state.modalCategory === targetCategory) {
+                        refreshNotifications({
+                            preservePanelScroll: true,
+                            preserveModalScroll: append && state.modalOpen,
+                        });
+                        updateLoadMore();
+                    }
+                    return;
                 }
-
-                if (typeof meta.unread !== 'undefined') {
-                    state.unread = parseUnread(meta.unread);
-                }
-
-                synchronizeInterface({
-                    preservePanelScroll: append && state.isOpen,
-                    preserveModalScroll: append && state.modalOpen,
-                });
-
-                updateLatestId(items, Number.isFinite(latestFromMeta) ? latestFromMeta : null);
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.warn('GO360 notifications warning', error);
             } finally {
-                state.isLoading = false;
-                if (state.loadingMore) {
-                    state.loadingMore = false;
-                    updateLoadMore();
+                if (targetCategory === 'all') {
+                    state.isLoading = false;
+                    if (state.loadingMore) {
+                        state.loadingMore = false;
+                    }
+                } else if (categoryState) {
+                    categoryState.loading = false;
+                    if (categoryState.loadingMore) {
+                        categoryState.loadingMore = false;
+                    }
                 }
+                if (!append && state.modalCategory === targetCategory) {
+                    setModalLoadingState(false);
+                    updateEmptyState();
+                }
+                updateLoadMore();
             }
         };
 
