@@ -979,7 +979,7 @@
 
             modal.addEventListener('click', (event) => {
                 const target = event.target;
-                if (!(target instanceof HTMLElement)) {
+                if (!(target instanceof Element)) {
                     return;
                 }
                 const closeTrigger = target.closest('[data-modal-close="true"]');
@@ -1593,7 +1593,7 @@
                 return;
             }
             const target = event.target;
-            if (!(target instanceof HTMLElement)) {
+            if (!(target instanceof Element)) {
                 return;
             }
             if (!panel.contains(target) && !toggle.contains(target)) {
@@ -1646,7 +1646,7 @@
         if (toast) {
             toast.addEventListener('click', (event) => {
                 const target = event.target;
-                if (!(target instanceof HTMLElement)) {
+                if (!(target instanceof Element)) {
                     return;
                 }
 
@@ -1675,7 +1675,7 @@
 
             listElement.addEventListener('click', (event) => {
                 const target = event.target;
-                if (!(target instanceof HTMLElement)) {
+                if (!(target instanceof Element)) {
                     return;
                 }
 
