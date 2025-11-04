@@ -5189,6 +5189,10 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         transition: max-height 300ms ease;
     }
 
+    .guarantee-detail[data-mobile-open="true"] {
+        z-index: 900;
+    }
+
     .guarantee-detail__panel {
         max-height: calc(
                 100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height)
