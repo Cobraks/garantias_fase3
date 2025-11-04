@@ -564,7 +564,7 @@ textarea {
     position: sticky;
     top: 0;
     margin-bottom: 0;
-    z-index: 26000;
+    z-index: 14000;
     transition: border-radius .3s ease-in-out, margin-bottom .3s ease-in-out, border-bottom .3s ease-in-out;
     width: 100%;
     display: flex;
@@ -777,7 +777,7 @@ textarea {
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   padding: 1rem 1rem 0.75rem;
-  z-index: 52000;
+  z-index: 13500;
   box-shadow: 0 22px 45px rgba(15, 23, 42, 0.16);
   transform: translate(-50%, 0);
 }
@@ -1576,7 +1576,7 @@ textarea {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 53000;
+  z-index: 14000;
 }
 
 .notifications-modal--visible {
@@ -1729,9 +1729,6 @@ textarea {
 .notifications-modal__placeholder {
   margin: 0;
   line-height: 1.5;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 .notifications-modal__mark {
@@ -1824,7 +1821,7 @@ textarea {
       0 0 0 1px rgba(0, 0, 0, 0.02);
     border: 1px solid rgba(15, 23, 42, 0.08);
     backdrop-filter: blur(12px);
-    z-index: 60000;
+    z-index: 14000;
   }
 
   .top-bar__profile-menu.visible {
@@ -2087,7 +2084,7 @@ textarea {
       0 0 0 1px rgba(0, 0, 0, 0.02);
     border: 1px solid rgba(15, 23, 42, 0.08);
     backdrop-filter: blur(12px);
-    z-index: 61000;
+    z-index: 14000;
   }
 
   .mobile-menu--visible {
@@ -2214,7 +2211,7 @@ textarea {
 .footer__text {
     font-size: 0.875rem;
     color: var(--text-color);
-    line-height: 1.1;
+    line-height: 1.25;
 }
 
   .footer__legal ul {
@@ -2229,7 +2226,7 @@ textarea {
 .footer__legal li {
     display: inline-flex;
     align-items: center;
-    line-height: 1.1;
+    line-height: 1.25;
 }
 
 .footer__legal a {
@@ -2238,7 +2235,7 @@ textarea {
     text-decoration: none;
     color: var(--text-color);
     font-size: 0.875rem;
-    line-height: 1.1;
+    line-height: 1.25;
 }
 
 .footer__legal a:hover {
@@ -2394,11 +2391,15 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
+} }
 
 @media (min-width: 1280px) {
   .top-bar__wrapper {
     justify-content: space-between;
+  }
+
+  .top-bar__logo--svg {
+   max-height: 4rem;
   }
 
   .top-bar__logo-container {
