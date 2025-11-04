@@ -24,10 +24,14 @@ const ADD_DOC_KEY = "add-document";
                         ? mobileCardsRoot.querySelector("[data-mobile-cards-empty]")
                         : null;
                 const mobileCardsMap = new Map();
-                const scrollEnd = listContainer
+                const scrollEndDesktop = listContainer
                         ? listContainer.querySelector("#scroll-end")
                         : null;
-                const spinner = scrollEnd ? scrollEnd.querySelector(".spinner") : null;
+                const scrollEndMobile = listContainer
+                        ? listContainer.querySelector("#scroll-end-mobile")
+                        : null;
+                const spinnerDesktop = scrollEndDesktop ? scrollEndDesktop.querySelector(".spinner") : null;
+                const spinnerMobile = scrollEndMobile ? scrollEndMobile.querySelector(".spinner") : null;
                 const panelHistory =
                         typeof window !== "undefined" && window.go360PanelHistory
                                 ? window.go360PanelHistory
