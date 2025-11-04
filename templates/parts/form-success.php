@@ -41,10 +41,10 @@ use GarantiasOnline360VO\Svg;
             <p class="form-success__transfer-instructions">
                 Puedes remitir el justificante desde tu panel de gestión de garantías o enviarlo por correo electrónico a
                 <a
-                    href="mailto:garantias@460vo.es"
+                    href="mailto:garantias@360vo.es"
                     data-email-link
-                    data-email-base="garantias@460vo.es"
-                >garantias@460vo.es</a>.
+                    data-email-base="garantias@360vo.es"
+                >garantias@360vo.es</a>.
             </p>
             <div class="form-success__toast" aria-hidden="true"></div>
         </div>
