@@ -70,6 +70,9 @@ class GuaranteeRestController
                         'commercial'   => ['validate_callback' => 'absint'],
                         'order_by'     => ['sanitize_callback' => 'sanitize_key'],
                         'order'        => ['sanitize_callback' => 'sanitize_key'],
+                        'year'         => ['validate_callback' => 'absint'],
+                        'month_from'   => ['validate_callback' => 'absint'],
+                        'month_to'     => ['validate_callback' => 'absint'],
                     ],
                 ],
             ]
@@ -710,7 +713,7 @@ class GuaranteeRestController
         $static_docs = [
             [
                 'key'           => 'certificate',
-                'title'         => __('Certificado', 'garantias-online-360vo'),
+                'title'         => __('Certificado completo', 'garantias-online-360vo'),
                 'routeType'     => 'certificado',
                 'is_private'    => true,
                 'extension'     => 'pdf',
@@ -3542,6 +3545,19 @@ class GuaranteeRestController
         $commercial    = isset($request['commercial']) ? absint($request['commercial']) : 0;
         $order_by      = isset($request['order_by']) ? sanitize_key($request['order_by']) : '';
         $order         = isset($request['order']) ? strtolower(sanitize_key($request['order'])) : '';
+        $year          = isset($request['year']) ? absint($request['year']) : 0;
+        $month_from    = isset($request['month_from']) ? absint($request['month_from']) : 0;
+        $month_to      = isset($request['month_to']) ? absint($request['month_to']) : 0;
+
+        $normalized_month_from = 0;
+        $normalized_month_to   = 0;
+        if ($year > 0) {
+            $normalized_month_from = ($month_from >= 1 && $month_from <= 12) ? $month_from : 1;
+            $normalized_month_to   = ($month_to >= 1 && $month_to <= 12) ? $month_to : 12;
+            if ($normalized_month_from > $normalized_month_to) {
+                $normalized_month_to = $normalized_month_from;
+            }
+        }
 
         if (! in_array($order, ['asc', 'desc'], true)) {
             $order = 'desc';
@@ -3575,6 +3591,11 @@ class GuaranteeRestController
         }
         if ($commercial) {
             $cache_key .= '_cm_' . $commercial;
+        }
+        if ($year > 0) {
+            $cache_key .= '_yr_' . $year;
+            $cache_key .= '_mf_' . $normalized_month_from;
+            $cache_key .= '_mt_' . $normalized_month_to;
         }
         if (! empty($sort_config['cache_suffix'])) {
             $cache_key .= $sort_config['cache_suffix'];
@@ -3730,6 +3751,21 @@ class GuaranteeRestController
                 'key'     => 'garantia_contratada_metodo_pago',
                 'value'   => $payment_method,
                 'compare' => 'LIKE',
+            ];
+        }
+
+        if ($year > 0) {
+            $start_month = $normalized_month_from > 0 ? $normalized_month_from : 1;
+            $end_month   = $normalized_month_to > 0 ? $normalized_month_to : 12;
+            $start_date  = sprintf('%04d-%02d-01', $year, $start_month);
+            $end_day     = cal_days_in_month(CAL_GREGORIAN, $end_month, $year);
+            $end_date    = sprintf('%04d-%02d-%02d', $year, $end_month, $end_day);
+
+            $meta_query[] = [
+                'key'     => 'estado_garantia_inicio',
+                'value'   => [$start_date, $end_date],
+                'compare' => 'BETWEEN',
+                'type'    => 'DATE',
             ];
         }
 
@@ -3893,6 +3929,8 @@ class GuaranteeRestController
         $plan_ids = [];
         $channels_map = [];
         $vendor_ids = [];
+        $start_dates_by_year = [];
+
         foreach ($q->posts as $post_id) {
             $e = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
             if ($e) {
@@ -3913,6 +3951,21 @@ class GuaranteeRestController
             $vendor_id = self::normalize_vendor_meta($vendor_raw);
             if ($vendor_id > 0) {
                 $vendor_ids[] = $vendor_id;
+            }
+
+            $start_raw = get_post_meta($post_id, 'estado_garantia_inicio', true);
+            if ($start_raw) {
+                $timestamp = strtotime($start_raw);
+                if ($timestamp !== false) {
+                    $year_value = (int) gmdate('Y', $timestamp);
+                    $month_value = (int) gmdate('n', $timestamp);
+                    if ($year_value > 0 && $month_value >= 1 && $month_value <= 12) {
+                        if (! isset($start_dates_by_year[$year_value])) {
+                            $start_dates_by_year[$year_value] = [];
+                        }
+                        $start_dates_by_year[$year_value][$month_value] = true;
+                    }
+                }
             }
         }
 
@@ -4108,6 +4161,19 @@ class GuaranteeRestController
             $vendor_types = [];
         }
 
+        $period_years = array_keys($start_dates_by_year);
+        rsort($period_years);
+
+        $period_year_months = [];
+        foreach ($start_dates_by_year as $year_value => $months_map) {
+            $month_numbers = array_keys($months_map);
+            sort($month_numbers);
+            $period_year_months[(string) $year_value] = array_values(array_map('intval', $month_numbers));
+        }
+
+        $current_year  = (int) current_time('Y');
+        $current_month = (int) current_time('n');
+
         $response = new WP_REST_Response([
             'estados'          => $estados,
             'planes'           => $planes,
@@ -4116,6 +4182,12 @@ class GuaranteeRestController
             'channels'         => $channels,
             'vendor_types'     => $vendor_types,
             'commercials'      => $commercials,
+            'periods'          => [
+                'years'        => array_values(array_map('intval', $period_years)),
+                'year_months'  => $period_year_months,
+                'current_year' => $current_year,
+                'current_month'=> $current_month,
+            ],
         ]);
 
         set_transient($cache_key, $response, 300);
