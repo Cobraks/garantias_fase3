@@ -624,6 +624,9 @@ const ADD_DOC_KEY = "add-document";
                                   "[data-mobile-nav-action=\"guarantees\"]"
                           )
                         : null;
+                const mobileQuickAdd = document.querySelector(
+                        "[data-mobile-quick-add]"
+                );
                 const orderRoot = document.querySelector("[data-order-root]");
                 const orderToggle = orderRoot
                         ? orderRoot.querySelector("[data-order-toggle]")
@@ -796,6 +799,7 @@ const ADD_DOC_KEY = "add-document";
                                 }
                         }
 
+                        syncMobileNavState();
                         return mobileSummaryOpen;
                 };
                 setMobileSummaryOpen(false);
@@ -1008,7 +1012,27 @@ const ADD_DOC_KEY = "add-document";
                                         : computeMobileNavState();
                         const state = setMobileNavState(target);
                         syncBottomBarState({ measure: true });
+                        syncMobileQuickAddVisibility(state);
                         return state;
+                }
+
+                function syncMobileQuickAddVisibility(state = computeMobileNavState()) {
+                        if (!mobileQuickAdd) {
+                                return;
+                        }
+                        const desktop = isDesktopView();
+                        const shouldShow =
+                                !desktop && Boolean(bottomBar) && state === "guarantees";
+                        mobileQuickAdd.classList.toggle("is-hidden", !shouldShow);
+                        mobileQuickAdd.setAttribute(
+                                "aria-hidden",
+                                shouldShow ? "false" : "true"
+                        );
+                        if (shouldShow) {
+                                mobileQuickAdd.removeAttribute("tabindex");
+                        } else {
+                                mobileQuickAdd.setAttribute("tabindex", "-1");
+                        }
                 }
 
                 function syncMobileDetailVisibility({ focus = false, restoreFocus = false } = {}) {
@@ -2032,15 +2056,31 @@ const ADD_DOC_KEY = "add-document";
                         }
                 });
 
-		let resultMessage = document.querySelector(
-			".guarantees-list__result-message"
-		);
-		if (!resultMessage) {
-			resultMessage = document.createElement("div");
-			resultMessage.className = "guarantees-list__result-message";
-			resultMessage.style.display = "none";
-			table.insertAdjacentElement("afterend", resultMessage);
-		}
+                let resultMessage =
+                        document.querySelector("[data-search-result-message]") ||
+                        document.querySelector(".guarantees-list__result-message");
+                if (resultMessage) {
+                        resultMessage.classList.add("guarantees-list__result-message");
+                        if (!resultMessage.hasAttribute("aria-live")) {
+                                resultMessage.setAttribute("aria-live", "polite");
+                        }
+                        resultMessage.setAttribute("aria-hidden", "true");
+                        resultMessage.hidden = true;
+                } else if (table) {
+                        resultMessage = document.createElement("div");
+                        resultMessage.className = "guarantees-list__result-message";
+                        resultMessage.setAttribute("aria-live", "polite");
+                        resultMessage.setAttribute("aria-hidden", "true");
+                        resultMessage.hidden = true;
+                        const target = listContainer || table.parentElement;
+                        if (target && table.parentElement === target) {
+                                table.insertAdjacentElement("afterend", resultMessage);
+                        } else if (target && typeof target.appendChild === "function") {
+                                target.appendChild(resultMessage);
+                        } else {
+                                table.insertAdjacentElement("afterend", resultMessage);
+                        }
+                }
 
                 if (!panel1 || !panel2) {
                         detail.innerHTML =
@@ -6028,10 +6068,19 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
-		function setResultMessage(msg = "") {
-			resultMessage.innerHTML = msg;
-			resultMessage.style.display = msg ? "block" : "none";
-		}
+                function setResultMessage(msg = "") {
+                        if (!resultMessage) {
+                                return;
+                        }
+                        const message = typeof msg === "string" ? msg : "";
+                        resultMessage.innerHTML = message;
+                        const shouldShow = message.trim().length > 0;
+                        resultMessage.hidden = !shouldShow;
+                        resultMessage.setAttribute(
+                                "aria-hidden",
+                                shouldShow ? "false" : "true"
+                        );
+                }
 
                 async function loadPage(page = 1, options = {}) {
                         if (isLoading || !hasMore) return;

@@ -471,6 +471,53 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     bottom: var(--mobile-viewport-bottom-offset, 0px);
 }
 
+.guarantees-quick-add {
+    position: fixed;
+    right: max(var(--spacing-4), env(safe-area-inset-right));
+    bottom: calc(
+        var(--guarantees-bottom-bar-height) +
+            var(--mobile-viewport-bottom-offset, 0px) +
+            env(safe-area-inset-bottom) +
+            var(--spacing-4)
+    );
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: var(--go-color-ffffff);
+    box-shadow: 0 20px 40px rgba(var(--go-color-2563eb-rgb), 0.35);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: transform 240ms ease, opacity 240ms ease,
+        box-shadow 240ms ease;
+    z-index: 16200;
+}
+
+.guarantees-quick-add:focus-visible {
+    outline: 3px solid rgba(var(--go-color-ffffff-rgb), 0.65);
+    outline-offset: 3px;
+    box-shadow: 0 24px 44px rgba(var(--go-color-2563eb-rgb), 0.45);
+}
+
+.guarantees-quick-add svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: block;
+}
+
+.guarantees-quick-add.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(120%);
+}
+
+.guarantees-quick-add:not(.is-hidden) {
+    opacity: 1;
+    transform: translateX(0);
+}
+
 .guarantees-mobile-search {
     position: fixed;
     left: 0;
@@ -936,6 +983,12 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     background: transparent;
 }
 
+.guarantees-list__search:focus,
+.guarantees-list__search:focus-visible {
+    outline: none;
+    text-decoration: none;
+}
+
 .guarantees-list__search::placeholder {
     color: var(--neutral20);
 }
@@ -990,6 +1043,10 @@ section.guarantees-list {
     font-weight: 500;
     font-size: 1rem;
     display: none;
+}
+
+.guarantees-list__result-message:not([hidden]) {
+    display: block;
 }
 
 .guarantees-table__scroll {
@@ -4624,6 +4681,10 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
     }
 
     .guarantees-bottom-bar {
+        display: none;
+    }
+
+    .guarantees-quick-add {
         display: none;
     }
 
