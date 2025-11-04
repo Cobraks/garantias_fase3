@@ -2413,6 +2413,10 @@ textarea {
   .top-bar__notifications {
     margin-left: 0;
   }
+
+  .footer__wrapper {
+    height: 2.5rem;
+  }
 }
 
 .account-card__buttons {
