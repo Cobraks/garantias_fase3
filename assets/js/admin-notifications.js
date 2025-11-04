@@ -915,6 +915,11 @@
             } else {
                 closeButton.textContent = '×';
             }
+            closeButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                closeModal();
+            });
             header.appendChild(closeButton);
 
             dialog.appendChild(header);
