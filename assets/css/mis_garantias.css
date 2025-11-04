@@ -2197,7 +2197,8 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     display: none;
     align-items: center;
     justify-content: center;
-    z-index: 36000;
+    /* z-index: 36000; */
+    z-index: 99999;
 }
 .pdf-modal.visible {
     display: flex;
