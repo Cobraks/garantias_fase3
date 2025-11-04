@@ -247,26 +247,6 @@ if (($is_admin_user || $is_director)
     style="view-transition-name: filtros"
     data-mobile-open="false"
     data-mobile-search-open="false">
-    <div class="guarantees-list__toolbar" data-mobile-toolbar data-mobile-search-panel>
-        <div class="guarantees-list__toolbar-slot" data-mobile-search-slot>
-            <div class="guarantees-list__search-container" data-search-field>
-                <span class="guarantees-list__search-icon" aria-hidden="true">
-                    <?php echo Svg::icon('search'); ?>
-                </span>
-                <input
-                    type="text"
-                    class="guarantees-list__search"
-                    placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
-                    aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>"
-                    id="buscador_mis_garantias">
-                <span class="guarantees-list__close-icon" aria-hidden="true">
-                    <?php echo Svg::icon('cerrar'); ?>
-                </span>
-            </div>
-        </div>
-
-    </div>
-
     <div class="guarantees-list__filters-modal" data-mobile-filters-overlay>
         <div class="guarantees-list__filters-modal-backdrop" data-mobile-filters-dismiss></div>
 
@@ -506,6 +486,13 @@ if (($is_admin_user || $is_director)
 <div class="guarantees-container">
     <!-- 2. LISTA: tabla semántica con columna “Garantía” al final y “Canal de venta” en vendedor -->
     <section class="guarantees-list">
+        <div class="guarantees-cards" data-mobile-cards>
+            <div class="guarantees-cards__list" data-mobile-cards-list></div>
+            <div class="guarantees-cards__empty" data-mobile-cards-empty hidden>
+                <p><?php esc_html_e('Todavía no hay garantías.', 'garantias-online-360vo'); ?></p>
+            </div>
+        </div>
+
         <div class="guarantees-table__scroll">
             <table class="guarantees-table" style="view-transition-name: garantias-table">
                 <thead>
@@ -968,6 +955,25 @@ if (($is_admin_user || $is_director)
     <div class="guarantee-detail__empty-templates" hidden>
         <div data-empty-template="awaiting"><?php echo $empty_detail_awaiting; ?></div>
         <div data-empty-template="no-results"><?php echo $empty_detail_no_results; ?></div>
+    </div>
+
+    <div class="guarantees-mobile-search" data-mobile-search-panel>
+        <div class="guarantees-mobile-search__slot" data-mobile-search-slot>
+            <div class="guarantees-list__search-container" data-search-field>
+                <span class="guarantees-list__search-icon" aria-hidden="true">
+                    <?php echo Svg::icon('search'); ?>
+                </span>
+                <input
+                    type="text"
+                    class="guarantees-list__search"
+                    placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
+                    aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>"
+                    id="buscador_mis_garantias">
+                <span class="guarantees-list__close-icon" aria-hidden="true">
+                    <?php echo Svg::icon('cerrar'); ?>
+                </span>
+            </div>
+        </div>
     </div>
 
     <nav class="guarantees-bottom-bar" data-mobile-bottom-bar>

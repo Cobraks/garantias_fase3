@@ -195,6 +195,101 @@
             ? config.preferences
             : {};
 
+        const filtersConfig = typeof config.filters === 'object' && config.filters !== null
+            ? config.filters
+            : {};
+        const allFilterLabel = typeof filtersConfig.allLabel === 'string' && filtersConfig.allLabel.trim() !== ''
+            ? filtersConfig.allLabel.trim()
+            : 'Todas';
+
+        const normalizeCategoryEntry = (entry) => {
+            if (!entry || typeof entry !== 'object') {
+                return null;
+            }
+            const key = typeof entry.key === 'string' ? entry.key.trim() : '';
+            const label = typeof entry.label === 'string' ? entry.label.trim() : '';
+            if (key === '' || label === '') {
+                return null;
+            }
+            const icons = Array.isArray(entry.icons)
+                ? entry.icons
+                    .map((icon) => (typeof icon === 'string' ? icon.trim() : ''))
+                    .filter((icon) => icon !== '')
+                : [];
+            return { key, label, icons };
+        };
+
+        const categoryByKey = new Map();
+        const categoryIconMap = new Map();
+        const availableCategories = [];
+
+        const registerCategory = (entry) => {
+            if (!entry || categoryByKey.has(entry.key)) {
+                return;
+            }
+            categoryByKey.set(entry.key, entry);
+            availableCategories.push(entry);
+        };
+
+        const rawCategories = Array.isArray(filtersConfig.categories) ? filtersConfig.categories : [];
+        rawCategories.forEach((entry) => {
+            const normalized = normalizeCategoryEntry(entry);
+            if (normalized) {
+                registerCategory(normalized);
+            }
+        });
+
+        if (availableCategories.length === 0) {
+            [
+                { key: 'login', label: 'Inicio de sesión', icons: ['login', 'logout'] },
+                { key: 'payments', label: 'Pagos', icons: ['payment', 'sell', 'iban'] },
+                { key: 'guarantees', label: 'Garantías', icons: ['new_shield'] },
+                { key: 'registrations', label: 'Registros', icons: ['check_shield', 'person_add'] },
+            ].forEach((fallback) => registerCategory(fallback));
+        }
+
+        availableCategories.forEach((entry) => {
+            if (!Array.isArray(entry.icons)) {
+                return;
+            }
+            entry.icons.forEach((icon) => {
+                if (typeof icon === 'string' && icon !== '' && !categoryIconMap.has(icon)) {
+                    categoryIconMap.set(icon, entry.key);
+                }
+            });
+        });
+
+        const categoryOptions = availableCategories.map((entry) => ({
+            key: entry.key,
+            label: entry.label,
+        }));
+
+        const resolveCategory = (iconSlug) => {
+            const slug = typeof iconSlug === 'string' ? iconSlug : '';
+            if (slug !== '' && categoryIconMap.has(slug)) {
+                return categoryIconMap.get(slug);
+            }
+            return 'other';
+        };
+
+        const isNearBottom = (element, offset = 8) => {
+            if (!element) {
+                return false;
+            }
+            return element.scrollTop + element.clientHeight >= element.scrollHeight - offset;
+        };
+
+        const filterByCategory = (items, categoryKey) => {
+            if (!Array.isArray(items)) {
+                return [];
+            }
+            const key = typeof categoryKey === 'string' && categoryKey !== '' ? categoryKey : 'all';
+            if (key === 'all') {
+                return items;
+            }
+            return items.filter((item) => item.category === key);
+        };
+
         const getPreferenceKey = (type) => {
             const suffix = Number.isFinite(userId) && userId > 0 ? `_${userId}` : '';
             return `go360_notifications_pref_${type}${suffix}`;
@@ -293,6 +388,13 @@
             requestingBrowserPermission: false,
             lastBrowserNotified: Number(safeStorage.get(STORAGE_KEYS.browserLast) || '0'),
             pendingMarks: new Map(),
+            filters: {
+                categories: categoryOptions,
+                allLabel: allFilterLabel,
+            },
+            modalCategory: 'all',
+            modalReachedEnd: false,
+            modalFilteredCount: 0,
         };
 
         state.userId = Number.isFinite(userId) ? userId : 0;
@@ -465,6 +567,7 @@
                 icon: typeof item.icon === 'string' ? item.icon : '',
                 icon_svg: typeof item.icon_svg === 'string' ? item.icon_svg : '',
                 icon_slug: typeof item.icon_slug === 'string' ? item.icon_slug : '',
+                category: resolveCategory(item.icon_slug),
                 tone: typeof item.tone === 'string' ? item.tone : '',
                 badge: typeof item.badge === 'string' ? item.badge : '',
                 link: typeof item.link === 'string' ? item.link : '',
@@ -495,7 +598,7 @@
                 empty.hidden = panelItems.length > 0;
             }
             if (state.modalElements && state.modalElements.empty) {
-                state.modalElements.empty.hidden = state.items.length > 0;
+                state.modalElements.empty.hidden = state.modalFilteredCount > 0;
             }
         };
 
@@ -521,7 +624,7 @@
                 && state.items.length >= perPage;
             const shouldShowButton = context === 'panel'
                 ? hasPanelOverflow
-                : hasModalOverflow;
+                : hasModalOverflow && state.modalReachedEnd;
 
             if (!shouldShowButton) {
                 if (wrapper) {
@@ -915,6 +1018,11 @@
             } else {
                 closeButton.textContent = '×';
             }
+            closeButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                closeModal();
+            });
             header.appendChild(closeButton);
 
             dialog.appendChild(header);
@@ -923,6 +1031,54 @@
             const content = createElement('div', 'notifications-modal__content');
 
             const controls = createElement('div', 'notifications-modal__controls');
+            let modalFilter = null;
+
+            if (Array.isArray(state.filters.categories) && state.filters.categories.length > 0) {
+                controls.classList.add('notifications-modal__controls--with-filter');
+                modalFilter = document.createElement('select');
+                modalFilter.className = 'notifications-modal__filter';
+
+                const appendOption = (value, label) => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = label;
+                    modalFilter.appendChild(option);
+                };
+
+                appendOption('all', state.filters.allLabel || 'Todas');
+                state.filters.categories.forEach((category) => {
+                    appendOption(category.key, category.label);
+                });
+
+                modalFilter.value = state.modalCategory || 'all';
+                modalFilter.addEventListener('change', (event) => {
+                    const target = event.target;
+                    if (!(target instanceof HTMLSelectElement)) {
+                        return;
+                    }
+                    const selected = target.value || 'all';
+                    if (selected === state.modalCategory) {
+                        return;
+                    }
+                    state.modalCategory = selected;
+                    state.modalFilteredCount = 0;
+                    state.modalReachedEnd = false;
+                    if (state.modalElements && state.modalElements.scroll) {
+                        state.modalElements.scroll.scrollTop = 0;
+                    }
+                    synchronizeInterface({
+                        persist: false,
+                        preservePanelScroll: state.isOpen,
+                        preserveModalScroll: false,
+                    });
+                    updateLoadMore();
+                });
+
+                controls.appendChild(modalFilter);
+            } else {
+                controls.classList.add('notifications-modal__controls--solo');
+            }
+
             const modalMarkAll = createElement('button', 'notifications-panel__mark notifications-modal__mark');
             modalMarkAll.type = 'button';
             modalMarkAll.textContent = markAllButton ? markAllButton.textContent.trim() : 'Marcar todo como leído';
@@ -962,7 +1118,23 @@
                 loadMoreWrapper: modalFooter,
                 markAll: modalMarkAll,
                 scroll: scrollArea,
+                filter: modalFilter,
             };
+
+            scrollArea.addEventListener('scroll', () => {
+                if (!state.modalElements || state.modalElements.scroll !== scrollArea) {
+                    return;
+                }
+                const reachedEnd = isNearBottom(scrollArea, 8);
+                if (state.modalReachedEnd !== reachedEnd) {
+                    state.modalReachedEnd = reachedEnd;
+                    updateLoadMore();
+                }
+            }, { passive: true });
+
+            if (modalFilter) {
+                modalFilter.value = state.modalCategory || 'all';
+            }
 
             attachListEvents(modalList, 'modal');
 
@@ -979,7 +1151,7 @@
 
             modal.addEventListener('click', (event) => {
                 const target = event.target;
-                if (!(target instanceof HTMLElement)) {
+                if (!(target instanceof Element)) {
                     return;
                 }
                 const closeTrigger = target.closest('[data-modal-close="true"]');
@@ -1000,6 +1172,10 @@
             modal.setAttribute('aria-hidden', 'false');
             modal.classList.add('notifications-modal--visible');
             state.modalOpen = true;
+            state.modalReachedEnd = false;
+            if (state.modalElements && state.modalElements.filter) {
+                state.modalElements.filter.value = state.modalCategory || 'all';
+            }
             synchronizeInterface({
                 persist: false,
                 preservePanelScroll: state.isOpen,
@@ -1015,6 +1191,7 @@
             state.modal.setAttribute('aria-hidden', 'true');
             state.modal.classList.remove('notifications-modal--visible');
             state.modalOpen = false;
+            state.modalReachedEnd = false;
         };
 
         const buildMetaLine = (entry) => {
@@ -1035,6 +1212,9 @@
         const buildNotification = (item) => {
             const li = createElement('li', 'notifications-panel__item');
             li.dataset.notificationId = String(item.id);
+            if (typeof item.category === 'string' && item.category !== '') {
+                li.dataset.notificationCategory = item.category;
+            }
 
             const tone = item.tone || 'info';
             if (tone) {
@@ -1173,6 +1353,9 @@
             preservePanelScroll = state.isOpen,
             preserveModalScroll = state.modalOpen,
         } = {}) => {
+            const modalItems = filterByCategory(state.items, state.modalCategory);
+            state.modalFilteredCount = modalItems.length;
+
             if (list) {
                 let previousScroll = null;
                 if (preservePanelScroll && scrollBox) {
@@ -1189,18 +1372,30 @@
             }
 
             if (state.modalElements && state.modalElements.list) {
-                const { list: modalList, scroll } = state.modalElements;
+                const { list: modalList, scroll, filter } = state.modalElements;
                 let previousModalScroll = null;
                 if (preserveModalScroll && scroll) {
                     previousModalScroll = scroll.scrollTop;
                 }
                 modalList.innerHTML = '';
-                state.items.forEach((item) => {
+                modalItems.forEach((item) => {
                     modalList.appendChild(buildNotification(item));
                 });
-                if (previousModalScroll !== null && scroll) {
-                    scroll.scrollTop = previousModalScroll;
+                if (filter) {
+                    filter.value = state.modalCategory || 'all';
                 }
+                if (scroll) {
+                    if (previousModalScroll !== null) {
+                        scroll.scrollTop = previousModalScroll;
+                    } else if (!preserveModalScroll) {
+                        scroll.scrollTop = 0;
+                    }
+                    state.modalReachedEnd = isNearBottom(scroll, 8);
+                } else {
+                    state.modalReachedEnd = modalItems.length === 0;
+                }
+            } else {
+                state.modalReachedEnd = modalItems.length === 0 ? true : state.modalReachedEnd;
             }
 
             updateEmptyState();
@@ -1593,7 +1788,7 @@
                 return;
             }
             const target = event.target;
-            if (!(target instanceof HTMLElement)) {
+            if (!(target instanceof Element)) {
                 return;
             }
             if (!panel.contains(target) && !toggle.contains(target)) {
@@ -1646,7 +1841,7 @@
         if (toast) {
             toast.addEventListener('click', (event) => {
                 const target = event.target;
-                if (!(target instanceof HTMLElement)) {
+                if (!(target instanceof Element)) {
                     return;
                 }
 
@@ -1675,7 +1870,7 @@
 
             listElement.addEventListener('click', (event) => {
                 const target = event.target;
-                if (!(target instanceof HTMLElement)) {
+                if (!(target instanceof Element)) {
                     return;
                 }
 
