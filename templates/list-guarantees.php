@@ -537,6 +537,13 @@ if (($is_admin_user || $is_director)
             <!-- Fila de carga fija, fuera del tbody para que no se elimine al vaciar -->
 
         </div>
+        <div
+            class="guarantees-list__result-message"
+            data-search-result-message
+            aria-live="polite"
+            aria-hidden="true"
+            hidden
+        ></div>
         <!-- <div class="scroll_up scroll_up--list">
             <button>^</button>
         </div> -->
@@ -1047,6 +1054,22 @@ if (($is_admin_user || $is_director)
             </span>
         </button>
     </nav>
+    <a
+        class="guarantees-quick-add is-hidden"
+        data-mobile-quick-add
+        href="<?php echo esc_url($new_guarantee_url); ?>"
+        data-reset-draft
+        aria-label="<?php esc_attr_e('Crear nueva garantía', 'garantias-online-360vo'); ?>"
+        aria-hidden="true"
+        tabindex="-1"
+    >
+        <span class="guarantees-quick-add__icon" aria-hidden="true">
+            <?php echo Svg::icon('new_shield'); ?>
+        </span>
+        <span class="screen-reader-text">
+            <?php esc_html_e('Crear nueva garantía', 'garantias-online-360vo'); ?>
+        </span>
+    </a>
 
 </div>
 
