@@ -569,6 +569,7 @@ textarea {
     width: 100%;
     display: flex;
     align-items: center;
+    z-index: 999999999999999999999999999999999999999999999999999999999999;
   }
   
   .top-bar__wrapper {
