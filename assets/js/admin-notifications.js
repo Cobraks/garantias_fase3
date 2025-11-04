@@ -20,6 +20,12 @@
 
     const SNAPSHOT_LIMIT = 4;
 
+    const reduceMotionQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)')
+        : null;
+
+    const prefersReducedMotion = () => Boolean(reduceMotionQuery && reduceMotionQuery.matches);
+
     const safeStorage = {
         get(key) {
             try {
@@ -163,6 +169,7 @@
         const viewAllButton = container.querySelector(SELECTORS.viewAll);
         const scrollBox = container.querySelector(SELECTORS.scroll);
         const toast = container.querySelector(SELECTORS.toast);
+        const topBar = container.closest('.top-bar');
 
         const config = window.go360Notifications || {};
         const endpoints = config.endpoints || {};
@@ -175,6 +182,9 @@
 
         const toastSoundSrc = container.dataset.toastSound || '';
         let toastAudio = null;
+        let toastHideHandler = null;
+        let toastPositionListenersBound = false;
+        let toastHideFallback = null;
 
         if (!toggle || !panel || !list || !listEndpoint) {
             return;
@@ -227,6 +237,7 @@
             browserPermission: browserNotificationsSupported ? window.Notification.permission : 'denied',
             requestingBrowserPermission: false,
             lastBrowserNotified: Number(safeStorage.get(STORAGE_KEYS.browserLast) || '0'),
+            pendingMarks: new Map(),
         };
 
         if (Number.isFinite(state.lastBrowserNotified) && state.lastBrowserNotified > 0) {
@@ -432,13 +443,24 @@
                 return;
             }
 
-            const hasPanelItems = filterPanelItems(state.items).length > 0;
+            const panelItems = filterPanelItems(state.items);
+            const hasPanelItems = panelItems.length > 0;
             const isPanelEmpty = context === 'panel'
                 && emptyIndicator
                 && emptyIndicator.hidden === false;
+            const totalUnread = Number.isFinite(state.unread) && state.unread >= 0
+                ? state.unread
+                : state.panelUnread;
+            const hasPanelOverflow = state.hasMore
+                && hasPanelItems
+                && !isPanelEmpty
+                && totalUnread > perPage;
+            const hasModalOverflow = state.hasMore
+                && state.items.length > 0
+                && state.items.length >= perPage;
             const shouldShowButton = context === 'panel'
-                ? state.hasMore && hasPanelItems && !isPanelEmpty
-                : state.hasMore && state.items.length > 0;
+                ? hasPanelOverflow
+                : hasModalOverflow;
 
             if (!shouldShowButton) {
                 if (wrapper) {
@@ -478,20 +500,123 @@
             }
         };
 
-        const hideToast = () => {
+        const setToggleToastState = (active) => {
+            if (!toggle) {
+                return;
+            }
+            toggle.classList.toggle('is-toasting', Boolean(active));
+        };
+
+        const updateToastPosition = () => {
+            if (!toast || toast.hidden) {
+                return;
+            }
+            const anchor = topBar || toggle || container;
+            if (!anchor || typeof anchor.getBoundingClientRect !== 'function') {
+                return;
+            }
+            const rect = anchor.getBoundingClientRect();
+            const horizontalPadding = 24;
+            const verticalOffset = 12;
+            const rightOffset = Math.max(horizontalPadding, window.innerWidth - rect.right + horizontalPadding);
+            const topOffset = Math.max(verticalOffset, rect.bottom + verticalOffset);
+            toast.style.right = `${Math.round(rightOffset)}px`;
+            toast.style.top = `${Math.round(topOffset)}px`;
+        };
+
+        const bindToastPositionListeners = () => {
+            if (toastPositionListenersBound) {
+                return;
+            }
+            toastPositionListenersBound = true;
+            window.addEventListener('resize', updateToastPosition);
+            window.addEventListener('scroll', updateToastPosition, { passive: true });
+        };
+
+        const unbindToastPositionListeners = () => {
+            if (!toastPositionListenersBound) {
+                return;
+            }
+            toastPositionListenersBound = false;
+            window.removeEventListener('resize', updateToastPosition);
+            window.removeEventListener('scroll', updateToastPosition);
+        };
+
+        const hideToast = (options = {}) => {
             if (!toast) {
                 return;
             }
-            toast.hidden = true;
-            toast.classList.remove('notifications-toast--visible');
-            toast.innerHTML = '';
-            delete toast.dataset.notificationLink;
-            delete toast.dataset.notificationId;
+
+            const { immediate = false } = options;
+
             if (state.toastTimer) {
                 window.clearTimeout(state.toastTimer);
                 state.toastTimer = null;
             }
-            state.currentToastId = null;
+
+            const finalize = () => {
+                if (!toast) {
+                    return;
+                }
+                if (toastHideFallback) {
+                    window.clearTimeout(toastHideFallback);
+                    toastHideFallback = null;
+                }
+                if (toastHideHandler) {
+                    toast.removeEventListener('animationend', toastHideHandler);
+                    toastHideHandler = null;
+                }
+                toast.hidden = true;
+                toast.classList.remove('notifications-toast--visible', 'notifications-toast--hiding');
+                toast.innerHTML = '';
+                delete toast.dataset.notificationLink;
+                delete toast.dataset.notificationId;
+                toast.style.top = '';
+                toast.style.right = '';
+                setToggleToastState(false);
+                unbindToastPositionListeners();
+                state.currentToastId = null;
+            };
+
+            if (
+                immediate
+                || toast.hidden
+                || !toast.classList.contains('notifications-toast--visible')
+                || prefersReducedMotion()
+            ) {
+                finalize();
+                return;
+            }
+
+            if (toast.classList.contains('notifications-toast--hiding')) {
+                return;
+            }
+
+            toast.classList.add('notifications-toast--hiding');
+
+            if (toastHideHandler) {
+                toast.removeEventListener('animationend', toastHideHandler);
+                toastHideHandler = null;
+            }
+
+            if (toastHideFallback) {
+                window.clearTimeout(toastHideFallback);
+                toastHideFallback = null;
+            }
+
+            toastHideHandler = (event) => {
+                if (event && event.target !== toast) {
+                    return;
+                }
+                finalize();
+            };
+
+            toast.addEventListener('animationend', toastHideHandler);
+
+            toastHideFallback = window.setTimeout(() => {
+                toastHideFallback = null;
+                finalize();
+            }, 450);
         };
 
         const markBrowserNotified = (id) => {
@@ -641,7 +766,7 @@
                 return;
             }
 
-            hideToast();
+            hideToast({ immediate: true });
 
             state.currentToastId = item.id;
             state.toastHistory.add(item.id);
@@ -683,7 +808,12 @@
             }
             toast.appendChild(card);
             toast.hidden = false;
+            toast.classList.remove('notifications-toast--hiding');
             toast.classList.add('notifications-toast--visible');
+            setToggleToastState(true);
+            updateToastPosition();
+            window.requestAnimationFrame(updateToastPosition);
+            bindToastPositionListeners();
 
             playToastSound();
 
@@ -791,7 +921,8 @@
                 if (!(target instanceof HTMLElement)) {
                     return;
                 }
-                if (target.dataset.modalClose === 'true') {
+                const closeTrigger = target.closest('[data-modal-close="true"]');
+                if (closeTrigger) {
                     event.preventDefault();
                     event.stopPropagation();
                     closeModal();
@@ -1202,29 +1333,67 @@
         };
 
         const markNotification = async (id) => {
-            if (!id) {
+            if (!id || !listEndpoint) {
                 return;
             }
-            try {
-                const endpoint = `${listEndpoint}/${id}`;
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'X-WP-Nonce': nonce,
-                    },
-                    credentials: 'same-origin',
-                });
-                if (!response.ok) {
-                    throw new Error('Mark failed');
-                }
-                const payload = await response.json();
-                if (payload.meta && typeof payload.meta.unread !== 'undefined') {
-                    state.unread = parseUnread(payload.meta.unread);
-                }
-            } catch (error) {
-                // eslint-disable-next-line no-console
-                console.error('GO360 notifications mark error', error);
+
+            const numericId = Number(id);
+            if (!Number.isFinite(numericId) || numericId <= 0) {
+                return;
             }
+
+            if (state.pendingMarks.has(numericId)) {
+                return state.pendingMarks.get(numericId);
+            }
+
+            const baseEndpoint = typeof listEndpoint === 'string'
+                ? listEndpoint.replace(/\/+$/, '')
+                : '';
+
+            if (!baseEndpoint) {
+                return;
+            }
+
+            const attemptRequest = async (attempt = 1) => {
+                try {
+                    const response = await fetch(`${baseEndpoint}/${numericId}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-WP-Nonce': nonce,
+                        },
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Mark failed (${response.status})`);
+                    }
+                    const payload = await response.json();
+                    if (payload.meta && typeof payload.meta.unread !== 'undefined') {
+                        state.unread = parseUnread(payload.meta.unread);
+                    }
+                } catch (error) {
+                    if (attempt < 2) {
+                        await new Promise((resolve) => {
+                            window.setTimeout(resolve, 400);
+                        });
+                        return attemptRequest(attempt + 1);
+                    }
+                    // eslint-disable-next-line no-console
+                    console.warn('GO360 notifications mark warning', error);
+                }
+                return null;
+            };
+
+            const request = attemptRequest();
+            state.pendingMarks.set(numericId, request);
+
+            try {
+                await request;
+            } finally {
+                state.pendingMarks.delete(numericId);
+            }
+
+            return request;
         };
 
         const deleteNotification = async (id) => {
