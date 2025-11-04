@@ -2,6 +2,7 @@
 
 namespace GarantiasOnline360VO\Rest\Notifications;
 
+use GarantiasOnline360VO\Notifications\NotificationCategories;
 use GarantiasOnline360VO\Notifications\Push\PushDispatcher;
 use GarantiasOnline360VO\Notifications\Push\PushNotificationRepository;
 use GarantiasOnline360VO\Notifications\Push\PushSubscriptionRepository;
@@ -111,15 +112,50 @@ class PushNotificationRestController
         $page = max(1, (int) $request->get_param('page'));
         $per_page = max(1, min(20, (int) $request->get_param('per_page')));
         $since_id = max(0, (int) $request->get_param('since'));
+        $category = sanitize_key((string) $request->get_param('category'));
+        if ($category === '') {
+            $category = 'all';
+        }
+
+        if ($category !== 'all' && ! NotificationCategories::exists($category)) {
+            return new WP_Error(
+                'invalid_category',
+                __('Categoría de notificación no válida.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        if ($category !== 'all' && ! NotificationCategories::userCanAccess($category)) {
+            return new WP_Error(
+                'forbidden_category',
+                __('No tienes permisos para consultar esa categoría de notificaciones.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        if ($category !== 'all') {
+            $since_id = 0;
+        }
 
         \nocache_headers();
 
-        if ($since_id > 0) {
-            $items = $this->repository->list_after($user_id, $since_id, $per_page);
-            $has_more = false;
+        if ($category === 'all') {
+            if ($since_id > 0) {
+                $items = $this->repository->list_after($user_id, $since_id, $per_page);
+                $has_more = false;
+            } else {
+                $query_per_page = min(50, $per_page + 1);
+                $items = $this->repository->list($user_id, $page, $query_per_page);
+                $has_more = false;
+                if (count($items) > $per_page) {
+                    $has_more = true;
+                    $items = array_slice($items, 0, $per_page);
+                }
+            }
         } else {
             $query_per_page = min(50, $per_page + 1);
-            $items = $this->repository->list($user_id, $page, $query_per_page);
+            $icons = NotificationCategories::iconsFor($category);
+            $items = $this->repository->list_by_icons($user_id, $icons, $page, $query_per_page);
             $has_more = false;
             if (count($items) > $per_page) {
                 $has_more = true;
@@ -139,6 +175,7 @@ class PushNotificationRestController
                 'has_more'  => $has_more,
                 'latest_id' => $latest_id,
                 'since'     => $since_id,
+                'category'  => $category,
             ],
         ]);
     }
@@ -265,7 +302,23 @@ class PushNotificationRestController
             'is_read'    => (int) $item['is_read'] === 1,
             'created_at' => (string) ($item['created_at'] ?? ''),
             'actions'    => is_array($item['actions']) ? $item['actions'] : [],
+            'category'   => $this->resolve_category($item, $icon_slug),
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function resolve_category(array $item, string $icon_slug): string
+    {
+        if (isset($item['category'])) {
+            $raw = sanitize_key((string) $item['category']);
+            if ($raw !== '' && NotificationCategories::exists($raw)) {
+                return $raw;
+            }
+        }
+
+        return NotificationCategories::resolveByIcon($icon_slug);
     }
 
     /**
