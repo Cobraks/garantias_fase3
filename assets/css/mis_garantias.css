@@ -19,7 +19,6 @@ body.has-mobile-filters-open {
     --guarantees-toolbar-height: 86px;
     --guarantees-bottom-bar-height: 80px;
     --mobile-viewport-bottom-offset: 0px;
-    --mobile-viewport-top-offset: 0px;
     --mobile-header-compensation: 0px;
 }
 
@@ -1737,6 +1736,17 @@ body.has-mobile-summary-open .column-resizer {
     z-index: 9;
 }
 
+@media (max-width: 1279px) {
+    .guarantee-detail__close {
+        top: calc(
+                env(safe-area-inset-top, 0px) +
+                var(--mobile-header-compensation, 0px) +
+                1rem
+        );
+        z-index: 25;
+    }
+}
+
 .guarantee-detail__close-icon {
     width: 1.25rem;
     height: 1.25rem;
@@ -1837,7 +1847,6 @@ body.has-mobile-summary-open .column-resizer {
     .guarantee-detail__header {
         top: calc(
                 env(safe-area-inset-top, 0px) +
-                var(--mobile-viewport-top-offset, 0px) +
                 var(--mobile-header-compensation, 0px)
         );
     }
