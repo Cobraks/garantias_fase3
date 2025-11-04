@@ -200,6 +200,10 @@ if (($is_admin_user || $is_director)
 
         $admin_summary_total = isset($admin_summary_default['count']) ? (int) $admin_summary_default['count'] : 0;
         $admin_summary_label = isset($admin_summary_default['label']) ? (string) $admin_summary_default['label'] : '';
+        if ($admin_summary_label !== '') {
+            $admin_summary_label = preg_replace('/\s+\d{4}$/', '', $admin_summary_label);
+            $admin_summary_label = trim((string) $admin_summary_label);
+        }
         $admin_summary_pending = isset($admin_summary_data['pending']) && is_array($admin_summary_data['pending'])
             ? $admin_summary_data['pending']
             : [];
@@ -537,6 +541,13 @@ if (($is_admin_user || $is_director)
             <!-- Fila de carga fija, fuera del tbody para que no se elimine al vaciar -->
 
         </div>
+        <div
+            class="guarantees-list__result-message"
+            data-search-result-message
+            aria-live="polite"
+            aria-hidden="true"
+            hidden
+        ></div>
         <!-- <div class="scroll_up scroll_up--list">
             <button>^</button>
         </div> -->
@@ -657,15 +668,16 @@ if (($is_admin_user || $is_director)
                     ? (string) $admin_summary_default['month_name']
                     : '';
                 if ($raw_month_name !== '') {
-                    $summary_month_name = $raw_month_name;
+                    $clean_month = preg_replace('/\s+\d{4}$/', '', $raw_month_name);
+                    $summary_month_name = trim((string) $clean_month);
                 }
             }
 
             $summary_amount_label = $admin_summary_context_key === 'year'
                 ? __('Valor acumulado', 'garantias-online-360vo')
                 : ($summary_month_name !== ''
-                    ? sprintf('%s %s', __('Valor mensual', 'garantias-online-360vo'), $summary_month_name)
-                    : __('Valor mensual', 'garantias-online-360vo'));
+                    ? sprintf('%s %s', __('Acumulado', 'garantias-online-360vo'), $summary_month_name)
+                    : __('Acumulado mensual', 'garantias-online-360vo'));
 
             $summary_count_label = $admin_summary_context_key === 'year'
                 ? __('Total garantías', 'garantias-online-360vo')
@@ -1047,6 +1059,22 @@ if (($is_admin_user || $is_director)
             </span>
         </button>
     </nav>
+    <a
+        class="guarantees-quick-add is-hidden"
+        data-mobile-quick-add
+        href="<?php echo esc_url($new_guarantee_url); ?>"
+        data-reset-draft
+        aria-label="<?php esc_attr_e('Crear nueva garantía', 'garantias-online-360vo'); ?>"
+        aria-hidden="true"
+        tabindex="-1"
+    >
+        <span class="guarantees-quick-add__icon" aria-hidden="true">
+            <?php echo Svg::icon('new_shield'); ?>
+        </span>
+        <span class="screen-reader-text">
+            <?php esc_html_e('Crear nueva garantía', 'garantias-online-360vo'); ?>
+        </span>
+    </a>
 
 </div>
 
