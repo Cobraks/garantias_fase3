@@ -652,6 +652,9 @@ const ADD_DOC_KEY = "add-document";
                 const rootElement = document.documentElement;
                 const rootStyle = rootElement ? rootElement.style : null;
                 const mobileViewportOffsetVar = "--mobile-viewport-bottom-offset";
+                const mobileViewportTopVar = "--mobile-viewport-top-offset";
+                const mobileHeaderCompensationVar = "--mobile-header-compensation";
+                const pageHeader = document.querySelector(".top-bar");
                 const htmlLang =
                         (rootElement &&
                                 (rootElement.lang ||
@@ -842,12 +845,34 @@ const ADD_DOC_KEY = "add-document";
                 const isDesktopView = () =>
                         desktopMediaQuery ? desktopMediaQuery.matches : true;
 
+                function syncMobileHeaderCompensation() {
+                        if (!rootStyle) {
+                                return;
+                        }
+                        if (isDesktopView()) {
+                                rootStyle.setProperty(mobileHeaderCompensationVar, "0px");
+                                return;
+                        }
+                        if (!pageHeader) {
+                                rootStyle.setProperty(mobileHeaderCompensationVar, "0px");
+                                return;
+                        }
+                        const rect = pageHeader.getBoundingClientRect();
+                        const compensation = Math.max(0, Math.round(rect.bottom));
+                        rootStyle.setProperty(
+                                mobileHeaderCompensationVar,
+                                `${compensation}px`
+                        );
+                }
+
                 function syncMobileViewportOffset() {
                         if (!rootStyle) {
                                 return;
                         }
                         if (isDesktopView()) {
                                 rootStyle.setProperty(mobileViewportOffsetVar, "0px");
+                                rootStyle.setProperty(mobileViewportTopVar, "0px");
+                                syncMobileHeaderCompensation();
                                 return;
                         }
                         if (
@@ -856,6 +881,8 @@ const ADD_DOC_KEY = "add-document";
                                 typeof window.visualViewport.height !== "number"
                         ) {
                                 rootStyle.setProperty(mobileViewportOffsetVar, "0px");
+                                rootStyle.setProperty(mobileViewportTopVar, "0px");
+                                syncMobileHeaderCompensation();
                                 return;
                         }
                         const viewport = window.visualViewport;
@@ -875,6 +902,23 @@ const ADD_DOC_KEY = "add-document";
                                 mobileViewportOffsetVar,
                                 `${Math.round(offset)}px`
                         );
+                        rootStyle.setProperty(
+                                mobileViewportTopVar,
+                                `${Math.max(0, Math.round(offsetTop))}px`
+                        );
+                        syncMobileHeaderCompensation();
+                }
+
+                let headerResizeObserver = null;
+                if (typeof ResizeObserver === "function" && pageHeader) {
+                        headerResizeObserver = new ResizeObserver(() => {
+                                syncMobileHeaderCompensation();
+                        });
+                        try {
+                                headerResizeObserver.observe(pageHeader);
+                        } catch (error) {
+                                headerResizeObserver = null;
+                        }
                 }
 
                 function syncBottomBarState({ measure = false } = {}) {
@@ -891,7 +935,9 @@ const ADD_DOC_KEY = "add-document";
                                                 mobileViewportOffsetVar,
                                                 "0px"
                                         );
+                                        rootStyle.setProperty(mobileViewportTopVar, "0px");
                                 }
+                                syncMobileHeaderCompensation();
                                 return;
                         }
                         const desktop = isDesktopView();
@@ -1655,6 +1701,13 @@ const ADD_DOC_KEY = "add-document";
                         window.addEventListener("resize", handleResize, {
                                 passive: true,
                         });
+                        window.addEventListener(
+                                "scroll",
+                                () => {
+                                        syncMobileHeaderCompensation();
+                                },
+                                { passive: true }
+                        );
                         if (window.visualViewport) {
                                 window.visualViewport.addEventListener(
                                         "resize",
