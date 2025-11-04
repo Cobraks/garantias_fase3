@@ -1694,7 +1694,7 @@ body.has-mobile-summary-open .column-resizer {
     pointer-events: none;
     opacity: 0;
     transition: opacity var(--transition-speed) ease-out;
-    z-index: 220;
+    z-index: 15000;
 }
 
 .guarantee-detail__backdrop {
@@ -1744,6 +1744,12 @@ body.has-mobile-summary-open .column-resizer {
                 1rem
         );
         z-index: 25;
+    }
+}
+
+@media (max-width: 1279px) {
+    .detail__section--channel {
+        padding-top: 2rem;
     }
 }
 

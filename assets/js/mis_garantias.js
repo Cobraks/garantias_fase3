@@ -653,7 +653,6 @@ const ADD_DOC_KEY = "add-document";
                 const rootStyle = rootElement ? rootElement.style : null;
                 const mobileViewportOffsetVar = "--mobile-viewport-bottom-offset";
                 const mobileHeaderCompensationVar = "--mobile-header-compensation";
-                const pageHeader = document.querySelector(".top-bar");
                 const htmlLang =
                         (rootElement &&
                                 (rootElement.lang ||
@@ -852,26 +851,17 @@ const ADD_DOC_KEY = "add-document";
                                 rootStyle.setProperty(mobileHeaderCompensationVar, "0px");
                                 return;
                         }
-                        if (!pageHeader) {
-                                rootStyle.setProperty(mobileHeaderCompensationVar, "0px");
-                                return;
-                        }
-                        const rect = pageHeader.getBoundingClientRect();
                         let viewportOffset = 0;
                         if (
                                 typeof window !== "undefined" &&
                                 window.visualViewport &&
                                 typeof window.visualViewport.offsetTop === "number"
                         ) {
-                                viewportOffset = Math.max(
-                                        0,
-                                        Math.round(window.visualViewport.offsetTop)
-                                );
+                                viewportOffset = window.visualViewport.offsetTop;
                         }
-                        const headerBottom = Math.max(0, Math.round(rect.bottom));
                         const compensation = Math.max(
                                 0,
-                                headerBottom - Math.min(headerBottom, viewportOffset)
+                                Math.round(viewportOffset)
                         );
                         rootStyle.setProperty(
                                 mobileHeaderCompensationVar,
@@ -915,18 +905,6 @@ const ADD_DOC_KEY = "add-document";
                                 `${Math.round(offset)}px`
                         );
                         syncMobileHeaderCompensation();
-                }
-
-                let headerResizeObserver = null;
-                if (typeof ResizeObserver === "function" && pageHeader) {
-                        headerResizeObserver = new ResizeObserver(() => {
-                                syncMobileHeaderCompensation();
-                        });
-                        try {
-                                headerResizeObserver.observe(pageHeader);
-                        } catch (error) {
-                                headerResizeObserver = null;
-                        }
                 }
 
                 function syncBottomBarState({ measure = false } = {}) {
