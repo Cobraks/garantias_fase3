@@ -247,12 +247,7 @@ class GuaranteeRestController
     public static function get_summary($request)
     {
         $current_user = wp_get_current_user();
-
-        if ($current_user instanceof \WP_User && self::user_is_professional($current_user)) {
-            return rest_ensure_response(self::get_professional_summary_data((int) $current_user->ID));
-        }
-
-        return rest_ensure_response(self::get_admin_summary_data());
+        return rest_ensure_response(self::get_summary_data_for_user($current_user));
     }
 
     public static function get_admin_summary_data(): array
@@ -282,6 +277,19 @@ class GuaranteeRestController
         }
 
         return $normalized_data;
+    }
+
+    public static function get_summary_data_for_user($user = null): array
+    {
+        if (! $user instanceof \WP_User) {
+            $user = wp_get_current_user();
+        }
+
+        if ($user instanceof \WP_User && self::user_is_professional($user)) {
+            return self::get_professional_summary_data((int) $user->ID);
+        }
+
+        return self::get_admin_summary_data();
     }
 
     private static function get_professional_summary_data(int $user_id): array

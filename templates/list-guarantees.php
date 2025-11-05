@@ -156,7 +156,7 @@ if (($is_admin_user || $is_director || $is_professional)
     && GuaranteeRestController::can_view_summary()
 ) {
     $can_view_summary = true;
-    $admin_summary_data = GuaranteeRestController::get_admin_summary_data();
+    $admin_summary_data = GuaranteeRestController::get_summary_data_for_user($current_user);
 
     if (is_array($admin_summary_data) && ! empty($admin_summary_data)) {
         $contexts = isset($admin_summary_data['contexts']) && is_array($admin_summary_data['contexts'])
