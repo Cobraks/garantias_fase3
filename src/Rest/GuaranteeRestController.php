@@ -3892,6 +3892,22 @@ class GuaranteeRestController
             }
         }
 
+        if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
+            $author_scope = !empty($combined_vendor_ids) ? $combined_vendor_ids : $user_profesional_ids;
+            if (empty($author_scope) && !empty($vendor_type_ids)) {
+                $author_scope = $vendor_type_ids;
+            }
+            if (empty($author_scope) && !empty($commercial_vendor_ids)) {
+                $author_scope = $commercial_vendor_ids;
+            }
+            $author_scope = array_values(array_filter(array_map('intval', (array) $author_scope), function ($id) {
+                return $id > 0;
+            }));
+            if (!empty($author_scope)) {
+                $args['author__in'] = $author_scope;
+            }
+        }
+
         $q = new WP_Query($args);
 
         $data = [];
@@ -3979,7 +3995,12 @@ class GuaranteeRestController
         }
 
         $meta_query = [];
-        if (!current_user_can('manage_options')) {
+        $current_user_obj = wp_get_current_user();
+        $current_user_roles = $current_user_obj instanceof \WP_User ? (array) $current_user_obj->roles : [];
+        $is_director = in_array('go_director_comercial', $current_user_roles, true);
+        $is_garantias_role = in_array('go_garantias', $current_user_roles, true);
+
+        if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
             $user_profesional_ids = [$current_user];
             $users_asignados = get_users([
                 'role'    => 'go_profesional',
@@ -4004,7 +4025,7 @@ class GuaranteeRestController
 
         $args = [
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-            'post_status'    => 'publish',
+            'post_status'    => ['draft', 'publish', 'pending', 'future'],
             'fields'         => 'ids',
             'posts_per_page' => -1,
         ];
@@ -4013,6 +4034,16 @@ class GuaranteeRestController
                 $args['meta_query'] = array_merge(['relation' => 'AND'], $meta_query);
             } else {
                 $args['meta_query'] = $meta_query;
+            }
+        }
+
+        if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
+            $author_scope = isset($user_profesional_ids) ? $user_profesional_ids : [];
+            $author_scope = array_values(array_filter(array_map('intval', (array) $author_scope), function ($id) {
+                return $id > 0;
+            }));
+            if (!empty($author_scope)) {
+                $args['author__in'] = $author_scope;
             }
         }
 
@@ -4078,6 +4109,16 @@ class GuaranteeRestController
                 'label' => $estado_labels[$e] ?? $e,
             ];
         }, $estados);
+
+        $estado_values = array_map(function ($entry) {
+            return $entry['value'] ?? '';
+        }, $estados);
+        if (! in_array('sin_finalizar', $estado_values, true)) {
+            $estados[] = [
+                'value' => 'sin_finalizar',
+                'label' => $estado_labels['sin_finalizar'],
+            ];
+        }
 
         $has_revision_option = false;
         $has_collect_option = false;
