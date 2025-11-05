@@ -515,7 +515,7 @@
       }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
   background-color: var(--background);
   color: var(--text-color);
   line-height: 1.5;
@@ -564,7 +564,7 @@ textarea {
     position: sticky;
     top: 0;
     margin-bottom: 0;
-    z-index: 14000;
+    z-index: 26000;
     transition: border-radius .3s ease-in-out, margin-bottom .3s ease-in-out, border-bottom .3s ease-in-out;
     width: 100%;
     display: flex;
@@ -777,7 +777,7 @@ textarea {
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   padding: 1rem 1rem 0.75rem;
-  z-index: 13500;
+  z-index: 52000;
   box-shadow: 0 22px 45px rgba(15, 23, 42, 0.16);
   transform: translate(-50%, 0);
 }
@@ -1576,7 +1576,7 @@ textarea {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 14000;
+  z-index: 53000;
 }
 
 .notifications-modal--visible {
@@ -1729,6 +1729,9 @@ textarea {
 .notifications-modal__placeholder {
   margin: 0;
   line-height: 1.5;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .notifications-modal__mark {
@@ -1821,7 +1824,7 @@ textarea {
       0 0 0 1px rgba(0, 0, 0, 0.02);
     border: 1px solid rgba(15, 23, 42, 0.08);
     backdrop-filter: blur(12px);
-    z-index: 14000;
+    z-index: 60000;
   }
 
   .top-bar__profile-menu.visible {
@@ -2084,7 +2087,7 @@ textarea {
       0 0 0 1px rgba(0, 0, 0, 0.02);
     border: 1px solid rgba(15, 23, 42, 0.08);
     backdrop-filter: blur(12px);
-    z-index: 14000;
+    z-index: 61000;
   }
 
   .mobile-menu--visible {
@@ -2211,6 +2214,7 @@ textarea {
 .footer__text {
     font-size: 0.875rem;
     color: var(--text-color);
+    line-height: 1.1;
 }
 
   .footer__legal ul {
@@ -2219,12 +2223,22 @@ textarea {
     gap: var(--spacing-2);
     padding: 0;
     margin: 0;
+    align-items: center;
+}
+
+.footer__legal li {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.1;
 }
 
 .footer__legal a {
+    display: inline-flex;
+    align-items: center;
     text-decoration: none;
     color: var(--text-color);
     font-size: 0.875rem;
+    line-height: 1.1;
 }
 
 .footer__legal a:hover {
@@ -2328,63 +2342,57 @@ textarea {
 
 
 @media (min-width: 740px) {
-
-    .top-bar {
-        border-radius: 1rem;
-        border-bottom: none;
-        box-shadow: none;
-        margin: 0 auto var(--spacing-3);
-      }
-
-        
   body {
     padding: var(--spacing-3);
   }
 
   .top-bar {
     height: var(--alturaHeader);
-    /* padding-inline: var(--spacing-4); */
     padding-inline: var(--spacing-3);
-}
+    border-radius: 1rem;
+    border-bottom: none;
+    box-shadow: none;
+    margin: 0 auto var(--spacing-3);
+  }
 
-.top-bar__hamburger {
+  .top-bar__hamburger {
     display: none;
-}
+  }
 
-.top-bar__logo-container {
+  .top-bar__logo-container {
     padding-left: 0;
-}
-
-.top-bar__menu ul {
-    justify-content: end;
-}
-
+  }
 
   .top-bar__menu {
     margin-left: auto;
     margin-right: var(--spacing-2);
   }
 
+  .top-bar__menu ul {
+    justify-content: flex-end;
+  }
 }
 
 @media (min-width: 1024px) {
-    .main-grid {
-        gap: var(--spacing-3);
+  .main-grid {
+    gap: var(--spacing-3);
+    grid-template-columns: 2fr 1fr;
+  }
 
-
-            grid-template-columns: 2fr 1fr;
-
-
-    }
-.account-card__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  .account-card__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
 }
 
 @media (min-width: 1280px) {
   .top-bar__wrapper {
     justify-content: space-between;
+  }
+
+  .top-bar__logo {
+    max-height: 4rem;
   }
 
   .top-bar__logo-container {
@@ -2404,6 +2412,10 @@ textarea {
 
   .top-bar__notifications {
     margin-left: 0;
+  }
+
+  .footer__wrapper {
+    height: 2.5rem;
   }
 }
 
