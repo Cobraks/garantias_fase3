@@ -252,16 +252,29 @@ class GuaranteeRestController
     {
         $cached = get_transient(self::SUMMARY_TRANSIENT);
         if (is_array($cached)) {
-            return $cached;
+            $cached_has_draft_state = false;
+            $normalized_cached = self::normalize_admin_summary($cached, $cached_has_draft_state);
+
+            if ($cached_has_draft_state) {
+                if ($normalized_cached !== $cached) {
+                    set_transient(self::SUMMARY_TRANSIENT, $normalized_cached, 5 * MINUTE_IN_SECONDS);
+                }
+
+                return $normalized_cached;
+            }
         }
 
         $data = self::build_admin_summary();
+        $data = is_array($data) ? $data : [];
 
-        if (! empty($data)) {
-            set_transient(self::SUMMARY_TRANSIENT, $data, 5 * MINUTE_IN_SECONDS);
+        $data_has_draft_state = false;
+        $normalized_data = self::normalize_admin_summary($data, $data_has_draft_state);
+
+        if (! empty($normalized_data)) {
+            set_transient(self::SUMMARY_TRANSIENT, $normalized_data, 5 * MINUTE_IN_SECONDS);
         }
 
-        return is_array($data) ? $data : [];
+        return $normalized_data;
     }
 
     public static function download_document($request)
@@ -2346,6 +2359,83 @@ class GuaranteeRestController
             'currency'   => 'EUR',
             'updated_at' => current_time('mysql'),
         ];
+    }
+
+    private static function normalize_admin_summary(array $summary, ?bool &$has_draft_state = null): array
+    {
+        $has_draft_state = false;
+
+        $states = isset($summary['states']) && is_array($summary['states'])
+            ? array_values($summary['states'])
+            : [];
+
+        foreach ($states as $index => $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $value = isset($entry['value']) ? (string) $entry['value'] : '';
+            if ($value !== 'sin_finalizar') {
+                continue;
+            }
+
+            $has_draft_state = true;
+            $count = isset($entry['count']) ? (int) $entry['count'] : 0;
+            $label = isset($entry['label']) ? (string) $entry['label'] : '';
+
+            $states[$index] = [
+                'value' => 'sin_finalizar',
+                'label' => $label !== '' ? $label : __('Sin finalizar', 'garantias-online-360vo'),
+                'count' => $count,
+            ];
+        }
+
+        if (! $has_draft_state) {
+            $states[] = [
+                'value' => 'sin_finalizar',
+                'label' => __('Sin finalizar', 'garantias-online-360vo'),
+                'count' => 0,
+            ];
+        }
+
+        $summary['states'] = $states;
+
+        $draft_count = 0;
+        foreach ($states as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            if (($entry['value'] ?? '') === 'sin_finalizar') {
+                $draft_count = isset($entry['count']) ? (int) $entry['count'] : 0;
+                break;
+            }
+        }
+
+        if (! isset($summary['pending']) || ! is_array($summary['pending'])) {
+            $summary['pending'] = [];
+        }
+
+        if (! isset($summary['pending']['draft']) || ! is_array($summary['pending']['draft'])) {
+            $summary['pending']['draft'] = [
+                'count'  => $draft_count,
+                'amount' => 0.0,
+            ];
+        } else {
+            if (! isset($summary['pending']['draft']['count'])) {
+                $summary['pending']['draft']['count'] = $draft_count;
+            } else {
+                $summary['pending']['draft']['count'] = (int) $summary['pending']['draft']['count'];
+            }
+
+            if (! isset($summary['pending']['draft']['amount'])) {
+                $summary['pending']['draft']['amount'] = 0.0;
+            } else {
+                $summary['pending']['draft']['amount'] = (float) $summary['pending']['draft']['amount'];
+            }
+        }
+
+        return $summary;
     }
 
     private static function collect_year_summary(array $statuses): array
