@@ -697,14 +697,9 @@ const ADD_DOC_KEY = "add-document";
                                         label,
                                 };
                         });
-                        selectedYear = String(currentPeriodYear);
-                        selectedMonthFrom = "1";
-                        selectedMonthTo = String(
-                                Math.min(12, Math.max(1, currentPeriodMonth))
-                        );
-                        periodDefaults.year = selectedYear;
-                        periodDefaults.monthFrom = selectedMonthFrom;
-                        periodDefaults.monthTo = selectedMonthTo;
+                        periodDefaults.year = "";
+                        periodDefaults.monthFrom = "";
+                        periodDefaults.monthTo = "";
                 }
                 const defaultOrderKey = orderToggle
                         ? orderToggle.getAttribute("data-default-sort") || "created_desc"
@@ -1962,48 +1957,69 @@ const ADD_DOC_KEY = "add-document";
                                 monthsByYear.set(currentYearKey, []);
                         }
 
-                        populateYearOptions(availableYears, currentYearKey);
+                        const normalizedSelectedYear =
+                                typeof selectedYear === "string"
+                                        ? selectedYear
+                                        : selectedYear != null
+                                        ? String(selectedYear)
+                                        : "";
+                        const selectionStillValid =
+                                normalizedSelectedYear !== "" &&
+                                availableYears.includes(normalizedSelectedYear);
+                        const nextYearValue = selectionStillValid
+                                ? normalizedSelectedYear
+                                : "";
+
+                        populateYearOptions(availableYears, nextYearValue);
                         if (monthOptions.length > 0) {
                                 populateMonthSelect(monthFromSelect);
                                 populateMonthSelect(monthToSelect);
                         }
 
-                        const defaultYearValue = currentYearKey;
-                        let defaultFromValue = String(
-                                getEarliestMonthForYear(defaultYearValue)
-                        );
-                        let defaultToValue;
-                        if (defaultYearValue === currentYearKey) {
-                                defaultToValue = String(currentPeriodMonth);
-                        } else {
-                                defaultToValue = String(
-                                        getLatestMonthForYear(defaultYearValue)
+                        let nextFromValue = "";
+                        let nextToValue = "";
+                        if (selectionStillValid) {
+                                const fallbackFrom = String(
+                                        getEarliestMonthForYear(nextYearValue)
                                 );
-                        }
-                        const normalizedFrom =
-                                normalizeMonthValue(defaultFromValue) || "1";
-                        let normalizedTo =
-                                normalizeMonthValue(defaultToValue) || normalizedFrom;
-                        if (Number(normalizedFrom) > Number(normalizedTo)) {
-                                normalizedTo = normalizedFrom;
+                                const fallbackTo =
+                                        nextYearValue === currentYearKey
+                                                ? String(currentPeriodMonth)
+                                                : String(
+                                                          getLatestMonthForYear(
+                                                                  nextYearValue
+                                                          )
+                                                  );
+                                nextFromValue =
+                                        normalizeMonthValue(selectedMonthFrom) ||
+                                        fallbackFrom;
+                                nextToValue =
+                                        normalizeMonthValue(selectedMonthTo) ||
+                                        fallbackTo;
+                                if (
+                                        Number(nextFromValue) >
+                                        Number(nextToValue)
+                                ) {
+                                        nextToValue = nextFromValue;
+                                }
                         }
 
-                        selectedYear = defaultYearValue;
-                        selectedMonthFrom = normalizedFrom;
-                        selectedMonthTo = normalizedTo;
+                        selectedYear = nextYearValue;
+                        selectedMonthFrom = nextFromValue;
+                        selectedMonthTo = nextToValue;
 
-                        periodDefaults.year = defaultYearValue;
-                        periodDefaults.monthFrom = normalizedFrom;
-                        periodDefaults.monthTo = normalizedTo;
+                        periodDefaults.year = "";
+                        periodDefaults.monthFrom = "";
+                        periodDefaults.monthTo = "";
 
                         if (yearSelect) {
-                                yearSelect.value = defaultYearValue;
+                                yearSelect.value = nextYearValue || "";
                         }
                         if (monthFromSelect) {
-                                monthFromSelect.value = normalizedFrom;
+                                monthFromSelect.value = nextFromValue || "";
                         }
                         if (monthToSelect) {
-                                monthToSelect.value = normalizedTo;
+                                monthToSelect.value = nextToValue || "";
                         }
 
                         const periodChanged =

@@ -446,7 +446,9 @@ if (($is_admin_user || $is_director)
                                     data-all-label="<?php esc_attr_e('Todos los años', 'garantias-online-360vo'); ?>"
                                     aria-label="<?php esc_attr_e('Año de inicio', 'garantias-online-360vo'); ?>">
                                     <option value=""><?php esc_html_e('Todos los años', 'garantias-online-360vo'); ?></option>
-                                    <option value="<?php echo esc_attr($period_current_year); ?>" selected><?php echo esc_html($period_current_year); ?></option>
+                                    <?php if (! empty($period_current_year)) : ?>
+                                        <option value="<?php echo esc_attr($period_current_year); ?>"><?php echo esc_html($period_current_year); ?></option>
+                                    <?php endif; ?>
                                 </select>
                                 <div class="guarantees-list__filter-field">
                                     <label class="guarantees-list__filter-field-label" for="guarantees-filter-month-from">

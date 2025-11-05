@@ -4050,6 +4050,7 @@ class GuaranteeRestController
         $q = new WP_Query($args);
 
         $estados = [];
+        $estado_counts = [];
         $plan_ids = [];
         $channels_map = [];
         $vendor_ids = [];
@@ -4059,6 +4060,10 @@ class GuaranteeRestController
             $e = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
             if ($e) {
                 $estados[] = $e;
+                if (! isset($estado_counts[$e])) {
+                    $estado_counts[$e] = 0;
+                }
+                $estado_counts[$e]++;
             }
             $pid = get_post_meta($post_id, 'garantia_contratada_garantia', true);
             if ($pid) {
@@ -4103,20 +4108,23 @@ class GuaranteeRestController
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
         ];
-        $estados = array_map(function ($e) use ($estado_labels) {
+        $estados = array_map(function ($e) use ($estado_labels, $estado_counts) {
             return [
                 'value' => $e,
                 'label' => $estado_labels[$e] ?? $e,
+                'count' => $estado_counts[$e] ?? 0,
             ];
         }, $estados);
 
         $estado_values = array_map(function ($entry) {
             return $entry['value'] ?? '';
         }, $estados);
-        if (! in_array('sin_finalizar', $estado_values, true)) {
+        $sin_finalizar_count = $estado_counts['sin_finalizar'] ?? 0;
+        if ($sin_finalizar_count > 0 && ! in_array('sin_finalizar', $estado_values, true)) {
             $estados[] = [
                 'value' => 'sin_finalizar',
                 'label' => $estado_labels['sin_finalizar'],
+                'count' => $sin_finalizar_count,
             ];
         }
 
@@ -4133,6 +4141,7 @@ class GuaranteeRestController
             $estados[] = [
                 'value' => 'pendiente_revision',
                 'label' => __('Verificar/cobrar', 'garantias-online-360vo'),
+                'count' => $estado_counts['pendiente_revision'] ?? 0,
             ];
         }
 
@@ -4147,6 +4156,7 @@ class GuaranteeRestController
             $estados[] = [
                 'value' => 'pendiente_cobro',
                 'label' => __('Pend. Domiciliación', 'garantias-online-360vo'),
+                'count' => $estado_counts['pendiente_cobro'] ?? 0,
             ];
         }
 
