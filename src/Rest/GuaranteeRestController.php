@@ -3351,9 +3351,10 @@ class GuaranteeRestController
         $metodo_pago = is_array($metodo_pago_raw)
             ? ($metodo_pago_raw['value'] ?? '')
             : $metodo_pago_raw;
-        $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
-        $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
+        $raw_desde = get_post_meta($id, 'estado_garantia_inicio', true);
+        $desde   = self::resolve_effective_start_date((int) $id, (string) $estado, $raw_desde);
+        $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
             'validacion_pendiente' => __('Validación pendiente', 'garantias-online-360vo'),
@@ -4083,8 +4084,9 @@ class GuaranteeRestController
             }
 
             $start_raw = get_post_meta($post_id, 'estado_garantia_inicio', true);
-            if ($start_raw) {
-                $timestamp = strtotime($start_raw);
+            $effective_start = self::resolve_effective_start_date((int) $post_id, (string) $e, $start_raw);
+            if ($effective_start !== '') {
+                $timestamp = strtotime($effective_start);
                 if ($timestamp !== false) {
                     $year_value = (int) gmdate('Y', $timestamp);
                     $month_value = (int) gmdate('n', $timestamp);
@@ -4337,6 +4339,29 @@ class GuaranteeRestController
         set_transient($cache_key, $response, 300);
 
         return $response;
+    }
+
+    private static function resolve_effective_start_date(int $post_id, string $estado, $raw_start): string
+    {
+        $start = is_string($raw_start) ? trim($raw_start) : '';
+        if ($start !== '' && $start !== '0000-00-00') {
+            return $start;
+        }
+
+        if ($estado !== 'sin_finalizar') {
+            return '';
+        }
+
+        if ($post_id <= 0) {
+            return '';
+        }
+
+        $created = get_post_time('Y-m-d', false, $post_id, false);
+        if (is_string($created) && $created !== '') {
+            return $created;
+        }
+
+        return '';
     }
 
     private static function resolve_sort_config(string $order_by, string $order): array
