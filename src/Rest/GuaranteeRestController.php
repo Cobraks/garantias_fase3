@@ -3901,22 +3901,6 @@ class GuaranteeRestController
             }
         }
 
-        if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
-            $author_scope = !empty($combined_vendor_ids) ? $combined_vendor_ids : $user_profesional_ids;
-            if (empty($author_scope) && !empty($vendor_type_ids)) {
-                $author_scope = $vendor_type_ids;
-            }
-            if (empty($author_scope) && !empty($commercial_vendor_ids)) {
-                $author_scope = $commercial_vendor_ids;
-            }
-            $author_scope = array_values(array_filter(array_map('intval', (array) $author_scope), function ($id) {
-                return $id > 0;
-            }));
-            if (!empty($author_scope)) {
-                $args['author__in'] = $author_scope;
-            }
-        }
-
         $q = new WP_Query($args);
 
         $data = [];
@@ -4043,16 +4027,6 @@ class GuaranteeRestController
                 $args['meta_query'] = array_merge(['relation' => 'AND'], $meta_query);
             } else {
                 $args['meta_query'] = $meta_query;
-            }
-        }
-
-        if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
-            $author_scope = isset($user_profesional_ids) ? $user_profesional_ids : [];
-            $author_scope = array_values(array_filter(array_map('intval', (array) $author_scope), function ($id) {
-                return $id > 0;
-            }));
-            if (!empty($author_scope)) {
-                $args['author__in'] = $author_scope;
             }
         }
 
