@@ -151,7 +151,7 @@ $format_summary_guarantees = static function ($count) use ($format_summary_numbe
     return sprintf($pluralized, $formatted);
 };
 
-if (($is_admin_user || $is_director)
+if (($is_admin_user || $is_director || $is_professional)
     && class_exists(GuaranteeRestController::class)
     && GuaranteeRestController::can_view_summary()
 ) {
@@ -208,12 +208,22 @@ if (($is_admin_user || $is_director)
             ? $admin_summary_data['pending']
             : [];
 
+        $pending_draft      = $admin_summary_pending['draft'] ?? [];
         $pending_payment    = $admin_summary_pending['payment'] ?? [];
         $pending_validation = $admin_summary_pending['validation'] ?? [];
         $pending_collect    = $admin_summary_pending['collect'] ?? [];
 
-        $admin_summary_actions = [
-            [
+        $actions_catalog = [
+            'draft' => [
+                'key'         => 'draft',
+                'label'       => __('Sin finalizar', 'garantias-online-360vo'),
+                'filter'      => 'sin_finalizar',
+                'accent'      => 'var(--admin-summary-state-sin-finalizar)',
+                'icon'        => Svg::icon('continue'),
+                'pending'     => $pending_draft,
+                'show_amount' => false,
+            ],
+            'payment' => [
                 'key'         => 'payment',
                 'label'       => __('Pendientes de pago', 'garantias-online-360vo'),
                 'filter'      => 'pendiente_pago',
@@ -221,7 +231,7 @@ if (($is_admin_user || $is_director)
                 'icon'        => Svg::icon('warning'),
                 'pending'     => $pending_payment,
             ],
-            [
+            'validation' => [
                 'key'         => 'validation',
                 'label'       => __('Pendientes de verificar transferencia', 'garantias-online-360vo'),
                 'filter'      => 'validacion_pendiente',
@@ -229,7 +239,7 @@ if (($is_admin_user || $is_director)
                 'icon'        => Svg::icon('transfer_verify'),
                 'pending'     => $pending_validation,
             ],
-            [
+            'collect' => [
                 'key'         => 'collect',
                 'label'       => __('Pendientes de cobrar domiciliación', 'garantias-online-360vo'),
                 'filter'      => 'pendiente_cobro',
@@ -238,6 +248,17 @@ if (($is_admin_user || $is_director)
                 'pending'     => $pending_collect,
             ],
         ];
+
+        $allowed_action_keys = $is_professional
+            ? ['draft', 'payment']
+            : array_keys($actions_catalog);
+
+        $admin_summary_actions = [];
+        foreach ($allowed_action_keys as $action_key) {
+            if (isset($actions_catalog[$action_key])) {
+                $admin_summary_actions[] = $actions_catalog[$action_key];
+            }
+        }
 
         $admin_summary_json = wp_json_encode($admin_summary_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
@@ -756,30 +777,32 @@ if (($is_admin_user || $is_director)
                 data-loading="<?php echo $has_admin_summary ? '0' : '1'; ?>">
                 <header class="guarantee-admin-summary__header">
                     <h4 class="guarantee-admin-summary__title"><?php esc_html_e('Resumen de Garantías', 'garantias-online-360vo'); ?></h4>
-                    <fieldset class="guarantee-admin-summary__context" data-admin-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
-                        <input
-                            class="guarantee-admin-summary__context-input"
-                            type="radio"
-                            name="<?php echo esc_attr($summary_context_base); ?>"
-                            id="<?php echo esc_attr($summary_global_id); ?>"
-                            value="year"
-                            data-admin-summary-context-toggle
-                            <?php checked($admin_summary_context_key, 'year'); ?>>
-                        <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_global_id); ?>">
-                            <?php esc_html_e('Global', 'garantias-online-360vo'); ?>
-                        </label>
-                        <input
-                            class="guarantee-admin-summary__context-input"
-                            type="radio"
-                            name="<?php echo esc_attr($summary_context_base); ?>"
-                            id="<?php echo esc_attr($summary_month_id); ?>"
-                            value="month"
-                            data-admin-summary-context-toggle
-                            <?php checked($admin_summary_context_key, 'month'); ?>>
-                        <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_month_id); ?>">
-                            <?php esc_html_e('Mensual', 'garantias-online-360vo'); ?>
-                        </label>
-                    </fieldset>
+                    <?php if (! $is_professional) : ?>
+                        <fieldset class="guarantee-admin-summary__context" data-admin-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
+                            <input
+                                class="guarantee-admin-summary__context-input"
+                                type="radio"
+                                name="<?php echo esc_attr($summary_context_base); ?>"
+                                id="<?php echo esc_attr($summary_global_id); ?>"
+                                value="year"
+                                data-admin-summary-context-toggle
+                                <?php checked($admin_summary_context_key, 'year'); ?>>
+                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_global_id); ?>">
+                                <?php esc_html_e('Global', 'garantias-online-360vo'); ?>
+                            </label>
+                            <input
+                                class="guarantee-admin-summary__context-input"
+                                type="radio"
+                                name="<?php echo esc_attr($summary_context_base); ?>"
+                                id="<?php echo esc_attr($summary_month_id); ?>"
+                                value="month"
+                                data-admin-summary-context-toggle
+                                <?php checked($admin_summary_context_key, 'month'); ?>>
+                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_month_id); ?>">
+                                <?php esc_html_e('Mensual', 'garantias-online-360vo'); ?>
+                            </label>
+                        </fieldset>
+                    <?php endif; ?>
                 </header>
                 <div class="guarantee-admin-summary__body">
                     <?php if ($show_kpi_grid) : ?>
@@ -838,36 +861,38 @@ if (($is_admin_user || $is_director)
                             </article>
                         </section>
                     <?php endif; ?>
-                    <section class="visualization-section">
-                        <div class="donut-chart<?php echo $donut_is_empty ? ' is-empty' : ''; ?>" data-admin-summary-donut style="<?php echo esc_attr($donut_style_attr); ?>">
-                            <div class="chart-center">
-                                <div class="chart-total" data-admin-summary-total data-value="<?php echo esc_attr($has_admin_summary ? $admin_summary_total : 0); ?>">
-                                    <?php echo $has_admin_summary ? esc_html($format_summary_number($admin_summary_total)) : '—'; ?>
-                                </div>
-                                <div class="chart-label" data-admin-summary-label data-default-label="<?php esc_attr_e('Total', 'garantias-online-360vo'); ?>">
-                                    <?php echo $has_admin_summary && $admin_summary_label !== '' ? esc_html($admin_summary_label) : esc_html__('Total', 'garantias-online-360vo'); ?>
+                    <?php if (! $is_professional) : ?>
+                        <section class="visualization-section">
+                            <div class="donut-chart<?php echo $donut_is_empty ? ' is-empty' : ''; ?>" data-admin-summary-donut style="<?php echo esc_attr($donut_style_attr); ?>">
+                                <div class="chart-center">
+                                    <div class="chart-total" data-admin-summary-total data-value="<?php echo esc_attr($has_admin_summary ? $admin_summary_total : 0); ?>">
+                                        <?php echo $has_admin_summary ? esc_html($format_summary_number($admin_summary_total)) : '—'; ?>
+                                    </div>
+                                    <div class="chart-label" data-admin-summary-label data-default-label="<?php esc_attr_e('Total', 'garantias-online-360vo'); ?>">
+                                        <?php echo $has_admin_summary && $admin_summary_label !== '' ? esc_html($admin_summary_label) : esc_html__('Total', 'garantias-online-360vo'); ?>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="chart-legend" data-admin-summary-states>
-                            <?php if ($has_admin_summary) : ?>
-                                <?php foreach ($legend_items as $item) : ?>
-                                    <div class="legend-item" data-state="<?php echo esc_attr($item['value']); ?>">
-                                        <span class="legend-color" style="background-color: <?php echo esc_attr($item['color']); ?>"></span>
-                                        <div class="legend-info">
-                                            <span class="legend-label"><?php echo esc_html($item['label']); ?></span>
-                                            <span class="legend-value"><?php echo esc_html(number_format_i18n($item['percent'])); ?>%</span>
+                            <div class="chart-legend" data-admin-summary-states>
+                                <?php if ($has_admin_summary) : ?>
+                                    <?php foreach ($legend_items as $item) : ?>
+                                        <div class="legend-item" data-state="<?php echo esc_attr($item['value']); ?>">
+                                            <span class="legend-color" style="background-color: <?php echo esc_attr($item['color']); ?>"></span>
+                                            <div class="legend-info">
+                                                <span class="legend-label"><?php echo esc_html($item['label']); ?></span>
+                                                <span class="legend-value"><?php echo esc_html(number_format_i18n($item['percent'])); ?>%</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php else : ?>
-                                <div class="legend-item is-loading"></div>
-                                <div class="legend-item is-loading"></div>
-                                <div class="legend-item is-loading"></div>
-                                <div class="legend-item is-loading"></div>
-                            <?php endif; ?>
-                        </div>
-                    </section>
+                                    <?php endforeach; ?>
+                                <?php else : ?>
+                                    <div class="legend-item is-loading"></div>
+                                    <div class="legend-item is-loading"></div>
+                                    <div class="legend-item is-loading"></div>
+                                    <div class="legend-item is-loading"></div>
+                                <?php endif; ?>
+                            </div>
+                        </section>
+                    <?php endif; ?>
                     <section class="actions-section">
                         <h3 class="actions-section-title"><?php esc_html_e('Acciones rápidas', 'garantias-online-360vo'); ?></h3>
                         <ul class="actions-list" data-admin-summary-actions>
@@ -876,16 +901,19 @@ if (($is_admin_user || $is_director)
                                     <?php
                                     $count   = isset($action['pending']['count']) ? (int) $action['pending']['count'] : 0;
                                     $amount  = $action['pending']['amount'] ?? 0;
-                                    $subtitle = $count > 0
-                                        ? $format_summary_guarantees($count) . ' · ' . $format_summary_currency($amount)
-                                        : __('Sin pendientes', 'garantias-online-360vo');
+                                    $show_amount = array_key_exists('show_amount', $action) ? (bool) $action['show_amount'] : true;
+                                    $subtitle = $show_amount
+                                        ? ($count > 0
+                                            ? $format_summary_guarantees($count) . ' · ' . $format_summary_currency($amount)
+                                            : __('Sin pendientes', 'garantias-online-360vo'))
+                                        : $format_summary_guarantees($count);
                                     ?>
                                     <li
                                         class="action-item<?php echo $count === 0 ? ' is-empty' : ''; ?>"
                                         data-summary-action="<?php echo esc_attr($action['key']); ?>"
                                         data-filter="<?php echo esc_attr($action['filter']); ?>">
                                         <span class="action-icon" aria-hidden="true" style="background-color: <?php echo esc_attr($action['accent']); ?>">
-                                            <?php echo $action['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped 
+                                            <?php echo $action['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                                             ?>
                                         </span>
                                         <div class="action-details">
@@ -893,15 +921,21 @@ if (($is_admin_user || $is_director)
                                             <span class="action-sublabel"><?php echo esc_html($subtitle); ?></span>
                                         </div>
                                         <span class="action-cta" aria-hidden="true">
-                                            <?php echo $action_arrow_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped 
+                                            <?php echo $action_arrow_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                                             ?>
                                         </span>
                                     </li>
                                 <?php endforeach; ?>
                             <?php else : ?>
-                                <li class="action-item is-loading"></li>
-                                <li class="action-item is-loading"></li>
-                                <li class="action-item is-loading"></li>
+                                <?php
+                                $placeholder_count = count($admin_summary_actions);
+                                if ($placeholder_count === 0) {
+                                    $placeholder_count = $is_professional ? 2 : 4;
+                                }
+                                for ($placeholder_index = 0; $placeholder_index < $placeholder_count; $placeholder_index++) :
+                                    ?>
+                                    <li class="action-item is-loading"></li>
+                                <?php endfor; ?>
                             <?php endif; ?>
                         </ul>
                     </section>

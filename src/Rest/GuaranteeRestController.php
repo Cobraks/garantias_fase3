@@ -1556,6 +1556,10 @@ class GuaranteeRestController
             return true;
         }
 
+        if (in_array('go_profesional', $roles, true) || in_array('profesional', $roles, true)) {
+            return true;
+        }
+
         return false;
     }
 
@@ -1704,7 +1708,13 @@ class GuaranteeRestController
             if (!isset($data['garantia_contratada']['canal_venta'])) {
                 $data['garantia_contratada']['canal_venta'] = 'profesional';
             }
-            if (!isset($data['garantia_contratada']['concesionario_empresa_profesional'])) {
+            $provided_vendor = 0;
+            if (isset($data['garantia_contratada']['concesionario_empresa_profesional'])) {
+                $provided_vendor = self::normalize_vendor_meta(
+                    $data['garantia_contratada']['concesionario_empresa_profesional']
+                );
+            }
+            if ($provided_vendor <= 0) {
                 $data['garantia_contratada']['concesionario_empresa_profesional'] = $current_user->ID;
             }
         }
@@ -1960,6 +1970,34 @@ class GuaranteeRestController
             if (isset($gc['nivel_garantia'])) {
                 wp_set_post_terms($post_id, [(int) $gc['nivel_garantia']], 'nivel_garantia');
             }
+            if (
+                !isset($gc['concesionario_empresa_profesional']) ||
+                (int) $gc['concesionario_empresa_profesional'] <= 0
+            ) {
+                $existing_vendor = 0;
+                if ($post_id > 0) {
+                    $existing_vendor = self::normalize_vendor_meta(
+                        get_post_meta(
+                            $post_id,
+                            'garantia_contratada_concesionario_empresa_profesional',
+                            true
+                        )
+                    );
+                    if ($existing_vendor <= 0) {
+                        $author_id = (int) get_post_field('post_author', $post_id);
+                        if ($author_id > 0) {
+                            $author = get_user_by('id', $author_id);
+                            if (self::user_is_professional($author)) {
+                                $existing_vendor = $author_id;
+                            }
+                        }
+                    }
+                }
+                if ($existing_vendor > 0) {
+                    $gc['concesionario_empresa_profesional'] = $existing_vendor;
+                }
+            }
+
             foreach ($gc as $k => $v) {
                 if (is_array($v)) {
                     foreach ($v as $subk => $subv) {
@@ -2269,6 +2307,20 @@ class GuaranteeRestController
         $total = (int) $wpdb->get_var($wpdb->prepare($total_sql, $total_params));
 
         $states = self::collect_state_distribution($statuses);
+        $pending_draft = ['count' => 0, 'amount' => 0.0];
+        foreach ($states as $state_entry) {
+            if (! is_array($state_entry)) {
+                continue;
+            }
+
+            $state_value = isset($state_entry['value']) ? (string) $state_entry['value'] : '';
+            if ($state_value !== 'sin_finalizar') {
+                continue;
+            }
+
+            $pending_draft['count'] = isset($state_entry['count']) ? (int) $state_entry['count'] : 0;
+            break;
+        }
         $pending_collect = self::sum_prices_for_states(['pendiente_cobro'], $statuses);
         $pending_payment = self::sum_prices_for_states(['pendiente_pago'], $statuses);
         $pending_validation = self::sum_prices_for_states(['validacion_pendiente'], $statuses);
@@ -2285,6 +2337,7 @@ class GuaranteeRestController
                 'month' => $month,
             ],
             'pending' => [
+                'draft'     => $pending_draft,
                 'collect'    => $pending_collect,
                 'payment'    => $pending_payment,
                 'validation' => $pending_validation,
@@ -3148,6 +3201,17 @@ class GuaranteeRestController
         return '';
     }
 
+    private static function user_is_professional($user): bool
+    {
+        if (!($user instanceof \WP_User)) {
+            return false;
+        }
+
+        $roles = (array) $user->roles;
+
+        return in_array('go_profesional', $roles, true) || in_array('profesional', $roles, true);
+    }
+
     private static function normalize_vendor_meta($raw)
     {
         if (is_array($raw)) {
@@ -3367,6 +3431,15 @@ class GuaranteeRestController
 
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
         $vendor_id = is_array($vendor_id) && isset($vendor_id['ID']) ? (int) $vendor_id['ID'] : (int) $vendor_id;
+        if ($vendor_id <= 0) {
+            $author_id = (int) get_post_field('post_author', $id);
+            if ($author_id > 0) {
+                $author = get_user_by('id', $author_id);
+                if (self::user_is_professional($author)) {
+                    $vendor_id = $author_id;
+                }
+            }
+        }
         $labels = [
             'company_name'       => '',
             'personal_name'      => '',
