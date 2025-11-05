@@ -384,6 +384,7 @@ async function loadUsuariosPorCanal(channelSlug, { keepValue = false } = {}) {
                                 if (existing) {
                                         existing.selected = true;
                                         defaultOption.selected = false;
+                                        select.value = targetValue;
                                         if (select.dataset.pendingValue === targetValue) {
                                                 delete select.dataset.pendingValue;
                                         }

@@ -1077,8 +1077,20 @@ export default function initAutosave() {
                                 return normalized ? `go_${normalized}` : "";
                         };
 
+                        let pendingVendorId = "";
                         if (usuarioSelect && data.vendor_id) {
-                                usuarioSelect.dataset.pendingValue = String(data.vendor_id);
+                                pendingVendorId = String(data.vendor_id);
+                                usuarioSelect.dataset.pendingValue = pendingVendorId;
+                                const existingOption = Array.from(usuarioSelect.options || []).find(
+                                        (opt) => opt.value === pendingVendorId,
+                                );
+                                if (existingOption) {
+                                        existingOption.selected = true;
+                                        usuarioSelect.value = pendingVendorId;
+                                        usuarioSelect.dispatchEvent(
+                                                new Event("change", { bubbles: true })
+                                        );
+                                }
                         }
 
                         if (canalSelect) {
@@ -1087,9 +1099,16 @@ export default function initAutosave() {
                                         data.canal_venta ||
                                         data.channel ||
                                         "";
-                                const channelValue = resolveChannelSelectValue(channelRaw);
+                                let channelValue = resolveChannelSelectValue(channelRaw);
+                                if (!channelValue && pendingVendorId) {
+                                        channelValue = "go_profesional";
+                                }
                                 if (channelValue) {
                                         canalSelect.value = channelValue;
+                                        canalSelect.dispatchEvent(
+                                                new Event("change", { bubbles: true })
+                                        );
+                                } else if (pendingVendorId) {
                                         canalSelect.dispatchEvent(
                                                 new Event("change", { bubbles: true })
                                         );
