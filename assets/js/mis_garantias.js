@@ -624,6 +624,9 @@ const ADD_DOC_KEY = "add-document";
                                   "[data-mobile-nav-action=\"guarantees\"]"
                           )
                         : null;
+                const mobileQuickAdd = document.querySelector(
+                        "[data-mobile-quick-add]"
+                );
                 const orderRoot = document.querySelector("[data-order-root]");
                 const orderToggle = orderRoot
                         ? orderRoot.querySelector("[data-order-toggle]")
@@ -634,6 +637,9 @@ const ADD_DOC_KEY = "add-document";
                 const orderLabelNode = orderRoot
                         ? orderRoot.querySelector("[data-order-label]")
                         : null;
+                let orderMenuPortalParent = null;
+                let orderMenuPlaceholder = null;
+                let detachOrderMenuPortal = null;
                 let selectedEstado = "";
                 let selectedPlan = "";
                 let selectedCanal = "";
@@ -652,6 +658,7 @@ const ADD_DOC_KEY = "add-document";
                 const rootElement = document.documentElement;
                 const rootStyle = rootElement ? rootElement.style : null;
                 const mobileViewportOffsetVar = "--mobile-viewport-bottom-offset";
+                const mobileHeaderCompensationVar = "--mobile-header-compensation";
                 const htmlLang =
                         (rootElement &&
                                 (rootElement.lang ||
@@ -693,14 +700,9 @@ const ADD_DOC_KEY = "add-document";
                                         label,
                                 };
                         });
-                        selectedYear = String(currentPeriodYear);
-                        selectedMonthFrom = "1";
-                        selectedMonthTo = String(
-                                Math.min(12, Math.max(1, currentPeriodMonth))
-                        );
-                        periodDefaults.year = selectedYear;
-                        periodDefaults.monthFrom = selectedMonthFrom;
-                        periodDefaults.monthTo = selectedMonthTo;
+                        periodDefaults.year = "";
+                        periodDefaults.monthFrom = "";
+                        periodDefaults.monthTo = "";
                 }
                 const defaultOrderKey = orderToggle
                         ? orderToggle.getAttribute("data-default-sort") || "created_desc"
@@ -721,6 +723,8 @@ const ADD_DOC_KEY = "add-document";
                         typeof window.matchMedia === "function"
                                 ? window.matchMedia("(min-width: 1280px)")
                                 : null;
+                const isDesktopView = () =>
+                        desktopMediaQuery ? desktopMediaQuery.matches : true;
                 let mobileFiltersOpen = Boolean(
                         filtersRoot &&
                                 filtersRoot.getAttribute("data-mobile-open") === "true"
@@ -738,6 +742,8 @@ const ADD_DOC_KEY = "add-document";
                 let mobileSummaryOpen = false;
                 let mobileSearchOpen = false;
                 let lastMobileSearchVisible = false;
+                let notificationsPanelOpen = false;
+                let notificationsModalOpen = false;
                 let currentMobileNavState = "guarantees";
                 let lastDetailTrigger = null;
                 let infiniteScrollObserver = null;
@@ -795,6 +801,7 @@ const ADD_DOC_KEY = "add-document";
                                 }
                         }
 
+                        syncMobileNavState();
                         return mobileSummaryOpen;
                 };
                 setMobileSummaryOpen(false);
@@ -839,8 +846,31 @@ const ADD_DOC_KEY = "add-document";
                 };
                 updateBaseFiltersHeight();
 
-                const isDesktopView = () =>
-                        desktopMediaQuery ? desktopMediaQuery.matches : true;
+                function syncMobileHeaderCompensation() {
+                        if (!rootStyle) {
+                                return;
+                        }
+                        if (isDesktopView()) {
+                                rootStyle.setProperty(mobileHeaderCompensationVar, "0px");
+                                return;
+                        }
+                        let viewportOffset = 0;
+                        if (
+                                typeof window !== "undefined" &&
+                                window.visualViewport &&
+                                typeof window.visualViewport.offsetTop === "number"
+                        ) {
+                                viewportOffset = window.visualViewport.offsetTop;
+                        }
+                        const compensation = Math.max(
+                                0,
+                                Math.round(viewportOffset)
+                        );
+                        rootStyle.setProperty(
+                                mobileHeaderCompensationVar,
+                                `${compensation}px`
+                        );
+                }
 
                 function syncMobileViewportOffset() {
                         if (!rootStyle) {
@@ -848,6 +878,7 @@ const ADD_DOC_KEY = "add-document";
                         }
                         if (isDesktopView()) {
                                 rootStyle.setProperty(mobileViewportOffsetVar, "0px");
+                                syncMobileHeaderCompensation();
                                 return;
                         }
                         if (
@@ -856,6 +887,7 @@ const ADD_DOC_KEY = "add-document";
                                 typeof window.visualViewport.height !== "number"
                         ) {
                                 rootStyle.setProperty(mobileViewportOffsetVar, "0px");
+                                syncMobileHeaderCompensation();
                                 return;
                         }
                         const viewport = window.visualViewport;
@@ -875,6 +907,7 @@ const ADD_DOC_KEY = "add-document";
                                 mobileViewportOffsetVar,
                                 `${Math.round(offset)}px`
                         );
+                        syncMobileHeaderCompensation();
                 }
 
                 function syncBottomBarState({ measure = false } = {}) {
@@ -892,6 +925,7 @@ const ADD_DOC_KEY = "add-document";
                                                 "0px"
                                         );
                                 }
+                                syncMobileHeaderCompensation();
                                 return;
                         }
                         const desktop = isDesktopView();
@@ -955,6 +989,9 @@ const ADD_DOC_KEY = "add-document";
                         if (!bottomBar || isDesktopView()) {
                                 return "guarantees";
                         }
+                        if (notificationsModalOpen || notificationsPanelOpen) {
+                                return "notifications";
+                        }
                         if (mobileFiltersOpen) {
                                 return "filters";
                         }
@@ -977,7 +1014,49 @@ const ADD_DOC_KEY = "add-document";
                                         : computeMobileNavState();
                         const state = setMobileNavState(target);
                         syncBottomBarState({ measure: true });
+                        syncMobileQuickAddVisibility(state);
                         return state;
+                }
+
+                function syncMobileQuickAddVisibility(state = computeMobileNavState()) {
+                        if (!mobileQuickAdd) {
+                                return;
+                        }
+                        const desktop = isDesktopView();
+                        const shouldShow =
+                                !desktop && Boolean(bottomBar) && state === "guarantees";
+                        mobileQuickAdd.classList.toggle("is-hidden", !shouldShow);
+                        mobileQuickAdd.setAttribute(
+                                "aria-hidden",
+                                shouldShow ? "false" : "true"
+                        );
+                        if (shouldShow) {
+                                mobileQuickAdd.removeAttribute("tabindex");
+                        } else {
+                                mobileQuickAdd.setAttribute("tabindex", "-1");
+                        }
+                }
+
+                if (typeof window !== "undefined") {
+                        window.addEventListener("go360:notifications:opened", () => {
+                                notificationsModalOpen = false;
+                                notificationsPanelOpen = true;
+                                syncMobileNavState();
+                        });
+                        window.addEventListener("go360:notifications:closed", () => {
+                                notificationsPanelOpen = false;
+                                notificationsModalOpen = false;
+                                syncMobileNavState();
+                        });
+                        window.addEventListener("go360:notifications:modal-opened", () => {
+                                notificationsPanelOpen = false;
+                                notificationsModalOpen = true;
+                                syncMobileNavState();
+                        });
+                        window.addEventListener("go360:notifications:modal-closed", () => {
+                                notificationsModalOpen = false;
+                                syncMobileNavState();
+                        });
                 }
 
                 function syncMobileDetailVisibility({ focus = false, restoreFocus = false } = {}) {
@@ -1655,6 +1734,13 @@ const ADD_DOC_KEY = "add-document";
                         window.addEventListener("resize", handleResize, {
                                 passive: true,
                         });
+                        window.addEventListener(
+                                "scroll",
+                                () => {
+                                        syncMobileHeaderCompensation();
+                                },
+                                { passive: true }
+                        );
                         if (window.visualViewport) {
                                 window.visualViewport.addEventListener(
                                         "resize",
@@ -1874,48 +1960,69 @@ const ADD_DOC_KEY = "add-document";
                                 monthsByYear.set(currentYearKey, []);
                         }
 
-                        populateYearOptions(availableYears, currentYearKey);
+                        const normalizedSelectedYear =
+                                typeof selectedYear === "string"
+                                        ? selectedYear
+                                        : selectedYear != null
+                                        ? String(selectedYear)
+                                        : "";
+                        const selectionStillValid =
+                                normalizedSelectedYear !== "" &&
+                                availableYears.includes(normalizedSelectedYear);
+                        const nextYearValue = selectionStillValid
+                                ? normalizedSelectedYear
+                                : "";
+
+                        populateYearOptions(availableYears, nextYearValue);
                         if (monthOptions.length > 0) {
                                 populateMonthSelect(monthFromSelect);
                                 populateMonthSelect(monthToSelect);
                         }
 
-                        const defaultYearValue = currentYearKey;
-                        let defaultFromValue = String(
-                                getEarliestMonthForYear(defaultYearValue)
-                        );
-                        let defaultToValue;
-                        if (defaultYearValue === currentYearKey) {
-                                defaultToValue = String(currentPeriodMonth);
-                        } else {
-                                defaultToValue = String(
-                                        getLatestMonthForYear(defaultYearValue)
+                        let nextFromValue = "";
+                        let nextToValue = "";
+                        if (selectionStillValid) {
+                                const fallbackFrom = String(
+                                        getEarliestMonthForYear(nextYearValue)
                                 );
-                        }
-                        const normalizedFrom =
-                                normalizeMonthValue(defaultFromValue) || "1";
-                        let normalizedTo =
-                                normalizeMonthValue(defaultToValue) || normalizedFrom;
-                        if (Number(normalizedFrom) > Number(normalizedTo)) {
-                                normalizedTo = normalizedFrom;
+                                const fallbackTo =
+                                        nextYearValue === currentYearKey
+                                                ? String(currentPeriodMonth)
+                                                : String(
+                                                          getLatestMonthForYear(
+                                                                  nextYearValue
+                                                          )
+                                                  );
+                                nextFromValue =
+                                        normalizeMonthValue(selectedMonthFrom) ||
+                                        fallbackFrom;
+                                nextToValue =
+                                        normalizeMonthValue(selectedMonthTo) ||
+                                        fallbackTo;
+                                if (
+                                        Number(nextFromValue) >
+                                        Number(nextToValue)
+                                ) {
+                                        nextToValue = nextFromValue;
+                                }
                         }
 
-                        selectedYear = defaultYearValue;
-                        selectedMonthFrom = normalizedFrom;
-                        selectedMonthTo = normalizedTo;
+                        selectedYear = nextYearValue;
+                        selectedMonthFrom = nextFromValue;
+                        selectedMonthTo = nextToValue;
 
-                        periodDefaults.year = defaultYearValue;
-                        periodDefaults.monthFrom = normalizedFrom;
-                        periodDefaults.monthTo = normalizedTo;
+                        periodDefaults.year = "";
+                        periodDefaults.monthFrom = "";
+                        periodDefaults.monthTo = "";
 
                         if (yearSelect) {
-                                yearSelect.value = defaultYearValue;
+                                yearSelect.value = nextYearValue || "";
                         }
                         if (monthFromSelect) {
-                                monthFromSelect.value = normalizedFrom;
+                                monthFromSelect.value = nextFromValue || "";
                         }
                         if (monthToSelect) {
-                                monthToSelect.value = normalizedTo;
+                                monthToSelect.value = nextToValue || "";
                         }
 
                         const periodChanged =
@@ -1994,15 +2101,31 @@ const ADD_DOC_KEY = "add-document";
                         }
                 });
 
-		let resultMessage = document.querySelector(
-			".guarantees-list__result-message"
-		);
-		if (!resultMessage) {
-			resultMessage = document.createElement("div");
-			resultMessage.className = "guarantees-list__result-message";
-			resultMessage.style.display = "none";
-			table.insertAdjacentElement("afterend", resultMessage);
-		}
+                let resultMessage =
+                        document.querySelector("[data-search-result-message]") ||
+                        document.querySelector(".guarantees-list__result-message");
+                if (resultMessage) {
+                        resultMessage.classList.add("guarantees-list__result-message");
+                        if (!resultMessage.hasAttribute("aria-live")) {
+                                resultMessage.setAttribute("aria-live", "polite");
+                        }
+                        resultMessage.setAttribute("aria-hidden", "true");
+                        resultMessage.hidden = true;
+                } else if (table) {
+                        resultMessage = document.createElement("div");
+                        resultMessage.className = "guarantees-list__result-message";
+                        resultMessage.setAttribute("aria-live", "polite");
+                        resultMessage.setAttribute("aria-hidden", "true");
+                        resultMessage.hidden = true;
+                        const target = listContainer || table.parentElement;
+                        if (target && table.parentElement === target) {
+                                table.insertAdjacentElement("afterend", resultMessage);
+                        } else if (target && typeof target.appendChild === "function") {
+                                target.appendChild(resultMessage);
+                        } else {
+                                table.insertAdjacentElement("afterend", resultMessage);
+                        }
+                }
 
                 if (!panel1 || !panel2) {
                         detail.innerHTML =
@@ -3517,7 +3640,10 @@ const ADD_DOC_KEY = "add-document";
                         if (!selector) return;
                         const target = panel.querySelector(selector);
                         if (!target) return;
-                        const text = target.textContent.trim();
+                        let text = (target.textContent || '').trim();
+                        if (target.hasAttribute('data-amount')) {
+                                text = text.replace(/[\s\u00A0]*€$/u, '').replace(/^€[\s\u00A0]*/u, '').trim();
+                        }
                         if (!text) return;
                         const originalLabel = btn.getAttribute("aria-label") || "";
                         const doneLabel = btn.dataset.done || "Copiado";
@@ -3997,10 +4123,25 @@ const ADD_DOC_KEY = "add-document";
                         }
                         const match = label.match(/\(([^)]+)\)/);
                         if (match && match[1]) {
-                                return match[1].trim();
+                                const inside = match[1].trim();
+                                if (!inside) {
+                                        return "";
+                                }
+                                const normalizedInside = inside.toLowerCase();
+                                if (normalizedInside === "concesionario" || normalizedInside === "concesionario oficial") {
+                                        return "Concesionario Oficial";
+                                }
+                                return inside;
                         }
                         const cleaned = label.replace(/^Profesional\s*[-–:|]?\s*/i, "").trim();
-                        return cleaned || label;
+                        if (!cleaned) {
+                                return label;
+                        }
+                        const normalized = cleaned.toLowerCase();
+                        if (normalized === "concesionario" || normalized === "concesionario oficial") {
+                                return "Concesionario Oficial";
+                        }
+                        return cleaned;
                 }
 
                 const { getTransferDeadlineMillis, getTransferDeadlineInfo } = (() => {
@@ -5196,6 +5337,13 @@ const ADD_DOC_KEY = "add-document";
                         labelNode.textContent = parts.length ? parts.join(" ") : "—";
                 }
 
+                function stripYearSuffix(label) {
+                        if (typeof label !== "string") {
+                                return "";
+                        }
+                        return label.replace(/\s+\d{4}$/u, "").trim();
+                }
+
                 function updateAdminSummaryKpis(root, context = {}) {
                         if (!root) {
                                 return;
@@ -5214,10 +5362,11 @@ const ADD_DOC_KEY = "add-document";
                                 context && typeof context.label === "string"
                                         ? context.label.trim()
                                         : "";
-                        const monthName =
+                        const monthNameRaw =
                                 contextKey === "month" && context && typeof context.month_name === "string"
                                         ? context.month_name.trim()
                                         : "";
+                        const monthName = monthNameRaw ? stripYearSuffix(monthNameRaw) : "";
                         const countValue =
                                 typeof context.count === "number"
                                         ? context.count
@@ -5241,8 +5390,8 @@ const ADD_DOC_KEY = "add-document";
                                                 contextKey === "year"
                                                         ? "Valor acumulado"
                                                         : monthName
-                                                        ? `Valor mensual ${monthName}`
-                                                        : "Valor mensual";
+                                                        ? `Acumulado ${monthName}`
+                                                        : "Acumulado";
                                 }
                                 const valueEl = amountCard.querySelector(
                                         "[data-admin-summary-kpi-value]"
@@ -5303,7 +5452,7 @@ const ADD_DOC_KEY = "add-document";
                                 context && typeof context.month_name === "string"
                                         ? context.month_name
                                         : "";
-                        const monthName = monthNameRaw ? monthNameRaw.trim() : "";
+                        const monthName = monthNameRaw ? stripYearSuffix(monthNameRaw.trim()) : "";
                         const trendsData =
                                 context && typeof context.trends === "object" && context.trends
                                         ? context.trends
@@ -5315,8 +5464,9 @@ const ADD_DOC_KEY = "add-document";
                         const defaultLabel = labelEl
                                 ? labelEl.getAttribute("data-default-label") || "Total"
                                 : "Total";
-                        const contextLabel =
+                        const contextLabelRaw =
                                 context && typeof context.label === "string" ? context.label.trim() : "";
+                        const contextLabel = contextLabelRaw ? stripYearSuffix(contextLabelRaw) : "";
 
                         if (labelEl) {
                                 const effectiveLabel = contextLabel || defaultLabel;
@@ -5990,10 +6140,19 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
-		function setResultMessage(msg = "") {
-			resultMessage.innerHTML = msg;
-			resultMessage.style.display = msg ? "block" : "none";
-		}
+                function setResultMessage(msg = "") {
+                        if (!resultMessage) {
+                                return;
+                        }
+                        const message = typeof msg === "string" ? msg : "";
+                        resultMessage.innerHTML = message;
+                        const shouldShow = message.trim().length > 0;
+                        resultMessage.hidden = !shouldShow;
+                        resultMessage.setAttribute(
+                                "aria-hidden",
+                                shouldShow ? "false" : "true"
+                        );
+                }
 
                 async function loadPage(page = 1, options = {}) {
                         if (isLoading || !hasMore) return;
@@ -6507,6 +6666,10 @@ const ADD_DOC_KEY = "add-document";
         ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
               `<span class=\"guarantee-detail__plan-duration\">(${mesesRestantes !== "-" ? mesesRestantes + " meses restantes" : "-"})</span></p></div>`
         : "";
+    const coverageAlertHtml =
+        isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
+            ? `<p class=\"detail__alert-section\">No has seleccionado cobertura.</p>`
+            : "";
     const vendorChannelSummaryRaw = pickField("canal_venta_summary", "");
     const vendorChannelSummarySource =
         vendorChannelSummaryRaw !== ""
@@ -6703,13 +6866,14 @@ const ADD_DOC_KEY = "add-document";
 
     if (isSinFinalizar) {
         return `
-        <div class="guarantee-detail__inner">
+                <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
                         ${coverageHtml}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${coverageAlertHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">
@@ -7519,6 +7683,37 @@ async function activateRow(row, options = {}) {
                                         });
                         }
 
+                        const canUseHistory = () =>
+                                panelHistory &&
+                                typeof panelHistory.push === "function" &&
+                                (!desktopMediaQuery || !desktopMediaQuery.matches);
+                        let modalHistoryRegistered = false;
+
+                        function ensureModalHistory() {
+                                if (!canUseHistory() || modalHistoryRegistered) {
+                                        return;
+                                }
+                                modalHistoryRegistered = true;
+                                panelHistory.push("detail-docs", () => {
+                                        closeModal({ silentHistory: true });
+                                });
+                        }
+
+                        function releaseModalHistory({ silent = false } = {}) {
+                                if (!modalHistoryRegistered) {
+                                        return;
+                                }
+                                if (canUseHistory() && !silent) {
+                                        panelHistory.close("detail-docs");
+                                }
+                                modalHistoryRegistered = false;
+                        }
+
+                        function openModal() {
+                                modal.classList.add("visible");
+                                ensureModalHistory();
+                        }
+
                         function openDocByKey(key) {
                                 if (!key) return;
                                 const buttons = getButtons();
@@ -7540,16 +7735,19 @@ async function activateRow(row, options = {}) {
                                                 const idx = parseInt(btn.dataset.docIndex || "0", 10);
                                                 openDocByIndex(idx);
                                         }
-                                        modal.classList.add("visible");
+                                        openModal();
                                 }
                         });
 
                         prevBtn.addEventListener("click", () => openDocByIndex(currentIdx - 1));
                         nextBtn.addEventListener("click", () => openDocByIndex(currentIdx + 1));
 
-                        function closeModal() {
+                        function closeModal(options = {}) {
+                                const silentHistory = Boolean(options.silentHistory);
                                 modal.classList.remove("visible");
-                                iframe.src = "";
+                                if (iframe) {
+                                        iframe.src = "";
+                                }
                                 if (dl) {
                                         dl.href = "#";
                                 }
@@ -7577,6 +7775,7 @@ async function activateRow(row, options = {}) {
                                 if (spinner) spinner.classList.remove("active");
                                 getButtons().forEach((b) => b.classList.remove("active"));
                                 updateModalControls(modal);
+                                releaseModalHistory({ silent: silentHistory });
                         }
 
                         modal.querySelector(".pdf-modal__close").addEventListener("click", closeModal);
@@ -7684,23 +7883,42 @@ async function activateRow(row, options = {}) {
                         window.addEventListener("scroll", onScroll, { passive: true });
                 })();
 
-                function normalizeFilterValues(items) {
+                function buildFilterValueMap(items) {
+                        const map = new Map();
                         if (!Array.isArray(items)) {
-                                return new Set();
+                                return map;
                         }
-                        return new Set(
-                                items
-                                        .map((item) => {
-                                                if (typeof item === "string") {
-                                                        return item;
-                                                }
-                                                if (item && typeof item === "object") {
-                                                        return item.value || item.slug || "";
-                                                }
-                                                return "";
-                                        })
-                                        .filter(Boolean)
-                        );
+                        items.forEach((item) => {
+                                if (item === null || typeof item === "undefined") {
+                                        return;
+                                }
+                                if (typeof item === "string") {
+                                        const key = item.trim();
+                                        if (!key) {
+                                                return;
+                                        }
+                                        if (!map.has(key)) {
+                                                map.set(key, { count: 0 });
+                                        }
+                                        return;
+                                }
+                                if (typeof item === "object") {
+                                        const key = (item.value || item.slug || "").toString().trim();
+                                        if (!key) {
+                                                return;
+                                        }
+                                        const rawCount = Number.parseInt(item.count, 10);
+                                        const count = Number.isFinite(rawCount) && rawCount > 0 ? rawCount : 0;
+                                        if (map.has(key)) {
+                                                const existing = map.get(key);
+                                                existing.count = Math.max(existing.count, count);
+                                                existing.data = item;
+                                        } else {
+                                                map.set(key, { count, data: item });
+                                        }
+                                }
+                        });
+                        return map;
                 }
 
                 function syncChannelOptionVisibility(channels = [], vendorTypes = []) {
@@ -7708,8 +7926,8 @@ async function activateRow(row, options = {}) {
                                 return;
                         }
 
-                        const channelSet = normalizeFilterValues(channels);
-                        const vendorTypeSet = normalizeFilterValues(vendorTypes);
+                        const channelMap = buildFilterValueMap(channels);
+                        const vendorTypeMap = buildFilterValueMap(vendorTypes);
                         let selectionChanged = false;
 
                         Array.from(canalSelect.options).forEach((option) => {
@@ -7720,15 +7938,25 @@ async function activateRow(row, options = {}) {
                                 const vendorType = option.dataset.vendorType || "";
                                 let visible = true;
                                 if (vendorType) {
-                                        visible = vendorTypeSet.size === 0 || vendorTypeSet.has(vendorType);
+                                        if (vendorTypeMap.size === 0) {
+                                                visible = false;
+                                        } else {
+                                                const entry = vendorTypeMap.get(vendorType);
+                                                visible = Boolean(entry && entry.count > 0);
+                                        }
                                 } else if (channel) {
-                                        visible = channelSet.size === 0 || channelSet.has(channel);
+                                        if (channelMap.size > 0) {
+                                                const entry = channelMap.get(channel);
+                                                visible = Boolean(entry && (entry.count ?? 0) > 0);
+                                        }
                                 }
                                 option.hidden = !visible;
+                                option.disabled = !visible;
+                                option.style.display = visible ? "" : "none";
                         });
 
                         const selectedOption = canalSelect.options[canalSelect.selectedIndex];
-                        if (selectedOption && selectedOption.hidden) {
+                        if (selectedOption && (selectedOption.hidden || selectedOption.disabled)) {
                                 canalSelect.value = "";
                                 selectedCanal = "";
                                 selectedVendorType = "";
@@ -7787,6 +8015,84 @@ async function activateRow(row, options = {}) {
                         orderRoot.setAttribute("data-open", "true");
                         orderToggle.setAttribute("aria-expanded", "true");
                         orderMenu.removeAttribute("hidden");
+
+                        if (!orderMenuPortalParent) {
+                                orderMenuPortalParent = orderMenu.parentElement || null;
+                        }
+                        if (orderMenuPortalParent && !orderMenuPlaceholder) {
+                                orderMenuPlaceholder = document.createComment("order-menu-placeholder");
+                                orderMenuPortalParent.insertBefore(orderMenuPlaceholder, orderMenu);
+                        }
+                        if (orderMenu.parentElement !== document.body) {
+                                document.body.appendChild(orderMenu);
+                        }
+
+                        orderMenu.style.position = "fixed";
+                        orderMenu.style.maxHeight = "calc(100vh - 32px)";
+                        orderMenu.style.overflowY = "auto";
+                        orderMenu.style.zIndex = "9999";
+
+                        const computeMinWidth = () => {
+                                const hostRect = orderRoot.getBoundingClientRect();
+                                const hostWidth = hostRect.width || 0;
+                                const menuRect = orderMenu.getBoundingClientRect();
+                                const currentWidth = menuRect.width || 0;
+                                const width = Math.max(currentWidth, hostWidth, 220);
+                                orderMenu.style.minWidth = `${Math.round(width)}px`;
+                                return width;
+                        };
+
+                        const reposition = () => {
+                                if (!orderMenu || !orderToggle) {
+                                        return;
+                                }
+                                const rect = orderToggle.getBoundingClientRect();
+                                const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+                                const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+                                const padding = 16;
+                                const gap = 8;
+                                const menuWidth = computeMinWidth();
+                                let left = rect.right - menuWidth;
+                                if (left < padding) {
+                                        left = padding;
+                                }
+                                if (left + menuWidth > viewportWidth - padding) {
+                                        left = Math.max(padding, viewportWidth - padding - menuWidth);
+                                }
+                                const menuHeight = orderMenu.getBoundingClientRect().height || 0;
+                                let top = rect.bottom + gap;
+                                if (menuHeight > 0 && top + menuHeight > viewportHeight - padding) {
+                                        const altTop = rect.top - gap - menuHeight;
+                                        top = Math.max(padding, altTop);
+                                }
+                                orderMenu.style.left = `${Math.round(left)}px`;
+                                orderMenu.style.top = `${Math.round(top)}px`;
+                        };
+
+                        reposition();
+                        window.addEventListener("resize", reposition);
+                        window.addEventListener("scroll", reposition, true);
+
+                        detachOrderMenuPortal = () => {
+                                window.removeEventListener("resize", reposition);
+                                window.removeEventListener("scroll", reposition, true);
+                                orderMenu.style.position = "";
+                                orderMenu.style.left = "";
+                                orderMenu.style.top = "";
+                                orderMenu.style.minWidth = "";
+                                orderMenu.style.maxHeight = "";
+                                orderMenu.style.overflowY = "";
+                                orderMenu.style.zIndex = "";
+                                if (orderMenuPortalParent) {
+                                        if (orderMenuPlaceholder && orderMenuPlaceholder.parentNode === orderMenuPortalParent) {
+                                                orderMenuPortalParent.insertBefore(orderMenu, orderMenuPlaceholder);
+                                                orderMenuPlaceholder.remove();
+                                        } else {
+                                                orderMenuPortalParent.appendChild(orderMenu);
+                                        }
+                                }
+                                orderMenuPlaceholder = null;
+                        };
                 }
 
                 function closeOrderMenu() {
@@ -7795,6 +8101,10 @@ async function activateRow(row, options = {}) {
                         }
                         orderRoot.removeAttribute("data-open");
                         orderToggle.setAttribute("aria-expanded", "false");
+                        if (typeof detachOrderMenuPortal === "function") {
+                                detachOrderMenuPortal();
+                                detachOrderMenuPortal = null;
+                        }
                         orderMenu.setAttribute("hidden", "");
                 }
 
@@ -8063,6 +8373,7 @@ async function activateRow(row, options = {}) {
                         tbody.innerHTML = "";
                         loadedIds.clear();
                         clearSelectionAndDetail();
+                        setResultMessage("");
                         if (scrollEnd) {
                                 scrollEnd.hidden = false;
                         }

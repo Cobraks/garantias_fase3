@@ -144,6 +144,42 @@ class PushNotificationRepository
     }
 
     /**
+     * @param array<int, string> $icon_slugs
+     * @return array<int, array<string, mixed>>
+     */
+    public function list_by_icons(int $user_id, array $icon_slugs, int $page = 1, int $per_page = 10): array
+    {
+        if ($user_id <= 0 || empty($icon_slugs)) {
+            return [];
+        }
+
+        $normalized_icons = array_values(array_filter(array_map('sanitize_key', $icon_slugs)));
+        if (empty($normalized_icons)) {
+            return [];
+        }
+
+        $page = max(1, $page);
+        $per_page = max(1, min(50, $per_page));
+        $offset = ($page - 1) * $per_page;
+
+        global $wpdb;
+        $table = $wpdb->prefix . PushTables::NOTIFICATIONS_TABLE;
+
+        $placeholders = implode(',', array_fill(0, count($normalized_icons), '%s'));
+        $sql = "SELECT * FROM {$table} WHERE user_id = %d AND icon_slug IN ($placeholders) ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d";
+        $params = array_merge([$user_id], $normalized_icons, [$per_page, $offset]);
+
+        $prepared = $wpdb->prepare($sql, $params);
+        if ($prepared === false) {
+            return [];
+        }
+
+        $results = $wpdb->get_results($prepared, ARRAY_A);
+
+        return $this->hydrate_rows($results);
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function list_after(int $user_id, int $after_id, int $limit = 10): array
