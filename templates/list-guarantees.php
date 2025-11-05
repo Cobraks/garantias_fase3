@@ -301,6 +301,8 @@ if (($is_admin_user || $is_director || $is_professional)
                     <div class="guarantees-list__filters-search-slot" data-desktop-search-slot></div>
 
                     <select
+                        id="guarantees-filter-estado"
+                        name="estado"
                         class="guarantees-list__filter"
                         data-filter="estado"
                         aria-label="<?php esc_attr_e('Estado', 'garantias-online-360vo'); ?>">
@@ -309,6 +311,8 @@ if (($is_admin_user || $is_director || $is_professional)
 
                     <?php if ($show_plan_in_main) : ?>
                         <select
+                            id="guarantees-filter-plan-main"
+                            name="plan"
                             class="guarantees-list__filter"
                             data-filter="plan"
                             aria-label="<?php esc_attr_e('Coberturas', 'garantias-online-360vo'); ?>">
@@ -319,6 +323,8 @@ if (($is_admin_user || $is_director || $is_professional)
 
                     <?php if ($show_channel_select) : ?>
                         <select
+                            id="guarantees-filter-canal"
+                            name="canal"
                             class="guarantees-list__filter"
                             data-filter="canal"
                             aria-label="<?php esc_attr_e('Canal de venta', 'garantias-online-360vo'); ?>">
@@ -346,6 +352,8 @@ if (($is_admin_user || $is_director || $is_professional)
                     <?php if ($show_clients_select) : ?>
                         <div class="guarantees-list__filter-wrapper guarantees-list__filter-wrapper--clients" data-clients-wrapper hidden>
                             <select
+                                id="guarantees-filter-cliente"
+                                name="cliente"
                                 class="guarantees-list__filter"
                                 data-filter="cliente"
                                 aria-label="<?php esc_attr_e('Empresas', 'garantias-online-360vo'); ?>">
@@ -435,6 +443,8 @@ if (($is_admin_user || $is_director || $is_professional)
                         <div class="guarantees-list__filters-advanced-grid">
                             <?php if ($show_plan_in_advanced) : ?>
                                 <select
+                                    id="guarantees-filter-plan-advanced"
+                                    name="plan"
                                     class="guarantees-list__filter"
                                     data-filter="plan"
                                     aria-label="<?php esc_attr_e('Coberturas', 'garantias-online-360vo'); ?>">
@@ -444,6 +454,8 @@ if (($is_admin_user || $is_director || $is_professional)
 
                             <?php if ($show_payment_in_advanced) : ?>
                                 <select
+                                    id="guarantees-filter-payment"
+                                    name="payment"
                                     class="guarantees-list__filter"
                                     data-filter="payment"
                                     aria-label="<?php esc_attr_e('Método de pago', 'garantias-online-360vo'); ?>">
@@ -453,6 +465,8 @@ if (($is_admin_user || $is_director || $is_professional)
 
                             <?php if ($show_commercial_select) : ?>
                                 <select
+                                    id="guarantees-filter-commercial"
+                                    name="commercial"
                                     class="guarantees-list__filter"
                                     data-filter="commercial"
                                     aria-label="<?php esc_attr_e('Garantías por comercial', 'garantias-online-360vo'); ?>">
@@ -462,6 +476,8 @@ if (($is_admin_user || $is_director || $is_professional)
 
                             <?php if ($show_period_filters) : ?>
                                 <select
+                                    id="guarantees-filter-year"
+                                    name="year"
                                     class="guarantees-list__filter"
                                     data-filter="year"
                                     data-all-label="<?php esc_attr_e('Todos los años', 'garantias-online-360vo'); ?>"
@@ -477,6 +493,7 @@ if (($is_admin_user || $is_director || $is_professional)
                                     </label>
                                     <select
                                         id="guarantees-filter-month-from"
+                                        name="month-from"
                                         class="guarantees-list__filter"
                                         data-filter="month-from">
                                         <?php foreach ($period_months as $month_number => $month_label) : ?>
@@ -492,6 +509,7 @@ if (($is_admin_user || $is_director || $is_professional)
                                     </label>
                                     <select
                                         id="guarantees-filter-month-to"
+                                        name="month-to"
                                         class="guarantees-list__filter"
                                         data-filter="month-to">
                                         <?php foreach ($period_months as $month_number => $month_label) : ?>
@@ -594,8 +612,6 @@ if (($is_admin_user || $is_director || $is_professional)
         <?php if ($can_view_summary) : ?>
             <?php
             $summary_context_base = uniqid('summary-context-');
-            $summary_global_id    = $summary_context_base . '-global';
-            $summary_month_id     = $summary_context_base . '-month';
             $has_admin_summary    = $admin_summary_json !== '' && ! empty($admin_summary_states);
 
             $state_color_vars = [
@@ -779,26 +795,24 @@ if (($is_admin_user || $is_director || $is_professional)
                     <h4 class="guarantee-admin-summary__title"><?php esc_html_e('Resumen de Garantías', 'garantias-online-360vo'); ?></h4>
                     <?php if (! $is_professional) : ?>
                         <fieldset class="guarantee-admin-summary__context" data-admin-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
-                            <input
-                                class="guarantee-admin-summary__context-input"
-                                type="radio"
-                                name="<?php echo esc_attr($summary_context_base); ?>"
-                                id="<?php echo esc_attr($summary_global_id); ?>"
-                                value="year"
-                                data-admin-summary-context-toggle
-                                <?php checked($admin_summary_context_key, 'year'); ?>>
-                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_global_id); ?>">
+                            <label class="guarantee-admin-summary__context-label">
+                                <input
+                                    class="guarantee-admin-summary__context-input"
+                                    type="radio"
+                                    name="<?php echo esc_attr($summary_context_base); ?>"
+                                    value="year"
+                                    data-admin-summary-context-toggle
+                                    <?php checked($admin_summary_context_key, 'year'); ?>>
                                 <?php esc_html_e('Global', 'garantias-online-360vo'); ?>
                             </label>
-                            <input
-                                class="guarantee-admin-summary__context-input"
-                                type="radio"
-                                name="<?php echo esc_attr($summary_context_base); ?>"
-                                id="<?php echo esc_attr($summary_month_id); ?>"
-                                value="month"
-                                data-admin-summary-context-toggle
-                                <?php checked($admin_summary_context_key, 'month'); ?>>
-                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_month_id); ?>">
+                            <label class="guarantee-admin-summary__context-label">
+                                <input
+                                    class="guarantee-admin-summary__context-input"
+                                    type="radio"
+                                    name="<?php echo esc_attr($summary_context_base); ?>"
+                                    value="month"
+                                    data-admin-summary-context-toggle
+                                    <?php checked($admin_summary_context_key, 'month'); ?>>
                                 <?php esc_html_e('Mensual', 'garantias-online-360vo'); ?>
                             </label>
                         </fieldset>
