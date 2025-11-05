@@ -367,13 +367,26 @@ async function loadUsuariosPorCanal(channelSlug, { keepValue = false } = {}) {
                                 select.appendChild(option);
                         });
 
+                        let targetValue = "";
                         if (keepValue && previousValue) {
+                                targetValue = String(previousValue);
+                        }
+                        if (!targetValue) {
+                                const pending = select.dataset.pendingValue || "";
+                                if (pending) {
+                                        targetValue = String(pending);
+                                }
+                        }
+                        if (targetValue) {
                                 const existing = Array.from(select.options).find(
-                                        (opt) => opt.value === String(previousValue),
+                                        (opt) => opt.value === targetValue,
                                 );
                                 if (existing) {
                                         existing.selected = true;
                                         defaultOption.selected = false;
+                                        if (select.dataset.pendingValue === targetValue) {
+                                                delete select.dataset.pendingValue;
+                                        }
                                 }
                         }
                 } else {

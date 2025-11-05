@@ -1057,6 +1057,44 @@ export default function initAutosave() {
                                         new Event("change", { bubbles: true })
                                 );
                         });
+
+                        const canalSelect = document.getElementById("canal-venta");
+                        const usuarioSelect = document.getElementById("usuario-rol");
+                        const resolveChannelSelectValue = (raw) => {
+                                if (!raw) return "";
+                                const candidate = typeof raw === "string" ? raw : String(raw || "");
+                                if (!candidate) {
+                                        return "";
+                                }
+                                const trimmed = candidate.trim();
+                                if (!trimmed) {
+                                        return "";
+                                }
+                                if (trimmed.startsWith("go_")) {
+                                        return trimmed;
+                                }
+                                const normalized = normalizeChannel(trimmed);
+                                return normalized ? `go_${normalized}` : "";
+                        };
+
+                        if (usuarioSelect && data.vendor_id) {
+                                usuarioSelect.dataset.pendingValue = String(data.vendor_id);
+                        }
+
+                        if (canalSelect) {
+                                const channelRaw =
+                                        data.canal_venta_value ||
+                                        data.canal_venta ||
+                                        data.channel ||
+                                        "";
+                                const channelValue = resolveChannelSelectValue(channelRaw);
+                                if (channelValue) {
+                                        canalSelect.value = channelValue;
+                                        canalSelect.dispatchEvent(
+                                                new Event("change", { bubbles: true })
+                                        );
+                                }
+                        }
                 } catch (e) {
                         console.error("[AUTOSAVE] loadDraft", e);
                 }
