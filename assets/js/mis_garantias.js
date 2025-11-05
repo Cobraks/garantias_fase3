@@ -266,12 +266,9 @@ const ADD_DOC_KEY = "add-document";
                         ].includes(normalizedRole);
                 const shouldRestrictEmptyStateOptions = !canSeeVerifyCollectStates;
                 const canManageDetailActions =
-                        [
-                                "administrator",
-                                "admin",
-                                "go_garantias",
-                                "go_director_comercial",
-                        ].includes(normalizedRole);
+                        ["administrator", "admin", "go_garantias"].includes(normalizedRole);
+                const canContinueGuarantee =
+                        canManageDetailActions || isProfesional || isDirector;
                 const canViewAdminSummary = isCoreAdmin || isDirector;
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
@@ -6908,7 +6905,7 @@ const ADD_DOC_KEY = "add-document";
     const showActions = canManageDetailActions;
 
     const sinFinalButtons = [];
-    if (showActions || isProfesional) {
+    if (canContinueGuarantee) {
         sinFinalButtons.push(
             `<button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">` +
                 `<span class="guarantee-detail__btn-icon">${continueIcon}</span>` +
