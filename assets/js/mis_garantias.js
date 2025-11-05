@@ -264,7 +264,12 @@ const ADD_DOC_KEY = "add-document";
                         ].includes(normalizedRole);
                 const shouldRestrictEmptyStateOptions = !canSeeVerifyCollectStates;
                 const canManageDetailActions =
-                        ["administrator", "admin", "go_garantias"].includes(normalizedRole);
+                        [
+                                "administrator",
+                                "admin",
+                                "go_garantias",
+                                "go_director_comercial",
+                        ].includes(normalizedRole);
                 const canViewAdminSummary = isCoreAdmin || isDirector;
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
