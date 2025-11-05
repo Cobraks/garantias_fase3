@@ -1081,6 +1081,20 @@ export default function initAutosave() {
                         if (usuarioSelect && data.vendor_id) {
                                 pendingVendorId = String(data.vendor_id);
                                 usuarioSelect.dataset.pendingValue = pendingVendorId;
+                                const pendingVendorLabel = [
+                                        data.vendor_name,
+                                        data.concesionario,
+                                        data.concesionario_personal,
+                                ]
+                                        .map((value) =>
+                                                typeof value === "string"
+                                                        ? value.trim()
+                                                        : ""
+                                        )
+                                        .find((value) => value !== "");
+                                if (pendingVendorLabel) {
+                                        usuarioSelect.dataset.displayLabel = pendingVendorLabel;
+                                }
                                 const existingOption = Array.from(usuarioSelect.options || []).find(
                                         (opt) => opt.value === pendingVendorId,
                                 );
