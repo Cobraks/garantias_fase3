@@ -239,7 +239,9 @@ const ADD_DOC_KEY = "add-document";
                 const userRole =
                         (goConfig.user && goConfig.user.role) ||
                         "user";
-                const normalizedRole = String(userRole || "").toLowerCase();
+                const normalizedRole = String(userRole ?? "")
+                        .trim()
+                        .toLowerCase();
                 const isAdmin =
                         [
                                 "administrator",
