@@ -1189,8 +1189,17 @@ if (($is_admin_user || $is_director || $is_professional)
             <p class="confirm-modal__file-help"><?php esc_html_e('Formatos: PDF, JPG o PNG (máx. 10 MB).', 'garantias-online-360vo'); ?></p>
             <p class="confirm-modal__file-error" role="alert" hidden></p>
         </div>
+        <?php
+        $confirm_checkbox_id   = uniqid('confirm-modal-checkbox-');
+        $confirm_checkbox_name = $confirm_checkbox_id . '-field';
+        ?>
         <label class="confirm-modal__checkbox" hidden>
-            <input type="checkbox" class="confirm-modal__checkbox-input" />
+            <input
+                type="checkbox"
+                class="confirm-modal__checkbox-input"
+                id="<?php echo esc_attr($confirm_checkbox_id); ?>"
+                name="<?php echo esc_attr($confirm_checkbox_name); ?>"
+            />
             <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
         </label>
         <div class="confirm-modal__actions">
