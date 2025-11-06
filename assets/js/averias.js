@@ -419,11 +419,10 @@
         if (hero) {
             var stickyClass = 'body--averia-detail__hero_sticky';
             var lastState = null;
-            var stickyThreshold = null;
 
             var getTopOffset = function () {
                 var computedStyle = window.getComputedStyle ? window.getComputedStyle(hero) : null;
-                if (! computedStyle) {
+                if (!computedStyle) {
                     return 0;
                 }
 
@@ -431,25 +430,10 @@
                 return Number.isFinite(parsedTop) ? parsedTop : 0;
             };
 
-            var recalcThreshold = function () {
-                stickyThreshold = hero.offsetTop - getTopOffset();
-            };
-
-            var getScrollPosition = function () {
-                if (typeof window.pageYOffset === 'number') {
-                    return window.pageYOffset;
-                }
-
-                var doc = document.documentElement || document.body;
-                return doc ? doc.scrollTop : 0;
-            };
-
             var updateStickyState = function () {
-                if (! Number.isFinite(stickyThreshold)) {
-                    recalcThreshold();
-                }
-
-                var shouldStick = getScrollPosition() >= stickyThreshold;
+                var rect = hero.getBoundingClientRect ? hero.getBoundingClientRect() : null;
+                var heroTop = rect ? rect.top : hero.offsetTop;
+                var shouldStick = heroTop <= getTopOffset() + 0.5;
 
                 if (shouldStick !== lastState) {
                     lastState = shouldStick;
@@ -457,14 +441,10 @@
                 }
             };
 
-            recalcThreshold();
             updateStickyState();
 
             window.addEventListener('scroll', updateStickyState, { passive: true });
-            window.addEventListener('resize', function () {
-                recalcThreshold();
-                updateStickyState();
-            });
+            window.addEventListener('resize', updateStickyState);
         }
 
         var navigableRows = Array.prototype.slice.call(document.querySelectorAll('.guarantees-table__row[data-expediente-url]'));
