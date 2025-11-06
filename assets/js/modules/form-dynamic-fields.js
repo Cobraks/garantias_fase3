@@ -168,8 +168,14 @@ function toggleCombustibleDependientes() {
                         if (shouldRestrictCambio && !esAutomatico) {
                                 option.disabled = true;
                                 option.hidden = true;
+                                option.dataset.hiddenByCombustible = "true";
+                                option.style.display = "none";
                         } else {
-                                option.hidden = false;
+                                if (option.dataset.hiddenByCombustible) {
+                                        option.hidden = false;
+                                        option.style.display = "";
+                                        delete option.dataset.hiddenByCombustible;
+                                }
                                 option.disabled = option.dataset.originalDisabled === "true";
                         }
                 });
