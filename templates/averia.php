@@ -32,6 +32,8 @@ $sample_case = [
     'kilometers_start'  => '92.340 km',
     'kilometers_now'    => '94.210 km',
     'kilometers_delta'  => '+2.000 km',
+    'days_open'         => '3 días',
+    'sla_remaining'     => '18h',
     'vehicle_name'      => 'Seat Panda',
     'vehicle_age'       => '2015 (5 años)',
     'vendor'            => 'Concesionario Guay',
@@ -256,7 +258,6 @@ $empty_messages = [
         $status_variant     = $sample_case['status_variant'] ?? 'info';
         $opened_label       = $sample_case['opened'] ?? '';
         $last_update_label  = $sample_case['last_update'] ?? '';
-        $owner_label        = $sample_case['owner'] ?? '';
         $summary_text       = $sample_case['summary'] ?? '';
         $vehicle_name       = $sample_case['vehicle_name'] ?? '';
         $vehicle_age        = $sample_case['vehicle_age'] ?? '';
@@ -273,11 +274,56 @@ $empty_messages = [
         $context_overview = [
             __('Vehículo', 'garantias-online-360vo')        => $vehicle_name,
             __('Antigüedad', 'garantias-online-360vo')      => $vehicle_age,
-            __('Titular', 'garantias-online-360vo')         => $owner_label,
+            __('Tipo de avería', 'garantias-online-360vo')  => $sample_case['type'] ?? '',
             __('Estado del peritaje', 'garantias-online-360vo') => $peritaje_required
                 ? __('Peritaje pendiente', 'garantias-online-360vo')
                 : __('Peritaje no requerido', 'garantias-online-360vo'),
         ];
+
+        $context_overview = array_filter(
+            $context_overview,
+            static function ($value) {
+                return trim((string) $value) !== '';
+            }
+        );
+
+        $hero_highlights = [
+            [
+                'label' => __('Fecha de apertura', 'garantias-online-360vo'),
+                'value' => $opened_label,
+            ],
+            [
+                'label' => __('Días abierto', 'garantias-online-360vo'),
+                'value' => $sample_case['days_open'] ?? '',
+            ],
+            [
+                'label' => __('Última actualización', 'garantias-online-360vo'),
+                'value' => $last_update_label,
+            ],
+            [
+                'label' => __('SLA restante', 'garantias-online-360vo'),
+                'value' => $sample_case['sla_remaining'] ?? '',
+            ],
+        ];
+
+        $hero_highlights = array_values(
+            array_filter(
+                array_map(
+                    static function ($highlight) {
+                        $value = trim((string) ($highlight['value'] ?? ''));
+                        if ($value === '') {
+                            return null;
+                        }
+
+                        return [
+                            'label' => (string) ($highlight['label'] ?? ''),
+                            'value' => $value,
+                        ];
+                    },
+                    $hero_highlights
+                )
+            )
+        );
 
         $insight_metrics = [
             __('Kilómetros al abrir', 'garantias-online-360vo') => $sample_case['kilometers_start'] ?? '',
@@ -358,43 +404,32 @@ $empty_messages = [
                 <?php endif; ?>
             </div>
 
-            <dl class="averia-hero__meta">
-                <?php if ($opened_label !== '') : ?>
-                    <div>
-                        <dt><?php esc_html_e('Fecha de apertura', 'garantias-online-360vo'); ?></dt>
-                        <dd><?php echo esc_html($opened_label); ?></dd>
-                    </div>
-                <?php endif; ?>
-                <?php if ($last_update_label !== '') : ?>
-                    <div>
-                        <dt><?php esc_html_e('Última actualización', 'garantias-online-360vo'); ?></dt>
-                        <dd><?php echo esc_html($last_update_label); ?></dd>
-                    </div>
-                <?php endif; ?>
-                <?php if ($owner_label !== '') : ?>
-                    <div>
-                        <dt><?php esc_html_e('Responsable actual', 'garantias-online-360vo'); ?></dt>
-                        <dd><?php echo esc_html($owner_label); ?></dd>
-                    </div>
-                <?php endif; ?>
-            </dl>
+            <?php if (! empty($context_overview)) : ?>
+                <ul class="averia-hero__context">
+                    <?php foreach ($context_overview as $context_label => $context_value) : ?>
+                        <li>
+                            <span><?php echo esc_html($context_label); ?></span>
+                            <strong><?php echo esc_html($context_value); ?></strong>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
 
-            <div class="averia-hero__actions">
-                <button type="button" class="averia-button averia-button--primary">
-                    <?php esc_html_e('Cambiar estado', 'garantias-online-360vo'); ?>
-                </button>
-                <button type="button" class="averia-button averia-button--surface">
-                    <?php esc_html_e('Registrar actualización', 'garantias-online-360vo'); ?>
-                </button>
-                <button type="button" class="averia-button averia-button--surface">
-                    <?php esc_html_e('Enviar comunicación', 'garantias-online-360vo'); ?>
-                </button>
-            </div>
+            <?php if (! empty($hero_highlights)) : ?>
+                <dl class="averia-hero__meta">
+                    <?php foreach ($hero_highlights as $highlight) : ?>
+                        <div>
+                            <dt><?php echo esc_html($highlight['label']); ?></dt>
+                            <dd><?php echo esc_html($highlight['value']); ?></dd>
+                        </div>
+                    <?php endforeach; ?>
+                </dl>
+            <?php endif; ?>
         </header>
 
         <div class="averia-layout">
             <main class="averia-layout__main" aria-label="<?php esc_attr_e('Gestión de la avería', 'garantias-online-360vo'); ?>">
-                <section class="averia-card">
+                <section class="averia-card averia-card--compact">
                     <header class="averia-card__header">
                         <h2 class="averia-card__title"><?php esc_html_e('Acciones rápidas', 'garantias-online-360vo'); ?></h2>
                         <p class="averia-card__subtitle"><?php esc_html_e('Prioriza las próximas intervenciones', 'garantias-online-360vo'); ?></p>

@@ -29,6 +29,7 @@
 body.body--averia-detail {
     background: var(--background, var(--go-color-f8fafc, #f8fafc));
     color: var(--averia-color-heading);
+    overflow-y: auto;
 }
 
 .body--averia-detail .container {
@@ -81,6 +82,7 @@ body.body--averia-detail {
     text-decoration: none;
     background: transparent;
     color: inherit;
+    height: 2.5rem;
 }
 
 .averia-button:hover {
@@ -149,8 +151,7 @@ body.body--averia-detail {
     gap: var(--averia-spacing-4);
     grid-template-areas:
         "primary"
-        "meta"
-        "actions";
+        "meta";
 }
 
 .averia-hero__primary {
@@ -210,11 +211,36 @@ body.body--averia-detail {
     line-height: 1.5;
 }
 
+.averia-hero__context {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--averia-spacing-2);
+}
+
+.averia-hero__context li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--averia-spacing-2);
+    font-size: 0.95rem;
+    color: var(--averia-color-muted);
+}
+
+.averia-hero__context span {
+    font-weight: 500;
+}
+
+.averia-hero__context strong {
+    color: var(--averia-color-heading);
+}
+
 .averia-hero__meta {
     grid-area: meta;
     margin: 0;
     display: grid;
     gap: var(--averia-spacing-3);
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
 }
 
 .averia-hero__meta div {
@@ -235,35 +261,18 @@ body.body--averia-detail {
     color: var(--averia-color-heading);
 }
 
-.averia-hero__actions {
-    grid-area: actions;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--averia-spacing-3);
-}
-
 @media (min-width: 64rem) {
     .averia-hero {
-        grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr);
-        grid-template-areas:
-            "primary meta"
-            "actions actions";
-    }
-
-    .averia-hero__actions {
-        justify-content: flex-end;
+        grid-template-columns: minmax(0, 3fr) minmax(16rem, 1fr);
+        grid-template-areas: "primary meta";
     }
 }
 
 @media (min-width: 90rem) {
     .averia-hero {
-        grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr) minmax(14rem, 1fr);
-        grid-template-areas: "primary meta actions";
+        grid-template-columns: minmax(0, 2.5fr) minmax(18rem, 1fr);
+        grid-template-areas: "primary meta";
         align-items: start;
-    }
-
-    .averia-hero__actions {
-        justify-content: flex-start;
     }
 }
 
@@ -282,6 +291,8 @@ body.body--averia-detail {
 .averia-layout__support {
     display: grid;
     gap: var(--averia-spacing-6);
+    align-content: start;
+    grid-auto-rows: min-content;
 }
 
 .averia-layout__main { grid-area: main; }
@@ -312,6 +323,15 @@ body.body--averia-detail {
     padding: var(--averia-spacing-6);
     display: grid;
     gap: var(--averia-spacing-4);
+}
+
+.averia-card--compact {
+    padding: var(--averia-spacing-4);
+    gap: var(--averia-spacing-3);
+}
+
+.averia-card--compact .averia-card__title {
+    font-size: 1rem;
 }
 
 .averia-card--highlight {
@@ -396,6 +416,7 @@ body.body--averia-detail {
     display: flex;
     flex-wrap: wrap;
     gap: var(--averia-spacing-3);
+    width: 100%;
 }
 
 /* Timeline ------------------------------------------------------------- */
