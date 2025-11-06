@@ -38,6 +38,7 @@ function toggleVehiculoFields() {
 
         const isCamion = tipoVehiculo.value === "camion";
         const isMoto = tipoVehiculo.value === "moto";
+        const isTodoterreno = tipoVehiculo.value === "todoterreno";
 
         // Tracción normal
         if (traccionContainer) {
@@ -53,8 +54,24 @@ function toggleVehiculoFields() {
                         if (ocultarTraccion) {
                                 traccion.value = "";
                                 traccion.required = false;
-                        } else if (traccion.dataset.originalRequired !== "false") {
-                                traccion.required = true;
+                        } else {
+                                if (traccion.dataset.originalRequired !== "false") {
+                                        traccion.required = true;
+                                }
+                                if (isTodoterreno) {
+                                        const opcion4x4 = Array.from(traccion.options || []).find(
+                                                (option) => option.value === "4x4"
+                                        );
+                                        if (opcion4x4) {
+                                                const valorAnterior = traccion.value;
+                                                traccion.value = "4x4";
+                                                if (valorAnterior !== "4x4") {
+                                                        traccion.dispatchEvent(
+                                                                new Event("change", { bubbles: true })
+                                                        );
+                                                }
+                                        }
+                                }
                         }
                 }
         }
@@ -108,16 +125,69 @@ function toggleCombustibleDependientes() {
         );
 	if (!combustible || !dobleMotorContainer) return;
 
-	const val = combustible.value;
-	const debeMostrar = ["electrico", "hibrido", "gpl_gnc"].includes(val);
-	dobleMotorContainer.style.display = debeMostrar ? "" : "none";
-	if (!debeMostrar) {
-		const dobleMotor = dobleMotorContainer.querySelector("#doble_motor");
-		if (dobleMotor) dobleMotor.value = "";
-	}
+        const val = combustible.value;
+        const isElectrico = val === "electrico";
+        const isHibrido = val === "hibrido";
+        const dobleMotor = dobleMotorContainer.querySelector("#doble_motor");
+        const cambio = document.getElementById("cambio");
+        const opcionesCambio = cambio ? Array.from(cambio.options || []) : [];
+        const opcionAutomatico = opcionesCambio.find(
+                (option) => option.value === "automatico"
+        );
+        const shouldRestrictCambio = isElectrico || isHibrido;
+        const forzarAutomatico = shouldRestrictCambio && opcionAutomatico;
 
-	// Actualiza floating label tras cambio
-	updateSelectFloatingLabels();
+        dobleMotorContainer.style.display = isElectrico ? "" : "none";
+
+        if (dobleMotor) {
+                if (dobleMotor.dataset.originalRequired == null) {
+                        dobleMotor.dataset.originalRequired = dobleMotor.required
+                                ? "true"
+                                : "false";
+                }
+
+                if (!isElectrico) {
+                        dobleMotor.value = "";
+                        dobleMotor.required = false;
+                } else if (dobleMotor.dataset.originalRequired !== "false") {
+                        dobleMotor.required = true;
+                }
+        }
+
+        if (cambio && opcionesCambio.length > 0) {
+                opcionesCambio.forEach((option) => {
+                        if (option.dataset.originalDisabled == null) {
+                                option.dataset.originalDisabled = option.disabled
+                                        ? "true"
+                                        : "false";
+                        }
+
+                        if (!option.value) return;
+
+                        const esAutomatico = option.value === "automatico";
+                        if (shouldRestrictCambio && !esAutomatico) {
+                                option.disabled = true;
+                                option.hidden = true;
+                                option.dataset.hiddenByCombustible = "true";
+                                option.style.display = "none";
+                        } else {
+                                if (option.dataset.hiddenByCombustible) {
+                                        option.hidden = false;
+                                        option.style.display = "";
+                                        delete option.dataset.hiddenByCombustible;
+                                }
+                                option.disabled = option.dataset.originalDisabled === "true";
+                        }
+                });
+
+                if (forzarAutomatico && cambio.value !== "automatico") {
+                        cambio.value = "automatico";
+                        cambio.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+        }
+
+        // Actualiza floating label tras cambio
+        updateSelectFloatingLabels();
 
         // Refresca validación/resumen
         updateNextButtonState();

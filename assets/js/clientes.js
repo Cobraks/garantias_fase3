@@ -30,7 +30,9 @@
         const basePath = typeof router.basePath === 'string' ? router.basePath : '';
         const normalizedBasePath = basePath ? (basePath.endsWith('/') ? basePath : `${basePath}/`) : '';
 
+        const filters = document.querySelector('.guarantees-list__filters');
         const listContainer = document.querySelector('.guarantees-list');
+        const tableScrollContainer = document.querySelector('.guarantees-table__scroll');
         const table = document.querySelector('.guarantees-table');
         const tbody = table ? table.querySelector('tbody') : null;
         const searchInput = document.getElementById('clientes-search');
@@ -38,11 +40,88 @@
         const channelSelect = document.getElementById('clientes-channel-filter');
         const sentinel = document.getElementById('scroll-end');
         const spinner = sentinel ? sentinel.querySelector('.spinner') : null;
+        const cardsRoot = document.querySelector('[data-clients-cards]');
+        const cardsList = cardsRoot ? cardsRoot.querySelector('[data-clients-cards-list]') : null;
+        const cardsEmpty = cardsRoot ? cardsRoot.querySelector('[data-clients-cards-empty]') : null;
+        const cardsEmptyMessage = cardsEmpty
+            ? cardsEmpty.querySelector('[data-clients-cards-empty-message]')
+            : null;
         const panel1 = document.getElementById('detail-panel-1');
         const panel2 = document.getElementById('detail-panel-2');
+        const detail = document.querySelector('.guarantee-detail');
+        const header = document.querySelector('.top-bar');
 
         if (!tbody || !panel1 || !panel2) {
             return;
+        }
+
+        let filtersSticky = filters ? filters.classList.contains('sticky-active') : false;
+
+        if (filters && header) {
+            const observer = new IntersectionObserver(([entry]) => {
+                const isSticky = !entry.isIntersecting;
+                filters.classList.toggle('sticky-active', isSticky);
+                if (listContainer) {
+                    listContainer.classList.toggle('sticky-active', isSticky);
+                }
+                if (detail) {
+                    detail.classList.toggle('sticky-active', isSticky);
+                }
+                if (isSticky && !filtersSticky) {
+                    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+                        window.dispatchEvent(new CustomEvent('go360:notifications:close'));
+                        window.dispatchEvent(new CustomEvent('go360:profile:close'));
+                    }
+                }
+                filtersSticky = isSticky;
+            }, {
+                root: null,
+                threshold: 0,
+                rootMargin: '-50px',
+            });
+
+            observer.observe(header);
+        }
+
+        const getListScrollTop = () => {
+            if (tableScrollContainer && tableScrollContainer.scrollHeight > tableScrollContainer.clientHeight) {
+                return tableScrollContainer.scrollTop || 0;
+            }
+            if (listContainer) {
+                return listContainer.scrollTop || 0;
+            }
+            return window.pageYOffset
+                || document.documentElement.scrollTop
+                || document.body.scrollTop
+                || 0;
+        };
+
+        const onScroll = () => {
+            const activePanel = detail ? detail.querySelector('.guarantee-detail__panel.active') : null;
+            const detailScrolled = activePanel ? activePanel.scrollTop > 10 : false;
+            document.body.classList.toggle('scrolled', getListScrollTop() > 10 || detailScrolled);
+        };
+
+        if (listContainer) {
+            listContainer.addEventListener('scroll', onScroll);
+        }
+
+        if (tableScrollContainer && tableScrollContainer !== listContainer) {
+            tableScrollContainer.addEventListener('scroll', onScroll);
+        }
+
+        if (detail) {
+            detail.querySelectorAll('.guarantee-detail__panel').forEach((panel) => {
+                panel.addEventListener('scroll', onScroll);
+            });
+        }
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+
+        onScroll();
+
+        if (cardsEmptyMessage && typeof strings.noResults === 'string') {
+            cardsEmptyMessage.textContent = strings.noResults;
         }
 
         let dialogIdCounter = 0;
@@ -89,6 +168,7 @@
         const cache = new Map();
         const slugIndex = new Map();
         let selectedRow = null;
+        let selectedCard = null;
         let lastRowIndex = -1;
         let debounceTimer = null;
         const COLUMN_COUNT = 5;
@@ -647,6 +727,9 @@
             }
 
             spinner.style.display = visible ? 'block' : 'none';
+            if (sentinel) {
+                sentinel.classList.toggle('is-loading', Boolean(visible));
+            }
         }
 
         function updateCloseIcon() {
@@ -659,6 +742,21 @@
             } else {
                 closeIcon.classList.remove('visible');
             }
+        }
+
+        function renderAvatar(profile, altText) {
+            if (!profile || typeof profile !== 'object') {
+                return '<span class="clients-table__initials"></span>';
+            }
+
+            const avatarUrl = typeof profile.avatar === 'string' ? profile.avatar.trim() : '';
+            const initials = typeof profile.initials === 'string' ? profile.initials.trim() : '';
+
+            if (avatarUrl !== '') {
+                return `<img src="${escapeAttribute(avatarUrl)}" alt="${escapeAttribute(altText)}" class="clients-table__avatar">`;
+            }
+
+            return `<span class="clients-table__initials">${escapeHtml(initials)}</span>`;
         }
 
         function formatOffers(offers) {
@@ -726,9 +824,7 @@
             const safeName = displayName || name.company || '';
             const fallbackName = safeName !== '' ? safeName : '—';
             const avatarAlt = safeName !== '' ? safeName : (strings.client || 'Cliente');
-            const avatar = profile.avatar
-                ? `<img src="${escapeAttribute(profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="clients-table__avatar">`
-                : `<span class="clients-table__initials">${escapeHtml(profile.initials || '')}</span>`;
+            const avatar = renderAvatar(profile, avatarAlt);
             const companyName = typeof name.company === 'string' ? name.company.trim() : '';
             const channelLabel = normalizeSalesChannelLabel(salesChannel);
             const channelHtml = channelLabel !== ''
@@ -796,12 +892,115 @@
             return tr;
         }
 
+        function renderCard(item) {
+            if (!cardsList) {
+                return null;
+            }
+
+            const profile = item.profile || {};
+            const name = item.name || {};
+            const registered = item.registered || {};
+            const salesChannel = item.sales_channel || {};
+            const guarantees = item.guarantees || {};
+            const commercials = item.commercials || [];
+
+            const displayName = getDisplayName(name);
+            const safeName = displayName || name.company || '';
+            const fallbackName = safeName !== '' ? safeName : '—';
+            const avatarAlt = safeName !== '' ? safeName : (strings.client || 'Cliente');
+            const avatar = renderAvatar(profile, avatarAlt);
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+            const channelLabel = normalizeSalesChannelLabel(salesChannel);
+            const channelHtml = channelLabel !== ''
+                ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
+                : '';
+            const identityLine = companyName !== ''
+                ? `<span class="clients-table__company">${escapeHtml(companyName)}${channelHtml}</span>`
+                : channelHtml;
+            const offersHtml = formatOffers(item.offers);
+            const commercialsText = formatCommercialSummary(commercials);
+            const registeredValue = registered.display ? escapeHtml(registered.display) : '—';
+
+            const card = document.createElement('article');
+            card.className = 'clients-card';
+            card.tabIndex = 0;
+            card.dataset.id = String(item.id);
+            card.dataset.index = String(cardsList.children.length);
+            card.setAttribute('role', 'button');
+
+            const ariaBase = strings.detailTitle || 'Detalles del cliente';
+            card.setAttribute('aria-label', safeName !== '' ? `${ariaBase}: ${safeName}` : ariaBase);
+
+            card.innerHTML = `
+                <div class="clients-card__header">
+                    <div class="clients-table__client">
+                        <div class="clients-table__avatar-wrapper">${avatar}</div>
+                        <div class="clients-table__identity">
+                            <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
+                            ${identityLine || ''}
+                        </div>
+                    </div>
+                </div>
+                <dl class="clients-card__meta">
+                    <div class="clients-card__meta-item">
+                        <dt>${escapeHtml(strings.registered || 'Registro')}</dt>
+                        <dd>${registeredValue}</dd>
+                    </div>
+                    <div class="clients-card__meta-item">
+                        <dt>${escapeHtml(strings.offers || 'Ofertas activas')}</dt>
+                        <dd>${offersHtml}</dd>
+                    </div>
+                    <div class="clients-card__meta-item">
+                        <dt>${escapeHtml(strings.guarantees || 'Nº Garantías')}</dt>
+                        <dd>${formatCount(guarantees.count)}</dd>
+                    </div>
+                    <div class="clients-card__meta-item">
+                        <dt>${escapeHtml(strings.commercials || 'Comercial')}</dt>
+                        <dd>${escapeHtml(commercialsText || '—')}</dd>
+                    </div>
+                </dl>
+            `;
+
+            card.addEventListener('click', () => {
+                const rowId = card.dataset.id || '';
+                const targetRow = tbody.querySelector(`tr[data-id="${rowId}"]`);
+                const targetItem = cache.get(String(item.id)) || item;
+
+                if (targetRow && targetItem) {
+                    selectRow(targetRow, targetItem);
+                }
+            });
+
+            card.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    card.click();
+                }
+            });
+
+            return card;
+        }
+
+        function updateSelectedCard(card) {
+            if (selectedCard && selectedCard !== card) {
+                selectedCard.classList.remove('selected');
+            }
+
+            selectedCard = card || null;
+
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
+            }
+        }
+
         function selectRow(row, item, options = {}) {
             const preserveUrl = Boolean(options.preserveUrl);
             if (selectedRow === row) {
                 if (!preserveUrl) {
                     row.classList.remove('selected');
+                    updateSelectedCard(null);
                     selectedRow = null;
+                    selectedCard = null;
                     lastRowIndex = -1;
                     updateHistory('');
                     showEmptyDetail('backward');
@@ -820,6 +1019,11 @@
             selectedRow = row;
             lastRowIndex = nextIndex;
             row.classList.add('selected');
+
+            const matchingCard = cardsList && row.dataset.id
+                ? cardsList.querySelector(`.clients-card[data-id="${row.dataset.id}"]`)
+                : null;
+            updateSelectedCard(matchingCard);
 
             const slugValue = getPreferredSlug(item);
             if (slugValue) {
@@ -4797,7 +5001,11 @@
             if (selectedRow) {
                 selectedRow.classList.remove('selected');
             }
+            if (selectedCard) {
+                selectedCard.classList.remove('selected');
+            }
             selectedRow = null;
+            selectedCard = null;
             lastRowIndex = -1;
         }
 
@@ -4814,11 +5022,18 @@
                 tbody.innerHTML = '';
                 cache.clear();
                 clearSelection();
+                if (cardsList) {
+                    cardsList.innerHTML = '';
+                }
                 if (initialSlug) {
                     showLoadingDetail();
                 } else {
                     showEmptyDetail('forward', { animate: false });
                 }
+            }
+
+            if (cardsEmpty) {
+                cardsEmpty.hidden = true;
             }
 
             const params = new URLSearchParams();
@@ -4862,6 +5077,15 @@
                     if (typeof table.__goUpdateColumnOverlay === 'function') {
                         table.__goUpdateColumnOverlay();
                     }
+                    if (cardsList) {
+                        cardsList.innerHTML = '';
+                    }
+                    if (cardsEmpty) {
+                        if (cardsEmptyMessage && typeof strings.noResults === 'string') {
+                            cardsEmptyMessage.textContent = strings.noResults;
+                        }
+                        cardsEmpty.hidden = false;
+                    }
                     return;
                 }
 
@@ -4869,7 +5093,17 @@
                     cache.set(String(item.id), item);
                     const row = renderRow(item);
                     tbody.appendChild(row);
+                    if (cardsList) {
+                        const card = renderCard(item);
+                        if (card) {
+                            cardsList.appendChild(card);
+                        }
+                    }
                 });
+
+                if (cardsEmpty) {
+                    cardsEmpty.hidden = true;
+                }
 
                 if (initialSlug) {
                     const matchedId = slugIndex.get(initialSlug);
@@ -4882,6 +5116,14 @@
                             window.requestAnimationFrame(() => {
                                 targetRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
                             });
+                            if (cardsList) {
+                                window.requestAnimationFrame(() => {
+                                    const targetCard = cardsList.querySelector(`.clients-card[data-id="${String(matchedId)}"]`);
+                                    if (targetCard) {
+                                        targetCard.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                                    }
+                                });
+                            }
                         }
                     } else if (state.page < state.totalPages) {
                         queuedPage = state.page + 1;
@@ -4907,6 +5149,16 @@
                     tbody.appendChild(errorRow);
                     if (typeof table.__goUpdateColumnOverlay === 'function') {
                         table.__goUpdateColumnOverlay();
+                    }
+                    if (cardsList) {
+                        cardsList.innerHTML = '';
+                    }
+                    if (cardsEmpty) {
+                        const errorMessage = strings.error || 'No se ha podido cargar la información de clientes.';
+                        if (cardsEmptyMessage) {
+                            cardsEmptyMessage.textContent = errorMessage;
+                        }
+                        cardsEmpty.hidden = false;
                     }
                 }
             } finally {
