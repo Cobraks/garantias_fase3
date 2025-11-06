@@ -417,22 +417,8 @@
 
         var hero = document.querySelector('.averia-hero');
         if (hero) {
-            var sentinel = hero.previousElementSibling;
-            if (!sentinel || !sentinel.classList || !sentinel.classList.contains('averia-hero__sentinel')) {
-                sentinel = document.createElement('span');
-                sentinel.className = 'averia-hero__sentinel';
-                sentinel.setAttribute('aria-hidden', 'true');
-                if (hero.parentNode) {
-                    hero.parentNode.insertBefore(sentinel, hero);
-                }
-            }
-
             var stickyClass = 'body--averia-detail__hero_sticky';
-            var scrollTicking = false;
-
-            var toggleHeroState = function (shouldStick) {
-                document.body.classList.toggle(stickyClass, shouldStick);
-            };
+            var lastState = null;
 
             var computeStickyState = function () {
                 var topOffset = 0;
@@ -445,37 +431,16 @@
                 }
 
                 var rect = hero.getBoundingClientRect();
-                var shouldStick = rect.top <= topOffset + 0.5;
-                toggleHeroState(shouldStick);
-            };
+                var shouldStick = rect.top <= topOffset;
 
-            if ('IntersectionObserver' in window && sentinel && sentinel.parentNode) {
-                var heroObserver = new IntersectionObserver(function (entries) {
-                    if (!entries || !entries.length) {
-                        return;
-                    }
-
-                    var entry = entries[0];
-                    var shouldStick = !entry.isIntersecting;
-                    toggleHeroState(shouldStick);
-                });
-
-                heroObserver.observe(sentinel);
-            }
-
-            var onScrollOrResize = function () {
-                if (scrollTicking) {
-                    return;
+                if (shouldStick !== lastState) {
+                    lastState = shouldStick;
+                    document.body.classList.toggle(stickyClass, shouldStick);
                 }
-                scrollTicking = true;
-                requestAnimationFrame(function () {
-                    scrollTicking = false;
-                    computeStickyState();
-                });
             };
 
-            window.addEventListener('scroll', onScrollOrResize, { passive: true });
-            window.addEventListener('resize', onScrollOrResize);
+            window.addEventListener('scroll', computeStickyState, { passive: true });
+            window.addEventListener('resize', computeStickyState);
 
             computeStickyState();
         }
