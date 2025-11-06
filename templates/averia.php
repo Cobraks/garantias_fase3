@@ -208,25 +208,11 @@ $sample_metrics = [
     ],
 ];
 
-$sample_checklist = [
-    [
-        'label'   => __('Solicitar peritaje presencial', 'garantias-online-360vo'),
-        'due'     => '14/10/2025',
-        'owner'   => 'Gestor 360VO',
-        'status'  => 'pending',
-    ],
-    [
-        'label'   => __('Validar documentación del taller', 'garantias-online-360vo'),
-        'due'     => '15/10/2025',
-        'owner'   => 'Admin 360VO',
-        'status'  => 'in_progress',
-    ],
-    [
-        'label'   => __('Confirmar cobertura con el cliente', 'garantias-online-360vo'),
-        'due'     => '16/10/2025',
-        'owner'   => 'Gestor 360VO',
-        'status'  => 'done',
-    ],
+$sample_event_types = [
+    __('Llamada', 'garantias-online-360vo'),
+    __('Correo', 'garantias-online-360vo'),
+    __('Nota interna', 'garantias-online-360vo'),
+    __('Actualización de estado', 'garantias-online-360vo'),
 ];
 
 $sample_documents = [
@@ -352,11 +338,6 @@ $empty_messages = [
             ],
         ];
 
-        $checklist_status_labels = [
-            'pending'     => __('Pendiente', 'garantias-online-360vo'),
-            'in_progress' => __('En progreso', 'garantias-online-360vo'),
-            'done'        => __('Completada', 'garantias-online-360vo'),
-        ];
         ?>
 
         <header class="averia-hero">
@@ -433,34 +414,39 @@ $empty_messages = [
 
                 <section class="averia-card">
                     <header class="averia-card__header">
-                        <h2 class="averia-card__title"><?php esc_html_e('Checklist operativa', 'garantias-online-360vo'); ?></h2>
-                        <p class="averia-card__subtitle"><?php esc_html_e('Controla los hitos clave del expediente', 'garantias-online-360vo'); ?></p>
-                    </header>
-                    <ul class="averia-checklist">
-                        <?php foreach ($sample_checklist as $item) :
-                            $status_key   = $item['status'] ?? 'pending';
-                            $status_label = $checklist_status_labels[$status_key] ?? $checklist_status_labels['pending'];
-                            ?>
-                            <li class="averia-checklist__item averia-checklist__item--<?php echo esc_attr($status_key); ?>">
-                                <div class="averia-checklist__marker" aria-hidden="true"></div>
-                                <div class="averia-checklist__content">
-                                    <p class="averia-checklist__label"><?php echo esc_html($item['label']); ?></p>
-                                    <p class="averia-checklist__meta">
-                                        <span><?php printf(esc_html__('Responsable: %s', 'garantias-online-360vo'), esc_html($item['owner'])); ?></span>
-                                        <span><?php printf(esc_html__('Límite: %s', 'garantias-online-360vo'), esc_html($item['due'])); ?></span>
-                                    </p>
-                                </div>
-                                <span class="averia-checklist__status"><?php echo esc_html($status_label); ?></span>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </section>
-
-                <section class="averia-card">
-                    <header class="averia-card__header">
                         <h2 class="averia-card__title"><?php esc_html_e('Historial de actividad', 'garantias-online-360vo'); ?></h2>
                         <p class="averia-card__subtitle"><?php esc_html_e('Seguimiento centralizado de comunicaciones y cambios', 'garantias-online-360vo'); ?></p>
                     </header>
+                    <div class="averia-timeline__form" aria-label="<?php esc_attr_e('Registrar evento manual', 'garantias-online-360vo'); ?>">
+                        <form class="averia-form" action="#" method="post">
+                            <div class="averia-form__row averia-form__row--split">
+                                <label class="averia-form__field">
+                                    <span class="averia-form__label"><?php esc_html_e('Tipo de evento', 'garantias-online-360vo'); ?></span>
+                                    <select class="averia-select" name="event_type">
+                                        <?php foreach ($sample_event_types as $event_type) : ?>
+                                            <option><?php echo esc_html($event_type); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </label>
+                                <label class="averia-form__field">
+                                    <span class="averia-form__label"><?php esc_html_e('Fecha', 'garantias-online-360vo'); ?></span>
+                                    <input class="averia-input" type="date" name="event_date" value="<?php echo esc_attr(date('Y-m-d')); ?>">
+                                </label>
+                            </div>
+                            <label class="averia-form__field">
+                                <span class="averia-form__label"><?php esc_html_e('Descripción', 'garantias-online-360vo'); ?></span>
+                                <textarea class="averia-textarea" name="event_description" rows="4" placeholder="<?php esc_attr_e('Añade los detalles relevantes del contacto o actualización', 'garantias-online-360vo'); ?>"></textarea>
+                            </label>
+                            <div class="averia-form__actions">
+                                <button type="submit" class="averia-button averia-button--primary">
+                                    <?php esc_html_e('Registrar evento', 'garantias-online-360vo'); ?>
+                                </button>
+                                <button type="button" class="averia-button averia-button--ghost">
+                                    <?php esc_html_e('Adjuntar archivo', 'garantias-online-360vo'); ?>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                     <ol class="averia-timeline">
                         <?php foreach ($sample_history as $entry) : ?>
                             <li class="averia-timeline__item">
