@@ -418,19 +418,48 @@
         var hero = document.querySelector('.averia-hero');
         if (hero) {
             var stickyClass = 'body--averia-detail__hero_sticky';
-            var sentinel = hero.previousElementSibling && hero.previousElementSibling.classList.contains('averia-hero__sentinel')
-                ? hero.previousElementSibling
-                : null;
-
-            if (!sentinel) {
-                sentinel = document.createElement('span');
-                sentinel.className = 'averia-hero__sentinel';
-                hero.parentNode.insertBefore(sentinel, hero);
-            }
-
+            var stickyThreshold = 0;
             var lastState = null;
 
-            var applyState = function (shouldStick) {
+            var getScrollTop = function () {
+                return window.pageYOffset
+                    || document.documentElement.scrollTop
+                    || document.body.scrollTop
+                    || 0;
+            };
+
+            var parseStickyTop = function () {
+                var rawTop = '0';
+
+                if (window.getComputedStyle) {
+                    rawTop = window.getComputedStyle(hero).top || '0';
+                } else if (hero.style && hero.style.top) {
+                    rawTop = hero.style.top;
+                }
+
+                var parsed = parseInt(rawTop, 10);
+                return Number.isFinite(parsed) ? parsed : 0;
+            };
+
+            var computeOffsetTop = function (element) {
+                var offset = 0;
+                var current = element;
+
+                while (current) {
+                    offset += current.offsetTop || 0;
+                    current = current.offsetParent;
+                }
+
+                return offset;
+            };
+
+            var recalcThreshold = function () {
+                stickyThreshold = computeOffsetTop(hero) - parseStickyTop();
+            };
+
+            var applyState = function () {
+                var shouldStick = getScrollTop() >= stickyThreshold;
+
                 if (shouldStick === lastState) {
                     return;
                 }
@@ -439,52 +468,17 @@
                 document.body.classList.toggle(stickyClass, shouldStick);
             };
 
-            if ('IntersectionObserver' in window) {
-                var observer = new IntersectionObserver(function (entries) {
-                    if (!entries || !entries.length) {
-                        return;
-                    }
+            recalcThreshold();
+            applyState();
 
-                    var entry = entries[0];
-                    var isSticky = entry && entry.boundingClientRect
-                        ? entry.boundingClientRect.top < 0 && entry.isIntersecting === false
-                        : false;
+            window.addEventListener('scroll', function () {
+                requestAnimationFrame(applyState);
+            }, { passive: true });
 
-                    applyState(isSticky);
-                }, { threshold: [0] });
-
-                observer.observe(sentinel);
-            } else {
-                var sentinelOffset = 0;
-
-                var recalculateOffset = function () {
-                    var rect = sentinel.getBoundingClientRect ? sentinel.getBoundingClientRect() : null;
-                    var viewportOffset = window.pageYOffset
-                        || document.documentElement.scrollTop
-                        || document.body.scrollTop
-                        || 0;
-
-                    sentinelOffset = viewportOffset + (rect ? rect.top : 0);
-                };
-
-                var handleScroll = function () {
-                    var scrollTop = window.pageYOffset
-                        || document.documentElement.scrollTop
-                        || document.body.scrollTop
-                        || 0;
-
-                    applyState(scrollTop > sentinelOffset);
-                };
-
-                recalculateOffset();
-                handleScroll();
-
-                window.addEventListener('scroll', handleScroll, { passive: true });
-                window.addEventListener('resize', function () {
-                    recalculateOffset();
-                    handleScroll();
-                });
-            }
+            window.addEventListener('resize', function () {
+                recalcThreshold();
+                requestAnimationFrame(applyState);
+            });
         }
 
         var navigableRows = Array.prototype.slice.call(document.querySelectorAll('.guarantees-table__row[data-expediente-url]'));
