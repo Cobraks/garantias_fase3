@@ -240,7 +240,7 @@
         transform: translateY(-100%);
     }
 
-    .container.clients-page {
+    body.body--clients .container.clients-page {
         position: absolute;
         top: calc(var(--alturaHeader) + var(--spacing-3));
         bottom: var(--alturaFooter);
@@ -288,12 +288,17 @@
     .main-grid.clients-page .guarantees-container {
         grid-column: span 2;
         display: grid;
-        grid-template-columns: 2fr 1fr;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
         gap: var(--spacing-3);
         height: 100%;
         overflow: hidden;
         align-items: start;
         margin-top: var(--spacing-3);
+    }
+
+    .main-grid.clients-page section.guarantees-list,
+    .main-grid.clients-page .guarantee-detail {
+        min-width: 0;
     }
 
     .main-grid.clients-page section.guarantees-list {
