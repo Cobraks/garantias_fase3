@@ -362,6 +362,7 @@ $empty_messages = [
 
         ?>
 
+        <span class="averia-hero__sentinel" aria-hidden="true"></span>
         <section class="averia-hero" aria-label="<?php esc_attr_e('Resumen del expediente', 'garantias-online-360vo'); ?>">
             <div class="averia-hero__headline">
                 <div class="averia-hero__status">

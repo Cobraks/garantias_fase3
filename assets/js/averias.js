@@ -418,33 +418,73 @@
         var hero = document.querySelector('.averia-hero');
         if (hero) {
             var stickyClass = 'body--averia-detail__hero_sticky';
+            var sentinel = hero.previousElementSibling && hero.previousElementSibling.classList.contains('averia-hero__sentinel')
+                ? hero.previousElementSibling
+                : null;
+
+            if (!sentinel) {
+                sentinel = document.createElement('span');
+                sentinel.className = 'averia-hero__sentinel';
+                hero.parentNode.insertBefore(sentinel, hero);
+            }
+
             var lastState = null;
 
-            var getTopOffset = function () {
-                var computedStyle = window.getComputedStyle ? window.getComputedStyle(hero) : null;
-                if (!computedStyle) {
-                    return 0;
+            var applyState = function (shouldStick) {
+                if (shouldStick === lastState) {
+                    return;
                 }
 
-                var parsedTop = parseFloat(computedStyle.top);
-                return Number.isFinite(parsedTop) ? parsedTop : 0;
+                lastState = shouldStick;
+                document.body.classList.toggle(stickyClass, shouldStick);
             };
 
-            var updateStickyState = function () {
-                var rect = hero.getBoundingClientRect ? hero.getBoundingClientRect() : null;
-                var heroTop = rect ? rect.top : hero.offsetTop;
-                var shouldStick = heroTop <= getTopOffset() + 0.5;
+            if ('IntersectionObserver' in window) {
+                var observer = new IntersectionObserver(function (entries) {
+                    if (!entries || !entries.length) {
+                        return;
+                    }
 
-                if (shouldStick !== lastState) {
-                    lastState = shouldStick;
-                    document.body.classList.toggle(stickyClass, shouldStick);
-                }
-            };
+                    var entry = entries[0];
+                    var isSticky = entry && entry.boundingClientRect
+                        ? entry.boundingClientRect.top < 0 && entry.isIntersecting === false
+                        : false;
 
-            updateStickyState();
+                    applyState(isSticky);
+                }, { threshold: [0] });
 
-            window.addEventListener('scroll', updateStickyState, { passive: true });
-            window.addEventListener('resize', updateStickyState);
+                observer.observe(sentinel);
+            } else {
+                var sentinelOffset = 0;
+
+                var recalculateOffset = function () {
+                    var rect = sentinel.getBoundingClientRect ? sentinel.getBoundingClientRect() : null;
+                    var viewportOffset = window.pageYOffset
+                        || document.documentElement.scrollTop
+                        || document.body.scrollTop
+                        || 0;
+
+                    sentinelOffset = viewportOffset + (rect ? rect.top : 0);
+                };
+
+                var handleScroll = function () {
+                    var scrollTop = window.pageYOffset
+                        || document.documentElement.scrollTop
+                        || document.body.scrollTop
+                        || 0;
+
+                    applyState(scrollTop > sentinelOffset);
+                };
+
+                recalculateOffset();
+                handleScroll();
+
+                window.addEventListener('scroll', handleScroll, { passive: true });
+                window.addEventListener('resize', function () {
+                    recalculateOffset();
+                    handleScroll();
+                });
+            }
         }
 
         var navigableRows = Array.prototype.slice.call(document.querySelectorAll('.guarantees-table__row[data-expediente-url]'));
