@@ -296,6 +296,19 @@
         margin-top: var(--spacing-3);
     }
 
+    .main-grid.clients-page .guarantee-detail {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .main-grid.clients-page .guarantee-detail__panel {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: none;
+    }
+
     .main-grid.clients-page section.guarantees-list,
     .main-grid.clients-page .guarantee-detail {
         min-width: 0;
