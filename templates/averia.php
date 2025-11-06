@@ -22,7 +22,7 @@ $license_plate = $license_plate !== '' ? strtoupper($license_plate) : '';
 $view_mode = 'case';
 
 $sample_case = [
-    'reference'         => 'EXP-AV-2025-00123',
+    'reference'         => 'EXP-AV-1234BCD',
     'status'            => 'Pendiente de taller',
     'status_key'        => 'pendiente_taller',
     'status_variant'    => 'warning',
@@ -45,7 +45,7 @@ $sample_case = [
     'last_update'       => '13/10/2025',
     'peritaje_required' => true,
     'cover_element'     => 'Por confirmar',
-    'license_plate'     => '1234 ABC',
+    'license_plate'     => '1234BCD',
     'vehicle_details'   => '#',
     'sales_channel'     => [
         'role'        => __('Profesional', 'garantias-online-360vo'),
@@ -258,7 +258,6 @@ $empty_messages = [
         $status_variant     = $sample_case['status_variant'] ?? 'info';
         $opened_label       = $sample_case['opened'] ?? '';
         $last_update_label  = $sample_case['last_update'] ?? '';
-        $summary_text       = $sample_case['summary'] ?? '';
         $vehicle_name       = $sample_case['vehicle_name'] ?? '';
         $vehicle_age        = $sample_case['vehicle_age'] ?? '';
         $peritaje_required  = ! empty($sample_case['peritaje_required']);
@@ -287,19 +286,6 @@ $empty_messages = [
             }
         );
 
-        $hero_brief = [
-            __('Titular', 'garantias-online-360vo')            => $sample_case['owner'] ?? '',
-            __('Garantía asociada', 'garantias-online-360vo')  => $sample_case['policy'] ?? '',
-            __('Vendedor', 'garantias-online-360vo')           => $sample_case['vendor'] ?? '',
-        ];
-
-        $hero_brief = array_filter(
-            $hero_brief,
-            static function ($value) {
-                return trim((string) $value) !== '';
-            }
-        );
-
         $hero_highlights = [
             [
                 'label' => __('Fecha de apertura', 'garantias-online-360vo'),
@@ -312,10 +298,6 @@ $empty_messages = [
             [
                 'label' => __('Última actualización', 'garantias-online-360vo'),
                 'value' => $last_update_label,
-            ],
-            [
-                'label' => __('SLA restante', 'garantias-online-360vo'),
-                'value' => $sample_case['sla_remaining'] ?? '',
             ],
         ];
 
@@ -412,21 +394,7 @@ $empty_messages = [
                     <?php endif; ?>
                 </div>
                 <h1 class="averia-hero__title"><?php echo esc_html($expediente_label); ?></h1>
-                <?php if ($summary_text !== '') : ?>
-                    <p class="averia-hero__summary"><?php echo esc_html($summary_text); ?></p>
-                <?php endif; ?>
             </div>
-
-            <?php if (! empty($hero_brief)) : ?>
-                <dl class="averia-hero__brief">
-                    <?php foreach ($hero_brief as $brief_label => $brief_value) : ?>
-                        <div class="averia-hero__brief-item">
-                            <dt><?php echo esc_html($brief_label); ?></dt>
-                            <dd><?php echo esc_html($brief_value); ?></dd>
-                        </div>
-                    <?php endforeach; ?>
-                </dl>
-            <?php endif; ?>
 
             <?php if (! empty($hero_highlights)) : ?>
                 <dl class="averia-hero__meta">
@@ -619,35 +587,45 @@ $empty_messages = [
             </aside>
 
             <aside class="averia-layout__support" aria-label="<?php esc_attr_e('Soporte y documentación', 'garantias-online-360vo'); ?>">
-                <section class="averia-card">
-                    <header class="averia-card__header">
-                        <h2 class="averia-card__title"><?php esc_html_e('Documentación', 'garantias-online-360vo'); ?></h2>
-                        <button type="button" class="averia-button averia-button--ghost">
-                            <?php esc_html_e('Subir archivo', 'garantias-online-360vo'); ?>
-                        </button>
-                    </header>
-                    <ul class="averia-documents">
-                        <?php foreach ($sample_documents as $document) : ?>
-                            <li class="averia-documents__item">
-                                <div class="averia-documents__info">
-                                    <p class="averia-documents__label"><?php echo esc_html($document['label']); ?></p>
-                                    <span class="averia-documents__meta"><?php echo esc_html($document['type'] . ' · ' . $document['size']); ?></span>
-                                </div>
-                                <button type="button" class="averia-button averia-button--inline">
-                                    <?php esc_html_e('Previsualizar', 'garantias-online-360vo'); ?>
+                <section class="averia-card averia-card--accordion">
+                    <details class="averia-accordion" open>
+                        <summary class="averia-accordion__summary">
+                            <h2 class="averia-card__title"><?php esc_html_e('Documentación', 'garantias-online-360vo'); ?></h2>
+                            <span class="averia-accordion__icon" aria-hidden="true"></span>
+                        </summary>
+                        <div class="averia-accordion__content">
+                            <div class="averia-accordion__actions">
+                                <button type="button" class="averia-button averia-button--ghost">
+                                    <?php esc_html_e('Subir archivo', 'garantias-online-360vo'); ?>
                                 </button>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
+                            </div>
+                            <ul class="averia-documents">
+                                <?php foreach ($sample_documents as $document) : ?>
+                                    <li class="averia-documents__item">
+                                        <div class="averia-documents__info">
+                                            <p class="averia-documents__label"><?php echo esc_html($document['label']); ?></p>
+                                            <span class="averia-documents__meta"><?php echo esc_html($document['type'] . ' · ' . $document['size']); ?></span>
+                                        </div>
+                                        <button type="button" class="averia-button averia-button--inline">
+                                            <?php esc_html_e('Previsualizar', 'garantias-online-360vo'); ?>
+                                        </button>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    </details>
                 </section>
 
-                <section class="averia-card">
-                    <header class="averia-card__header">
-                        <h2 class="averia-card__title"><?php esc_html_e('Contactos clave', 'garantias-online-360vo'); ?></h2>
-                        <p class="averia-card__subtitle"><?php esc_html_e('Canales de comunicación directos', 'garantias-online-360vo'); ?></p>
-                    </header>
-                    <div class="averia-contact-grid">
-                        <?php foreach ($contact_cards as $contact) :
+                <section class="averia-card averia-card--accordion">
+                    <details class="averia-accordion" open>
+                        <summary class="averia-accordion__summary">
+                            <h2 class="averia-card__title"><?php esc_html_e('Contactos clave', 'garantias-online-360vo'); ?></h2>
+                            <span class="averia-accordion__icon" aria-hidden="true"></span>
+                        </summary>
+                        <div class="averia-accordion__content">
+                            <p class="averia-card__subtitle"><?php esc_html_e('Canales de comunicación directos', 'garantias-online-360vo'); ?></p>
+                            <div class="averia-contact-grid">
+                                <?php foreach ($contact_cards as $contact) :
                             $phone   = $contact['phone'] ?? [];
                             $email   = $contact['email'] ?? [];
                             $details = $contact['details'] ?? [];
@@ -696,7 +674,9 @@ $empty_messages = [
                                 <?php endif; ?>
                             </article>
                         <?php endforeach; ?>
-                    </div>
+                            </div>
+                        </div>
+                    </details>
                 </section>
 
                 <section class="averia-card">
