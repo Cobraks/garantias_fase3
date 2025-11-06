@@ -347,12 +347,10 @@ export function validateField(input, showError = false, isHardCheck = false) {
         }
 
 	// Doble motor: solo obligatorio si el combustible lo requiere
-	if (id === "doble_motor") {
-		const combustible = document.getElementById("combustible")?.value || "";
-		const requiere = ["electrico", "hibrido", "gpl_gnc"].includes(
-			combustible.toLowerCase()
-		);
-		if (requiere) {
+        if (id === "doble_motor") {
+                const combustible = document.getElementById("combustible")?.value || "";
+                const requiere = combustible.toLowerCase() === "electrico";
+                if (requiere) {
                         if (!input.value) {
                                 if (revealError) setError(input, "Este campo es obligatorio.");
                                 return false;
@@ -458,7 +456,10 @@ function setupInputValidationBehavior(input) {
         const id = input.id;
 
         const handler = debounce((e) => {
-                input.dataset.touched = "true";
+                const triggeredByUser = e?.isTrusted === true;
+                if (triggeredByUser) {
+                        input.dataset.touched = "true";
+                }
                 if (id === "matricula") {
                         lastCheckedPlate = "";
                         input.dataset.duplicate = "pending";
@@ -474,7 +475,7 @@ function setupInputValidationBehavior(input) {
                         else formatNumber(input);
                 }
                 // Validación ligera (sin hard check)
-                const showErr = e?.isTrusted ?? true;
+                const showErr = triggeredByUser || typeof e === "undefined";
                 validateField(input, showErr, false);
                 // UI updates
                 FormUI.toggleClearButton(input);
@@ -505,7 +506,9 @@ function setupInputValidationBehavior(input) {
 
         if (input.tagName === "SELECT") {
                 input.addEventListener("change", (e) => {
-                        input.dataset.touched = "true";
+                        if (e.isTrusted) {
+                                input.dataset.touched = "true";
+                        }
                         validateField(input, e.isTrusted, true);
                         updateNextButtonState();
                 });
@@ -513,7 +516,9 @@ function setupInputValidationBehavior(input) {
 
         if (input.type === "checkbox" || input.type === "radio") {
                 input.addEventListener("change", (e) => {
-                        input.dataset.touched = "true";
+                        if (e.isTrusted) {
+                                input.dataset.touched = "true";
+                        }
                         validateField(input, e.isTrusted, true);
                         updateNextButtonState();
                 });
