@@ -287,6 +287,19 @@ $empty_messages = [
             }
         );
 
+        $hero_brief = [
+            __('Titular', 'garantias-online-360vo')            => $sample_case['owner'] ?? '',
+            __('Garantía asociada', 'garantias-online-360vo')  => $sample_case['policy'] ?? '',
+            __('Vendedor', 'garantias-online-360vo')           => $sample_case['vendor'] ?? '',
+        ];
+
+        $hero_brief = array_filter(
+            $hero_brief,
+            static function ($value) {
+                return trim((string) $value) !== '';
+            }
+        );
+
         $hero_highlights = [
             [
                 'label' => __('Fecha de apertura', 'garantias-online-360vo'),
@@ -404,21 +417,21 @@ $empty_messages = [
                 <?php endif; ?>
             </div>
 
-            <?php if (! empty($context_overview)) : ?>
-                <ul class="averia-hero__context">
-                    <?php foreach ($context_overview as $context_label => $context_value) : ?>
-                        <li>
-                            <span><?php echo esc_html($context_label); ?></span>
-                            <strong><?php echo esc_html($context_value); ?></strong>
-                        </li>
+            <?php if (! empty($hero_brief)) : ?>
+                <dl class="averia-hero__brief">
+                    <?php foreach ($hero_brief as $brief_label => $brief_value) : ?>
+                        <div class="averia-hero__brief-item">
+                            <dt><?php echo esc_html($brief_label); ?></dt>
+                            <dd><?php echo esc_html($brief_value); ?></dd>
+                        </div>
                     <?php endforeach; ?>
-                </ul>
+                </dl>
             <?php endif; ?>
 
             <?php if (! empty($hero_highlights)) : ?>
                 <dl class="averia-hero__meta">
                     <?php foreach ($hero_highlights as $highlight) : ?>
-                        <div>
+                        <div class="averia-hero__meta-item">
                             <dt><?php echo esc_html($highlight['label']); ?></dt>
                             <dd><?php echo esc_html($highlight['value']); ?></dd>
                         </div>
@@ -452,7 +465,24 @@ $empty_messages = [
                         <h2 class="averia-card__title"><?php esc_html_e('Historial de actividad', 'garantias-online-360vo'); ?></h2>
                         <p class="averia-card__subtitle"><?php esc_html_e('Seguimiento centralizado de comunicaciones y cambios', 'garantias-online-360vo'); ?></p>
                     </header>
-                    <div class="averia-timeline__form" aria-label="<?php esc_attr_e('Registrar evento manual', 'garantias-online-360vo'); ?>">
+                    <div class="averia-timeline__scroller" tabindex="0" aria-label="<?php esc_attr_e('Eventos registrados en la avería', 'garantias-online-360vo'); ?>">
+                        <ol class="averia-timeline">
+                            <?php foreach ($sample_history as $entry) : ?>
+                                <li class="averia-timeline__item">
+                                    <div class="averia-timeline__point" aria-hidden="true"></div>
+                                    <div class="averia-timeline__body">
+                                        <header class="averia-timeline__header">
+                                            <span class="averia-timeline__type"><?php echo esc_html($entry['type']); ?></span>
+                                            <time datetime="<?php echo esc_attr($entry['date']); ?>"><?php echo esc_html($entry['date']); ?></time>
+                                        </header>
+                                        <p class="averia-timeline__actor"><?php echo esc_html($entry['actor']); ?></p>
+                                        <p class="averia-timeline__description"><?php echo esc_html($entry['description']); ?></p>
+                                    </div>
+                                </li>
+                            <?php endforeach; ?>
+                        </ol>
+                    </div>
+                    <div class="averia-timeline__composer" aria-label="<?php esc_attr_e('Registrar evento manual', 'garantias-online-360vo'); ?>">
                         <form class="averia-form" action="#" method="post">
                             <div class="averia-form__row averia-form__row--split">
                                 <label class="averia-form__field">
@@ -482,21 +512,6 @@ $empty_messages = [
                             </div>
                         </form>
                     </div>
-                    <ol class="averia-timeline">
-                        <?php foreach ($sample_history as $entry) : ?>
-                            <li class="averia-timeline__item">
-                                <div class="averia-timeline__point" aria-hidden="true"></div>
-                                <div class="averia-timeline__body">
-                                    <header class="averia-timeline__header">
-                                        <span class="averia-timeline__type"><?php echo esc_html($entry['type']); ?></span>
-                                        <time datetime="<?php echo esc_attr($entry['date']); ?>"><?php echo esc_html($entry['date']); ?></time>
-                                    </header>
-                                    <p class="averia-timeline__actor"><?php echo esc_html($entry['actor']); ?></p>
-                                    <p class="averia-timeline__description"><?php echo esc_html($entry['description']); ?></p>
-                                </div>
-                            </li>
-                        <?php endforeach; ?>
-                    </ol>
                 </section>
 
                 <section class="averia-card">

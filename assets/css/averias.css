@@ -21,9 +21,9 @@
     --averia-color-success: #0f766e;
     --averia-color-warning: #b45309;
     --averia-color-info: #0f172a;
-    --averia-breakpoint-md: 48rem;
-    --averia-breakpoint-lg: 64rem;
-    --averia-breakpoint-xl: 90rem; /* 1440px */
+    --averia-breakpoint-md: 768px;
+    --averia-breakpoint-lg: 1024px;
+    --averia-breakpoint-xl: 1440px;
 }
 
 body.body--averia-detail {
@@ -34,6 +34,11 @@ body.body--averia-detail {
 
 .body--averia-detail .container {
     padding-bottom: var(--averia-spacing-8);
+}
+
+.body--averia-detail .container.guarantees-page {
+    position: static;
+    inset: auto;
 }
 
 /* Estado vacío --------------------------------------------------------- */
@@ -133,13 +138,7 @@ body.body--averia-detail {
     display: flex;
     flex-direction: column;
     gap: var(--averia-spacing-6);
-    padding: var(--averia-spacing-6) var(--averia-spacing-4) var(--averia-spacing-8);
-}
-
-@media (min-width: 48rem) {
-    .averia-detail {
-        padding: var(--averia-spacing-8);
-    }
+    padding: 0;
 }
 
 .averia-hero {
@@ -151,6 +150,7 @@ body.body--averia-detail {
     gap: var(--averia-spacing-4);
     grid-template-areas:
         "primary"
+        "brief"
         "meta";
 }
 
@@ -158,6 +158,35 @@ body.body--averia-detail {
     grid-area: primary;
     display: grid;
     gap: var(--averia-spacing-3);
+}
+
+.averia-hero__brief {
+    grid-area: brief;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--averia-spacing-3);
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.averia-hero__brief-item {
+    display: grid;
+    gap: 0.3rem;
+    padding: var(--averia-spacing-3);
+    border-radius: var(--averia-radius-lg);
+    background: rgba(15, 23, 42, 0.04);
+}
+
+.averia-hero__brief dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--averia-color-muted);
+}
+
+.averia-hero__brief dd {
+    margin: 0;
+    font-weight: 600;
 }
 
 .averia-hero__status {
@@ -211,68 +240,57 @@ body.body--averia-detail {
     line-height: 1.5;
 }
 
-.averia-hero__context {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: var(--averia-spacing-2);
-}
-
-.averia-hero__context li {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--averia-spacing-2);
-    font-size: 0.95rem;
-    color: var(--averia-color-muted);
-}
-
-.averia-hero__context span {
-    font-weight: 500;
-}
-
-.averia-hero__context strong {
-    color: var(--averia-color-heading);
-}
-
 .averia-hero__meta {
     grid-area: meta;
     margin: 0;
+    padding: 0;
     display: grid;
     gap: var(--averia-spacing-3);
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-}
-
-.averia-hero__meta div {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--averia-spacing-3);
-    font-size: 0.92rem;
-    color: var(--averia-color-muted);
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
 }
 
 .averia-hero__meta dt {
-    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--averia-color-muted);
 }
 
 .averia-hero__meta dd {
     margin: 0;
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 1.35rem;
     color: var(--averia-color-heading);
 }
 
-@media (min-width: 64rem) {
+.averia-hero__meta-item {
+    display: grid;
+    gap: 0.35rem;
+    padding: var(--averia-spacing-3);
+    border-radius: var(--averia-radius-lg);
+    background: rgba(15, 23, 42, 0.04);
+}
+
+@media (min-width: 1024px) {
     .averia-hero {
         grid-template-columns: minmax(0, 3fr) minmax(16rem, 1fr);
-        grid-template-areas: "primary meta";
+        grid-template-areas:
+            "primary meta"
+            "brief meta";
     }
 }
 
-@media (min-width: 90rem) {
+@media (min-width: 1440px) {
     .averia-hero {
-        grid-template-columns: minmax(0, 2.5fr) minmax(18rem, 1fr);
-        grid-template-areas: "primary meta";
+        grid-template-columns: minmax(0, 2.5fr) minmax(20rem, 1fr);
+        grid-template-areas:
+            "primary meta"
+            "brief meta";
         align-items: start;
+    }
+
+    .averia-timeline__scroller {
+        max-height: 26rem;
     }
 }
 
@@ -299,7 +317,7 @@ body.body--averia-detail {
 .averia-layout__context { grid-area: context; }
 .averia-layout__support { grid-area: support; }
 
-@media (min-width: 64rem) {
+@media (min-width: 1024px) {
     .averia-layout {
         grid-template-columns: minmax(0, 3fr) minmax(17rem, 24rem);
         grid-template-areas:
@@ -308,7 +326,7 @@ body.body--averia-detail {
     }
 }
 
-@media (min-width: 90rem) {
+@media (min-width: 1440px) {
     .averia-layout {
         grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr) minmax(18rem, 24rem);
         grid-template-areas: "context main support";
@@ -429,6 +447,18 @@ body.body--averia-detail {
     position: relative;
 }
 
+.averia-timeline__scroller {
+    max-height: 22rem;
+    overflow-y: auto;
+    padding-right: 0.35rem;
+    scrollbar-gutter: stable;
+}
+
+.averia-timeline__scroller:focus-visible {
+    outline: 3px solid rgba(59, 130, 246, 0.35);
+    outline-offset: 2px;
+}
+
 .averia-timeline::before {
     content: "";
     position: absolute;
@@ -490,13 +520,11 @@ body.body--averia-detail {
     line-height: 1.5;
 }
 
-.averia-timeline__form {
+.averia-timeline__composer {
     display: grid;
     gap: var(--averia-spacing-4);
-    padding: var(--averia-spacing-4);
-    border-radius: var(--averia-radius-lg);
-    border: 1px dashed rgba(15, 23, 42, 0.2);
-    background: rgba(15, 23, 42, 0.02);
+    padding-top: var(--averia-spacing-4);
+    border-top: 1px solid rgba(15, 23, 42, 0.12);
 }
 
 .averia-form {
@@ -724,7 +752,8 @@ body[data-theme="dark"].body--averia-detail .averia-documents__item,
 body[data-theme="dark"].body--averia-detail .averia-contact,
 body[data-theme="dark"].body--averia-detail .averia-note,
 body[data-theme="dark"].body--averia-detail .averia-timeline__body,
-body[data-theme="dark"].body--averia-detail .averia-timeline__form {
+body[data-theme="dark"].body--averia-detail .averia-hero__brief-item,
+body[data-theme="dark"].body--averia-detail .averia-hero__meta-item {
     background: rgba(148, 163, 184, 0.12);
 }
 
