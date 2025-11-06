@@ -419,19 +419,37 @@
         if (hero) {
             var stickyClass = 'body--averia-detail__hero_sticky';
             var lastState = null;
+            var stickyThreshold = null;
 
-            var computeStickyState = function () {
-                var topOffset = 0;
+            var getTopOffset = function () {
                 var computedStyle = window.getComputedStyle ? window.getComputedStyle(hero) : null;
-                if (computedStyle) {
-                    var parsedTop = parseFloat(computedStyle.top);
-                    if (Number.isFinite(parsedTop)) {
-                        topOffset = parsedTop;
-                    }
+                if (! computedStyle) {
+                    return 0;
                 }
 
-                var rect = hero.getBoundingClientRect();
-                var shouldStick = rect.top <= topOffset;
+                var parsedTop = parseFloat(computedStyle.top);
+                return Number.isFinite(parsedTop) ? parsedTop : 0;
+            };
+
+            var recalcThreshold = function () {
+                stickyThreshold = hero.offsetTop - getTopOffset();
+            };
+
+            var getScrollPosition = function () {
+                if (typeof window.pageYOffset === 'number') {
+                    return window.pageYOffset;
+                }
+
+                var doc = document.documentElement || document.body;
+                return doc ? doc.scrollTop : 0;
+            };
+
+            var updateStickyState = function () {
+                if (! Number.isFinite(stickyThreshold)) {
+                    recalcThreshold();
+                }
+
+                var shouldStick = getScrollPosition() >= stickyThreshold;
 
                 if (shouldStick !== lastState) {
                     lastState = shouldStick;
@@ -439,10 +457,14 @@
                 }
             };
 
-            window.addEventListener('scroll', computeStickyState, { passive: true });
-            window.addEventListener('resize', computeStickyState);
+            recalcThreshold();
+            updateStickyState();
 
-            computeStickyState();
+            window.addEventListener('scroll', updateStickyState, { passive: true });
+            window.addEventListener('resize', function () {
+                recalcThreshold();
+                updateStickyState();
+            });
         }
 
         var navigableRows = Array.prototype.slice.call(document.querySelectorAll('.guarantees-table__row[data-expediente-url]'));
