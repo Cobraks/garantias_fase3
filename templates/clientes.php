@@ -37,31 +37,45 @@ $current_user    = wp_get_current_user();
             <option value=""><?php esc_html_e('Todos los canales', 'garantias-online-360vo'); ?></option>
         </select>
     </div>
+
 </div>
 
 <div class="guarantees-container">
     <section class="guarantees-list">
-        <table class="guarantees-table" style="view-transition-name: garantias-table">
-            <colgroup>
-                <col class="guarantees-table__col guarantees-table__col--client" data-default-width="360">
-                <col class="guarantees-table__col guarantees-table__col--registered" data-default-width="72">
-                <col class="guarantees-table__col guarantees-table__col--offers" data-default-width="220">
-                <col class="guarantees-table__col guarantees-table__col--guarantees" data-default-width="72">
-                <col class="guarantees-table__col guarantees-table__col--commercial" data-default-width="220">
-            </colgroup>
-            <thead>
-                <tr>
-                    <th><?php esc_html_e('Cliente', 'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Registro', 'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Ofertas', 'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Nº Garantías', 'garantias-online-360vo'); ?></th>
-                    <th><?php esc_html_e('Comercial', 'garantias-online-360vo'); ?></th>
-                </tr>
-            </thead>
-            <tbody data-current-page="0" data-total-pages="0"></tbody>
-        </table>
-        <div id="scroll-end" class="scroll-sentinel">
-            <div class="spinner" aria-hidden="true"></div>
+        <div class="clients-cards" data-clients-cards>
+            <div class="clients-cards__list" data-clients-cards-list></div>
+            <div class="clients-cards__empty" data-clients-cards-empty hidden>
+                <p data-clients-cards-empty-message>
+                    <?php esc_html_e('No se han encontrado clientes con los filtros actuales.', 'garantias-online-360vo'); ?>
+                </p>
+            </div>
+        </div>
+
+        <div class="guarantees-table__scroll">
+            <table class="guarantees-table" style="view-transition-name: garantias-table">
+                <colgroup>
+                    <col class="guarantees-table__col guarantees-table__col--client" data-default-width="360">
+                    <col class="guarantees-table__col guarantees-table__col--registered" data-default-width="72">
+                    <col class="guarantees-table__col guarantees-table__col--offers" data-default-width="220">
+                    <col class="guarantees-table__col guarantees-table__col--guarantees" data-default-width="72">
+                    <col class="guarantees-table__col guarantees-table__col--commercial" data-default-width="220">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e('Cliente', 'garantias-online-360vo'); ?></th>
+                        <th><?php esc_html_e('Registro', 'garantias-online-360vo'); ?></th>
+                        <th><?php esc_html_e('Ofertas', 'garantias-online-360vo'); ?></th>
+                        <th><?php esc_html_e('Nº Garantías', 'garantias-online-360vo'); ?></th>
+                        <th><?php esc_html_e('Comercial', 'garantias-online-360vo'); ?></th>
+                    </tr>
+                </thead>
+                <tbody data-current-page="0" data-total-pages="0"></tbody>
+            </table>
+        </div>
+        <div id="scroll-end" class="scroll-sentinel" aria-hidden="true">
+            <div class="spinner" aria-hidden="true">
+                <div class="spinner__inner" aria-hidden="true"></div>
+            </div>
         </div>
     </section>
 
@@ -75,32 +89,6 @@ $current_user    = wp_get_current_user();
         <div class="guarantee-detail__panel" id="detail-panel-2"></div>
     </aside>
 </div>
-
-<style>
-    .scroll-sentinel {
-        height: 80px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .spinner {
-        width: 3rem;
-        height: 3rem;
-        margin: 0 auto;
-        border: 5px solid rgba(0, 0, 0, 0.1);
-        border-top-color: rgba(255, 0, 0, 0.6);
-        border-radius: 50%;
-        animation: spin .5s linear infinite;
-        display: none;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-</style>
 
 <?php
 \GarantiasOnline360VO\TemplateLoader::load_part(

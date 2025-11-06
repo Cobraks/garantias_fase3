@@ -347,12 +347,10 @@ export function validateField(input, showError = false, isHardCheck = false) {
         }
 
 	// Doble motor: solo obligatorio si el combustible lo requiere
-	if (id === "doble_motor") {
-		const combustible = document.getElementById("combustible")?.value || "";
-		const requiere = ["electrico", "hibrido", "gpl_gnc"].includes(
-			combustible.toLowerCase()
-		);
-		if (requiere) {
+        if (id === "doble_motor") {
+                const combustible = document.getElementById("combustible")?.value || "";
+                const requiere = combustible.toLowerCase() === "electrico";
+                if (requiere) {
                         if (!input.value) {
                                 if (revealError) setError(input, "Este campo es obligatorio.");
                                 return false;

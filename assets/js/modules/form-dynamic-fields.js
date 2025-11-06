@@ -108,16 +108,29 @@ function toggleCombustibleDependientes() {
         );
 	if (!combustible || !dobleMotorContainer) return;
 
-	const val = combustible.value;
-	const debeMostrar = ["electrico", "hibrido", "gpl_gnc"].includes(val);
-	dobleMotorContainer.style.display = debeMostrar ? "" : "none";
-	if (!debeMostrar) {
-		const dobleMotor = dobleMotorContainer.querySelector("#doble_motor");
-		if (dobleMotor) dobleMotor.value = "";
-	}
+        const val = combustible.value;
+        const isElectrico = val === "electrico";
+        const dobleMotor = dobleMotorContainer.querySelector("#doble_motor");
 
-	// Actualiza floating label tras cambio
-	updateSelectFloatingLabels();
+        dobleMotorContainer.style.display = isElectrico ? "" : "none";
+
+        if (dobleMotor) {
+                if (dobleMotor.dataset.originalRequired == null) {
+                        dobleMotor.dataset.originalRequired = dobleMotor.required
+                                ? "true"
+                                : "false";
+                }
+
+                if (!isElectrico) {
+                        dobleMotor.value = "";
+                        dobleMotor.required = false;
+                } else if (dobleMotor.dataset.originalRequired !== "false") {
+                        dobleMotor.required = true;
+                }
+        }
+
+        // Actualiza floating label tras cambio
+        updateSelectFloatingLabels();
 
         // Refresca validación/resumen
         updateNextButtonState();
