@@ -357,7 +357,7 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 16000;
+    z-index: 99999;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -4789,7 +4789,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
 
     .footer__wrapper {
         background: var(--surface, #ffffff);
-        height: fit-content;
+        height: 2.5rem;
         padding-inline: var(--spacing-3);
         padding-block: var(--spacing-1);
         width: 100%;
@@ -4953,8 +4953,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
     .guarantees-list__filters-actions > .guarantees-list__order,
     .guarantees-list__filters-actions > .guarantees-list__reset-btn,
     .guarantees-list__filters-more > .guarantees-list__more-filters-btn {
-        flex: 0 1 clamp(8rem, 10vw, 16rem);
-        max-width: clamp(8rem, 10vw, 16rem);
+        max-width: fit-content;
     }
 
     .guarantees-list__filters-controls .guarantees-list__filter,
