@@ -41,6 +41,11 @@ body.body--averia-detail {
     inset: auto;
 }
 
+.body--averia-detail .top-bar {
+    position: relative;
+    top: initial;
+}
+
 /* Estado vacío --------------------------------------------------------- */
 .averia-empty {
     display: grid;
@@ -242,7 +247,7 @@ body.body--averia-detail {
 
 @media (min-width: 1024px) {
     .averia-hero {
-        margin-top: calc(var(--alturaHeader) + 1.5rem);
+        margin-top: var(--spacing-3);
         grid-template-columns: minmax(0, 3fr) minmax(16rem, 1fr);
         grid-template-areas: "primary meta";
         align-items: end;
