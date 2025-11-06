@@ -139,13 +139,29 @@ body.body--averia-detail {
 }
 
 /* Layout general ------------------------------------------------------- */
+.averia-stage {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--averia-spacing-6);
+    width: min(100%, 1600px);
+    margin-inline: auto;
+    padding: var(--averia-spacing-6) var(--averia-spacing-4) var(--averia-spacing-8);
+}
+
 .averia-detail {
     display: flex;
     flex-direction: column;
     gap: var(--averia-spacing-6);
-    padding: 0;
-    width: min(100%, 1600px);
-    margin-inline: auto;
+}
+
+.averia-hero__sentinel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
 }
 
 .averia-hero {
@@ -159,11 +175,9 @@ body.body--averia-detail {
         "primary"
         "meta";
     position: sticky;
-    top: var(--alturaHeader, 0px);
-    margin-bottom: var(--spacing-3, 1.5rem);
-    z-index: 99999999;
-    width: min(100%, 1600px);
-    margin-inline: auto;
+    top: 0;
+    z-index: 40;
+    transition: padding 0.25s ease, gap 0.25s ease, border-radius 0.25s ease;
 }
 
 .averia-hero__headline {
@@ -223,18 +237,16 @@ body.body--averia-detail {
     padding: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: var(--averia-spacing-3);
+    align-items: center;
+    gap: var(--averia-spacing-4);
     list-style: none;
 }
 
 .averia-hero__meta-item {
-    flex: 1 1 10rem;
-    min-width: 9.5rem;
-    display: grid;
-    gap: 0.25rem;
-    padding: var(--averia-spacing-3);
-    border-radius: var(--averia-radius-lg);
-    background: rgba(15, 23, 42, 0.04);
+    display: flex;
+    align-items: baseline;
+    gap: var(--averia-spacing-3);
+    min-width: 8.5rem;
 }
 
 .averia-hero__meta dt {
@@ -252,32 +264,54 @@ body.body--averia-detail {
     color: var(--averia-color-heading);
 }
 
-.averia-hero__context {
-    margin: 0;
-    display: grid;
+.body--averia-detail__hero_sticky .averia-hero {
+    padding: var(--averia-spacing-4) var(--averia-spacing-6);
+    gap: var(--averia-spacing-3);
+    border-radius: 1rem;
+    min-height: 5rem;
+}
+
+.body--averia-detail__hero_sticky .averia-hero__title {
+    font-size: clamp(1.35rem, 2.6vw, 1.8rem);
+}
+
+.body--averia-detail__hero_sticky .averia-hero__meta {
+    gap: var(--averia-spacing-3);
+}
+
+.body--averia-detail__hero_sticky .averia-hero__meta-item {
+    min-width: auto;
+}
+
+.body--averia-detail__hero_sticky .averia-hero__meta dd {
+    font-size: 1.05rem;
+}
+
+.body--averia-detail__hero_sticky .averia-hero__meta dt {
+    font-size: 0.7rem;
+}
+
+.body--averia-detail__hero_sticky .averia-hero__status {
     gap: var(--averia-spacing-2);
 }
 
-.averia-hero__context div {
-    display: flex;
-    gap: var(--averia-spacing-2);
-    align-items: baseline;
-    font-size: 0.9rem;
+.body--averia-detail__hero_sticky .averia-hero__plate {
+    padding-inline: 0.75rem;
+    padding-block: 0.2rem;
 }
 
-.averia-hero__context dt {
-    font-weight: 600;
-    color: var(--averia-color-muted);
-}
-
-.averia-hero__context dd {
-    margin: 0;
-    color: var(--averia-color-heading);
+@media (min-width: 768px) {
+    .averia-stage {
+        padding-inline: var(--averia-spacing-6);
+    }
 }
 
 @media (min-width: 1024px) {
+    .averia-stage {
+        padding-top: var(--spacing-3);
+    }
+
     .averia-hero {
-        margin-top: var(--spacing-3);
         grid-template-columns: minmax(0, 3fr) minmax(16rem, 1fr);
         grid-template-areas: "primary meta";
         align-items: end;
@@ -285,6 +319,10 @@ body.body--averia-detail {
 }
 
 @media (min-width: 1440px) {
+    .averia-stage {
+        padding-inline: 0;
+    }
+
     .averia-hero {
         grid-template-columns: minmax(0, 2.5fr) minmax(18rem, 1fr);
         grid-template-areas: "primary meta";
@@ -807,7 +845,6 @@ body[data-theme="dark"].body--averia-detail .averia-documents__item,
 body[data-theme="dark"].body--averia-detail .averia-contact,
 body[data-theme="dark"].body--averia-detail .averia-note,
 body[data-theme="dark"].body--averia-detail .averia-timeline__body,
-body[data-theme="dark"].body--averia-detail .averia-hero__meta-item,
 body[data-theme="dark"].body--averia-detail .averia-accordion__summary,
 body[data-theme="dark"].body--averia-detail .averia-accordion__content {
     background: rgba(148, 163, 184, 0.12);

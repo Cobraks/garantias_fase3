@@ -549,6 +549,10 @@ $home_destination = $is_admin_user
     if (! empty($is_list_page) || ! empty($is_breakdowns_page)) {
         $main_grid_classes[] = 'guarantees-page';
     }
-    ?>
-    <div class="<?php echo esc_attr(implode(' ', $container_classes)); ?>">
-        <div class="<?php echo esc_attr(implode(' ', $main_grid_classes)); ?>">
+    $should_render_layout_container = ! $is_breakdown_detail_template;
+    if ($should_render_layout_container) :
+        ?>
+        <div class="<?php echo esc_attr(implode(' ', $container_classes)); ?>">
+            <div class="<?php echo esc_attr(implode(' ', $main_grid_classes)); ?>">
+        <?php
+    endif;

@@ -222,7 +222,7 @@ $empty_messages = [
 ];
 ?>
 
-<div class="averia-detail" data-averia-app>
+<div class="averia-stage" data-averia-app>
     <?php if ($view_mode !== 'case') : ?>
         <section class="averia-empty" aria-labelledby="averia-empty-title">
             <div class="averia-empty__card">
@@ -301,19 +301,6 @@ $empty_messages = [
             )
         );
 
-        $hero_context = [
-            __('Garantía', 'garantias-online-360vo')         => $sample_case['policy'] ?? '',
-            __('Vendedor', 'garantias-online-360vo')         => $sample_case['vendor'] ?? '',
-            __('Gestor del vendedor', 'garantias-online-360vo') => $sample_case['vendor_manager'] ?? '',
-        ];
-
-        $hero_context = array_filter(
-            $hero_context,
-            static function ($value) {
-                return trim((string) $value) !== '';
-            }
-        );
-
         $insight_metrics = [
             __('Kilómetros al abrir', 'garantias-online-360vo') => $sample_case['kilometers_start'] ?? '',
             __('Kilómetros actuales', 'garantias-online-360vo') => $sample_case['kilometers_now'] ?? '',
@@ -388,16 +375,6 @@ $empty_messages = [
                     <?php endif; ?>
                 </div>
                 <h1 class="averia-hero__title"><?php echo esc_html($expediente_label); ?></h1>
-                <?php if (! empty($hero_context)) : ?>
-                    <dl class="averia-hero__context">
-                        <?php foreach ($hero_context as $context_label => $context_value) : ?>
-                            <div>
-                                <dt><?php echo esc_html($context_label); ?></dt>
-                                <dd><?php echo esc_html($context_value); ?></dd>
-                            </div>
-                        <?php endforeach; ?>
-                    </dl>
-                <?php endif; ?>
             </div>
 
             <?php if (! empty($hero_highlights)) : ?>
@@ -412,9 +389,10 @@ $empty_messages = [
             <?php endif; ?>
         </section>
 
-        <div class="averia-layout">
-            <main class="averia-layout__main" aria-label="<?php esc_attr_e('Gestión de la avería', 'garantias-online-360vo'); ?>">
-                <section class="averia-card averia-card--compact">
+        <div class="averia-detail">
+            <div class="averia-layout">
+                <main class="averia-layout__main" aria-label="<?php esc_attr_e('Gestión de la avería', 'garantias-online-360vo'); ?>">
+                    <section class="averia-card averia-card--compact">
                     <header class="averia-card__header">
                         <h2 class="averia-card__title"><?php esc_html_e('Acciones rápidas', 'garantias-online-360vo'); ?></h2>
                         <p class="averia-card__subtitle"><?php esc_html_e('Prioriza las próximas intervenciones', 'garantias-online-360vo'); ?></p>
@@ -430,9 +408,9 @@ $empty_messages = [
                             <?php esc_html_e('Enviar correo', 'garantias-online-360vo'); ?>
                         </button>
                     </div>
-                </section>
+                    </section>
 
-                <section class="averia-card">
+                    <section class="averia-card">
                     <header class="averia-card__header">
                         <h2 class="averia-card__title"><?php esc_html_e('Historial de actividad', 'garantias-online-360vo'); ?></h2>
                         <p class="averia-card__subtitle"><?php esc_html_e('Seguimiento centralizado de comunicaciones y cambios', 'garantias-online-360vo'); ?></p>
@@ -484,9 +462,9 @@ $empty_messages = [
                             </div>
                         </form>
                     </div>
-                </section>
+                    </section>
 
-                <section class="averia-card">
+                    <section class="averia-card">
                     <header class="averia-card__header">
                         <h2 class="averia-card__title"><?php esc_html_e('Gestión económica', 'garantias-online-360vo'); ?></h2>
                         <p class="averia-card__subtitle"><?php esc_html_e('Revisa presupuestos y autorizaciones', 'garantias-online-360vo'); ?></p>
@@ -504,10 +482,10 @@ $empty_messages = [
                             </div>
                         <?php endforeach; ?>
                     </dl>
-                </section>
+                    </section>
             </main>
 
-            <aside class="averia-layout__context" aria-label="<?php esc_attr_e('Contexto del expediente', 'garantias-online-360vo'); ?>">
+                <aside class="averia-layout__context" aria-label="<?php esc_attr_e('Contexto del expediente', 'garantias-online-360vo'); ?>">
                 <section class="averia-card averia-card--highlight">
                     <header class="averia-card__header">
                         <h2 class="averia-card__title"><?php esc_html_e('Resumen del expediente', 'garantias-online-360vo'); ?></h2>
@@ -682,7 +660,11 @@ $empty_messages = [
                         <?php endforeach; ?>
                     </div>
                 </section>
-            </aside>
+                </aside>
+            </div>
         </div>
     <?php endif; ?>
 </div>
+
+</body>
+</html>

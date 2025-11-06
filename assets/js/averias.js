@@ -415,6 +415,47 @@
             document.addEventListener('keydown', handleKeyDown);
         }
 
+        var hero = document.querySelector('.averia-hero');
+        if (hero) {
+            var sentinel = hero.previousElementSibling;
+            if (!sentinel || !sentinel.classList || !sentinel.classList.contains('averia-hero__sentinel')) {
+                sentinel = document.createElement('span');
+                sentinel.className = 'averia-hero__sentinel';
+                sentinel.setAttribute('aria-hidden', 'true');
+                if (hero.parentNode) {
+                    hero.parentNode.insertBefore(sentinel, hero);
+                }
+            }
+
+            var toggleHeroState = function (shouldStick) {
+                document.body.classList.toggle('body--averia-detail__hero_sticky', shouldStick);
+            };
+
+            if ('IntersectionObserver' in window && sentinel && sentinel.parentNode) {
+                var heroObserver = new IntersectionObserver(function (entries) {
+                    if (!entries || !entries.length) {
+                        return;
+                    }
+
+                    var entry = entries[0];
+                    toggleHeroState(!entry.isIntersecting);
+                });
+
+                heroObserver.observe(sentinel);
+            } else {
+                var updateHeroStickyState = function () {
+                    var rect = hero.getBoundingClientRect();
+                    toggleHeroState(rect.top <= 0);
+                };
+
+                window.addEventListener('scroll', function () {
+                    requestAnimationFrame(updateHeroStickyState);
+                }, { passive: true });
+
+                updateHeroStickyState();
+            }
+        }
+
         var navigableRows = Array.prototype.slice.call(document.querySelectorAll('.guarantees-table__row[data-expediente-url]'));
 
         navigableRows.forEach(function (row) {
