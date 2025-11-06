@@ -30,7 +30,9 @@
         const basePath = typeof router.basePath === 'string' ? router.basePath : '';
         const normalizedBasePath = basePath ? (basePath.endsWith('/') ? basePath : `${basePath}/`) : '';
 
+        const filters = document.querySelector('.guarantees-list__filters');
         const listContainer = document.querySelector('.guarantees-list');
+        const tableScrollContainer = document.querySelector('.guarantees-table__scroll');
         const table = document.querySelector('.guarantees-table');
         const tbody = table ? table.querySelector('tbody') : null;
         const searchInput = document.getElementById('clientes-search');
@@ -46,10 +48,77 @@
             : null;
         const panel1 = document.getElementById('detail-panel-1');
         const panel2 = document.getElementById('detail-panel-2');
+        const detail = document.querySelector('.guarantee-detail');
+        const header = document.querySelector('.top-bar');
 
         if (!tbody || !panel1 || !panel2) {
             return;
         }
+
+        let filtersSticky = filters ? filters.classList.contains('sticky-active') : false;
+
+        if (filters && header) {
+            const observer = new IntersectionObserver(([entry]) => {
+                const isSticky = !entry.isIntersecting;
+                filters.classList.toggle('sticky-active', isSticky);
+                if (listContainer) {
+                    listContainer.classList.toggle('sticky-active', isSticky);
+                }
+                if (detail) {
+                    detail.classList.toggle('sticky-active', isSticky);
+                }
+                if (isSticky && !filtersSticky) {
+                    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+                        window.dispatchEvent(new CustomEvent('go360:notifications:close'));
+                        window.dispatchEvent(new CustomEvent('go360:profile:close'));
+                    }
+                }
+                filtersSticky = isSticky;
+            }, {
+                root: null,
+                threshold: 0,
+                rootMargin: '-50px',
+            });
+
+            observer.observe(header);
+        }
+
+        const getListScrollTop = () => {
+            if (tableScrollContainer && tableScrollContainer.scrollHeight > tableScrollContainer.clientHeight) {
+                return tableScrollContainer.scrollTop || 0;
+            }
+            if (listContainer) {
+                return listContainer.scrollTop || 0;
+            }
+            return window.pageYOffset
+                || document.documentElement.scrollTop
+                || document.body.scrollTop
+                || 0;
+        };
+
+        const onScroll = () => {
+            const activePanel = detail ? detail.querySelector('.guarantee-detail__panel.active') : null;
+            const detailScrolled = activePanel ? activePanel.scrollTop > 10 : false;
+            document.body.classList.toggle('scrolled', getListScrollTop() > 10 || detailScrolled);
+        };
+
+        if (listContainer) {
+            listContainer.addEventListener('scroll', onScroll);
+        }
+
+        if (tableScrollContainer && tableScrollContainer !== listContainer) {
+            tableScrollContainer.addEventListener('scroll', onScroll);
+        }
+
+        if (detail) {
+            detail.querySelectorAll('.guarantee-detail__panel').forEach((panel) => {
+                panel.addEventListener('scroll', onScroll);
+            });
+        }
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+
+        onScroll();
 
         if (cardsEmptyMessage && typeof strings.noResults === 'string') {
             cardsEmptyMessage.textContent = strings.noResults;

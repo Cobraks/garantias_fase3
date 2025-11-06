@@ -226,13 +226,17 @@
 }
 
 @media (min-width: 1280px) {
+    .clients-page {
+        padding-top: var(--alturaHeader);
+    }
+
     .clients-page .guarantees-list__filters {
         grid-column: span 2;
         top: var(--alturaHeader);
     }
 
     .clients-page .guarantees-list__filters.sticky-active {
-        top: var(--alturaHeader);
+        top: 0;
     }
 
     .clients-page .guarantees-container {
