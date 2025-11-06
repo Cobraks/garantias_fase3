@@ -5,31 +5,151 @@
 .guarantees-list__filter-wrapper--clients[hidden] {
     display: none !important;
 }
-.clients-page .guarantees-list__filters-row {
-    justify-content: flex-start;
-}
 .clients-page .guarantees-list__filters {
-    flex-direction: row;
-    gap: 1rem;
+    flex-direction: column;
+    gap: var(--spacing-1);
 }
+
 .clients-page .guarantees-list__search-container {
-    flex: 0 1 320px;
-    max-width: 320px;
+    flex: 1 1 auto;
+    max-width: none;
     width: 100%;
 }
-.clients-page .guarantees-list__filters-row > select.guarantees-list__filter,
-.clients-page .guarantees-list__filters-row > .guarantees-list__filter-wrapper {
-    flex: 1 1 220px;
-    max-width: 220px;
-}
+
 .clients-page .guarantees-list__filter-wrapper {
     width: 100%;
 }
+
 .clients-page .guarantees-list__filter {
     width: 100%;
 }
+
+@media (min-width: 768px) {
+    .clients-page .guarantees-list__filters {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--spacing-2);
+    }
+
+    .clients-page .guarantees-list__search-container {
+        flex: 1 1 320px;
+        max-width: 420px;
+    }
+
+    .clients-page .guarantees-list__filter-wrapper {
+        flex: 0 1 220px;
+        max-width: 220px;
+    }
+}
 .clients-page .guarantees-table td {
     padding: var(--spacing-2) var(--spacing-2);
+}
+.clients-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    margin-bottom: var(--spacing-2);
+    border-radius: 1rem;
+    border: 1px solid var(--client-panel-border);
+    background: var(--client-surface);
+    box-shadow: var(--client-card-shadow);
+    overflow: hidden;
+}
+.clients-cards__list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+.clients-cards__empty {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--client-surface);
+}
+.clients-cards__empty:not([hidden]) {
+    display: flex;
+}
+.clients-page .guarantees-table__scroll {
+    display: none;
+}
+.clients-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    border-top: 1px solid var(--client-panel-border);
+    background: var(--client-surface);
+    cursor: pointer;
+    transition: background var(--transition-speed),
+        box-shadow var(--transition-speed),
+        border-color var(--transition-speed);
+    outline: none;
+}
+.clients-card:first-child {
+    border-top: none;
+}
+.clients-card:hover,
+.clients-card:focus-visible {
+    background: var(--surface-alt);
+    box-shadow: var(--client-card-shadow);
+}
+.clients-card:focus-visible {
+    outline: 2px solid rgba(var(--go-color-2563eb-rgb), 0.35);
+    outline-offset: 2px;
+}
+.clients-card.selected {
+    border-color: rgba(var(--go-color-2563eb-rgb), 0.35);
+    box-shadow: 0 0 0 2px rgba(var(--go-color-2563eb-rgb), 0.18);
+}
+.clients-card.selected .clients-table__name {
+    color: var(--primary-color);
+}
+.clients-card__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+.clients-card__meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    margin: 0;
+}
+@media (min-width: 640px) {
+    .clients-card__meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+.clients-card__meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.clients-card__meta-item dt {
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--client-stat-label);
+}
+.clients-card__meta-item dd {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-color);
+}
+.clients-card__meta-item dd .clients-table__empty {
+    color: var(--text-secondary);
+}
+.clients-card__meta-item dd .guarantees-list__badge {
+    margin-right: 0.35rem;
+    margin-bottom: 0.35rem;
 }
 .clients-page {
     --client-surface: var(--surface);
@@ -66,13 +186,91 @@
     --client-dialog-shadow: 0 40px 80px rgba(0, 0, 0, 0.75);
 }
 
+:root[data-theme='dark'] .clients-cards {
+    background: var(--client-surface);
+    border-color: var(--client-panel-border);
+    box-shadow: var(--client-panel-shadow);
+}
+
+:root[data-theme='dark'] .clients-cards__empty {
+    background: var(--client-surface);
+    color: rgba(226, 232, 240, 0.78);
+}
+
+:root[data-theme='dark'] .clients-card {
+    background: var(--client-surface);
+    border-color: var(--client-panel-border);
+}
+
+:root[data-theme='dark'] .clients-card:hover,
+:root[data-theme='dark'] .clients-card:focus-visible {
+    background: rgba(148, 163, 184, 0.12);
+    box-shadow: var(--client-panel-shadow);
+}
+
+:root[data-theme='dark'] .clients-card.selected {
+    border-color: rgba(191, 219, 254, 0.45);
+    box-shadow: 0 0 0 2px rgba(191, 219, 254, 0.28);
+}
+
+:root[data-theme='dark'] .clients-card__meta-item dt {
+    color: var(--client-stat-label);
+}
+
+:root[data-theme='dark'] .clients-card__meta-item dd {
+    color: rgba(248, 250, 252, 0.96);
+}
+
+:root[data-theme='dark'] .clients-card__meta-item dd .clients-table__empty {
+    color: rgba(226, 232, 240, 0.72);
+}
+
 @media (min-width: 1280px) {
-    .clients-page .guarantees-list__filters {
+    .container.clients-page {
+        position: relative;
+        inset: 0;
+        min-height: auto;
+        padding-top: 0;
+        padding-bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .main-grid.clients-page {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        padding-top: var(--alturaHeader);
+        transition: padding-top 300ms ease;
+    }
+
+    body.scrolled .main-grid.clients-page {
+        padding-top: var(--spacing-4);
+    }
+
+    .main-grid.clients-page .guarantees-list__filters {
+        grid-column: span 2;
+        top: var(--alturaHeader);
+    }
+
+    .main-grid.clients-page .guarantees-list__filters.sticky-active {
+        top: 0;
+    }
+
+    .main-grid.clients-page .guarantees-container {
         grid-column: span 2;
     }
 
-    .clients-page .guarantees-container {
-        grid-column: span 2;
+    .main-grid.clients-page .clients-cards {
+        display: none;
+    }
+
+    .main-grid.clients-page .guarantees-table__scroll {
+        display: flex;
     }
 }
 .guarantees-table__vehiculo,

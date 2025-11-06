@@ -30,6 +30,7 @@ class GuaranteeRestController
     const TRANSFER_RECEIPT_EXTENSION_META = '_go360_transfer_receipt_extension';
     const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
     const SUMMARY_TRANSIENT = 'go_gsummary_admin';
+    const SUMMARY_PROFESSIONAL_TRANSIENT_PREFIX = 'go_gsummary_prof_';
     const RECEIPT_ALLOWED_MIMES = [
         'pdf'  => 'application/pdf',
         'jpg'  => 'image/jpeg',
@@ -245,23 +246,300 @@ class GuaranteeRestController
 
     public static function get_summary($request)
     {
-        return rest_ensure_response(self::get_admin_summary_data());
+        $current_user = wp_get_current_user();
+        return rest_ensure_response(self::get_summary_data_for_user($current_user));
     }
 
     public static function get_admin_summary_data(): array
     {
         $cached = get_transient(self::SUMMARY_TRANSIENT);
         if (is_array($cached)) {
-            return $cached;
+            $cached_has_draft_state = false;
+            $normalized_cached = self::normalize_admin_summary($cached, $cached_has_draft_state);
+
+            if ($cached_has_draft_state) {
+                if ($normalized_cached !== $cached) {
+                    set_transient(self::SUMMARY_TRANSIENT, $normalized_cached, 5 * MINUTE_IN_SECONDS);
+                }
+
+                return $normalized_cached;
+            }
         }
 
         $data = self::build_admin_summary();
+        $data = is_array($data) ? $data : [];
 
-        if (! empty($data)) {
-            set_transient(self::SUMMARY_TRANSIENT, $data, 5 * MINUTE_IN_SECONDS);
+        $data_has_draft_state = false;
+        $normalized_data = self::normalize_admin_summary($data, $data_has_draft_state);
+
+        if (! empty($normalized_data)) {
+            set_transient(self::SUMMARY_TRANSIENT, $normalized_data, 5 * MINUTE_IN_SECONDS);
         }
 
-        return is_array($data) ? $data : [];
+        return $normalized_data;
+    }
+
+    public static function get_summary_data_for_user($user = null): array
+    {
+        if (! $user instanceof \WP_User) {
+            $user = wp_get_current_user();
+        }
+
+        if ($user instanceof \WP_User && self::user_is_professional($user)) {
+            return self::get_professional_summary_data((int) $user->ID);
+        }
+
+        return self::get_admin_summary_data();
+    }
+
+    private static function get_professional_summary_data(int $user_id): array
+    {
+        $user_id = (int) $user_id;
+        if ($user_id <= 0) {
+            $empty_payload = self::build_empty_summary_payload();
+            $dummy = false;
+
+            return self::normalize_admin_summary($empty_payload, $dummy);
+        }
+
+        $cache_key = self::SUMMARY_PROFESSIONAL_TRANSIENT_PREFIX . $user_id;
+        $cached = get_transient($cache_key);
+        if (is_array($cached)) {
+            $cached_has_draft_state = false;
+            $normalized_cached = self::normalize_admin_summary($cached, $cached_has_draft_state);
+
+            if ($cached_has_draft_state) {
+                if ($normalized_cached !== $cached) {
+                    set_transient($cache_key, $normalized_cached, 5 * MINUTE_IN_SECONDS);
+                }
+
+                return $normalized_cached;
+            }
+        }
+
+        $vendor_ids = self::get_accessible_professional_vendor_ids($user_id);
+        if (empty($vendor_ids)) {
+            $empty_payload = self::build_empty_summary_payload();
+            $dummy = false;
+            $normalized_empty = self::normalize_admin_summary($empty_payload, $dummy);
+            set_transient($cache_key, $normalized_empty, 5 * MINUTE_IN_SECONDS);
+
+            return $normalized_empty;
+        }
+
+        $summary = self::build_professional_summary($vendor_ids);
+        $summary = is_array($summary) ? $summary : [];
+
+        $has_draft_state = false;
+        $normalized = self::normalize_admin_summary($summary, $has_draft_state);
+
+        if (! empty($normalized)) {
+            set_transient($cache_key, $normalized, 5 * MINUTE_IN_SECONDS);
+        }
+
+        return $normalized;
+    }
+
+    private static function build_empty_summary_payload(): array
+    {
+        $state_counts = [
+            'activada'             => 0,
+            'pendiente_pago'       => 0,
+            'validacion_pendiente' => 0,
+            'pendiente_cobro'      => 0,
+            'sin_finalizar'        => 0,
+        ];
+        $state_amounts = [
+            'activada'             => 0.0,
+            'pendiente_pago'       => 0.0,
+            'validacion_pendiente' => 0.0,
+            'pendiente_cobro'      => 0.0,
+            'sin_finalizar'        => 0.0,
+        ];
+
+        $states  = self::aggregate_summary_states($state_counts);
+        $amounts = self::aggregate_summary_state_amounts($state_amounts);
+        $month_label = function_exists('date_i18n') ? date_i18n('F Y') : gmdate('F Y');
+
+        $context = [
+            'label'      => __('Tus garantías', 'garantias-online-360vo'),
+            'count'      => 0,
+            'states'     => $states,
+            'amounts'    => $amounts,
+            'trends'     => [],
+            'month_name' => $month_label,
+        ];
+
+        return [
+            'totals'    => ['count' => 0],
+            'states'    => $states,
+            'contexts'  => [
+                'year'  => $context,
+                'month' => $context,
+            ],
+            'pending'   => [
+                'draft'      => ['count' => 0, 'amount' => 0.0],
+                'payment'    => ['count' => 0, 'amount' => 0.0],
+                'validation' => ['count' => 0, 'amount' => 0.0],
+                'collect'    => ['count' => 0, 'amount' => 0.0],
+            ],
+            'month'      => $context,
+            'currency'   => 'EUR',
+            'updated_at' => current_time('mysql'),
+        ];
+    }
+
+    private static function build_professional_summary(array $vendor_ids): array
+    {
+        $normalized_vendor_ids = array_values(array_unique(array_filter(array_map('intval', $vendor_ids))));
+        if (empty($normalized_vendor_ids)) {
+            return self::build_empty_summary_payload();
+        }
+
+        $statuses = self::get_summary_post_statuses();
+        $args = [
+            'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+            'post_status'    => $statuses,
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+            'no_found_rows'  => true,
+            'meta_query'     => [
+                [
+                    'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                    'value'   => $normalized_vendor_ids,
+                    'compare' => 'IN',
+                ],
+            ],
+        ];
+
+        $post_ids = get_posts($args);
+        if (! is_array($post_ids) || empty($post_ids)) {
+            return self::build_empty_summary_payload();
+        }
+
+        $state_counts = [
+            'activada'             => 0,
+            'pendiente_pago'       => 0,
+            'validacion_pendiente' => 0,
+            'pendiente_cobro'      => 0,
+            'sin_finalizar'        => 0,
+        ];
+        $state_amounts = [
+            'activada'             => 0.0,
+            'pendiente_pago'       => 0.0,
+            'validacion_pendiente' => 0.0,
+            'pendiente_cobro'      => 0.0,
+            'sin_finalizar'        => 0.0,
+        ];
+
+        $pending_payment_count     = 0;
+        $pending_payment_amount    = 0.0;
+        $pending_collect_count     = 0;
+        $pending_collect_amount    = 0.0;
+        $pending_validation_count  = 0;
+        $pending_validation_amount = 0.0;
+        $draft_count               = 0;
+
+        foreach ($post_ids as $post_id) {
+            $post_id = (int) $post_id;
+            if ($post_id <= 0) {
+                continue;
+            }
+
+            $state = (string) get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+            if ($state === '') {
+                $state = 'sin_finalizar';
+            }
+
+            if (! array_key_exists($state, $state_counts)) {
+                $state_counts[$state] = 0;
+                $state_amounts[$state] = 0.0;
+            }
+
+            $state_counts[$state]++;
+
+            if ($state === 'sin_finalizar') {
+                $draft_count++;
+            }
+
+            $price = self::normalize_price_amount(get_post_meta($post_id, 'garantia_contratada_precio', true));
+
+            if (in_array($state, ['activada', 'pendiente_pago', 'validacion_pendiente', 'pendiente_cobro'], true)) {
+                $state_amounts[$state] += $price;
+            }
+
+            if ($state === 'pendiente_pago') {
+                $pending_payment_count++;
+                $pending_payment_amount += $price;
+            } elseif ($state === 'pendiente_cobro') {
+                $pending_collect_count++;
+                $pending_collect_amount += $price;
+            } elseif ($state === 'validacion_pendiente') {
+                $pending_validation_count++;
+                $pending_validation_amount += $price;
+            }
+        }
+
+        $states      = self::aggregate_summary_states($state_counts);
+        $amounts     = self::aggregate_summary_state_amounts($state_amounts);
+        $total_posts = count($post_ids);
+        $month_label = function_exists('date_i18n') ? date_i18n('F Y') : gmdate('F Y');
+
+        $context = [
+            'label'      => __('Tus garantías', 'garantias-online-360vo'),
+            'count'      => (int) $total_posts,
+            'states'     => $states,
+            'amounts'    => $amounts,
+            'trends'     => [],
+            'month_name' => $month_label,
+        ];
+
+        return [
+            'totals'    => ['count' => (int) $total_posts],
+            'states'    => $states,
+            'contexts'  => [
+                'year'  => $context,
+                'month' => $context,
+            ],
+            'pending'   => [
+                'draft'      => ['count' => (int) $draft_count, 'amount' => 0.0],
+                'payment'    => ['count' => (int) $pending_payment_count, 'amount' => round($pending_payment_amount, 2)],
+                'validation' => ['count' => (int) $pending_validation_count, 'amount' => round($pending_validation_amount, 2)],
+                'collect'    => ['count' => (int) $pending_collect_count, 'amount' => round($pending_collect_amount, 2)],
+            ],
+            'month'      => $context,
+            'currency'   => 'EUR',
+            'updated_at' => current_time('mysql'),
+        ];
+    }
+
+    private static function get_accessible_professional_vendor_ids(int $user_id): array
+    {
+        $user_id = (int) $user_id;
+        if ($user_id <= 0) {
+            return [];
+        }
+
+        $vendor_ids = [$user_id];
+        $assigned = get_users([
+            'role__in' => ['go_profesional', 'profesional'],
+            'fields'   => 'ID',
+            'meta_query' => [
+                [
+                    'key'     => 'ajustes_usuarios_comercial_asignado',
+                    'value'   => '"' . $user_id . '"',
+                    'compare' => 'LIKE',
+                ],
+            ],
+        ]);
+
+        if (is_array($assigned) && ! empty($assigned)) {
+            foreach ($assigned as $assigned_id) {
+                $vendor_ids[] = (int) $assigned_id;
+            }
+        }
+
+        return array_values(array_unique(array_filter(array_map('intval', $vendor_ids))));
     }
 
     public static function download_document($request)
@@ -1556,6 +1834,10 @@ class GuaranteeRestController
             return true;
         }
 
+        if (in_array('go_profesional', $roles, true) || in_array('profesional', $roles, true)) {
+            return true;
+        }
+
         return false;
     }
 
@@ -1704,7 +1986,13 @@ class GuaranteeRestController
             if (!isset($data['garantia_contratada']['canal_venta'])) {
                 $data['garantia_contratada']['canal_venta'] = 'profesional';
             }
-            if (!isset($data['garantia_contratada']['concesionario_empresa_profesional'])) {
+            $provided_vendor = 0;
+            if (isset($data['garantia_contratada']['concesionario_empresa_profesional'])) {
+                $provided_vendor = self::normalize_vendor_meta(
+                    $data['garantia_contratada']['concesionario_empresa_profesional']
+                );
+            }
+            if ($provided_vendor <= 0) {
                 $data['garantia_contratada']['concesionario_empresa_profesional'] = $current_user->ID;
             }
         }
@@ -1960,6 +2248,34 @@ class GuaranteeRestController
             if (isset($gc['nivel_garantia'])) {
                 wp_set_post_terms($post_id, [(int) $gc['nivel_garantia']], 'nivel_garantia');
             }
+            if (
+                !isset($gc['concesionario_empresa_profesional']) ||
+                (int) $gc['concesionario_empresa_profesional'] <= 0
+            ) {
+                $existing_vendor = 0;
+                if ($post_id > 0) {
+                    $existing_vendor = self::normalize_vendor_meta(
+                        get_post_meta(
+                            $post_id,
+                            'garantia_contratada_concesionario_empresa_profesional',
+                            true
+                        )
+                    );
+                    if ($existing_vendor <= 0) {
+                        $author_id = (int) get_post_field('post_author', $post_id);
+                        if ($author_id > 0) {
+                            $author = get_user_by('id', $author_id);
+                            if (self::user_is_professional($author)) {
+                                $existing_vendor = $author_id;
+                            }
+                        }
+                    }
+                }
+                if ($existing_vendor > 0) {
+                    $gc['concesionario_empresa_profesional'] = $existing_vendor;
+                }
+            }
+
             foreach ($gc as $k => $v) {
                 if (is_array($v)) {
                     foreach ($v as $subk => $subv) {
@@ -2269,6 +2585,20 @@ class GuaranteeRestController
         $total = (int) $wpdb->get_var($wpdb->prepare($total_sql, $total_params));
 
         $states = self::collect_state_distribution($statuses);
+        $pending_draft = ['count' => 0, 'amount' => 0.0];
+        foreach ($states as $state_entry) {
+            if (! is_array($state_entry)) {
+                continue;
+            }
+
+            $state_value = isset($state_entry['value']) ? (string) $state_entry['value'] : '';
+            if ($state_value !== 'sin_finalizar') {
+                continue;
+            }
+
+            $pending_draft['count'] = isset($state_entry['count']) ? (int) $state_entry['count'] : 0;
+            break;
+        }
         $pending_collect = self::sum_prices_for_states(['pendiente_cobro'], $statuses);
         $pending_payment = self::sum_prices_for_states(['pendiente_pago'], $statuses);
         $pending_validation = self::sum_prices_for_states(['validacion_pendiente'], $statuses);
@@ -2285,6 +2615,7 @@ class GuaranteeRestController
                 'month' => $month,
             ],
             'pending' => [
+                'draft'     => $pending_draft,
                 'collect'    => $pending_collect,
                 'payment'    => $pending_payment,
                 'validation' => $pending_validation,
@@ -2293,6 +2624,83 @@ class GuaranteeRestController
             'currency'   => 'EUR',
             'updated_at' => current_time('mysql'),
         ];
+    }
+
+    private static function normalize_admin_summary(array $summary, ?bool &$has_draft_state = null): array
+    {
+        $has_draft_state = false;
+
+        $states = isset($summary['states']) && is_array($summary['states'])
+            ? array_values($summary['states'])
+            : [];
+
+        foreach ($states as $index => $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $value = isset($entry['value']) ? (string) $entry['value'] : '';
+            if ($value !== 'sin_finalizar') {
+                continue;
+            }
+
+            $has_draft_state = true;
+            $count = isset($entry['count']) ? (int) $entry['count'] : 0;
+            $label = isset($entry['label']) ? (string) $entry['label'] : '';
+
+            $states[$index] = [
+                'value' => 'sin_finalizar',
+                'label' => $label !== '' ? $label : __('Sin finalizar', 'garantias-online-360vo'),
+                'count' => $count,
+            ];
+        }
+
+        if (! $has_draft_state) {
+            $states[] = [
+                'value' => 'sin_finalizar',
+                'label' => __('Sin finalizar', 'garantias-online-360vo'),
+                'count' => 0,
+            ];
+        }
+
+        $summary['states'] = $states;
+
+        $draft_count = 0;
+        foreach ($states as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            if (($entry['value'] ?? '') === 'sin_finalizar') {
+                $draft_count = isset($entry['count']) ? (int) $entry['count'] : 0;
+                break;
+            }
+        }
+
+        if (! isset($summary['pending']) || ! is_array($summary['pending'])) {
+            $summary['pending'] = [];
+        }
+
+        if (! isset($summary['pending']['draft']) || ! is_array($summary['pending']['draft'])) {
+            $summary['pending']['draft'] = [
+                'count'  => $draft_count,
+                'amount' => 0.0,
+            ];
+        } else {
+            if (! isset($summary['pending']['draft']['count'])) {
+                $summary['pending']['draft']['count'] = $draft_count;
+            } else {
+                $summary['pending']['draft']['count'] = (int) $summary['pending']['draft']['count'];
+            }
+
+            if (! isset($summary['pending']['draft']['amount'])) {
+                $summary['pending']['draft']['amount'] = 0.0;
+            } else {
+                $summary['pending']['draft']['amount'] = (float) $summary['pending']['draft']['amount'];
+            }
+        }
+
+        return $summary;
     }
 
     private static function collect_year_summary(array $statuses): array
@@ -3148,6 +3556,17 @@ class GuaranteeRestController
         return '';
     }
 
+    private static function user_is_professional($user): bool
+    {
+        if (!($user instanceof \WP_User)) {
+            return false;
+        }
+
+        $roles = (array) $user->roles;
+
+        return in_array('go_profesional', $roles, true) || in_array('profesional', $roles, true);
+    }
+
     private static function normalize_vendor_meta($raw)
     {
         if (is_array($raw)) {
@@ -3367,6 +3786,15 @@ class GuaranteeRestController
 
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
         $vendor_id = is_array($vendor_id) && isset($vendor_id['ID']) ? (int) $vendor_id['ID'] : (int) $vendor_id;
+        if ($vendor_id <= 0) {
+            $author_id = (int) get_post_field('post_author', $id);
+            if ($author_id > 0) {
+                $author = get_user_by('id', $author_id);
+                if (self::user_is_professional($author)) {
+                    $vendor_id = $author_id;
+                }
+            }
+        }
         $labels = [
             'company_name'       => '',
             'personal_name'      => '',
