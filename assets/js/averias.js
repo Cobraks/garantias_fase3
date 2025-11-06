@@ -427,8 +427,26 @@
                 }
             }
 
+            var stickyClass = 'body--averia-detail__hero_sticky';
+            var scrollTicking = false;
+
             var toggleHeroState = function (shouldStick) {
-                document.body.classList.toggle('body--averia-detail__hero_sticky', shouldStick);
+                document.body.classList.toggle(stickyClass, shouldStick);
+            };
+
+            var computeStickyState = function () {
+                var topOffset = 0;
+                var computedStyle = window.getComputedStyle ? window.getComputedStyle(hero) : null;
+                if (computedStyle) {
+                    var parsedTop = parseFloat(computedStyle.top);
+                    if (Number.isFinite(parsedTop)) {
+                        topOffset = parsedTop;
+                    }
+                }
+
+                var rect = hero.getBoundingClientRect();
+                var shouldStick = rect.top <= topOffset + 0.5;
+                toggleHeroState(shouldStick);
             };
 
             if ('IntersectionObserver' in window && sentinel && sentinel.parentNode) {
@@ -438,22 +456,28 @@
                     }
 
                     var entry = entries[0];
-                    toggleHeroState(!entry.isIntersecting);
+                    var shouldStick = !entry.isIntersecting;
+                    toggleHeroState(shouldStick);
                 });
 
                 heroObserver.observe(sentinel);
-            } else {
-                var updateHeroStickyState = function () {
-                    var rect = hero.getBoundingClientRect();
-                    toggleHeroState(rect.top <= 0);
-                };
-
-                window.addEventListener('scroll', function () {
-                    requestAnimationFrame(updateHeroStickyState);
-                }, { passive: true });
-
-                updateHeroStickyState();
             }
+
+            var onScrollOrResize = function () {
+                if (scrollTicking) {
+                    return;
+                }
+                scrollTicking = true;
+                requestAnimationFrame(function () {
+                    scrollTicking = false;
+                    computeStickyState();
+                });
+            };
+
+            window.addEventListener('scroll', onScrollOrResize, { passive: true });
+            window.addEventListener('resize', onScrollOrResize);
+
+            computeStickyState();
         }
 
         var navigableRows = Array.prototype.slice.call(document.querySelectorAll('.guarantees-table__row[data-expediente-url]'));
