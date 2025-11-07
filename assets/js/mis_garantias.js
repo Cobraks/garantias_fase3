@@ -317,6 +317,8 @@ const ADD_DOC_KEY = "add-document";
                         initializeAdminSummary(panel1);
                 }
                 let currentEmptyMode = "awaiting";
+                let prevSelectedRow = null;
+                let prevIdx = null;
 
                 const filtersRoot = document.querySelector(
                         ".guarantees-list__filters"
@@ -358,6 +360,18 @@ const ADD_DOC_KEY = "add-document";
                 );
                 const resetFiltersBtn = document.querySelector(
                         "[data-reset-filters]"
+                );
+                const mobileFiltersToggle = document.querySelector(
+                        "[data-mobile-filters-toggle]"
+                );
+                const mobileFiltersPanel = document.querySelector(
+                        "[data-mobile-filters-panel]"
+                );
+                const mobileFiltersOverlay = document.querySelector(
+                        "[data-mobile-filters-overlay]"
+                );
+                const mobileFiltersDismissEls = document.querySelectorAll(
+                        "[data-mobile-filters-dismiss]"
                 );
                 const orderRoot = document.querySelector("[data-order-root]");
                 const orderToggle = orderRoot
@@ -449,6 +463,26 @@ const ADD_DOC_KEY = "add-document";
                 const orderOptions = new Map();
                 let setAdvancedOpen = () => {};
                 let baseFiltersHeight = filtersRoot ? filtersRoot.offsetHeight || 0 : 0;
+                const desktopMediaQuery =
+                        typeof window !== "undefined" &&
+                        typeof window.matchMedia === "function"
+                                ? window.matchMedia("(min-width: 80rem)")
+                                : null;
+                let mobileFiltersOpen = Boolean(
+                        filtersRoot &&
+                                filtersRoot.getAttribute("data-mobile-open") === "true"
+                );
+                let lastMobileOpenState = mobileFiltersOpen;
+                const bodyElement = document.body;
+                const detailDialog = detail
+                        ? detail.querySelector("[data-detail-dialog]")
+                        : null;
+                const detailDismissTriggers = detail
+                        ? detail.querySelectorAll("[data-mobile-detail-dismiss]")
+                        : [];
+                let mobileDetailOpen = false;
+                let lastDetailTrigger = null;
+                let infiniteScrollObserver = null;
                 const updateBaseFiltersHeight = () => {
                         if (!filtersRoot) {
                                 baseFiltersHeight = 0;
@@ -488,6 +522,349 @@ const ADD_DOC_KEY = "add-document";
                         );
                 };
                 updateBaseFiltersHeight();
+
+                const isDesktopView = () =>
+                        desktopMediaQuery ? desktopMediaQuery.matches : true;
+
+                function syncMobileDetailVisibility({ focus = false, restoreFocus = false } = {}) {
+                        if (!detail) {
+                                return;
+                        }
+                        const desktop = isDesktopView();
+                        const shouldBeOpen = desktop || mobileDetailOpen;
+                        detail.setAttribute(
+                                "data-mobile-open",
+                                shouldBeOpen ? "true" : "false"
+                        );
+
+                        if (desktop) {
+                                detail.removeAttribute("aria-hidden");
+                                if (detailDialog) {
+                                        detailDialog.setAttribute("role", "region");
+                                        detailDialog.removeAttribute("aria-modal");
+                                        detailDialog.removeAttribute("tabindex");
+                                }
+                                if (bodyElement) {
+                                        bodyElement.classList.remove("has-mobile-detail-open");
+                                }
+                                return;
+                        }
+
+                        if (detailDialog) {
+                                detailDialog.setAttribute("role", "dialog");
+                                detailDialog.setAttribute("aria-modal", "true");
+                                detailDialog.setAttribute("tabindex", "-1");
+                        }
+
+                        if (shouldBeOpen) {
+                                detail.removeAttribute("aria-hidden");
+                                if (bodyElement) {
+                                        bodyElement.classList.add("has-mobile-detail-open");
+                                }
+                                if (focus && detailDialog && typeof detailDialog.focus === "function") {
+                                        requestAnimationFrame(() => {
+                                                try {
+                                                        detailDialog.focus({ preventScroll: true });
+                                                } catch (error) {
+                                                        detailDialog.focus();
+                                                }
+                                        });
+                                }
+                        } else {
+                                detail.setAttribute("aria-hidden", "true");
+                                if (bodyElement) {
+                                        bodyElement.classList.remove("has-mobile-detail-open");
+                                }
+                                if (
+                                        restoreFocus &&
+                                        lastDetailTrigger &&
+                                        typeof lastDetailTrigger.focus === "function"
+                                ) {
+                                        requestAnimationFrame(() => {
+                                                try {
+                                                        lastDetailTrigger.focus({ preventScroll: true });
+                                                } catch (error) {
+                                                        lastDetailTrigger.focus();
+                                                }
+                                        });
+                                }
+                        }
+                }
+
+                function setMobileDetailOpen(open, { focus = true, restoreFocus = true } = {}) {
+                        if (!detail) {
+                                return;
+                        }
+                        if (isDesktopView()) {
+                                mobileDetailOpen = true;
+                                syncMobileDetailVisibility();
+                                return;
+                        }
+                        const shouldOpen = Boolean(open);
+                        if (mobileDetailOpen === shouldOpen) {
+                                syncMobileDetailVisibility({
+                                        focus: shouldOpen && focus,
+                                        restoreFocus: !shouldOpen && restoreFocus,
+                                });
+                                return;
+                        }
+                        mobileDetailOpen = shouldOpen;
+                        syncMobileDetailVisibility({
+                                focus: shouldOpen && focus,
+                                restoreFocus: !shouldOpen && restoreFocus,
+                        });
+                }
+
+                function openMobileDetail(options = {}) {
+                        setMobileDetailOpen(true, options);
+                }
+
+                function closeMobileDetail(options = {}) {
+                        setMobileDetailOpen(false, options);
+                }
+
+                function observeScrollEnd() {
+                        if (!scrollEnd) {
+                                return;
+                        }
+                        if (infiniteScrollObserver) {
+                                infiniteScrollObserver.disconnect();
+                        }
+                        const observerOptions = {
+                                root: isDesktopView() ? listContainer : null,
+                                threshold: 0.1,
+                                rootMargin: "200px 0px",
+                        };
+                        infiniteScrollObserver = new IntersectionObserver((entries) => {
+                                if (
+                                        entries &&
+                                        entries[0] &&
+                                        entries[0].isIntersecting &&
+                                        hasMore &&
+                                        !isLoading
+                                ) {
+                                        loadPage(currentPage + 1);
+                                }
+                        }, observerOptions);
+                        infiniteScrollObserver.observe(scrollEnd);
+                }
+
+                const syncMobileFiltersVisibility = () => {
+                        if (!filtersRoot || !mobileFiltersPanel) {
+                                return;
+                        }
+                        const desktop = isDesktopView();
+                        const shouldBeOpen = desktop || mobileFiltersOpen;
+
+                        filtersRoot.setAttribute(
+                                "data-mobile-open",
+                                shouldBeOpen ? "true" : "false"
+                        );
+
+                        if (mobileFiltersToggle) {
+                                mobileFiltersToggle.setAttribute(
+                                        "aria-expanded",
+                                        shouldBeOpen ? "true" : "false"
+                                );
+                        }
+
+                        if (desktop) {
+                                mobileFiltersPanel.setAttribute("role", "region");
+                                mobileFiltersPanel.removeAttribute("aria-modal");
+                                mobileFiltersPanel.removeAttribute("aria-hidden");
+                        } else {
+                                mobileFiltersPanel.setAttribute("role", "dialog");
+                                mobileFiltersPanel.setAttribute("aria-modal", "true");
+                                if (shouldBeOpen) {
+                                        mobileFiltersPanel.removeAttribute("aria-hidden");
+                                } else {
+                                        mobileFiltersPanel.setAttribute(
+                                                "aria-hidden",
+                                                "true"
+                                        );
+                                }
+                        }
+
+                        if (mobileFiltersOverlay) {
+                                if (desktop) {
+                                        mobileFiltersOverlay.removeAttribute("aria-hidden");
+                                } else if (shouldBeOpen) {
+                                        mobileFiltersOverlay.removeAttribute(
+                                                "aria-hidden"
+                                        );
+                                } else {
+                                        mobileFiltersOverlay.setAttribute(
+                                                "aria-hidden",
+                                                "true"
+                                        );
+                                }
+                        }
+
+                        if (bodyElement) {
+                                bodyElement.classList.toggle(
+                                        "has-mobile-filters-open",
+                                        shouldBeOpen && !desktop
+                                );
+                        }
+
+                        if (!desktop && !shouldBeOpen) {
+                                setAdvancedOpen(false);
+                                closeOrderMenu();
+                        }
+
+                        updateBaseFiltersHeight();
+                        requestAnimationFrame(updateAdvancedHeight);
+
+                        if (!desktop && shouldBeOpen && !lastMobileOpenState) {
+                                requestAnimationFrame(() => {
+                                        const focusTarget = mobileFiltersPanel.querySelector(
+                                                "select, input, button, [href], [tabindex]:not([tabindex='-1'])"
+                                        );
+                                        if (focusTarget && typeof focusTarget.focus === "function") {
+                                                try {
+                                                        focusTarget.focus({
+                                                                preventScroll: true,
+                                                        });
+                                                } catch (error) {
+                                                        focusTarget.focus();
+                                                }
+                                        } else if (
+                                                typeof mobileFiltersPanel.focus === "function"
+                                        ) {
+                                                try {
+                                                        mobileFiltersPanel.focus({
+                                                                preventScroll: true,
+                                                        });
+                                                } catch (error) {
+                                                        mobileFiltersPanel.focus();
+                                                }
+                                        }
+                                });
+                        } else if (
+                                !desktop &&
+                                !shouldBeOpen &&
+                                lastMobileOpenState &&
+                                mobileFiltersToggle &&
+                                typeof mobileFiltersToggle.focus === "function"
+                        ) {
+                                requestAnimationFrame(() => {
+                                        try {
+                                                mobileFiltersToggle.focus({
+                                                        preventScroll: true,
+                                                });
+                                        } catch (error) {
+                                                mobileFiltersToggle.focus();
+                                        }
+                                });
+                        }
+
+                        lastMobileOpenState = shouldBeOpen;
+                };
+
+                const setMobileFiltersOpen = (open) => {
+                        if (!filtersRoot || !mobileFiltersPanel) {
+                                return;
+                        }
+                        if (isDesktopView()) {
+                                mobileFiltersOpen = true;
+                                syncMobileFiltersVisibility();
+                                return;
+                        }
+                        mobileFiltersOpen = Boolean(open);
+                        syncMobileFiltersVisibility();
+                };
+
+                if (mobileFiltersToggle && mobileFiltersPanel && filtersRoot) {
+                        mobileFiltersToggle.addEventListener("click", () => {
+                                if (isDesktopView()) {
+                                        return;
+                                }
+                                setMobileFiltersOpen(!mobileFiltersOpen);
+                        });
+                }
+
+                if (mobileFiltersDismissEls && mobileFiltersDismissEls.length > 0) {
+                        mobileFiltersDismissEls.forEach((trigger) => {
+                                trigger.addEventListener("click", (event) => {
+                                        if (isDesktopView()) {
+                                                return;
+                                        }
+                                        event.preventDefault();
+                                        setMobileFiltersOpen(false);
+                                });
+                        });
+                }
+
+                if (detailDismissTriggers && detailDismissTriggers.length > 0) {
+                        detailDismissTriggers.forEach((trigger) => {
+                                trigger.addEventListener("click", (event) => {
+                                        if (isDesktopView()) {
+                                                return;
+                                        }
+                                        event.preventDefault();
+                                        if (prevSelectedRow && prevSelectedRow.isConnected) {
+                                                lastDetailTrigger = prevSelectedRow;
+                                        } else {
+                                                lastDetailTrigger = trigger;
+                                        }
+                                        clearSelectionAndDetail({ preserveQuery: true });
+                                });
+                        });
+                }
+
+                if (desktopMediaQuery) {
+                        const handleDesktopChange = (event) => {
+                                if (event.matches) {
+                                        mobileFiltersOpen = true;
+                                        mobileDetailOpen = true;
+                                } else {
+                                        mobileFiltersOpen = false;
+                                        mobileDetailOpen = prevSelectedRow ? true : false;
+                                }
+                                syncMobileFiltersVisibility();
+                                syncMobileDetailVisibility();
+                                observeScrollEnd();
+                        };
+                        if (typeof desktopMediaQuery.addEventListener === "function") {
+                                desktopMediaQuery.addEventListener(
+                                        "change",
+                                        handleDesktopChange
+                                );
+                        } else if (
+                                typeof desktopMediaQuery.addListener === "function"
+                        ) {
+                                desktopMediaQuery.addListener(handleDesktopChange);
+                        }
+                }
+
+                document.addEventListener("keydown", (event) => {
+                        if (event.key !== "Escape") {
+                                return;
+                        }
+                        if (isDesktopView()) {
+                                return;
+                        }
+                        let handled = false;
+                        if (mobileDetailOpen) {
+                                if (prevSelectedRow && prevSelectedRow.isConnected) {
+                                        lastDetailTrigger = prevSelectedRow;
+                                }
+                                clearSelectionAndDetail({ preserveQuery: true });
+                                handled = true;
+                        }
+                        if (mobileFiltersOpen) {
+                                setMobileFiltersOpen(false);
+                                handled = true;
+                        }
+                        if (handled) {
+                                event.preventDefault();
+                        }
+                });
+
+                syncMobileFiltersVisibility();
+                mobileDetailOpen = isDesktopView();
+                syncMobileDetailVisibility();
+                observeScrollEnd();
 
                 function populateMonthSelect(select) {
                         if (!select || monthOptions.length === 0) {
@@ -831,12 +1208,10 @@ const ADD_DOC_KEY = "add-document";
                         panel2 = document.getElementById("detail-panel-2");
                 }
 
-		let activePanel = panel1;
-		let inactivePanel = panel2;
-		activePanel.classList.add("active");
-		inactivePanel.classList.remove("active");
-                let prevSelectedRow = null;
-                let prevIdx = null;
+                let activePanel = panel1;
+                let inactivePanel = panel2;
+                activePanel.classList.add("active");
+                inactivePanel.classList.remove("active");
                 const urlMat = new URLSearchParams(window.location.search).get("matricula");
                 let pendingMatSelection = Boolean(urlMat);
                 let initialMatQuery = typeof urlMat === "string" ? urlMat.trim() : "";
@@ -3855,15 +4230,26 @@ const ADD_DOC_KEY = "add-document";
                                 () => {
                                         currentActive.classList.remove("slide-out-left", "slide-out-right");
                                         nextPanel.classList.remove("slide-in-left", "slide-in-right");
-				},
-				{ once: true }
-			);
+                                },
+                                { once: true }
+                        );
                         lastEmptyPanel = nextPanel;
                         currentEmptyMode = normalizedMode;
+                        if (!isDesktopView()) {
+                                if (normalizedMode === "loading") {
+                                        openMobileDetail({ focus: false });
+                                } else {
+                                        closeMobileDetail({ focus: false, restoreFocus: false });
+                                }
+                        }
                 }
 
                 function clearSelectionAndDetail(options = {}) {
                         const preserveQuery = Boolean(options.preserveQuery);
+                        const restoreFocus = options.restoreFocus !== false;
+                        const lastRow = prevSelectedRow && prevSelectedRow.isConnected
+                                ? prevSelectedRow
+                                : null;
                         const requestedMode =
                                 typeof options.emptyMode === "string" ? options.emptyMode : "";
                         const shouldShowLoading =
@@ -3890,6 +4276,15 @@ const ADD_DOC_KEY = "add-document";
                                 initialMatQuery = "";
                         }
                         setEmptyDetailPanel("forward", desiredMode, emptyOptions); // Mantén la dirección como prefieras
+                        if (!isDesktopView()) {
+                                if (desiredMode === "loading") {
+                                        lastDetailTrigger = lastRow || lastDetailTrigger;
+                                        openMobileDetail({ focus: false });
+                                } else {
+                                        lastDetailTrigger = lastRow || lastDetailTrigger;
+                                        closeMobileDetail({ focus: false, restoreFocus });
+                                }
+                        }
                 }
 
 		function setResultMessage(msg = "") {
@@ -4091,54 +4486,20 @@ const ADD_DOC_KEY = "add-document";
                                                 }
                                         }
                                         setResultMessage("");
-					// AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
-					if (data.length === 1 && search && search.length > 0) {
-						const row = tbody.querySelector(".guarantees-table__row");
-						if (row && !row.classList.contains("selected")) {
-							row.classList.add("selected");
-							const id = row.dataset.id;
-							const rowData = buildRowData(row);
-							const currentActive = activePanel;
-							const nextPanel = activePanel === panel1 ? panel2 : panel1;
-
-                                                        if (detailCache.has(id)) {
-                                                                const dataDetalle = detailCache.get(id);
-                                                                nextPanel.innerHTML = renderFullDetail(
-                                                                        dataDetalle,
-                                                                        rowData
+                                        // AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
+                                        if (data.length === 1 && search && search.length > 0) {
+                                                const row = tbody.querySelector(".guarantees-table__row");
+                                                if (row && !row.classList.contains("selected")) {
+                                                        try {
+                                                                await activateRow(row, { updateHistory: false });
+                                                        } catch (error) {
+                                                                console.error(
+                                                                        "❌ Error al activar la garantía automática:",
+                                                                        error
                                                                 );
-                                                                setupTransferCountdown(nextPanel);
-                                                                nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
-                                                                syncPdfModalDocs(nextPanel);
-                                                        } else {
-                                                                nextPanel.innerHTML = renderFullDetail({}, rowData);
-                                                                nextPanel.dataset.matricula = rowData.matricula || "";
-                                                                nextPanel.dataset.plan = rowData.plan || "";
-                                                                syncPdfModalDocs(nextPanel);
-                                                                fetchDetail(id)
-                                                                        .then((dataDetalle) => {
-                                                                                if (nextPanel.dataset.loadedId === String(id)) {
-                                                                                        nextPanel.innerHTML = renderFullDetail(
-                                                                                                dataDetalle,
-                                                                                                rowData
-                                                                                        );
-                                                                                        setupTransferCountdown(nextPanel);
-                                                                                        nextPanel.dataset.matricula = dataDetalle.matricula || rowData.matricula || "";
-                                                                                        syncPdfModalDocs(nextPanel);
-                                                                                }
-                                                                        })
-                                                                        .catch(() => {})
-                                                                        .finally(() => {
-                                                                                nextPanel.classList.remove("loading");
-                                                                        });
                                                         }
-                                                        nextPanel.dataset.loadedId = id;
-                                                        activePanel = nextPanel;
-                                                        inactivePanel = currentActive;
-                                                        currentActive.classList.remove("active");
-                                                        nextPanel.classList.add("active");
-						}
-					}
+                                                }
+                                        }
 				} else {
 					// Solo mostramos resultados previos si búsqueda >= 3 caracteres y pocos resultados
 					if (
@@ -5106,6 +5467,8 @@ async function activateRow(row, options = {}) {
 
                         prevSelectedRow = row;
                         prevIdx = idx;
+                        lastDetailTrigger = row;
+                        openMobileDetail({ focus: true });
 
                         const matricula = row.dataset.matricula || "";
                         if (options.updateHistory !== false) {
@@ -5198,6 +5561,7 @@ async function activateRow(row, options = {}) {
                                 const previousIdx = prevIdx;
 
                                 if (row.classList.contains("selected")) {
+                                        lastDetailTrigger = row;
                                         rows.forEach((r) => r.classList.remove("selected"));
                                         prevSelectedRow = null;
                                         prevIdx = null;
@@ -5482,18 +5846,36 @@ async function activateRow(row, options = {}) {
 					{ root: null, threshold: 0, rootMargin: "-50px" }
 				).observe(header);
 			}
+                        const getListScrollTop = () => {
+                                if (isDesktopView() && listContainer) {
+                                        return listContainer.scrollTop || 0;
+                                }
+                                return (
+                                        window.pageYOffset ||
+                                        document.documentElement.scrollTop ||
+                                        document.body.scrollTop ||
+                                        0
+                                );
+                        };
                         const onScroll = () => {
-                                const activePanel = detail.querySelector(".guarantee-detail__panel.active");
+                                const activePanel = detail
+                                        ? detail.querySelector(".guarantee-detail__panel.active")
+                                        : null;
                                 const detailScrolled = activePanel ? activePanel.scrollTop > 10 : false;
                                 document.body.classList.toggle(
                                         "scrolled",
-                                        listContainer.scrollTop > 10 || detailScrolled
+                                        getListScrollTop() > 10 || detailScrolled
                                 );
                         };
-                        listContainer.addEventListener("scroll", onScroll);
-                        detail.querySelectorAll(".guarantee-detail__panel").forEach((p) =>
-                                p.addEventListener("scroll", onScroll)
-                        );
+                        if (listContainer) {
+                                listContainer.addEventListener("scroll", onScroll);
+                        }
+                        if (detail) {
+                                detail.querySelectorAll(".guarantee-detail__panel").forEach((p) =>
+                                        p.addEventListener("scroll", onScroll)
+                                );
+                        }
+                        window.addEventListener("scroll", onScroll, { passive: true });
                 })();
 
                 function normalizeFilterValues(items) {
@@ -6075,6 +6457,9 @@ async function activateRow(row, options = {}) {
                         };
 
                         moreFiltersToggle.addEventListener("click", () => {
+                                if (!isDesktopView()) {
+                                        setMobileFiltersOpen(true);
+                                }
                                 const isOpen = !advancedPanel.hasAttribute("hidden");
                                 setAdvancedOpen(!isOpen);
                         });
@@ -6227,15 +6612,6 @@ async function activateRow(row, options = {}) {
                         loadPage(1);
                         updateResetVisibility();
                 });
-
-                new IntersectionObserver(
-                        (entries) => {
-                                if (entries[0].isIntersecting && hasMore && !isLoading) {
-                                        loadPage(currentPage + 1);
-                                }
-                        },
-                        { root: listContainer, threshold: 0.1, rootMargin: "200px 0px" }
-                ).observe(scrollEnd);
 
                 if (pendingMatSelection && initialMatQuery) {
                         setEmptyDetailPanel("forward", "loading", { plate: initialMatQuery });
