@@ -177,6 +177,7 @@
             concesionario: 'Concesionario Oficial',
             'concesionario-oficial': 'Concesionario Oficial',
             compraventa: 'Compraventa',
+            individual: 'Particular',
         };
 
         function normalizeSalesChannelLabel(channel) {
