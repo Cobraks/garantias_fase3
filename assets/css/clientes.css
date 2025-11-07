@@ -800,6 +800,7 @@
 }
 .clients-table__channel {
     margin-left: 0.5rem;
+    padding-right: 0.5rem;
     font-style: italic;
     font-size: 0.7rem;
     color: var(--text-secondary);
