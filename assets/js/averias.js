@@ -415,6 +415,72 @@
             document.addEventListener('keydown', handleKeyDown);
         }
 
+        var hero = document.querySelector('.averia-hero');
+        if (hero) {
+            var stickyClass = 'body--averia-detail__hero_sticky';
+            var stickyThreshold = 0;
+            var lastState = null;
+
+            var getScrollTop = function () {
+                return window.pageYOffset
+                    || document.documentElement.scrollTop
+                    || document.body.scrollTop
+                    || 0;
+            };
+
+            var parseStickyTop = function () {
+                var rawTop = '0';
+
+                if (window.getComputedStyle) {
+                    rawTop = window.getComputedStyle(hero).top || '0';
+                } else if (hero.style && hero.style.top) {
+                    rawTop = hero.style.top;
+                }
+
+                var parsed = parseInt(rawTop, 10);
+                return Number.isFinite(parsed) ? parsed : 0;
+            };
+
+            var computeOffsetTop = function (element) {
+                var offset = 0;
+                var current = element;
+
+                while (current) {
+                    offset += current.offsetTop || 0;
+                    current = current.offsetParent;
+                }
+
+                return offset;
+            };
+
+            var recalcThreshold = function () {
+                stickyThreshold = computeOffsetTop(hero) - parseStickyTop();
+            };
+
+            var applyState = function () {
+                var shouldStick = getScrollTop() >= stickyThreshold;
+
+                if (shouldStick === lastState) {
+                    return;
+                }
+
+                lastState = shouldStick;
+                document.body.classList.toggle(stickyClass, shouldStick);
+            };
+
+            recalcThreshold();
+            applyState();
+
+            window.addEventListener('scroll', function () {
+                requestAnimationFrame(applyState);
+            }, { passive: true });
+
+            window.addEventListener('resize', function () {
+                recalcThreshold();
+                requestAnimationFrame(applyState);
+            });
+        }
+
         var navigableRows = Array.prototype.slice.call(document.querySelectorAll('.guarantees-table__row[data-expediente-url]'));
 
         navigableRows.forEach(function (row) {
