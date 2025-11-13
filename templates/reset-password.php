@@ -122,7 +122,7 @@ $subtitle_message = $show_form
 
             <?php if ($show_form) : ?>
                 <form
-                    action="<?php echo esc_url(AuthController::get_reset_password_url($login_identifier, $key_param)); ?>"
+                    action="<?php echo esc_url(AuthController::get_reset_password_action_url($login_identifier, $key_param)); ?>"
                     method="post"
                     class="auth-form">
                     <?php wp_nonce_field('go_reset_password_action', 'go_reset_nonce'); ?>
