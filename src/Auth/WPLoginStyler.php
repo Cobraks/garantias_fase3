@@ -79,19 +79,27 @@ class WPLoginStyler
             return $translation;
         }
 
+        static $processing = false;
+
+        if ($processing) {
+            return $translation;
+        }
+
+        $processing = true;
+
         $targets = [
             'Generate Password',
             __('Generate Password', 'default'),
-            __('Generar contraseña', 'default'),
+            'Generar contraseña',
         ];
 
-        if (in_array($text, $targets, true)) {
-            return __('Generar contraseña segura', 'garantias-online-360vo');
+        $replacement = __('Generar contraseña segura', 'garantias-online-360vo');
+
+        if (in_array($text, $targets, true) || in_array($translation, $targets, true)) {
+            $translation = $replacement;
         }
 
-        if (in_array($translation, $targets, true)) {
-            return __('Generar contraseña segura', 'garantias-online-360vo');
-        }
+        $processing = false;
 
         return $translation;
     }
