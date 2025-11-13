@@ -50,6 +50,7 @@ class Plugin
         add_action('init', [ActivitySubscribers::class, 'init'], 5);
         add_action('login_init', [ActivitySubscribers::class, 'init']);
         add_action('init', [PrivateDocsManager::class, 'ensure_directory']);
+        add_action('init', [__CLASS__, 'load_textdomain']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
         \GarantiasOnline360VO\Rest\GuaranteeRestController::register_cache_hooks();
 
@@ -94,6 +95,15 @@ class Plugin
                 require_once $acf_file;
             }
         });
+    }
+
+    public static function load_textdomain(): void
+    {
+        load_plugin_textdomain(
+            'garantias-online-360vo',
+            false,
+            dirname(plugin_basename(GARANTIAS360VO__FILE__)) . '/languages'
+        );
     }
 
     /**
