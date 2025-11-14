@@ -202,6 +202,9 @@ $home_destination = $is_admin_user
     if ($is_auth_template) {
         $body_classes[] = 'body--auth';
     }
+    if (! empty($is_login_page)) {
+        $body_classes[] = 'body--login-signin';
+    }
     if (! empty($is_clients_page)) {
         $body_classes[] = 'body--clients';
     }
