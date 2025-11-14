@@ -38,6 +38,7 @@ const ADD_DOC_KEY = "add-document";
                 let spinnerFallbackTimeout = null;
                 let spinnerTokenCounter = 0;
                 let activeSpinnerToken = 0;
+                let hasMore = true;
 
                 const clearSpinnerWatchers = () => {
                         if (spinnerObserver) {
@@ -519,11 +520,10 @@ const ADD_DOC_KEY = "add-document";
                 );
                 const DEFAULT_PER = 12;
                 let perPage = DEFAULT_PER;
-		let currentPage = 1;
-		let totalPages = 1;
-		let totalPosts = 0;
-		let isLoading = false;
-		let hasMore = true;
+                let currentPage = 1;
+                let totalPages = 1;
+                let totalPosts = 0;
+                let isLoading = false;
 		let searchQuery = "";
 		let lastValidQuery = "";
 		let lastValidResults = [];
@@ -4574,6 +4574,23 @@ const ADD_DOC_KEY = "add-document";
                         if (!item || typeof item !== "object") {
                                 return null;
                         }
+                        const normalizeVendorTypeValue = (value) => {
+                                if (typeof value !== "string") {
+                                        return "";
+                                }
+                                return value.trim().toLowerCase().replace(/^go_/, "");
+                        };
+                        const splitPersonalName = (full) => {
+                                if (typeof full !== "string") {
+                                        return { first: "", last: "" };
+                                }
+                                const parts = full.trim().split(/\s+/).filter(Boolean);
+                                if (parts.length === 0) {
+                                        return { first: "", last: "" };
+                                }
+                                const [first, ...rest] = parts;
+                                return { first, last: rest.join(" ") };
+                        };
                         const estadoData = item.estado ?? "";
                         const estadoValue =
                                 typeof estadoData === "object" && estadoData.value
@@ -4599,7 +4616,44 @@ const ADD_DOC_KEY = "add-document";
                                 hastaDisplayRaw !== "-" &&
                                 desdeDisplayRaw !== "" &&
                                 hastaDisplayRaw !== "";
-                        const vendedorName = item.vendedor ?? "-";
+                        const vendorTypeValueRaw =
+                                (item.detail && item.detail.vendor_company_type_value) ??
+                                (item.detail && item.detail.canal_venta_value) ??
+                                "";
+                        const vendorCompanyRaw =
+                                ((item.detail && typeof item.detail.concesionario === "string"
+                                        ? item.detail.concesionario
+                                        : "") || "").trim();
+                        const vendorPersonalFull = (item.detail?.concesionario_personal ?? "").trim();
+                        const personalParts = splitPersonalName(vendorPersonalFull);
+                        const vendorPersonalFirst =
+                                (item.detail?.concesionario_personal_first ?? "").trim() || personalParts.first;
+                        const vendorPersonalLast =
+                                (item.detail?.concesionario_personal_last ?? "").trim() || personalParts.last;
+                        const vendorTypeValueNormalized = normalizeVendorTypeValue(vendorTypeValueRaw);
+                        const isVendorParticularVendor = vendorTypeValueNormalized === "particular";
+
+                        let vendedorName = item.vendedor ?? "-";
+                        if (typeof vendedorName === "string") {
+                                vendedorName = vendedorName.trim();
+                                if (vendedorName === "") {
+                                        vendedorName = "-";
+                                }
+                        }
+                        if (!vendedorName || vendedorName === "-") {
+                                vendedorName = vendorCompanyRaw !== "" ? vendorCompanyRaw : "-";
+                        }
+                        if (isVendorParticularVendor) {
+                                const personalDisplay =
+                                        vendorPersonalFull ||
+                                        [vendorPersonalFirst, vendorPersonalLast].filter(Boolean).join(" ").trim();
+                                if (personalDisplay !== "") {
+                                        vendedorName = personalDisplay;
+                                }
+                        }
+                        if (typeof vendedorName === "string" && vendedorName.trim() === "") {
+                                vendedorName = "-";
+                        }
                         const planName = item.plan ?? "";
                         const precio = formatPrice(item.precio);
                         const planPriceLabel = precio && precio !== "-" ? `${precio}€` : "";
@@ -4726,9 +4780,13 @@ const ADD_DOC_KEY = "add-document";
                                 cardPlanPrice: shouldShowPlan ? planPriceLabel : "",
                                 datasetPrecio,
                                 canalVentaValue: canalVenta,
+                                vendorCompanyTypeValue: vendorTypeValueNormalized,
+                                vendorCompanyTypeRaw: vendorTypeValueRaw,
                                 metodoPago,
                                 cobroRealizado,
-                                concesionarioPersonal: item.detail?.concesionario_personal ?? "",
+                                concesionarioPersonal: vendorPersonalFull,
+                                concesionarioPersonalFirst: vendorPersonalFirst,
+                                concesionarioPersonalLast: vendorPersonalLast,
                                 ibanVendedor: item.detail?.iban_vendedor || "",
                                 transferIban: item.detail?.transfer_iban || "",
                         };
@@ -4858,8 +4916,11 @@ const ADD_DOC_KEY = "add-document";
                         tr.dataset.canal_venta_summary = view.canalVentaSummary || "";
                         tr.dataset.concesionario = view.vendedorName || "";
                         tr.dataset.concesionario_personal = view.concesionarioPersonal || "";
+                        tr.dataset.concesionario_personal_first = view.concesionarioPersonalFirst || "";
+                        tr.dataset.concesionario_personal_last = view.concesionarioPersonalLast || "";
                         tr.dataset.precio = view.datasetPrecio || "";
                         tr.dataset.canalVenta = view.canalVentaValue || "";
+                        tr.dataset.vendor_company_type_value = view.vendorCompanyTypeValue || "";
                         tr.dataset.metodoPago = view.metodoPago || "";
                         tr.dataset.cobroRealizado = view.cobroRealizado || "";
                         tr.dataset.ibanVendedor = view.ibanVendedor || "";
@@ -6606,6 +6667,13 @@ const ADD_DOC_KEY = "add-document";
                                 cobro_realizado: row.dataset.cobroRealizado === "1",
                                 iban_vendedor: row.dataset.ibanVendedor ?? "",
                                 transfer_iban: row.dataset.transferIban ?? "",
+                                concesionario_personal: row.dataset.concesionario_personal ?? "",
+                                concesionario_personal_first:
+                                        row.dataset.concesionario_personal_first ?? "",
+                                concesionario_personal_last:
+                                        row.dataset.concesionario_personal_last ?? "",
+                                vendor_company_type_value:
+                                        row.dataset.vendor_company_type_value ?? "",
                                 tipo: "-",
                                 kilometros: "-",
                                 primera_matriculacion: "-",
@@ -6687,6 +6755,24 @@ const ADD_DOC_KEY = "add-document";
             return raw;
         }
         return fallback;
+    };
+
+    const normalizeVendorTypeValue = (value) => {
+        if (typeof value !== "string") {
+            return "";
+        }
+        return value.trim().toLowerCase().replace(/^go_/, "");
+    };
+    const splitPersonalName = (full) => {
+        if (typeof full !== "string") {
+            return { first: "", last: "" };
+        }
+        const parts = full.trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) {
+            return { first: "", last: "" };
+        }
+        const [first, ...rest] = parts;
+        return { first, last: rest.join(" ") };
     };
 
     const mesesTotales = getDurationMeses(
@@ -6771,6 +6857,14 @@ const ADD_DOC_KEY = "add-document";
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
             : "";
+    const vendorTypeValueRaw =
+        pickField("vendor_company_type_value", "") || pickField("canal_venta_value", "");
+    const vendorTypeValue = normalizeVendorTypeValue(vendorTypeValueRaw);
+    const isVendorTypeParticular = vendorTypeValue === "particular";
+    const vendorPersonalFull = pickField("concesionario_personal", "");
+    const personalParts = splitPersonalName(vendorPersonalFull);
+    const vendorPersonalFirst = pickField("concesionario_personal_first", "") || personalParts.first;
+    const vendorPersonalLast = pickField("concesionario_personal_last", "") || personalParts.last;
     const vendorChannelSummaryRaw = pickField("canal_venta_summary", "");
     const vendorChannelSummarySource =
         vendorChannelSummaryRaw !== ""
@@ -6780,10 +6874,33 @@ const ADD_DOC_KEY = "add-document";
         vendorChannelSummarySource && vendorChannelSummarySource !== "-"
             ? extractVendorType(vendorChannelSummarySource) || vendorChannelSummarySource
             : vendorChannelSummarySource;
-    const vendorCompanyName = pickField("concesionario", "-");
-    const vendorContactRaw = pickField("concesionario_personal", "");
-    const vendorContactName =
+    const vendorCompanyBase = pickField("concesionario", "-");
+    let vendorCompanyName = vendorCompanyBase;
+    const vendorContactRaw = vendorPersonalFull;
+    let vendorContactName =
         vendorContactRaw !== "" ? vendorContactRaw : vendorCompanyName;
+    if (isVendorTypeParticular) {
+        const personalCombined =
+            (vendorPersonalFirst || "") !== "" || (vendorPersonalLast || "") !== ""
+                ? [vendorPersonalFirst, vendorPersonalLast].filter(Boolean).join(" ").trim()
+                : vendorPersonalFull;
+        if (vendorPersonalFirst) {
+            vendorCompanyName = vendorPersonalFirst;
+        } else if (personalCombined) {
+            vendorCompanyName = personalCombined;
+        }
+        if (vendorPersonalLast) {
+            vendorContactName = vendorPersonalLast;
+        } else if (personalCombined) {
+            vendorContactName = personalCombined;
+        }
+    }
+    if (!vendorCompanyName || vendorCompanyName === "") {
+        vendorCompanyName = "-";
+    }
+    if (!vendorContactName || vendorContactName === "") {
+        vendorContactName = "-";
+    }
     const vendorAvatarUrl =
         data.avatar_vendedor ?? rowData.avatar_vendedor ?? "";
     const vendorAvatarWrapper = vendorAvatarUrl
