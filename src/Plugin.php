@@ -31,6 +31,9 @@ class Plugin
     /** Registra todos los hooks globales */
     private function init_hooks(): void
     {
+        // 0) Traducciones
+        self::load_textdomain();
+
         // 1) Reglas y endpoints
         Rewrite::init();
         Router::init();
@@ -50,7 +53,6 @@ class Plugin
         add_action('init', [ActivitySubscribers::class, 'init'], 5);
         add_action('login_init', [ActivitySubscribers::class, 'init']);
         add_action('init', [PrivateDocsManager::class, 'ensure_directory']);
-        add_action('plugins_loaded', [__CLASS__, 'load_textdomain']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
         \GarantiasOnline360VO\Rest\GuaranteeRestController::register_cache_hooks();
 
