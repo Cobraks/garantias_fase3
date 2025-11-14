@@ -39,7 +39,7 @@
 }
 
 .body--auth .container--auth {
-  padding-inline: clamp(1.5rem, 4vw, 3rem);
+  padding-inline: clamp(1rem, 6vw, 2rem);
 }
 
 .login-page .form-panel,
@@ -51,6 +51,7 @@
   justify-content: center;
   align-items: center;
   padding-block: clamp(2.5rem, 6vh, 4rem);
+  order: 2;
 }
 
 .login-page .form-panel__inner {
@@ -67,6 +68,7 @@
 
 .login-page .info-panel {
   gap: 1.25rem;
+  order: 1;
 }
 
 
@@ -129,8 +131,10 @@
 
 .login-page .form-footer {
   margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
+  align-items: stretch;
   gap: 1rem;
   flex-wrap: wrap;
 }
@@ -215,6 +219,7 @@
 
 .login-page .form-footer .btn {
   min-width: 160px;
+  width: 100%;
 }
 
 .login-page .form-footer .form-link {
@@ -270,31 +275,27 @@
   color: var(--go-color-a8323c);
 }
 
-@media (max-width: 1024px) {
-  .login-page .form-panel {
-    order: 2;
-  }
-
-  .login-page .info-panel {
-    order: 1;
-  }
-}
-
-@media (max-width: 768px) {
+@media (min-width: 768px) {
   .body--auth .container--auth {
-    padding-inline: clamp(1rem, 6vw, 2rem);
-  }
-
-  .login-page .form-panel,
-  .register-page .info-panel {
-    padding: clamp(1.75rem, 6vh, 2.5rem);
+    padding-inline: clamp(1.5rem, 4vw, 3rem);
   }
 
   .login-page .form-footer {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
   }
 
   .login-page .form-footer .btn {
-    width: 100%;
+    width: auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .login-page .form-panel {
+    order: 1;
+  }
+
+  .login-page .info-panel {
+    order: 2;
   }
 }

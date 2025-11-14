@@ -54,8 +54,8 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                     </g>
                 </svg>
                 <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
+                <h1>Crea tu cuenta en Garantías Online</h1>
             </div>
-            <h1>Crea tu cuenta en Garantías Online</h1>
             <p>Activa tu panel para contratar, seguir y gestionar todas tus garantías desde un único lugar, con soporte experto y trazabilidad completa.</p>
 
             <ul class="features-list">
@@ -665,6 +665,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                         <div class="verification-actions" id="verification-actions">
                             <button type="button" class="btn btn-primary" id="verify-btn">Verificar cuenta</button>
                             <button type="button" class="btn btn-link" id="resend-code-btn">Reenviar código</button>
+                            <button type="button" class="btn btn-link verification-restart" id="restart-register-btn">Iniciar un nuevo registro</button>
                         </div>
                         <p class="verification-hint" id="resend-countdown" hidden></p>
 
