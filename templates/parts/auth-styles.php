@@ -359,6 +359,10 @@
             margin-bottom: clamp(1rem, 2.6vh, 1.4rem);
         }
 
+        .form-alert__line {
+            display: inline;
+        }
+
         .form-alert--success {
             color: #047857;
             background: rgba(16, 185, 129, 0.14);
@@ -888,10 +892,15 @@
                 align-items: center;
                 max-width: 440px;
                 width: 100%;
+                padding-left: var(--spacing-3, 3rem);
             }
 
             .body--auth-flow .login-card__body > .auth-form {
                 width: 100%;
+            }
+
+            .body--auth-flow .form-alert__line {
+                display: block;
             }
 
             .info-cta--login-mobile {
@@ -907,6 +916,17 @@
 
             .body--login-recovery .login-card__title {
                 font-size: 1.5rem;
+            }
+
+            .body--login-reset .login-card__title {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (min-width: 1360px) {
+            .body--auth-flow .login-card__body {
+                padding-left: var(--spacing-6, 6rem);
+                padding-right: var(--spacing-3, 3rem);
             }
         }
     </style>

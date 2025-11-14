@@ -126,9 +126,21 @@ $subtitle_message = $show_form
 
                 <div class="login-card__body">
                     <?php if ($global_error !== '') : ?>
-                        <div class="form-alert" role="alert">
-                            <?php echo esc_html($global_error); ?>
-                        </div>
+                        <?php $invalid_link_message = __('Este enlace no es válido. Genera uno nuevo para continuar.', 'garantias-online-360vo'); ?>
+                        <?php if ($global_error === $invalid_link_message) : ?>
+                            <div class="form-alert" role="alert">
+                                <span class="form-alert__line form-alert__line--primary">
+                                    <?php esc_html_e('Este enlace no es válido', 'garantias-online-360vo'); ?>
+                                </span>
+                                <span class="form-alert__line form-alert__line--secondary">
+                                    <?php esc_html_e('Genera uno nuevo para continuar.', 'garantias-online-360vo'); ?>
+                                </span>
+                            </div>
+                        <?php else : ?>
+                            <div class="form-alert" role="alert">
+                                <?php echo esc_html($global_error); ?>
+                            </div>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <?php if ($show_form) : ?>
