@@ -844,19 +844,21 @@
 
             .body--auth-flow .login-page .container {
                 width: min(100%, 1080px);
+                margin-block: auto;
             }
 
             .body--auth-flow .login-card__layout {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-                align-items: center;
+                align-items: end;
                 justify-items: stretch;
-                gap: 3rem;
+                gap: 0;
             }
 
             .body--auth-flow .login-card__intro {
                 gap: 2rem;
                 padding-inline-end: 2.5rem;
+                padding-left: var(--spacing-3, 3rem);
                 border-inline-end: 1px solid var(--auth-field-border);
                 align-self: stretch;
                 justify-self: center;
