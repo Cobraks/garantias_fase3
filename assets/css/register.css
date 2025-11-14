@@ -1812,6 +1812,7 @@ footer.footer .footer__wrapper {
   .body--register {
     height: calc(100dvh - 36px);
     overflow: hidden;
+    padding: var(--spacing-3);
   }
 
   .container.container--auth {
@@ -1886,10 +1887,11 @@ footer.footer .footer__wrapper {
     max-width: 100%;
     justify-content: center;
     margin: 0;
+    flex-direction: column;
   }
 
   .register-page .brand-logo svg {
-    width: 100%;
+    width: 200px;
   }
 
   .register-page .badge,
