@@ -199,7 +199,9 @@ $home_destination = $is_admin_user
 
     <?php
     $body_classes = [];
-    if ($is_auth_template) {
+    if (! empty($is_register_page)) {
+        $body_classes[] = 'body--register';
+    } elseif ($is_auth_template) {
         $body_classes[] = 'body--auth';
     }
     if (! empty($is_login_page)) {

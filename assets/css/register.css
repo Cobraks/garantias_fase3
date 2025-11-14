@@ -43,11 +43,12 @@
   background-color: rgba(11, 17, 26, 0.94);
 }
 
-.body--auth {
+.body--register {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  background-color: var(--go-color-f8fafc);
 }
 
 .container.container--auth {
@@ -58,7 +59,7 @@
   background: transparent;
 }
 
-.body--auth .container--auth {
+.body--register .container--auth {
   padding: 0;
 }
 
