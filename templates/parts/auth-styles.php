@@ -151,13 +151,27 @@
             inset: -120% -40%;
             background: linear-gradient(
                 115deg,
-                rgba(255, 255, 255, 0) 10%,
-                rgba(255, 255, 255, 0.6) 45%,
-                rgba(255, 255, 255, 0) 70%
+                rgba(37, 99, 235, 0) 12%,
+                rgba(37, 99, 235, 0.3) 40%,
+                rgba(14, 165, 233, 0.32) 60%,
+                rgba(236, 72, 153, 0.28) 78%,
+                rgba(236, 72, 153, 0) 92%
             );
+            opacity: 0.85;
             transform: translateX(-120%) rotate(18deg);
             animation: badge-sheen 4.5s ease-in-out infinite;
             pointer-events: none;
+            mix-blend-mode: normal;
+        }
+
+        :root[data-theme='dark'] .login-card__badge::after {
+            background: linear-gradient(
+                115deg,
+                rgba(255, 255, 255, 0) 10%,
+                rgba(255, 255, 255, 0.65) 45%,
+                rgba(255, 255, 255, 0) 70%
+            );
+            opacity: 1;
             mix-blend-mode: screen;
         }
 
