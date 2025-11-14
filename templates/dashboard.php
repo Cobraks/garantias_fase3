@@ -4,14 +4,17 @@ if (! defined('ABSPATH')) {
 }
 
 use GarantiasOnline360VO\Svg;
+
+$is_logged_in      = is_user_logged_in();
 // Flags para CSS/JS condicional
-$is_auth_page      = ! is_user_logged_in();
-$is_dashboard_page = is_user_logged_in();
+$is_auth_page      = ! $is_logged_in;
+$is_dashboard_page = $is_logged_in;
+$is_login_page     = ! $is_logged_in;
 
 // Cargamos header
 \GarantiasOnline360VO\TemplateLoader::load_part(
     'header',
-    compact('is_auth_page', 'is_dashboard_page')
+    compact('is_auth_page', 'is_dashboard_page', 'is_login_page')
 );
 
 // Obtener el mes y año actual para mostrar en los módulos
@@ -34,7 +37,7 @@ $spanish_months = [
 $current_month_spanish = $spanish_months[$current_month] ?? $current_month;
 ?>
 
-<?php if (is_user_logged_in()) : ?>
+<?php if ($is_logged_in) : ?>
     <div class="dashboard">
 
 
