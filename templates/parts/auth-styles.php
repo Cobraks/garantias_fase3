@@ -839,18 +839,30 @@
             }
 
             .body--auth-flow .login-page .container {
-                width: min(100%, 940px);
+                width: min(100%, 980px);
             }
 
             .body--auth-flow .login-card__layout {
                 display: grid;
-                grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-                align-items: flex-start;
-                gap: clamp(2.5rem, 5vw, 3.5rem);
+                grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+                align-items: end;
+                gap: 3rem;
             }
 
             .body--auth-flow .login-card__intro {
                 gap: clamp(1.75rem, 4vw, 2.25rem);
+                padding-inline-end: clamp(2rem, 4vw, 2.75rem);
+                border-inline-end: 1px solid var(--auth-field-border);
+                align-self: stretch;
+            }
+
+            :root[data-theme='dark'] .body--auth-flow .login-card__intro {
+                border-inline-end-color: rgba(148, 163, 184, 0.4);
+            }
+
+            .body--auth-flow .login-card__header,
+            .body--auth-flow form#loginform {
+                max-width: 420px;
             }
 
             .body--auth-flow .login-card__brand {
