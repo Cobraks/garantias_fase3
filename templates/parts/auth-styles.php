@@ -839,21 +839,25 @@
             }
 
             .body--auth-flow .login-page .container {
-                width: min(100%, 980px);
+                width: min(100%, 1080px);
             }
 
             .body--auth-flow .login-card__layout {
                 display: grid;
-                grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-                align-items: end;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                align-items: center;
+                justify-items: stretch;
                 gap: 3rem;
             }
 
             .body--auth-flow .login-card__intro {
-                gap: clamp(1.75rem, 4vw, 2.25rem);
-                padding-inline-end: clamp(2rem, 4vw, 2.75rem);
+                gap: 2rem;
+                padding-inline-end: 2.5rem;
                 border-inline-end: 1px solid var(--auth-field-border);
                 align-self: stretch;
+                justify-self: center;
+                max-width: 440px;
+                width: 100%;
             }
 
             :root[data-theme='dark'] .body--auth-flow .login-card__intro {
@@ -863,6 +867,8 @@
             .body--auth-flow .login-card__header,
             .body--auth-flow form#loginform {
                 max-width: 420px;
+                width: 100%;
+                margin-inline: auto;
             }
 
             .body--auth-flow .login-card__brand {
@@ -878,6 +884,14 @@
 
             .body--auth-flow .login-card__body {
                 gap: clamp(1.5rem, 4vw, 2.25rem);
+                justify-self: center;
+                align-items: center;
+                max-width: 440px;
+                width: 100%;
+            }
+
+            .body--auth-flow .login-card__body > .auth-form {
+                width: 100%;
             }
 
             .info-cta--login-mobile {
