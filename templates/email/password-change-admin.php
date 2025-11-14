@@ -80,7 +80,7 @@ $logo_url    = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__
                         </td>
                     </tr>
                 </table>
-                <p style="text-align:center;margin:16px 0 0;font-size:12px;color:#6b7280;">
+                <p style="text-align:center;margin:16px 0 0;font-size:11px;color:#6b7280;padding-bottom:16px;">
                     <?php echo esc_html(sprintf(__('Centro de soporte · %s', 'garantias-online-360vo'), $site_name)); ?> ·
                     <a href="<?php echo esc_url(home_url('/garantias-online/')); ?>" style="color:#bc0000;text-decoration:none;">
                         <?php echo esc_html(home_url('/garantias-online/')); ?>

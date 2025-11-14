@@ -104,7 +104,7 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                         </td>
                     </tr>
                 </table>
-                <p style="text-align:center;margin:16px 0 0;font-size:12px;color:#6b7280;">
+                <p style="text-align:center;margin:16px 0 0;font-size:11px;color:#6b7280;padding-bottom:16px;">
                     <?php esc_html_e('Este mensaje ha sido enviado automáticamente por Garantías Online 360VO.', 'garantias-online-360vo'); ?>
                 </p>
             </td>
