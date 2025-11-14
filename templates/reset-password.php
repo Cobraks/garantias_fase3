@@ -97,6 +97,11 @@ $subtitle_message = $show_form
     <?php TemplateLoader::load_part('auth-styles'); ?>
 
     <div class="container">
+        <div class="login-card__logo login-card__logo--mobile">
+            <?php TemplateLoader::load_part('logo-inline'); ?>
+            <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
+        </div>
+
         <div class="login-card" style="view-transition-name: header">
             <span class="login-card__badge">
                 <?php echo Svg::icon('shield', 'login-card__badge-icon'); ?>
@@ -105,7 +110,7 @@ $subtitle_message = $show_form
             </span>
 
             <div class="login-card__brand">
-                <div class="login-card__logo" style="view-transition-name: logo">
+                <div class="login-card__logo login-card__logo--desktop" style="view-transition-name: logo">
                     <?php TemplateLoader::load_part('logo-inline'); ?>
                     <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
                 </div>

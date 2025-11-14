@@ -53,7 +53,6 @@
             flex: 1;
             display: flex;
             justify-content: center;
-            align-items: center;
             padding-block: clamp(2rem, 6vh, 4rem);
         }
 
@@ -269,6 +268,21 @@
             display: flex;
             justify-content: flex-start;
             flex-shrink: 0;
+        }
+
+        .login-card__logo--mobile {
+            display: block;
+            text-align: center;
+            margin: 0 auto clamp(1.5rem, 8vw, 2rem);
+        }
+
+        .login-card__logo--mobile svg,
+        .login-card__logo--mobile img {
+            margin: 0 auto;
+        }
+
+        .login-card__logo--desktop {
+            display: none;
         }
 
         .login-card__logo svg,
@@ -595,6 +609,21 @@
             border: 0;
         }
 
+        @media (min-width: 420px) {
+            .info-cta--login {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.75rem;
+            }
+
+            .info-cta--login a {
+                display: inline-flex;
+                align-items: center;
+                margin-top: 0;
+            }
+        }
+
         @media (min-width: 640px) {
             .container.container--auth {
                 padding-inline: clamp(1.5rem, 5vw, 3rem);
@@ -608,15 +637,22 @@
             }
 
             .login-card {
-                padding: clamp(2.75rem, 6vw, 3.5rem);
-                padding-top: clamp(3.25rem, 7vw, 4rem);
+                padding: var(--spacing-3, 3rem);
             }
 
             .login-card__brand {
                 flex-direction: column;
                 align-items: center;
-                gap: 2rem;
+                gap: 0.5rem;
                 margin-bottom: clamp(24px, 36.76px, 32px);
+            }
+
+            .login-card__logo--mobile {
+                display: none;
+            }
+
+            .login-card__logo--desktop {
+                display: flex;
             }
 
             .login-card__logo {
@@ -643,6 +679,19 @@
 
             .info-cta a {
                 display: inline;
+                margin-top: 0;
+            }
+
+            .info-cta--lost {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                justify-content: flex-end;
+                gap: 0.35rem;
+                text-align: right;
+            }
+
+            .info-cta--lost a {
                 margin-top: 0;
             }
 

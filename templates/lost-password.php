@@ -154,6 +154,11 @@ if ($redirect_to !== $default_login_url) {
     <?php TemplateLoader::load_part('auth-styles'); ?>
 
     <div class="container">
+        <div class="login-card__logo login-card__logo--mobile">
+            <?php TemplateLoader::load_part('logo-inline'); ?>
+            <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
+        </div>
+
         <div class="login-card" style="view-transition-name: header">
             <span class="login-card__badge">
                 <?php echo Svg::icon('shield', 'login-card__badge-icon'); ?>
@@ -162,7 +167,7 @@ if ($redirect_to !== $default_login_url) {
             </span>
 
             <div class="login-card__brand">
-                <div class="login-card__logo" style="view-transition-name: logo">
+                <div class="login-card__logo login-card__logo--desktop" style="view-transition-name: logo">
                     <?php TemplateLoader::load_part('logo-inline'); ?>
                     <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
                 </div>
@@ -222,7 +227,7 @@ if ($redirect_to !== $default_login_url) {
                         </span>
                         <span><?php esc_html_e('Obtener contraseña nueva', 'garantias-online-360vo'); ?></span>
                     </button>
-                    <p class="info-cta">
+                    <p class="info-cta info-cta--lost">
                         <?php esc_html_e('¿Ya recuerdas tu contraseña?', 'garantias-online-360vo'); ?>
                         <a href="<?php echo esc_url($login_link); ?>">
                             <?php esc_html_e('Volver a iniciar sesión', 'garantias-online-360vo'); ?>
