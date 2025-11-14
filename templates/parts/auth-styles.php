@@ -45,7 +45,8 @@
             height: calc(100dvh - 36px);
             display: flex;
             flex-direction: column;
-            padding-inline: clamp(1.5rem, 5vw, 3rem);
+            padding: 0;
+            background: var(--auth-surface-contrast, #ffffff);
         }
 
         .main-grid.main-grid--auth {
@@ -88,16 +89,17 @@
         }
 
         .login-page .container {
-            width: min(100%, 460px);
-            margin: 0 auto;
+            width: 100%;
+            margin: 0;
+            padding: clamp(2.25rem, 12vw, 3.25rem) clamp(1.25rem, 6vw, 1.75rem);
         }
 
         .login-card {
             position: relative;
             background: var(--auth-surface-contrast, #ffffff);
             border-radius: 22px;
-            padding: clamp(2.75rem, 6vw, 3.5rem);
-            padding-top: clamp(3.25rem, 7vw, 4rem);
+            padding: clamp(2rem, 8vw, 2.75rem);
+            padding-top: clamp(2.5rem, 10vw, 3rem);
             box-shadow: 0 22px 45px -24px rgba(15, 23, 42, 0.4);
             border: 1px solid var(--auth-field-border);
             display: flex;
@@ -256,35 +258,46 @@
             }
         }
 
+        .login-card__brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.75rem;
+        }
+
         .login-card__logo {
             display: flex;
-            justify-content: center;
+            justify-content: flex-start;
+            flex-shrink: 0;
         }
 
         .login-card__logo svg,
         .login-card__logo img {
-            width: min(200px, 60vw);
+            width: clamp(64px, 18vw, 88px);
             height: auto;
         }
 
         .login-card__header {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
-            text-align: center;
-            margin-bottom: clamp(24px, 36.76px, 32px);
+            gap: 0.35rem;
+            text-align: left;
+            align-items: flex-start;
+            margin: 0;
         }
 
         .login-card__title {
             margin: 0;
-            font-size: clamp(1.75rem, 2.6vw, 2.1rem);
+            font-size: 1.5rem;
             font-weight: 600;
             color: #0f172a;
+            line-height: 1.15;
         }
 
         .login-card__subtitle {
             margin: 0;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
             color: #475569;
         }
 
@@ -415,10 +428,9 @@
 
         .auth-form__meta {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            align-items: flex-start;
             gap: 1rem;
-            flex-wrap: wrap;
         }
 
         .remember-me {
@@ -475,7 +487,7 @@
         }
 
         .form-link {
-            margin-left: auto;
+            margin-left: 0;
             font-size: 0.95rem;
             color: #c5444e;
             font-weight: 400;
@@ -555,6 +567,8 @@
         }
 
         .info-cta a {
+            display: block;
+            margin-top: 0.35rem;
             color: #c5444e;
             font-weight: 600;
             text-decoration: none;
@@ -581,23 +595,65 @@
             border: 0;
         }
 
-        @media (max-width: 640px) {
+        @media (min-width: 640px) {
             .container.container--auth {
-                padding-inline: clamp(1rem, 6vw, 1.5rem);
+                padding-inline: clamp(1.5rem, 5vw, 3rem);
+                background: transparent;
+            }
+
+            .login-page .container {
+                width: min(100%, 460px);
+                margin: 0 auto;
+                padding: clamp(3rem, 8vw, 3.5rem) clamp(1.75rem, 5vw, 2.5rem);
             }
 
             .login-card {
-                padding: clamp(2rem, 8vw, 2.5rem);
-                gap: 1.5rem;
+                padding: clamp(2.75rem, 6vw, 3.5rem);
+                padding-top: clamp(3.25rem, 7vw, 4rem);
+            }
+
+            .login-card__brand {
+                flex-direction: column;
+                align-items: center;
+                gap: 2rem;
+                margin-bottom: clamp(24px, 36.76px, 32px);
+            }
+
+            .login-card__logo {
+                justify-content: center;
+            }
+
+            .login-card__logo svg,
+            .login-card__logo img {
+                width: min(200px, 60vw);
+            }
+
+            .login-card__header {
+                align-items: center;
+                text-align: center;
+            }
+
+            .login-card__title {
+                font-size: clamp(1.75rem, 2.6vw, 2.1rem);
+            }
+
+            .login-card__subtitle {
+                font-size: 0.95rem;
+            }
+
+            .info-cta a {
+                display: inline;
+                margin-top: 0;
             }
 
             .auth-form__meta {
-                flex-direction: column;
-                align-items: flex-start;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
             }
 
             .form-link {
-                margin-left: 0;
+                margin-left: auto;
             }
         }
     </style>

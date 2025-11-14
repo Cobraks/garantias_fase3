@@ -154,14 +154,17 @@ $password_container_class = 'input-container' . ($password_error_message !== '' 
                 <span class="login-card__badge-text"><?php esc_html_e('Garantías Online', 'garantias-online-360vo'); ?></span>
                 <span class="login-card__badge-status" aria-hidden="true"></span>
             </span>
-            <div class="login-card__logo" style="view-transition-name: logo">
-                <?php TemplateLoader::load_part('logo-inline'); ?>
-                <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
-            </div>
 
-            <div class="login-card__header">
-                <h2 class="login-card__title"><?php esc_html_e('Iniciar sesión', 'garantias-online-360vo'); ?></h2>
-                <p class="login-card__subtitle"><?php esc_html_e('Introduce tu correo electrónico y tu contraseña para acceder al panel.', 'garantias-online-360vo'); ?></p>
+            <div class="login-card__brand">
+                <div class="login-card__logo" style="view-transition-name: logo">
+                    <?php TemplateLoader::load_part('logo-inline'); ?>
+                    <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
+                </div>
+
+                <div class="login-card__header">
+                    <h2 class="login-card__title"><?php esc_html_e('Iniciar sesión', 'garantias-online-360vo'); ?></h2>
+                    <p class="login-card__subtitle"><?php esc_html_e('Introduce tu correo electrónico y tu contraseña para acceder al panel.', 'garantias-online-360vo'); ?></p>
+                </div>
             </div>
 
             <?php if ($success_message !== '') : ?>

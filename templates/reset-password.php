@@ -104,14 +104,16 @@ $subtitle_message = $show_form
                 <span class="login-card__badge-status" aria-hidden="true"></span>
             </span>
 
-            <div class="login-card__logo" style="view-transition-name: logo">
-                <?php TemplateLoader::load_part('logo-inline'); ?>
-                <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
-            </div>
+            <div class="login-card__brand">
+                <div class="login-card__logo" style="view-transition-name: logo">
+                    <?php TemplateLoader::load_part('logo-inline'); ?>
+                    <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
+                </div>
 
-            <div class="login-card__header">
-                <h2 class="login-card__title"><?php esc_html_e('Crear nueva contraseña', 'garantias-online-360vo'); ?></h2>
-                <p class="login-card__subtitle"><?php echo esc_html($subtitle_message); ?></p>
+                <div class="login-card__header">
+                    <h2 class="login-card__title"><?php esc_html_e('Crear nueva contraseña', 'garantias-online-360vo'); ?></h2>
+                    <p class="login-card__subtitle"><?php echo esc_html($subtitle_message); ?></p>
+                </div>
             </div>
 
             <?php if ($global_error !== '') : ?>
@@ -122,7 +124,7 @@ $subtitle_message = $show_form
 
             <?php if ($show_form) : ?>
                 <form
-                    action="<?php echo esc_url(AuthController::get_reset_password_url($login_identifier, $key_param)); ?>"
+                    action="<?php echo esc_url(AuthController::get_reset_password_action_url($login_identifier, $key_param)); ?>"
                     method="post"
                     class="auth-form">
                     <?php wp_nonce_field('go_reset_password_action', 'go_reset_nonce'); ?>
@@ -159,8 +161,8 @@ $subtitle_message = $show_form
                                     <?php echo esc_html($pass1_error); ?>
                                 </p>
                             <?php endif; ?>
-                            <p class="form-hint"><?php esc_html_e('Mínimo 8 caracteres con números y símbolos.', 'garantias-online-360vo'); ?></p>
                         </div>
+                        <p class="form-hint"><?php esc_html_e('Mínimo 8 caracteres con números y símbolos.', 'garantias-online-360vo'); ?></p>
                     </div>
 
                     <div class="form-row">
