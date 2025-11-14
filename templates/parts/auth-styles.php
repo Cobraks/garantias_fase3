@@ -53,7 +53,7 @@
             flex: 1;
             display: flex;
             justify-content: center;
-            padding-block: clamp(2rem, 6vh, 4rem);
+            padding-block: 0;
         }
 
         .main-grid--auth > .register-page {
@@ -63,9 +63,7 @@
         }
 
         footer.footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
+            position: static;
             width: 100%;
             z-index: 10;
             background: transparent;
@@ -287,8 +285,25 @@
 
         .login-card__logo svg,
         .login-card__logo img {
-            width: clamp(64px, 18vw, 88px);
+            width: 8rem;
             height: auto;
+        }
+
+        .login-card__layout {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(2rem, 6vw, 2.5rem);
+        }
+
+        .login-card__intro,
+        .login-card__body {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(1.5rem, 5vw, 2rem);
+        }
+
+        .login-card__body {
+            gap: clamp(1.25rem, 4vw, 1.75rem);
         }
 
         .login-card__header {
@@ -528,7 +543,7 @@
             justify-content: center;
             align-items: center;
             gap: 0.5rem;
-            border-radius: 14px;
+            border-radius: 999px;
             font-weight: 600;
             font-size: 1rem;
             padding: 0.95rem 1rem;
@@ -597,6 +612,22 @@
             outline: none;
         }
 
+        .footer__brand {
+            width: 100%;
+        }
+
+        .footer__text {
+            margin-right: auto;
+        }
+
+        .footer__legal ul {
+            flex-wrap: wrap;
+        }
+
+        .footer__legal a {
+            font-size: 0.7rem;
+        }
+
         .screen-reader-text {
             position: absolute;
             width: 1px;
@@ -625,6 +656,10 @@
         }
 
         @media (min-width: 640px) {
+            .main-grid.main-grid--auth {
+                padding-block: clamp(2rem, 6vh, 4rem);
+            }
+
             .container.container--auth {
                 padding-inline: clamp(1.5rem, 5vw, 3rem);
                 background: transparent;
@@ -684,10 +719,9 @@
 
             .info-cta--lost {
                 display: flex;
-                flex-direction: column;
-                align-items: flex-end;
+                align-items: center;
                 justify-content: flex-end;
-                gap: 0.35rem;
+                gap: 0.5rem;
                 text-align: right;
             }
 
@@ -703,6 +737,63 @@
 
             .form-link {
                 margin-left: auto;
+            }
+        }
+
+        @media (min-width: 720px) {
+            footer.footer {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+            }
+
+            .footer__brand {
+                width: auto;
+            }
+
+            .footer__text {
+                margin-right: 0;
+            }
+
+            .footer__legal ul {
+                flex-wrap: nowrap;
+            }
+
+            .footer__legal a {
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .login-page .container {
+                width: min(100%, 940px);
+            }
+
+            .login-card__layout {
+                display: grid;
+                grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+                align-items: flex-start;
+                gap: clamp(2.5rem, 5vw, 3.5rem);
+            }
+
+            .login-card__intro {
+                gap: clamp(1.75rem, 4vw, 2.25rem);
+            }
+
+            .login-card__brand {
+                margin-bottom: 0;
+                align-items: flex-start;
+                text-align: left;
+            }
+
+            .login-card__header {
+                align-items: flex-start;
+                text-align: left;
+            }
+
+            .login-card__body {
+                gap: clamp(1.5rem, 4vw, 2.25rem);
             }
         }
     </style>
