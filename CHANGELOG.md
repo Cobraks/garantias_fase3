@@ -1,5 +1,13 @@
 # Historial de cambios
 
+## 4.1.0 - 2025-11-14
+- Arreglado el flujo completo de recuperación de contraseña, incluyendo redirecciones seguras y manejo de enlaces caducados.
+- Añadido el correo de confirmación tras actualizar la contraseña y unificado el estilo de las notificaciones HTML.
+- Mejorados los estilos responsive y la experiencia de usuario de los formularios de acceso, restablecimiento y registro con enfoque *mobile first*.
+- Refinado el asistente de registro: selección de canal conmutables, validaciones progresivas y navegación accesible en todas las resoluciones.
+- Rediseñadas las plantillas de correo (logos, insignias, pies y espaciados) y actualizados los enlaces legales a aviso legal y política de privacidad.
+
+
 ## 0.1.31 - 2025-09-05
 - Relleno de certificados trasladado al navegador usando **pdf-lib**.
 - Añadido endpoint REST para subir el PDF generado desde el cliente.

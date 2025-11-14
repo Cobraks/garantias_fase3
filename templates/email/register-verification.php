@@ -48,7 +48,7 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
     <meta charset="utf-8">
     <title><?php esc_html_e('Verificación de cuenta', 'garantias-online-360vo'); ?></title>
 </head>
-<body style="margin:0;padding:32px 16px;background-color:#f4f4f5;font-family:'Roboto','Segoe UI','San Francisco',Arial,sans-serif;color:#1f2937;">
+<body style="margin:0;padding:32px 0px;font-family:'Roboto','Segoe UI','San Francisco',Arial,sans-serif;color:#1f2937;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
         <tr>
             <td align="center">
@@ -104,7 +104,7 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                         </td>
                     </tr>
                 </table>
-                <p style="text-align:center;margin:16px 0 0;font-size:12px;color:#6b7280;">
+                <p style="text-align:center;margin:16px 0 0;font-size:11px;color:#6b7280;padding-bottom:16px;">
                     <?php esc_html_e('Este mensaje ha sido enviado automáticamente por Garantías Online 360VO.', 'garantias-online-360vo'); ?>
                 </p>
             </td>

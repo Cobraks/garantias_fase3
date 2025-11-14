@@ -54,8 +54,8 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                     </g>
                 </svg>
                 <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
+                <h1>Crea tu cuenta en Garantías Online</h1>
             </div>
-            <h1>Crea tu cuenta en Garantías Online</h1>
             <p>Activa tu panel para contratar, seguir y gestionar todas tus garantías desde un único lugar, con soporte experto y trazabilidad completa.</p>
 
             <ul class="features-list">
@@ -87,15 +87,15 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                 <div class="progress-steps">
                     <div class="progress-bar" id="progress-bar"></div>
                     <div class="step active" data-step="1">
-                        1
+                        <span class="step-index">1</span>
                         <span class="step-label">Crea tu cuenta</span>
                     </div>
                     <div class="step" data-step="2">
-                        2
+                        <span class="step-index">2</span>
                         <span class="step-label">Completa el perfil</span>
                     </div>
                     <div class="step" data-step="3">
-                        3
+                        <span class="step-index">3</span>
                         <span class="step-label">Confirmación</span>
                     </div>
                 </div>
@@ -637,7 +637,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
 
                     <div class="checkbox-container checkbox-wrapper-14 checkbox-container--terms" id="terms-container">
                         <input type="checkbox" id="terms" required>
-                        <label for="terms" class="checkbox-label">Acepto los <a href="#">términos y condiciones</a> y la <a href="#">política de privacidad</a>.</label>
+                        <label for="terms" class="checkbox-label">Acepto los <a href="https://www.360vo.es/aviso-legal/" target="_blank" rel="noopener noreferrer">términos y condiciones</a> y la <a href="https://www.360vo.es/politica-de-privacidad/" target="_blank" rel="noopener noreferrer">política de privacidad</a>.</label>
                         <p class="checkbox-error" id="terms-error" hidden>Debes aceptar los términos y condiciones para continuar.</p>
                     </div>
 
@@ -663,8 +663,9 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                         </div>
 
                         <div class="verification-actions" id="verification-actions">
-                            <button type="button" class="btn btn-primary" id="verify-btn">Verificar cuenta</button>
                             <button type="button" class="btn btn-link" id="resend-code-btn">Reenviar código</button>
+                            <button type="button" class="btn btn-primary" id="verify-btn">Verificar cuenta</button>
+                            <button type="button" class="btn btn-link verification-restart" id="restart-register-btn">Iniciar un nuevo registro</button>
                         </div>
                         <p class="verification-hint" id="resend-countdown" hidden></p>
 
