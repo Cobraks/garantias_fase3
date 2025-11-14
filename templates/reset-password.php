@@ -14,7 +14,7 @@ $is_login_page    = false;
 $is_register_page = false;
 
 if ($is_reset_page) {
-    TemplateLoader::load_part('header', compact('is_auth_page', 'is_login_page', 'is_register_page'));
+    TemplateLoader::load_part('header', compact('is_auth_page', 'is_login_page', 'is_register_page', 'is_reset_page'));
 }
 
 $default_login_url = home_url('/garantias-online/login/');
@@ -109,124 +109,132 @@ $subtitle_message = $show_form
                 <span class="login-card__badge-status" aria-hidden="true"></span>
             </span>
 
-            <div class="login-card__brand">
-                <div class="login-card__logo login-card__logo--desktop" style="view-transition-name: logo">
-                    <?php TemplateLoader::load_part('logo-inline'); ?>
-                    <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
+            <div class="login-card__layout">
+                <div class="login-card__intro">
+                    <div class="login-card__brand">
+                        <div class="login-card__logo login-card__logo--desktop" style="view-transition-name: logo">
+                            <?php TemplateLoader::load_part('logo-inline'); ?>
+                            <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
+                        </div>
+
+                        <div class="login-card__header">
+                            <h2 class="login-card__title"><?php esc_html_e('Crear nueva contraseña', 'garantias-online-360vo'); ?></h2>
+                            <p class="login-card__subtitle"><?php echo esc_html($subtitle_message); ?></p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="login-card__header">
-                    <h2 class="login-card__title"><?php esc_html_e('Crear nueva contraseña', 'garantias-online-360vo'); ?></h2>
-                    <p class="login-card__subtitle"><?php echo esc_html($subtitle_message); ?></p>
+                <div class="login-card__body">
+                    <?php if ($global_error !== '') : ?>
+                        <div class="form-alert" role="alert">
+                            <?php echo esc_html($global_error); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($show_form) : ?>
+                        <form
+                            action="<?php echo esc_url(AuthController::get_reset_password_action_url($login_identifier, $key_param)); ?>"
+                            method="post"
+                            class="auth-form auth-form--reset">
+                            <?php wp_nonce_field('go_reset_password_action', 'go_reset_nonce'); ?>
+                            <input type="hidden" name="go_auth_action" value="resetpassword">
+                            <input type="hidden" name="user_login" value="<?php echo esc_attr($login_identifier); ?>">
+                            <input type="hidden" name="rp_key" value="<?php echo esc_attr($key_param); ?>">
+
+                            <div class="form-row">
+                                <div class="<?php echo esc_attr($pass1_container_class); ?>">
+                                    <input
+                                        type="password"
+                                        name="pass1"
+                                        id="pass1"
+                                        required
+                                        autocomplete="new-password"
+                                        class="form-input"
+                                        <?php echo $pass1_error !== '' ? ' aria-invalid="true"' : ''; ?>
+                                        <?php echo $pass1_error_id !== '' ? ' aria-describedby="' . esc_attr($pass1_error_id) . '"' : ''; ?>
+                                        placeholder=" ">
+                                    <label for="pass1" class="form-label">
+                                        <?php esc_html_e('Nueva contraseña', 'garantias-online-360vo'); ?>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        class="toggle-password"
+                                        data-toggle-target="pass1"
+                                        aria-pressed="false">
+                                        <span class="screen-reader-text"><?php esc_html_e('Mostrar contraseña', 'garantias-online-360vo'); ?></span>
+                                        <?php echo Svg::icon('visibility', 'toggle-password__icon toggle-password__icon--on'); ?>
+                                        <?php echo Svg::icon('visibility_off', 'toggle-password__icon toggle-password__icon--off'); ?>
+                                    </button>
+                                    <?php if ($pass1_error !== '') : ?>
+                                        <p class="form-field-error" id="<?php echo esc_attr($pass1_error_id); ?>">
+                                            <?php echo esc_html($pass1_error); ?>
+                                        </p>
+                                    <?php endif; ?>
+                                </div>
+                                <p class="form-hint"><?php esc_html_e('Mínimo 8 caracteres con números y símbolos.', 'garantias-online-360vo'); ?></p>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="<?php echo esc_attr($pass2_container_class); ?>">
+                                    <input
+                                        type="password"
+                                        name="pass2"
+                                        id="pass2"
+                                        required
+                                        autocomplete="new-password"
+                                        class="form-input"
+                                        <?php echo $pass2_error !== '' ? ' aria-invalid="true"' : ''; ?>
+                                        <?php echo $pass2_error_id !== '' ? ' aria-describedby="' . esc_attr($pass2_error_id) . '"' : ''; ?>
+                                        placeholder=" ">
+                                    <label for="pass2" class="form-label">
+                                        <?php esc_html_e('Confirmar contraseña', 'garantias-online-360vo'); ?>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        class="toggle-password"
+                                        data-toggle-target="pass2"
+                                        aria-pressed="false">
+                                        <span class="screen-reader-text"><?php esc_html_e('Mostrar contraseña', 'garantias-online-360vo'); ?></span>
+                                        <?php echo Svg::icon('visibility', 'toggle-password__icon toggle-password__icon--on'); ?>
+                                        <?php echo Svg::icon('visibility_off', 'toggle-password__icon toggle-password__icon--off'); ?>
+                                    </button>
+                                    <?php if ($pass2_error !== '') : ?>
+                                        <p class="form-field-error" id="<?php echo esc_attr($pass2_error_id); ?>">
+                                            <?php echo esc_html($pass2_error); ?>
+                                        </p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <div class="auth-form__footer">
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="btn__icon" aria-hidden="true">
+                                        <?php echo Svg::icon('check'); ?>
+                                    </span>
+                                    <span><?php esc_html_e('Guardar nueva contraseña', 'garantias-online-360vo'); ?></span>
+                                </button>
+                                <p class="info-cta info-cta--reset">
+                                    <?php esc_html_e('¿Recuerdas tu contraseña?', 'garantias-online-360vo'); ?>
+                                    <a href="<?php echo esc_url($default_login_url); ?>"><?php esc_html_e('Volver a iniciar sesión', 'garantias-online-360vo'); ?></a>
+                                </p>
+                            </div>
+                        </form>
+                    <?php else : ?>
+                        <div class="auth-form auth-form--reset auth-form--static">
+                            <div class="auth-form__footer">
+                                <p class="info-cta info-cta--reset">
+                                    <?php esc_html_e('¿Necesitas un nuevo enlace?', 'garantias-online-360vo'); ?>
+                                    <a href="<?php echo esc_url($lost_password_url); ?>"><?php esc_html_e('Solicitar restablecimiento de contraseña', 'garantias-online-360vo'); ?></a>
+                                </p>
+                                <p class="info-cta info-cta--reset">
+                                    <?php esc_html_e('¿Quieres volver al inicio de sesión?', 'garantias-online-360vo'); ?>
+                                    <a href="<?php echo esc_url($default_login_url); ?>"><?php esc_html_e('Ir a iniciar sesión', 'garantias-online-360vo'); ?></a>
+                                </p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
-
-            <?php if ($global_error !== '') : ?>
-                <div class="form-alert" role="alert">
-                    <?php echo esc_html($global_error); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($show_form) : ?>
-                <form
-                    action="<?php echo esc_url(AuthController::get_reset_password_action_url($login_identifier, $key_param)); ?>"
-                    method="post"
-                    class="auth-form">
-                    <?php wp_nonce_field('go_reset_password_action', 'go_reset_nonce'); ?>
-                    <input type="hidden" name="go_auth_action" value="resetpassword">
-                    <input type="hidden" name="user_login" value="<?php echo esc_attr($login_identifier); ?>">
-                    <input type="hidden" name="rp_key" value="<?php echo esc_attr($key_param); ?>">
-
-                    <div class="form-row">
-                        <div class="<?php echo esc_attr($pass1_container_class); ?>">
-                            <input
-                                type="password"
-                                name="pass1"
-                                id="pass1"
-                                required
-                                autocomplete="new-password"
-                                class="form-input"
-                                <?php echo $pass1_error !== '' ? ' aria-invalid="true"' : ''; ?>
-                                <?php echo $pass1_error_id !== '' ? ' aria-describedby="' . esc_attr($pass1_error_id) . '"' : ''; ?>
-                                placeholder=" ">
-                            <label for="pass1" class="form-label">
-                                <?php esc_html_e('Nueva contraseña', 'garantias-online-360vo'); ?>
-                            </label>
-                            <button
-                                type="button"
-                                class="toggle-password"
-                                data-toggle-target="pass1"
-                                aria-pressed="false">
-                                <span class="screen-reader-text"><?php esc_html_e('Mostrar contraseña', 'garantias-online-360vo'); ?></span>
-                                <?php echo Svg::icon('visibility', 'toggle-password__icon toggle-password__icon--on'); ?>
-                                <?php echo Svg::icon('visibility_off', 'toggle-password__icon toggle-password__icon--off'); ?>
-                            </button>
-                            <?php if ($pass1_error !== '') : ?>
-                                <p class="form-field-error" id="<?php echo esc_attr($pass1_error_id); ?>">
-                                    <?php echo esc_html($pass1_error); ?>
-                                </p>
-                            <?php endif; ?>
-                        </div>
-                        <p class="form-hint"><?php esc_html_e('Mínimo 8 caracteres con números y símbolos.', 'garantias-online-360vo'); ?></p>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="<?php echo esc_attr($pass2_container_class); ?>">
-                            <input
-                                type="password"
-                                name="pass2"
-                                id="pass2"
-                                required
-                                autocomplete="new-password"
-                                class="form-input"
-                                <?php echo $pass2_error !== '' ? ' aria-invalid="true"' : ''; ?>
-                                <?php echo $pass2_error_id !== '' ? ' aria-describedby="' . esc_attr($pass2_error_id) . '"' : ''; ?>
-                                placeholder=" ">
-                            <label for="pass2" class="form-label">
-                                <?php esc_html_e('Confirmar contraseña', 'garantias-online-360vo'); ?>
-                            </label>
-                            <button
-                                type="button"
-                                class="toggle-password"
-                                data-toggle-target="pass2"
-                                aria-pressed="false">
-                                <span class="screen-reader-text"><?php esc_html_e('Mostrar contraseña', 'garantias-online-360vo'); ?></span>
-                                <?php echo Svg::icon('visibility', 'toggle-password__icon toggle-password__icon--on'); ?>
-                                <?php echo Svg::icon('visibility_off', 'toggle-password__icon toggle-password__icon--off'); ?>
-                            </button>
-                            <?php if ($pass2_error !== '') : ?>
-                                <p class="form-field-error" id="<?php echo esc_attr($pass2_error_id); ?>">
-                                    <?php echo esc_html($pass2_error); ?>
-                                </p>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-
-                    <div class="auth-form__footer">
-                        <button type="submit" class="btn btn-primary">
-                            <span class="btn__icon" aria-hidden="true">
-                                <?php echo Svg::icon('check'); ?>
-                            </span>
-                            <span><?php esc_html_e('Guardar nueva contraseña', 'garantias-online-360vo'); ?></span>
-                        </button>
-                        <p class="info-cta">
-                            <?php esc_html_e('¿Recuerdas tu contraseña?', 'garantias-online-360vo'); ?>
-                            <a href="<?php echo esc_url($default_login_url); ?>"><?php esc_html_e('Volver a iniciar sesión', 'garantias-online-360vo'); ?></a>
-                        </p>
-                    </div>
-                </form>
-            <?php else : ?>
-                <div class="auth-form__footer">
-                    <p class="info-cta">
-                        <?php esc_html_e('¿Necesitas un nuevo enlace?', 'garantias-online-360vo'); ?>
-                        <a href="<?php echo esc_url($lost_password_url); ?>"><?php esc_html_e('Solicitar restablecimiento de contraseña', 'garantias-online-360vo'); ?></a>
-                    </p>
-                    <p class="info-cta">
-                        <?php esc_html_e('¿Quieres volver al inicio de sesión?', 'garantias-online-360vo'); ?>
-                        <a href="<?php echo esc_url($default_login_url); ?>"><?php esc_html_e('Ir a iniciar sesión', 'garantias-online-360vo'); ?></a>
-                    </p>
-                </div>
-            <?php endif; ?>
         </div>
     </div>
 </main>

@@ -14,7 +14,7 @@ $is_login_page        = false;
 $is_register_page     = false;
 
 if ($is_recovery_page) {
-    TemplateLoader::load_part('header', compact('is_auth_page', 'is_login_page', 'is_register_page'));
+    TemplateLoader::load_part('header', compact('is_auth_page', 'is_login_page', 'is_register_page', 'is_recovery_page'));
 }
 
 $default_login_url = home_url('/garantias-online/login/');
@@ -166,75 +166,81 @@ if ($redirect_to !== $default_login_url) {
                 <span class="login-card__badge-status" aria-hidden="true"></span>
             </span>
 
-            <div class="login-card__brand">
-                <div class="login-card__logo login-card__logo--desktop" style="view-transition-name: logo">
-                    <?php TemplateLoader::load_part('logo-inline'); ?>
-                    <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
-                </div>
+            <div class="login-card__layout">
+                <div class="login-card__intro">
+                    <div class="login-card__brand">
+                        <div class="login-card__logo login-card__logo--desktop" style="view-transition-name: logo">
+                            <?php TemplateLoader::load_part('logo-inline'); ?>
+                            <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
+                        </div>
 
-                <div class="login-card__header">
-                    <h2 class="login-card__title"><?php esc_html_e('Restablecer contraseña', 'garantias-online-360vo'); ?></h2>
-                    <p class="login-card__subtitle"><?php esc_html_e('Introduce tu dirección de correo electrónico y te enviaremos las instrucciones para restablecer tu contraseña.', 'garantias-online-360vo'); ?></p>
-                </div>
-            </div>
-
-            <?php if ($notice_message !== '') : ?>
-                <div class="<?php echo esc_attr($notice_class); ?>" role="<?php echo esc_attr($notice_role); ?>">
-                    <?php echo esc_html($notice_message); ?>
-                </div>
-            <?php endif; ?>
-
-            <form
-                action="<?php echo esc_url(home_url('/garantias-online/restablecer-clave/')); ?>"
-                method="post"
-                class="auth-form">
-                <?php wp_nonce_field('go_lost_password_action', 'go_lost_nonce'); ?>
-                <input type="hidden" name="go_auth_action" value="lostpassword">
-                <?php if ($include_redirect_field) : ?>
-                    <input type="hidden" name="redirect_to" value="<?php echo esc_attr($redirect_to); ?>">
-                <?php endif; ?>
-
-                <div class="form-row">
-                    <div class="<?php echo esc_attr($email_container_class); ?>">
-                        <input
-                            type="email"
-                            name="user_login"
-                            id="user_login"
-                            required
-                            autocomplete="email"
-                            inputmode="email"
-                            autocapitalize="none"
-                            value="<?php echo esc_attr($email_prefill); ?>"
-                            <?php echo $email_error_message !== '' ? ' aria-invalid="true"' : ''; ?>
-                            <?php echo $email_error_id !== '' ? ' aria-describedby="' . esc_attr($email_error_id) . '"' : ''; ?>
-                            class="form-input"
-                            placeholder=" ">
-                        <label for="user_login" class="form-label">
-                            <?php esc_html_e('Correo electrónico', 'garantias-online-360vo'); ?>
-                        </label>
-                        <?php if ($email_error_message !== '') : ?>
-                            <p class="form-field-error" id="<?php echo esc_attr($email_error_id); ?>">
-                                <?php echo esc_html($email_error_message); ?>
-                            </p>
-                        <?php endif; ?>
+                        <div class="login-card__header">
+                            <h2 class="login-card__title"><?php esc_html_e('Restablecer contraseña', 'garantias-online-360vo'); ?></h2>
+                            <p class="login-card__subtitle"><?php esc_html_e('Introduce tu dirección de correo electrónico y te enviaremos las instrucciones para restablecer tu contraseña.', 'garantias-online-360vo'); ?></p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="auth-form__footer">
-                    <button type="submit" class="btn btn-primary">
-                        <span class="btn__icon" aria-hidden="true">
-                            <?php echo Svg::icon('email'); ?>
-                        </span>
-                        <span><?php esc_html_e('Obtener contraseña nueva', 'garantias-online-360vo'); ?></span>
-                    </button>
-                    <p class="info-cta info-cta--lost">
-                        <?php esc_html_e('¿Ya recuerdas tu contraseña?', 'garantias-online-360vo'); ?>
-                        <a href="<?php echo esc_url($login_link); ?>">
-                            <?php esc_html_e('Volver a iniciar sesión', 'garantias-online-360vo'); ?>
-                        </a>
-                    </p>
+                <div class="login-card__body">
+                    <?php if ($notice_message !== '') : ?>
+                        <div class="<?php echo esc_attr($notice_class); ?>" role="<?php echo esc_attr($notice_role); ?>">
+                            <?php echo esc_html($notice_message); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <form
+                        action="<?php echo esc_url(home_url('/garantias-online/restablecer-clave/')); ?>"
+                        method="post"
+                        class="auth-form auth-form--lost">
+                        <?php wp_nonce_field('go_lost_password_action', 'go_lost_nonce'); ?>
+                        <input type="hidden" name="go_auth_action" value="lostpassword">
+                        <?php if ($include_redirect_field) : ?>
+                            <input type="hidden" name="redirect_to" value="<?php echo esc_attr($redirect_to); ?>">
+                        <?php endif; ?>
+
+                        <div class="form-row">
+                            <div class="<?php echo esc_attr($email_container_class); ?>">
+                                <input
+                                    type="email"
+                                    name="user_login"
+                                    id="user_login"
+                                    required
+                                    autocomplete="email"
+                                    inputmode="email"
+                                    autocapitalize="none"
+                                    value="<?php echo esc_attr($email_prefill); ?>"
+                                    <?php echo $email_error_message !== '' ? ' aria-invalid="true"' : ''; ?>
+                                    <?php echo $email_error_id !== '' ? ' aria-describedby="' . esc_attr($email_error_id) . '"' : ''; ?>
+                                    class="form-input"
+                                    placeholder=" ">
+                                <label for="user_login" class="form-label">
+                                    <?php esc_html_e('Correo electrónico', 'garantias-online-360vo'); ?>
+                                </label>
+                                <?php if ($email_error_message !== '') : ?>
+                                    <p class="form-field-error" id="<?php echo esc_attr($email_error_id); ?>">
+                                        <?php echo esc_html($email_error_message); ?>
+                                    </p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="auth-form__footer">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="btn__icon" aria-hidden="true">
+                                    <?php echo Svg::icon('email'); ?>
+                                </span>
+                                <span><?php esc_html_e('Obtener contraseña nueva', 'garantias-online-360vo'); ?></span>
+                            </button>
+                            <p class="info-cta info-cta--lost">
+                                <?php esc_html_e('¿Ya recuerdas tu contraseña?', 'garantias-online-360vo'); ?>
+                                <a href="<?php echo esc_url($login_link); ?>">
+                                    <?php esc_html_e('Volver a iniciar sesión', 'garantias-online-360vo'); ?>
+                                </a>
+                            </p>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </main>

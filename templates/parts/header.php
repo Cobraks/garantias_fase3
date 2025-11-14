@@ -205,6 +205,15 @@ $home_destination = $is_admin_user
     if (! empty($is_login_page)) {
         $body_classes[] = 'body--login-signin';
     }
+    if (! empty($is_recovery_page)) {
+        $body_classes[] = 'body--login-recovery';
+    }
+    if (! empty($is_reset_page)) {
+        $body_classes[] = 'body--login-reset';
+    }
+    if (! empty($is_login_page) || ! empty($is_recovery_page) || ! empty($is_reset_page)) {
+        $body_classes[] = 'body--auth-flow';
+    }
     if (! empty($is_clients_page)) {
         $body_classes[] = 'body--clients';
     }
