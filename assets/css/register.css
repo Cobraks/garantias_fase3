@@ -1678,7 +1678,7 @@ footer.footer .footer__wrapper {
     margin-bottom: 0;
     align-items: stretch;
     height: 100%;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .register-page .info-panel {
@@ -1688,7 +1688,10 @@ footer.footer .footer__wrapper {
     padding: 3rem 2.75rem;
     border-radius: calc(var(--radius) + 8px);
     gap: 2.25rem;
+    max-height: calc(100dvh - 3rem);
     overflow-y: auto;
+    min-height: 0;
+    scrollbar-gutter: stable;
   }
 
   .register-page .form-panel {
