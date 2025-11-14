@@ -2500,6 +2500,10 @@ class GuaranteeRestController
         $notify_url = add_query_arg('_wpnonce', wp_create_nonce('wp_rest'), $notify_url);
         $scheme     = wp_parse_url(home_url(), PHP_URL_SCHEME);
 
+        $amount = self::normalize_price_amount(
+            get_post_meta($post_id, 'garantia_contratada_precio', true)
+        );
+
         $response = [
             'id'               => $post_id,
             'uuid'             => $uuid,
@@ -2509,6 +2513,10 @@ class GuaranteeRestController
             'transfer_iban'    => $transfer_iban['formatted'],
             'firma_sello'      => $firma_sello,
             'notify_url'       => set_url_scheme($notify_url, $scheme),
+            'amount'           => $amount,
+            'price'            => $amount,
+            'precio'           => $amount,
+            'amount_formatted' => $amount > 0 ? number_format($amount, 2, ',', '.') . ' €' : '',
         ];
 
         if ($queued_contract_notice && ! empty($contract_notice_context)) {
@@ -4120,27 +4128,33 @@ class GuaranteeRestController
         $meta_query = [];
         $vendor_type_ids = [];
         $commercial_vendor_ids = [];
+        $is_particular = in_array('go_particular', $current_user_roles, true)
+            || in_array('particular', $current_user_roles, true);
         if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
-            $user_profesional_ids = [$current_user];
-            $users_asignados = get_users([
-                'role'    => 'go_profesional',
-                'fields'  => 'ID',
-                'meta_query' => [
-                    [
-                        'key'     => 'ajustes_usuarios_comercial_asignado',
-                        'value'   => '"' . $current_user . '"',
-                        'compare' => 'LIKE',
+            if ($is_particular) {
+                $args['author'] = $current_user;
+            } else {
+                $user_profesional_ids = [$current_user];
+                $users_asignados = get_users([
+                    'role'    => 'go_profesional',
+                    'fields'  => 'ID',
+                    'meta_query' => [
+                        [
+                            'key'     => 'ajustes_usuarios_comercial_asignado',
+                            'value'   => '"' . $current_user . '"',
+                            'compare' => 'LIKE',
+                        ]
                     ]
-                ]
-            ]);
-            if ($users_asignados) {
-                $user_profesional_ids = array_unique(array_merge($user_profesional_ids, $users_asignados));
+                ]);
+                if ($users_asignados) {
+                    $user_profesional_ids = array_unique(array_merge($user_profesional_ids, $users_asignados));
+                }
+                $meta_query[] = [
+                    'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                    'value'   => $user_profesional_ids,
+                    'compare' => 'IN',
+                ];
             }
-            $meta_query[] = [
-                'key'     => 'garantia_contratada_concesionario_empresa_profesional',
-                'value'   => $user_profesional_ids,
-                'compare' => 'IN',
-            ];
         }
 
         if ($vendor_type !== '') {
@@ -4416,32 +4430,39 @@ class GuaranteeRestController
         }
 
         $meta_query = [];
+        $author_filter = null;
         $current_user_obj = wp_get_current_user();
         $current_user_roles = $current_user_obj instanceof \WP_User ? (array) $current_user_obj->roles : [];
         $is_director = in_array('go_director_comercial', $current_user_roles, true);
         $is_garantias_role = in_array('go_garantias', $current_user_roles, true);
+        $is_particular = in_array('go_particular', $current_user_roles, true)
+            || in_array('particular', $current_user_roles, true);
 
         if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
-            $user_profesional_ids = [$current_user];
-            $users_asignados = get_users([
-                'role'    => 'go_profesional',
-                'fields'  => 'ID',
-                'meta_query' => [
-                    [
-                        'key'     => 'ajustes_usuarios_comercial_asignado',
-                        'value'   => '"' . $current_user . '"',
-                        'compare' => 'LIKE',
+            if ($is_particular) {
+                $author_filter = $current_user;
+            } else {
+                $user_profesional_ids = [$current_user];
+                $users_asignados = get_users([
+                    'role'    => 'go_profesional',
+                    'fields'  => 'ID',
+                    'meta_query' => [
+                        [
+                            'key'     => 'ajustes_usuarios_comercial_asignado',
+                            'value'   => '"' . $current_user . '"',
+                            'compare' => 'LIKE',
+                        ]
                     ]
-                ]
-            ]);
-            if ($users_asignados) {
-                $user_profesional_ids = array_unique(array_merge($user_profesional_ids, $users_asignados));
+                ]);
+                if ($users_asignados) {
+                    $user_profesional_ids = array_unique(array_merge($user_profesional_ids, $users_asignados));
+                }
+                $meta_query[] = [
+                    'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                    'value'   => $user_profesional_ids,
+                    'compare' => 'IN',
+                ];
             }
-            $meta_query[] = [
-                'key'     => 'garantia_contratada_concesionario_empresa_profesional',
-                'value'   => $user_profesional_ids,
-                'compare' => 'IN',
-            ];
         }
 
         $args = [
@@ -4450,6 +4471,9 @@ class GuaranteeRestController
             'fields'         => 'ids',
             'posts_per_page' => -1,
         ];
+        if ($author_filter !== null) {
+            $args['author'] = $author_filter;
+        }
         if (!empty($meta_query)) {
             if (count($meta_query) > 1) {
                 $args['meta_query'] = array_merge(['relation' => 'AND'], $meta_query);

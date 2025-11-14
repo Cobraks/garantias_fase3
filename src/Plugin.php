@@ -31,6 +31,9 @@ class Plugin
     /** Registra todos los hooks globales */
     private function init_hooks(): void
     {
+        // 0) Traducciones
+        self::load_textdomain();
+
         // 1) Reglas y endpoints
         Rewrite::init();
         Router::init();
@@ -94,6 +97,15 @@ class Plugin
                 require_once $acf_file;
             }
         });
+    }
+
+    public static function load_textdomain(): void
+    {
+        load_plugin_textdomain(
+            'garantias-online-360vo',
+            false,
+            dirname(plugin_basename(GARANTIAS360VO__FILE__)) . '/languages'
+        );
     }
 
     /**
