@@ -92,7 +92,7 @@
         }
 
         :root[data-theme='dark'] footer.footer .footer__wrapper {
-            background: transparent;
+            background: rgba(18, 23, 36, 0.92);
             box-shadow: none;
         }
 
@@ -345,6 +345,7 @@
             font-size: 0.9rem;
             line-height: 1.5;
             color: var(--auth-muted);
+            text-wrap: pretty;
         }
 
         .form-alert {
@@ -650,6 +651,10 @@
             display: inline-flex;
         }
 
+        .info-cta--login-desktop {
+            display: none;
+        }
+
         .info-cta a:hover,
         .info-cta a:focus-visible {
             color: var(--auth-link-hover);
@@ -780,8 +785,9 @@
             .info-cta--lost,
             .info-cta--reset {
                 display: flex;
-                align-items: center;
-                justify-content: flex-end;
+                flex-direction: column;
+                align-items: flex-end;
+                justify-content: center;
                 gap: 0.5rem;
                 text-align: right;
             }
@@ -828,6 +834,10 @@
         }
 
         @media (min-width: 1024px) {
+            .login-card {
+                padding-block: 4rem;
+            }
+
             .body--auth-flow .login-page .container {
                 width: min(100%, 940px);
             }
@@ -856,6 +866,21 @@
 
             .body--auth-flow .login-card__body {
                 gap: clamp(1.5rem, 4vw, 2.25rem);
+            }
+
+            .info-cta--login-mobile {
+                display: none;
+            }
+
+            .info-cta--login-desktop {
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                column-gap: 0.5rem;
+            }
+
+            .body--login-recovery .login-card__title {
+                font-size: 1.5rem;
             }
         }
     </style>

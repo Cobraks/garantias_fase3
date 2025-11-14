@@ -169,9 +169,23 @@ $password_container_class = 'input-container' . ($password_error_message !== '' 
 
                         <div class="login-card__header">
                             <h2 class="login-card__title"><?php esc_html_e('Iniciar sesión', 'garantias-online-360vo'); ?></h2>
-                            <p class="login-card__subtitle"><?php esc_html_e('Introduce tu correo electrónico y tu contraseña para acceder al panel.', 'garantias-online-360vo'); ?></p>
+                            <p class="login-card__subtitle">
+                                <?php
+                                echo wp_kses(
+                                    __('Introduce el correo electrónico y tu contraseña para acceder a <b>Garantías Online</b>.', 'garantias-online-360vo'),
+                                    ['b' => []]
+                                );
+                                ?>
+                            </p>
                         </div>
                     </div>
+
+                    <p class="info-cta info-cta--login info-cta--login-desktop">
+                        <?php esc_html_e('¿No tienes cuenta?', 'garantias-online-360vo'); ?>
+                        <a href="<?php echo esc_url(home_url('/garantias-online/registro/')); ?>">
+                            <?php esc_html_e('Regístrate', 'garantias-online-360vo'); ?>
+                        </a>
+                    </p>
                 </div>
 
                 <div class="login-card__body">
@@ -276,7 +290,7 @@ $password_container_class = 'input-container' . ($password_error_message !== '' 
                                 </span>
                                 <span><?php esc_html_e('Entrar', 'garantias-online-360vo'); ?></span>
                             </button>
-                            <p class="info-cta info-cta--login">
+                            <p class="info-cta info-cta--login info-cta--login-mobile">
                                 <?php esc_html_e('¿No tienes cuenta?', 'garantias-online-360vo'); ?>
                                 <a href="<?php echo esc_url(home_url('/garantias-online/registro/')); ?>">
                                     <?php esc_html_e('Regístrate', 'garantias-online-360vo'); ?>
