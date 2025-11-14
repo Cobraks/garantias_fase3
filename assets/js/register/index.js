@@ -2594,6 +2594,15 @@
         updateSummary();
       });
       emailField.addEventListener('blur', () => {
+        if (!emailField.value.trim()) {
+          clearFieldError(emailField);
+          handleEmailStatusChange('empty');
+          if (state.emailCheckController) {
+            state.emailCheckController.abort();
+            state.emailCheckController = null;
+          }
+          return;
+        }
         validateEmailInput(true);
         checkEmailAvailability();
       });
@@ -2608,6 +2617,10 @@
         updateSummary();
       });
       phoneField.addEventListener('blur', () => {
+        if (!phoneField.value.trim()) {
+          clearFieldError(phoneField);
+          return;
+        }
         validatePhoneInput(phoneField, true);
       });
     }
@@ -2624,6 +2637,10 @@
           return;
         }
         if (field.id.startsWith('sepa_') && (!enableSepaField || !enableSepaField.checked)) {
+          clearFieldError(field);
+          return;
+        }
+        if (!field.value.trim()) {
           clearFieldError(field);
           return;
         }
@@ -2662,6 +2679,10 @@
         updateStep1ButtonState();
       });
       passwordField.addEventListener('blur', () => {
+        if (!passwordField.value.trim()) {
+          clearFieldError(passwordField);
+          return;
+        }
         validatePasswordInput(true);
       });
     }
@@ -2672,6 +2693,10 @@
         updateStep1ButtonState();
       });
       confirmPasswordField.addEventListener('blur', () => {
+        if (!confirmPasswordField.value.trim()) {
+          clearFieldError(confirmPasswordField);
+          return;
+        }
         validatePasswordConfirmation(true);
       });
     }
