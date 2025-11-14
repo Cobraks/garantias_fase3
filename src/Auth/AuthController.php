@@ -26,6 +26,8 @@ class AuthController
         add_action('init', [__CLASS__, 'maybe_handle_login']);
         add_action('init', [__CLASS__, 'maybe_handle_lost_password']);
         add_action('init', [__CLASS__, 'maybe_handle_reset_password']);
+        add_action('login_form_rp', [__CLASS__, 'redirect_native_reset']);
+        add_action('login_form_resetpass', [__CLASS__, 'redirect_native_reset']);
         add_filter('lostpassword_url', [__CLASS__, 'filter_lostpassword_url'], 10, 2);
         PasswordResetMailer::init();
         WPLoginStyler::init();
@@ -294,6 +296,10 @@ class AuthController
 
     public static function redirect_native_reset(): void
     {
+        if (self::is_post_request()) {
+            return;
+        }
+
         $login = isset($_REQUEST['login']) ? wp_unslash($_REQUEST['login']) : '';
         $key   = isset($_REQUEST['key']) ? wp_unslash($_REQUEST['key']) : '';
 
@@ -564,6 +570,18 @@ class AuthController
     }
 
     public static function get_reset_password_url(string $login = '', string $key = ''): string
+    {
+        $url   = home_url('/garantias-online/restablecer-clave/nueva/');
+        $query = self::build_reset_query_args($login, $key);
+
+        if (! empty($query)) {
+            $url = add_query_arg($query, $url);
+        }
+
+        return $url;
+    }
+
+    public static function get_reset_password_action_url(string $login = '', string $key = ''): string
     {
         $url   = network_site_url('wp-login.php', 'login');
         $query = self::build_reset_query_args($login, $key);
