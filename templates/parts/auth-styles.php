@@ -855,6 +855,10 @@
                 gap: 0;
             }
 
+            .body--auth-flow .footer .footer__wrapper {
+                background: transparent;
+            }
+
             .body--auth-flow .login-card__intro {
                 gap: 2rem;
                 padding-inline-end: 2.5rem;
