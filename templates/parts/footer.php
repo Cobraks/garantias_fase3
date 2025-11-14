@@ -57,9 +57,9 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
         <?php endif; ?>
         <nav class="footer__legal">
             <ul>
-                <li><a href="#"><?php esc_html_e('Aviso Legal', 'garantias-online-360vo'); ?></a></li>
-                <li><a href="#"><?php esc_html_e('Política de Privacidad', 'garantias-online-360vo'); ?></a></li>
-                <li><a href="#"><?php esc_html_e('Términos y Condiciones', 'garantias-online-360vo'); ?></a></li>
+                <li><a href="https://www.360vo.es/aviso-legal/" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Aviso Legal', 'garantias-online-360vo'); ?></a></li>
+                <li><a href="https://www.360vo.es/politica-de-privacidad/" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Política de Privacidad', 'garantias-online-360vo'); ?></a></li>
+                <li><a href="https://www.360vo.es/aviso-legal/" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Términos y Condiciones', 'garantias-online-360vo'); ?></a></li>
             </ul>
         </nav>
     </div>
