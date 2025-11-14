@@ -119,7 +119,7 @@
         }
 
         .body--auth-flow .login-card {
-            box-shadow: none;
+            box-shadow: 0 22px 45px -24px rgba(15, 23, 42, 0.4);
         }
 
         .login-card__badge {
@@ -431,7 +431,7 @@
         }
 
         :root[data-theme='dark'] .body--auth-flow .login-card {
-            box-shadow: none;
+            box-shadow: 0 22px 45px -24px rgba(8, 13, 24, 0.55);
         }
 
         :root[data-theme='dark'] .login-card__badge {
