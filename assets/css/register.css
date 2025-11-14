@@ -731,12 +731,13 @@ footer.footer .footer__wrapper {
     --disabled-inner: var(--go-color-e1e6f9);
     -webkit-appearance: none;
     -moz-appearance: none;
-    height: 21px;
-    width: 21px;
-    border-radius: 7px;
+    height: 1.35rem;
+    width: 1.35rem;
+    border-radius: 0.45rem;
     border: 1px solid var(--bc, var(--border));
     background: var(--b, var(--background));
-    display: inline-block;
+    display: grid;
+    place-items: center;
     position: relative;
     cursor: pointer;
     transition: background 0.3s, border-color 0.3s, box-shadow 0.2s;
@@ -747,15 +748,15 @@ footer.footer .footer__wrapper {
   .register-page .checkbox-wrapper-14 input[type=checkbox]:after {
     content: "";
     position: absolute;
-    left: 7px;
-    top: 4px;
-    width: 5px;
-    height: 9px;
+    left: 50%;
+    top: 50%;
+    width: 0.4rem;
+    height: 0.7rem;
     border: 2px solid var(--active-inner);
     border-top: 0;
     border-left: 0;
     opacity: var(--o, 0);
-    transform: rotate(var(--r, 20deg));
+    transform: translate(-50%, -60%) rotate(var(--r, 20deg));
     transition: transform 0.3s ease, opacity 0.2s ease;
   }
 
@@ -1546,6 +1547,24 @@ footer.footer .footer__wrapper {
   }
 }
 
+@media (min-width: 740px) {
+  .register-page .form-grid--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .register-page .progress-container {
+    padding-inline: 5rem;
+  }
+
+  .register-page .form-row {
+    row-gap: 0;
+  }
+
+  .register-page .form-row--four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (min-width: 768px) {
   .register-page .container {
     width: min(100%, 920px);
@@ -1557,8 +1576,7 @@ footer.footer .footer__wrapper {
   }
 
   .register-page .features-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-top: 2rem;
+    margin-top: 0;
   }
 
   .register-page .form-panel {
@@ -1612,10 +1630,11 @@ footer.footer .footer__wrapper {
 @media (min-width: 1024px) {
   .register-page .container {
     width: min(100%, 1180px);
-    padding: 4rem 3rem 7rem;
+    padding: 0;
     display: grid;
     grid-template-columns: minmax(320px, 1fr) minmax(0, 1.25fr);
-    gap: 3rem;
+    gap: 1rem;
+    margin-bottom: 2rem;
     align-items: stretch;
   }
 
@@ -1626,10 +1645,6 @@ footer.footer .footer__wrapper {
     padding: 3rem 2.75rem;
     border-radius: calc(var(--radius) + 8px);
     gap: 2.25rem;
-  }
-
-  .register-page .brand-logo {
-    width: 190px;
   }
 
   .register-page .form-panel {
@@ -1648,21 +1663,27 @@ footer.footer .footer__wrapper {
     gap: 1.25rem;
   }
 
-  .register-page .form-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
+  .register-page .form-row,
+  .register-page .form-row--two,
   .register-page .form-row--three,
+  .register-page .form-row--four,
+  .register-page .form-grid,
+  .register-page .form-grid--two,
   .register-page .form-grid--three {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 
-  .register-page .summary-container {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .register-page .summary-container,
+  .register-page .profile-section {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 
   .register-page .channel-selector {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .body--register {
+    padding-bottom: 0;
   }
 }
 
