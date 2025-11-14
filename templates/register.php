@@ -87,15 +87,15 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
                 <div class="progress-steps">
                     <div class="progress-bar" id="progress-bar"></div>
                     <div class="step active" data-step="1">
-                        1
+                        <span class="step-index">1</span>
                         <span class="step-label">Crea tu cuenta</span>
                     </div>
                     <div class="step" data-step="2">
-                        2
+                        <span class="step-index">2</span>
                         <span class="step-label">Completa el perfil</span>
                     </div>
                     <div class="step" data-step="3">
-                        3
+                        <span class="step-index">3</span>
                         <span class="step-label">Confirmación</span>
                     </div>
                 </div>

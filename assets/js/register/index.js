@@ -856,6 +856,11 @@
         step.style.display = '';
         step.setAttribute('aria-hidden', 'false');
         const stepPosition = position + 1;
+        step.setAttribute('data-step-position', stepPosition);
+        const indexElement = step.querySelector('.step-index');
+        if (indexElement) {
+          indexElement.textContent = String(stepPosition);
+        }
         if (stepPosition < state.currentStep) {
           step.classList.add('completed');
         } else if (stepPosition === state.currentStep) {
@@ -2010,7 +2015,13 @@
     const handleChannelSelection = (channel, { allowStepReset = true } = {}) => {
       const normalizedChannel = typeof channel === 'string' && channel !== '' ? channel : null;
       const previousChannel = state.selectedChannel;
+      const channelChanged = previousChannel !== normalizedChannel;
+
       state.selectedChannel = normalizedChannel;
+
+      if (channelChanged) {
+        state.skipAutoFocus = true;
+      }
       channelButtons.forEach((button) => {
         const buttonChannel = button.getAttribute('data-channel');
         const isActive = normalizedChannel !== null && buttonChannel === normalizedChannel;
@@ -2027,14 +2038,12 @@
       if (isIndividual) {
         resetStep2Fields();
       }
-      const channelChanged = previousChannel !== normalizedChannel;
       if (channelChanged && previousChannel) {
         state.sepaEdited.clear();
         invalidateSepaMandate();
       }
-      if (channelChanged && allowStepReset) {
+      if (channelChanged && allowStepReset && state.currentStep !== 1) {
         state.currentStep = 1;
-        state.skipAutoFocus = true;
         goToStep(1);
       }
       if (!normalizedChannel) {
