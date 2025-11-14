@@ -814,6 +814,7 @@ footer.footer .footer__wrapper {
 
 .register-page .checkbox-container--terms {
   margin-top: 1.75rem;
+  margin-bottom: 2rem;
 }
 
 .register-page .checkbox-container--terms.error {
@@ -1976,7 +1977,8 @@ footer.footer .footer__wrapper {
     position: sticky;
     bottom: 0;
     margin: 0;
-    padding: 1.75rem 3.5rem 2.25rem;
+    padding-inline: 3.5rem;
+    padding-block: 5rem;
   }
 
   .register-page .btn {

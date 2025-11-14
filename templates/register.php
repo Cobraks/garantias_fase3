@@ -637,7 +637,7 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
 
                     <div class="checkbox-container checkbox-wrapper-14 checkbox-container--terms" id="terms-container">
                         <input type="checkbox" id="terms" required>
-                        <label for="terms" class="checkbox-label">Acepto los <a href="#">términos y condiciones</a> y la <a href="#">política de privacidad</a>.</label>
+                        <label for="terms" class="checkbox-label">Acepto los <a href="https://www.360vo.es/aviso-legal/" target="_blank" rel="noopener noreferrer">términos y condiciones</a> y la <a href="https://www.360vo.es/politica-de-privacidad/" target="_blank" rel="noopener noreferrer">política de privacidad</a>.</label>
                         <p class="checkbox-error" id="terms-error" hidden>Debes aceptar los términos y condiciones para continuar.</p>
                     </div>
 
