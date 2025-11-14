@@ -4202,6 +4202,50 @@ const ADD_DOC_KEY = "add-document";
                         return cleaned;
                 }
 
+                function normalizeChannelValue(value) {
+                        if (value === null || value === undefined) {
+                                return "";
+                        }
+                        const normalized = String(value)
+                                .trim()
+                                .toLowerCase();
+                        if (!normalized) {
+                                return "";
+                        }
+                        return normalized.startsWith("go_")
+                                ? normalized.slice(3)
+                                : normalized;
+                }
+
+                function buildPersonalName(first, last, fallback) {
+                        const firstClean = typeof first === "string" ? first.trim() : "";
+                        const lastClean = typeof last === "string" ? last.trim() : "";
+                        if (firstClean || lastClean) {
+                                return [firstClean, lastClean]
+                                        .filter(Boolean)
+                                        .join(" ")
+                                        .trim();
+                        }
+                        const fallbackClean = typeof fallback === "string" ? fallback.trim() : "";
+                        return fallbackClean;
+                }
+
+                function cleanDisplayValue(value) {
+                        if (typeof value !== "string") {
+                                return "";
+                        }
+                        const trimmed = value.trim();
+                        if (
+                                !trimmed ||
+                                trimmed === "-" ||
+                                trimmed === "—" ||
+                                trimmed === "#"
+                        ) {
+                                return "";
+                        }
+                        return trimmed;
+                }
+
                 const { getTransferDeadlineMillis, getTransferDeadlineInfo } = (() => {
                         function parseDateTime(value) {
                                 if (!value) return null;
@@ -4599,7 +4643,42 @@ const ADD_DOC_KEY = "add-document";
                                 hastaDisplayRaw !== "-" &&
                                 desdeDisplayRaw !== "" &&
                                 hastaDisplayRaw !== "";
-                        const vendedorName = item.vendedor ?? "-";
+                        const canalVentaValueRaw =
+                                item.canal_venta && Object.prototype.hasOwnProperty.call(item.canal_venta, "value")
+                                        ? item.canal_venta.value
+                                        : item.detail && Object.prototype.hasOwnProperty.call(item.detail, "canal_venta_value")
+                                        ? item.detail.canal_venta_value
+                                        : "";
+                        const vendorTypeValueRaw =
+                                item.detail && Object.prototype.hasOwnProperty.call(item.detail, "vendor_company_type_value")
+                                        ? item.detail.vendor_company_type_value
+                                        : "";
+                        const normalizedChannel = normalizeChannelValue(canalVentaValueRaw);
+                        const normalizedVendorType = normalizeChannelValue(vendorTypeValueRaw);
+                        const isVendorParticular =
+                                normalizedChannel === "particular" || normalizedVendorType === "particular";
+                        let vendedorName = item.vendedor ?? "-";
+                        if (isVendorParticular && item.detail && typeof item.detail === "object") {
+                                const personalFull = cleanDisplayValue(
+                                        Object.prototype.hasOwnProperty.call(item.detail, "concesionario_personal")
+                                                ? item.detail.concesionario_personal
+                                                : ""
+                                );
+                                const personalFirst = cleanDisplayValue(
+                                        Object.prototype.hasOwnProperty.call(item.detail, "concesionario_personal_first")
+                                                ? item.detail.concesionario_personal_first
+                                                : ""
+                                );
+                                const personalLast = cleanDisplayValue(
+                                        Object.prototype.hasOwnProperty.call(item.detail, "concesionario_personal_last")
+                                                ? item.detail.concesionario_personal_last
+                                                : ""
+                                );
+                                const derivedName = buildPersonalName(personalFirst, personalLast, personalFull);
+                                if (derivedName) {
+                                        vendedorName = derivedName;
+                                }
+                        }
                         const planName = item.plan ?? "";
                         const precio = formatPrice(item.precio);
                         const planPriceLabel = precio && precio !== "-" ? `${precio}€` : "";
@@ -6780,10 +6859,36 @@ const ADD_DOC_KEY = "add-document";
         vendorChannelSummarySource && vendorChannelSummarySource !== "-"
             ? extractVendorType(vendorChannelSummarySource) || vendorChannelSummarySource
             : vendorChannelSummarySource;
-    const vendorCompanyName = pickField("concesionario", "-");
-    const vendorContactRaw = pickField("concesionario_personal", "");
-    const vendorContactName =
-        vendorContactRaw !== "" ? vendorContactRaw : vendorCompanyName;
+    const vendorChannelValueRaw =
+        (data.canal_venta_value ?? rowData.canal_venta_value ?? "").toString();
+    const vendorTypeValueRaw =
+        (data.vendor_company_type_value ?? rowData.vendor_company_type_value ?? "").toString();
+    const normalizedVendorChannel = normalizeChannelValue(vendorChannelValueRaw);
+    const normalizedVendorType = normalizeChannelValue(vendorTypeValueRaw);
+    const vendorIsParticular =
+        normalizedVendorChannel === "particular" || normalizedVendorType === "particular";
+    const vendorCompanyNameRaw = pickField("concesionario", "-");
+    const vendorCompanyNameClean = cleanDisplayValue(vendorCompanyNameRaw) || "-";
+    const vendorPersonalFull = cleanDisplayValue(pickField("concesionario_personal", ""));
+    const vendorPersonalFirst = cleanDisplayValue(pickField("concesionario_personal_first", ""));
+    const vendorPersonalLast = cleanDisplayValue(pickField("concesionario_personal_last", ""));
+    let vendorDisplayName = vendorCompanyNameClean;
+    let vendorContactName = vendorPersonalFull !== "" ? vendorPersonalFull : vendorCompanyNameClean;
+    if (vendorIsParticular) {
+        const personalName = buildPersonalName(
+            vendorPersonalFirst,
+            vendorPersonalLast,
+            vendorPersonalFull
+        );
+        if (personalName) {
+            vendorDisplayName = personalName;
+        }
+        vendorContactName = vendorPersonalLast !== "" ? vendorPersonalLast : vendorDisplayName;
+        if (!vendorContactName) {
+            vendorContactName = "—";
+        }
+    }
+    const vendorCompanyName = vendorDisplayName;
     const vendorAvatarUrl =
         data.avatar_vendedor ?? rowData.avatar_vendedor ?? "";
     const vendorAvatarWrapper = vendorAvatarUrl
