@@ -72,14 +72,14 @@
         }
 
         .body--login-signin .footer .footer__wrapper {
-            height: 36px;
+            height: fit-content;
             margin: 0 auto;
             width: 100%;
             padding-block: calc(var(--spacing-1, 1rem) * 0.75);
             padding-inline: clamp(1.5rem, 5vw, 3rem);
-            border-radius: 1rem 1rem 0 0;
+            border-radius: 0;
             align-items: center;
-            background: transparent;
+            background: var(--surface-alt);
             row-gap: 0.5rem;
         }
 
@@ -674,6 +674,24 @@
 
             .info-cta--login a {
                 align-items: center;
+            }
+        }
+
+        @media (min-width: 520px) {
+            .info-cta--login {
+                justify-content: flex-start;
+            }
+
+            .auth-form__meta {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+
+            .body--login-signin .login-card__header,
+            .body--login-signin form#loginform {
+                max-width: 360px;
+                width: 100%;
+                margin-inline: auto;
             }
         }
 
