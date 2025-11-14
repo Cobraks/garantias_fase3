@@ -1856,7 +1856,7 @@ footer.footer .footer__wrapper {
     padding-bottom: 0;
     display: grid;
     grid-template-columns: 1fr 2fr;
-    gap: clamp(1.25rem, 3vw, 2rem);
+    gap: var(--spacing-3);
     height: calc(100dvh - 4rem);
     max-height: calc(100dvh - 4rem);
     min-height: calc(100dvh - 4rem);
@@ -1878,6 +1878,7 @@ footer.footer .footer__wrapper {
     text-align: center;
     overflow: hidden;
     position: relative;
+    top: initial;
   }
 
   .register-page .brand-logo {
@@ -1916,7 +1917,7 @@ footer.footer .footer__wrapper {
   }
 
   .register-page .form-panel {
-    background: var(--bg-light);
+    background: #fff;
     border-radius: 24px;
     padding: clamp(2rem, 5vh, 3.5rem);
     box-shadow: none;
