@@ -43,6 +43,16 @@
   background-color: rgba(11, 17, 26, 0.94);
 }
 
+:root[data-theme='dark'] .register-page .progress-container,
+:root[data-theme='dark'] .register-page .form-navigation {
+  background-color: rgba(18, 23, 36, 0.92);
+}
+
+:root[data-theme='dark'] .body--register .footer .footer__wrapper,
+:root[data-theme='dark'] .body--auth-flow .footer .footer__wrapper {
+  background: rgba(18, 23, 36, 0.92);
+}
+
 .body--register {
   min-height: 100dvh;
   display: flex;
@@ -87,6 +97,33 @@ footer.footer .footer__wrapper {
   border-radius: 1rem 1rem 0 0;
   align-items: center;
   background: transparent;
+}
+
+.body--auth-flow .footer .footer__wrapper,
+.body--register .footer .footer__wrapper {
+  padding-inline: 1.5rem;
+  padding-bottom: 1rem;
+}
+
+.body--auth-flow .footer__legal a,
+.body--register .footer__legal a {
+  font-size: 0.7rem;
+}
+
+.body--auth-flow .footer__text,
+.body--register .footer__text {
+  margin-right: auto;
+}
+
+.body--auth-flow .footer__brand,
+.body--register .footer__brand {
+  width: 100%;
+}
+
+.body--auth-flow .footer__theme-toggle,
+.body--register .footer__theme-toggle {
+  padding: 0;
+  border: none;
 }
 
 .main-grid > .register-page {
@@ -231,7 +268,7 @@ footer.footer .footer__wrapper {
 
 .register-page .form-panel {
   background: var(--surface);
-  border-radius: var(--radius);
+  border-radius: 0;
   padding: 1.25rem 1.5rem 4.5rem;
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
@@ -301,11 +338,14 @@ footer.footer .footer__wrapper {
 .register-page .progress-container {
   position: sticky;
   top: 0;
-  margin: -1.25rem -1.5rem 1.5rem;
+  margin: -1.25rem -1.5rem 0;
   padding: 1.25rem 4rem 1rem;
-  background: var(--surface);
+  background-color: rgba(255, 255, 255, 0.8);
   border-radius: var(--radius) var(--radius) 0 0;
   box-shadow: 0 18px 30px -26px rgba(var(--go-color-000000-rgb), 0.4);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: 5;
 }
 
@@ -777,17 +817,24 @@ footer.footer .footer__wrapper {
   position: sticky;
   bottom: 0;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: row;
   justify-content: center;
-  align-items: stretch;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin: 2rem -1.5rem -1.25rem;
   padding: 1rem 1.5rem 1.25rem;
   border-top: 1px solid var(--border);
-  background: var(--surface);
+  background-color: rgba(255, 255, 255, 0.8);
   border-radius: 0 0 var(--radius) var(--radius);
   box-shadow: 0 -18px 30px -26px rgba(var(--go-color-000000-rgb), 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: 5;
+}
+
+.register-page .form-navigation > *:empty {
+  display: none;
 }
 
 .register-page .btn {
@@ -802,6 +849,12 @@ footer.footer .footer__wrapper {
   border: none;
   font-size: 0.9rem;
   width: 100%;
+}
+
+.register-page .form-navigation .btn {
+  width: fit-content;
+  justify-content: center;
+  display: inline-flex;
 }
 
 .register-page .btn[disabled] {

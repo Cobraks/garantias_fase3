@@ -2634,6 +2634,9 @@
       });
       field.addEventListener('blur', () => {
         if (PROFESSIONAL_CHANNELS.has(state.selectedChannel || '')) {
+          if (field.value.trim() === '') {
+            return;
+          }
           validateRequired(field, true);
         } else {
           clearFieldError(field);
@@ -2676,6 +2679,9 @@
       });
       field.addEventListener('blur', () => {
         if (hasWorkshopField && hasWorkshopField.checked) {
+          if (field.value.trim() === '') {
+            return;
+          }
           validateRequired(field, true);
         } else {
           clearFieldError(field);
@@ -2724,6 +2730,9 @@
       });
       field.addEventListener('blur', () => {
         if (enableSepaField && enableSepaField.checked) {
+          if (field.value.trim() === '') {
+            return;
+          }
           validateRequired(field, true);
         } else {
           clearFieldError(field);
