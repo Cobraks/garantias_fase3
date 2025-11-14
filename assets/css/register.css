@@ -1687,6 +1687,53 @@ footer.footer .footer__wrapper {
   }
 }
 
+@media (min-width: 1200px) {
+  .register-page .container {
+    grid-template-columns: 1fr 2fr;
+  }
+
+  .register-page .channel-selector {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .register-page .form-panel {
+    gap: 0;
+  }
+
+  .register-page .subsection-title {
+    margin-top: 0;
+  }
+
+  .register-page .form-grid--three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .register-page .progress-container {
+    padding-inline: 2rem;
+  }
+
+  .register-page .form-row--four {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .register-page .info-panel {
+    gap: 0;
+    padding-top: 4.5rem;
+  }
+
+  .register-page .features-list {
+    margin-top: 2.25rem;
+  }
+
+  .register-page .brand-logo {
+    margin-bottom: 1rem;
+  }
+
+  .register-page .info-panel .info-cta {
+    margin-top: 2rem;
+  }
+}
+
 @media (min-width: 1360px) {
   .register-page .container {
     width: min(100%, 1320px);
