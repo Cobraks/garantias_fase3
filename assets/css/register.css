@@ -1896,8 +1896,8 @@ footer.footer .footer__wrapper {
     background: var(--bg-light);
     border-radius: 24px;
     padding: clamp(2rem, 5vh, 3.5rem);
-    padding-top: 0;
     padding-inline: 2rem;
+    padding-block: 5rem;
     box-shadow: none;
     border: 1px solid var(--border);
     height: 100%;
@@ -1978,7 +1978,6 @@ footer.footer .footer__wrapper {
     bottom: 0;
     margin: 0;
     padding-inline: 3.5rem;
-    padding-block: 5rem;
   }
 
   .register-page .btn {
