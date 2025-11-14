@@ -278,10 +278,17 @@ footer.footer .footer__wrapper {
   gap: 1.5rem;
   position: relative;
   isolation: isolate;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--go-color-94a3b8-rgb), 0.4) transparent;
 }
 
 .register-page .form-panel::-webkit-scrollbar {
   width: 6px;
+}
+
+.register-page .form-panel::-webkit-scrollbar-track {
+  background-color: rgba(var(--go-color-0f172a-rgb), 0.08);
+  border-radius: 999px;
 }
 
 .register-page .form-panel::-webkit-scrollbar-thumb {
@@ -1963,7 +1970,7 @@ footer.footer .footer__wrapper {
 
   .register-page .form-panel form {
     padding-inline: var(--spacing-4);
-    margin-top: 4rem;
+    padding-top: 4rem;
   }
   .register-page .form-navigation {
     position: sticky;
