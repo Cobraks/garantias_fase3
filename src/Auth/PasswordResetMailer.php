@@ -17,6 +17,7 @@ class PasswordResetMailer
     {
         add_filter('retrieve_password_notification_email', [__CLASS__, 'filter_notification_email'], 10, 4);
         add_filter('password_change_admin_email', [__CLASS__, 'filter_admin_password_change_email'], 10, 3);
+        add_action('password_reset', [__CLASS__, 'send_user_password_change_email'], 10, 2);
     }
 
     /**
@@ -162,5 +163,69 @@ class PasswordResetMailer
         $email['headers'] = $headers;
 
         return $email;
+    }
+
+    public static function send_user_password_change_email(WP_User $user, string $new_password): void
+    {
+        if (! apply_filters('go360/password_reset_mailer/send_user_confirmation', true, $user, $new_password)) {
+            return;
+        }
+
+        $user_email = isset($user->user_email) ? sanitize_email((string) $user->user_email) : '';
+        if ($user_email === '') {
+            return;
+        }
+
+        $site_name  = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
+        $user_login = isset($user->user_login) ? (string) $user->user_login : '';
+        $login_url  = home_url('/garantias-online/login/');
+        $support_url = home_url('/garantias-online/');
+
+        $labels = UserProfileResolver::get_vendor_labels((int) $user->ID);
+        $personal_name = $labels['personal_full_name'] ?? '';
+        if ($personal_name === '') {
+            $personal_name = $labels['personal_name'] ?? '';
+        }
+
+        $company = $labels['company'] ?? [];
+        $company_name = '';
+        if (! empty($company['trade_name'])) {
+            $company_name = (string) $company['trade_name'];
+        } elseif (! empty($company['legal_name'])) {
+            $company_name = (string) $company['legal_name'];
+        } elseif (! empty($labels['company_name']) && $labels['company_name'] !== $personal_name) {
+            $company_name = (string) $labels['company_name'];
+        }
+
+        $renderer = new TemplateRenderer();
+        $message  = $renderer->render('password-change-user', [
+            'site_name'     => $site_name,
+            'user_login'    => $user_login,
+            'personal_name' => $personal_name,
+            'company_name'  => $company_name,
+            'login_url'     => $login_url,
+            'support_url'   => $support_url,
+        ]);
+
+        if ($message === '') {
+            return;
+        }
+
+        $headers = ['Content-Type: text/html; charset=UTF-8'];
+
+        $from_email = sanitize_email(get_option('admin_email'));
+        $from_header = EmailSettings::buildFromHeader('professional', $from_email);
+        if ($from_header !== '') {
+            $headers[] = $from_header;
+        }
+
+        $reply_to = EmailSettings::getReplyTo();
+        if ($reply_to !== '') {
+            $headers[] = sprintf('Reply-To: %s', $reply_to);
+        }
+
+        $subject = sprintf(__('[%s] Tu contraseña se ha actualizado', 'garantias-online-360vo'), $site_name);
+
+        wp_mail($user_email, $subject, $message, $headers);
     }
 }

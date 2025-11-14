@@ -15,7 +15,7 @@ $logo_url    = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__
     <meta charset="utf-8">
     <title><?php echo esc_html(sprintf(__('Contraseña actualizada · %s', 'garantias-online-360vo'), $site_name)); ?></title>
 </head>
-<body style="margin:0;padding:32px 16px;background-color:#f4f4f5;font-family:'Roboto','Segoe UI','San Francisco',Arial,sans-serif;color:#1f2937;">
+<body style="margin:0;padding:32px 0px;font-family:'Roboto','Segoe UI','San Francisco',Arial,sans-serif;color:#1f2937;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
         <tr>
             <td align="center">
@@ -80,7 +80,7 @@ $logo_url    = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__
                         </td>
                     </tr>
                 </table>
-                <p style="text-align:center;margin:16px 0 0;font-size:12px;color:#6b7280;">
+                <p style="text-align:center;margin:16px 0 0;font-size:11px;color:#6b7280;padding-bottom:16px;">
                     <?php echo esc_html(sprintf(__('Centro de soporte · %s', 'garantias-online-360vo'), $site_name)); ?> ·
                     <a href="<?php echo esc_url(home_url('/garantias-online/')); ?>" style="color:#bc0000;text-decoration:none;">
                         <?php echo esc_html(home_url('/garantias-online/')); ?>

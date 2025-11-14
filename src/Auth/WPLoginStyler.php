@@ -8,6 +8,15 @@ if (! defined('ABSPATH')) {
 
 class WPLoginStyler
 {
+    /** @var string */
+    private static $replacement = 'Generar contraseña segura';
+
+    /** @var string[] */
+    private static $targets = [
+        'Generate Password',
+        'Generar contraseña',
+    ];
+
     public static function init(): void
     {
         add_action('login_enqueue_scripts', [__CLASS__, 'enqueue_styles']);
@@ -15,7 +24,18 @@ class WPLoginStyler
         add_filter('login_headertext', [__CLASS__, 'filter_header_text']);
         add_filter('login_body_class', [__CLASS__, 'filter_body_class']);
         add_filter('login_display_language_dropdown', [__CLASS__, 'maybe_hide_language_dropdown']);
+        add_action('init', [__CLASS__, 'prepare_translations']);
         add_filter('gettext', [__CLASS__, 'filter_gettext'], 10, 3);
+    }
+
+    public static function prepare_translations(): void
+    {
+        self::$replacement = __('Generar contraseña segura', 'garantias-online-360vo');
+
+        $localized = translate('Generate Password', 'default');
+        if (! in_array($localized, self::$targets, true)) {
+            self::$targets[] = $localized;
+        }
     }
 
     public static function enqueue_styles(): void
@@ -79,19 +99,19 @@ class WPLoginStyler
             return $translation;
         }
 
-        $targets = [
-            'Generate Password',
-            __('Generate Password', 'default'),
-            __('Generar contraseña', 'default'),
-        ];
+        static $processing = false;
 
-        if (in_array($text, $targets, true)) {
-            return __('Generar contraseña segura', 'garantias-online-360vo');
+        if ($processing) {
+            return $translation;
         }
 
-        if (in_array($translation, $targets, true)) {
-            return __('Generar contraseña segura', 'garantias-online-360vo');
+        $processing = true;
+
+        if (in_array($text, self::$targets, true) || in_array($translation, self::$targets, true)) {
+            $translation = self::$replacement;
         }
+
+        $processing = false;
 
         return $translation;
     }

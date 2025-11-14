@@ -164,6 +164,64 @@ export default function initAutosave() {
                 return Number.isNaN(num) ? "" : num;
         };
 
+        const parseAmountValue = (value) => {
+                if (typeof value === "number" && Number.isFinite(value)) {
+                        return value;
+                }
+                if (typeof value === "string" && value !== "") {
+                        const normalized = normalizePrice(value);
+                        if (typeof normalized === "number" && Number.isFinite(normalized)) {
+                                return normalized;
+                        }
+                }
+                return null;
+        };
+
+        async function fetchGuaranteeAmount(postId) {
+                if (!postId && postId !== 0) {
+                        return null;
+                }
+                const numericId = Number(postId);
+                if (!Number.isFinite(numericId) || numericId <= 0) {
+                        return null;
+                }
+                const restRoot = getRestRoot();
+                if (typeof restRoot !== "string" || restRoot === "") {
+                        return null;
+                }
+                const headers = {};
+                const restNonce = getRestNonce();
+                if (restNonce) {
+                        headers["X-WP-Nonce"] = restNonce;
+                }
+                const url = `${restRoot}go/v1/guarantees/${encodeURIComponent(numericId)}`;
+                try {
+                        const response = await fetch(url, {
+                                headers,
+                                cache: "no-store",
+                        });
+                        if (!response.ok) {
+                                return null;
+                        }
+                        const data = await response.json();
+                        const candidates = [
+                                data?.precio,
+                                data?.price,
+                                data?.amount,
+                                data?.detail?.precio,
+                        ];
+                        for (const candidate of candidates) {
+                                const parsed = parseAmountValue(candidate);
+                                if (parsed !== null) {
+                                        return parsed;
+                                }
+                        }
+                } catch (error) {
+                        console.warn("[AUTOSAVE] fetchGuaranteeAmount error", error);
+                }
+                return null;
+        }
+
         const skipFields = new Set([
                 "duracion",
                 "metodo_pago",
@@ -1900,10 +1958,29 @@ export default function initAutosave() {
                                 if (transferDeadlineLabel) {
                                         extras.transferDeadlineLabel = transferDeadlineLabel;
                                 }
+                                let amountValue = parseAmountValue(garantia.precio);
+                                if (amountValue === null) {
+                                        const jsonAmount = parseAmountValue(
+                                                json.amount ?? json.price ?? json.precio ?? null
+                                        );
+                                        if (jsonAmount !== null) {
+                                                amountValue = jsonAmount;
+                                                garantia.precio = jsonAmount;
+                                        }
+                                }
+                                if (amountValue === null && json.id) {
+                                        const fetchedAmount = await fetchGuaranteeAmount(json.id);
+                                        if (fetchedAmount !== null) {
+                                                amountValue = fetchedAmount;
+                                                garantia.precio = fetchedAmount;
+                                        }
+                                } else if (amountValue !== null) {
+                                        garantia.precio = amountValue;
+                                }
                                 showSuccess(
                                         garantia.metodo_pago,
                                         datosVehiculo.matricula,
-                                        garantia.precio,
+                                        amountValue,
                                         garantia.plan_display_name ||
                                                 garantia.nivel_garantia ||
                                                 "",

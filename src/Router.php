@@ -46,11 +46,25 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
             || in_array('go_garantias', $current_roles, true);
 
         if (is_user_logged_in() && in_array($endpoint, ['login', 'lostpassword', 'resetpassword'], true)) {
-            $destination = $is_admin_user
-                ? home_url('/garantias-online/')
-                : home_url('/garantias-online/mis-garantias/');
-            wp_safe_redirect($destination);
-            exit;
+            $should_redirect = true;
+
+            if ($endpoint === 'resetpassword') {
+                $state_token = self::get_request_param('state');
+                $login_param = self::get_request_param('login');
+                $key_param   = self::get_request_param('key');
+
+                if ($state_token !== '' || ($login_param !== '' && $key_param !== '')) {
+                    $should_redirect = false;
+                }
+            }
+
+            if ($should_redirect) {
+                $destination = $is_admin_user
+                    ? home_url('/garantias-online/')
+                    : home_url('/garantias-online/mis-garantias/');
+                wp_safe_redirect($destination);
+                exit;
+            }
         }
 
         if (is_user_logged_in() && ! $is_admin_user && in_array($endpoint, ['dashboard', 'home'], true)) {
@@ -120,6 +134,18 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
         exit;
     }
 
+    private static function get_request_param(string $key): string
+    {
+        $value = get_query_var($key);
 
-    
+        if ($value === '') {
+            $value = isset($_GET[$key]) ? wp_unslash($_GET[$key]) : '';
+        }
+
+        if (! is_scalar($value)) {
+            return '';
+        }
+
+        return (string) $value;
+    }
 }
