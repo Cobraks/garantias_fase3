@@ -585,7 +585,7 @@ footer.footer .footer__wrapper {
 }
 
 .register-page .form-hint {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
   margin-top: 0.25rem;
   padding-left: 0.5rem;
@@ -1134,6 +1134,10 @@ footer.footer .footer__wrapper {
   margin-bottom: 1rem;
 }
 
+.register-page .verification-restart {
+  display: none;
+}
+
 .register-page .verification-feedback {
   max-width: 460px;
   margin: 0 auto 1.5rem;
@@ -1520,6 +1524,11 @@ footer.footer .footer__wrapper {
 }
 
 @media (min-width: 640px) {
+  .body--auth-flow .footer__brand,
+  .body--register .footer__brand {
+    width: auto;
+  }
+
   .register-page .container {
     width: min(100%, 780px);
   }
@@ -1933,6 +1942,7 @@ footer.footer .footer__wrapper {
     border-radius: 24px;
     padding: clamp(2rem, 5vh, 3.5rem);
     padding-block: 0;
+    padding-inline: 0;
     box-shadow: none;
     border: 1px solid var(--border);
     height: 100%;
@@ -1948,14 +1958,18 @@ footer.footer .footer__wrapper {
     position: sticky;
     top: 0;
     margin: 0;
-    padding: 2.25rem 3.25rem 1.75rem;
+    padding: 1rem 3.5rem;
   }
 
+  .register-page .form-panel form {
+    padding-inline: var(--spacing-4);
+    margin-top: 4rem;
+  }
   .register-page .form-navigation {
     position: sticky;
     bottom: 0;
-    margin: 4rem -3.25rem -3rem;
-    padding: 1.75rem 3.25rem 2.25rem;
+    margin: 0;
+    padding: 1.75rem 3.5rem 2.25rem;
   }
 
   .register-page .btn {
