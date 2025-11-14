@@ -160,6 +160,7 @@
     const verificationCodeField = document.getElementById('verification_code');
     const verificationInputContainer = document.getElementById('verification-input');
     const verificationActions = document.getElementById('verification-actions');
+    const restartBtn = document.getElementById('restart-register-btn');
     const registerError = document.getElementById('register-error');
     const termsContainer = document.getElementById('terms-container');
     const termsError = document.getElementById('terms-error');
@@ -268,6 +269,7 @@
       sepaEdited: new Set(),
       sepaMandateStatus: 'idle',
       sepaReference: '',
+      skipAutoFocus: false,
       verification: {
         token: '',
         email: '',
@@ -680,6 +682,94 @@
       clearVerificationState();
     };
 
+    const restartRegistrationFlow = () => {
+      stopResendCountdown();
+      unlockVerifyButton();
+      if (verificationActions) {
+        verificationActions.hidden = false;
+      }
+      if (verificationInputContainer) {
+        verificationInputContainer.hidden = false;
+      }
+      if (verificationSuccess) {
+        verificationSuccess.hidden = true;
+      }
+      if (verificationSuccessText) {
+        verificationSuccessText.hidden = true;
+        verificationSuccessText.textContent = DEFAULT_VERIFICATION_SUCCESS;
+      }
+      if (verificationSuccessMessage) {
+        verificationSuccessMessage.textContent = DEFAULT_VERIFICATION_SUCCESS;
+      }
+      if (verificationText) {
+        verificationText.setAttribute('data-state', 'instructions');
+      }
+      if (verificationInstructions) {
+        verificationInstructions.hidden = false;
+      }
+      if (verificationCodeField) {
+        verificationCodeField.removeAttribute('disabled');
+        verificationCodeField.value = '';
+        clearFieldError(verificationCodeField);
+      }
+      showVerificationMessage('');
+      if (verificationExpiry) {
+        verificationExpiry.textContent = 'Caduca en 5 minutos.';
+      }
+      clearVerificationState();
+
+      const form = document.getElementById('register-form');
+      if (form) {
+        form.reset();
+      }
+
+      document.querySelectorAll('.register-page .input-container').forEach((container) => {
+        if (!container) {
+          return;
+        }
+        container.classList.remove('error');
+        const error = container.querySelector('.error-message');
+        if (error) {
+          error.remove();
+        }
+      });
+
+      document.querySelectorAll('.register-page .checkbox-container').forEach((container) => {
+        container.classList.remove('error');
+      });
+
+      setRegisterError('');
+      clearChannelError();
+      clearTermsError();
+
+      if (termsCheckbox) {
+        termsCheckbox.checked = false;
+      }
+
+      if (state.emailCheckController) {
+        state.emailCheckController.abort();
+        state.emailCheckController = null;
+      }
+
+      state.emailStatus = 'empty';
+      state.emailValue = '';
+      state.lastCheckedEmail = '';
+      state.verifyLockedUntil = 0;
+      state.sepaReference = '';
+      state.sepaEdited.clear();
+      resetSepaMandateState();
+      setSepaStatus('idle');
+
+      handleChannelSelection(null, { allowStepReset: false });
+      resetStep2Fields();
+
+      state.skipAutoFocus = true;
+      goToStep(1);
+      updateSummary();
+      updateStep1ButtonState();
+      updateStep2ButtonState();
+    };
+
     const getInputContainer = (element) => (element ? element.closest('.input-container') : null);
 
     const setFieldError = (element, message) => {
@@ -766,6 +856,11 @@
         step.style.display = '';
         step.setAttribute('aria-hidden', 'false');
         const stepPosition = position + 1;
+        step.setAttribute('data-step-position', stepPosition);
+        const indexElement = step.querySelector('.step-index');
+        if (indexElement) {
+          indexElement.textContent = String(stepPosition);
+        }
         if (stepPosition < state.currentStep) {
           step.classList.add('completed');
         } else if (stepPosition === state.currentStep) {
@@ -813,6 +908,10 @@
         step.setAttribute('aria-hidden', isActive ? 'false' : 'true');
       });
       window.requestAnimationFrame(() => {
+        if (state.skipAutoFocus) {
+          state.skipAutoFocus = false;
+          return;
+        }
         const activeStep = document.querySelector('.form-step.active');
         if (!activeStep) {
           return;
@@ -1913,30 +2012,46 @@
       }
     };
 
-    const handleChannelSelection = (channel) => {
+    const handleChannelSelection = (channel, { allowStepReset = true } = {}) => {
+      const normalizedChannel = typeof channel === 'string' && channel !== '' ? channel : null;
       const previousChannel = state.selectedChannel;
-      state.selectedChannel = channel;
+      const channelChanged = previousChannel !== normalizedChannel;
+
+      state.selectedChannel = normalizedChannel;
+
+      if (channelChanged) {
+        state.skipAutoFocus = true;
+      }
       channelButtons.forEach((button) => {
-        button.classList.toggle('active', button.getAttribute('data-channel') === channel);
+        const buttonChannel = button.getAttribute('data-channel');
+        const isActive = normalizedChannel !== null && buttonChannel === normalizedChannel;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
       });
       if (companySection) {
-        const showCompany = PROFESSIONAL_CHANNELS.has(channel);
+        const showCompany = normalizedChannel !== null && PROFESSIONAL_CHANNELS.has(normalizedChannel);
         companySection.hidden = !showCompany;
         companySection.setAttribute('aria-hidden', showCompany ? 'false' : 'true');
       }
-      const isIndividual = channel === INDIVIDUAL_CHANNEL;
+      const isIndividual = normalizedChannel === INDIVIDUAL_CHANNEL;
       setStepSequence(isIndividual ? STEP_SEQUENCE_INDIVIDUAL : STEP_SEQUENCE_DEFAULT);
       if (isIndividual) {
         resetStep2Fields();
       }
-      const channelChanged = previousChannel && previousChannel !== channel;
-      if (channelChanged) {
+      if (channelChanged && previousChannel) {
         state.sepaEdited.clear();
         invalidateSepaMandate();
       }
-      if (channelChanged) {
+      if (channelChanged && allowStepReset && state.currentStep !== 1) {
         state.currentStep = 1;
         goToStep(1);
+      }
+      if (!normalizedChannel) {
+        updateSummary();
+        updateStep1ButtonState();
+        updateStep2ButtonState();
+        clearChannelError();
+        return;
       }
       clearChannelError();
       updateStep1ButtonState();
@@ -2442,9 +2557,25 @@
 
     if (channelButtons.length) {
       channelButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-          const channel = button.getAttribute('data-channel');
+        button.setAttribute('role', 'button');
+        button.setAttribute('tabindex', '0');
+        button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const channel = button.getAttribute('data-channel') || '';
+          const isActive = state.selectedChannel === channel;
+          if (isActive) {
+            handleChannelSelection(null);
+            return;
+          }
           handleChannelSelection(channel);
+        });
+        button.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+          }
+          event.preventDefault();
+          button.click();
         });
       });
     }
@@ -2463,6 +2594,15 @@
         updateSummary();
       });
       emailField.addEventListener('blur', () => {
+        if (!emailField.value.trim()) {
+          clearFieldError(emailField);
+          handleEmailStatusChange('empty');
+          if (state.emailCheckController) {
+            state.emailCheckController.abort();
+            state.emailCheckController = null;
+          }
+          return;
+        }
         validateEmailInput(true);
         checkEmailAvailability();
       });
@@ -2477,6 +2617,10 @@
         updateSummary();
       });
       phoneField.addEventListener('blur', () => {
+        if (!phoneField.value.trim()) {
+          clearFieldError(phoneField);
+          return;
+        }
         validatePhoneInput(phoneField, true);
       });
     }
@@ -2496,6 +2640,10 @@
           clearFieldError(field);
           return;
         }
+        if (!field.value.trim()) {
+          clearFieldError(field);
+          return;
+        }
         validatePostalCodeInput(field, true);
       });
     });
@@ -2512,6 +2660,9 @@
       });
       field.addEventListener('blur', () => {
         if (PROFESSIONAL_CHANNELS.has(state.selectedChannel || '')) {
+          if (field.value.trim() === '') {
+            return;
+          }
           validateRequired(field, true);
         } else {
           clearFieldError(field);
@@ -2528,6 +2679,10 @@
         updateStep1ButtonState();
       });
       passwordField.addEventListener('blur', () => {
+        if (!passwordField.value.trim()) {
+          clearFieldError(passwordField);
+          return;
+        }
         validatePasswordInput(true);
       });
     }
@@ -2538,6 +2693,10 @@
         updateStep1ButtonState();
       });
       confirmPasswordField.addEventListener('blur', () => {
+        if (!confirmPasswordField.value.trim()) {
+          clearFieldError(confirmPasswordField);
+          return;
+        }
         validatePasswordConfirmation(true);
       });
     }
@@ -2554,6 +2713,9 @@
       });
       field.addEventListener('blur', () => {
         if (hasWorkshopField && hasWorkshopField.checked) {
+          if (field.value.trim() === '') {
+            return;
+          }
           validateRequired(field, true);
         } else {
           clearFieldError(field);
@@ -2602,6 +2764,9 @@
       });
       field.addEventListener('blur', () => {
         if (enableSepaField && enableSepaField.checked) {
+          if (field.value.trim() === '') {
+            return;
+          }
           validateRequired(field, true);
         } else {
           clearFieldError(field);
@@ -2918,6 +3083,12 @@
       }
       setExpanded(false);
     });
+
+    if (restartBtn) {
+      restartBtn.addEventListener('click', () => {
+        restartRegistrationFlow();
+      });
+    }
 
     const hasPendingVerification = restoreVerificationState();
     if (hasPendingVerification) {
