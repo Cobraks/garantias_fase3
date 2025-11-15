@@ -28,6 +28,8 @@ const CHANNEL_NORMALIZATION = {
         go_profesional: "profesional",
         particular: "particular",
         go_particular: "particular",
+        individual: "particular",
+        go_individual: "particular",
         gestoria: "gestoria",
         go_gestoria: "gestoria",
 };
@@ -530,8 +532,14 @@ function initUserSelect() {
 
         let initialChannelValue = canalSelect ? canalSelect.value : "";
 
+        const searchParams = (typeof window !== "undefined" && window.location)
+                ? new URLSearchParams(window.location.search)
+                : null;
+        const hasUuidParam = searchParams ? searchParams.has("uuid") : false;
+        const continuingDraft = Boolean(hasUuidParam);
+
         if (isAdminLike(baseUserRole) && canalSelect && usuarioSelect && wrapUsuario) {
-                if (!initialChannelValue) {
+                if (!initialChannelValue && !continuingDraft) {
                         const profesionalOption =
                                 canalSelect.querySelector('option[value="go_profesional"]') ||
                                 canalSelect.querySelector('option[value="profesional"]');
@@ -542,11 +550,15 @@ function initUserSelect() {
                         }
                 }
         } else if (isComercial(baseUserRole) && canalSelect) {
-                canalSelect.value = "go_profesional";
-                initialChannelValue = canalSelect.value;
+                if (!continuingDraft) {
+                        canalSelect.value = "go_profesional";
+                        initialChannelValue = canalSelect.value;
+                }
         } else if (
                 baseUserRole === "go_particular" ||
-                baseUserRole === "particular"
+                baseUserRole === "particular" ||
+                baseUserRole === "go_individual" ||
+                baseUserRole === "individual"
         ) {
                 initialChannelValue = "go_particular";
         } else if (baseUserRole === "go_gestoria" || baseUserRole === "gestoria") {

@@ -7,6 +7,7 @@ import {
         ensureCurrentUserIdReady,
         isAdmin,
         isProfesional,
+        isParticular,
 } from "./form-role-utils.js";
 import { getRestRoot, getRestNonce } from "./config.js";
 import {
@@ -19,6 +20,26 @@ import {
 const ENABLE_LOGS = true;
 function log(...args) {
         if (ENABLE_LOGS) console.log("[form-ofertas]", ...args);
+}
+
+const selfOffersPrefetchState = {
+        done: false,
+        empty: false,
+};
+let selfOffersPrefetchPromise = null;
+
+function shouldSkipLoaderForSelf({ ofertas = null } = {}) {
+        if (!(isProfesional() || isParticular())) {
+                return false;
+        }
+        if (!selfOffersPrefetchState.done) {
+                return false;
+        }
+        const hasOfertas = Array.isArray(ofertas) && ofertas.length > 0;
+        if (hasOfertas) {
+                return false;
+        }
+        return selfOffersPrefetchState.empty;
 }
 
 // Cache simple por userId con posibilidad de invalidar
@@ -316,6 +337,9 @@ function showOfertasLoading(ul = null) {
                 }
         }
         ul.innerHTML = "";
+        if (isParticular()) {
+                return ul;
+        }
         const li = document.createElement("li");
         li.className = "ofertas__item ofertas__item--loading";
         li.textContent = "Cargando ofertas...";
@@ -332,27 +356,36 @@ export async function updateOfertasList(
         container = null,
         { force = false, ofertas = null, showLoading = true } = {},
 ) {
-	if (!userId) {
-		await ensureCurrentUserIdReady();
-	}
-	const effectiveUserId = resolveUserId(userId);
-	if (!effectiveUserId) return;
+        const parent = document.querySelector(".form__ofertas");
+        if (!parent) return;
 
-	const parent = document.querySelector(".form__ofertas");
-	if (!parent) return;
+        let ul = container;
+        if (!ul) {
+                ul = parent.querySelector("ul.ofertas__list");
+                if (!ul) {
+                        ul = document.createElement("ul");
+                        ul.className = "ofertas__list";
+                        parent.insertBefore(ul, parent.querySelector(".ofertas__iva"));
+                }
+        }
 
-	let ul = container;
-	if (!ul) {
-		ul = parent.querySelector("ul.ofertas__list");
-		if (!ul) {
-			ul = document.createElement("ul");
-			ul.className = "ofertas__list";
-			parent.insertBefore(ul, parent.querySelector(".ofertas__iva"));
-		}
-	}
+        if (!userId) {
+                await ensureCurrentUserIdReady();
+        }
+
+        await ensureSelfOffersPrefetched();
+
+        const effectiveUserId = resolveUserId(userId);
+        if (!effectiveUserId) {
+                ul.innerHTML = "";
+                applyOfertasState(null);
+                return;
+        }
 
         if (showLoading) {
-                showOfertasLoading(ul);
+                if (!shouldSkipLoaderForSelf({ ofertas })) {
+                        showOfertasLoading(ul);
+                }
         }
 
         const ofertasData =
@@ -446,7 +479,9 @@ export function refreshOfertasDisplay() {
 
                 if (_refreshOfertasPending) clearTimeout(_refreshOfertasPending);
                 _refreshOfertasPending = setTimeout(async () => {
-                        if (!hasCache) showOfertasLoading();
+                        if (!hasCache && !shouldSkipLoaderForSelf({})) {
+                                showOfertasLoading();
+                        }
                         if (isNaProfesionalFallback()) {
                                 await ensureCurrentUserIdReady();
                         }
@@ -478,7 +513,7 @@ function isNaProfesionalFallback() {
 }
 
 // Exponer para compatibilidad legacy mínima
-export { refreshOfertasDisplay as updateOfertas, showOfertasLoading };
+export { refreshOfertasDisplay as updateOfertas, showOfertasLoading, shouldSkipLoaderForSelf };
 
 function prefetchAllVendorOffers() {
         const select = document.getElementById("usuario-rol");
@@ -492,4 +527,52 @@ function prefetchAllVendorOffers() {
         });
 }
 
-document.addEventListener("DOMContentLoaded", prefetchAllVendorOffers);
+async function prefetchCurrentUserOffers() {
+        if (selfOffersPrefetchState.done) return;
+
+        if (isProfesional()) {
+                await ensureCurrentUserIdReady();
+                const effectiveId = getEffectiveProfessionalId();
+                if (!effectiveId) {
+                        selfOffersPrefetchState.done = true;
+                        selfOffersPrefetchState.empty = true;
+                        return;
+                }
+                try {
+                        const ofertas = await fetchOfertas(effectiveId);
+                        selfOffersPrefetchState.done = true;
+                        selfOffersPrefetchState.empty = !(
+                                Array.isArray(ofertas) && ofertas.length > 0
+                        );
+                } catch (error) {
+                        if (ENABLE_LOGS) log("prefetchCurrentUserOffers error", error);
+                        selfOffersPrefetchState.done = true;
+                        selfOffersPrefetchState.empty = true;
+                }
+                return;
+        }
+
+        if (isParticular()) {
+                selfOffersPrefetchState.done = true;
+                selfOffersPrefetchState.empty = true;
+        }
+}
+
+function ensureSelfOffersPrefetched() {
+        if (selfOffersPrefetchState.done) {
+                return Promise.resolve();
+        }
+        if (!selfOffersPrefetchPromise) {
+                selfOffersPrefetchPromise = prefetchCurrentUserOffers().catch((error) => {
+                        if (ENABLE_LOGS) log("ensureSelfOffersPrefetched error", error);
+                        selfOffersPrefetchState.done = true;
+                        selfOffersPrefetchState.empty = true;
+                });
+        }
+        return selfOffersPrefetchPromise || Promise.resolve();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+        prefetchAllVendorOffers();
+        ensureSelfOffersPrefetched();
+});

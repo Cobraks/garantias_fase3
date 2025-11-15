@@ -85,6 +85,8 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
         $js_user_role = 'admin';
     } elseif (in_array('go_profesional', $roles, true)) {
         $js_user_role = 'go_profesional';
+    } elseif (in_array('go_particular', $roles, true) || in_array('go_individual', $roles, true)) {
+        $js_user_role = 'go_particular';
     } elseif (in_array('go_garantias', $roles, true)) {
         $js_user_role = 'go_garantias';
     } elseif ($is_director) {
@@ -454,7 +456,10 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
         $js_user_role = 'admin';
     } elseif (in_array('go_profesional', (array)$current_user->roles, true)) {
         $js_user_role = 'go_profesional';
-    } elseif (in_array('go_particular', (array)$current_user->roles, true)) {
+    } elseif (
+        in_array('go_particular', (array)$current_user->roles, true) ||
+        in_array('go_individual', (array)$current_user->roles, true)
+    ) {
         $js_user_role = 'go_particular';
     } elseif ($is_comercial) {
         $js_user_role = 'comercial';
@@ -476,7 +481,10 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
                             echo 'admin';
                         } elseif (in_array('go_profesional', $roles, true)) {
                             echo 'go_profesional';
-                        } elseif (in_array('go_particular', $roles, true)) {
+                        } elseif (
+                            in_array('go_particular', $roles, true) ||
+                            in_array('go_individual', $roles, true)
+                        ) {
                             echo 'go_particular';
                         } elseif ($is_garantias) {
                             echo 'go_garantias';

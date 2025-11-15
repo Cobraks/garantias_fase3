@@ -13,6 +13,7 @@ import {
         ofertaAplicaAmodalidad,
         refreshOfertasDisplay,
         showOfertasLoading,
+        shouldSkipLoaderForSelf,
 } from "./form-ofertas.js";
 import {
         getEffectiveUserRole,
@@ -267,6 +268,8 @@ const CHANNEL_NORMALIZATION = {
         go_profesional: "profesional",
         particular: "particular",
         go_particular: "particular",
+        individual: "particular",
+        go_individual: "particular",
         gestoria: "gestoria",
         go_gestoria: "gestoria",
 };
@@ -284,6 +287,8 @@ function getDefaultChannelForRole() {
         switch (role) {
                 case "go_particular":
                 case "particular":
+                case "go_individual":
+                case "individual":
                         return "particular";
                 case "go_gestoria":
                 case "gestoria":
@@ -1750,14 +1755,33 @@ function renderRecargosHTML({
 
 // --------- OFERTAS: INTEGRACIÓN CON MODALIDADES ---------
 async function updateOfertas() {
-        showOfertasLoading();
         if (isProfesional()) {
                 await ensureCurrentUserIdReady();
         }
 
         const usuarioId = getEffectiveProfessionalId();
-        if (!usuarioId && !isProfesional()) return;
+        if (!usuarioId && !isProfesional()) {
+                const ofertasContainer = document.querySelector(".form__ofertas");
+                const lista = ofertasContainer?.querySelector("ul.ofertas__list");
+                if (lista) {
+                        lista.innerHTML = "";
+                }
+                setCurrentOfertas([]);
+                setSpecialFixedOffers([], { enabled: false });
+                document.dispatchEvent(new Event("ofertas:actualizadas"));
+                return;
+        }
 
+        const skipLoader = shouldSkipLoaderForSelf({});
+        if (!skipLoader) {
+                showOfertasLoading();
+        } else {
+                const ofertasContainer = document.querySelector(".form__ofertas");
+                const lista = ofertasContainer?.querySelector("ul.ofertas__list");
+                if (lista) {
+                        lista.innerHTML = "";
+                }
+        }
         await fetchOfertas(usuarioId ?? null, { force: true });
         await filtrarModalidadesBase();
         document.dispatchEvent(new Event("ofertas:actualizadas"));
