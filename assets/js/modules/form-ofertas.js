@@ -337,6 +337,9 @@ function showOfertasLoading(ul = null) {
                 }
         }
         ul.innerHTML = "";
+        if (isParticular()) {
+                return ul;
+        }
         const li = document.createElement("li");
         li.className = "ofertas__item ofertas__item--loading";
         li.textContent = "Cargando ofertas...";

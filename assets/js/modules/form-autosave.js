@@ -1180,14 +1180,26 @@ export default function initAutosave() {
                                         break;
                                 }
                         }
+                        let hasParticularSignal = false;
                         if (!channelSlug) {
                                 const particularSignals = [
                                         data.detail?.nombre_comprador,
                                         data.nombre_comprador,
                                         data.detail?.datos_cliente_nombre_y_apellidos,
                                         data.detail?.datos_cliente?.nombre_y_apellidos,
+                                        data.detail?.datos_cliente?.nombre,
+                                        data.detail?.cliente?.nombre,
+                                        data.detail?.cliente?.nombre_y_apellidos,
+                                        data.detail?.cliente?.nombre_completo,
+                                        data.customer_name,
+                                        data.customer?.nombre,
+                                        data.customer?.nombre_y_apellidos,
+                                        data.customer?.nombre_completo,
+                                        data.cliente?.nombre,
+                                        data.cliente?.nombre_y_apellidos,
+                                        data.cliente?.nombre_completo,
                                 ];
-                                const hasParticularSignal = particularSignals.some((value) => {
+                                hasParticularSignal = particularSignals.some((value) => {
                                         if (typeof value !== "string") return false;
                                         const trimmed = value.trim();
                                         return trimmed !== "" && trimmed !== "-" && trimmed !== "--";
@@ -1196,9 +1208,6 @@ export default function initAutosave() {
                                         channelSlug = "particular";
                                 }
                         }
-
-                        let pendingSelectValue = "";
-                        let pendingSelectLabel = "";
                         const vendorIdCandidates = [
                                 data.vendor_id,
                                 data.concesionario_empresa_profesional,
@@ -1221,6 +1230,35 @@ export default function initAutosave() {
                                 data.detail?.comprador_id,
                                 data.detail?.datos_cliente?.user_id,
                         ];
+                        const firstVendorId = pickFirstId(vendorIdCandidates);
+                        const firstCustomerId = pickFirstId(customerIdCandidates);
+                        if (!channelSlug) {
+                                const detailChannelCandidate = normalizeChannelCandidate(
+                                        data.detail?.cliente?.tipo_cliente ||
+                                                data.detail?.cliente?.tipo ||
+                                                data.detail?.customer_type ||
+                                                data.customer?.tipo ||
+                                                data.customer?.tipo_cliente ||
+                                                data.cliente?.tipo ||
+                                                data.cliente?.tipo_cliente,
+                                );
+                                if (detailChannelCandidate) {
+                                        channelSlug = detailChannelCandidate;
+                                }
+                        }
+                        if (!channelSlug) {
+                                if (firstCustomerId && !firstVendorId) {
+                                        channelSlug = "particular";
+                                } else if (firstVendorId && !firstCustomerId) {
+                                        channelSlug = "profesional";
+                                } else if (hasParticularSignal && firstCustomerId) {
+                                        channelSlug = "particular";
+                                }
+                        }
+
+                        let pendingSelectValue = "";
+                        let pendingSelectLabel = "";
+                        let pendingSelectMode = "vendor";
 
                         if (usuarioSelect) {
                                 const vendorLabelCandidates = [
@@ -1244,10 +1282,21 @@ export default function initAutosave() {
                                 ];
 
                                 if (channelSlug === "particular") {
-                                        pendingSelectValue = pickFirstId(customerIdCandidates);
+                                        pendingSelectMode = "customer";
+                                } else if (!channelSlug) {
+                                        if (firstCustomerId && !firstVendorId) {
+                                                pendingSelectMode = "customer";
+                                                channelSlug = "particular";
+                                        } else if (firstCustomerId && hasParticularSignal) {
+                                                pendingSelectMode = "customer";
+                                        }
+                                }
+
+                                if (pendingSelectMode === "customer") {
+                                        pendingSelectValue = firstCustomerId;
                                         pendingSelectLabel = pickFirstLabel(customerLabelCandidates);
                                 } else {
-                                        pendingSelectValue = pickFirstId(vendorIdCandidates);
+                                        pendingSelectValue = firstVendorId;
                                         pendingSelectLabel = pickFirstLabel(vendorLabelCandidates);
                                 }
 
@@ -1305,11 +1354,18 @@ export default function initAutosave() {
                                                 channelValue = `go_${vendorTypeChannel}`;
                                         }
                                 }
-                                if (!channelValue && pendingSelectValue && channelSlug === "") {
-                                        channelValue = "go_profesional";
+                                if (!channelValue && !channelSlug) {
+                                        if (pendingSelectMode === "customer" && firstCustomerId) {
+                                                channelValue = "go_particular";
+                                        } else if (pendingSelectMode === "vendor" && firstVendorId) {
+                                                channelValue = "go_profesional";
+                                        }
                                 }
                                 if (!channelValue && channelSlug === "particular") {
                                         channelValue = "go_particular";
+                                }
+                                if (!channelValue && channelSlug === "profesional") {
+                                        channelValue = "go_profesional";
                                 }
                                 if (channelValue) {
                                         canalSelect.value = channelValue;
