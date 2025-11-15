@@ -270,7 +270,7 @@ const ADD_DOC_KEY = "add-document";
                 const canManageDetailActions =
                         ["administrator", "admin", "go_garantias"].includes(normalizedRole);
                 const canContinueGuarantee =
-                        canManageDetailActions || isProfesional || isDirector;
+                        canManageDetailActions || isProfesional || isDirector || isParticular;
                 const canViewAdminSummary = isCoreAdmin || isDirector || isProfesional;
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
@@ -4737,6 +4737,17 @@ const ADD_DOC_KEY = "add-document";
                                 cleanDisplayValue(item.detail?.comprador?.nombre) ||
                                 cleanDisplayValue(item.detail?.comprador_nombre) ||
                                 cleanDisplayValue(item.nombre_comprador) ||
+                                cleanDisplayValue(item.cliente?.nombre_y_apellidos) ||
+                                cleanDisplayValue(item.cliente?.nombre_completo) ||
+                                cleanDisplayValue(item.cliente?.nombre) ||
+                                cleanDisplayValue(item.cliente?.nombre_apellidos) ||
+                                cleanDisplayValue(item.customer?.nombre_y_apellidos) ||
+                                cleanDisplayValue(item.customer?.nombre_completo) ||
+                                cleanDisplayValue(item.customer?.nombre) ||
+                                cleanDisplayValue(item.customer?.nombre_apellidos) ||
+                                cleanDisplayValue(item.cliente_nombre) ||
+                                cleanDisplayValue(item.customer_name) ||
+                                cleanDisplayValue(item.buyer?.nombre) ||
                                 "-";
                         const clienteTelefonoValue =
                                 cleanDisplayValue(item.detail?.telefono_comprador) ||
@@ -4746,6 +4757,11 @@ const ADD_DOC_KEY = "add-document";
                                 cleanDisplayValue(item.detail?.comprador?.telefono) ||
                                 cleanDisplayValue(item.detail?.comprador_telefono) ||
                                 cleanDisplayValue(item.telefono_comprador) ||
+                                cleanDisplayValue(item.cliente?.telefono) ||
+                                cleanDisplayValue(item.customer?.telefono) ||
+                                cleanDisplayValue(item.customer?.phone) ||
+                                cleanDisplayValue(item.cliente_telefono) ||
+                                cleanDisplayValue(item.customer_phone) ||
                                 "";
                         const clienteTelefono = clienteTelefonoValue;
                         const clienteTelefonoDataset = clienteTelefono !== "" ? clienteTelefono : "-";

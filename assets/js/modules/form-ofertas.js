@@ -7,6 +7,7 @@ import {
         ensureCurrentUserIdReady,
         isAdmin,
         isProfesional,
+        isParticular,
 } from "./form-role-utils.js";
 import { getRestRoot, getRestNonce } from "./config.js";
 import {
@@ -20,6 +21,12 @@ const ENABLE_LOGS = true;
 function log(...args) {
         if (ENABLE_LOGS) console.log("[form-ofertas]", ...args);
 }
+
+const selfOffersPrefetchState = {
+        done: false,
+        empty: false,
+};
+let selfOffersPrefetchPromise = null;
 
 // Cache simple por userId con posibilidad de invalidar
 const ofertasCache = new Map(); // cacheKey -> { ofertas, especiales, meta, fetchedAt, version }
@@ -348,6 +355,9 @@ export async function updateOfertasList(
         if (!userId) {
                 await ensureCurrentUserIdReady();
         }
+
+        await ensureSelfOffersPrefetched();
+
         const effectiveUserId = resolveUserId(userId);
         if (!effectiveUserId) {
                 ul.innerHTML = "";
@@ -356,7 +366,16 @@ export async function updateOfertasList(
         }
 
         if (showLoading) {
-                showOfertasLoading(ul);
+                const skipLoaderForSelfWithoutOffers =
+                        !force &&
+                        (isProfesional() || isParticular()) &&
+                        selfOffersPrefetchState.done &&
+                        selfOffersPrefetchState.empty &&
+                        (!ofertas || ofertas.length === 0);
+
+                if (!skipLoaderForSelfWithoutOffers) {
+                        showOfertasLoading(ul);
+                }
         }
 
         const ofertasData =
@@ -496,4 +515,52 @@ function prefetchAllVendorOffers() {
         });
 }
 
-document.addEventListener("DOMContentLoaded", prefetchAllVendorOffers);
+async function prefetchCurrentUserOffers() {
+        if (selfOffersPrefetchState.done) return;
+
+        if (isProfesional()) {
+                await ensureCurrentUserIdReady();
+                const effectiveId = getEffectiveProfessionalId();
+                if (!effectiveId) {
+                        selfOffersPrefetchState.done = true;
+                        selfOffersPrefetchState.empty = true;
+                        return;
+                }
+                try {
+                        const ofertas = await fetchOfertas(effectiveId);
+                        selfOffersPrefetchState.done = true;
+                        selfOffersPrefetchState.empty = !(
+                                Array.isArray(ofertas) && ofertas.length > 0
+                        );
+                } catch (error) {
+                        if (ENABLE_LOGS) log("prefetchCurrentUserOffers error", error);
+                        selfOffersPrefetchState.done = true;
+                        selfOffersPrefetchState.empty = true;
+                }
+                return;
+        }
+
+        if (isParticular()) {
+                selfOffersPrefetchState.done = true;
+                selfOffersPrefetchState.empty = true;
+        }
+}
+
+function ensureSelfOffersPrefetched() {
+        if (selfOffersPrefetchState.done) {
+                return Promise.resolve();
+        }
+        if (!selfOffersPrefetchPromise) {
+                selfOffersPrefetchPromise = prefetchCurrentUserOffers().catch((error) => {
+                        if (ENABLE_LOGS) log("ensureSelfOffersPrefetched error", error);
+                        selfOffersPrefetchState.done = true;
+                        selfOffersPrefetchState.empty = true;
+                });
+        }
+        return selfOffersPrefetchPromise || Promise.resolve();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+        prefetchAllVendorOffers();
+        ensureSelfOffersPrefetched();
+});

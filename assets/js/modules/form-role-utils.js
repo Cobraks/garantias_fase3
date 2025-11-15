@@ -46,8 +46,13 @@ export function isComercial() {
  * Acepta variantes: 'go_profesional' y 'profesional' por compatibilidad histórica.
  */
 export function isProfesional() {
-	const role = getEffectiveUserRole();
-	return role === "go_profesional" || role === "profesional";
+        const role = getEffectiveUserRole();
+        return role === "go_profesional" || role === "profesional";
+}
+
+export function isParticular() {
+        const role = getEffectiveUserRole();
+        return role === "go_particular" || role === "particular";
 }
 
 /**
