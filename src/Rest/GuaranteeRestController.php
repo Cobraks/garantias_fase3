@@ -4265,6 +4265,15 @@ class GuaranteeRestController
         }
         $cache = get_transient($cache_key);
         if ($cache !== false) {
+            if ($cache instanceof WP_REST_Response) {
+                $state = self::get_changes_state();
+                if (!empty($state['version'])) {
+                    $cache->header('X-Go-Guarantees-Version', $state['version']);
+                }
+                if (!empty($state['last_modified'])) {
+                    $cache->header('X-Go-Guarantees-LastModified', $state['last_modified']);
+                }
+            }
             return $cache;
         }
 
@@ -4581,6 +4590,13 @@ class GuaranteeRestController
         ]);
         $response->header('X-WP-Total',      $total_posts);
         $response->header('X-WP-TotalPages', $total_pages);
+        $state = self::get_changes_state();
+        if (!empty($state['version'])) {
+            $response->header('X-Go-Guarantees-Version', $state['version']);
+        }
+        if (!empty($state['last_modified'])) {
+            $response->header('X-Go-Guarantees-LastModified', $state['last_modified']);
+        }
 
         set_transient($cache_key, $response, 300); // 5 minutos de cache
 

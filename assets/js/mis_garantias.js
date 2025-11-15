@@ -237,6 +237,7 @@ const ADD_DOC_KEY = "add-document";
                         (window.GO_REST && window.GO_REST.nonce) ||
                         "";
                 const LIVE_CHANGES_ENDPOINT = `${restRoot}go/v1/guarantees/changes`;
+                const GUARANTEES_VERSION_HEADER = "X-Go-Guarantees-Version";
                 const LIVE_CHANGES_INTERVAL_MS = 30 * 1000;
                 const LIVE_CHANGES_MAX_BACKOFF_MS = 5 * 60 * 1000;
                 const userRole =
@@ -2272,6 +2273,10 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                         const totalPagesNumber = Number(value.totalPages);
                                         const totalPostsNumber = Number(value.totalPosts);
+                                        const version =
+                                                typeof value.version === "string"
+                                                        ? value.version
+                                                        : "";
                                         entries.push([
                                                 key,
                                                 {
@@ -2285,6 +2290,7 @@ const ADD_DOC_KEY = "add-document";
                                                                         ? Math.floor(totalPostsNumber)
                                                                         : 0,
                                                         fetchedAt,
+                                                        version,
                                                 },
                                         ]);
                                 }
@@ -2318,6 +2324,10 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                         const totalPagesNumber = Number(value.totalPages);
                                         const totalPostsNumber = Number(value.totalPosts);
+                                        const version =
+                                                typeof value.version === "string"
+                                                        ? value.version
+                                                        : "";
                                         const fetchedAt =
                                                 typeof value.fetchedAt === "number" && value.fetchedAt > 0
                                                         ? value.fetchedAt
@@ -2335,6 +2345,7 @@ const ADD_DOC_KEY = "add-document";
                                                                         ? Math.floor(totalPostsNumber)
                                                                         : 0,
                                                         fetchedAt,
+                                                        version,
                                                 },
                                         ]);
                                 });
@@ -2602,8 +2613,19 @@ const ADD_DOC_KEY = "add-document";
                         if (!entry || typeof entry !== "object") {
                                 return false;
                         }
+                        if (liveUpdatesEnabled) {
+                                return false;
+                        }
                         const fetchedAt = typeof entry.fetchedAt === "number" ? entry.fetchedAt : 0;
                         if (!fetchedAt) {
+                                return false;
+                        }
+                        if (
+                                liveChangesVersion &&
+                                typeof entry.version === "string" &&
+                                entry.version &&
+                                entry.version !== liveChangesVersion
+                        ) {
                                 return false;
                         }
                         return Date.now() - fetchedAt <= LIST_CACHE_TTL_MS;
@@ -2743,6 +2765,14 @@ const ADD_DOC_KEY = "add-document";
                         if (!cache || !tbody || !Array.isArray(cache.data)) {
                                 finalizeSpinnerVisibility(0, 0, spinnerToken);
                                 return;
+                        }
+                        if (
+                                !liveChangesVersion &&
+                                cache &&
+                                typeof cache.version === "string" &&
+                                cache.version
+                        ) {
+                                liveChangesVersion = cache.version;
                         }
                         tbody.innerHTML = "";
                         resetMobileCards();
@@ -6891,9 +6921,23 @@ const ADD_DOC_KEY = "add-document";
                                         headers: { "X-WP-Nonce": restNonce },
                                         signal: currentListAbort.signal,
                                 });
-				if (!res.ok) throw `HTTP ${res.status}`;
-				totalPosts = +res.headers.get("X-WP-Total") || 0;
-				totalPages = +res.headers.get("X-WP-TotalPages") || 1;
+                                if (!res.ok) throw `HTTP ${res.status}`;
+                                const responseVersion = (() => {
+                                        if (!res.headers || typeof res.headers.get !== "function") {
+                                                return "";
+                                        }
+                                        const headerValue = res.headers.get(
+                                                GUARANTEES_VERSION_HEADER
+                                        );
+                                        return typeof headerValue === "string"
+                                                ? headerValue.trim()
+                                                : "";
+                                })();
+                                if (responseVersion) {
+                                        liveChangesVersion = responseVersion;
+                                }
+                                totalPosts = +res.headers.get("X-WP-Total") || 0;
+                                totalPages = +res.headers.get("X-WP-TotalPages") || 1;
                                 const { data } = await res.json();
 
                                 const normalizedData =
@@ -6909,6 +6953,7 @@ const ADD_DOC_KEY = "add-document";
                                                 totalPages,
                                                 totalPosts,
                                                 fetchedAt: now,
+                                                version: responseVersion,
                                         });
                                 } else if (listCache.has(cacheKey)) {
                                         const cache = listCache.get(cacheKey);
@@ -6916,6 +6961,9 @@ const ADD_DOC_KEY = "add-document";
                                         cache.totalPages = totalPages;
                                         cache.totalPosts = totalPosts;
                                         cache.fetchedAt = now;
+                                        if (responseVersion) {
+                                                cache.version = responseVersion;
+                                        }
                                 }
                                 persistListCacheSnapshot(listCache);
                                 if (esNuevaBusqueda) {
