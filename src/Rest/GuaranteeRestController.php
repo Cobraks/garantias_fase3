@@ -4263,10 +4263,14 @@ class GuaranteeRestController
         if (! empty($sort_config['cache_suffix'])) {
             $cache_key .= $sort_config['cache_suffix'];
         }
+        $state = self::get_changes_state();
+        if (!empty($state['version'])) {
+            $cache_key .= '_v_' . md5($state['version']);
+        }
+
         $cache = get_transient($cache_key);
         if ($cache !== false) {
             if ($cache instanceof WP_REST_Response) {
-                $state = self::get_changes_state();
                 if (!empty($state['version'])) {
                     $cache->header('X-Go-Guarantees-Version', $state['version']);
                 }
@@ -4590,7 +4594,9 @@ class GuaranteeRestController
         ]);
         $response->header('X-WP-Total',      $total_posts);
         $response->header('X-WP-TotalPages', $total_pages);
-        $state = self::get_changes_state();
+        if (empty($state)) {
+            $state = self::get_changes_state();
+        }
         if (!empty($state['version'])) {
             $response->header('X-Go-Guarantees-Version', $state['version']);
         }
