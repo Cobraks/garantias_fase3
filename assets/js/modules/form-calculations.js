@@ -267,6 +267,8 @@ const CHANNEL_NORMALIZATION = {
         go_profesional: "profesional",
         particular: "particular",
         go_particular: "particular",
+        individual: "particular",
+        go_individual: "particular",
         gestoria: "gestoria",
         go_gestoria: "gestoria",
 };

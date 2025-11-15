@@ -25,7 +25,7 @@ $is_director     = $has_role('go_director_comercial');
 $is_garantias    = $has_role('go_garantias');
 $is_admin_user   = $has_role('administrator') || $has_role('admin');
 
-$show_channel_col = ! $is_professional;
+$show_channel_col = ! $is_professional && ! $is_particular;
 
 $uses_admin_filters = $is_admin_user || $is_garantias || $is_director;
 $show_channel_select = ($uses_admin_filters || $is_commercial)

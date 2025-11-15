@@ -257,6 +257,8 @@ const ADD_DOC_KEY = "add-document";
                 const isDirector = normalizedRole === "go_director_comercial";
                 const isProfesional =
                         normalizedRole === "go_profesional" || normalizedRole === "profesional";
+                const isParticular =
+                        normalizedRole === "go_particular" || normalizedRole === "particular";
                 const canSeeVerifyCollectStates =
                         [
                                 "administrator",
@@ -300,6 +302,8 @@ const ADD_DOC_KEY = "add-document";
                 };
                 const ADMIN_SUMMARY_ACTION_ARROW_ICON =
                         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
+                const continueIcon =
+                        '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
                 const ADMIN_SUMMARY_ACTIONS = [
                         {
                                 key: "draft",
@@ -361,8 +365,7 @@ const ADD_DOC_KEY = "add-document";
                 const personAddIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M720-400v-120H600v-80h120v-120h80v120h120v80H800v120h-80Zm-360-80q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm80-80h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T440-640q0-33-23.5-56.5T360-720q-33 0-56.5 23.5T280-640q0 33 23.5 56.5T360-560Zm0-80Zm0 400Z"/></svg>';
                 const personIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z"/></svg>';
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
-                const continueIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
-               const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
+                const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
                const downloadIcon = (goConfig.icons && goConfig.icons.download) || "";
                const plusIcon = (goConfig.icons && goConfig.icons.plus) || "";
                 const arrowDownIcon =
@@ -4202,6 +4205,77 @@ const ADD_DOC_KEY = "add-document";
                         return cleaned;
                 }
 
+                function normalizeChannelLabel(label) {
+                        if (label === null || label === undefined) {
+                                return "";
+                        }
+                        const text = String(label).trim();
+                        if (!text) {
+                                return "";
+                        }
+                        const normalized = text.toLowerCase();
+                        if (
+                                normalized === "individual" ||
+                                normalized === "particular" ||
+                                normalized === "go_particular" ||
+                                normalized === "go_individual"
+                        ) {
+                                return "Particular";
+                        }
+                        if (/\bindividual\b/i.test(text)) {
+                                return text.replace(/\bindividual\b/gi, "Particular");
+                        }
+                        return text;
+                }
+
+                function normalizeChannelValue(value) {
+                        if (value === null || value === undefined) {
+                                return "";
+                        }
+                        const normalized = String(value)
+                                .trim()
+                                .toLowerCase();
+                        if (!normalized) {
+                                return "";
+                        }
+                        const base = normalized.startsWith("go_")
+                                ? normalized.slice(3)
+                                : normalized;
+                        if (base === "individual") {
+                                return "particular";
+                        }
+                        return base;
+                }
+
+                function buildPersonalName(first, last, fallback) {
+                        const firstClean = typeof first === "string" ? first.trim() : "";
+                        const lastClean = typeof last === "string" ? last.trim() : "";
+                        if (firstClean || lastClean) {
+                                return [firstClean, lastClean]
+                                        .filter(Boolean)
+                                        .join(" ")
+                                        .trim();
+                        }
+                        const fallbackClean = typeof fallback === "string" ? fallback.trim() : "";
+                        return fallbackClean;
+                }
+
+                function cleanDisplayValue(value) {
+                        if (typeof value !== "string") {
+                                return "";
+                        }
+                        const trimmed = value.trim();
+                        if (
+                                !trimmed ||
+                                trimmed === "-" ||
+                                trimmed === "—" ||
+                                trimmed === "#"
+                        ) {
+                                return "";
+                        }
+                        return trimmed;
+                }
+
                 const { getTransferDeadlineMillis, getTransferDeadlineInfo } = (() => {
                         function parseDateTime(value) {
                                 if (!value) return null;
@@ -4599,21 +4673,60 @@ const ADD_DOC_KEY = "add-document";
                                 hastaDisplayRaw !== "-" &&
                                 desdeDisplayRaw !== "" &&
                                 hastaDisplayRaw !== "";
-                        const vendedorName = item.vendedor ?? "-";
+                        const canalVentaValueRaw =
+                                item.canal_venta && Object.prototype.hasOwnProperty.call(item.canal_venta, "value")
+                                        ? item.canal_venta.value
+                                        : item.detail && Object.prototype.hasOwnProperty.call(item.detail, "canal_venta_value")
+                                        ? item.detail.canal_venta_value
+                                        : "";
+                        const vendorTypeValueRaw =
+                                item.detail && Object.prototype.hasOwnProperty.call(item.detail, "vendor_company_type_value")
+                                        ? item.detail.vendor_company_type_value
+                                        : "";
+                        const normalizedChannel = normalizeChannelValue(canalVentaValueRaw);
+                        const normalizedVendorType = normalizeChannelValue(vendorTypeValueRaw);
+                        const isVendorParticular =
+                                normalizedChannel === "particular" || normalizedVendorType === "particular";
+                        let vendedorName = item.vendedor ?? "-";
+                        if (isVendorParticular && item.detail && typeof item.detail === "object") {
+                                const personalFull = cleanDisplayValue(
+                                        Object.prototype.hasOwnProperty.call(item.detail, "concesionario_personal")
+                                                ? item.detail.concesionario_personal
+                                                : ""
+                                );
+                                const personalFirst = cleanDisplayValue(
+                                        Object.prototype.hasOwnProperty.call(item.detail, "concesionario_personal_first")
+                                                ? item.detail.concesionario_personal_first
+                                                : ""
+                                );
+                                const personalLast = cleanDisplayValue(
+                                        Object.prototype.hasOwnProperty.call(item.detail, "concesionario_personal_last")
+                                                ? item.detail.concesionario_personal_last
+                                                : ""
+                                );
+                                const derivedName = buildPersonalName(personalFirst, personalLast, personalFull);
+                                if (derivedName) {
+                                        vendedorName = derivedName;
+                                }
+                        }
                         const planName = item.plan ?? "";
                         const precio = formatPrice(item.precio);
                         const planPriceLabel = precio && precio !== "-" ? `${precio}€` : "";
-                        const canalVenta =
+                        const canalVentaRaw =
                                 item.canal_venta && item.canal_venta.label
                                         ? item.canal_venta.label
                                         : "-";
-                        const canalVentaSummary =
+                        const canalVenta = normalizeChannelLabel(canalVentaRaw) || "-";
+                        const canalVentaSummaryRaw =
                                 (item.detail && item.detail.canal_venta_summary)
                                         ? item.detail.canal_venta_summary
-                                        : canalVenta;
+                                        : canalVentaRaw;
+                        const canalVentaSummary =
+                                normalizeChannelLabel(canalVentaSummaryRaw) || canalVenta;
                         const vendedorTypeRaw = canalVentaSummary;
                         const vendedorTypeClean = extractVendorType(vendedorTypeRaw);
-                        const vendedorType = vendedorTypeClean || vendedorTypeRaw || "-";
+                        const vendedorType =
+                                normalizeChannelLabel(vendedorTypeClean || vendedorTypeRaw || "-") || "-";
                         const clienteNombre = item.detail?.nombre_comprador ?? "-";
                         const clienteTelefonoRaw = item.detail?.telefono_comprador ?? "";
                         const clienteTelefono =
@@ -4639,8 +4752,9 @@ const ADD_DOC_KEY = "add-document";
                                 clienteTelefono !== ""
                                         ? `<div class="cliente__phone">${clienteTelefono}</div>`
                                         : "";
-                        const thirdColumnLabel = isProfesional ? "Cliente" : "Canal de venta";
-                        const thirdColumnHtml = isProfesional
+                        const shouldShowClientColumn = isProfesional || isParticular;
+                        const thirdColumnLabel = shouldShowClientColumn ? "Cliente" : "Canal de venta";
+                        const thirdColumnHtml = shouldShowClientColumn
                                 ? `<div class="guarantees-table__cliente">
                                 <div class="cliente__name">${clienteNombre}</div>
                                 ${clientePhoneHtml}
@@ -4670,12 +4784,12 @@ const ADD_DOC_KEY = "add-document";
                                           hastaIsoRaw
                                   )
                                 : "";
-                        const cardEntityName = isProfesional ? clienteNombre : vendedorName;
-                        let cardEntityMeta = isProfesional
+                        const cardEntityName = shouldShowClientColumn ? clienteNombre : vendedorName;
+                        let cardEntityMeta = shouldShowClientColumn
                                 ? clienteTelefono || vendedorType
                                 : vendedorType;
                         if (!cardEntityMeta || cardEntityMeta === "-") {
-                                cardEntityMeta = isProfesional ? vendedorType : "—";
+                                cardEntityMeta = shouldShowClientColumn ? vendedorType : "—";
                         }
                         const cardEntityIconSource =
                                 (cardEntityName && cardEntityName !== "-" ? cardEntityName : "") ||
@@ -6780,10 +6894,36 @@ const ADD_DOC_KEY = "add-document";
         vendorChannelSummarySource && vendorChannelSummarySource !== "-"
             ? extractVendorType(vendorChannelSummarySource) || vendorChannelSummarySource
             : vendorChannelSummarySource;
-    const vendorCompanyName = pickField("concesionario", "-");
-    const vendorContactRaw = pickField("concesionario_personal", "");
-    const vendorContactName =
-        vendorContactRaw !== "" ? vendorContactRaw : vendorCompanyName;
+    const vendorChannelValueRaw =
+        (data.canal_venta_value ?? rowData.canal_venta_value ?? "").toString();
+    const vendorTypeValueRaw =
+        (data.vendor_company_type_value ?? rowData.vendor_company_type_value ?? "").toString();
+    const normalizedVendorChannel = normalizeChannelValue(vendorChannelValueRaw);
+    const normalizedVendorType = normalizeChannelValue(vendorTypeValueRaw);
+    const vendorIsParticular =
+        normalizedVendorChannel === "particular" || normalizedVendorType === "particular";
+    const vendorCompanyNameRaw = pickField("concesionario", "-");
+    const vendorCompanyNameClean = cleanDisplayValue(vendorCompanyNameRaw) || "-";
+    const vendorPersonalFull = cleanDisplayValue(pickField("concesionario_personal", ""));
+    const vendorPersonalFirst = cleanDisplayValue(pickField("concesionario_personal_first", ""));
+    const vendorPersonalLast = cleanDisplayValue(pickField("concesionario_personal_last", ""));
+    let vendorDisplayName = vendorCompanyNameClean;
+    let vendorContactName = vendorPersonalFull !== "" ? vendorPersonalFull : vendorCompanyNameClean;
+    if (vendorIsParticular) {
+        const personalName = buildPersonalName(
+            vendorPersonalFirst,
+            vendorPersonalLast,
+            vendorPersonalFull
+        );
+        if (personalName) {
+            vendorDisplayName = personalName;
+        }
+        vendorContactName = vendorPersonalLast !== "" ? vendorPersonalLast : vendorDisplayName;
+        if (!vendorContactName) {
+            vendorContactName = "—";
+        }
+    }
+    const vendorCompanyName = vendorDisplayName;
     const vendorAvatarUrl =
         data.avatar_vendedor ?? rowData.avatar_vendedor ?? "";
     const vendorAvatarWrapper = vendorAvatarUrl

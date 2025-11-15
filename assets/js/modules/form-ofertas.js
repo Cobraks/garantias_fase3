@@ -332,24 +332,28 @@ export async function updateOfertasList(
         container = null,
         { force = false, ofertas = null, showLoading = true } = {},
 ) {
-	if (!userId) {
-		await ensureCurrentUserIdReady();
-	}
-	const effectiveUserId = resolveUserId(userId);
-	if (!effectiveUserId) return;
+        const parent = document.querySelector(".form__ofertas");
+        if (!parent) return;
 
-	const parent = document.querySelector(".form__ofertas");
-	if (!parent) return;
+        let ul = container;
+        if (!ul) {
+                ul = parent.querySelector("ul.ofertas__list");
+                if (!ul) {
+                        ul = document.createElement("ul");
+                        ul.className = "ofertas__list";
+                        parent.insertBefore(ul, parent.querySelector(".ofertas__iva"));
+                }
+        }
 
-	let ul = container;
-	if (!ul) {
-		ul = parent.querySelector("ul.ofertas__list");
-		if (!ul) {
-			ul = document.createElement("ul");
-			ul.className = "ofertas__list";
-			parent.insertBefore(ul, parent.querySelector(".ofertas__iva"));
-		}
-	}
+        if (!userId) {
+                await ensureCurrentUserIdReady();
+        }
+        const effectiveUserId = resolveUserId(userId);
+        if (!effectiveUserId) {
+                ul.innerHTML = "";
+                applyOfertasState(null);
+                return;
+        }
 
         if (showLoading) {
                 showOfertasLoading(ul);
