@@ -1979,12 +1979,18 @@ class GuaranteeRestController
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
         $current_user = wp_get_current_user();
-        if (in_array('go_profesional', (array) $current_user->roles, true)) {
+        $current_roles = (array) $current_user->roles;
+        $is_professional_role = in_array('go_profesional', $current_roles, true);
+        $is_particular_role = in_array('go_particular', $current_roles, true);
+
+        if ($is_professional_role || $is_particular_role) {
             if (!isset($data['garantia_contratada']) || !is_array($data['garantia_contratada'])) {
                 $data['garantia_contratada'] = [];
             }
             if (!isset($data['garantia_contratada']['canal_venta'])) {
-                $data['garantia_contratada']['canal_venta'] = 'profesional';
+                $data['garantia_contratada']['canal_venta'] = $is_particular_role ? 'particular' : 'profesional';
+            } elseif ($is_particular_role) {
+                $data['garantia_contratada']['canal_venta'] = 'particular';
             }
             $provided_vendor = 0;
             if (isset($data['garantia_contratada']['concesionario_empresa_profesional'])) {
@@ -2173,11 +2179,32 @@ class GuaranteeRestController
                         $gc[$k] = is_numeric($v) ? $v : '';
                         break;
                     case 'metodo_pago':
-                    case 'canal_venta':
                         $gc[$k] = sanitize_text_field($v);
-                        if ($k === 'metodo_pago') {
-                            $payment_method = $gc[$k];
+                        $payment_method = $gc[$k];
+                        break;
+                    case 'canal_venta':
+                        $normalized_channel = self::normalize_channel_slug((string) $v);
+                        if ($normalized_channel === '') {
+                            $normalized_channel = sanitize_text_field($v);
                         }
+
+                        $gc[$k] = $normalized_channel;
+                        $gc['canal_venta_value'] = $normalized_channel;
+
+                        $label_source = $normalized_channel !== ''
+                            ? $normalized_channel
+                            : (string) $v;
+                        $channel_label = self::normalize_channel_label_text($label_source);
+                        if ($channel_label === '' && $normalized_channel !== '') {
+                            $channel_label = ucfirst($normalized_channel);
+                        }
+                        if ($channel_label === '' && is_string($v)) {
+                            $channel_label = sanitize_text_field($v);
+                        }
+                        if ($channel_label !== '') {
+                            $gc['canal_venta_label'] = $channel_label;
+                        }
+
                         break;
                     case 'estado_cobro':
                         if (is_array($v)) {
@@ -3544,13 +3571,19 @@ class GuaranteeRestController
     {
         if (is_array($raw)) {
             if (isset($raw['value'])) {
-                return sanitize_text_field((string) $raw['value']);
+                return self::normalize_channel_slug((string) $raw['value']);
             }
             if (isset($raw['label']) && ! isset($raw['value'])) {
-                return sanitize_text_field((string) $raw['label']);
+                $label = self::normalize_channel_label_text((string) $raw['label']);
+                return $label !== '' ? sanitize_text_field($label) : '';
             }
         } elseif (is_string($raw)) {
-            return sanitize_text_field($raw);
+            $slug = self::normalize_channel_slug($raw);
+            if ($slug !== '') {
+                return $slug;
+            }
+            $label = self::normalize_channel_label_text($raw);
+            return $label !== '' ? sanitize_text_field($label) : '';
         }
 
         return '';
@@ -3821,13 +3854,29 @@ class GuaranteeRestController
             'type' => ['value' => '', 'label' => ''],
             'address' => ['street' => '', 'city' => '', 'state' => '', 'zip' => '', 'country' => ''],
         ];
-        $concesionario_raw = $labels['company_name'] !== ''
-            ? $labels['company_name']
-            : ($labels['personal_name'] ?? '');
-        $concesionario = sanitize_text_field($concesionario_raw);
-        $vendor_full_name = sanitize_text_field($labels['personal_full_name'] ?? ($labels['personal_name'] ?? ''));
-        $vendor_first_name = sanitize_text_field($labels['first_name'] ?? '');
-        $vendor_last_name  = sanitize_text_field($labels['last_name'] ?? '');
+
+        $company_name_raw   = is_string($labels['company_name'] ?? '') ? trim((string) $labels['company_name']) : '';
+        $personal_name_raw  = is_string($labels['personal_name'] ?? '') ? trim((string) $labels['personal_name']) : '';
+        $personal_full_raw  = is_string($labels['personal_full_name'] ?? '') ? trim((string) $labels['personal_full_name']) : '';
+        $personal_display   = $personal_full_raw !== '' ? $personal_full_raw : $personal_name_raw;
+        $concesionario_raw  = $company_name_raw !== ''
+            ? $company_name_raw
+            : ($personal_name_raw !== '' ? $personal_name_raw : $personal_full_raw);
+        $concesionario      = sanitize_text_field($concesionario_raw);
+        if ($concesionario === '' && $personal_display !== '') {
+            $concesionario = sanitize_text_field($personal_display);
+        }
+
+        $vendor_first_name = sanitize_text_field((string) ($labels['first_name'] ?? ''));
+        $vendor_last_name  = sanitize_text_field((string) ($labels['last_name'] ?? ''));
+        $vendor_full_name  = sanitize_text_field(
+            $personal_full_raw !== ''
+                ? $personal_full_raw
+                : ($personal_name_raw !== '' ? $personal_name_raw : '')
+        );
+        if ($vendor_full_name === '' && ($vendor_first_name !== '' || $vendor_last_name !== '')) {
+            $vendor_full_name = trim($vendor_first_name . ' ' . $vendor_last_name);
+        }
         $vendor_type_label = '';
         $vendor_type_value = '';
         if (isset($vendor_company['type']) && is_array($vendor_company['type'])) {
@@ -3844,19 +3893,22 @@ class GuaranteeRestController
         }
 
         $canal_venta_raw = get_post_meta($id, 'garantia_contratada_canal_venta', true);
-        $canal_venta_value = is_array($canal_venta_raw) && isset($canal_venta_raw['value'])
-            ? $canal_venta_raw['value']
-            : (is_string($canal_venta_raw) ? $canal_venta_raw : '');
+        $canal_venta_value_raw = is_array($canal_venta_raw) && isset($canal_venta_raw['value'])
+            ? (string) $canal_venta_raw['value']
+            : (is_string($canal_venta_raw) ? (string) $canal_venta_raw : '');
+        $canal_venta_value = self::normalize_channel_slug($canal_venta_value_raw);
         if (is_array($canal_venta_raw) && isset($canal_venta_raw['label'])) {
-            $canal_venta = $canal_venta_raw['label'];
+            $canal_venta = self::normalize_channel_label_text((string) $canal_venta_raw['label']);
         } else {
-            $lookup = preg_replace('/^go_/i', '', $canal_venta_value);
+            $lookup = $canal_venta_value !== '' ? $canal_venta_value : '';
             $canal_choices = [
                 'profesional' => __('Profesional', 'garantias-online-360vo'),
                 'particular'  => __('Particular', 'garantias-online-360vo'),
                 'gestoria'    => __('Gestoría', 'garantias-online-360vo'),
             ];
-            $canal_venta = $canal_choices[$lookup] ?? ucfirst($lookup);
+            $fallback_label = $lookup !== '' ? ucwords(str_replace(['_', '-'], ' ', $lookup)) : '';
+            $canal_venta = $canal_choices[$lookup] ?? $fallback_label;
+            $canal_venta = self::normalize_channel_label_text($canal_venta);
         }
 
         $canal_venta_summary = $canal_venta;
@@ -3865,6 +3917,7 @@ class GuaranteeRestController
                 ? sprintf('%s (%s)', $canal_venta, $vendor_type_label)
                 : $vendor_type_label;
         }
+        $canal_venta_summary = self::normalize_channel_label_text($canal_venta_summary);
 
         $telefono_vendedor = $vendor_id
             ? get_user_meta($vendor_id, 'datos_usuario_telefono', true)
@@ -4028,6 +4081,8 @@ class GuaranteeRestController
         $current_user_roles = $current_user_obj instanceof \WP_User ? (array) $current_user_obj->roles : [];
         $is_director = in_array('go_director_comercial', $current_user_roles, true);
         $is_garantias_role = in_array('go_garantias', $current_user_roles, true);
+        $is_particular_role = in_array('go_particular', $current_user_roles, true)
+            || in_array('particular', $current_user_roles, true);
         $page          = absint($request['page']);
         $per_page      = absint($request['per_page']);
         $search        = isset($request['search']) ? sanitize_text_field($request['search']) : '';
@@ -4122,19 +4177,21 @@ class GuaranteeRestController
         $commercial_vendor_ids = [];
         if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
             $user_profesional_ids = [$current_user];
-            $users_asignados = get_users([
-                'role'    => 'go_profesional',
-                'fields'  => 'ID',
-                'meta_query' => [
-                    [
-                        'key'     => 'ajustes_usuarios_comercial_asignado',
-                        'value'   => '"' . $current_user . '"',
-                        'compare' => 'LIKE',
+            if (! $is_particular_role) {
+                $users_asignados = get_users([
+                    'role'    => 'go_profesional',
+                    'fields'  => 'ID',
+                    'meta_query' => [
+                        [
+                            'key'     => 'ajustes_usuarios_comercial_asignado',
+                            'value'   => '"' . $current_user . '"',
+                            'compare' => 'LIKE',
+                        ]
                     ]
-                ]
-            ]);
-            if ($users_asignados) {
-                $user_profesional_ids = array_unique(array_merge($user_profesional_ids, $users_asignados));
+                ]);
+                if ($users_asignados) {
+                    $user_profesional_ids = array_unique(array_merge($user_profesional_ids, $users_asignados));
+                }
             }
             $meta_query[] = [
                 'key'     => 'garantia_contratada_concesionario_empresa_profesional',
@@ -4200,11 +4257,30 @@ class GuaranteeRestController
             ];
         }
         if ($canal) {
-            $meta_query[] = [
-                'key'     => 'garantia_contratada_canal_venta',
-                'value'   => $canal,
-                'compare' => 'LIKE',
-            ];
+            $normalized_canal = self::normalize_channel_slug($canal);
+            $canal_like_values = array_values(array_filter(array_unique([
+                $normalized_canal,
+                $canal,
+                $normalized_canal === 'particular' ? 'individual' : '',
+            ])));
+
+            if (count($canal_like_values) <= 1) {
+                $meta_query[] = [
+                    'key'     => 'garantia_contratada_canal_venta',
+                    'value'   => $canal_like_values ? $canal_like_values[0] : $normalized_canal,
+                    'compare' => 'LIKE',
+                ];
+            } else {
+                $or_conditions = [];
+                foreach ($canal_like_values as $value) {
+                    $or_conditions[] = [
+                        'key'     => 'garantia_contratada_canal_venta',
+                        'value'   => $value,
+                        'compare' => 'LIKE',
+                    ];
+                }
+                $meta_query[] = array_merge(['relation' => 'OR'], $or_conditions);
+            }
         }
         if ($concesionario) {
             $meta_query[] = [
@@ -4858,6 +4934,9 @@ class GuaranteeRestController
         $value = sanitize_key($value);
         $map = [
             'particular'          => __('Particular', 'garantias-online-360vo'),
+            'individual'          => __('Particular', 'garantias-online-360vo'),
+            'go_particular'       => __('Particular', 'garantias-online-360vo'),
+            'go_individual'       => __('Particular', 'garantias-online-360vo'),
             'profesional'         => __('Profesional', 'garantias-online-360vo'),
             'compraventa'         => __('Compraventa', 'garantias-online-360vo'),
             'concesionario'       => __('Concesionario Oficial', 'garantias-online-360vo'),
@@ -4924,6 +5003,55 @@ class GuaranteeRestController
         return '';
     }
 
+    private static function normalize_channel_slug(string $value): string
+    {
+        $value = sanitize_key($value);
+        if ($value === '') {
+            return '';
+        }
+
+        $map = [
+            'go_profesional' => 'profesional',
+            'go_particular'  => 'particular',
+            'go_gestoria'    => 'gestoria',
+            'go_individual'  => 'particular',
+            'individual'     => 'particular',
+        ];
+
+        if (isset($map[$value])) {
+            return $map[$value];
+        }
+
+        if (strpos($value, 'go_') === 0) {
+            return substr($value, 3);
+        }
+
+        return $value;
+    }
+
+    private static function normalize_channel_label_text(string $label): string
+    {
+        $trimmed = trim($label);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        $lower = strtolower($trimmed);
+        if (in_array($lower, ['particular', 'individual', 'go_particular', 'go_individual'], true)) {
+            return __('Particular', 'garantias-online-360vo');
+        }
+
+        if (preg_match('/\bindividual\b/i', $trimmed)) {
+            return preg_replace(
+                '/\bindividual\b/i',
+                __('Particular', 'garantias-online-360vo'),
+                $trimmed
+            );
+        }
+
+        return $trimmed;
+    }
+
     private static function normalize_vendor_type(string $value): string
     {
         $value = sanitize_key($value);
@@ -4935,6 +5063,9 @@ class GuaranteeRestController
             'concesionario'         => 'concesionario_oficial',
             'concesionario-oficial' => 'concesionario_oficial',
             'oficial'               => 'concesionario_oficial',
+            'go_particular'         => 'particular',
+            'go_individual'         => 'particular',
+            'individual'            => 'particular',
         ];
 
         if (isset($map[$value])) {

@@ -31,11 +31,12 @@ function getValoresForm() {
                 traccion_camion: document.getElementById("traccion_camion")?.value || null,
                 combustible: document.getElementById("combustible")?.value || null,
                 cambio: document.getElementById("cambio")?.value || null,
-		// mantener el mismo formato que en renderPlans / filtrarModalidades
-		doble_motor: document.getElementById("doble_motor")?.value || null,
-		fecha_primera_matriculacion:
-			document.getElementById("fecha_primera_matriculacion")?.value || "",
-	};
+                // mantener el mismo formato que en renderPlans / filtrarModalidades
+                doble_motor: document.getElementById("doble_motor")?.value || null,
+                fecha_primera_matriculacion:
+                        document.getElementById("fecha_primera_matriculacion")?.value || "",
+                tipo_vehiculo: document.getElementById("tipo_vehiculo")?.value || "",
+        };
 }
 
 function getSelectedPlanElement() {
@@ -166,22 +167,40 @@ async function buildSummaryHTML() {
 	const duracionVal = document.getElementById("duracion")?.value || "";
 	const duracionLabel = duracionVal ? `${duracionVal} meses` : "";
 
-	const modalidadId = planEl.getAttribute("data-modalidad-id");
-	let modalidad = null;
-	const valoresFormBase = getValoresForm();
+        const modalidadId = planEl.getAttribute("data-modalidad-id");
+        let modalidad = null;
+        const planPriceWithIvaText =
+                planEl.querySelector(".plan-price-value")?.textContent?.trim() || "";
+        const planPriceNoIvaText =
+                planEl.querySelector(".plan-price-value-noiva")?.textContent?.trim() || "";
+        const planPriceWithIva =
+                planPriceWithIvaText && planPriceWithIvaText !== "Consultar"
+                        ? parseNumericFormValue(planPriceWithIvaText)
+                        : null;
+        const planPriceSinIva =
+                planPriceNoIvaText && planPriceNoIvaText !== "Consultar"
+                        ? parseNumericFormValue(planPriceNoIvaText)
+                        : null;
+        const valoresFormBase = getValoresForm();
 
 	// extender igual que en renderPlans para que se apliquen todos los recargos
-	const valoresForm = {
-		...valoresFormBase,
-		fecha_primera_matriculacion:
-			document.getElementById("fecha_primera_matriculacion")?.value || "",
-		kilometros: document.getElementById("kilometros")?.value || 0,
-		traccion: document.getElementById("traccion")?.value || "",
-		cambio: document.getElementById("cambio")?.value || "",
-		// mantener consistencia: no forzamos booleano para doble_motor aquí,
-		// porque en calcularRecargos se trata como string normalmente
-		doble_motor: document.getElementById("doble_motor")?.value || null,
-	};
+        const valoresForm = {
+                ...valoresFormBase,
+                fecha_primera_matriculacion:
+                        document.getElementById("fecha_primera_matriculacion")?.value || "",
+                kilometros: document.getElementById("kilometros")?.value || 0,
+                traccion: document.getElementById("traccion")?.value || "",
+                cambio: document.getElementById("cambio")?.value || "",
+                // mantener consistencia: no forzamos booleano para doble_motor aquí,
+                // porque en calcularRecargos se trata como string normalmente
+                doble_motor: document.getElementById("doble_motor")?.value || null,
+        };
+
+        const antiguedadValor = getAntiguedadFromDate(valoresForm.fecha_primera_matriculacion);
+        valoresForm.antiguedad =
+                typeof antiguedadValor === "number" && !Number.isNaN(antiguedadValor)
+                        ? antiguedadValor
+                        : null;
 
         container.innerHTML = `<div class="form__contrato-prices--loading">Calculando...</div>`;
 
@@ -197,7 +216,21 @@ async function buildSummaryHTML() {
                         return;
                 }
 
-                const precioBase = calcularPrecioBase(modalidad, valoresFormBase);
+                let precioBase = calcularPrecioBase(modalidad, valoresFormBase);
+                if (precioBase === null) {
+                        if (typeof planPriceSinIva === "number" && !Number.isNaN(planPriceSinIva)) {
+                                precioBase = planPriceSinIva;
+                        } else if (
+                                typeof planPriceWithIva === "number" &&
+                                !Number.isNaN(planPriceWithIva)
+                        ) {
+                                const divisor = 1 + IVA_PORCENTAJE / 100;
+                                precioBase =
+                                        divisor > 0
+                                                ? Math.round((planPriceWithIva / divisor) * 100) / 100
+                                                : planPriceWithIva;
+                        }
+                }
                 const breakdown = calcularRecargos(modalidad, valoresForm);
 
                 const descuentos = await getDescuentosAplicables(modalidad);
