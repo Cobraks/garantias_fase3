@@ -2100,7 +2100,9 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
         const {
                 mostrarMensajeAntiguedad = false,
                 mostrarMensajeAntiguedadMinima = false,
-                mostrarMensajeKilometros = false,
+                mostrarMensajeKilometrosMaximos = false,
+                mostrarMensajeKilometrosMinimos = false,
+                mostrarMensajeGenerico = false,
         } = opciones;
 
         plansContainer.classList.remove("form__plans--featured");
@@ -2109,23 +2111,28 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 
         if (!modalidades || !modalidades.length) {
                 const mensajeAntiguedadMinima =
-                        "El vehículo no alcanza la antigüedad mínima permitida para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
+                        "El vehículo no supera el límite mínimo de antigüedad permitido para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
                 const mensajeAntiguedad =
-                        "El vehículo supera la antigüedad máxima permitida para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
+                        "El vehículo supera el límite de antigüedad permitido para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
                 const mensajeKilometros =
                         "El vehículo supera el límite de kilómetros permitido para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
+                const mensajeGenerico =
+                        "No hay garantías disponibles para esta cobertura con los datos proporcionados. Ponte en contacto con el Departamento Comercial de 360VO";
 
-                let texto = "No hay garantías disponibles para estos filtros.";
-                let variant = "empty";
+                let texto = mensajeGenerico;
+                let variant = "warning";
                 if (mostrarMensajeAntiguedadMinima) {
                         texto = mensajeAntiguedadMinima;
                         variant = "warning";
                 } else if (mostrarMensajeAntiguedad) {
                         texto = mensajeAntiguedad;
                         variant = "warning";
-                } else if (mostrarMensajeKilometros) {
+                } else if (mostrarMensajeKilometrosMaximos || mostrarMensajeKilometrosMinimos) {
                         texto = mensajeKilometros;
                         variant = "warning";
+                } else if (!mostrarMensajeGenerico) {
+                        texto = "No hay garantías disponibles para estos filtros.";
+                        variant = "empty";
                 }
 
                 const iconHtml = getIcon("warning") || "";
@@ -2465,10 +2472,18 @@ async function filtrarModalidadesBase() {
         }
 
         let antiguedadSuperaMaximo = false;
-        let antiguedadPorDebajoMinima = false;
         let maxAntiguedadPermitida = 0;
         let kilometrosSuperaMaximo = false;
         let maxKilometrosPermitidos = 0;
+        let kilometrajeCondicionesConsideradas = 0;
+        let kilometrajeCondicionesExcluyentes = 0;
+        const motivosDescarte = {
+                antiguedadMaxima: false,
+                antiguedadMinima: false,
+                kilometrosMaximos: false,
+                kilometrosMinimos: false,
+                otros: false,
+        };
 
         function cumpleCondiciones(modalidad) {
                 const cm =
@@ -2491,8 +2506,14 @@ async function filtrarModalidadesBase() {
                                 const valoresModalidad = getValoresModalidadCampo(
                                         cm[config.modalidadField]
                                 );
-                                if (!valorFormulario) return false;
-                                if (!valoresModalidad.includes(valorFormulario)) return false;
+                                if (!valorFormulario) {
+                                        motivosDescarte.otros = true;
+                                        return false;
+                                }
+                                if (!valoresModalidad.includes(valorFormulario)) {
+                                        motivosDescarte.otros = true;
+                                        return false;
+                                }
                         }
                 }
 
@@ -2512,9 +2533,12 @@ async function filtrarModalidadesBase() {
                                 maxAntiguedadPermitida = hasta;
                         }
 
-                        if (antiguedad === null || isNaN(antiguedad)) return false;
+                        if (antiguedad === null || isNaN(antiguedad)) {
+                                motivosDescarte.otros = true;
+                                return false;
+                        }
                         if (antiguedad < desde) {
-                                antiguedadPorDebajoMinima = true;
+                                motivosDescarte.antiguedadMinima = true;
                                 return false;
                         }
                         if (hasta !== null && antiguedad > hasta) {
@@ -2535,15 +2559,30 @@ async function filtrarModalidadesBase() {
 
                         if (hastaKm === null) {
                                 maxKilometrosPermitidos = Infinity;
-                        } else if (hastaKm > maxKilometrosPermitidos) {
+                        } else if (maxKilometrosPermitidos !== Infinity && hastaKm > maxKilometrosPermitidos) {
                                 maxKilometrosPermitidos = hastaKm;
                         }
 
                         const kms = parseNumericFormValue(getValorInput("kilometros"));
-                        if (isNaN(kms)) return false;
-                        if (kms < desdeKm) return false;
+                        if (isNaN(kms)) {
+                                kilometrajeCondicionesConsideradas += 1;
+                                kilometrajeCondicionesExcluyentes += 1;
+                                motivosDescarte.otros = true;
+                                return false;
+                        }
+
+                        kilometrajeCondicionesConsideradas += 1;
+
+                        if (kms < desdeKm) {
+                                kilometrajeCondicionesExcluyentes += 1;
+                                motivosDescarte.kilometrosMinimos = true;
+                                return false;
+                        }
                         if (hastaKm !== null && kms > hastaKm) {
                                 excedeKilometros = true;
+                                kilometrosSuperaMaximo = true;
+                                kilometrajeCondicionesExcluyentes += 1;
+                                motivosDescarte.kilometrosMaximos = true;
                         }
                 } else {
                         maxKilometrosPermitidos = Infinity;
@@ -2553,15 +2592,19 @@ async function filtrarModalidadesBase() {
                         // FLAG: Revisar condición para camiones si supera 12 años y 800.000km.
                         antiguedadSuperaMaximo = true;
                         kilometrosSuperaMaximo = true;
+                        motivosDescarte.antiguedadMaxima = true;
+                        motivosDescarte.kilometrosMaximos = true;
                         return false;
                 }
 
                 if (excedeAntiguedad) {
                         antiguedadSuperaMaximo = true;
+                        motivosDescarte.antiguedadMaxima = true;
                         return false;
                 }
                 if (excedeKilometros) {
                         kilometrosSuperaMaximo = true;
+                        motivosDescarte.kilometrosMaximos = true;
                         return false;
                 }
                 return true;
@@ -2621,24 +2664,43 @@ async function filtrarModalidadesBase() {
                         antiguedad > maxAntiguedadPermitida
                 ) {
                         antiguedadSuperaMaximo = true;
+                        motivosDescarte.antiguedadMaxima = true;
                 }
+
                 if (
                         !antiguedadSuperaMaximo &&
+                        kilometrajeCondicionesConsideradas > 0 &&
                         maxKilometrosPermitidos !== Infinity &&
                         kmsVal > maxKilometrosPermitidos
                 ) {
                         kilometrosSuperaMaximo = true;
+                        if (kilometrajeCondicionesExcluyentes < kilometrajeCondicionesConsideradas) {
+                                kilometrajeCondicionesExcluyentes = kilometrajeCondicionesConsideradas;
+                        }
+                        motivosDescarte.kilometrosMaximos = true;
                 }
+
                 updateDuracionSelect([]);
-                const mostrarAntiguedadMinima =
-                        antiguedadPorDebajoMinima &&
-                        !antiguedadSuperaMaximo &&
-                        !kilometrosSuperaMaximo;
+                const mostrarAntiguedadMinima = motivosDescarte.antiguedadMinima;
+                const mostrarAntiguedadMaxima = motivosDescarte.antiguedadMaxima;
+                const mostrarKilometrosMaximos = motivosDescarte.kilometrosMaximos;
+                const mostrarKilometrosMinimos = motivosDescarte.kilometrosMinimos;
+                const algunMotivoEspecifico =
+                        mostrarAntiguedadMinima ||
+                        mostrarAntiguedadMaxima ||
+                        mostrarKilometrosMaximos ||
+                        mostrarKilometrosMinimos;
+
+                if (!algunMotivoEspecifico) {
+                        motivosDescarte.otros = true;
+                }
 
                 renderPlans([], valoresForm, {
-                        mostrarMensajeAntiguedad: antiguedadSuperaMaximo,
+                        mostrarMensajeAntiguedad: mostrarAntiguedadMaxima,
                         mostrarMensajeAntiguedadMinima: mostrarAntiguedadMinima,
-                        mostrarMensajeKilometros: kilometrosSuperaMaximo,
+                        mostrarMensajeKilometrosMaximos: mostrarKilometrosMaximos,
+                        mostrarMensajeKilometrosMinimos: mostrarKilometrosMinimos,
+                        mostrarMensajeGenerico: !algunMotivoEspecifico,
                 });
         } else {
                 updateDuracionSelect(mesesDisponibles);
