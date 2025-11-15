@@ -41,6 +41,7 @@ class GuaranteeRestController
     const RECEIPT_MAX_BYTES = 10485760; // 10 MB
 
     private static $cache_hooks_registered = false;
+    private static $list_cache_invalidated = [];
 
     public static function register_routes()
     {
@@ -2575,6 +2576,10 @@ class GuaranteeRestController
                 wp_json_encode($contract_notice_context)
             );
             self::schedule_contract_notice_dispatch($post_id);
+        }
+
+        if ($post_id > 0) {
+            self::invalidate_guarantee_list_cache($post_id);
         }
 
         return new WP_REST_Response($response);
@@ -5266,19 +5271,13 @@ class GuaranteeRestController
      */
     public static function clear_list_transients($post_id, $post, $update)
     {
-        if ($post_id > 0) {
-            delete_transient('go_gdetail_' . $post_id);
-        }
-
-        self::bump_list_cache_generation();
-
-        delete_transient(self::SUMMARY_TRANSIENT);
+        self::invalidate_guarantee_list_cache((int) $post_id);
     }
     public static function clear_list_transients_on_delete($post_id)
     {
         $post_type = get_post_type($post_id);
         if ($post_type === \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
-            self::clear_list_transients($post_id, null, false);
+            self::invalidate_guarantee_list_cache((int) $post_id);
         }
     }
 
@@ -5299,6 +5298,24 @@ class GuaranteeRestController
         wp_cache_delete(self::LIST_CACHE_GENERATION_OPTION, 'options');
 
         return $next_generation;
+    }
+
+    private static function invalidate_guarantee_list_cache(int $post_id = 0): void
+    {
+        $key = $post_id > 0 ? $post_id : 0;
+        if (isset(self::$list_cache_invalidated[$key])) {
+            return;
+        }
+
+        self::$list_cache_invalidated[$key] = true;
+
+        if ($post_id > 0) {
+            delete_transient('go_gdetail_' . $post_id);
+        }
+
+        self::bump_list_cache_generation();
+
+        delete_transient(self::SUMMARY_TRANSIENT);
     }
 
     /**
