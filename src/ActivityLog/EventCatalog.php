@@ -133,6 +133,12 @@ class EventCatalog
             'level'    => 'info',
             'message'  => '{{context.initiator_label}} ha iniciado una nueva garantía.',
         ],
+        'guarantee.initiated' => [
+            'label'    => 'Nueva contratación de garantía',
+            'category' => 'guarantee',
+            'level'    => 'info',
+            'message'  => '{{context.initiator_label}} ha iniciado una nueva contratación de garantía. Estado actual: {{context.initiated_state_label}}.',
+        ],
         'guarantee.updated' => [
             'label'    => 'Garantía actualizada',
             'category' => 'guarantee',
