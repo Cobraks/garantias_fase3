@@ -14,6 +14,7 @@ use WP_REST_Server;
 use WP_User;
 use WP_User_Query;
 use function home_url;
+use function time;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -28,6 +29,11 @@ class ClientRestController
      * @var array<int,int>|null
      */
     private static $commercial_client_counts = null;
+
+    /**
+     * @var array<int,bool>
+     */
+    private static array $session_status_cache = [];
 
     public static function register_routes(): void
     {
@@ -53,6 +59,23 @@ class ClientRestController
                         ],
                         'channel' => [
                             'sanitize_callback' => 'sanitize_key',
+                        ],
+                    ],
+                ],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::REST_BASE . '/status',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'get_statuses'],
+                    'permission_callback' => [__CLASS__, 'permissions_check'],
+                    'args'                => [
+                        'ids' => [
+                            'required' => false,
                         ],
                     ],
                 ],
@@ -1103,6 +1126,51 @@ class ClientRestController
         return new WP_REST_Response($response, 200);
     }
 
+    public static function get_statuses(WP_REST_Request $request): WP_REST_Response
+    {
+        if (! self::permissions_check($request)) {
+            return new WP_REST_Response(
+                ['message' => __('Acceso denegado', 'garantias-online-360vo')],
+                403
+            );
+        }
+
+        $ids_param = $request->get_param('ids');
+        $raw_ids   = [];
+
+        if (is_array($ids_param)) {
+            $raw_ids = $ids_param;
+        } elseif (is_string($ids_param) && $ids_param !== '') {
+            $raw_ids = preg_split('/[\s,]+/', $ids_param) ?: [];
+        }
+
+        $normalized = [];
+        foreach ($raw_ids as $value) {
+            $id = (int) $value;
+            if ($id <= 0 || isset($normalized[$id])) {
+                continue;
+            }
+
+            $normalized[$id] = $id;
+        }
+
+        $limited = array_slice(array_values($normalized), 0, 200);
+
+        $items = array_map(
+            static function (int $user_id): array {
+                return [
+                    'id'     => $user_id,
+                    'online' => self::has_active_session($user_id),
+                ];
+            },
+            $limited
+        );
+
+        return new WP_REST_Response([
+            'items' => $items,
+        ], 200);
+    }
+
     public static function search_commercials(WP_REST_Request $request)
     {
         if (! self::permissions_check($request)) {
@@ -1487,7 +1555,55 @@ class ClientRestController
                 'web360' => $web360,
             ],
             'links'        => $links,
+            'status'       => [
+                'online' => self::has_active_session((int) $user->ID),
+            ],
         ];
+    }
+
+    private static function has_active_session(int $user_id): bool
+    {
+        if ($user_id <= 0) {
+            return false;
+        }
+
+        if (isset(self::$session_status_cache[$user_id])) {
+            return self::$session_status_cache[$user_id];
+        }
+
+        if (! class_exists('\\WP_Session_Tokens')) {
+            self::$session_status_cache[$user_id] = false;
+
+            return false;
+        }
+
+        $manager = \WP_Session_Tokens::get_instance($user_id);
+        if (! $manager) {
+            self::$session_status_cache[$user_id] = false;
+
+            return false;
+        }
+
+        $tokens = $manager->get_all();
+        if (! is_array($tokens) || empty($tokens)) {
+            self::$session_status_cache[$user_id] = false;
+
+            return false;
+        }
+
+        $now = time();
+        foreach ($tokens as $token) {
+            $expiration = isset($token['expiration']) ? (int) $token['expiration'] : 0;
+            if ($expiration > $now) {
+                self::$session_status_cache[$user_id] = true;
+
+                return true;
+            }
+        }
+
+        self::$session_status_cache[$user_id] = false;
+
+        return false;
     }
 
     private static function get_commercial_roles(): array

@@ -171,6 +171,9 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
         'router' => [
             'basePath' => trailingslashit(wp_make_link_relative(home_url('/garantias-online/clientes/'))),
         ],
+        'presence' => [
+            'pollInterval' => 15000,
+        ],
         'sepa' => SepaMandateService::get_frontend_config(),
         'strings' => [
             'profile'              => __('Perfil', 'garantias-online-360vo'),
@@ -258,6 +261,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             'manageOffersIntro'    => __('Configura las ofertas disponibles para este cliente y guarda los cambios para aplicarlos.', 'garantias-online-360vo'),
             'manageOffersLoading'  => __('Cargando ofertas…', 'garantias-online-360vo'),
             'manageOffersFetchError' => __('No se han podido cargar las ofertas. Actualiza la página e inténtalo de nuevo.', 'garantias-online-360vo'),
+            'online'               => __('Online', 'garantias-online-360vo'),
             'manageOffersEmptyState' => __('No hay ofertas configuradas para este cliente.', 'garantias-online-360vo'),
             'manageOffersAdd'      => __('Añadir nueva oferta', 'garantias-online-360vo'),
             'manageOffersCardTitle'=> __('Oferta', 'garantias-online-360vo'),
