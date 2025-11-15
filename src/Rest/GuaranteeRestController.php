@@ -30,6 +30,7 @@ class GuaranteeRestController
     const TRANSFER_RECEIPT_EXTENSION_META = '_go360_transfer_receipt_extension';
     const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
     const SUMMARY_TRANSIENT = 'go_gsummary_admin';
+    const LIST_CACHE_GENERATION_OPTION = 'go_glist_generation';
     const SUMMARY_PROFESSIONAL_TRANSIENT_PREFIX = 'go_gsummary_prof_';
     const RECEIPT_ALLOWED_MIMES = [
         'pdf'  => 'application/pdf',
@@ -4183,8 +4184,9 @@ class GuaranteeRestController
         $sort_config = self::resolve_sort_config($order_by, $order);
 
         // ----- CACHING -----
+        $cache_generation = self::get_list_cache_generation();
         // Elimina search del cache_key porque si no el mismo usuario puede buscar cosas distintas y obtiene el cache anterior
-        $cache_key = 'go_glist_' . $current_user . "_p{$page}_pp{$per_page}";
+        $cache_key = 'go_glist_v' . $cache_generation . '_' . $current_user . "_p{$page}_pp{$per_page}";
         if ($search) {
             $cache_key .= '_s_' . md5($search);
         }
@@ -4552,7 +4554,8 @@ class GuaranteeRestController
     {
         $current_user = get_current_user_id();
 
-        $cache_key = 'go_gfilters_' . $current_user;
+        $cache_generation = self::get_list_cache_generation();
+        $cache_key = 'go_gfilters_v' . $cache_generation . '_' . $current_user;
         $cache = get_transient($cache_key);
         if ($cache !== false) {
             return $cache;
@@ -5263,14 +5266,12 @@ class GuaranteeRestController
      */
     public static function clear_list_transients($post_id, $post, $update)
     {
-        global $wpdb;
-        $patterns = ['_transient_go_glist_%', '_transient_go_gfilters_%', '_transient_go_gdetail_%'];
-        foreach ($patterns as $pattern) {
-            $wpdb->query($wpdb->prepare(
-                "DELETE FROM $wpdb->options WHERE option_name LIKE %s",
-                $pattern
-            ));
+        if ($post_id > 0) {
+            delete_transient('go_gdetail_' . $post_id);
         }
+
+        self::bump_list_cache_generation();
+
         delete_transient(self::SUMMARY_TRANSIENT);
     }
     public static function clear_list_transients_on_delete($post_id)
@@ -5279,6 +5280,25 @@ class GuaranteeRestController
         if ($post_type === \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
             self::clear_list_transients($post_id, null, false);
         }
+    }
+
+    private static function get_list_cache_generation(): int
+    {
+        $generation = (int) get_option(self::LIST_CACHE_GENERATION_OPTION, 1);
+        if ($generation <= 0) {
+            $generation = 1;
+        }
+
+        return $generation;
+    }
+
+    private static function bump_list_cache_generation(): int
+    {
+        $next_generation = self::get_list_cache_generation() + 1;
+        update_option(self::LIST_CACHE_GENERATION_OPTION, $next_generation, false);
+        wp_cache_delete(self::LIST_CACHE_GENERATION_OPTION, 'options');
+
+        return $next_generation;
     }
 }
 
