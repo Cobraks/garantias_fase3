@@ -4776,8 +4776,7 @@ const ADD_DOC_KEY = "add-document";
                                 "";
                         const clienteTelefono = clienteTelefonoValue;
                         const clienteTelefonoDataset = clienteTelefono !== "" ? clienteTelefono : "-";
-                        const shouldShowPlan =
-                                planName !== "" && planName !== "-" && estadoClase !== "sin-finalizar";
+                        const shouldShowPlan = planName !== "" && planName !== "-";
                         const periodHtml = hasPeriod
                                 ? `<div class="guarantees-table__period">
                                                 <div><strong>Desde:</strong> <time>${desdeDisplayRaw}</time></div>
