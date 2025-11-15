@@ -2109,9 +2109,9 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 
         if (!modalidades || !modalidades.length) {
                 const mensajeAntiguedadMinima =
-                        "El vehículo no alcanza la antigüedad mínima permitida para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
+                        "El vehículo no supera el límite mínimo de antigüedad permitido para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
                 const mensajeAntiguedad =
-                        "El vehículo supera la antigüedad máxima permitida para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
+                        "El vehículo supera el límite de antigüedad permitido para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
                 const mensajeKilometros =
                         "El vehículo supera el límite de kilómetros permitido para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
 
@@ -2469,6 +2469,8 @@ async function filtrarModalidadesBase() {
         let maxAntiguedadPermitida = 0;
         let kilometrosSuperaMaximo = false;
         let maxKilometrosPermitidos = 0;
+        let kilometrajeCondicionesConsideradas = 0;
+        let kilometrajeCondicionesExcluyentes = 0;
 
         function cumpleCondiciones(modalidad) {
                 const cm =
@@ -2535,15 +2537,27 @@ async function filtrarModalidadesBase() {
 
                         if (hastaKm === null) {
                                 maxKilometrosPermitidos = Infinity;
-                        } else if (hastaKm > maxKilometrosPermitidos) {
+                        } else if (maxKilometrosPermitidos !== Infinity && hastaKm > maxKilometrosPermitidos) {
                                 maxKilometrosPermitidos = hastaKm;
                         }
 
                         const kms = parseNumericFormValue(getValorInput("kilometros"));
-                        if (isNaN(kms)) return false;
-                        if (kms < desdeKm) return false;
+                        if (isNaN(kms)) {
+                                kilometrajeCondicionesConsideradas += 1;
+                                kilometrajeCondicionesExcluyentes += 1;
+                                return false;
+                        }
+
+                        kilometrajeCondicionesConsideradas += 1;
+
+                        if (kms < desdeKm) {
+                                kilometrajeCondicionesExcluyentes += 1;
+                                return false;
+                        }
                         if (hastaKm !== null && kms > hastaKm) {
                                 excedeKilometros = true;
+                                kilometrosSuperaMaximo = true;
+                                kilometrajeCondicionesExcluyentes += 1;
                         }
                 } else {
                         maxKilometrosPermitidos = Infinity;
@@ -2622,23 +2636,33 @@ async function filtrarModalidadesBase() {
                 ) {
                         antiguedadSuperaMaximo = true;
                 }
+
                 if (
                         !antiguedadSuperaMaximo &&
+                        kilometrajeCondicionesConsideradas > 0 &&
                         maxKilometrosPermitidos !== Infinity &&
                         kmsVal > maxKilometrosPermitidos
                 ) {
                         kilometrosSuperaMaximo = true;
+                        if (kilometrajeCondicionesExcluyentes < kilometrajeCondicionesConsideradas) {
+                                kilometrajeCondicionesExcluyentes = kilometrajeCondicionesConsideradas;
+                        }
                 }
+
+                const kilometrosFueraDeRango =
+                        kilometrajeCondicionesConsideradas > 0 &&
+                        kilometrajeCondicionesExcluyentes === kilometrajeCondicionesConsideradas;
+
                 updateDuracionSelect([]);
                 const mostrarAntiguedadMinima =
                         antiguedadPorDebajoMinima &&
                         !antiguedadSuperaMaximo &&
-                        !kilometrosSuperaMaximo;
+                        !kilometrosFueraDeRango;
 
                 renderPlans([], valoresForm, {
                         mostrarMensajeAntiguedad: antiguedadSuperaMaximo,
                         mostrarMensajeAntiguedadMinima: mostrarAntiguedadMinima,
-                        mostrarMensajeKilometros: kilometrosSuperaMaximo,
+                        mostrarMensajeKilometros: kilometrosFueraDeRango,
                 });
         } else {
                 updateDuracionSelect(mesesDisponibles);
