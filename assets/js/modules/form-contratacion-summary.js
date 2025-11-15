@@ -167,9 +167,21 @@ async function buildSummaryHTML() {
 	const duracionVal = document.getElementById("duracion")?.value || "";
 	const duracionLabel = duracionVal ? `${duracionVal} meses` : "";
 
-	const modalidadId = planEl.getAttribute("data-modalidad-id");
-	let modalidad = null;
-	const valoresFormBase = getValoresForm();
+        const modalidadId = planEl.getAttribute("data-modalidad-id");
+        let modalidad = null;
+        const planPriceWithIvaText =
+                planEl.querySelector(".plan-price-value")?.textContent?.trim() || "";
+        const planPriceNoIvaText =
+                planEl.querySelector(".plan-price-value-noiva")?.textContent?.trim() || "";
+        const planPriceWithIva =
+                planPriceWithIvaText && planPriceWithIvaText !== "Consultar"
+                        ? parseNumericFormValue(planPriceWithIvaText)
+                        : null;
+        const planPriceSinIva =
+                planPriceNoIvaText && planPriceNoIvaText !== "Consultar"
+                        ? parseNumericFormValue(planPriceNoIvaText)
+                        : null;
+        const valoresFormBase = getValoresForm();
 
 	// extender igual que en renderPlans para que se apliquen todos los recargos
         const valoresForm = {
@@ -204,7 +216,21 @@ async function buildSummaryHTML() {
                         return;
                 }
 
-                const precioBase = calcularPrecioBase(modalidad, valoresFormBase);
+                let precioBase = calcularPrecioBase(modalidad, valoresFormBase);
+                if (precioBase === null) {
+                        if (typeof planPriceSinIva === "number" && !Number.isNaN(planPriceSinIva)) {
+                                precioBase = planPriceSinIva;
+                        } else if (
+                                typeof planPriceWithIva === "number" &&
+                                !Number.isNaN(planPriceWithIva)
+                        ) {
+                                const divisor = 1 + IVA_PORCENTAJE / 100;
+                                precioBase =
+                                        divisor > 0
+                                                ? Math.round((planPriceWithIva / divisor) * 100) / 100
+                                                : planPriceWithIva;
+                        }
+                }
                 const breakdown = calcularRecargos(modalidad, valoresForm);
 
                 const descuentos = await getDescuentosAplicables(modalidad);

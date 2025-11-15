@@ -1752,14 +1752,24 @@ function renderRecargosHTML({
 
 // --------- OFERTAS: INTEGRACIÓN CON MODALIDADES ---------
 async function updateOfertas() {
-        showOfertasLoading();
         if (isProfesional()) {
                 await ensureCurrentUserIdReady();
         }
 
         const usuarioId = getEffectiveProfessionalId();
-        if (!usuarioId && !isProfesional()) return;
+        if (!usuarioId && !isProfesional()) {
+                const ofertasContainer = document.querySelector(".form__ofertas");
+                const lista = ofertasContainer?.querySelector("ul.ofertas__list");
+                if (lista) {
+                        lista.innerHTML = "";
+                }
+                setCurrentOfertas([]);
+                setSpecialFixedOffers([], { enabled: false });
+                document.dispatchEvent(new Event("ofertas:actualizadas"));
+                return;
+        }
 
+        showOfertasLoading();
         await fetchOfertas(usuarioId ?? null, { force: true });
         await filtrarModalidadesBase();
         document.dispatchEvent(new Event("ofertas:actualizadas"));

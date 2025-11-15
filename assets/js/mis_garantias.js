@@ -4727,12 +4727,27 @@ const ADD_DOC_KEY = "add-document";
                         const vendedorTypeClean = extractVendorType(vendedorTypeRaw);
                         const vendedorType =
                                 normalizeChannelLabel(vendedorTypeClean || vendedorTypeRaw || "-") || "-";
-                        const clienteNombre = item.detail?.nombre_comprador ?? "-";
-                        const clienteTelefonoRaw = item.detail?.telefono_comprador ?? "";
-                        const clienteTelefono =
-                                clienteTelefonoRaw && clienteTelefonoRaw !== "-"
-                                        ? clienteTelefonoRaw
-                                        : "";
+                        const clienteNombre =
+                                cleanDisplayValue(item.detail?.nombre_comprador) ||
+                                cleanDisplayValue(item.detail?.datos_cliente_nombre_y_apellidos) ||
+                                cleanDisplayValue(item.detail?.datos_cliente?.nombre_y_apellidos) ||
+                                cleanDisplayValue(item.detail?.datos_cliente?.nombre_completo) ||
+                                cleanDisplayValue(item.detail?.datos_cliente?.nombre) ||
+                                cleanDisplayValue(item.detail?.datos_cliente?.nombre_apellidos) ||
+                                cleanDisplayValue(item.detail?.comprador?.nombre) ||
+                                cleanDisplayValue(item.detail?.comprador_nombre) ||
+                                cleanDisplayValue(item.nombre_comprador) ||
+                                "-";
+                        const clienteTelefonoValue =
+                                cleanDisplayValue(item.detail?.telefono_comprador) ||
+                                cleanDisplayValue(item.detail?.datos_cliente_telefono) ||
+                                cleanDisplayValue(item.detail?.datos_cliente?.telefono) ||
+                                cleanDisplayValue(item.detail?.datos_cliente?.telefono_comprador) ||
+                                cleanDisplayValue(item.detail?.comprador?.telefono) ||
+                                cleanDisplayValue(item.detail?.comprador_telefono) ||
+                                cleanDisplayValue(item.telefono_comprador) ||
+                                "";
+                        const clienteTelefono = clienteTelefonoValue;
                         const clienteTelefonoDataset = clienteTelefono !== "" ? clienteTelefono : "-";
                         const shouldShowPlan =
                                 planName !== "" && planName !== "-" && estadoClase !== "sin-finalizar";

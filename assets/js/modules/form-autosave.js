@@ -1116,6 +1116,27 @@ export default function initAutosave() {
                                         data.channel ||
                                         "";
                                 let channelValue = resolveChannelSelectValue(channelRaw);
+                                if (!channelValue) {
+                                        const summaryChannel = normalizeChannel(data.canal_venta_summary);
+                                        if (summaryChannel) {
+                                                channelValue = `go_${summaryChannel}`;
+                                        }
+                                }
+                                if (!channelValue) {
+                                        const vendorTypeChannel = normalizeChannel(
+                                                data.vendor_company_type_value ||
+                                                        data.vendor_company_type_label,
+                                        );
+                                        if (vendorTypeChannel) {
+                                                channelValue = `go_${vendorTypeChannel}`;
+                                        }
+                                }
+                                if (!channelValue) {
+                                        const rawChannel = normalizeChannel(channelRaw);
+                                        if (rawChannel) {
+                                                channelValue = `go_${rawChannel}`;
+                                        }
+                                }
                                 if (!channelValue && pendingVendorId) {
                                         channelValue = "go_profesional";
                                 }
