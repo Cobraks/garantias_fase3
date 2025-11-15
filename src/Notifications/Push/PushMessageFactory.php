@@ -232,10 +232,6 @@ class PushMessageFactory
             esc_html($body_suffix)
         );
 
-        if ($is_initialization) {
-            $body .= ' ' . esc_html(__('Estado: Sin finalizar.', 'garantias-online-360vo'));
-        }
-
         $link = $this->build_guarantee_link($guarantee_id, $context);
 
         $meta = [];
@@ -257,9 +253,7 @@ class PushMessageFactory
             ? __('Nueva garantía inicializada', 'garantias-online-360vo')
             : __('Nueva garantía', 'garantias-online-360vo');
 
-        $badge_text = $is_initialization
-            ? __('Borrador', 'garantias-online-360vo')
-            : __('Nuevo', 'garantias-online-360vo');
+        $badge_text = __('Nuevo', 'garantias-online-360vo');
 
         $tone = $is_initialization ? 'info' : 'primary';
 

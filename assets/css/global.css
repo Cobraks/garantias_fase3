@@ -1164,7 +1164,7 @@ textarea {
 
 .notifications-toast {
   position: fixed;
-  top: 5.5rem;
+  top: calc(72px + 1.5rem);
   right: calc((100vw - min(100vw, 1440px)) / 2 + 1.5rem);
   width: min(22rem, 92vw);
   display: none;
