@@ -2179,11 +2179,32 @@ class GuaranteeRestController
                         $gc[$k] = is_numeric($v) ? $v : '';
                         break;
                     case 'metodo_pago':
-                    case 'canal_venta':
                         $gc[$k] = sanitize_text_field($v);
-                        if ($k === 'metodo_pago') {
-                            $payment_method = $gc[$k];
+                        $payment_method = $gc[$k];
+                        break;
+                    case 'canal_venta':
+                        $normalized_channel = self::normalize_channel_slug((string) $v);
+                        if ($normalized_channel === '') {
+                            $normalized_channel = sanitize_text_field($v);
                         }
+
+                        $gc[$k] = $normalized_channel;
+                        $gc['canal_venta_value'] = $normalized_channel;
+
+                        $label_source = $normalized_channel !== ''
+                            ? $normalized_channel
+                            : (string) $v;
+                        $channel_label = self::normalize_channel_label_text($label_source);
+                        if ($channel_label === '' && $normalized_channel !== '') {
+                            $channel_label = ucfirst($normalized_channel);
+                        }
+                        if ($channel_label === '' && is_string($v)) {
+                            $channel_label = sanitize_text_field($v);
+                        }
+                        if ($channel_label !== '') {
+                            $gc['canal_venta_label'] = $channel_label;
+                        }
+
                         break;
                     case 'estado_cobro':
                         if (is_array($v)) {
