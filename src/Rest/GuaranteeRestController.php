@@ -4521,14 +4521,16 @@ class GuaranteeRestController
         $prioritize_pending_start = true;
         if ($prioritize_pending_start) {
             $args['go_prioritize_pending_start'] = true;
-            add_filter('posts_clauses', [__CLASS__, 'filter_prioritize_pending_start'], 10, 2);
+            add_filter('posts_join', [__CLASS__, 'filter_prioritize_pending_start_join'], 20, 2);
+            add_filter('posts_orderby', [__CLASS__, 'filter_prioritize_pending_start_orderby'], 20, 2);
         }
 
         try {
             $q = new WP_Query($args);
         } finally {
             if ($prioritize_pending_start) {
-                remove_filter('posts_clauses', [__CLASS__, 'filter_prioritize_pending_start'], 10);
+                remove_filter('posts_join', [__CLASS__, 'filter_prioritize_pending_start_join'], 20);
+                remove_filter('posts_orderby', [__CLASS__, 'filter_prioritize_pending_start_orderby'], 20);
             }
         }
 
@@ -5533,23 +5535,21 @@ class GuaranteeRestController
         }
     }
 
-    /**
-     * @param array<string, string> $clauses
-     */
-    public static function filter_prioritize_pending_start(array $clauses, WP_Query $query): array
+    public static function filter_prioritize_pending_start_join($join, WP_Query $query)
     {
         if (! (bool) $query->get('go_prioritize_pending_start')) {
-            return $clauses;
+            return $join;
         }
 
         global $wpdb;
 
-        $start_alias = 'go_start_order';
         $meta_key    = 'estado_garantia_inicio';
+        $start_alias = 'go_start_order';
 
-        $join = $clauses['join'] ?? '';
-        if (strpos($join, $start_alias) === false) {
-            $clauses['join'] = $join . sprintf(
+        $join = self::replace_meta_inner_join_with_left((string) $join, $meta_key);
+
+        if (strpos((string) $join, $start_alias) === false) {
+            $join .= sprintf(
                 " LEFT JOIN %s AS %s ON (%s.ID = %s.post_id AND %s.meta_key = '%s')",
                 $wpdb->postmeta,
                 $start_alias,
@@ -5560,48 +5560,58 @@ class GuaranteeRestController
             );
         }
 
-        if ((string) $query->get('meta_key') === $meta_key) {
-            $clauses['join'] = self::ensure_meta_join_is_left($clauses['join'], $meta_key);
-        }
-
-        $case_expression = sprintf(
-            "CASE WHEN %1$s.meta_value IS NULL OR %1$s.meta_value = '' OR %1$s.meta_value = '0000-00-00' THEN 0 ELSE 1 END",
-            $start_alias
-        );
-
-        $existing_order = trim($clauses['orderby'] ?? '');
-        if ($existing_order === '') {
-            $clauses['orderby'] = $case_expression . ' ASC';
-        } else {
-            $clauses['orderby'] = $case_expression . ' ASC, ' . $existing_order;
-        }
-
-        return $clauses;
+        return $join;
     }
 
-    private static function ensure_meta_join_is_left(string $join, string $meta_key): string
+    public static function filter_prioritize_pending_start_orderby($orderby, WP_Query $query)
+    {
+        if (! (bool) $query->get('go_prioritize_pending_start')) {
+            return $orderby;
+        }
+
+        $case_expression = "(CASE WHEN go_start_order.meta_value IS NULL OR go_start_order.meta_value = '' OR go_start_order.meta_value = '0000-00-00' THEN 0 ELSE 1 END)";
+
+        $existing_order = trim((string) $orderby);
+        if ($existing_order === '') {
+            return $case_expression . ' ASC';
+        }
+
+        return $case_expression . ' ASC, ' . $existing_order;
+    }
+
+    private static function replace_meta_inner_join_with_left(string $join, string $meta_key): string
     {
         global $wpdb;
 
-        $inner_join = sprintf(
-            "INNER JOIN %s AS mt1 ON (%s.ID = mt1.post_id AND mt1.meta_key = '%s')",
-            $wpdb->postmeta,
-            $wpdb->posts,
-            $meta_key
-        );
-
-        if (strpos($join, $inner_join) !== false) {
-            $left_join = sprintf(
-                "LEFT JOIN %s AS mt1 ON (%s.ID = mt1.post_id AND mt1.meta_key = '%s')",
-                $wpdb->postmeta,
-                $wpdb->posts,
-                $meta_key
-            );
-
-            return str_replace($inner_join, $left_join, $join);
+        if ($join === '') {
+            return $join;
         }
 
-        return $join;
+        $pattern = sprintf(
+            '#INNER\s+JOIN\s+%s\s+AS\s+(mt\d+)\s+ON\s*\(\s*%s\.ID\s*=\s*\\1\.post_id\s*(?:AND\s*\(?\s*\\1\.meta_key\s*=\s*\'%s\'\s*\)?)?\s*\)#i',
+            preg_quote($wpdb->postmeta, '#'),
+            preg_quote($wpdb->posts, '#'),
+            preg_quote($meta_key, '#')
+        );
+
+        return (string) preg_replace_callback(
+            $pattern,
+            function (array $matches) use ($meta_key, $wpdb) {
+                $alias = $matches[1];
+
+                return sprintf(
+                    'LEFT JOIN %s AS %s ON (%s.ID = %s.post_id AND %s.meta_key = \'%s\')',
+                    $wpdb->postmeta,
+                    $alias,
+                    $wpdb->posts,
+                    $alias,
+                    $alias,
+                    $meta_key
+                );
+            },
+            $join,
+            1
+        );
     }
 }
 
