@@ -5300,6 +5300,14 @@ class GuaranteeRestController
 
         return $next_generation;
     }
+
+    /**
+     * Exposes the current list cache generation for frontend consumers.
+     */
+    public static function get_list_cache_generation_snapshot(): int
+    {
+        return self::get_list_cache_generation();
+    }
 }
 
 // Sustituye estos bloques SOLO si tienes Redis/object-cache activado.

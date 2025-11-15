@@ -262,6 +262,14 @@ const ADD_DOC_KEY = "add-document";
                         normalizedRole === "particular" ||
                         normalizedRole === "go_individual" ||
                         normalizedRole === "individual";
+                const rawListCacheVersion =
+                        goConfig.cache && typeof goConfig.cache.guaranteesListVersion !== "undefined"
+                                ? Number(goConfig.cache.guaranteesListVersion)
+                                : Number.NaN;
+                const listCacheVersion =
+                        Number.isFinite(rawListCacheVersion) && rawListCacheVersion > 0
+                                ? Math.floor(rawListCacheVersion)
+                                : 1;
                 const canSeeVerifyCollectStates =
                         [
                                 "administrator",
@@ -2214,7 +2222,7 @@ const ADD_DOC_KEY = "add-document";
                 const detailPreloadQueue = new Set();
                 let detailPreloadScheduled = false;
                 let detailPreloadProcessing = false;
-                const LIST_CACHE_STORAGE_KEY = "go:guarantees:list-cache:v1";
+                const LIST_CACHE_STORAGE_KEY = `go:guarantees:list-cache:v${listCacheVersion}`;
                 const LIST_CACHE_TTL_MS = 5 * 60 * 1000;
                 const LIST_CACHE_MAX_ENTRIES = 6;
 
