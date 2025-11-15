@@ -9,6 +9,11 @@
         const restNonce = (config.rest && config.rest.nonce) || '';
         const perPage = (config.pagination && config.pagination.perPage) || 20;
         const strings = config.strings || {};
+        const presenceConfig = config.presence || {};
+        const presencePollInterval = Math.max(5000, Number(presenceConfig.pollInterval || 15000));
+        const onlineLabel = typeof strings.online === 'string' && strings.online.trim() !== ''
+            ? strings.online.trim()
+            : 'Online';
         const icons = config.icons || {};
         const iconEmail = icons.email || '';
         const iconPhone = icons.phone || '';
@@ -167,6 +172,11 @@
 
         const cache = new Map();
         const slugIndex = new Map();
+        const presenceState = {
+            registry: new Map(),
+            timer: null,
+            pending: false,
+        };
         let selectedRow = null;
         let selectedCard = null;
         let lastRowIndex = -1;
@@ -439,6 +449,141 @@
             identifiers.forEach((identifier) => {
                 slugIndex.set(identifier.toLowerCase(), String(item.id));
             });
+        }
+
+        function applyPresenceEntry(entry, isOnline) {
+            if (!entry) {
+                return;
+            }
+
+            const { indicator, label } = entry;
+            const visible = Boolean(isOnline);
+
+            if (indicator) {
+                indicator.toggleAttribute('hidden', !visible);
+            }
+
+            if (label) {
+                label.textContent = onlineLabel;
+                label.toggleAttribute('hidden', !visible);
+            }
+        }
+
+        function registerPresenceElement(userId, indicator, label, isOnline) {
+            const numericId = Number(userId);
+            if (!Number.isFinite(numericId) || numericId <= 0) {
+                return;
+            }
+
+            const key = String(numericId);
+            const entry = {
+                indicator: indicator || null,
+                label: label || null,
+            };
+
+            applyPresenceEntry(entry, isOnline);
+
+            if (presenceState.registry.has(key)) {
+                presenceState.registry.get(key).push(entry);
+            } else {
+                presenceState.registry.set(key, [entry]);
+            }
+        }
+
+        function updatePresence(userId, isOnline) {
+            const numericId = Number(userId);
+            if (!Number.isFinite(numericId) || numericId <= 0) {
+                return;
+            }
+
+            const key = String(numericId);
+            const entries = presenceState.registry.get(key);
+            if (entries) {
+                entries.forEach((entry) => {
+                    applyPresenceEntry(entry, isOnline);
+                });
+            }
+
+            const cachedItem = cache.get(key);
+            if (cachedItem && typeof cachedItem === 'object') {
+                if (cachedItem.status && typeof cachedItem.status === 'object') {
+                    cachedItem.status.online = Boolean(isOnline);
+                } else {
+                    cachedItem.status = { online: Boolean(isOnline) };
+                }
+            }
+        }
+
+        async function refreshPresence() {
+            if (presenceState.pending || presenceState.registry.size === 0) {
+                return;
+            }
+
+            if (typeof document !== 'undefined' && document.hidden) {
+                return;
+            }
+
+            const ids = Array.from(presenceState.registry.keys());
+            if (ids.length === 0) {
+                return;
+            }
+
+            const params = new URLSearchParams();
+            ids.forEach((id) => {
+                params.append('ids[]', id);
+            });
+
+            try {
+                presenceState.pending = true;
+                const response = await fetch(`${restRoot}go/v1/clientes/status?${params.toString()}`, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: restNonce ? { 'X-WP-Nonce': restNonce } : {},
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Request failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const items = Array.isArray(data.items) ? data.items : [];
+                const received = new Set();
+
+                items.forEach((item) => {
+                    const id = Number(item && item.id);
+                    if (!Number.isFinite(id) || id <= 0) {
+                        return;
+                    }
+                    const online = Boolean(item.online);
+                    received.add(String(id));
+                    updatePresence(id, online);
+                });
+
+                ids.forEach((id) => {
+                    if (!received.has(id)) {
+                        updatePresence(Number(id), false);
+                    }
+                });
+            } catch (error) {
+                console.warn('Error refreshing client presence', error);
+            } finally {
+                presenceState.pending = false;
+            }
+        }
+
+        function resetPresencePolling() {
+            if (presenceState.timer) {
+                window.clearInterval(presenceState.timer);
+                presenceState.timer = null;
+            }
+
+            if (presenceState.registry.size === 0) {
+                return;
+            }
+
+            presenceState.timer = window.setInterval(() => {
+                refreshPresence().catch(() => {});
+            }, presencePollInterval);
         }
 
         function getDisplayName(name) {
@@ -839,11 +984,14 @@
                 : channelHtml;
             const offersHtml = formatOffers(item.offers);
             const commercialsText = formatCommercialSummary(commercials);
+            const status = item.status || {};
+            const isOnline = Boolean(status.online);
             const registeredLabel = strings.registered || 'Registro';
             const username = typeof item.username === 'string' ? item.username.trim() : '';
             const slug = typeof item.slug === 'string' ? item.slug.trim() : '';
             const nicename = typeof item.nicename === 'string' ? item.nicename.trim() : '';
             const rowSlug = username || slug || nicename;
+            const userId = Number(item.id);
 
             const tr = document.createElement('tr');
             tr.className = 'guarantees-table__row';
@@ -866,9 +1014,15 @@
             tr.innerHTML = `
                 <td data-label="${escapeHtml(strings.client || 'Cliente')}" class="clients-table__client-cell">
                     <div class="clients-table__client">
-                        <div class="clients-table__avatar-wrapper">${avatar}</div>
+                        <div class="clients-table__avatar-wrapper">
+                            ${avatar}
+                            <span class="clients-table__presence-indicator" data-presence-indicator aria-hidden="true" hidden></span>
+                        </div>
                         <div class="clients-table__identity">
-                            <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
+                            <div class="clients-table__name-row">
+                                <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
+                                <span class="clients-table__presence-label" data-presence-label hidden></span>
+                            </div>
                             ${identityLine || ''}
                         </div>
                     </div>
@@ -892,6 +1046,10 @@
                     selectRow(tr, item);
                 }
             });
+
+            const indicator = tr.querySelector('[data-presence-indicator]');
+            const label = tr.querySelector('[data-presence-label]');
+            registerPresenceElement(userId, indicator, label, isOnline);
 
             return tr;
         }
@@ -924,6 +1082,8 @@
             const offersHtml = formatOffers(item.offers);
             const commercialsText = formatCommercialSummary(commercials);
             const registeredValue = registered.display ? escapeHtml(registered.display) : '—';
+            const status = item.status || {};
+            const isOnline = Boolean(status.online);
 
             const card = document.createElement('article');
             card.className = 'clients-card';
@@ -938,9 +1098,15 @@
             card.innerHTML = `
                 <div class="clients-card__header">
                     <div class="clients-table__client">
-                        <div class="clients-table__avatar-wrapper">${avatar}</div>
+                        <div class="clients-table__avatar-wrapper">
+                            ${avatar}
+                            <span class="clients-table__presence-indicator" data-presence-indicator aria-hidden="true" hidden></span>
+                        </div>
                         <div class="clients-table__identity">
-                            <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
+                            <div class="clients-table__name-row">
+                                <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
+                                <span class="clients-table__presence-label" data-presence-label hidden></span>
+                            </div>
                             ${identityLine || ''}
                         </div>
                     </div>
@@ -981,6 +1147,10 @@
                     card.click();
                 }
             });
+
+            const indicator = card.querySelector('[data-presence-indicator]');
+            const label = card.querySelector('[data-presence-label]');
+            registerPresenceElement(item.id, indicator, label, isOnline);
 
             return card;
         }
@@ -5026,6 +5196,8 @@
                 tbody.innerHTML = '';
                 cache.clear();
                 clearSelection();
+                presenceState.registry.clear();
+                resetPresencePolling();
                 if (cardsList) {
                     cardsList.innerHTML = '';
                 }
@@ -5107,6 +5279,11 @@
 
                 if (cardsEmpty) {
                     cardsEmpty.hidden = true;
+                }
+
+                resetPresencePolling();
+                if (presenceState.registry.size > 0) {
+                    refreshPresence().catch(() => {});
                 }
 
                 if (initialSlug) {
@@ -5231,6 +5408,14 @@
             });
 
             observer.observe(sentinel);
+        }
+
+        if (typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    refreshPresence().catch(() => {});
+                }
+            });
         }
 
         updateCloseIcon();

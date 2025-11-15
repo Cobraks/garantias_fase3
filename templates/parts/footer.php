@@ -171,6 +171,9 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
         'router' => [
             'basePath' => trailingslashit(wp_make_link_relative(home_url('/garantias-online/clientes/'))),
         ],
+        'presence' => [
+            'pollInterval' => 15000,
+        ],
         'sepa' => SepaMandateService::get_frontend_config(),
         'strings' => [
             'profile'              => __('Perfil', 'garantias-online-360vo'),
@@ -258,6 +261,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             'manageOffersIntro'    => __('Configura las ofertas disponibles para este cliente y guarda los cambios para aplicarlos.', 'garantias-online-360vo'),
             'manageOffersLoading'  => __('Cargando ofertas…', 'garantias-online-360vo'),
             'manageOffersFetchError' => __('No se han podido cargar las ofertas. Actualiza la página e inténtalo de nuevo.', 'garantias-online-360vo'),
+            'online'               => __('Online', 'garantias-online-360vo'),
             'manageOffersEmptyState' => __('No hay ofertas configuradas para este cliente.', 'garantias-online-360vo'),
             'manageOffersAdd'      => __('Añadir nueva oferta', 'garantias-online-360vo'),
             'manageOffersCardTitle'=> __('Oferta', 'garantias-online-360vo'),
@@ -584,6 +588,160 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             src="<?php echo esc_url(plugins_url('assets/js/push-subscription.min.js', GARANTIAS360VO__FILE__)); ?>"
             defer></script>
     <?php endif; ?>
+<?php endif; ?>
+
+<?php if (is_user_logged_in()) : ?>
+    <?php
+    $heartbeat_interval = (int) apply_filters('go360/client_presence/heartbeat_interval', 60);
+    if ($heartbeat_interval < 15) {
+        $heartbeat_interval = 15;
+    }
+
+    $idle_timeout = (int) apply_filters('go360/client_presence/idle_timeout', 120);
+    if ($idle_timeout < $heartbeat_interval) {
+        $idle_timeout = $heartbeat_interval;
+    }
+
+    $presence_config = [
+        'restRoot'    => esc_url_raw(rest_url()),
+        'nonce'       => wp_create_nonce('wp_rest'),
+        'interval'    => $heartbeat_interval,
+        'idleTimeout' => $idle_timeout,
+    ];
+    ?>
+    <script>
+        (() => {
+            const config = <?php echo wp_json_encode($presence_config); ?>;
+            if (typeof window === 'undefined' || typeof document === 'undefined') {
+                return;
+            }
+
+            if (typeof fetch !== 'function') {
+                return;
+            }
+
+            const restRoot = typeof config.restRoot === 'string' ? config.restRoot : '';
+            const restNonce = typeof config.nonce === 'string' ? config.nonce : '';
+
+            if (!restRoot || !restNonce) {
+                return;
+            }
+
+            const intervalMs = Math.max(15000, Math.floor(Number(config.interval) * 1000) || 60000);
+            const idleTimeoutMs = Math.max(intervalMs, Math.floor(Number(config.idleTimeout) * 1000) || 120000);
+            const endpoint = `${restRoot.replace(/\/$/, '')}/go/v1/clientes/status/heartbeat`;
+
+            let heartbeatTimer = null;
+            let idleTimer = null;
+            let active = false;
+            let lastStatus = '';
+
+            const sendHeartbeat = (status, options = {}) => {
+                const normalized = status === 'inactive' ? 'inactive' : 'active';
+
+                if (!options.force && normalized === 'inactive' && lastStatus === 'inactive') {
+                    return Promise.resolve();
+                }
+
+                const body = JSON.stringify({ status: normalized });
+                const headers = { 'Content-Type': 'application/json' };
+                if (restNonce) {
+                    headers['X-WP-Nonce'] = restNonce;
+                }
+
+                const request = fetch(endpoint, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers,
+                    body,
+                    keepalive: Boolean(options.keepalive),
+                }).then(() => {
+                    lastStatus = normalized;
+                }).catch(() => {
+                    // Silenciar errores de red en el latido.
+                });
+
+                return request;
+            };
+
+            const clearHeartbeatTimer = () => {
+                if (heartbeatTimer) {
+                    window.clearTimeout(heartbeatTimer);
+                    heartbeatTimer = null;
+                }
+            };
+
+            const scheduleHeartbeat = () => {
+                clearHeartbeatTimer();
+                if (!active) {
+                    return;
+                }
+
+                heartbeatTimer = window.setTimeout(() => {
+                    sendHeartbeat('active');
+                    scheduleHeartbeat();
+                }, intervalMs);
+            };
+
+            const markIdle = () => {
+                if (!active) {
+                    return;
+                }
+
+                active = false;
+                clearHeartbeatTimer();
+                sendHeartbeat('inactive', { force: true });
+            };
+
+            const scheduleIdleTimer = () => {
+                if (idleTimer) {
+                    window.clearTimeout(idleTimer);
+                }
+
+                idleTimer = window.setTimeout(() => {
+                    markIdle();
+                }, idleTimeoutMs);
+            };
+
+            const markActive = (options = {}) => {
+                const wasActive = active;
+                active = true;
+
+                scheduleIdleTimer();
+                scheduleHeartbeat();
+
+                if (!wasActive || options.immediate) {
+                    sendHeartbeat('active', { force: true });
+                }
+            };
+
+            const activityHandler = () => {
+                markActive();
+            };
+
+            ['mousemove', 'keydown', 'scroll', 'click', 'touchstart', 'touchend'].forEach((eventName) => {
+                document.addEventListener(eventName, activityHandler, { passive: true });
+            });
+
+            window.addEventListener('focus', activityHandler);
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    markActive({ immediate: true });
+                }
+            });
+
+            window.addEventListener('beforeunload', () => {
+                sendHeartbeat('inactive', { keepalive: true, force: true });
+            });
+
+            if (!document.hidden) {
+                markActive({ immediate: true });
+            } else {
+                scheduleIdleTimer();
+            }
+        })();
+    </script>
 <?php endif; ?>
 
 <?php if ($can_manage_notifications) :
