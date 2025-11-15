@@ -1309,21 +1309,77 @@ class GuaranteeRestController
 
     private static function get_plan_info($id)
     {
-        $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
-        if ($plan_id) {
-            $custom_plan = function_exists('get_field')
-                ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
-                : '';
-            $plan = $custom_plan ?: get_the_title($plan_id);
-        } else {
-            $plan = '';
-        }
+        $plan = self::resolve_contracted_plan($id);
         $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
 
         return [
-            'plan'      => is_string($plan) ? $plan : '',
+            'plan'      => is_string($plan['label']) ? $plan['label'] : '',
+            'plan_id'   => (int) ($plan['id'] ?? 0),
             'matricula' => is_string($matricula) ? $matricula : '',
         ];
+    }
+
+    private static function resolve_contracted_plan($post_id)
+    {
+        $raw_plan = get_post_meta($post_id, 'garantia_contratada_garantia', true);
+        $plan_id = self::resolve_plan_id($raw_plan);
+        $plan_source = $raw_plan;
+
+        if ($plan_id <= 0 && function_exists('get_field')) {
+            $contracted = get_field('garantia_contratada', $post_id);
+            if (is_array($contracted) && isset($contracted['garantia'])) {
+                $plan_source = $contracted['garantia'];
+                $plan_id = self::resolve_plan_id($plan_source);
+            }
+        }
+
+        $plan_label = '';
+        if ($plan_id > 0) {
+            $custom_plan = function_exists('get_field')
+                ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
+                : '';
+            $plan_label = $custom_plan ?: get_the_title($plan_id);
+        } elseif ($plan_source instanceof \WP_Post) {
+            $plan_label = $plan_source->post_title ?? '';
+        } elseif (is_array($plan_source) && isset($plan_source['post_title'])) {
+            $plan_label = (string) $plan_source['post_title'];
+        } elseif (is_string($plan_source)) {
+            $plan_label = $plan_source;
+        }
+
+        return [
+            'id'    => $plan_id,
+            'label' => is_string($plan_label) ? trim($plan_label) : '',
+        ];
+    }
+
+    private static function resolve_plan_id($value)
+    {
+        if ($value instanceof \WP_Post) {
+            return (int) $value->ID;
+        }
+        if (is_object($value) && isset($value->ID) && is_numeric($value->ID)) {
+            return (int) $value->ID;
+        }
+        if (is_array($value)) {
+            if (isset($value['ID']) && is_numeric($value['ID'])) {
+                return (int) $value['ID'];
+            }
+            if (isset($value['id']) && is_numeric($value['id'])) {
+                return (int) $value['id'];
+            }
+            if (isset($value['value']) && is_numeric($value['value'])) {
+                return (int) $value['value'];
+            }
+        }
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+        if (is_string($value) && ctype_digit($value)) {
+            return (int) $value;
+        }
+
+        return 0;
     }
 
     private static function normalize_document_filename($filename)
@@ -1341,7 +1397,8 @@ class GuaranteeRestController
             return $stored;
         }
 
-        $plan_id = (int) get_post_meta($id, 'garantia_contratada_garantia', true);
+        $plan = self::resolve_contracted_plan($id);
+        $plan_id = (int) $plan['id'];
         if ($plan_id > 0) {
             $field_key = $type === 'condicionado'
                 ? 'detalles_modalidad_documentos_condicionado_garantia'
@@ -3863,15 +3920,9 @@ class GuaranteeRestController
         $potencia_kw = get_post_meta($id, 'datos_vehiculo_potencia_kw', true);
         $cilindrada = get_post_meta($id, 'datos_vehiculo_cilindrada', true);
 
-        $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
-        if ($plan_id) {
-            $custom_plan = function_exists('get_field')
-                ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
-                : '';
-            $plan = $custom_plan ?: get_the_title($plan_id);
-        } else {
-            $plan = '';
-        }
+        $plan_data = self::resolve_contracted_plan($id);
+        $plan_id = $plan_data['id'];
+        $plan = $plan_data['label'];
         $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
         $metodo_pago_raw = get_post_meta($id, 'garantia_contratada_metodo_pago', true);
         $metodo_pago = is_array($metodo_pago_raw)
@@ -4093,6 +4144,7 @@ class GuaranteeRestController
             'potencia_kw' => $potencia_kw ?: '',
             'cilindrada' => $cilindrada ?: '-',
             'plan' => $plan,
+            'plan_id' => $plan_id,
             'precio' => $precio,
             'metodo_pago' => $metodo_pago ?: '',
             'desde' => $desde,
@@ -4629,9 +4681,9 @@ class GuaranteeRestController
                 }
                 $estado_counts[$e]++;
             }
-            $pid = get_post_meta($post_id, 'garantia_contratada_garantia', true);
-            if ($pid) {
-                $plan_ids[] = $pid;
+            $plan_entry = self::resolve_contracted_plan($post_id);
+            if (($plan_entry['id'] ?? 0) > 0) {
+                $plan_ids[] = (int) $plan_entry['id'];
             }
 
             $channel_raw = get_post_meta($post_id, 'garantia_contratada_canal_venta', true);
