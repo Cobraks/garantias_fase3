@@ -130,6 +130,7 @@ class GuaranteeLogger
             'created'             => 'guarantee.created',
             'updated'             => 'guarantee.updated',
             'status_changed'      => 'guarantee.status_changed',
+            'initiated'           => 'guarantee.initiated',
             'document_downloaded' => 'document.downloaded',
             'document_uploaded'   => 'document.uploaded',
             'document_generated'  => 'document.generated',
@@ -184,6 +185,9 @@ class GuaranteeLogger
         switch ($event_type) {
             case 'status_changed':
                 $context = array_merge($context, self::parse_status_transition($details));
+                break;
+            case 'initiated':
+                $context = array_merge($context, self::parse_initiated_details($details));
                 break;
             case 'contract_notice_dispatched':
             case 'contracted':
@@ -355,6 +359,50 @@ class GuaranteeLogger
         }
 
         return [];
+    }
+
+    private static function parse_initiated_details(string $details): array
+    {
+        $context = [
+            'initiated_state'       => 'sin_finalizar',
+            'initiated_state_label' => __('Sin finalizar', 'garantias-online-360vo'),
+        ];
+
+        $details = trim($details);
+        if ($details === '') {
+            return $context;
+        }
+
+        $decoded = json_decode($details, true);
+        if (is_array($decoded)) {
+            if (! empty($decoded['state'])) {
+                $state = sanitize_key((string) $decoded['state']);
+                if ($state !== '') {
+                    $context['initiated_state'] = $state;
+                    $context['initiated_state_label'] = self::status_label($state);
+                }
+            }
+
+            if (! empty($decoded['state_label'])) {
+                $context['initiated_state_label'] = sanitize_text_field((string) $decoded['state_label']);
+            }
+
+            if (! empty($decoded['customer_name'])) {
+                $name = sanitize_text_field((string) $decoded['customer_name']);
+                if ($name !== '') {
+                    $context['initiated_customer_name'] = $name;
+                }
+            }
+
+            return $context;
+        }
+
+        $name = sanitize_text_field($details);
+        if ($name !== '') {
+            $context['initiated_customer_name'] = $name;
+        }
+
+        return $context;
     }
 
     /**

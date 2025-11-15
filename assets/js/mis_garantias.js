@@ -236,6 +236,10 @@ const ADD_DOC_KEY = "add-document";
                         (goConfig.rest && goConfig.rest.nonce) ||
                         (window.GO_REST && window.GO_REST.nonce) ||
                         "";
+                const LIVE_CHANGES_ENDPOINT = `${restRoot}go/v1/guarantees/changes`;
+                const GUARANTEES_VERSION_HEADER = "X-Go-Guarantees-Version";
+                const LIVE_CHANGES_INTERVAL_MS = 30 * 1000;
+                const LIVE_CHANGES_MAX_BACKOFF_MS = 5 * 60 * 1000;
                 const userRole =
                         (goConfig.user && goConfig.user.role) ||
                         "user";
@@ -275,6 +279,15 @@ const ADD_DOC_KEY = "add-document";
                 const canContinueGuarantee =
                         canManageDetailActions || isProfesional || isDirector || isParticular;
                 const canViewAdminSummary = isCoreAdmin || isDirector || isProfesional;
+                const LIVE_UPDATE_ROLES = new Set([
+                        "administrator",
+                        "admin",
+                        "go_garantias",
+                        "go_comercial",
+                        "go_director_comercial",
+                        "go_gestor_garantias",
+                ]);
+                const enableLiveUpdates = LIVE_UPDATE_ROLES.has(normalizedRole);
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
                 const ADMIN_SUMMARY_DEFAULT_CONTEXT = "month";
@@ -358,6 +371,17 @@ const ADD_DOC_KEY = "add-document";
                 let adminSummaryCache = null;
                 let adminSummaryPromise = null;
                 const numberAnimations = new WeakMap();
+                let liveUpdatesEnabled =
+                        enableLiveUpdates &&
+                        typeof window !== "undefined" &&
+                        typeof window.fetch === "function";
+                let liveChangesTimer = null;
+                let liveChangesAbortController = null;
+                let liveChangesBackoffMs = LIVE_CHANGES_INTERVAL_MS;
+                let liveChangesInFlight = false;
+                let liveChangesVersion = null;
+                let liveReloadInProgress = false;
+                let listCacheBuster = liveUpdatesEnabled ? String(Date.now()) : "";
                 const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>';
                 const phoneIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M798-120q-125 0-247-54.5T329-329Q229-429 174.5-551T120-798q0-18 12-30t30-12h162q14 0 25 9.5t13 22.5l26 140q2 16-1 27t-11 19l-97 98q20 37 47.5 71.5T387-386q31 31 65 57.5t72 48.5l94-94q9-9 23.5-13.5T670-390l138 28q14 4 23 14.5t9 23.5v162q0 18-12 30t-30 12ZM241-600l66-66-17-94h-89q5 41 14 81t26 79Zm358 358q39 17 79.5 27t81.5 13v-88l-94-19-67 67ZM241-600Zm358 358Z"/></svg>';
                 const emailIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm320-280L160-640v400h640v-400L480-440Zm0-80 320-200H160l320 200ZM160-640v-80 480-400Z"/></svg>';
@@ -2250,6 +2274,10 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                         const totalPagesNumber = Number(value.totalPages);
                                         const totalPostsNumber = Number(value.totalPosts);
+                                        const version =
+                                                typeof value.version === "string"
+                                                        ? value.version
+                                                        : "";
                                         entries.push([
                                                 key,
                                                 {
@@ -2263,6 +2291,7 @@ const ADD_DOC_KEY = "add-document";
                                                                         ? Math.floor(totalPostsNumber)
                                                                         : 0,
                                                         fetchedAt,
+                                                        version,
                                                 },
                                         ]);
                                 }
@@ -2296,6 +2325,10 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                         const totalPagesNumber = Number(value.totalPages);
                                         const totalPostsNumber = Number(value.totalPosts);
+                                        const version =
+                                                typeof value.version === "string"
+                                                        ? value.version
+                                                        : "";
                                         const fetchedAt =
                                                 typeof value.fetchedAt === "number" && value.fetchedAt > 0
                                                         ? value.fetchedAt
@@ -2313,6 +2346,7 @@ const ADD_DOC_KEY = "add-document";
                                                                         ? Math.floor(totalPostsNumber)
                                                                         : 0,
                                                         fetchedAt,
+                                                        version,
                                                 },
                                         ]);
                                 });
@@ -2331,6 +2365,253 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
+                function abortCurrentListRequest() {
+                        if (!currentListAbort) {
+                                return;
+                        }
+                        try {
+                                currentListAbort.abort();
+                        } catch (error) {
+                                console.warn("No se pudo cancelar la petición de garantías:", error);
+                        }
+                        currentListAbort = null;
+                }
+
+                function bumpListCacheBuster() {
+                        if (!liveUpdatesEnabled) {
+                                return;
+                        }
+                        listCacheBuster = String(Date.now());
+                }
+
+                function clearListCacheStorage() {
+                        listCache.clear();
+                        persistListCacheSnapshot(listCache);
+                }
+
+                function resetListStateForReload() {
+                        abortCurrentListRequest();
+                        clearListCacheStorage();
+                        loadedIds.clear();
+                        detailCache.clear();
+                        detailPromises.clear();
+                        detailPreloadQueue.clear();
+                        detailPreloadScheduled = false;
+                        detailPreloadProcessing = false;
+                        lastValidQuery = "";
+                        lastValidResults = [];
+                        currentPage = 1;
+                        totalPages = 1;
+                        totalPosts = 0;
+                        hasMore = true;
+                        isLoading = false;
+                        if (tbody) {
+                                tbody.innerHTML = "";
+                        }
+                        resetMobileCards();
+                        setResultMessage("");
+                        clearSelectionAndDetail({ preserveQuery: true, restoreFocus: false });
+                        if (scrollEnd) {
+                                scrollEnd.hidden = false;
+                                scrollEnd.setAttribute("aria-hidden", "false");
+                        }
+                }
+
+                function shouldPollLiveChanges() {
+                        if (!liveUpdatesEnabled) {
+                                return false;
+                        }
+                        if (typeof document === "undefined") {
+                                return false;
+                        }
+                        if (typeof document.visibilityState === "string") {
+                                return document.visibilityState === "visible";
+                        }
+                        if (typeof document.hidden !== "undefined") {
+                                return document.hidden === false;
+                        }
+                        return true;
+                }
+
+                function clearLiveChangesTimer() {
+                        if (liveChangesTimer !== null) {
+                                clearTimeout(liveChangesTimer);
+                                liveChangesTimer = null;
+                        }
+                }
+
+                function scheduleLiveChangesCheck(delay = LIVE_CHANGES_INTERVAL_MS) {
+                        clearLiveChangesTimer();
+                        if (!shouldPollLiveChanges()) {
+                                return;
+                        }
+                        const normalizedDelay = Number.isFinite(delay) ? Math.max(1000, delay) : LIVE_CHANGES_INTERVAL_MS;
+                        liveChangesTimer = window.setTimeout(() => {
+                                liveChangesTimer = null;
+                                fetchLiveChanges();
+                        }, normalizedDelay);
+                }
+
+                function pauseLiveChangesWatcher() {
+                        clearLiveChangesTimer();
+                        if (liveChangesAbortController) {
+                                try {
+                                        liveChangesAbortController.abort();
+                                } catch (error) {
+                                        console.warn(
+                                                "No se pudo cancelar la comprobación de cambios de garantías:",
+                                                error
+                                        );
+                                }
+                                liveChangesAbortController = null;
+                        }
+                        liveChangesInFlight = false;
+                }
+
+                function stopLiveChangesWatcher() {
+                        if (!liveUpdatesEnabled) {
+                                return;
+                        }
+                        liveUpdatesEnabled = false;
+                        pauseLiveChangesWatcher();
+                }
+
+                function triggerLiveListReload() {
+                        if (liveReloadInProgress) {
+                                return;
+                        }
+                        liveReloadInProgress = true;
+                        bumpListCacheBuster();
+                        resetListStateForReload();
+                        const reloadPromise = loadPage(1, { forceReload: true });
+                        Promise.resolve(reloadPromise)
+                                .catch((error) => {
+                                        if (error && typeof error === "object" && error.name === "AbortError") {
+                                                return;
+                                        }
+                                        console.error(
+                                                "No se pudo recargar el listado de garantías tras detectar cambios:",
+                                                error
+                                        );
+                                })
+                                .finally(() => {
+                                        liveReloadInProgress = false;
+                                });
+                        if (canViewAdminSummary) {
+                                refreshAdminSummaryPanels(true);
+                        }
+                }
+
+                function fetchLiveChanges() {
+                        if (!liveUpdatesEnabled) {
+                                return Promise.resolve();
+                        }
+                        if (!shouldPollLiveChanges()) {
+                                scheduleLiveChangesCheck(liveChangesBackoffMs);
+                                return Promise.resolve();
+                        }
+                        if (liveChangesInFlight) {
+                                return Promise.resolve();
+                        }
+                        liveChangesInFlight = true;
+                        if (liveChangesAbortController) {
+                                try {
+                                        liveChangesAbortController.abort();
+                                } catch (error) {
+                                        console.warn(
+                                                "No se pudo reiniciar la comprobación de cambios de garantías:",
+                                                error
+                                        );
+                                }
+                        }
+                        liveChangesAbortController = new AbortController();
+                        const headers = { Accept: "application/json", "Cache-Control": "no-cache" };
+                        if (restNonce) {
+                                headers["X-WP-Nonce"] = restNonce;
+                        }
+                        const changesUrl = `${LIVE_CHANGES_ENDPOINT}?cb=${Date.now()}`;
+                        return fetch(changesUrl, {
+                                headers,
+                                signal: liveChangesAbortController.signal,
+                                cache: "no-store",
+                        })
+                                .then((response) => {
+                                        if (response.status === 404) {
+                                                stopLiveChangesWatcher();
+                                                return null;
+                                        }
+                                        if (!response.ok) {
+                                                throw new Error(
+                                                        `Cambios de garantías no disponibles (${response.status || ""})`
+                                                );
+                                        }
+                                        return response.json();
+                                })
+                                .then((payload) => {
+                                        if (!payload || typeof payload !== "object") {
+                                                return;
+                                        }
+                                        const version =
+                                                typeof payload.version === "string" && payload.version
+                                                        ? payload.version
+                                                        : "";
+                                        if (!version) {
+                                                liveChangesBackoffMs = LIVE_CHANGES_INTERVAL_MS;
+                                                return;
+                                        }
+                                        if (liveChangesVersion === null) {
+                                                liveChangesVersion = version;
+                                                liveChangesBackoffMs = LIVE_CHANGES_INTERVAL_MS;
+                                                return;
+                                        }
+                                        if (version !== liveChangesVersion) {
+                                                liveChangesVersion = version;
+                                                triggerLiveListReload();
+                                        }
+                                        liveChangesBackoffMs = LIVE_CHANGES_INTERVAL_MS;
+                                })
+                                .catch((error) => {
+                                        if (error && typeof error === "object" && error.name === "AbortError") {
+                                                return;
+                                        }
+                                        console.error(
+                                                "No se pudo comprobar si hay nuevas garantías:",
+                                                error
+                                        );
+                                        liveChangesBackoffMs = Math.min(
+                                                liveChangesBackoffMs * 2,
+                                                LIVE_CHANGES_MAX_BACKOFF_MS
+                                        );
+                                })
+                                .finally(() => {
+                                        liveChangesInFlight = false;
+                                        liveChangesAbortController = null;
+                                        if (liveUpdatesEnabled) {
+                                                scheduleLiveChangesCheck(liveChangesBackoffMs);
+                                        }
+                                });
+                }
+
+                function startLiveChangesWatcher() {
+                        if (!liveUpdatesEnabled) {
+                                return;
+                        }
+                        liveChangesBackoffMs = LIVE_CHANGES_INTERVAL_MS;
+                        fetchLiveChanges();
+                }
+
+                function handleLiveUpdatesVisibilityChange() {
+                        if (!liveUpdatesEnabled) {
+                                return;
+                        }
+                        if (shouldPollLiveChanges()) {
+                                liveChangesBackoffMs = LIVE_CHANGES_INTERVAL_MS;
+                                fetchLiveChanges();
+                                return;
+                        }
+                        pauseLiveChangesWatcher();
+                }
+
                 function isCacheEntryUsable(entry) {
                         return Boolean(
                                 entry &&
@@ -2343,8 +2624,19 @@ const ADD_DOC_KEY = "add-document";
                         if (!entry || typeof entry !== "object") {
                                 return false;
                         }
+                        if (liveUpdatesEnabled) {
+                                return false;
+                        }
                         const fetchedAt = typeof entry.fetchedAt === "number" ? entry.fetchedAt : 0;
                         if (!fetchedAt) {
+                                return false;
+                        }
+                        if (
+                                liveChangesVersion &&
+                                typeof entry.version === "string" &&
+                                entry.version &&
+                                entry.version !== liveChangesVersion
+                        ) {
                                 return false;
                         }
                         return Date.now() - fetchedAt <= LIST_CACHE_TTL_MS;
@@ -2485,10 +2777,19 @@ const ADD_DOC_KEY = "add-document";
                                 finalizeSpinnerVisibility(0, 0, spinnerToken);
                                 return;
                         }
+                        if (
+                                !liveChangesVersion &&
+                                cache &&
+                                typeof cache.version === "string" &&
+                                cache.version
+                        ) {
+                                liveChangesVersion = cache.version;
+                        }
                         tbody.innerHTML = "";
                         resetMobileCards();
                         let appended = 0;
-                        for (const item of cache.data) {
+                        const snapshot = reorderPendingStartFirst(cache.data, { stable: true });
+                        for (const item of snapshot) {
                                 tbody.appendChild(renderRow(item));
                                 ensureDetailPreloaded(item);
                                 if (item && Object.prototype.hasOwnProperty.call(item, "id")) {
@@ -4676,6 +4977,12 @@ const ADD_DOC_KEY = "add-document";
                                 hastaDisplayRaw !== "-" &&
                                 desdeDisplayRaw !== "" &&
                                 hastaDisplayRaw !== "";
+                        const hasStartDate =
+                                typeof desdeIsoRaw === "string" &&
+                                desdeIsoRaw !== "" &&
+                                desdeIsoRaw !== "-" &&
+                                desdeIsoRaw !== "0000-00-00";
+                        const missingStartDate = !hasStartDate;
                         const canalVentaValueRaw =
                                 item.canal_venta && Object.prototype.hasOwnProperty.call(item.canal_venta, "value")
                                         ? item.canal_venta.value
@@ -4879,12 +5186,17 @@ const ADD_DOC_KEY = "add-document";
                                 concesionarioPersonal: item.detail?.concesionario_personal ?? "",
                                 ibanVendedor: item.detail?.iban_vendedor || "",
                                 transferIban: item.detail?.transfer_iban || "",
+                                missingStartDate,
+                                hasStartDate,
                         };
                 }
 
                 function createCardElement(view) {
                         const card = document.createElement("article");
                         card.className = "guarantee-card";
+                        if (view.missingStartDate) {
+                                card.classList.add("guarantee-card--pending-start");
+                        }
                         if (view.id) {
                                 card.dataset.id = view.id;
                         }
@@ -4987,6 +5299,12 @@ const ADD_DOC_KEY = "add-document";
                         const tr = document.createElement("tr");
                         tr.className = "guarantees-table__row";
                         tr.tabIndex = 0;
+                        if (view.missingStartDate) {
+                                tr.classList.add("guarantees-table__row--pending-start");
+                                tr.dataset.missingStart = "1";
+                        } else {
+                                tr.dataset.missingStart = "0";
+                        }
                         if (view.id) {
                                 tr.dataset.id = view.id;
                         }
@@ -6116,6 +6434,23 @@ const ADD_DOC_KEY = "add-document";
                                 });
                 }
 
+                function refreshAdminSummaryPanels(force = false) {
+                        if (!canViewAdminSummary) {
+                                return;
+                        }
+                        const panels = [panel1, panel2].filter(Boolean);
+                        if (panels.length === 0) {
+                                return;
+                        }
+                        panels.forEach((panel) => {
+                                const root = panel.querySelector("[data-admin-summary]");
+                                if (!root) {
+                                        return;
+                                }
+                                loadAdminSummary(root, { force });
+                        });
+                }
+
                 function initializeAdminSummary(panel) {
                         if (!canViewAdminSummary || !panel) {
                                 return;
@@ -6405,8 +6740,65 @@ const ADD_DOC_KEY = "add-document";
                         );
                 }
 
+                function isMissingStartDate(item) {
+                        if (!item || typeof item !== "object") {
+                                return true;
+                        }
+                        const raw = item.desde ?? item.detail?.desde ?? "";
+                        if (typeof raw === "string" && raw.trim() === "") {
+                                return true;
+                        }
+                        const formatted = formatDate(raw);
+                        const iso = typeof formatted?.iso === "string" ? formatted.iso : "";
+                        if (!iso || iso === "-" || iso === "0000-00-00") {
+                                return true;
+                        }
+                        return false;
+                }
+
+                function reorderPendingStartFirst(items, { stable = true } = {}) {
+                        if (!Array.isArray(items) || items.length <= 1) {
+                                return items;
+                        }
+
+                        if (!stable) {
+                                return items
+                                        .slice()
+                                        .sort((a, b) => {
+                                                const aMissing = isMissingStartDate(a);
+                                                const bMissing = isMissingStartDate(b);
+                                                if (aMissing === bMissing) {
+                                                        return 0;
+                                                }
+                                                return aMissing ? -1 : 1;
+                                        });
+                        }
+
+                        return items
+                                .map((item, index) => ({
+                                        item,
+                                        index,
+                                        missing: isMissingStartDate(item),
+                                }))
+                                .sort((a, b) => {
+                                        if (a.missing === b.missing) {
+                                                return a.index - b.index;
+                                        }
+                                        return a.missing ? -1 : 1;
+                                })
+                                .map((entry) => entry.item);
+                }
+
                 async function loadPage(page = 1, options = {}) {
-                        if (isLoading || !hasMore) return;
+                        const forceReload = Boolean(options.forceReload);
+                        if (forceReload) {
+                                abortCurrentListRequest();
+                                if (page <= 1) {
+                                        hasMore = true;
+                                }
+                                isLoading = false;
+                        }
+                        if (isLoading || (!hasMore && !forceReload)) return;
                         isLoading = true;
                         if (scrollEnd) {
                                 scrollEnd.hidden = false;
@@ -6503,12 +6895,15 @@ const ADD_DOC_KEY = "add-document";
                                 normalizedMonthTo
                         );
                         try {
-                                if (currentListAbort) currentListAbort.abort();
+                                abortCurrentListRequest();
                                 currentListAbort = new AbortController();
                                 const params = new URLSearchParams({
                                         page,
                                         per_page: perPage,
                                 });
+                                if (listCacheBuster) {
+                                        params.append("cache_bust", listCacheBuster);
+                                }
                                 if (search && search.length > 0)
                                         params.append("search", search);
                                 if (estado) params.append("estado", estado);
@@ -6537,29 +6932,53 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
                                 const res = await fetch(url, {
-                                        headers: { "X-WP-Nonce": restNonce },
+                                        headers: { "X-WP-Nonce": restNonce, "Cache-Control": "no-cache" },
                                         signal: currentListAbort.signal,
+                                        cache: "no-store",
                                 });
-				if (!res.ok) throw `HTTP ${res.status}`;
-				totalPosts = +res.headers.get("X-WP-Total") || 0;
-				totalPages = +res.headers.get("X-WP-TotalPages") || 1;
+                                if (!res.ok) throw `HTTP ${res.status}`;
+                                const responseVersion = (() => {
+                                        if (!res.headers || typeof res.headers.get !== "function") {
+                                                return "";
+                                        }
+                                        const headerValue = res.headers.get(
+                                                GUARANTEES_VERSION_HEADER
+                                        );
+                                        return typeof headerValue === "string"
+                                                ? headerValue.trim()
+                                                : "";
+                                })();
+                                if (responseVersion) {
+                                        liveChangesVersion = responseVersion;
+                                }
+                                totalPosts = +res.headers.get("X-WP-Total") || 0;
+                                totalPages = +res.headers.get("X-WP-TotalPages") || 1;
                                 const { data } = await res.json();
+
+                                const normalizedData =
+                                        page === 1
+                                                ? reorderPendingStartFirst(data)
+                                                : data;
 
                                 const esNuevaBusqueda = page === 1;
                                 const now = Date.now();
                                 if (esNuevaBusqueda) {
                                         listCache.set(cacheKey, {
-                                                data: data.slice(),
+                                                data: normalizedData.slice(),
                                                 totalPages,
                                                 totalPosts,
                                                 fetchedAt: now,
+                                                version: responseVersion,
                                         });
                                 } else if (listCache.has(cacheKey)) {
                                         const cache = listCache.get(cacheKey);
-                                        cache.data.push(...data);
+                                        cache.data.push(...normalizedData);
                                         cache.totalPages = totalPages;
                                         cache.totalPosts = totalPosts;
                                         cache.fetchedAt = now;
+                                        if (responseVersion) {
+                                                cache.version = responseVersion;
+                                        }
                                 }
                                 persistListCacheSnapshot(listCache);
                                 if (esNuevaBusqueda) {
@@ -6568,20 +6987,24 @@ const ADD_DOC_KEY = "add-document";
                                         resetMobileCards();
                                         previousRowCount = 0;
                                         clearSelectionAndDetail({ preserveQuery: pendingMatSelection }); // Limpiar selección SIEMPRE que se cambia el listado (así evitas seleccionados fantasmas)
-					if (data.length > 0) {
-						listContainer.scrollTop = 0;
-						// Solo guardamos resultados válidos si búsqueda >= 3 caracteres y pocos resultados
-						if (search.length >= 3 && data.length > 0 && data.length <= 20) {
-							lastValidQuery = search;
-							lastValidResults = data.slice();
-						}
-					}
-				}
-				currentPage = page;
-				hasMore = currentPage < totalPages;
+                                        if (normalizedData.length > 0) {
+                                                listContainer.scrollTop = 0;
+                                                // Solo guardamos resultados válidos si búsqueda >= 3 caracteres y pocos resultados
+                                                if (
+                                                        search.length >= 3 &&
+                                                        normalizedData.length > 0 &&
+                                                        normalizedData.length <= 20
+                                                ) {
+                                                        lastValidQuery = search;
+                                                        lastValidResults = normalizedData.slice();
+                                                }
+                                        }
+                                }
+                                currentPage = page;
+                                hasMore = currentPage < totalPages;
 
-                                if (data.length > 0) {
-                                        for (const item of data) {
+                                if (normalizedData.length > 0) {
+                                        for (const item of normalizedData) {
                                                 ensureDetailPreloaded(item);
                                                 if (loadedIds.has(item.id)) continue;
                                                 tbody.appendChild(renderRow(item));
@@ -6591,7 +7014,7 @@ const ADD_DOC_KEY = "add-document";
                                         await trySelectInitialMatricula();
                                         setResultMessage("");
                                         // AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
-                                        if (data.length === 1 && search && search.length > 0) {
+                                        if (normalizedData.length === 1 && search && search.length > 0) {
                                                 const row = tbody.querySelector(".guarantees-table__row");
                                                 if (row && !row.classList.contains("selected")) {
                                                         try {
@@ -6655,6 +7078,7 @@ const ADD_DOC_KEY = "add-document";
                                 }
                         } finally {
                                 isLoading = false;
+                                currentListAbort = null;
                                 finalizeSpinnerVisibility(
                                         previousRowCount,
                                         appendedRows,
@@ -6675,9 +7099,15 @@ const ADD_DOC_KEY = "add-document";
                                         search: trimmedPlate,
                                         per_page: 1,
                                 });
+                                if (listCacheBuster) {
+                                        params.append("cache_bust", listCacheBuster);
+                                }
                                 const res = await fetch(
                                         `${restRoot}go/v1/guarantees?${params.toString()}`,
-                                        { headers: { "X-WP-Nonce": restNonce } }
+                                        {
+                                                headers: { "X-WP-Nonce": restNonce, "Cache-Control": "no-cache" },
+                                                cache: "no-store",
+                                        }
                                 );
                                 if (!res.ok) throw res.status;
                                 const { data } = await res.json();
@@ -8671,7 +9101,7 @@ async function activateRow(row, options = {}) {
                                 scrollEnd.hidden = false;
                         }
                         const spinnerToken = setSpinnerVisible(true);
-                        if (currentListAbort) currentListAbort.abort();
+                        abortCurrentListRequest();
                         isLoading = false;
                         if (listCache.has(cacheKey)) {
                                 renderFromCache(listCache.get(cacheKey), spinnerToken);
@@ -9014,7 +9444,7 @@ async function activateRow(row, options = {}) {
                                 scrollEnd.hidden = false;
                         }
                         const spinnerToken = setSpinnerVisible(true);
-                        if (currentListAbort) currentListAbort.abort();
+                        abortCurrentListRequest();
                         isLoading = false;
                         if (listCache.has(cacheKey)) {
                                 renderFromCache(listCache.get(cacheKey), spinnerToken);
@@ -9102,6 +9532,42 @@ async function activateRow(row, options = {}) {
                                                 preloadByPlate(initialMatQuery);
                                         }
                                 });
+                }
+
+                if (!initialLoadPromise) {
+                        initialLoadPromise = Promise.resolve();
+                }
+
+                if (liveUpdatesEnabled) {
+                        initialLoadPromise
+                                .catch(() => {})
+                                .finally(() => {
+                                        if (liveUpdatesEnabled) {
+                                                startLiveChangesWatcher();
+                                        }
+                                });
+                        document.addEventListener(
+                                "visibilitychange",
+                                handleLiveUpdatesVisibilityChange,
+                                { passive: true }
+                        );
+                        window.addEventListener("focus", handleLiveUpdatesVisibilityChange, { passive: true });
+                        window.addEventListener(
+                                "blur",
+                                () => {
+                                        if (!shouldPollLiveChanges()) {
+                                                pauseLiveChangesWatcher();
+                                        }
+                                },
+                                { passive: true }
+                        );
+                        window.addEventListener(
+                                "beforeunload",
+                                () => {
+                                        stopLiveChangesWatcher();
+                                },
+                                { passive: true }
+                        );
                 }
         });
 })();
