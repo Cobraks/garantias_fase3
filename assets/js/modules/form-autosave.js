@@ -2012,7 +2012,12 @@ export default function initAutosave() {
                         if (currentId) {
                                 garantia.concesionario_empresa_profesional = currentId;
                         }
-               } else if (normalizedRole === "go_particular" || normalizedRole === "particular") {
+               } else if (
+                       normalizedRole === "go_particular" ||
+                       normalizedRole === "particular" ||
+                       normalizedRole === "go_individual" ||
+                       normalizedRole === "individual"
+               ) {
                         garantia.canal_venta = "particular";
                         const currentId = getCurrentUserId();
                         if (currentId) {

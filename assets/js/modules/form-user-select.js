@@ -28,6 +28,8 @@ const CHANNEL_NORMALIZATION = {
         go_profesional: "profesional",
         particular: "particular",
         go_particular: "particular",
+        individual: "particular",
+        go_individual: "particular",
         gestoria: "gestoria",
         go_gestoria: "gestoria",
 };
@@ -546,7 +548,9 @@ function initUserSelect() {
                 initialChannelValue = canalSelect.value;
         } else if (
                 baseUserRole === "go_particular" ||
-                baseUserRole === "particular"
+                baseUserRole === "particular" ||
+                baseUserRole === "go_individual" ||
+                baseUserRole === "individual"
         ) {
                 initialChannelValue = "go_particular";
         } else if (baseUserRole === "go_gestoria" || baseUserRole === "gestoria") {

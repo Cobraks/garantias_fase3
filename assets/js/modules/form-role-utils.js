@@ -29,6 +29,11 @@ export function getEffectiveUserRole() {
                         return "admin";
                 case "profesional":
                         return "go_profesional";
+                case "go_particular":
+                case "particular":
+                case "go_individual":
+                case "individual":
+                        return "go_particular";
                 default:
                         return rawRole;
         }
@@ -52,7 +57,12 @@ export function isProfesional() {
 
 export function isParticular() {
         const role = getEffectiveUserRole();
-        return role === "go_particular" || role === "particular";
+        return (
+                role === "go_particular" ||
+                role === "particular" ||
+                role === "go_individual" ||
+                role === "individual"
+        );
 }
 
 /**

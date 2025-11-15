@@ -13,6 +13,7 @@ import {
         ofertaAplicaAmodalidad,
         refreshOfertasDisplay,
         showOfertasLoading,
+        shouldSkipLoaderForSelf,
 } from "./form-ofertas.js";
 import {
         getEffectiveUserRole,
@@ -286,6 +287,8 @@ function getDefaultChannelForRole() {
         switch (role) {
                 case "go_particular":
                 case "particular":
+                case "go_individual":
+                case "individual":
                         return "particular";
                 case "go_gestoria":
                 case "gestoria":
@@ -1769,7 +1772,16 @@ async function updateOfertas() {
                 return;
         }
 
-        showOfertasLoading();
+        const skipLoader = shouldSkipLoaderForSelf({});
+        if (!skipLoader) {
+                showOfertasLoading();
+        } else {
+                const ofertasContainer = document.querySelector(".form__ofertas");
+                const lista = ofertasContainer?.querySelector("ul.ofertas__list");
+                if (lista) {
+                        lista.innerHTML = "";
+                }
+        }
         await fetchOfertas(usuarioId ?? null, { force: true });
         await filtrarModalidadesBase();
         document.dispatchEvent(new Event("ofertas:actualizadas"));

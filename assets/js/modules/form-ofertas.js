@@ -28,6 +28,20 @@ const selfOffersPrefetchState = {
 };
 let selfOffersPrefetchPromise = null;
 
+function shouldSkipLoaderForSelf({ ofertas = null } = {}) {
+        if (!(isProfesional() || isParticular())) {
+                return false;
+        }
+        if (!selfOffersPrefetchState.done) {
+                return false;
+        }
+        const hasOfertas = Array.isArray(ofertas) && ofertas.length > 0;
+        if (hasOfertas) {
+                return false;
+        }
+        return selfOffersPrefetchState.empty;
+}
+
 // Cache simple por userId con posibilidad de invalidar
 const ofertasCache = new Map(); // cacheKey -> { ofertas, especiales, meta, fetchedAt, version }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
@@ -366,14 +380,7 @@ export async function updateOfertasList(
         }
 
         if (showLoading) {
-                const skipLoaderForSelfWithoutOffers =
-                        !force &&
-                        (isProfesional() || isParticular()) &&
-                        selfOffersPrefetchState.done &&
-                        selfOffersPrefetchState.empty &&
-                        (!ofertas || ofertas.length === 0);
-
-                if (!skipLoaderForSelfWithoutOffers) {
+                if (!shouldSkipLoaderForSelf({ ofertas })) {
                         showOfertasLoading(ul);
                 }
         }
@@ -469,7 +476,9 @@ export function refreshOfertasDisplay() {
 
                 if (_refreshOfertasPending) clearTimeout(_refreshOfertasPending);
                 _refreshOfertasPending = setTimeout(async () => {
-                        if (!hasCache) showOfertasLoading();
+                        if (!hasCache && !shouldSkipLoaderForSelf({})) {
+                                showOfertasLoading();
+                        }
                         if (isNaProfesionalFallback()) {
                                 await ensureCurrentUserIdReady();
                         }
@@ -501,7 +510,7 @@ function isNaProfesionalFallback() {
 }
 
 // Exponer para compatibilidad legacy mínima
-export { refreshOfertasDisplay as updateOfertas, showOfertasLoading };
+export { refreshOfertasDisplay as updateOfertas, showOfertasLoading, shouldSkipLoaderForSelf };
 
 function prefetchAllVendorOffers() {
         const select = document.getElementById("usuario-rol");

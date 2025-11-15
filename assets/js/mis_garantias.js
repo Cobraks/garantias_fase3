@@ -258,7 +258,10 @@ const ADD_DOC_KEY = "add-document";
                 const isProfesional =
                         normalizedRole === "go_profesional" || normalizedRole === "profesional";
                 const isParticular =
-                        normalizedRole === "go_particular" || normalizedRole === "particular";
+                        normalizedRole === "go_particular" ||
+                        normalizedRole === "particular" ||
+                        normalizedRole === "go_individual" ||
+                        normalizedRole === "individual";
                 const canSeeVerifyCollectStates =
                         [
                                 "administrator",
