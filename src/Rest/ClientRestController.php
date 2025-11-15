@@ -13,7 +13,11 @@ use WP_REST_Response;
 use WP_REST_Server;
 use WP_User;
 use WP_User_Query;
+use function get_current_user_id;
+use function get_transient;
 use function home_url;
+use function is_user_logged_in;
+use function set_transient;
 use function time;
 
 if (! defined('ABSPATH')) {
@@ -30,10 +34,19 @@ class ClientRestController
      */
     private static $commercial_client_counts = null;
 
+    private const PRESENCE_TRANSIENT_PREFIX = 'go_client_presence_';
+    private const PRESENCE_STORAGE_TTL      = 900; // 15 minutes.
+    private const PRESENCE_ACTIVE_GRACE     = 150; // Seconds a heartbeat keeps the user online.
+
     /**
      * @var array<int,bool>
      */
     private static array $session_status_cache = [];
+
+    /**
+     * @var array<int,array{status:string,timestamp:int}>
+     */
+    private static array $presence_cache = [];
 
     public static function register_routes(): void
     {
@@ -78,6 +91,18 @@ class ClientRestController
                             'required' => false,
                         ],
                     ],
+                ],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::REST_BASE . '/status/heartbeat',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'record_heartbeat'],
+                    'permission_callback' => [__CLASS__, 'heartbeat_permissions_check'],
                 ],
             ]
         );
@@ -1160,7 +1185,7 @@ class ClientRestController
             static function (int $user_id): array {
                 return [
                     'id'     => $user_id,
-                    'online' => self::has_active_session($user_id),
+                    'online' => self::is_user_online($user_id),
                 ];
             },
             $limited
@@ -1556,9 +1581,134 @@ class ClientRestController
             ],
             'links'        => $links,
             'status'       => [
-                'online' => self::has_active_session((int) $user->ID),
+                'online' => self::is_user_online((int) $user->ID),
             ],
         ];
+    }
+
+    public static function record_heartbeat(WP_REST_Request $request): WP_REST_Response
+    {
+        $user_id = get_current_user_id();
+        if ($user_id <= 0) {
+            return new WP_REST_Response([
+                'message' => __('No se ha podido validar la sesión del usuario.', 'garantias-online-360vo'),
+            ], 401);
+        }
+
+        $status_param = $request->get_param('status');
+        $status = 'active';
+        if (is_string($status_param)) {
+            $candidate = strtolower(trim($status_param));
+            if (in_array($candidate, ['active', 'inactive'], true)) {
+                $status = $candidate;
+            }
+        }
+
+        $timestamp = time();
+        self::set_presence_state($user_id, $status, $timestamp);
+
+        return new WP_REST_Response([
+            'status'    => $status,
+            'timestamp' => $timestamp,
+        ], 200);
+    }
+
+    public static function heartbeat_permissions_check(): bool
+    {
+        return is_user_logged_in();
+    }
+
+    private static function get_presence_transient_key(int $user_id): string
+    {
+        return self::PRESENCE_TRANSIENT_PREFIX . $user_id;
+    }
+
+    /**
+     * @return array{status:string,timestamp:int}
+     */
+    private static function get_presence_state(int $user_id): array
+    {
+        if ($user_id <= 0) {
+            return [
+                'status'    => 'unknown',
+                'timestamp' => 0,
+            ];
+        }
+
+        if (isset(self::$presence_cache[$user_id])) {
+            return self::$presence_cache[$user_id];
+        }
+
+        $stored = get_transient(self::get_presence_transient_key($user_id));
+        if (! is_array($stored)) {
+            self::$presence_cache[$user_id] = [
+                'status'    => 'unknown',
+                'timestamp' => 0,
+            ];
+
+            return self::$presence_cache[$user_id];
+        }
+
+        $status = isset($stored['status']) ? (string) $stored['status'] : 'unknown';
+        $timestamp = isset($stored['timestamp']) ? (int) $stored['timestamp'] : 0;
+
+        if (! in_array($status, ['active', 'inactive'], true)) {
+            $status = 'unknown';
+        }
+
+        if ($timestamp < 0) {
+            $timestamp = 0;
+        }
+
+        self::$presence_cache[$user_id] = [
+            'status'    => $status,
+            'timestamp' => $timestamp,
+        ];
+
+        return self::$presence_cache[$user_id];
+    }
+
+    private static function set_presence_state(int $user_id, string $status, int $timestamp): void
+    {
+        if ($user_id <= 0) {
+            return;
+        }
+
+        $normalized_status = in_array($status, ['active', 'inactive'], true) ? $status : 'unknown';
+        $normalized_timestamp = $timestamp > 0 ? $timestamp : time();
+
+        $data = [
+            'status'    => $normalized_status,
+            'timestamp' => $normalized_timestamp,
+        ];
+
+        self::$presence_cache[$user_id] = $data;
+        set_transient(self::get_presence_transient_key($user_id), $data, self::PRESENCE_STORAGE_TTL);
+
+        unset(self::$session_status_cache[$user_id]);
+    }
+
+    private static function is_user_online(int $user_id): bool
+    {
+        if ($user_id <= 0) {
+            return false;
+        }
+
+        $presence = self::get_presence_state($user_id);
+        $timestamp = (int) $presence['timestamp'];
+        $status = (string) $presence['status'];
+
+        if ($timestamp > 0 && in_array($status, ['active', 'inactive'], true)) {
+            $age = time() - $timestamp;
+
+            if ($status === 'active') {
+                return $age <= self::PRESENCE_ACTIVE_GRACE;
+            }
+
+            return false;
+        }
+
+        return self::has_active_session($user_id);
     }
 
     private static function has_active_session(int $user_id): bool
