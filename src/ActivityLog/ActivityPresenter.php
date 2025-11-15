@@ -30,6 +30,9 @@ class ActivityPresenter
             case 'guarantee.contracted':
                 $lines = self::formatGuaranteeContracted($context, $actor);
                 break;
+            case 'guarantee.initiated':
+                $lines = self::formatGuaranteeInitiated($context, $actor);
+                break;
             case 'guarantee.created':
                 $lines = self::formatGuaranteeCreated($context, $actor);
                 break;
@@ -125,6 +128,42 @@ class ActivityPresenter
             sprintf(
                 __('%s ha iniciado una nueva garantía.', 'garantias-online-360vo'),
                 $initiator
+            ),
+        ];
+
+        $vehicle = self::vehicleLine($context);
+        if ($vehicle !== '') {
+            $lines[] = $vehicle;
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     * @param array<string, mixed> $actor
+     * @return array<int, string>
+     */
+    private static function formatGuaranteeInitiated(array $context, array $actor): array
+    {
+        $customer = trim((string) ($context['initiated_customer_name'] ?? ''));
+        if ($customer === '') {
+            $customer = trim((string) ($context['initiator_label'] ?? ($actor['name'] ?? '')));
+        }
+        if ($customer === '') {
+            $customer = __('Cliente sin identificar', 'garantias-online-360vo');
+        }
+
+        $state = trim((string) ($context['initiated_state_label'] ?? ''));
+        if ($state === '') {
+            $state = __('Sin finalizar', 'garantias-online-360vo');
+        }
+
+        $lines = [
+            sprintf(
+                __('%1$s ha iniciado una nueva contratación de garantía. Estado: %2$s.', 'garantias-online-360vo'),
+                $customer,
+                $state
             ),
         ];
 

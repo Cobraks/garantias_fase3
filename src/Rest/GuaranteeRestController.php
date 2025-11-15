@@ -1988,6 +1988,9 @@ class GuaranteeRestController
         $pending_payment_event   = null;
         $payment_method          = '';
         $previous_cobro          = 0;
+        $cliente                 = [];
+        $should_log_initiated    = false;
+        $initiated_context       = [];
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
@@ -2428,6 +2431,17 @@ class GuaranteeRestController
             }
         }
 
+        if (
+            $new_contract_state === 'sin_finalizar'
+            && $previous_contract_state !== 'sin_finalizar'
+        ) {
+            $should_log_initiated = true;
+            $initiated_context = [
+                'customer_name' => self::resolve_initiated_customer_name($post_id, $cliente),
+                'state_label'   => __('Sin finalizar', 'garantias-online-360vo'),
+            ];
+        }
+
         $vendor_meta = $post_id
             ? get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true)
             : 0;
@@ -2516,6 +2530,25 @@ class GuaranteeRestController
 
         // Clear cached list and detail responses so subsequent fetches reflect the update.
         self::clear_list_transients($post_id, null, true);
+
+        if ($should_log_initiated) {
+            $payload = [
+                'state'       => 'sin_finalizar',
+                'state_label' => $initiated_context['state_label'] ?? __('Sin finalizar', 'garantias-online-360vo'),
+            ];
+
+            $customer_name = $initiated_context['customer_name'] ?? '';
+            if ($customer_name !== '') {
+                $payload['customer_name'] = $customer_name;
+            }
+
+            GuaranteeLogger::log(
+                get_current_user_id(),
+                $post_id,
+                'initiated',
+                wp_json_encode($payload)
+            );
+        }
 
         $firma_sello = [
             'add_firma_sello' => false,
@@ -4975,6 +5008,81 @@ class GuaranteeRestController
 
         $current = current_time('Y-m-d');
         return is_string($current) ? $current : '';
+    }
+
+    private static function resolve_initiated_customer_name(int $post_id, array $cliente): string
+    {
+        $candidates = [];
+
+        if (! empty($cliente)) {
+            $fields = [
+                'nombre_y_apellidos',
+                'nombre_completo',
+                'nombre_apellidos',
+                'nombre_comprador',
+                'nombre',
+                'comprador_nombre',
+            ];
+            foreach ($fields as $field_key) {
+                if (! empty($cliente[$field_key])) {
+                    $candidates[] = $cliente[$field_key];
+                }
+            }
+        }
+
+        if ($post_id > 0) {
+            $meta_keys = [
+                'datos_cliente_nombre_y_apellidos',
+                'datos_cliente_nombre',
+                'datos_cliente_nombre_completo',
+                'datos_cliente_nombre_apellidos',
+                'nombre_comprador',
+                'cliente_nombre',
+            ];
+            foreach ($meta_keys as $meta_key) {
+                $value = get_post_meta($post_id, $meta_key, true);
+                if ($value !== '' && $value !== null) {
+                    $candidates[] = $value;
+                }
+            }
+
+            if (function_exists('get_field')) {
+                $cliente_field = get_field('datos_cliente', $post_id);
+                if (is_array($cliente_field) && ! empty($cliente_field)) {
+                    $candidates[] = $cliente_field;
+                }
+            }
+        }
+
+        $nested_keys = [
+            'nombre_y_apellidos',
+            'nombre_completo',
+            'nombre_apellidos',
+            'nombre',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                foreach ($nested_keys as $nested_key) {
+                    if (! empty($candidate[$nested_key])) {
+                        $value = sanitize_text_field((string) $candidate[$nested_key]);
+                        $value = trim($value);
+                        if ($value !== '' && $value !== '-') {
+                            return $value;
+                        }
+                    }
+                }
+                continue;
+            }
+
+            $value = sanitize_text_field((string) $candidate);
+            $value = trim($value);
+            if ($value !== '' && $value !== '-') {
+                return $value;
+            }
+        }
+
+        return '';
     }
 
     private static function resolve_sort_config(string $order_by, string $order): array

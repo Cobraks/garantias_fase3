@@ -2747,7 +2747,8 @@ const ADD_DOC_KEY = "add-document";
                         tbody.innerHTML = "";
                         resetMobileCards();
                         let appended = 0;
-                        for (const item of cache.data) {
+                        const snapshot = reorderPendingStartFirst(cache.data, { stable: true });
+                        for (const item of snapshot) {
                                 tbody.appendChild(renderRow(item));
                                 ensureDetailPreloaded(item);
                                 if (item && Object.prototype.hasOwnProperty.call(item, "id")) {
@@ -4935,6 +4936,12 @@ const ADD_DOC_KEY = "add-document";
                                 hastaDisplayRaw !== "-" &&
                                 desdeDisplayRaw !== "" &&
                                 hastaDisplayRaw !== "";
+                        const hasStartDate =
+                                typeof desdeIsoRaw === "string" &&
+                                desdeIsoRaw !== "" &&
+                                desdeIsoRaw !== "-" &&
+                                desdeIsoRaw !== "0000-00-00";
+                        const missingStartDate = !hasStartDate;
                         const canalVentaValueRaw =
                                 item.canal_venta && Object.prototype.hasOwnProperty.call(item.canal_venta, "value")
                                         ? item.canal_venta.value
@@ -5138,12 +5145,17 @@ const ADD_DOC_KEY = "add-document";
                                 concesionarioPersonal: item.detail?.concesionario_personal ?? "",
                                 ibanVendedor: item.detail?.iban_vendedor || "",
                                 transferIban: item.detail?.transfer_iban || "",
+                                missingStartDate,
+                                hasStartDate,
                         };
                 }
 
                 function createCardElement(view) {
                         const card = document.createElement("article");
                         card.className = "guarantee-card";
+                        if (view.missingStartDate) {
+                                card.classList.add("guarantee-card--pending-start");
+                        }
                         if (view.id) {
                                 card.dataset.id = view.id;
                         }
@@ -5246,6 +5258,12 @@ const ADD_DOC_KEY = "add-document";
                         const tr = document.createElement("tr");
                         tr.className = "guarantees-table__row";
                         tr.tabIndex = 0;
+                        if (view.missingStartDate) {
+                                tr.classList.add("guarantees-table__row--pending-start");
+                                tr.dataset.missingStart = "1";
+                        } else {
+                                tr.dataset.missingStart = "0";
+                        }
                         if (view.id) {
                                 tr.dataset.id = view.id;
                         }
@@ -6681,6 +6699,55 @@ const ADD_DOC_KEY = "add-document";
                         );
                 }
 
+                function isMissingStartDate(item) {
+                        if (!item || typeof item !== "object") {
+                                return true;
+                        }
+                        const raw = item.desde ?? item.detail?.desde ?? "";
+                        if (typeof raw === "string" && raw.trim() === "") {
+                                return true;
+                        }
+                        const formatted = formatDate(raw);
+                        const iso = typeof formatted?.iso === "string" ? formatted.iso : "";
+                        if (!iso || iso === "-" || iso === "0000-00-00") {
+                                return true;
+                        }
+                        return false;
+                }
+
+                function reorderPendingStartFirst(items, { stable = true } = {}) {
+                        if (!Array.isArray(items) || items.length <= 1) {
+                                return items;
+                        }
+
+                        if (!stable) {
+                                return items
+                                        .slice()
+                                        .sort((a, b) => {
+                                                const aMissing = isMissingStartDate(a);
+                                                const bMissing = isMissingStartDate(b);
+                                                if (aMissing === bMissing) {
+                                                        return 0;
+                                                }
+                                                return aMissing ? -1 : 1;
+                                        });
+                        }
+
+                        return items
+                                .map((item, index) => ({
+                                        item,
+                                        index,
+                                        missing: isMissingStartDate(item),
+                                }))
+                                .sort((a, b) => {
+                                        if (a.missing === b.missing) {
+                                                return a.index - b.index;
+                                        }
+                                        return a.missing ? -1 : 1;
+                                })
+                                .map((entry) => entry.item);
+                }
+
                 async function loadPage(page = 1, options = {}) {
                         const forceReload = Boolean(options.forceReload);
                         if (forceReload) {
@@ -6829,18 +6896,23 @@ const ADD_DOC_KEY = "add-document";
 				totalPages = +res.headers.get("X-WP-TotalPages") || 1;
                                 const { data } = await res.json();
 
+                                const normalizedData =
+                                        page === 1
+                                                ? reorderPendingStartFirst(data)
+                                                : data;
+
                                 const esNuevaBusqueda = page === 1;
                                 const now = Date.now();
                                 if (esNuevaBusqueda) {
                                         listCache.set(cacheKey, {
-                                                data: data.slice(),
+                                                data: normalizedData.slice(),
                                                 totalPages,
                                                 totalPosts,
                                                 fetchedAt: now,
                                         });
                                 } else if (listCache.has(cacheKey)) {
                                         const cache = listCache.get(cacheKey);
-                                        cache.data.push(...data);
+                                        cache.data.push(...normalizedData);
                                         cache.totalPages = totalPages;
                                         cache.totalPosts = totalPosts;
                                         cache.fetchedAt = now;
@@ -6852,20 +6924,24 @@ const ADD_DOC_KEY = "add-document";
                                         resetMobileCards();
                                         previousRowCount = 0;
                                         clearSelectionAndDetail({ preserveQuery: pendingMatSelection }); // Limpiar selección SIEMPRE que se cambia el listado (así evitas seleccionados fantasmas)
-					if (data.length > 0) {
-						listContainer.scrollTop = 0;
-						// Solo guardamos resultados válidos si búsqueda >= 3 caracteres y pocos resultados
-						if (search.length >= 3 && data.length > 0 && data.length <= 20) {
-							lastValidQuery = search;
-							lastValidResults = data.slice();
-						}
-					}
-				}
-				currentPage = page;
-				hasMore = currentPage < totalPages;
+                                        if (normalizedData.length > 0) {
+                                                listContainer.scrollTop = 0;
+                                                // Solo guardamos resultados válidos si búsqueda >= 3 caracteres y pocos resultados
+                                                if (
+                                                        search.length >= 3 &&
+                                                        normalizedData.length > 0 &&
+                                                        normalizedData.length <= 20
+                                                ) {
+                                                        lastValidQuery = search;
+                                                        lastValidResults = normalizedData.slice();
+                                                }
+                                        }
+                                }
+                                currentPage = page;
+                                hasMore = currentPage < totalPages;
 
-                                if (data.length > 0) {
-                                        for (const item of data) {
+                                if (normalizedData.length > 0) {
+                                        for (const item of normalizedData) {
                                                 ensureDetailPreloaded(item);
                                                 if (loadedIds.has(item.id)) continue;
                                                 tbody.appendChild(renderRow(item));
@@ -6875,7 +6951,7 @@ const ADD_DOC_KEY = "add-document";
                                         await trySelectInitialMatricula();
                                         setResultMessage("");
                                         // AUTODETAIL: Si hay **exactamente 1 resultado**, mostrar el panel sin click
-                                        if (data.length === 1 && search && search.length > 0) {
+                                        if (normalizedData.length === 1 && search && search.length > 0) {
                                                 const row = tbody.querySelector(".guarantees-table__row");
                                                 if (row && !row.classList.contains("selected")) {
                                                         try {
