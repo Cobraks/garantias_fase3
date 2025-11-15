@@ -21,6 +21,8 @@ const CHANNEL_NORMALIZATION = {
         go_profesional: "profesional",
         particular: "particular",
         go_particular: "particular",
+        individual: "particular",
+        go_individual: "particular",
         gestoria: "gestoria",
         go_gestoria: "gestoria",
 };
@@ -76,11 +78,13 @@ function getSummaryText(fieldId) {
 	// === MODALIDAD ahora muestra Canal de venta ===
         if (fieldId === "modalidad") {
                 const userRole = getUserRole() || "user";
+                const normalizedRole = String(userRole).toLowerCase();
                 let canalText = "";
                 if (
-                        userRole === "admin" ||
-                        userRole === "go_garantias" ||
-                        userRole === "go_director_comercial"
+                        normalizedRole === "admin" ||
+                        normalizedRole === "administrator" ||
+                        normalizedRole === "go_garantias" ||
+                        normalizedRole === "go_director_comercial"
                 ) {
                         const canalSelect = document.getElementById("canal-venta");
                         if (canalSelect && canalSelect.value) {
@@ -89,11 +93,22 @@ function getSummaryText(fieldId) {
                         } else {
                                 canalText = "(no seleccionado)";
                         }
-                } else if (userRole === "go_profesional" || userRole === "profesional") {
+                } else if (
+                        normalizedRole === "go_profesional" ||
+                        normalizedRole === "profesional"
+                ) {
                         canalText = getProfesionalChannelLabel();
-                } else if (userRole === "go_particular" || userRole === "particular") {
+                } else if (
+                        normalizedRole === "go_particular" ||
+                        normalizedRole === "particular" ||
+                        normalizedRole === "go_individual" ||
+                        normalizedRole === "individual"
+                ) {
                         canalText = "Particular";
-                } else if (userRole === "comercial" || userRole === "go_comercial") {
+                } else if (
+                        normalizedRole === "comercial" ||
+                        normalizedRole === "go_comercial"
+                ) {
                         canalText = "Profesional";
                 } else {
                         canalText = "-";
@@ -347,10 +362,13 @@ function updateSummaryHeader() {
         if (canalP) canalP.style.display = "none";
         if (vendedorP) vendedorP.style.display = "none";
 
+        const normalizedRole = String(userRole).toLowerCase();
+
         if (
-                userRole === "admin" ||
-                userRole === "go_garantias" ||
-                userRole === "go_director_comercial"
+                normalizedRole === "admin" ||
+                normalizedRole === "administrator" ||
+                normalizedRole === "go_garantias" ||
+                normalizedRole === "go_director_comercial"
         ) {
                 if (canalP) canalP.style.display = "";
                 const canalSelect = document.getElementById("canal-venta");
@@ -382,26 +400,38 @@ function updateSummaryHeader() {
                         }
                 }
                 if (vendedorSpan) vendedorSpan.textContent = mostrarVendedor ? vendedorLabel : "";
-} else if (userRole === "go_profesional" || userRole === "profesional") {
-        if (canalP) canalP.style.display = "";
-        if (vendedorP) vendedorP.style.display = "";
-        if (canalSpan) canalSpan.textContent = getProfesionalChannelLabel();
-        if (vendedorSpan) vendedorSpan.textContent = currentCompanyName || "(no seleccionado)";
-} else if (userRole === "go_particular" || userRole === "particular") {
-        if (canalP) canalP.style.display = "";
-        if (vendedorP) vendedorP.style.display = "none";
-        if (canalSpan) canalSpan.textContent = "Particular";
-        if (vendedorSpan) vendedorSpan.textContent = "";
-} else if (userRole === "comercial" || userRole === "go_comercial") {
-        if (canalP) canalP.style.display = "";
-        if (vendedorP) vendedorP.style.display = "none";
-        if (canalSpan) canalSpan.textContent = "Profesional";
-        if (vendedorSpan) vendedorSpan.textContent = "";
-} else {
-               // Usuario normal, no mostrar nada
-               if (canalSpan) canalSpan.textContent = "-";
-               if (vendedorSpan) vendedorSpan.textContent = "-";
-       }
+        } else if (
+                normalizedRole === "go_profesional" ||
+                normalizedRole === "profesional"
+        ) {
+                if (canalP) canalP.style.display = "";
+                if (vendedorP) vendedorP.style.display = "";
+                if (canalSpan) canalSpan.textContent = getProfesionalChannelLabel();
+                if (vendedorSpan)
+                        vendedorSpan.textContent = currentCompanyName || "(no seleccionado)";
+        } else if (
+                normalizedRole === "go_particular" ||
+                normalizedRole === "particular" ||
+                normalizedRole === "go_individual" ||
+                normalizedRole === "individual"
+        ) {
+                if (canalP) canalP.style.display = "";
+                if (vendedorP) vendedorP.style.display = "none";
+                if (canalSpan) canalSpan.textContent = "Particular";
+                if (vendedorSpan) vendedorSpan.textContent = "";
+        } else if (
+                normalizedRole === "comercial" ||
+                normalizedRole === "go_comercial"
+        ) {
+                if (canalP) canalP.style.display = "";
+                if (vendedorP) vendedorP.style.display = "none";
+                if (canalSpan) canalSpan.textContent = "Profesional";
+                if (vendedorSpan) vendedorSpan.textContent = "";
+        } else {
+                // Usuario normal, no mostrar nada
+                if (canalSpan) canalSpan.textContent = "-";
+                if (vendedorSpan) vendedorSpan.textContent = "-";
+        }
 }
 
 // Refresca el resumen

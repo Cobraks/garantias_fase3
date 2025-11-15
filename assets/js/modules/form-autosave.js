@@ -24,6 +24,8 @@ const CHANNEL_NORMALIZATION = {
         go_profesional: "profesional",
         particular: "particular",
         go_particular: "particular",
+        individual: "particular",
+        go_individual: "particular",
         gestoria: "gestoria",
         go_gestoria: "gestoria",
 };
@@ -1060,50 +1062,266 @@ export default function initAutosave() {
 
                         const canalSelect = document.getElementById("canal-venta");
                         const usuarioSelect = document.getElementById("usuario-rol");
-                        const resolveChannelSelectValue = (raw) => {
-                                if (!raw) return "";
+                        const normalizeChannelCandidate = (raw) => {
+                                if (raw === null || typeof raw === "undefined") return "";
+                                if (typeof raw === "object") {
+                                        if (typeof raw.value !== "undefined") {
+                                                return normalizeChannelCandidate(raw.value);
+                                        }
+                                        if (typeof raw.label !== "undefined") {
+                                                return normalizeChannelCandidate(raw.label);
+                                        }
+                                }
                                 const candidate = typeof raw === "string" ? raw : String(raw || "");
-                                if (!candidate) {
-                                        return "";
-                                }
+                                if (!candidate) return "";
                                 const trimmed = candidate.trim();
-                                if (!trimmed) {
-                                        return "";
-                                }
+                                if (!trimmed) return "";
                                 if (trimmed.startsWith("go_")) {
-                                        return trimmed;
+                                        const normalizedPrefixed = normalizeChannel(trimmed);
+                                        if (normalizedPrefixed) {
+                                                return normalizedPrefixed;
+                                        }
                                 }
                                 const normalized = normalizeChannel(trimmed);
-                                return normalized ? `go_${normalized}` : "";
+                                if (normalized) {
+                                        return normalized;
+                                }
+                                const withoutParens = trimmed.replace(/\(.*?\)/g, " ").trim();
+                                if (withoutParens && withoutParens !== trimmed) {
+                                        const normalizedNoParens = normalizeChannel(withoutParens);
+                                        if (normalizedNoParens) {
+                                                return normalizedNoParens;
+                                        }
+                                }
+                                if (/particular|individual/i.test(trimmed)) {
+                                        return "particular";
+                                }
+                                if (/profesional/i.test(trimmed)) {
+                                        return "profesional";
+                                }
+                                if (/gestor[ií]a|gestor/i.test(trimmed)) {
+                                        return "gestoria";
+                                }
+                                return "";
+                        };
+                        const resolveChannelSelectValue = (raw) => {
+                                const slug = normalizeChannelCandidate(raw);
+                                return slug ? `go_${slug}` : "";
+                        };
+                        const parseIdCandidate = (candidate) => {
+                                if (candidate === null || typeof candidate === "undefined") return "";
+                                if (typeof candidate === "object") {
+                                        if (typeof candidate.ID !== "undefined") {
+                                                return parseIdCandidate(candidate.ID);
+                                        }
+                                        if (typeof candidate.id !== "undefined") {
+                                                return parseIdCandidate(candidate.id);
+                                        }
+                                }
+                                const numberValue = Number(candidate);
+                                if (!Number.isFinite(numberValue)) return "";
+                                if (numberValue <= 0) return "";
+                                return String(Math.trunc(numberValue));
+                        };
+                        const pickFirstId = (candidates) => {
+                                for (const candidate of candidates) {
+                                        const parsed = parseIdCandidate(candidate);
+                                        if (parsed) return parsed;
+                                }
+                                return "";
+                        };
+                        const normalizeLabelCandidate = (value) => {
+                                if (!value) return "";
+                                if (typeof value === "string") {
+                                        return value.trim();
+                                }
+                                if (typeof value === "object") {
+                                        if (typeof value.label === "string") {
+                                                return value.label.trim();
+                                        }
+                                        if (typeof value.name === "string") {
+                                                return value.name.trim();
+                                        }
+                                        if (typeof value.display_name === "string") {
+                                                return value.display_name.trim();
+                                        }
+                                        if (typeof value.nombre === "string") {
+                                                return value.nombre.trim();
+                                        }
+                                }
+                                return "";
+                        };
+                        const pickFirstLabel = (candidates) => {
+                                for (const candidate of candidates) {
+                                        const normalizedLabel = normalizeLabelCandidate(candidate);
+                                        if (normalizedLabel) return normalizedLabel;
+                                }
+                                return "";
                         };
 
-                        let pendingVendorId = "";
-                        if (usuarioSelect && data.vendor_id) {
-                                pendingVendorId = String(data.vendor_id);
-                                usuarioSelect.dataset.pendingValue = pendingVendorId;
-                                const pendingVendorLabel = [
+                        const channelCandidates = [
+                                data.canal_venta_value,
+                                data.canal_venta,
+                                data.channel,
+                                data?.garantia_contratada?.canal_venta,
+                                data.detail?.canal_venta_value,
+                                data.detail?.canal_venta,
+                                data.canal_venta_summary,
+                                data.vendor_company_type_value,
+                                data.vendor_company_type_label,
+                                data.detail?.vendor_company_type_value,
+                                data.detail?.vendor_company_type_label,
+                        ];
+                        let channelSlug = "";
+                        for (const candidate of channelCandidates) {
+                                const slug = normalizeChannelCandidate(candidate);
+                                if (slug) {
+                                        channelSlug = slug;
+                                        break;
+                                }
+                        }
+                        let hasParticularSignal = false;
+                        if (!channelSlug) {
+                                const particularSignals = [
+                                        data.detail?.nombre_comprador,
+                                        data.nombre_comprador,
+                                        data.detail?.datos_cliente_nombre_y_apellidos,
+                                        data.detail?.datos_cliente?.nombre_y_apellidos,
+                                        data.detail?.datos_cliente?.nombre,
+                                        data.detail?.cliente?.nombre,
+                                        data.detail?.cliente?.nombre_y_apellidos,
+                                        data.detail?.cliente?.nombre_completo,
+                                        data.customer_name,
+                                        data.customer?.nombre,
+                                        data.customer?.nombre_y_apellidos,
+                                        data.customer?.nombre_completo,
+                                        data.cliente?.nombre,
+                                        data.cliente?.nombre_y_apellidos,
+                                        data.cliente?.nombre_completo,
+                                ];
+                                hasParticularSignal = particularSignals.some((value) => {
+                                        if (typeof value !== "string") return false;
+                                        const trimmed = value.trim();
+                                        return trimmed !== "" && trimmed !== "-" && trimmed !== "--";
+                                });
+                                if (hasParticularSignal) {
+                                        channelSlug = "particular";
+                                }
+                        }
+                        const vendorIdCandidates = [
+                                data.vendor_id,
+                                data.concesionario_empresa_profesional,
+                                data.detail?.vendor_id,
+                                data.vendor?.id,
+                                data.vendor?.ID,
+                                data?.garantia_contratada?.concesionario_empresa_profesional,
+                        ];
+                        const customerIdCandidates = [
+                                data.customer_id,
+                                data.cliente_id,
+                                data.cliente?.id,
+                                data.cliente?.ID,
+                                data.customer?.id,
+                                data.customer?.ID,
+                                data.detail?.cliente_user_id,
+                                data.detail?.cliente?.id,
+                                data.detail?.cliente?.ID,
+                                data.detail?.comprador?.id,
+                                data.detail?.comprador_id,
+                                data.detail?.datos_cliente?.user_id,
+                        ];
+                        const firstVendorId = pickFirstId(vendorIdCandidates);
+                        const firstCustomerId = pickFirstId(customerIdCandidates);
+                        if (!channelSlug) {
+                                const detailChannelCandidate = normalizeChannelCandidate(
+                                        data.detail?.cliente?.tipo_cliente ||
+                                                data.detail?.cliente?.tipo ||
+                                                data.detail?.customer_type ||
+                                                data.customer?.tipo ||
+                                                data.customer?.tipo_cliente ||
+                                                data.cliente?.tipo ||
+                                                data.cliente?.tipo_cliente,
+                                );
+                                if (detailChannelCandidate) {
+                                        channelSlug = detailChannelCandidate;
+                                }
+                        }
+                        if (!channelSlug) {
+                                if (firstCustomerId && !firstVendorId) {
+                                        channelSlug = "particular";
+                                } else if (firstVendorId && !firstCustomerId) {
+                                        channelSlug = "profesional";
+                                } else if (hasParticularSignal && firstCustomerId) {
+                                        channelSlug = "particular";
+                                }
+                        }
+
+                        let pendingSelectValue = "";
+                        let pendingSelectLabel = "";
+                        let pendingSelectMode = "vendor";
+
+                        if (usuarioSelect) {
+                                const vendorLabelCandidates = [
                                         data.vendor_name,
                                         data.concesionario,
                                         data.concesionario_personal,
-                                ]
-                                        .map((value) =>
-                                                typeof value === "string"
-                                                        ? value.trim()
-                                                        : ""
-                                        )
-                                        .find((value) => value !== "");
-                                if (pendingVendorLabel) {
-                                        usuarioSelect.dataset.displayLabel = pendingVendorLabel;
+                                        data.vendor_company?.name,
+                                        data.detail?.vendor_name,
+                                        data.detail?.concesionario_personal,
+                                ];
+                                const customerLabelCandidates = [
+                                        data.detail?.nombre_comprador,
+                                        data.detail?.datos_cliente_nombre_y_apellidos,
+                                        data.detail?.datos_cliente?.nombre_y_apellidos,
+                                        data.nombre_comprador,
+                                        data.cliente?.nombre_y_apellidos,
+                                        data.cliente?.nombre,
+                                        data.customer?.nombre_y_apellidos,
+                                        data.customer?.nombre_completo,
+                                        data.customer_name,
+                                ];
+
+                                if (channelSlug === "particular") {
+                                        pendingSelectMode = "customer";
+                                } else if (!channelSlug) {
+                                        if (firstCustomerId && !firstVendorId) {
+                                                pendingSelectMode = "customer";
+                                                channelSlug = "particular";
+                                        } else if (firstCustomerId && hasParticularSignal) {
+                                                pendingSelectMode = "customer";
+                                        }
                                 }
-                                const existingOption = Array.from(usuarioSelect.options || []).find(
-                                        (opt) => opt.value === pendingVendorId,
-                                );
-                                if (existingOption) {
-                                        existingOption.selected = true;
-                                        usuarioSelect.value = pendingVendorId;
-                                        usuarioSelect.dispatchEvent(
-                                                new Event("change", { bubbles: true })
+
+                                if (pendingSelectMode === "customer") {
+                                        pendingSelectValue = firstCustomerId;
+                                        pendingSelectLabel = pickFirstLabel(customerLabelCandidates);
+                                } else {
+                                        pendingSelectValue = firstVendorId;
+                                        pendingSelectLabel = pickFirstLabel(vendorLabelCandidates);
+                                }
+
+                                if (pendingSelectValue) {
+                                        usuarioSelect.dataset.pendingValue = pendingSelectValue;
+                                } else {
+                                        delete usuarioSelect.dataset.pendingValue;
+                                }
+                                if (pendingSelectLabel) {
+                                        usuarioSelect.dataset.displayLabel = pendingSelectLabel;
+                                } else {
+                                        delete usuarioSelect.dataset.displayLabel;
+                                }
+
+                                if (pendingSelectValue) {
+                                        const existingOption = Array.from(usuarioSelect.options || []).find(
+                                                (opt) => opt.value === pendingSelectValue,
                                         );
+                                        if (existingOption) {
+                                                existingOption.selected = true;
+                                                usuarioSelect.value = pendingSelectValue;
+                                                usuarioSelect.dispatchEvent(
+                                                        new Event("change", { bubbles: true })
+                                                );
+                                        }
                                 }
                         }
 
@@ -1113,8 +1331,40 @@ export default function initAutosave() {
                                         data.canal_venta ||
                                         data.channel ||
                                         "";
-                                let channelValue = resolveChannelSelectValue(channelRaw);
-                                if (!channelValue && pendingVendorId) {
+                                let channelValue = "";
+                                if (channelSlug) {
+                                        channelValue = `go_${channelSlug}`;
+                                } else {
+                                        channelValue = resolveChannelSelectValue(channelRaw);
+                                }
+                                if (!channelValue) {
+                                        const summaryChannel = normalizeChannelCandidate(data.canal_venta_summary);
+                                        if (summaryChannel) {
+                                                channelValue = `go_${summaryChannel}`;
+                                        }
+                                }
+                                if (!channelValue) {
+                                        const vendorTypeChannel = normalizeChannelCandidate(
+                                                data.vendor_company_type_value ||
+                                                        data.vendor_company_type_label ||
+                                                        data.detail?.vendor_company_type_value ||
+                                                        data.detail?.vendor_company_type_label,
+                                        );
+                                        if (vendorTypeChannel) {
+                                                channelValue = `go_${vendorTypeChannel}`;
+                                        }
+                                }
+                                if (!channelValue && !channelSlug) {
+                                        if (pendingSelectMode === "customer" && firstCustomerId) {
+                                                channelValue = "go_particular";
+                                        } else if (pendingSelectMode === "vendor" && firstVendorId) {
+                                                channelValue = "go_profesional";
+                                        }
+                                }
+                                if (!channelValue && channelSlug === "particular") {
+                                        channelValue = "go_particular";
+                                }
+                                if (!channelValue && channelSlug === "profesional") {
                                         channelValue = "go_profesional";
                                 }
                                 if (channelValue) {
@@ -1122,7 +1372,7 @@ export default function initAutosave() {
                                         canalSelect.dispatchEvent(
                                                 new Event("change", { bubbles: true })
                                         );
-                                } else if (pendingVendorId) {
+                                } else if (pendingSelectValue) {
                                         canalSelect.dispatchEvent(
                                                 new Event("change", { bubbles: true })
                                         );
@@ -1756,6 +2006,39 @@ export default function initAutosave() {
                         }
                 }
 
+                if (garantia.precio === undefined || garantia.precio === "") {
+                        const selectedPlan = document.querySelector(
+                                ".form__plan.selected"
+                        );
+                        if (selectedPlan) {
+                                const priceCandidates = [
+                                        selectedPlan.querySelector(
+                                                ".plan-price-value"
+                                        ),
+                                        selectedPlan.querySelector(
+                                                ".plan-price-value-noiva"
+                                        ),
+                                ];
+                                for (const candidate of priceCandidates) {
+                                        if (
+                                                !candidate ||
+                                                getComputedStyle(candidate)
+                                                        .display === "none"
+                                        ) {
+                                                continue;
+                                        }
+                                        const priceText = candidate.textContent
+                                                ?.trim();
+                                        if (priceText) {
+                                                garantia.precio = normalizePrice(
+                                                        priceText
+                                                );
+                                                break;
+                                        }
+                                }
+                        }
+                }
+
                 const normalizedRole = String(userRole).toLowerCase();
                 if (
                         normalizedRole === "admin" ||
@@ -1785,8 +2068,17 @@ export default function initAutosave() {
                         if (currentId) {
                                 garantia.concesionario_empresa_profesional = currentId;
                         }
-               } else if (normalizedRole === "go_particular" || normalizedRole === "particular") {
+               } else if (
+                       normalizedRole === "go_particular" ||
+                       normalizedRole === "particular" ||
+                       normalizedRole === "go_individual" ||
+                       normalizedRole === "individual"
+               ) {
                         garantia.canal_venta = "particular";
+                        const currentId = getCurrentUserId();
+                        if (currentId) {
+                                garantia.concesionario_empresa_profesional = currentId;
+                        }
                 }
 
                 if (Object.keys(garantia).length) {

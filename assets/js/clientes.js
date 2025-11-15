@@ -177,6 +177,10 @@
             concesionario: 'Concesionario Oficial',
             'concesionario-oficial': 'Concesionario Oficial',
             compraventa: 'Compraventa',
+            individual: 'Particular',
+            particular: 'Particular',
+            go_particular: 'Particular',
+            go_individual: 'Particular',
         };
 
         function normalizeSalesChannelLabel(channel) {
@@ -201,7 +205,7 @@
             }
 
             if (rawSlug !== '') {
-                return rawSlug;
+                return SALES_CHANNEL_LABEL_MAP[normalizedSlug] || rawSlug;
             }
 
             return '';
