@@ -17,6 +17,7 @@ use function get_current_user_id;
 use function get_transient;
 use function home_url;
 use function is_user_logged_in;
+use function sanitize_key;
 use function set_transient;
 use function time;
 
@@ -28,6 +29,13 @@ class ClientRestController
 {
     public const NAMESPACE = 'go/v1';
     public const REST_BASE = 'clientes';
+
+    private const QUICK_FILTERS = [
+        'pendiente_pago',
+        'sin_finalizar',
+        'sin_comercial',
+        'sin_ofertas',
+    ];
 
     /**
      * @var array<int,int>|null
@@ -47,6 +55,31 @@ class ClientRestController
      * @var array<int,array{status:string,timestamp:int}>
      */
     private static array $presence_cache = [];
+
+    /**
+     * @var array<string,array<int,int>>
+     */
+    private static array $guarantee_state_client_cache = [];
+
+    /**
+     * @var array<int,int>|null
+     */
+    private static ?array $clients_with_commercial_assignments = null;
+
+    /**
+     * @var array<int,int>|null
+     */
+    private static ?array $clients_with_active_offers = null;
+
+    /**
+     * @var array<int,array<int,array<string,mixed>>>
+     */
+    private static array $active_offers_cache = [];
+
+    /**
+     * @var array<int,int>|null
+     */
+    private static ?array $all_client_ids = null;
 
     public static function register_routes(): void
     {
@@ -71,6 +104,9 @@ class ClientRestController
                             'sanitize_callback' => 'sanitize_text_field',
                         ],
                         'channel' => [
+                            'sanitize_callback' => 'sanitize_key',
+                        ],
+                        'quick_filter' => [
                             'sanitize_callback' => 'sanitize_key',
                         ],
                     ],
@@ -498,6 +534,8 @@ class ClientRestController
 
         $desired_snapshot = self::format_offers_for_log($normalized);
         $result = update_field('ofertas_y_descuentos', ['ofertas' => $normalized], 'user_' . $user_id);
+        self::$clients_with_active_offers = null;
+        self::$active_offers_cache      = [];
 
         if ($result === false) {
             $stored_snapshot = self::format_offers_for_log(self::collect_user_offers($user_id));
@@ -1122,6 +1160,34 @@ class ClientRestController
             }
         }
 
+        $quick_filter = self::normalize_quick_filter($request->get_param('quick_filter'));
+
+        if ($quick_filter !== '') {
+            if ($quick_filter === 'pendiente_pago' || $quick_filter === 'sin_finalizar') {
+                $states = $quick_filter === 'pendiente_pago' ? ['pendiente_pago'] : ['sin_finalizar'];
+                $include_ids = self::get_client_ids_with_guarantee_states($states);
+                if (empty($include_ids)) {
+                    return self::build_empty_clients_response($page, $per_page, $quick_filter);
+                }
+                $args['include'] = $include_ids;
+                $args['orderby'] = 'include';
+            } elseif ($quick_filter === 'sin_comercial') {
+                $assigned = self::get_client_ids_with_commercial_assignments();
+                if (! empty($assigned)) {
+                    $args['exclude'] = $assigned;
+                }
+            } elseif ($quick_filter === 'sin_ofertas') {
+                $active_offers = self::get_client_ids_with_active_offers();
+                if (! empty($active_offers)) {
+                    $args['exclude'] = $active_offers;
+                }
+            }
+        }
+
+        if (isset($args['include']) && empty($args['include'])) {
+            return self::build_empty_clients_response($page, $per_page, $quick_filter);
+        }
+
         $query   = new WP_User_Query($args);
         $results = $query->get_results();
         $items   = [];
@@ -1146,6 +1212,8 @@ class ClientRestController
             'filters'     => [
                 'channels' => self::get_channel_filters(),
             ],
+            'quick_actions' => self::get_quick_filter_counts(),
+            'quick_filter' => $quick_filter,
         ];
 
         return new WP_REST_Response($response, 200);
@@ -1294,6 +1362,7 @@ class ClientRestController
         update_user_meta($client_id, 'ajustes_usuarios_comercial_asignado', $ids);
 
         self::reset_commercial_client_counts();
+        self::$clients_with_commercial_assignments = null;
 
         $sorted_previous = $previous_assignments;
         $sorted_current  = $ids;
@@ -1981,7 +2050,7 @@ class ClientRestController
         return $formatted;
     }
 
-    private static function get_supported_roles(): array
+    public static function get_supported_roles(): array
     {
         return ['go_profesional', 'go_particular', 'go_gestoria'];
     }
@@ -2376,17 +2445,30 @@ class ClientRestController
 
     private static function get_active_offers(int $user_id): array
     {
-        if ($user_id <= 0 || ! function_exists('get_field')) {
+        if ($user_id <= 0) {
             return [];
+        }
+
+        if (isset(self::$active_offers_cache[$user_id])) {
+            return self::$active_offers_cache[$user_id];
+        }
+
+        $offers = [];
+
+        if (! function_exists('get_field')) {
+            self::$active_offers_cache[$user_id] = $offers;
+
+            return $offers;
         }
 
         $group = get_field('ofertas_y_descuentos', 'user_' . $user_id);
         if (empty($group) || ! is_array($group) || empty($group['ofertas']) || ! is_array($group['ofertas'])) {
-            return [];
+            self::$active_offers_cache[$user_id] = $offers;
+
+            return $offers;
         }
 
-        $now    = current_time('timestamp');
-        $offers = [];
+        $now = current_time('timestamp');
 
         foreach ($group['ofertas'] as $offer) {
             if (! is_array($offer)) {
@@ -2445,6 +2527,8 @@ class ClientRestController
                 'name'     => $custom_name,
             ];
         }
+
+        self::$active_offers_cache[$user_id] = $offers;
 
         return $offers;
     }
@@ -2711,5 +2795,276 @@ class ClientRestController
         ]);
 
         return isset($query->found_posts) ? (int) $query->found_posts : 0;
+    }
+
+    private static function build_empty_clients_response(int $page, int $per_page, string $quick_filter = ''): WP_REST_Response
+    {
+        return new WP_REST_Response([
+            'page'        => $page,
+            'per_page'    => $per_page,
+            'total'       => 0,
+            'total_pages' => 0,
+            'items'       => [],
+            'filters'     => [
+                'channels' => self::get_channel_filters(),
+            ],
+            'quick_actions' => self::get_quick_filter_counts(),
+            'quick_filter' => $quick_filter,
+        ], 200);
+    }
+
+    private static function get_quick_filter_counts(): array
+    {
+        $client_ids = self::get_all_client_ids();
+        $client_lookup = [];
+
+        foreach ($client_ids as $client_id) {
+            $client_lookup[(int) $client_id] = true;
+        }
+
+        $total_clients = count($client_ids);
+
+        $pending_payment = self::count_ids_in_lookup(
+            self::get_client_ids_with_guarantee_states(['pendiente_pago']),
+            $client_lookup
+        );
+
+        $drafts = self::count_ids_in_lookup(
+            self::get_client_ids_with_guarantee_states(['sin_finalizar']),
+            $client_lookup
+        );
+
+        $assigned_commercials = self::count_ids_in_lookup(
+            self::get_client_ids_with_commercial_assignments(),
+            $client_lookup
+        );
+
+        $active_offers = self::count_ids_in_lookup(
+            self::get_client_ids_with_active_offers(),
+            $client_lookup
+        );
+
+        return [
+            'pendiente_pago' => $pending_payment,
+            'sin_finalizar'  => $drafts,
+            'sin_comercial'  => max(0, $total_clients - $assigned_commercials),
+            'sin_ofertas'    => max(0, $total_clients - $active_offers),
+        ];
+    }
+
+    private static function get_all_client_ids(): array
+    {
+        if (is_array(self::$all_client_ids)) {
+            return self::$all_client_ids;
+        }
+
+        $query = new WP_User_Query([
+            'role__in' => self::get_supported_roles(),
+            'fields'   => 'ID',
+            'number'   => -1,
+            'orderby'  => 'ID',
+            'order'    => 'ASC',
+        ]);
+
+        $results = $query->get_results();
+        $ids = [];
+
+        if (is_array($results)) {
+            foreach ($results as $candidate) {
+                $user_id = (int) $candidate;
+                if ($user_id > 0) {
+                    $ids[$user_id] = $user_id;
+                }
+            }
+        }
+
+        self::$all_client_ids = array_values($ids);
+
+        return self::$all_client_ids;
+    }
+
+    /**
+     * @param array<int|string> $ids
+     * @param array<int,bool>   $lookup
+     */
+    private static function count_ids_in_lookup(array $ids, array $lookup): int
+    {
+        if (empty($lookup) || empty($ids)) {
+            return 0;
+        }
+
+        $count = 0;
+
+        foreach ($ids as $value) {
+            $id = (int) $value;
+            if ($id > 0 && isset($lookup[$id])) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    private static function normalize_quick_filter($value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $candidate = sanitize_key($value);
+
+        return in_array($candidate, self::QUICK_FILTERS, true) ? $candidate : '';
+    }
+
+    private static function get_client_ids_with_guarantee_states(array $states): array
+    {
+        $states = array_values(array_filter(array_map('sanitize_key', $states)));
+        if (empty($states)) {
+            return [];
+        }
+
+        $cache_key = implode('|', $states);
+        if (isset(self::$guarantee_state_client_cache[$cache_key])) {
+            return self::$guarantee_state_client_cache[$cache_key];
+        }
+
+        global $wpdb;
+
+        if (! isset($wpdb->postmeta, $wpdb->posts)) {
+            self::$guarantee_state_client_cache[$cache_key] = [];
+
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($states), '%s'));
+        $sql = "
+            SELECT DISTINCT client_meta.meta_value
+            FROM {$wpdb->postmeta} AS state_meta
+            INNER JOIN {$wpdb->postmeta} AS client_meta
+                ON client_meta.post_id = state_meta.post_id
+            INNER JOIN {$wpdb->posts} AS posts
+                ON posts.ID = state_meta.post_id
+            WHERE posts.post_type = %s
+                AND state_meta.meta_key = 'estado_garantia_estado_contratacion'
+                AND client_meta.meta_key = 'garantia_contratada_concesionario_empresa_profesional'
+                AND state_meta.meta_value IN ($placeholders)
+        ";
+
+        $prepared = $wpdb->prepare($sql, array_merge([GuaranteeCPT::POST_TYPE], $states));
+        $raw_ids  = $wpdb->get_col($prepared);
+
+        $normalized = [];
+        if (is_array($raw_ids)) {
+            foreach ($raw_ids as $value) {
+                $id = (int) $value;
+                if ($id > 0) {
+                    $normalized[$id] = $id;
+                }
+            }
+        }
+
+        self::$guarantee_state_client_cache[$cache_key] = array_values($normalized);
+
+        return self::$guarantee_state_client_cache[$cache_key];
+    }
+
+    private static function get_client_ids_with_commercial_assignments(): array
+    {
+        if (is_array(self::$clients_with_commercial_assignments)) {
+            return self::$clients_with_commercial_assignments;
+        }
+
+        global $wpdb;
+
+        if (! isset($wpdb->usermeta)) {
+            self::$clients_with_commercial_assignments = [];
+
+            return [];
+        }
+
+        $meta_key = 'ajustes_usuarios_comercial_asignado';
+        $rows     = $wpdb->get_results(
+            $wpdb->prepare("SELECT user_id, meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s", $meta_key),
+            ARRAY_A
+        );
+
+        $ids = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $user_id = isset($row['user_id']) ? (int) $row['user_id'] : 0;
+                if ($user_id <= 0) {
+                    continue;
+                }
+
+                $value = maybe_unserialize($row['meta_value']);
+
+                if (is_array($value)) {
+                    foreach ($value as $candidate) {
+                        if ((int) $candidate > 0) {
+                            $ids[$user_id] = $user_id;
+                            break;
+                        }
+                    }
+                    continue;
+                }
+
+                if ((int) $value > 0) {
+                    $ids[$user_id] = $user_id;
+                }
+            }
+        }
+
+        self::$clients_with_commercial_assignments = array_values($ids);
+
+        return self::$clients_with_commercial_assignments;
+    }
+
+    private static function get_client_ids_with_active_offers(): array
+    {
+        if (is_array(self::$clients_with_active_offers)) {
+            return self::$clients_with_active_offers;
+        }
+
+        $client_ids = self::get_all_client_ids();
+
+        if (empty($client_ids)) {
+            self::$clients_with_active_offers = [];
+
+            return [];
+        }
+
+        $ids = [];
+
+        foreach ($client_ids as $client_id) {
+            $user_id = (int) $client_id;
+            if ($user_id <= 0) {
+                continue;
+            }
+
+            $offers = self::get_active_offers($user_id);
+            if (! empty($offers)) {
+                $ids[$user_id] = $user_id;
+            }
+        }
+
+        self::$clients_with_active_offers = array_values($ids);
+
+        return self::$clients_with_active_offers;
+    }
+
+    private static function is_offer_expired(string $raw_date, int $now): bool
+    {
+        $parts = explode('/', $raw_date);
+        if (count($parts) !== 3) {
+            return false;
+        }
+
+        $timestamp = strtotime(sprintf('%s-%s-%s 23:59:59', $parts[2], $parts[1], $parts[0]));
+
+        if ($timestamp === false) {
+            return false;
+        }
+
+        return $timestamp < $now;
     }
 }
