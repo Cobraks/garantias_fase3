@@ -24,6 +24,165 @@
     width: 100%;
 }
 
+.clients-page .guarantee-detail {
+    --summary-surface: #ffffff;
+    --summary-surface-secondary: #f8f9fa;
+    --summary-border: #e2e8f0;
+    --summary-text: #1a202c;
+    --summary-muted: #718096;
+    --summary-accent: #6366f1;
+    --summary-accent-soft: #eef2ff;
+    --summary-dimmed-opacity: 0.3;
+    --admin-summary-state-activada: #10b981;
+    --admin-summary-state-activada-muted: #6ee7b7;
+    --admin-summary-state-pendiente-pago: #f59e0b;
+    --admin-summary-state-pendiente-pago-muted: #fcd34d;
+    --admin-summary-state-pendiente-revision: #3b82f6;
+    --admin-summary-state-pendiente-revision-muted: #93c5fd;
+    --admin-summary-state-sin-finalizar: #6b7280;
+    --admin-summary-state-sin-finalizar-muted: #d1d5db;
+    --admin-summary-action-payment: #f59e0b;
+    --admin-summary-action-validation: #3b82f6;
+    --admin-summary-action-collect: #3b82f6;
+    color: var(--summary-text);
+}
+
+:root[data-theme='dark'] .clients-page .guarantee-detail {
+    --summary-surface: #2d3748;
+    --summary-surface-secondary: #4a5568;
+    --summary-border: #4a5568;
+    --summary-text: #e2e8f0;
+    --summary-muted: #a0aec0;
+    --summary-accent: #818cf8;
+    --summary-accent-soft: rgba(129, 140, 248, 0.16);
+    --summary-dimmed-opacity: 0.35;
+    --admin-summary-state-activada-muted: #34d399;
+    --admin-summary-state-pendiente-pago-muted: #fbbf24;
+    --admin-summary-state-pendiente-revision-muted: #60a5fa;
+    --admin-summary-state-sin-finalizar-muted: #9ca3af;
+}
+
+.clients-page .guarantee-detail__empty {
+    background: var(--summary-surface);
+    border-radius: 1rem;
+    border: 1px solid var(--summary-border);
+    padding: 1.5rem;
+}
+
+.clients-page .actions-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 2rem;
+    margin-bottom: 4rem;
+    animation: guaranteeSummarySlideIn 0.5s ease-out 0.45s backwards;
+}
+
+.clients-page .actions-section-title,
+.clients-page .actions-section__title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--summary-text);
+}
+
+.clients-page .actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    margin-bottom: 5rem;
+}
+
+.clients-page .action-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--summary-border);
+    background: transparent;
+    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.clients-page .action-item:hover,
+.clients-page .action-item:focus-visible {
+    background-color: var(--summary-surface-secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.clients-page .action-item.is-empty {
+    opacity: 0.55;
+}
+
+.clients-page .action-item.is-loading {
+    color: transparent;
+    pointer-events: none;
+}
+
+.clients-page .action-item.is-loading > * {
+    visibility: hidden;
+}
+
+.clients-page .action-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    margin-right: 16px;
+    color: #fff;
+    background-color: var(--action-accent, var(--summary-accent));
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.clients-page .action-item:hover .action-icon {
+    transform: scale(1.05);
+}
+
+.clients-page .action-details {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.clients-page .action-label {
+    font-weight: 500;
+    color: var(--summary-text);
+}
+
+.clients-page .action-sublabel {
+    font-size: 0.8rem;
+    color: var(--summary-muted);
+}
+
+.clients-page .action-cta {
+    color: var(--summary-muted);
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.clients-page .action-item:hover .action-cta {
+    color: var(--summary-accent);
+    transform: translateX(4px);
+}
+
+@keyframes guaranteeSummarySlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 @media (min-width: 768px) {
     .clients-page .guarantees-list__filters {
         flex-direction: row;

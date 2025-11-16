@@ -71,6 +71,11 @@ class ClientRestController
      */
     private static ?array $clients_with_active_offers = null;
 
+    /**
+     * @var array<int,int>|null
+     */
+    private static ?array $all_client_ids = null;
+
     public static function register_routes(): void
     {
         register_rest_route(
@@ -1201,6 +1206,7 @@ class ClientRestController
             'filters'     => [
                 'channels' => self::get_channel_filters(),
             ],
+            'quick_actions' => self::get_quick_filter_counts(),
             'quick_filter' => $quick_filter,
         ];
 
@@ -2781,8 +2787,101 @@ class ClientRestController
             'filters'     => [
                 'channels' => self::get_channel_filters(),
             ],
+            'quick_actions' => self::get_quick_filter_counts(),
             'quick_filter' => $quick_filter,
         ], 200);
+    }
+
+    private static function get_quick_filter_counts(): array
+    {
+        $client_ids = self::get_all_client_ids();
+        $client_lookup = [];
+
+        foreach ($client_ids as $client_id) {
+            $client_lookup[(int) $client_id] = true;
+        }
+
+        $total_clients = count($client_ids);
+
+        $pending_payment = self::count_ids_in_lookup(
+            self::get_client_ids_with_guarantee_states(['pendiente_pago']),
+            $client_lookup
+        );
+
+        $drafts = self::count_ids_in_lookup(
+            self::get_client_ids_with_guarantee_states(['sin_finalizar']),
+            $client_lookup
+        );
+
+        $assigned_commercials = self::count_ids_in_lookup(
+            self::get_client_ids_with_commercial_assignments(),
+            $client_lookup
+        );
+
+        $active_offers = self::count_ids_in_lookup(
+            self::get_client_ids_with_active_offers(),
+            $client_lookup
+        );
+
+        return [
+            'pendiente_pago' => $pending_payment,
+            'sin_finalizar'  => $drafts,
+            'sin_comercial'  => max(0, $total_clients - $assigned_commercials),
+            'sin_ofertas'    => max(0, $total_clients - $active_offers),
+        ];
+    }
+
+    private static function get_all_client_ids(): array
+    {
+        if (is_array(self::$all_client_ids)) {
+            return self::$all_client_ids;
+        }
+
+        $query = new WP_User_Query([
+            'role__in' => self::get_supported_roles(),
+            'fields'   => 'ID',
+            'number'   => -1,
+            'orderby'  => 'ID',
+            'order'    => 'ASC',
+        ]);
+
+        $results = $query->get_results();
+        $ids = [];
+
+        if (is_array($results)) {
+            foreach ($results as $candidate) {
+                $user_id = (int) $candidate;
+                if ($user_id > 0) {
+                    $ids[$user_id] = $user_id;
+                }
+            }
+        }
+
+        self::$all_client_ids = array_values($ids);
+
+        return self::$all_client_ids;
+    }
+
+    /**
+     * @param array<int|string> $ids
+     * @param array<int,bool>   $lookup
+     */
+    private static function count_ids_in_lookup(array $ids, array $lookup): int
+    {
+        if (empty($lookup) || empty($ids)) {
+            return 0;
+        }
+
+        $count = 0;
+
+        foreach ($ids as $value) {
+            $id = (int) $value;
+            if ($id > 0 && isset($lookup[$id])) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     private static function normalize_quick_filter($value): string

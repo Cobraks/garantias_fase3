@@ -9,6 +9,12 @@
         const restNonce = (config.rest && config.rest.nonce) || '';
         const perPage = (config.pagination && config.pagination.perPage) || 20;
         const strings = config.strings || {};
+        const quickFilterCountSingular = typeof strings.quickFilterCountSingular === 'string'
+            ? strings.quickFilterCountSingular.trim() || 'cliente'
+            : 'cliente';
+        const quickFilterCountPlural = typeof strings.quickFilterCountPlural === 'string'
+            ? strings.quickFilterCountPlural.trim() || 'clientes'
+            : 'clientes';
         const presenceConfig = config.presence || {};
         const presencePollInterval = Math.max(5000, Number(presenceConfig.pollInterval || 15000));
         const onlineLabel = typeof strings.online === 'string' && strings.online.trim() !== ''
@@ -195,6 +201,44 @@
             list.querySelectorAll('.action-item').forEach((item) => {
                 const value = item.getAttribute('data-filter-value') || '';
                 item.classList.toggle('is-active', activeValue !== '' && value === activeValue);
+            });
+        };
+
+        const normalizeClientsCount = (value) => {
+            const parsed = Number(value);
+            if (!Number.isFinite(parsed)) {
+                return 0;
+            }
+            return Math.max(0, Math.round(parsed));
+        };
+
+        const formatClientsCountLabel = (value) => {
+            const normalized = normalizeClientsCount(value);
+            const label = normalized === 1 ? quickFilterCountSingular : quickFilterCountPlural;
+            return `${normalized} ${label}`;
+        };
+
+        const updateQuickActionCounts = (counts) => {
+            const list = getActionsList();
+            if (!list) {
+                return;
+            }
+
+            const source = counts && typeof counts === 'object' ? counts : null;
+
+            list.querySelectorAll('.action-item').forEach((item) => {
+                const value = item.getAttribute('data-filter-value') || '';
+                if (!value || !source || !Object.prototype.hasOwnProperty.call(source, value)) {
+                    return;
+                }
+
+                const count = normalizeClientsCount(source[value]);
+                const sublabel = item.querySelector('.action-sublabel');
+                if (sublabel) {
+                    sublabel.textContent = formatClientsCountLabel(count);
+                }
+                item.dataset.count = String(count);
+                item.classList.toggle('is-empty', count === 0);
             });
         };
 
@@ -5370,6 +5414,10 @@
                 state.totalPages = Number.isFinite(data.total_pages) ? Math.max(1, data.total_pages) : state.totalPages;
                 tbody.dataset.currentPage = String(state.page);
                 tbody.dataset.totalPages = String(state.totalPages);
+
+                if (data && data.quick_actions) {
+                    updateQuickActionCounts(data.quick_actions);
+                }
 
                 if (!append && items.length === 0) {
                     const emptyRow = document.createElement('tr');

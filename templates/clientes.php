@@ -11,14 +11,14 @@ $current_user    = wp_get_current_user();
 $clients_quick_actions = [
     [
         'key'    => 'payment',
-        'label'  => __('Tienen garantías pendientes de pago', 'garantias-online-360vo'),
+        'label'  => __('Con garantías pendientes de pago', 'garantias-online-360vo'),
         'filter' => 'pendiente_pago',
         'accent' => 'var(--admin-summary-action-payment)',
         'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/></svg>',
     ],
     [
         'key'    => 'draft',
-        'label'  => __('Tienen garantías sin finalizar', 'garantias-online-360vo'),
+        'label'  => __('Con garantías sin finalizar', 'garantias-online-360vo'),
         'filter' => 'sin_finalizar',
         'accent' => 'var(--admin-summary-state-sin-finalizar)',
         'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>',
@@ -151,7 +151,7 @@ $action_arrow_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height=
                                 </span>
                                 <div class="action-details">
                                     <span class="action-label"><?php echo esc_html($action['label']); ?></span>
-                                    <span class="action-sublabel"><?php esc_html_e('Filtra el listado de clientes', 'garantias-online-360vo'); ?></span>
+                                    <span class="action-sublabel"><?php esc_html_e('— clientes', 'garantias-online-360vo'); ?></span>
                                 </div>
                                 <span class="action-cta" aria-hidden="true">
                                     <?php echo $action_arrow_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
