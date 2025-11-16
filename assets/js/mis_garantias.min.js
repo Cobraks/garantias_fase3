@@ -286,7 +286,6 @@ const ADD_DOC_KEY = "add-document";
                 const canViewAdminSummary = isCoreAdmin || isDirector || isProfesional;
                 const REALTIME_POLL_INTERVAL = 6000;
                 const REALTIME_POLL_HIDDEN_INTERVAL = 15000;
-                const REALTIME_BADGE_DURATION = 14000;
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
                 const ADMIN_SUMMARY_DEFAULT_CONTEXT = "month";
@@ -2241,7 +2240,7 @@ const ADD_DOC_KEY = "add-document";
                 const LIST_CACHE_MAX_ENTRIES = 6;
                 const getListCacheStorageKey = () =>
                         `go:guarantees:list-cache:v${listCacheStorageVersion}`;
-                const realtimeHighlightTimers = new Map();
+                const realtimeHighlightEntries = new Set();
                 let realtimePollTimer = null;
                 let realtimePendingGeneration = 0;
                 let realtimeRefreshInFlight = false;
@@ -4975,7 +4974,7 @@ const ADD_DOC_KEY = "add-document";
                         card.innerHTML = `
                                 <div class="guarantee-card__header">
                                         <div class="guarantee-card__vehicle">
-                                                <span class="guarantee-card__new-badge" aria-hidden="true">Nueva</span>
+                                                <span class="guarantee-card__new-badge" aria-hidden="true" data-realtime-badge="true">Nueva</span>
                                                 <div class="guarantee-card__mat">${escapeHtml(view.matricula || "-")}</div>
                                                 <div class="guarantee-card__model">${escapeHtml(view.marcaModelo || "-")}</div>
                                         </div>
@@ -5071,7 +5070,7 @@ const ADD_DOC_KEY = "add-document";
                         tr.innerHTML = `
                                 <td data-label="Vehículo">
                                         <div class="guarantees-table__vehiculo">
-                                                <span class="guarantees-table__new-badge" aria-hidden="true">Nueva</span>
+                                                <span class="guarantees-table__new-badge" aria-hidden="true" data-realtime-badge="true">Nueva</span>
                                                 <div class="vehiculo__mat">${view.matricula || "-"}</div>
                                                 <div class="vehiculo__marca_modelo">${view.marcaModelo || "-"}</div>
                                         </div>
@@ -6828,7 +6827,7 @@ const ADD_DOC_KEY = "add-document";
                                         (existingRow && existingRow.classList.contains("selected")) ||
                                                 (selectedId && normalizedId === selectedId)
                                 );
-                                const hadRealtime = realtimeHighlightTimers.has(normalizedId);
+                                const hadRealtime = realtimeHighlightEntries.has(normalizedId);
                                 if (existingRow) {
                                         existingRow.remove();
                                         rowsById.delete(normalizedId);
@@ -6891,10 +6890,7 @@ const ADD_DOC_KEY = "add-document";
                         if (card) {
                                 card.classList.remove("guarantee-card--is-new");
                         }
-                        if (realtimeHighlightTimers.has(id)) {
-                                clearTimeout(realtimeHighlightTimers.get(id));
-                                realtimeHighlightTimers.delete(id);
-                        }
+                        realtimeHighlightEntries.delete(id);
                 }
 
                 function markEntryAsRealtime(entryId, { rowElement = null } = {}) {
@@ -6910,15 +6906,42 @@ const ADD_DOC_KEY = "add-document";
                         if (card) {
                                 card.classList.add("guarantee-card--is-new");
                         }
-                        if (realtimeHighlightTimers.has(id)) {
-                                clearTimeout(realtimeHighlightTimers.get(id));
-                        }
-                        const timer = window.setTimeout(() => {
-                                realtimeHighlightTimers.delete(id);
-                                clearRealtimeEntry(id);
-                        }, REALTIME_BADGE_DURATION);
-                        realtimeHighlightTimers.set(id, timer);
+                        realtimeHighlightEntries.add(id);
                 }
+
+                function setupRealtimeBadgeDismissal() {
+                        if (!tbody && !mobileCardsList) {
+                                return;
+                        }
+                        const handleBadgeClick = (event) => {
+                                const target = event.target;
+                                if (!target || typeof target.closest !== "function") {
+                                        return;
+                                }
+                                const badge = target.closest("[data-realtime-badge]");
+                                if (!badge) {
+                                        return;
+                                }
+                                event.preventDefault();
+                                event.stopPropagation();
+                                const row = badge.closest(".guarantees-table__row");
+                                if (row && row.dataset.id) {
+                                        clearRealtimeEntry(row.dataset.id);
+                                        return;
+                                }
+                                const card = badge.closest(".guarantee-card");
+                                if (card && card.dataset.id) {
+                                        clearRealtimeEntry(card.dataset.id);
+                                }
+                        };
+                        if (tbody) {
+                                tbody.addEventListener("click", handleBadgeClick, true);
+                        }
+                        if (mobileCardsList) {
+                                mobileCardsList.addEventListener("click", handleBadgeClick, true);
+                        }
+                }
+                setupRealtimeBadgeDismissal();
 
                 async function refreshListFromRealtime({ generation = null } = {}) {
                         if (!restRoot || !restNonce || !tbody) {

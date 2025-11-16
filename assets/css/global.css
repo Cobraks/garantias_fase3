@@ -1163,7 +1163,6 @@ textarea {
 }
 
 .notifications-toast {
-  position: fixed;
   top: calc(72px + 1.5rem);
   right: calc((100vw - min(100vw, 1440px)) / 2 + 1.5rem);
   width: min(22rem, 92vw);
@@ -1171,6 +1170,14 @@ textarea {
   z-index: 2147483000;
   pointer-events: none;
   will-change: transform, opacity;
+}
+
+body:not(.scrolled) .notifications-toast {
+  position: fixed;
+}
+
+body.scrolled .notifications-toast {
+  position: absolute;
 }
 
 .notifications-toast--visible {
@@ -2482,39 +2489,52 @@ textarea {
 .guarantees-table__vehiculo,
 .guarantee-card__vehicle {
   position: relative;
+  padding-top: 1rem;
 }
 
 .guarantees-table__new-badge,
 .guarantee-card__new-badge {
   position: absolute;
-  top: -0.4rem;
-  left: 0;
+  top: 0.25rem;
+  left: 0.5rem;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
   font-size: 0.6rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   border-radius: 999px;
-  padding: 0.08rem 0.45rem;
-  background: rgba(var(--go-color-22c55e-rgb), 0.15);
-  border: 1px solid rgba(var(--go-color-22c55e-rgb), 0.4);
+  padding: 0.12rem 0.55rem;
+  background: rgba(var(--go-color-22c55e-rgb), 0.2);
+  border: 1px solid rgba(var(--go-color-22c55e-rgb), 0.5);
   color: var(--go-color-0f172a);
-  box-shadow: 0 10px 25px -12px rgba(var(--go-color-22c55e-rgb), 0.65);
+  box-shadow: 0 12px 32px -18px rgba(var(--go-color-22c55e-rgb), 0.85);
   opacity: 0;
-  transform: translateY(-8px);
-  pointer-events: none;
-  transition: opacity 200ms ease, transform 200ms ease;
+  transform: translateY(-6px);
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 2;
+  transition: opacity 220ms ease, transform 220ms ease, box-shadow 200ms ease;
 }
 
-.guarantees-table__new-badge {
-  top: -0.55rem;
+.guarantees-table__new-badge::after,
+.guarantee-card__new-badge::after {
+  content: "";
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+  box-shadow: 0 0 0 0 rgba(var(--go-color-22c55e-rgb), 0.4);
+  animation: go360-realtime-badge-dot 1.4s ease-in-out infinite;
+  animation-play-state: paused;
 }
 
 .guarantee-card__new-badge {
-  top: -0.25rem;
-  background: rgba(var(--go-color-2563eb-rgb), 0.14);
-  border-color: rgba(var(--go-color-2563eb-rgb), 0.35);
+  background: rgba(var(--go-color-2563eb-rgb), 0.18);
+  border-color: rgba(var(--go-color-2563eb-rgb), 0.45);
   color: var(--go-color-1d4ed8);
 }
 
@@ -2523,6 +2543,38 @@ textarea {
   opacity: 1;
   transform: translateY(0);
   animation: go360-realtime-badge 1200ms ease-in-out infinite;
+}
+
+.guarantees-table__row--is-new .guarantees-table__new-badge::after,
+.guarantee-card--is-new .guarantee-card__new-badge::after {
+  animation-play-state: running;
+}
+
+.guarantees-table__new-badge:focus-visible,
+.guarantee-card__new-badge:focus-visible,
+.guarantees-table__new-badge:hover,
+.guarantee-card__new-badge:hover {
+  box-shadow: 0 18px 32px -18px rgba(var(--go-color-22c55e-rgb), 0.85);
+}
+
+@keyframes go360-realtime-badge-dot {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.3;
+    box-shadow: 0 0 0 0 rgba(var(--go-color-22c55e-rgb), 0.2);
+  }
+
+  70% {
+    transform: scale(1.15);
+    opacity: 0.75;
+    box-shadow: 0 0 0 6px rgba(var(--go-color-22c55e-rgb), 0);
+  }
+
+  100% {
+    transform: scale(0.9);
+    opacity: 0.35;
+    box-shadow: 0 0 0 0 rgba(var(--go-color-22c55e-rgb), 0);
+  }
 }
 
 .guarantee-card--is-new {
