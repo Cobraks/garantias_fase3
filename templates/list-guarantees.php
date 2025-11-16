@@ -151,12 +151,12 @@ $format_summary_guarantees = static function ($count) use ($format_summary_numbe
     return sprintf($pluralized, $formatted);
 };
 
-if (($is_admin_user || $is_director)
+if (($is_admin_user || $is_director || $is_professional)
     && class_exists(GuaranteeRestController::class)
     && GuaranteeRestController::can_view_summary()
 ) {
     $can_view_summary = true;
-    $admin_summary_data = GuaranteeRestController::get_admin_summary_data();
+    $admin_summary_data = GuaranteeRestController::get_summary_data_for_user($current_user);
 
     if (is_array($admin_summary_data) && ! empty($admin_summary_data)) {
         $contexts = isset($admin_summary_data['contexts']) && is_array($admin_summary_data['contexts'])
@@ -208,12 +208,22 @@ if (($is_admin_user || $is_director)
             ? $admin_summary_data['pending']
             : [];
 
+        $pending_draft      = $admin_summary_pending['draft'] ?? [];
         $pending_payment    = $admin_summary_pending['payment'] ?? [];
         $pending_validation = $admin_summary_pending['validation'] ?? [];
         $pending_collect    = $admin_summary_pending['collect'] ?? [];
 
-        $admin_summary_actions = [
-            [
+        $actions_catalog = [
+            'draft' => [
+                'key'         => 'draft',
+                'label'       => __('Sin finalizar', 'garantias-online-360vo'),
+                'filter'      => 'sin_finalizar',
+                'accent'      => 'var(--admin-summary-state-sin-finalizar)',
+                'icon'        => Svg::icon('continue'),
+                'pending'     => $pending_draft,
+                'show_amount' => false,
+            ],
+            'payment' => [
                 'key'         => 'payment',
                 'label'       => __('Pendientes de pago', 'garantias-online-360vo'),
                 'filter'      => 'pendiente_pago',
@@ -221,7 +231,7 @@ if (($is_admin_user || $is_director)
                 'icon'        => Svg::icon('warning'),
                 'pending'     => $pending_payment,
             ],
-            [
+            'validation' => [
                 'key'         => 'validation',
                 'label'       => __('Pendientes de verificar transferencia', 'garantias-online-360vo'),
                 'filter'      => 'validacion_pendiente',
@@ -229,7 +239,7 @@ if (($is_admin_user || $is_director)
                 'icon'        => Svg::icon('transfer_verify'),
                 'pending'     => $pending_validation,
             ],
-            [
+            'collect' => [
                 'key'         => 'collect',
                 'label'       => __('Pendientes de cobrar domiciliación', 'garantias-online-360vo'),
                 'filter'      => 'pendiente_cobro',
@@ -238,6 +248,17 @@ if (($is_admin_user || $is_director)
                 'pending'     => $pending_collect,
             ],
         ];
+
+        $allowed_action_keys = $is_professional
+            ? ['draft', 'payment']
+            : array_keys($actions_catalog);
+
+        $admin_summary_actions = [];
+        foreach ($allowed_action_keys as $action_key) {
+            if (isset($actions_catalog[$action_key])) {
+                $admin_summary_actions[] = $actions_catalog[$action_key];
+            }
+        }
 
         $admin_summary_json = wp_json_encode($admin_summary_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
@@ -280,6 +301,8 @@ if (($is_admin_user || $is_director)
                     <div class="guarantees-list__filters-search-slot" data-desktop-search-slot></div>
 
                     <select
+                        id="guarantees-filter-estado"
+                        name="estado"
                         class="guarantees-list__filter"
                         data-filter="estado"
                         aria-label="<?php esc_attr_e('Estado', 'garantias-online-360vo'); ?>">
@@ -288,6 +311,8 @@ if (($is_admin_user || $is_director)
 
                     <?php if ($show_plan_in_main) : ?>
                         <select
+                            id="guarantees-filter-plan-main"
+                            name="plan"
                             class="guarantees-list__filter"
                             data-filter="plan"
                             aria-label="<?php esc_attr_e('Coberturas', 'garantias-online-360vo'); ?>">
@@ -298,6 +323,8 @@ if (($is_admin_user || $is_director)
 
                     <?php if ($show_channel_select) : ?>
                         <select
+                            id="guarantees-filter-canal"
+                            name="canal"
                             class="guarantees-list__filter"
                             data-filter="canal"
                             aria-label="<?php esc_attr_e('Canal de venta', 'garantias-online-360vo'); ?>">
@@ -325,6 +352,8 @@ if (($is_admin_user || $is_director)
                     <?php if ($show_clients_select) : ?>
                         <div class="guarantees-list__filter-wrapper guarantees-list__filter-wrapper--clients" data-clients-wrapper hidden>
                             <select
+                                id="guarantees-filter-cliente"
+                                name="cliente"
                                 class="guarantees-list__filter"
                                 data-filter="cliente"
                                 aria-label="<?php esc_attr_e('Empresas', 'garantias-online-360vo'); ?>">
@@ -414,6 +443,8 @@ if (($is_admin_user || $is_director)
                         <div class="guarantees-list__filters-advanced-grid">
                             <?php if ($show_plan_in_advanced) : ?>
                                 <select
+                                    id="guarantees-filter-plan-advanced"
+                                    name="plan"
                                     class="guarantees-list__filter"
                                     data-filter="plan"
                                     aria-label="<?php esc_attr_e('Coberturas', 'garantias-online-360vo'); ?>">
@@ -423,6 +454,8 @@ if (($is_admin_user || $is_director)
 
                             <?php if ($show_payment_in_advanced) : ?>
                                 <select
+                                    id="guarantees-filter-payment"
+                                    name="payment"
                                     class="guarantees-list__filter"
                                     data-filter="payment"
                                     aria-label="<?php esc_attr_e('Método de pago', 'garantias-online-360vo'); ?>">
@@ -432,6 +465,8 @@ if (($is_admin_user || $is_director)
 
                             <?php if ($show_commercial_select) : ?>
                                 <select
+                                    id="guarantees-filter-commercial"
+                                    name="commercial"
                                     class="guarantees-list__filter"
                                     data-filter="commercial"
                                     aria-label="<?php esc_attr_e('Garantías por comercial', 'garantias-online-360vo'); ?>">
@@ -441,6 +476,8 @@ if (($is_admin_user || $is_director)
 
                             <?php if ($show_period_filters) : ?>
                                 <select
+                                    id="guarantees-filter-year"
+                                    name="year"
                                     class="guarantees-list__filter"
                                     data-filter="year"
                                     data-all-label="<?php esc_attr_e('Todos los años', 'garantias-online-360vo'); ?>"
@@ -456,6 +493,7 @@ if (($is_admin_user || $is_director)
                                     </label>
                                     <select
                                         id="guarantees-filter-month-from"
+                                        name="month-from"
                                         class="guarantees-list__filter"
                                         data-filter="month-from">
                                         <?php foreach ($period_months as $month_number => $month_label) : ?>
@@ -471,6 +509,7 @@ if (($is_admin_user || $is_director)
                                     </label>
                                     <select
                                         id="guarantees-filter-month-to"
+                                        name="month-to"
                                         class="guarantees-list__filter"
                                         data-filter="month-to">
                                         <?php foreach ($period_months as $month_number => $month_label) : ?>
@@ -573,8 +612,6 @@ if (($is_admin_user || $is_director)
         <?php if ($can_view_summary) : ?>
             <?php
             $summary_context_base = uniqid('summary-context-');
-            $summary_global_id    = $summary_context_base . '-global';
-            $summary_month_id     = $summary_context_base . '-month';
             $has_admin_summary    = $admin_summary_json !== '' && ! empty($admin_summary_states);
 
             $state_color_vars = [
@@ -756,30 +793,36 @@ if (($is_admin_user || $is_director)
                 data-loading="<?php echo $has_admin_summary ? '0' : '1'; ?>">
                 <header class="guarantee-admin-summary__header">
                     <h4 class="guarantee-admin-summary__title"><?php esc_html_e('Resumen de Garantías', 'garantias-online-360vo'); ?></h4>
-                    <fieldset class="guarantee-admin-summary__context" data-admin-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
-                        <input
-                            class="guarantee-admin-summary__context-input"
-                            type="radio"
-                            name="<?php echo esc_attr($summary_context_base); ?>"
-                            id="<?php echo esc_attr($summary_global_id); ?>"
-                            value="year"
-                            data-admin-summary-context-toggle
-                            <?php checked($admin_summary_context_key, 'year'); ?>>
-                        <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_global_id); ?>">
-                            <?php esc_html_e('Global', 'garantias-online-360vo'); ?>
-                        </label>
-                        <input
-                            class="guarantee-admin-summary__context-input"
-                            type="radio"
-                            name="<?php echo esc_attr($summary_context_base); ?>"
-                            id="<?php echo esc_attr($summary_month_id); ?>"
-                            value="month"
-                            data-admin-summary-context-toggle
-                            <?php checked($admin_summary_context_key, 'month'); ?>>
-                        <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_month_id); ?>">
-                            <?php esc_html_e('Mensual', 'garantias-online-360vo'); ?>
-                        </label>
-                    </fieldset>
+                    <?php if (! $is_professional) : ?>
+                        <?php
+                        $summary_context_global_id = $summary_context_base . '-global';
+                        $summary_context_month_id  = $summary_context_base . '-month';
+                        ?>
+                        <fieldset class="guarantee-admin-summary__context" data-admin-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
+                            <input
+                                class="guarantee-admin-summary__context-input"
+                                type="radio"
+                                name="<?php echo esc_attr($summary_context_base); ?>"
+                                id="<?php echo esc_attr($summary_context_global_id); ?>"
+                                value="year"
+                                data-admin-summary-context-toggle
+                                <?php checked($admin_summary_context_key, 'year'); ?>>
+                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_context_global_id); ?>">
+                                <?php esc_html_e('Global', 'garantias-online-360vo'); ?>
+                            </label>
+                            <input
+                                class="guarantee-admin-summary__context-input"
+                                type="radio"
+                                name="<?php echo esc_attr($summary_context_base); ?>"
+                                id="<?php echo esc_attr($summary_context_month_id); ?>"
+                                value="month"
+                                data-admin-summary-context-toggle
+                                <?php checked($admin_summary_context_key, 'month'); ?>>
+                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_context_month_id); ?>">
+                                <?php esc_html_e('Mensual', 'garantias-online-360vo'); ?>
+                            </label>
+                        </fieldset>
+                    <?php endif; ?>
                 </header>
                 <div class="guarantee-admin-summary__body">
                     <?php if ($show_kpi_grid) : ?>
@@ -838,36 +881,38 @@ if (($is_admin_user || $is_director)
                             </article>
                         </section>
                     <?php endif; ?>
-                    <section class="visualization-section">
-                        <div class="donut-chart<?php echo $donut_is_empty ? ' is-empty' : ''; ?>" data-admin-summary-donut style="<?php echo esc_attr($donut_style_attr); ?>">
-                            <div class="chart-center">
-                                <div class="chart-total" data-admin-summary-total data-value="<?php echo esc_attr($has_admin_summary ? $admin_summary_total : 0); ?>">
-                                    <?php echo $has_admin_summary ? esc_html($format_summary_number($admin_summary_total)) : '—'; ?>
-                                </div>
-                                <div class="chart-label" data-admin-summary-label data-default-label="<?php esc_attr_e('Total', 'garantias-online-360vo'); ?>">
-                                    <?php echo $has_admin_summary && $admin_summary_label !== '' ? esc_html($admin_summary_label) : esc_html__('Total', 'garantias-online-360vo'); ?>
+                    <?php if (! $is_professional) : ?>
+                        <section class="visualization-section">
+                            <div class="donut-chart<?php echo $donut_is_empty ? ' is-empty' : ''; ?>" data-admin-summary-donut style="<?php echo esc_attr($donut_style_attr); ?>">
+                                <div class="chart-center">
+                                    <div class="chart-total" data-admin-summary-total data-value="<?php echo esc_attr($has_admin_summary ? $admin_summary_total : 0); ?>">
+                                        <?php echo $has_admin_summary ? esc_html($format_summary_number($admin_summary_total)) : '—'; ?>
+                                    </div>
+                                    <div class="chart-label" data-admin-summary-label data-default-label="<?php esc_attr_e('Total', 'garantias-online-360vo'); ?>">
+                                        <?php echo $has_admin_summary && $admin_summary_label !== '' ? esc_html($admin_summary_label) : esc_html__('Total', 'garantias-online-360vo'); ?>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="chart-legend" data-admin-summary-states>
-                            <?php if ($has_admin_summary) : ?>
-                                <?php foreach ($legend_items as $item) : ?>
-                                    <div class="legend-item" data-state="<?php echo esc_attr($item['value']); ?>">
-                                        <span class="legend-color" style="background-color: <?php echo esc_attr($item['color']); ?>"></span>
-                                        <div class="legend-info">
-                                            <span class="legend-label"><?php echo esc_html($item['label']); ?></span>
-                                            <span class="legend-value"><?php echo esc_html(number_format_i18n($item['percent'])); ?>%</span>
+                            <div class="chart-legend" data-admin-summary-states>
+                                <?php if ($has_admin_summary) : ?>
+                                    <?php foreach ($legend_items as $item) : ?>
+                                        <div class="legend-item" data-state="<?php echo esc_attr($item['value']); ?>">
+                                            <span class="legend-color" style="background-color: <?php echo esc_attr($item['color']); ?>"></span>
+                                            <div class="legend-info">
+                                                <span class="legend-label"><?php echo esc_html($item['label']); ?></span>
+                                                <span class="legend-value"><?php echo esc_html(number_format_i18n($item['percent'])); ?>%</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php else : ?>
-                                <div class="legend-item is-loading"></div>
-                                <div class="legend-item is-loading"></div>
-                                <div class="legend-item is-loading"></div>
-                                <div class="legend-item is-loading"></div>
-                            <?php endif; ?>
-                        </div>
-                    </section>
+                                    <?php endforeach; ?>
+                                <?php else : ?>
+                                    <div class="legend-item is-loading"></div>
+                                    <div class="legend-item is-loading"></div>
+                                    <div class="legend-item is-loading"></div>
+                                    <div class="legend-item is-loading"></div>
+                                <?php endif; ?>
+                            </div>
+                        </section>
+                    <?php endif; ?>
                     <section class="actions-section">
                         <h3 class="actions-section-title"><?php esc_html_e('Acciones rápidas', 'garantias-online-360vo'); ?></h3>
                         <ul class="actions-list" data-admin-summary-actions>
@@ -876,16 +921,19 @@ if (($is_admin_user || $is_director)
                                     <?php
                                     $count   = isset($action['pending']['count']) ? (int) $action['pending']['count'] : 0;
                                     $amount  = $action['pending']['amount'] ?? 0;
-                                    $subtitle = $count > 0
-                                        ? $format_summary_guarantees($count) . ' · ' . $format_summary_currency($amount)
-                                        : __('Sin pendientes', 'garantias-online-360vo');
+                                    $show_amount = array_key_exists('show_amount', $action) ? (bool) $action['show_amount'] : true;
+                                    $subtitle = $show_amount
+                                        ? ($count > 0
+                                            ? $format_summary_guarantees($count) . ' · ' . $format_summary_currency($amount)
+                                            : __('Sin pendientes', 'garantias-online-360vo'))
+                                        : $format_summary_guarantees($count);
                                     ?>
                                     <li
                                         class="action-item<?php echo $count === 0 ? ' is-empty' : ''; ?>"
                                         data-summary-action="<?php echo esc_attr($action['key']); ?>"
                                         data-filter="<?php echo esc_attr($action['filter']); ?>">
                                         <span class="action-icon" aria-hidden="true" style="background-color: <?php echo esc_attr($action['accent']); ?>">
-                                            <?php echo $action['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped 
+                                            <?php echo $action['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                                             ?>
                                         </span>
                                         <div class="action-details">
@@ -893,15 +941,21 @@ if (($is_admin_user || $is_director)
                                             <span class="action-sublabel"><?php echo esc_html($subtitle); ?></span>
                                         </div>
                                         <span class="action-cta" aria-hidden="true">
-                                            <?php echo $action_arrow_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped 
+                                            <?php echo $action_arrow_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                                             ?>
                                         </span>
                                     </li>
                                 <?php endforeach; ?>
                             <?php else : ?>
-                                <li class="action-item is-loading"></li>
-                                <li class="action-item is-loading"></li>
-                                <li class="action-item is-loading"></li>
+                                <?php
+                                $placeholder_count = count($admin_summary_actions);
+                                if ($placeholder_count === 0) {
+                                    $placeholder_count = $is_professional ? 2 : 4;
+                                }
+                                for ($placeholder_index = 0; $placeholder_index < $placeholder_count; $placeholder_index++) :
+                                    ?>
+                                    <li class="action-item is-loading"></li>
+                                <?php endfor; ?>
                             <?php endif; ?>
                         </ul>
                     </section>
@@ -1141,8 +1195,17 @@ if (($is_admin_user || $is_director)
             <p class="confirm-modal__file-help"><?php esc_html_e('Formatos: PDF, JPG o PNG (máx. 10 MB).', 'garantias-online-360vo'); ?></p>
             <p class="confirm-modal__file-error" role="alert" hidden></p>
         </div>
+        <?php
+        $confirm_checkbox_id   = uniqid('confirm-modal-checkbox-');
+        $confirm_checkbox_name = $confirm_checkbox_id . '-field';
+        ?>
         <label class="confirm-modal__checkbox" hidden>
-            <input type="checkbox" class="confirm-modal__checkbox-input" />
+            <input
+                type="checkbox"
+                class="confirm-modal__checkbox-input"
+                id="<?php echo esc_attr($confirm_checkbox_id); ?>"
+                name="<?php echo esc_attr($confirm_checkbox_name); ?>"
+            />
             <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
         </label>
         <div class="confirm-modal__actions">

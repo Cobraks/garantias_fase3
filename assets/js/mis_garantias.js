@@ -239,7 +239,9 @@ const ADD_DOC_KEY = "add-document";
                 const userRole =
                         (goConfig.user && goConfig.user.role) ||
                         "user";
-                const normalizedRole = String(userRole || "").toLowerCase();
+                const normalizedRole = String(userRole ?? "")
+                        .trim()
+                        .toLowerCase();
                 const isAdmin =
                         [
                                 "administrator",
@@ -265,7 +267,9 @@ const ADD_DOC_KEY = "add-document";
                 const shouldRestrictEmptyStateOptions = !canSeeVerifyCollectStates;
                 const canManageDetailActions =
                         ["administrator", "admin", "go_garantias"].includes(normalizedRole);
-                const canViewAdminSummary = isCoreAdmin || isDirector;
+                const canContinueGuarantee =
+                        canManageDetailActions || isProfesional || isDirector;
+                const canViewAdminSummary = isCoreAdmin || isDirector || isProfesional;
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
                 const ADMIN_SUMMARY_DEFAULT_CONTEXT = "month";
@@ -298,6 +302,15 @@ const ADD_DOC_KEY = "add-document";
                         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
                 const ADMIN_SUMMARY_ACTIONS = [
                         {
+                                key: "draft",
+                                label: "Sin finalizar",
+                                description: "Revisa las garantías pendientes de completar",
+                                filterValue: "sin_finalizar",
+                                icon: continueIcon,
+                                accent: "var(--admin-summary-state-sin-finalizar)",
+                                showAmount: false,
+                        },
+                        {
                                 key: "payment",
                                 label: "Pendientes de pago",
                                 description: "Deben completarse los cobros pendientes de pago",
@@ -312,6 +325,7 @@ const ADD_DOC_KEY = "add-document";
                                 filterValue: "validacion_pendiente",
                                 icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M200-800v241-1 400-640 200-200Zm80 400h140q9-23 22-43t30-37H280v80Zm0 160h127q-5-20-6.5-40t.5-40H280v80ZM200-80q-33 0-56.5-23.5T120-160v-640q0-33 23.5-56.5T200-880h320l240 240v100q-19-8-39-12.5t-41-6.5v-41H480v-200H200v640h241q16 24 36 44.5T521-80H200Zm460-120q42 0 71-29t29-71q0-42-29-71t-71-29q-42 0-71 29t-29 71q0 42 29 71t71 29ZM864-40 756-148q-21 14-45.5 21t-50.5 7q-75 0-127.5-52.5T480-300q0-75 52.5-127.5T660-480q75 0 127.5 52.5T840-300q0 26-7 50.5T812-204L920-96l-56 56Z"/></svg>',
                                 accent: "var(--admin-summary-action-validation)",
+                                requiresFullAccess: true,
                         },
                         {
                                 key: "collect",
@@ -320,6 +334,7 @@ const ADD_DOC_KEY = "add-document";
                                 filterValue: "pendiente_cobro",
                                 icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>',
                                 accent: "var(--admin-summary-action-collect)",
+                                requiresFullAccess: true,
                         },
                 ];
                 const integerFormatter = new Intl.NumberFormat("de-DE", {
@@ -973,7 +988,22 @@ const ADD_DOC_KEY = "add-document";
                         bottomBar.style.right = "0";
                         bottomBar.style.bottom = "";
                         const updateHeight = () => {
-                                const height = bottomBar.offsetHeight || 0;
+                                let height = 0;
+                                if (bottomBar) {
+                                        const rect = bottomBar.getBoundingClientRect();
+                                        if (
+                                                rect &&
+                                                Number.isFinite(rect.height) &&
+                                                rect.height > 0
+                                        ) {
+                                                height = Math.round(rect.height);
+                                        } else if (
+                                                Number.isFinite(bottomBar.scrollHeight) &&
+                                                bottomBar.scrollHeight > 0
+                                        ) {
+                                                height = Math.round(bottomBar.scrollHeight);
+                                        }
+                                }
                                 rootElement.style.setProperty(
                                         "--guarantees-bottom-bar-height",
                                         `${height}px`
@@ -5041,7 +5071,10 @@ const ADD_DOC_KEY = "add-document";
                                 const actionsList = root.querySelector("[data-admin-summary-actions]");
                                 if (actionsList) {
                                         actionsList.innerHTML = "";
-                                        for (let index = 0; index < ADMIN_SUMMARY_ACTIONS.length; index += 1) {
+                                        const placeholderActions = ADMIN_SUMMARY_ACTIONS.filter(
+                                                (action) => !action.requiresFullAccess || canSeeVerifyCollectStates
+                                        );
+                                        for (let index = 0; index < placeholderActions.length; index += 1) {
                                                 const skeleton = document.createElement("li");
                                                 skeleton.className = "action-item is-loading";
                                                 actionsList.appendChild(skeleton);
@@ -5788,7 +5821,14 @@ const ADD_DOC_KEY = "add-document";
                                 return;
                         }
                         list.innerHTML = "";
-                        ADMIN_SUMMARY_ACTIONS.forEach((action) => {
+                        const visibleActions = ADMIN_SUMMARY_ACTIONS.filter((action) => {
+                                if (action.requiresFullAccess && !canSeeVerifyCollectStates) {
+                                        return false;
+                                }
+                                return true;
+                        });
+
+                        visibleActions.forEach((action) => {
                                 const entry = pending[action.key] || {};
                                 const amount = normalizeToFloat(entry.amount || 0);
                                 const count = normalizeToInt(entry.count || 0);
@@ -5804,10 +5844,10 @@ const ADD_DOC_KEY = "add-document";
 
                                 const amountLabel = formatCurrencyValue(amount);
                                 const countLabel = formatGuaranteeCount(count);
-                                const subtitle =
-                                        count > 0
-                                                ? `${countLabel} · ${amountLabel}`
-                                                : "Sin pendientes";
+                                const showAmount = action.showAmount !== false;
+                                const subtitle = showAmount
+                                        ? (count > 0 ? `${countLabel} · ${amountLabel}` : "Sin pendientes")
+                                        : countLabel;
 
                                 item.innerHTML = `
                 <span class="action-icon" aria-hidden="true" style="background-color: var(--action-accent)">
@@ -6901,7 +6941,7 @@ const ADD_DOC_KEY = "add-document";
     const showActions = canManageDetailActions;
 
     const sinFinalButtons = [];
-    if (showActions || isProfesional) {
+    if (canContinueGuarantee) {
         sinFinalButtons.push(
             `<button type="button" aria-label="Continuar con la garantía" class="guarantee-detail__btn guarantee-detail__btn--continue">` +
                 `<span class="guarantee-detail__btn-icon">${continueIcon}</span>` +
