@@ -44,6 +44,7 @@
     --admin-summary-action-payment: #f59e0b;
     --admin-summary-action-validation: #3b82f6;
     --admin-summary-action-collect: #3b82f6;
+    --admin-summary-action-alert: #ef4444;
     color: var(--summary-text);
 }
 
@@ -60,6 +61,7 @@
     --admin-summary-state-pendiente-pago-muted: #fbbf24;
     --admin-summary-state-pendiente-revision-muted: #60a5fa;
     --admin-summary-state-sin-finalizar-muted: #9ca3af;
+    --admin-summary-action-alert: #f87171;
 }
 
 .clients-page .guarantee-detail__empty {
@@ -139,6 +141,13 @@
     background-color: var(--action-accent, var(--summary-accent));
     flex-shrink: 0;
     transition: transform 0.2s ease;
+}
+
+.clients-page .action-icon svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+    fill: currentColor;
 }
 
 .clients-page .action-item:hover .action-icon {

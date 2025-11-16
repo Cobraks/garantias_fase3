@@ -27,17 +27,22 @@ $clients_quick_actions = [
         'key'    => 'no-commercial',
         'label'  => __('Sin comercial asignado', 'garantias-online-360vo'),
         'filter' => 'sin_comercial',
-        'accent' => 'var(--admin-summary-state-pendiente-revision)',
+        'accent' => 'var(--admin-summary-action-alert)',
         'icon'   => Svg::icon('client_no_commercial'),
     ],
     [
         'key'    => 'no-offers',
         'label'  => __('Sin ofertas activas', 'garantias-online-360vo'),
         'filter' => 'sin_ofertas',
-        'accent' => 'var(--admin-summary-action-payment)',
+        'accent' => 'var(--admin-summary-action-alert)',
         'icon'   => Svg::icon('client_no_offer'),
     ],
 ];
+
+$default_action_count_label = sprintf(
+    _n('%d cliente', '%d clientes', 0, 'garantias-online-360vo'),
+    0
+);
 
 $action_arrow_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
 
@@ -145,13 +150,14 @@ $action_arrow_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height=
                                 style="--action-accent: <?php echo esc_attr($action['accent']); ?>"
                                 role="button"
                                 tabindex="0"
+                                data-count="0"
                             >
                                 <span class="action-icon" aria-hidden="true" style="background-color: var(--action-accent)">
                                     <?php echo $action['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                                 </span>
                                 <div class="action-details">
                                     <span class="action-label"><?php echo esc_html($action['label']); ?></span>
-                                    <span class="action-sublabel"><?php esc_html_e('— clientes', 'garantias-online-360vo'); ?></span>
+                                    <span class="action-sublabel"><?php echo esc_html($default_action_count_label); ?></span>
                                 </div>
                                 <span class="action-cta" aria-hidden="true">
                                     <?php echo $action_arrow_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
