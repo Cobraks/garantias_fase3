@@ -1,5 +1,12 @@
 # Historial de cambios
 
+## 4.2.0 - 2025-11-15
+- Panel de detalles de clientes renovado con hint guiado, acciones rápidas y filtros sincronizados con la API.
+- Nueva sección "Resumen de Clientes" con métricas Global/Mensual, spotlight de clientes y microtendencias.
+- Añadidos contadores y filtros rápidos en el listado de clientes, preservando el panel durante las recargas.
+- Notificación de "Nueva garantía iniciada" sin plan predeterminado para evitar confusiones.
+- El flujo de selección de planes solo guarda borradores tras una elección explícita y se respetan estados previos.
+
 ## 4.1.0 - 2025-11-14
 - Arreglado el flujo completo de recuperación de contraseña, incluyendo redirecciones seguras y manejo de enlaces caducados.
 - Añadido el correo de confirmación tras actualizar la contraseña y unificado el estilo de las notificaciones HTML.

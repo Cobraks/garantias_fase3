@@ -2157,17 +2157,10 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 		return getOrden(b) - getOrden(a);
 	});
 
-    const persistedModalidadId = getSelectedModalidadId();
-	const anySelectedPre = sorted.some((m) => {
-		const estilos =
-			m.acf?.condiciones_generales_y_tarifas?.descripcion_informacion
-				?.estilos || {};
-		return estilos.preseleccionada;
-	});
-	const anySelectedPersisted =
-		persistedModalidadId != null &&
-		sorted.some((m) => String(m.ID) === String(persistedModalidadId));
-	const anySelected = anySelectedPre || anySelectedPersisted;
+        const persistedModalidadId = getSelectedModalidadId();
+        const anySelected =
+                persistedModalidadId != null &&
+                sorted.some((m) => String(m.ID) === String(persistedModalidadId));
 
 	let alreadySelected = false;
 	let anyFeatured = false;
@@ -2198,24 +2191,16 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 			}
 
 			let selected = false;
-			if (
-				persistedModalidadId &&
-				String(m.ID) === String(persistedModalidadId)
-			) {
-				planClasses.push("selected");
-				selected = true;
-				alreadySelected = true;
-			} else if (
-				!persistedModalidadId &&
-				estilos.preseleccionada &&
-				!alreadySelected
-			) {
-				planClasses.push("selected");
-				selected = true;
-				alreadySelected = true;
-			} else if (anySelected) {
-				planClasses.push("form__plan--no-selected");
-			}
+                        if (
+                                persistedModalidadId &&
+                                String(m.ID) === String(persistedModalidadId)
+                        ) {
+                                planClasses.push("selected");
+                                selected = true;
+                                alreadySelected = true;
+                        } else if (anySelected) {
+                                planClasses.push("form__plan--no-selected");
+                        }
 
                         const specialConfig = getSpecialFixedConfig(m);
                         const isSpecial = !!(specialConfig && specialConfig.precio !== null);

@@ -210,13 +210,7 @@ class PushMessageFactory
         $is_initialization = $event_type === 'guarantee.created';
 
         if ($is_initialization) {
-            $body_suffix = $plan_clean !== ''
-                ? sprintf(
-                    /* translators: %s: coverage name */
-                    __('ha iniciado la contratación de la Cobertura %s.', 'garantias-online-360vo'),
-                    $plan_display
-                )
-                : __('ha iniciado la contratación de una nueva garantía.', 'garantias-online-360vo');
+            $body_suffix = __('ha iniciado la contratación de una nueva cobertura.', 'garantias-online-360vo');
             $status_label = __('Sin finalizar', 'garantias-online-360vo');
         } else {
             $body_suffix = sprintf(

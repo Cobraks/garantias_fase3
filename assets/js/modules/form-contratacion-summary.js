@@ -40,11 +40,7 @@ function getValoresForm() {
 }
 
 function getSelectedPlanElement() {
-        // Fallback: si no hay seleccionado explícito, toma el primero visible
-        return (
-                document.querySelector(".form__plan.selected") ||
-                document.querySelector(".form__plan:not(.form__plan--no-selected)")
-        );
+	return document.querySelector(".form__plan.selected");
 }
 
 function escapeHtml(value) {
