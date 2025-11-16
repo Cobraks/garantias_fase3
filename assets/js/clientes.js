@@ -109,8 +109,11 @@
                 || 0;
         };
 
-        function initializeClientsSummary() {
-            const summaryRoot = document.querySelector('[data-clients-summary]');
+        function initializeClientsSummary(root = document) {
+            const scope = root && typeof root.querySelector === 'function'
+                ? root
+                : document;
+            const summaryRoot = scope.querySelector('[data-clients-summary]:not([data-clients-summary-ready])');
             if (!summaryRoot) {
                 return;
             }
@@ -122,6 +125,8 @@
             if (!panelsContainer || panels.length === 0 || toggles.length === 0) {
                 return;
             }
+
+            summaryRoot.setAttribute('data-clients-summary-ready', 'true');
 
             summaryRoot.classList.add('clients-summary--interactive');
 
@@ -5248,6 +5253,7 @@
 
             target.innerHTML = content;
             initDetailInteractions(target, itemContext);
+            initializeClientsSummary(target);
             target.classList.add('active');
 
             other.classList.remove('active', 'slide-in-left', 'slide-in-right', 'slide-out-left', 'slide-out-right');
@@ -5291,6 +5297,7 @@
             nextPanel.innerHTML = content;
             nextPanel.dataset.loadedId = content ? 'loaded' : '';
             initDetailInteractions(nextPanel, itemContext);
+            initializeClientsSummary(nextPanel);
 
             const enterClass = direction === 'backward' ? 'slide-in-left' : 'slide-in-right';
             const leaveClass = direction === 'backward' ? 'slide-out-right' : 'slide-out-left';
