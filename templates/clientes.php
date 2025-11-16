@@ -206,10 +206,12 @@ $clients_summary_context_labels = [
                                         $sparkline_max = max($sparkline_max, isset($point_entry['value']) ? (int) $point_entry['value'] : 0);
                                     }
                                     ?>
+                                    <?php $is_active_panel = $context_key === $clients_summary_default_context; ?>
                                     <div
-                                        class="clients-summary__panel<?php echo $context_key === $clients_summary_default_context ? ' is-active' : ''; ?>"
+                                        class="clients-summary__panel<?php echo $is_active_panel ? ' is-active' : ''; ?>"
                                         data-clients-summary-panel
                                         data-context="<?php echo esc_attr($context_key); ?>"
+                                        <?php echo $is_active_panel ? '' : 'hidden'; ?>
                                     >
                                         <?php if (! empty($metrics)) : ?>
                                             <div class="clients-summary__grid">

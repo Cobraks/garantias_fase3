@@ -141,7 +141,9 @@
                 summaryRoot.dataset.context = contextValue;
                 panels.forEach((panel) => {
                     const panelContext = panel.getAttribute('data-context') || 'year';
-                    panel.classList.toggle('is-active', panelContext === contextValue);
+                    const isActivePanel = panelContext === contextValue;
+                    panel.classList.toggle('is-active', isActivePanel);
+                    panel.toggleAttribute('hidden', !isActivePanel);
                 });
                 window.requestAnimationFrame(updatePanelHeight);
             };
