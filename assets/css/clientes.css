@@ -72,26 +72,20 @@
 }
 
 .clients-page .clients-summary {
-    border: 1px solid var(--summary-border);
-    border-radius: 1rem;
-    background: var(--summary-surface-secondary);
-    padding: 1.5rem;
+    margin-top: 1.5rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
-    position: relative;
-    overflow: hidden;
-    animation: guaranteeSummarySlideIn 0.55s ease-out 0.15s backwards;
-}
-
-.clients-page .clients-summary__context-input {
-    position: absolute;
-    opacity: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    animation: guaranteeSummarySlideIn 0.45s ease-out 0.1s backwards;
 }
 
 .clients-page .clients-summary__card {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.5rem;
 }
 
 .clients-page .clients-summary__header {
@@ -99,49 +93,67 @@
     justify-content: space-between;
     gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--summary-border);
 }
 
 .clients-page .clients-summary__title {
-    font-size: 1.1rem;
+    font-size: 1.25rem;
     font-weight: 600;
     color: var(--summary-text);
     margin: 0;
+    letter-spacing: -0.02em;
 }
 
-.clients-page .clients-summary__toggle {
+.clients-page .clients-summary__context {
     display: inline-flex;
-    background: var(--summary-surface);
+    align-items: center;
+    gap: 0.35rem;
+    padding: 2px;
+    margin: 0;
+    border-radius: 10px;
     border: 1px solid var(--summary-border);
-    border-radius: 999px;
-    padding: 4px;
-    gap: 4px;
+    background: var(--summary-surface-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
 }
 
-.clients-page .clients-summary__toggle-label {
-    padding: 0.35rem 0.85rem;
-    border-radius: 999px;
-    font-size: 0.85rem;
+.clients-page .clients-summary__context-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.clients-page .clients-summary__context-label {
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
     color: var(--summary-muted);
     cursor: pointer;
-    transition: color 0.2s ease, background-color 0.2s ease;
-    user-select: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
-.clients-page .clients-summary[data-context='year'] [data-context-label='year'],
-.clients-page .clients-summary[data-context='month'] [data-context-label='month'] {
-    background: var(--summary-surface-secondary);
-    color: var(--summary-text);
-    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.15);
+.clients-page .clients-summary__context-input:checked + .clients-summary__context-label {
+    background: var(--summary-accent);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
+}
+
+.clients-page .clients-summary__context-label:focus-visible {
+    outline: 2px solid var(--summary-accent);
+    outline-offset: 2px;
 }
 
 .clients-page .clients-summary__panels {
     display: block;
     position: relative;
+    margin-top: 0.75rem;
 }
 
 .clients-page .clients-summary__panel {
     display: grid;
-    gap: 1.25rem;
+    gap: 1rem;
 }
 
 .clients-page .clients-summary--interactive .clients-summary__panels {
@@ -167,18 +179,18 @@
 .clients-page .clients-summary__grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
+    gap: 0.85rem;
 }
 
 .clients-page .clients-summary__metric {
     background: var(--summary-surface);
     border: 1px solid var(--summary-border);
-    border-radius: 0.9rem;
-    padding: 1rem;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04);
+    border-radius: 0.85rem;
+    padding: 0.85rem;
+    box-shadow: none;
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.3rem;
 }
 
 .clients-page .clients-summary__metric-label {
@@ -190,7 +202,7 @@
 }
 
 .clients-page .clients-summary__metric-value {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 600;
     color: var(--summary-text);
     line-height: 1.1;
@@ -225,10 +237,8 @@
 }
 
 .clients-page .clients-summary__spotlight {
-    background: var(--summary-surface);
-    border: 1px solid var(--summary-border);
-    border-radius: 0.9rem;
-    padding: 1rem;
+    border-top: 1px solid var(--summary-border);
+    padding-top: 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -245,15 +255,19 @@
     list-style: none;
     padding: 0;
     margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.75rem;
 }
 
 .clients-page .clients-summary__spotlight-item {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: 0.25rem;
+    background: var(--summary-surface);
+    border: 1px solid var(--summary-border);
+    border-radius: 0.75rem;
+    padding: 0.75rem 0.9rem;
 }
 
 .clients-page .clients-summary__spotlight-label {
@@ -274,10 +288,8 @@
 }
 
 .clients-page .clients-summary__trendline {
-    background: var(--summary-surface);
-    border: 1px solid var(--summary-border);
-    border-radius: 0.9rem;
-    padding: 1rem;
+    border-top: 1px solid var(--summary-border);
+    padding-top: 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -295,7 +307,7 @@
     padding: 0;
     margin: 0;
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     align-items: flex-end;
 }
 
@@ -303,7 +315,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.35rem;
     align-items: center;
     font-size: 0.75rem;
     color: var(--summary-muted);
@@ -311,7 +323,7 @@
 
 .clients-page .clients-summary__sparkline-bar {
     width: 100%;
-    height: 90px;
+    height: 80px;
     border-radius: 0.5rem;
     background: var(--summary-surface-secondary);
     position: relative;
@@ -347,6 +359,11 @@
         align-items: flex-start;
     }
 
+    .clients-page .clients-summary__context {
+        width: 100%;
+        justify-content: space-between;
+    }
+
     .clients-page .clients-summary__grid {
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     }
@@ -358,7 +375,7 @@
     }
 
     .clients-page .clients-summary__sparkline-bar {
-        height: 70px;
+        height: 60px;
     }
 }
 

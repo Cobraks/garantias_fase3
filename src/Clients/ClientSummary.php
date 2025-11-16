@@ -9,6 +9,8 @@ use GarantiasOnline360VO\GuaranteeCPT;
 use GarantiasOnline360VO\Rest\ClientRestController;
 use WP_User;
 use WP_User_Query;
+use function _n;
+use function __;
 use function add_action;
 use function current_time;
 use function delete_transient;
@@ -29,6 +31,7 @@ class ClientSummary
     private const TRANSIENT_KEY = 'go360_clients_summary';
     private const TRANSIENT_TTL = 300;
     private const GUARANTEE_CLIENT_META = 'garantia_contratada_concesionario_empresa_profesional';
+    private const GUARANTEE_PRICE_META  = 'garantia_contratada_precio';
     private const GUARANTEE_STATUSES = ['publish', 'pending', 'future', 'draft'];
 
     private static bool $hooks_registered = false;
@@ -102,11 +105,11 @@ class ClientSummary
         $active_clients_previous = self::count_guarantee_clients_in_period($previous['start'], $previous['end']);
 
         $top_client = self::get_top_client_by_guarantees($current['start'], $current['end']);
-        $latest_client = self::get_latest_client_in_period($current['start'], $current['end']);
+        $top_amount_client = self::get_top_client_by_amount($current['start'], $current['end']);
 
         $sparkline = $context === 'year'
             ? self::build_monthly_sparkline($current['end'])
-            : self::build_weekly_sparkline($current['end']);
+            : self::build_daily_sparkline($current['end']);
 
         $trend_suffix = $context === 'year'
             ? __('vs año ant.', 'garantias-online-360vo')
@@ -126,7 +129,7 @@ class ClientSummary
                 ],
                 [
                     'key'       => 'active_guarantees',
-                    'label'     => __('Clientes con nuevas garantías', 'garantias-online-360vo'),
+                    'label'     => __('Con nuevas garantías', 'garantias-online-360vo'),
                     'value'     => $active_clients_current,
                     'formatted' => number_format_i18n($active_clients_current),
                     'sublabel'  => $context === 'year'
@@ -142,18 +145,26 @@ class ClientSummary
                         'label' => __('Más garantías', 'garantias-online-360vo'),
                         'value' => $top_client['name'],
                         'count' => $top_client['count'],
+                        'meta'  => $top_client['count'] > 0
+                            ? sprintf(
+                                _n('%s garantía', '%s garantías', $top_client['count'], 'garantias-online-360vo'),
+                                number_format_i18n($top_client['count'])
+                            )
+                            : '',
                     ],
                     [
-                        'label' => __('Alta más reciente', 'garantias-online-360vo'),
-                        'value' => $latest_client['name'],
-                        'meta'  => $latest_client['date'],
+                        'label' => __('Mayor importe', 'garantias-online-360vo'),
+                        'value' => $top_amount_client['name'],
+                        'meta'  => $top_amount_client['amount'] > 0
+                            ? sprintf('%s €', number_format_i18n($top_amount_client['amount'], 2))
+                            : '',
                     ],
                 ],
             ],
             'trendline' => [
                 'title'  => $context === 'year'
-                    ? __('Altas mensuales', 'garantias-online-360vo')
-                    : __('Altas semanales', 'garantias-online-360vo'),
+                    ? __('Ritmo mensual', 'garantias-online-360vo')
+                    : __('Ritmo diario', 'garantias-online-360vo'),
                 'points' => $sparkline,
             ],
         ];
@@ -296,36 +307,56 @@ class ClientSummary
         ];
     }
 
-    private static function get_latest_client_in_period(DateTimeImmutable $start, DateTimeImmutable $end): array
+    private static function get_top_client_by_amount(DateTimeImmutable $start, DateTimeImmutable $end): array
     {
-        $query = new WP_User_Query([
-            'role__in'   => ClientRestController::get_supported_roles(),
-            'number'     => 1,
-            'orderby'    => 'registered',
-            'order'      => 'DESC',
-            'date_query' => [
-                [
-                    'column'    => 'user_registered',
-                    'after'     => self::format_gmt($start),
-                    'before'    => self::format_gmt($end),
-                    'inclusive' => true,
-                ],
-            ],
-        ]);
-
-        $user = $query->get_results()[0] ?? null;
-        if (! $user instanceof WP_User) {
-            return [
-                'id'   => 0,
-                'name' => __('Sin datos', 'garantias-online-360vo'),
-                'date' => '',
-            ];
+        global $wpdb;
+        if (! isset($wpdb->posts, $wpdb->postmeta)) {
+            return self::empty_amount_spotlight();
         }
 
+        $status_placeholders = implode(',', array_fill(0, count(self::GUARANTEE_STATUSES), '%s'));
+        $sql = "
+            SELECT client_meta.meta_value AS client_id,
+                   SUM(
+                        CASE
+                            WHEN price.meta_value REGEXP '^-?[0-9]+(\\.[0-9]+)?$'
+                                THEN CAST(price.meta_value AS DECIMAL(20,2))
+                            ELSE 0
+                        END
+                   ) AS total_amount
+            FROM {$wpdb->posts} AS posts
+            INNER JOIN {$wpdb->postmeta} AS client_meta
+                ON client_meta.post_id = posts.ID
+                AND client_meta.meta_key = %s
+            LEFT JOIN {$wpdb->postmeta} AS price
+                ON price.post_id = posts.ID
+                AND price.meta_key = %s
+            WHERE posts.post_type = %s
+                AND posts.post_status IN ($status_placeholders)
+                AND posts.post_date_gmt BETWEEN %s AND %s
+            GROUP BY client_meta.meta_value
+            ORDER BY total_amount DESC
+            LIMIT 1
+        ";
+
+        $params = array_merge(
+            [self::GUARANTEE_CLIENT_META, self::GUARANTEE_PRICE_META, GuaranteeCPT::POST_TYPE],
+            self::GUARANTEE_STATUSES,
+            [self::format_gmt($start), self::format_gmt($end)]
+        );
+
+        $row = $wpdb->get_row($wpdb->prepare($sql, $params), ARRAY_A);
+        if (! is_array($row) || empty($row['client_id'])) {
+            return self::empty_amount_spotlight();
+        }
+
+        $client_id = (int) $row['client_id'];
+        $amount = isset($row['total_amount']) ? (float) $row['total_amount'] : 0.0;
+
         return [
-            'id'   => (int) $user->ID,
-            'name' => self::resolve_client_display_name($user),
-            'date' => self::format_display_date($user->user_registered),
+            'id'     => $client_id,
+            'name'   => self::resolve_client_name($client_id),
+            'amount' => $amount,
         ];
     }
 
@@ -352,22 +383,17 @@ class ClientSummary
         return $points;
     }
 
-    private static function build_weekly_sparkline(DateTimeImmutable $end): array
+    private static function build_daily_sparkline(DateTimeImmutable $end): array
     {
         $points = [];
         $anchor_end = $end->setTime(23, 59, 59);
-        $window_start = $anchor_end->sub(new DateInterval('P21D'))->setTime(0, 0, 0);
 
-        for ($i = 0; $i < 4; $i++) {
-            $segment_start = $window_start->add(new DateInterval('P' . ($i * 7) . 'D'));
-            $segment_start = $segment_start->setTime(0, 0, 0);
-            $segment_end = $segment_start->add(new DateInterval('P6D'))->setTime(23, 59, 59);
-            if ($segment_end > $anchor_end) {
-                $segment_end = $anchor_end;
-            }
+        for ($i = 6; $i >= 0; $i--) {
+            $segment_start = $anchor_end->sub(new DateInterval('P' . $i . 'D'))->setTime(0, 0, 0);
+            $segment_end = $segment_start->setTime(23, 59, 59);
             $value = self::count_clients_in_period($segment_start, $segment_end);
             $points[] = [
-                'label'     => sprintf('%s-%s', wp_date('d/m', $segment_start->getTimestamp()), wp_date('d/m', $segment_end->getTimestamp())),
+                'label'     => wp_date('d M', $segment_start->getTimestamp()),
                 'value'     => $value,
                 'formatted' => number_format_i18n($value),
             ];
@@ -403,22 +429,6 @@ class ClientSummary
         }
 
         return $user->user_login;
-    }
-
-    private static function format_display_date(?string $registered): string
-    {
-        if (! is_string($registered) || $registered === '') {
-            return '';
-        }
-
-        try {
-            $dt = new DateTimeImmutable($registered, new DateTimeZone('UTC'));
-            $dt = $dt->setTimezone(wp_timezone());
-        } catch (\Exception $e) {
-            return '';
-        }
-
-        return wp_date('d M', $dt->getTimestamp());
     }
 
     private static function format_trend(int $current, int $previous, string $suffix): array
@@ -461,6 +471,15 @@ class ClientSummary
             'id'    => 0,
             'name'  => __('Sin datos', 'garantias-online-360vo'),
             'count' => 0,
+        ];
+    }
+
+    private static function empty_amount_spotlight(): array
+    {
+        return [
+            'id'     => 0,
+            'name'   => __('Sin datos', 'garantias-online-360vo'),
+            'amount' => 0.0,
         ];
     }
 

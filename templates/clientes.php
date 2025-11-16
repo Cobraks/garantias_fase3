@@ -163,41 +163,29 @@ $clients_summary_context_labels = [
                         data-context="<?php echo esc_attr($clients_summary_default_context); ?>"
                         aria-labelledby="clients-summary-title"
                     >
-                        <input
-                            type="radio"
-                            name="clients-summary-context"
-                            id="clients-summary-context-year"
-                            class="clients-summary__context-input clients-summary__context-input--year"
-                            value="year"
-                            data-clients-summary-toggle
-                            <?php checked($clients_summary_default_context, 'year'); ?>
-                        >
-                        <?php if (isset($clients_summary_contexts['month'])) : ?>
-                            <input
-                                type="radio"
-                                name="clients-summary-context"
-                                id="clients-summary-context-month"
-                                class="clients-summary__context-input clients-summary__context-input--month"
-                                value="month"
-                                data-clients-summary-toggle
-                                <?php checked($clients_summary_default_context, 'month'); ?>
-                            >
-                        <?php endif; ?>
                         <div class="clients-summary__card">
                             <header class="clients-summary__header">
                                 <h3 id="clients-summary-title" class="clients-summary__title"><?php esc_html_e('Resumen de Clientes', 'garantias-online-360vo'); ?></h3>
-                                <div class="clients-summary__toggle" role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
-                                    <?php foreach ($clients_summary_context_labels as $context_key => $context_label) : ?>
-                                        <?php if (! isset($clients_summary_contexts[$context_key])) { continue; } ?>
-                                        <label
-                                            class="clients-summary__toggle-label"
-                                            data-context-label="<?php echo esc_attr($context_key); ?>"
-                                            for="clients-summary-context-<?php echo esc_attr($context_key); ?>"
-                                        >
-                                            <?php echo esc_html($context_label); ?>
-                                        </label>
-                                    <?php endforeach; ?>
-                                </div>
+                                <?php if (count($clients_summary_contexts) > 1) : ?>
+                                    <fieldset class="clients-summary__context" data-clients-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
+                                        <?php foreach ($clients_summary_context_labels as $context_key => $context_label) : ?>
+                                            <?php if (! isset($clients_summary_contexts[$context_key])) { continue; } ?>
+                                            <?php $input_id = 'clients-summary-context-' . $context_key; ?>
+                                            <input
+                                                type="radio"
+                                                name="clients-summary-context"
+                                                id="<?php echo esc_attr($input_id); ?>"
+                                                class="clients-summary__context-input"
+                                                value="<?php echo esc_attr($context_key); ?>"
+                                                data-clients-summary-toggle
+                                                <?php checked($clients_summary_default_context, $context_key); ?>
+                                            >
+                                            <label class="clients-summary__context-label" for="<?php echo esc_attr($input_id); ?>">
+                                                <?php echo esc_html($context_label); ?>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </fieldset>
+                                <?php endif; ?>
                             </header>
                             <div class="clients-summary__panels" data-clients-summary-panels>
                                 <?php foreach ($clients_summary_contexts as $context_key => $context_data) : ?>
@@ -267,14 +255,12 @@ $clients_summary_context_labels = [
                                                         $item_value = isset($item['value']) ? (string) $item['value'] : '—';
                                                         $item_count = isset($item['count']) ? (int) $item['count'] : 0;
                                                         $item_meta = isset($item['meta']) ? (string) $item['meta'] : '';
-                                                        $count_label = '';
-                                                        if ($item_count > 0) {
+                                                        $count_label = $item_meta;
+                                                        if ($count_label === '' && $item_count > 0) {
                                                             $count_label = sprintf(
                                                                 _n('%s garantía', '%s garantías', $item_count, 'garantias-online-360vo'),
                                                                 number_format_i18n($item_count)
                                                             );
-                                                        } elseif ($item_meta !== '') {
-                                                            $count_label = $item_meta;
                                                         }
                                                         ?>
                                                         <li class="clients-summary__spotlight-item">
