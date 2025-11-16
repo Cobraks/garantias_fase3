@@ -55,8 +55,8 @@
         const panel2 = document.getElementById('detail-panel-2');
         const detail = document.querySelector('.guarantee-detail');
         const header = document.querySelector('.top-bar');
-        const actionsList = document.querySelector('[data-clients-actions]');
         const resetFiltersButton = document.querySelector('[data-reset-filters]');
+        const defaultEmptyPanelTemplate = panel1 ? panel1.innerHTML : '';
 
         if (!tbody || !panel1 || !panel2) {
             return;
@@ -179,18 +179,58 @@
             if (!resetFiltersButton) {
                 return;
             }
+
             resetFiltersButton.hidden = !isAnyFilterActive();
         };
 
+        const getActionsList = () => (detail ? detail.querySelector('[data-clients-actions]') : null);
+
         const updateQuickFilterUi = () => {
-            if (!actionsList) {
+            const list = getActionsList();
+            if (!list) {
                 return;
             }
-            const currentValue = state.quickFilter || '';
-            actionsList.querySelectorAll('.action-item').forEach((item) => {
+
+            const activeValue = state.quickFilter || '';
+            list.querySelectorAll('.action-item').forEach((item) => {
                 const value = item.getAttribute('data-filter-value') || '';
-                item.classList.toggle('is-active', currentValue !== '' && value === currentValue);
+                item.classList.toggle('is-active', activeValue !== '' && value === activeValue);
             });
+        };
+
+        const getActionItemFromTarget = (target) => {
+            if (!target || typeof target.closest !== 'function') {
+                return null;
+            }
+
+            const list = getActionsList();
+            if (!list) {
+                return null;
+            }
+
+            const item = target.closest('.action-item');
+            if (!item || !list.contains(item)) {
+                return null;
+            }
+
+            return item;
+        };
+
+        const applyQuickFilter = (value) => {
+            const candidate = typeof value === 'string' ? value.trim() : '';
+            const nextValue = candidate === '' ? '' : candidate;
+            const finalValue = state.quickFilter === nextValue ? '' : nextValue;
+
+            if (state.quickFilter === finalValue) {
+                updateQuickFilterUi();
+                updateResetFiltersButton();
+                return;
+            }
+
+            state.quickFilter = finalValue;
+            updateQuickFilterUi();
+            updateResetFiltersButton();
+            loadPage(1, false);
         };
 
         const cache = new Map();
@@ -215,6 +255,53 @@
             go_particular: 'Particular',
             go_individual: 'Particular',
         };
+
+        if (detail) {
+            detail.addEventListener('click', (event) => {
+                const item = getActionItemFromTarget(event.target);
+                if (!item) {
+                    return;
+                }
+
+                event.preventDefault();
+                const value = item.getAttribute('data-filter-value') || '';
+                applyQuickFilter(value);
+            });
+
+            detail.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+
+                const item = getActionItemFromTarget(event.target);
+                if (!item) {
+                    return;
+                }
+
+                event.preventDefault();
+                const value = item.getAttribute('data-filter-value') || '';
+                applyQuickFilter(value);
+            });
+        }
+
+        if (resetFiltersButton) {
+            resetFiltersButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                state.search = '';
+                state.channel = '';
+                state.quickFilter = '';
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                if (channelSelect) {
+                    channelSelect.value = '';
+                }
+                updateCloseIcon();
+                updateQuickFilterUi();
+                updateResetFiltersButton();
+                loadPage(1, false);
+            });
+        }
 
         function normalizeSalesChannelLabel(channel) {
             if (!channel || typeof channel !== 'object') {
@@ -5163,23 +5250,35 @@
             swapPanels(content, direction, item);
         }
 
+        function getEmptyPanelContent() {
+            if (defaultEmptyPanelTemplate && defaultEmptyPanelTemplate.trim() !== '') {
+                return defaultEmptyPanelTemplate;
+            }
+
+            return `
+                <div class="guarantee-detail__empty">
+                    <h3 class="guarantee-detail__title">${escapeHtml(strings.detailTitle || 'Detalles del cliente')}</h3>
+                    <p>${escapeHtml(strings.selectPrompt || 'Selecciona un cliente para consultar su información, asignar comerciales, gestionar ofertas y más.')}</p>
+                </div>
+            `;
+        }
+
         function showEmptyDetail(direction = 'forward', options = {}) {
             const preserveUrl = Boolean(options.preserveUrl);
             const animate = options.animate !== undefined ? Boolean(options.animate) : true;
             if (!preserveUrl) {
                 updateHistory('');
             }
-            const content = `
-                <div class="guarantee-detail__empty">
-                    <h3 class="guarantee-detail__title">${escapeHtml(strings.detailTitle || 'Detalles del cliente')}</h3>
-                    <p>${escapeHtml(strings.selectPrompt || 'Selecciona un cliente para consultar su información, asignar comerciales, gestionar ofertas y más.')}</p>
-                </div>
-            `;
+            const content = getEmptyPanelContent();
             if (!animate) {
                 setActivePanelContent(content, null);
+                updateQuickFilterUi();
                 return;
             }
             swapPanels(content, direction, null);
+            window.requestAnimationFrame(() => {
+                updateQuickFilterUi();
+            });
         }
 
         function showLoadingDetail() {
@@ -5214,6 +5313,7 @@
             state.isLoading = true;
             setSpinner(true);
             let queuedPage = null;
+            updateResetFiltersButton();
 
             if (!append) {
                 tbody.innerHTML = '';
@@ -5423,57 +5523,6 @@
             });
         }
 
-        if (resetFiltersButton) {
-            resetFiltersButton.addEventListener('click', () => {
-                if (searchInput) {
-                    searchInput.value = '';
-                }
-                state.search = '';
-                if (channelSelect) {
-                    channelSelect.value = '';
-                }
-                state.channel = '';
-                state.quickFilter = '';
-                updateQuickFilterUi();
-                updateCloseIcon();
-                updateResetFiltersButton();
-                if (debounceTimer) {
-                    clearTimeout(debounceTimer);
-                }
-                loadPage(1, false);
-                if (searchInput) {
-                    searchInput.focus();
-                }
-            });
-        }
-
-        if (actionsList) {
-            actionsList.addEventListener('click', (event) => {
-                const item = event.target.closest('.action-item[data-filter-value]');
-                if (!item) {
-                    return;
-                }
-                event.preventDefault();
-                const value = item.getAttribute('data-filter-value') || '';
-                state.quickFilter = state.quickFilter === value ? '' : value;
-                updateQuickFilterUi();
-                updateResetFiltersButton();
-                loadPage(1, false);
-            });
-
-            actionsList.addEventListener('keydown', (event) => {
-                if (event.key !== 'Enter' && event.key !== ' ') {
-                    return;
-                }
-                const item = event.target.closest('.action-item[data-filter-value]');
-                if (!item) {
-                    return;
-                }
-                event.preventDefault();
-                item.click();
-            });
-        }
-
         if (sentinel && listContainer) {
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach((entry) => {
@@ -5498,9 +5547,9 @@
             });
         }
 
-        updateCloseIcon();
-        updateQuickFilterUi();
         updateResetFiltersButton();
+        updateQuickFilterUi();
+        updateCloseIcon();
         setSpinner(false);
         initResizableColumns(table);
         showEmptyDetail('forward', { preserveUrl: Boolean(initialSlug) });
