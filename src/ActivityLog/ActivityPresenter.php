@@ -241,6 +241,16 @@ class ActivityPresenter
             );
         }
 
+        if (! empty($context['uploaded_by'])) {
+            $uploader = trim((string) $context['uploaded_by']);
+            if ($uploader !== '') {
+                $lines[] = sprintf(
+                    __('Mandato SEPA subido por %s.', 'garantias-online-360vo'),
+                    $uploader
+                );
+            }
+        }
+
         return $lines;
     }
 
