@@ -31,7 +31,7 @@ class PushMessageFactory
                 return $this->build_user_verified($activity_record);
             case 'guarantee.created':
             case 'guarantee.contracted':
-                return $this->build_guarantee_contracted($activity_record);
+                return $this->build_guarantee_event($activity_record, $event_type);
             case 'payment.recorded':
                 return $this->build_payment_recorded($activity_record);
             case 'payment.reported':
@@ -176,7 +176,7 @@ class PushMessageFactory
     /**
      * @param array<string, mixed> $record
      */
-    private function build_guarantee_contracted(array $record): array
+    private function build_guarantee_event(array $record, string $event_type): array
     {
         $context = $this->decode_context($record['context'] ?? '');
         $guarantee_id = isset($record['guarantee_id']) ? (int) $record['guarantee_id'] : 0;
@@ -207,11 +207,24 @@ class PushMessageFactory
             ? $plan_clean
             : __('Sin identificar', 'garantias-online-360vo');
 
-        $body_suffix = sprintf(
-            /* translators: %s: coverage name */
-            __('ha contratado una Cobertura %s', 'garantias-online-360vo'),
-            $plan_display
-        );
+        $is_initialization = $event_type === 'guarantee.created';
+
+        if ($is_initialization) {
+            $body_suffix = $plan_clean !== ''
+                ? sprintf(
+                    /* translators: %s: coverage name */
+                    __('ha iniciado la contratación de la Cobertura %s.', 'garantias-online-360vo'),
+                    $plan_display
+                )
+                : __('ha iniciado la contratación de una nueva garantía.', 'garantias-online-360vo');
+            $status_label = __('Sin finalizar', 'garantias-online-360vo');
+        } else {
+            $body_suffix = sprintf(
+                /* translators: %s: coverage name */
+                __('ha contratado una Cobertura %s', 'garantias-online-360vo'),
+                $plan_display
+            );
+        }
 
         $body = sprintf(
             '<strong>%1$s</strong> %2$s',
@@ -236,14 +249,22 @@ class PushMessageFactory
             }
         }
 
+        $title_text = $is_initialization
+            ? __('Nueva garantía inicializada', 'garantias-online-360vo')
+            : __('Nueva garantía', 'garantias-online-360vo');
+
+        $badge_text = __('Nuevo', 'garantias-online-360vo');
+
+        $tone = $is_initialization ? 'info' : 'primary';
+
         return [
-            'title' => __('Nueva garantía', 'garantias-online-360vo'),
+            'title' => $title_text,
             'body'  => $body,
             'link'  => $link,
             'icon'      => Svg::data_uri('new_shield'),
             'icon_slug' => 'new_shield',
-            'tone'      => 'primary',
-            'badge'     => __('Nuevo', 'garantias-online-360vo'),
+            'tone'      => $tone,
+            'badge'     => $badge_text,
             'meta'      => $meta,
             'actions' => [
                 [
