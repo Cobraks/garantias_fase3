@@ -4974,8 +4974,10 @@ const ADD_DOC_KEY = "add-document";
                         card.innerHTML = `
                                 <div class="guarantee-card__header">
                                         <div class="guarantee-card__vehicle">
-                                                <span class="guarantee-card__new-badge" aria-hidden="true" data-realtime-badge="true">Nueva</span>
-                                                <div class="guarantee-card__mat">${escapeHtml(view.matricula || "-")}</div>
+                                                <div class="guarantee-card__mat">
+                                                        ${escapeHtml(view.matricula || "-")}
+                                                        <span class="guarantee-card__new-badge" aria-hidden="true" data-realtime-badge="true">Nueva</span>
+                                                </div>
                                                 <div class="guarantee-card__model">${escapeHtml(view.marcaModelo || "-")}</div>
                                         </div>
                                         <span class="${statusClassAttr}">${escapeHtml(view.estadoLabel || "")}</span>
@@ -5070,8 +5072,10 @@ const ADD_DOC_KEY = "add-document";
                         tr.innerHTML = `
                                 <td data-label="Vehículo">
                                         <div class="guarantees-table__vehiculo">
-                                                <span class="guarantees-table__new-badge" aria-hidden="true" data-realtime-badge="true">Nueva</span>
-                                                <div class="vehiculo__mat">${view.matricula || "-"}</div>
+                                                <div class="vehiculo__mat">
+                                                        ${view.matricula || "-"}
+                                                        <span class="guarantees-table__new-badge" aria-hidden="true" data-realtime-badge="true">Nueva</span>
+                                                </div>
                                                 <div class="vehiculo__marca_modelo">${view.marcaModelo || "-"}</div>
                                         </div>
                                 </td>

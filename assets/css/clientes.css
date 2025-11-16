@@ -362,6 +362,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+.vehiculo__mat {
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
 .cliente__phone {
     font-size: .9rem;
     font-style: normal;

@@ -1163,21 +1163,19 @@ textarea {
 }
 
 .notifications-toast {
-  top: calc(72px + 1.5rem);
+  --notifications-toast-top: calc(72px + 1.5rem);
+  position: fixed;
+  top: var(--notifications-toast-top);
   right: calc((100vw - min(100vw, 1440px)) / 2 + 1.5rem);
   width: min(22rem, 92vw);
   display: none;
-  z-index: 2147483000;
+  z-index: 2147483647;
   pointer-events: none;
   will-change: transform, opacity;
 }
 
-body:not(.scrolled) .notifications-toast {
-  position: fixed;
-}
-
 body.scrolled .notifications-toast {
-  position: absolute;
+  --notifications-toast-top: calc(72px + 1.5rem + 4.5rem);
 }
 
 .notifications-toast--visible {
@@ -2481,6 +2479,7 @@ body.scrolled .notifications-toast {
   }
 }
 
+
 .guarantees-table__row--is-new {
   animation: go360-realtime-row-slide 360ms ease-out,
     go360-realtime-row-glow 2200ms ease-in-out;
@@ -2489,64 +2488,70 @@ body.scrolled .notifications-toast {
 .guarantees-table__vehiculo,
 .guarantee-card__vehicle {
   position: relative;
-  padding-top: 1rem;
+}
+
+.vehiculo__mat,
+.guarantee-card__mat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  line-height: 1.2;
 }
 
 .guarantees-table__new-badge,
 .guarantee-card__new-badge {
-  position: absolute;
-  top: 0.25rem;
-  left: 0.5rem;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.2rem;
-  font-size: 0.6rem;
+  gap: 0.35rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   border-radius: 999px;
-  padding: 0.12rem 0.55rem;
-  background: rgba(var(--go-color-22c55e-rgb), 0.2);
-  border: 1px solid rgba(var(--go-color-22c55e-rgb), 0.5);
-  color: var(--go-color-0f172a);
-  box-shadow: 0 12px 32px -18px rgba(var(--go-color-22c55e-rgb), 0.85);
+  padding: 0.12rem 0.65rem;
+  background: rgba(var(--go-color-22c55e-rgb), 0.16);
+  border: 1px solid rgba(var(--go-color-22c55e-rgb), 0.45);
+  color: var(--go-color-166534);
+  box-shadow: 0 8px 18px -12px rgba(var(--go-color-22c55e-rgb), 0.85);
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateY(-2px);
   pointer-events: auto;
   cursor: pointer;
-  z-index: 2;
-  transition: opacity 220ms ease, transform 220ms ease, box-shadow 200ms ease;
+  transition: opacity 220ms ease, transform 220ms ease, box-shadow 220ms ease,
+    filter 220ms ease;
 }
 
-.guarantees-table__new-badge::after,
-.guarantee-card__new-badge::after {
+.guarantees-table__new-badge::before,
+.guarantee-card__new-badge::before {
   content: "";
-  width: 0.35rem;
-  height: 0.35rem;
+  width: 0.4rem;
+  height: 0.4rem;
   border-radius: 50%;
   background: currentColor;
-  opacity: 0.45;
+  opacity: 0.55;
   box-shadow: 0 0 0 0 rgba(var(--go-color-22c55e-rgb), 0.4);
   animation: go360-realtime-badge-dot 1.4s ease-in-out infinite;
   animation-play-state: paused;
+  flex-shrink: 0;
 }
 
 .guarantee-card__new-badge {
   background: rgba(var(--go-color-2563eb-rgb), 0.18);
   border-color: rgba(var(--go-color-2563eb-rgb), 0.45);
   color: var(--go-color-1d4ed8);
+  box-shadow: 0 10px 22px -14px rgba(var(--go-color-2563eb-rgb), 0.85);
 }
 
 .guarantees-table__row--is-new .guarantees-table__new-badge,
 .guarantee-card--is-new .guarantee-card__new-badge {
   opacity: 1;
   transform: translateY(0);
-  animation: go360-realtime-badge 1200ms ease-in-out infinite;
+  animation: go360-realtime-badge 1400ms ease-in-out infinite;
 }
 
-.guarantees-table__row--is-new .guarantees-table__new-badge::after,
-.guarantee-card--is-new .guarantee-card__new-badge::after {
+.guarantees-table__row--is-new .guarantees-table__new-badge::before,
+.guarantee-card--is-new .guarantee-card__new-badge::before {
   animation-play-state: running;
 }
 
@@ -2611,13 +2616,13 @@ body.scrolled .notifications-toast {
 @keyframes go360-realtime-badge {
   0%,
   100% {
-    opacity: 0.85;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    filter: brightness(1) saturate(1);
   }
 
   50% {
-    opacity: 1;
-    transform: translateY(-1px);
+    transform: translateY(-1px) scale(1.04);
+    filter: brightness(1.12) saturate(1.08);
   }
 }
 
@@ -2628,7 +2633,9 @@ body.scrolled .notifications-toast {
   }
 
   .guarantees-table__row--is-new .guarantees-table__new-badge,
-  .guarantee-card--is-new .guarantee-card__new-badge {
+  .guarantee-card--is-new .guarantee-card__new-badge,
+  .guarantees-table__row--is-new .guarantees-table__new-badge::before,
+  .guarantee-card--is-new .guarantee-card__new-badge::before {
     animation: none;
   }
 }
