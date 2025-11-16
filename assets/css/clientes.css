@@ -180,6 +180,51 @@
     transform: translateX(4px);
 }
 
+.clients-page .action-item.is-active {
+    border-color: var(--action-accent, var(--summary-accent));
+    background-color: var(--summary-surface-secondary);
+    box-shadow: 0 0 0 1px var(--action-accent, var(--summary-accent));
+}
+
+.clients-page .action-item.is-active .action-icon {
+    background-color: var(--action-accent, var(--summary-accent));
+    color: #fff;
+}
+
+.clients-page .action-item.is-active .action-cta {
+    color: var(--action-accent, var(--summary-accent));
+    transform: none;
+}
+
+.clients-page .action-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.clients-page .action-cta__icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.clients-page .action-cta__icon svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.clients-page .action-cta__icon--close {
+    display: none;
+}
+
+.clients-page .action-item.is-active .action-cta__icon--forward {
+    display: none;
+}
+
+.clients-page .action-item.is-active .action-cta__icon--close {
+    display: inline-flex;
+}
+
 @keyframes guaranteeSummarySlideIn {
     from {
         opacity: 0;

@@ -200,7 +200,9 @@
             const activeValue = state.quickFilter || '';
             list.querySelectorAll('.action-item').forEach((item) => {
                 const value = item.getAttribute('data-filter-value') || '';
-                item.classList.toggle('is-active', activeValue !== '' && value === activeValue);
+                const isActive = activeValue !== '' && value === activeValue;
+                item.classList.toggle('is-active', isActive);
+                item.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             });
         };
 

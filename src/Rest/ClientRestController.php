@@ -72,6 +72,11 @@ class ClientRestController
     private static ?array $clients_with_active_offers = null;
 
     /**
+     * @var array<int,array<int,array<string,mixed>>>
+     */
+    private static array $active_offers_cache = [];
+
+    /**
      * @var array<int,int>|null
      */
     private static ?array $all_client_ids = null;
@@ -530,6 +535,7 @@ class ClientRestController
         $desired_snapshot = self::format_offers_for_log($normalized);
         $result = update_field('ofertas_y_descuentos', ['ofertas' => $normalized], 'user_' . $user_id);
         self::$clients_with_active_offers = null;
+        self::$active_offers_cache      = [];
 
         if ($result === false) {
             $stored_snapshot = self::format_offers_for_log(self::collect_user_offers($user_id));
@@ -2439,17 +2445,30 @@ class ClientRestController
 
     private static function get_active_offers(int $user_id): array
     {
-        if ($user_id <= 0 || ! function_exists('get_field')) {
+        if ($user_id <= 0) {
             return [];
+        }
+
+        if (isset(self::$active_offers_cache[$user_id])) {
+            return self::$active_offers_cache[$user_id];
+        }
+
+        $offers = [];
+
+        if (! function_exists('get_field')) {
+            self::$active_offers_cache[$user_id] = $offers;
+
+            return $offers;
         }
 
         $group = get_field('ofertas_y_descuentos', 'user_' . $user_id);
         if (empty($group) || ! is_array($group) || empty($group['ofertas']) || ! is_array($group['ofertas'])) {
-            return [];
+            self::$active_offers_cache[$user_id] = $offers;
+
+            return $offers;
         }
 
-        $now    = current_time('timestamp');
-        $offers = [];
+        $now = current_time('timestamp');
 
         foreach ($group['ofertas'] as $offer) {
             if (! is_array($offer)) {
@@ -2508,6 +2527,8 @@ class ClientRestController
                 'name'     => $custom_name,
             ];
         }
+
+        self::$active_offers_cache[$user_id] = $offers;
 
         return $offers;
     }
@@ -3004,53 +3025,25 @@ class ClientRestController
             return self::$clients_with_active_offers;
         }
 
-        global $wpdb;
+        $client_ids = self::get_all_client_ids();
 
-        if (! isset($wpdb->usermeta)) {
+        if (empty($client_ids)) {
             self::$clients_with_active_offers = [];
 
             return [];
         }
 
-        $meta_key = 'ofertas_y_descuentos';
-        $rows     = $wpdb->get_results(
-            $wpdb->prepare("SELECT user_id, meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s", $meta_key),
-            ARRAY_A
-        );
-
         $ids = [];
-        $now = current_time('timestamp');
 
-        if (is_array($rows)) {
-            foreach ($rows as $row) {
-                $user_id = isset($row['user_id']) ? (int) $row['user_id'] : 0;
-                if ($user_id <= 0) {
-                    continue;
-                }
+        foreach ($client_ids as $client_id) {
+            $user_id = (int) $client_id;
+            if ($user_id <= 0) {
+                continue;
+            }
 
-                $value = maybe_unserialize($row['meta_value']);
-                if (! is_array($value) || empty($value['ofertas']) || ! is_array($value['ofertas'])) {
-                    continue;
-                }
-
-                foreach ($value['ofertas'] as $offer) {
-                    if (! is_array($offer)) {
-                        continue;
-                    }
-
-                    $is_active = isset($offer['estado']) ? (bool) $offer['estado'] : true;
-                    if (! $is_active) {
-                        continue;
-                    }
-
-                    $expiry = isset($offer['caducidad_oferta']) ? (string) $offer['caducidad_oferta'] : '';
-                    if ($expiry !== '' && self::is_offer_expired($expiry, $now)) {
-                        continue;
-                    }
-
-                    $ids[$user_id] = $user_id;
-                    break;
-                }
+            $offers = self::get_active_offers($user_id);
+            if (! empty($offers)) {
+                $ids[$user_id] = $user_id;
             }
         }
 

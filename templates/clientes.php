@@ -45,6 +45,7 @@ $default_action_count_label = sprintf(
 );
 
 $action_arrow_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
+$action_close_icon = Svg::icon('close');
 
 \GarantiasOnline360VO\TemplateLoader::load_part('header', compact('is_clients_page'));
 ?>
@@ -151,6 +152,7 @@ $action_arrow_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height=
                                 role="button"
                                 tabindex="0"
                                 data-count="0"
+                                aria-pressed="false"
                             >
                                 <span class="action-icon" aria-hidden="true" style="background-color: var(--action-accent)">
                                     <?php echo $action['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
@@ -160,7 +162,12 @@ $action_arrow_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height=
                                     <span class="action-sublabel"><?php echo esc_html($default_action_count_label); ?></span>
                                 </div>
                                 <span class="action-cta" aria-hidden="true">
-                                    <?php echo $action_arrow_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                    <span class="action-cta__icon action-cta__icon--forward">
+                                        <?php echo $action_arrow_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                    </span>
+                                    <span class="action-cta__icon action-cta__icon--close">
+                                        <?php echo $action_close_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                    </span>
                                 </span>
                             </li>
                         <?php endforeach; ?>
