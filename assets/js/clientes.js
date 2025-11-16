@@ -55,6 +55,8 @@
         const panel2 = document.getElementById('detail-panel-2');
         const detail = document.querySelector('.guarantee-detail');
         const header = document.querySelector('.top-bar');
+        const actionsList = document.querySelector('[data-clients-actions]');
+        const resetFiltersButton = document.querySelector('[data-reset-filters]');
 
         if (!tbody || !panel1 || !panel2) {
             return;
@@ -168,6 +170,27 @@
             isLoading: false,
             search: '',
             channel: '',
+            quickFilter: '',
+        };
+
+        const isAnyFilterActive = () => Boolean(state.search || state.channel || state.quickFilter);
+
+        const updateResetFiltersButton = () => {
+            if (!resetFiltersButton) {
+                return;
+            }
+            resetFiltersButton.hidden = !isAnyFilterActive();
+        };
+
+        const updateQuickFilterUi = () => {
+            if (!actionsList) {
+                return;
+            }
+            const currentValue = state.quickFilter || '';
+            actionsList.querySelectorAll('.action-item').forEach((item) => {
+                const value = item.getAttribute('data-filter-value') || '';
+                item.classList.toggle('is-active', currentValue !== '' && value === currentValue);
+            });
         };
 
         const cache = new Map();
@@ -5221,6 +5244,9 @@
             if (state.channel) {
                 params.set('channel', state.channel);
             }
+            if (state.quickFilter) {
+                params.set('quick_filter', state.quickFilter);
+            }
 
             try {
                 const response = await fetch(`${restRoot}go/v1/clientes?${params.toString()}`, {
@@ -5362,6 +5388,7 @@
                 debounceTimer = setTimeout(() => {
                     const value = searchInput.value.trim();
                     state.search = value;
+                    updateResetFiltersButton();
                     loadPage(1, false);
                 }, DEBOUNCE_DELAY);
             });
@@ -5372,6 +5399,7 @@
                 searchInput.value = '';
                 state.search = '';
                 updateCloseIcon();
+                updateResetFiltersButton();
                 if (debounceTimer) {
                     clearTimeout(debounceTimer);
                 }
@@ -5390,7 +5418,59 @@
         if (channelSelect) {
             channelSelect.addEventListener('change', () => {
                 state.channel = channelSelect.value;
+                updateResetFiltersButton();
                 loadPage(1, false);
+            });
+        }
+
+        if (resetFiltersButton) {
+            resetFiltersButton.addEventListener('click', () => {
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                state.search = '';
+                if (channelSelect) {
+                    channelSelect.value = '';
+                }
+                state.channel = '';
+                state.quickFilter = '';
+                updateQuickFilterUi();
+                updateCloseIcon();
+                updateResetFiltersButton();
+                if (debounceTimer) {
+                    clearTimeout(debounceTimer);
+                }
+                loadPage(1, false);
+                if (searchInput) {
+                    searchInput.focus();
+                }
+            });
+        }
+
+        if (actionsList) {
+            actionsList.addEventListener('click', (event) => {
+                const item = event.target.closest('.action-item[data-filter-value]');
+                if (!item) {
+                    return;
+                }
+                event.preventDefault();
+                const value = item.getAttribute('data-filter-value') || '';
+                state.quickFilter = state.quickFilter === value ? '' : value;
+                updateQuickFilterUi();
+                updateResetFiltersButton();
+                loadPage(1, false);
+            });
+
+            actionsList.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+                const item = event.target.closest('.action-item[data-filter-value]');
+                if (!item) {
+                    return;
+                }
+                event.preventDefault();
+                item.click();
             });
         }
 
@@ -5419,6 +5499,8 @@
         }
 
         updateCloseIcon();
+        updateQuickFilterUi();
+        updateResetFiltersButton();
         setSpinner(false);
         initResizableColumns(table);
         showEmptyDetail('forward', { preserveUrl: Boolean(initialSlug) });
