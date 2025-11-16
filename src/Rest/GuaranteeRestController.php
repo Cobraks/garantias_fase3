@@ -30,6 +30,7 @@ class GuaranteeRestController
     const TRANSFER_RECEIPT_EXTENSION_META = '_go360_transfer_receipt_extension';
     const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
     const SUMMARY_TRANSIENT = 'go_gsummary_admin';
+    const LIST_CACHE_GENERATION_OPTION = 'go_glist_generation';
     const SUMMARY_PROFESSIONAL_TRANSIENT_PREFIX = 'go_gsummary_prof_';
     const RECEIPT_ALLOWED_MIMES = [
         'pdf'  => 'application/pdf',
@@ -40,6 +41,7 @@ class GuaranteeRestController
     const RECEIPT_MAX_BYTES = 10485760; // 10 MB
 
     private static $cache_hooks_registered = false;
+    private static $list_cache_invalidated = [];
 
     public static function register_routes()
     {
@@ -97,6 +99,17 @@ class GuaranteeRestController
                     'methods'             => WP_REST_Server::READABLE,
                     'callback'            => [__CLASS__, 'get_summary'],
                     'permission_callback' => [__CLASS__, 'can_view_summary'],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/generation',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'get_list_generation'],
+                    'permission_callback' => [__CLASS__, 'can_list'],
                 ],
             ]
         );
@@ -1307,21 +1320,77 @@ class GuaranteeRestController
 
     private static function get_plan_info($id)
     {
-        $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
-        if ($plan_id) {
-            $custom_plan = function_exists('get_field')
-                ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
-                : '';
-            $plan = $custom_plan ?: get_the_title($plan_id);
-        } else {
-            $plan = '';
-        }
+        $plan = self::resolve_contracted_plan($id);
         $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
 
         return [
-            'plan'      => is_string($plan) ? $plan : '',
+            'plan'      => is_string($plan['label']) ? $plan['label'] : '',
+            'plan_id'   => (int) ($plan['id'] ?? 0),
             'matricula' => is_string($matricula) ? $matricula : '',
         ];
+    }
+
+    private static function resolve_contracted_plan($post_id)
+    {
+        $raw_plan = get_post_meta($post_id, 'garantia_contratada_garantia', true);
+        $plan_id = self::resolve_plan_id($raw_plan);
+        $plan_source = $raw_plan;
+
+        if ($plan_id <= 0 && function_exists('get_field')) {
+            $contracted = get_field('garantia_contratada', $post_id);
+            if (is_array($contracted) && isset($contracted['garantia'])) {
+                $plan_source = $contracted['garantia'];
+                $plan_id = self::resolve_plan_id($plan_source);
+            }
+        }
+
+        $plan_label = '';
+        if ($plan_id > 0) {
+            $custom_plan = function_exists('get_field')
+                ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
+                : '';
+            $plan_label = $custom_plan ?: get_the_title($plan_id);
+        } elseif ($plan_source instanceof \WP_Post) {
+            $plan_label = $plan_source->post_title ?? '';
+        } elseif (is_array($plan_source) && isset($plan_source['post_title'])) {
+            $plan_label = (string) $plan_source['post_title'];
+        } elseif (is_string($plan_source)) {
+            $plan_label = $plan_source;
+        }
+
+        return [
+            'id'    => $plan_id,
+            'label' => is_string($plan_label) ? trim($plan_label) : '',
+        ];
+    }
+
+    private static function resolve_plan_id($value)
+    {
+        if ($value instanceof \WP_Post) {
+            return (int) $value->ID;
+        }
+        if (is_object($value) && isset($value->ID) && is_numeric($value->ID)) {
+            return (int) $value->ID;
+        }
+        if (is_array($value)) {
+            if (isset($value['ID']) && is_numeric($value['ID'])) {
+                return (int) $value['ID'];
+            }
+            if (isset($value['id']) && is_numeric($value['id'])) {
+                return (int) $value['id'];
+            }
+            if (isset($value['value']) && is_numeric($value['value'])) {
+                return (int) $value['value'];
+            }
+        }
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+        if (is_string($value) && ctype_digit($value)) {
+            return (int) $value;
+        }
+
+        return 0;
     }
 
     private static function normalize_document_filename($filename)
@@ -1339,7 +1408,8 @@ class GuaranteeRestController
             return $stored;
         }
 
-        $plan_id = (int) get_post_meta($id, 'garantia_contratada_garantia', true);
+        $plan = self::resolve_contracted_plan($id);
+        $plan_id = (int) $plan['id'];
         if ($plan_id > 0) {
             $field_key = $type === 'condicionado'
                 ? 'detalles_modalidad_documentos_condicionado_garantia'
@@ -2574,6 +2644,10 @@ class GuaranteeRestController
                 wp_json_encode($contract_notice_context)
             );
             self::schedule_contract_notice_dispatch($post_id);
+        }
+
+        if ($post_id > 0) {
+            self::invalidate_guarantee_list_cache($post_id);
         }
 
         return new WP_REST_Response($response);
@@ -3857,15 +3931,9 @@ class GuaranteeRestController
         $potencia_kw = get_post_meta($id, 'datos_vehiculo_potencia_kw', true);
         $cilindrada = get_post_meta($id, 'datos_vehiculo_cilindrada', true);
 
-        $plan_id = get_post_meta($id, 'garantia_contratada_garantia', true);
-        if ($plan_id) {
-            $custom_plan = function_exists('get_field')
-                ? get_field('detalles_modalidad_nombre_mostrar', $plan_id)
-                : '';
-            $plan = $custom_plan ?: get_the_title($plan_id);
-        } else {
-            $plan = '';
-        }
+        $plan_data = self::resolve_contracted_plan($id);
+        $plan_id = $plan_data['id'];
+        $plan = $plan_data['label'];
         $precio  = get_post_meta($id, 'garantia_contratada_precio', true);
         $metodo_pago_raw = get_post_meta($id, 'garantia_contratada_metodo_pago', true);
         $metodo_pago = is_array($metodo_pago_raw)
@@ -4087,6 +4155,7 @@ class GuaranteeRestController
             'potencia_kw' => $potencia_kw ?: '',
             'cilindrada' => $cilindrada ?: '-',
             'plan' => $plan,
+            'plan_id' => $plan_id,
             'precio' => $precio,
             'metodo_pago' => $metodo_pago ?: '',
             'desde' => $desde,
@@ -4183,8 +4252,9 @@ class GuaranteeRestController
         $sort_config = self::resolve_sort_config($order_by, $order);
 
         // ----- CACHING -----
+        $cache_generation = self::get_list_cache_generation();
         // Elimina search del cache_key porque si no el mismo usuario puede buscar cosas distintas y obtiene el cache anterior
-        $cache_key = 'go_glist_' . $current_user . "_p{$page}_pp{$per_page}";
+        $cache_key = 'go_glist_v' . $cache_generation . '_' . $current_user . "_p{$page}_pp{$per_page}";
         if ($search) {
             $cache_key .= '_s_' . md5($search);
         }
@@ -4552,7 +4622,8 @@ class GuaranteeRestController
     {
         $current_user = get_current_user_id();
 
-        $cache_key = 'go_gfilters_' . $current_user;
+        $cache_generation = self::get_list_cache_generation();
+        $cache_key = 'go_gfilters_v' . $cache_generation . '_' . $current_user;
         $cache = get_transient($cache_key);
         if ($cache !== false) {
             return $cache;
@@ -4621,9 +4692,9 @@ class GuaranteeRestController
                 }
                 $estado_counts[$e]++;
             }
-            $pid = get_post_meta($post_id, 'garantia_contratada_garantia', true);
-            if ($pid) {
-                $plan_ids[] = $pid;
+            $plan_entry = self::resolve_contracted_plan($post_id);
+            if (($plan_entry['id'] ?? 0) > 0) {
+                $plan_ids[] = (int) $plan_entry['id'];
             }
 
             $channel_raw = get_post_meta($post_id, 'garantia_contratada_canal_venta', true);
@@ -5263,22 +5334,66 @@ class GuaranteeRestController
      */
     public static function clear_list_transients($post_id, $post, $update)
     {
-        global $wpdb;
-        $patterns = ['_transient_go_glist_%', '_transient_go_gfilters_%', '_transient_go_gdetail_%'];
-        foreach ($patterns as $pattern) {
-            $wpdb->query($wpdb->prepare(
-                "DELETE FROM $wpdb->options WHERE option_name LIKE %s",
-                $pattern
-            ));
-        }
-        delete_transient(self::SUMMARY_TRANSIENT);
+        self::invalidate_guarantee_list_cache((int) $post_id);
     }
     public static function clear_list_transients_on_delete($post_id)
     {
         $post_type = get_post_type($post_id);
         if ($post_type === \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
-            self::clear_list_transients($post_id, null, false);
+            self::invalidate_guarantee_list_cache((int) $post_id);
         }
+    }
+
+    private static function get_list_cache_generation(): int
+    {
+        $generation = (int) get_option(self::LIST_CACHE_GENERATION_OPTION, 1);
+        if ($generation <= 0) {
+            $generation = 1;
+        }
+
+        return $generation;
+    }
+
+    private static function bump_list_cache_generation(): int
+    {
+        $next_generation = self::get_list_cache_generation() + 1;
+        update_option(self::LIST_CACHE_GENERATION_OPTION, $next_generation, false);
+        wp_cache_delete(self::LIST_CACHE_GENERATION_OPTION, 'options');
+
+        return $next_generation;
+    }
+
+    private static function invalidate_guarantee_list_cache(int $post_id = 0): void
+    {
+        $key = $post_id > 0 ? $post_id : 0;
+        if (isset(self::$list_cache_invalidated[$key])) {
+            return;
+        }
+
+        self::$list_cache_invalidated[$key] = true;
+
+        if ($post_id > 0) {
+            delete_transient('go_gdetail_' . $post_id);
+        }
+
+        self::bump_list_cache_generation();
+
+        delete_transient(self::SUMMARY_TRANSIENT);
+    }
+
+    /**
+     * Exposes the current list cache generation for frontend consumers.
+     */
+    public static function get_list_cache_generation_snapshot(): int
+    {
+        return self::get_list_cache_generation();
+    }
+
+    public static function get_list_generation()
+    {
+        return rest_ensure_response([
+            'generation' => self::get_list_cache_generation_snapshot(),
+        ]);
     }
 }
 
