@@ -122,19 +122,17 @@ function setupPlanSelection() {
     container._planSelectionInit = true;
   }
 
-  // Estado inicial: si hay una seleccionada en DOM (preseleccionada de ACF) y no hay persistida, respetarla
-  document.querySelectorAll(".form__plan").forEach((plan) => {
-    if (plan.classList.contains("selected")) {
-      setButtonState(plan, true);
-      document.querySelectorAll(".form__plan").forEach((p) => {
-        if (p !== plan && !p.classList.contains("selected")) {
-          p.classList.add("form__plan--no-selected");
-        }
-      });
-      const modalidadId = plan.getAttribute("data-modalidad-id");
-      if (modalidadId != null && !getSelectedModalidadId()) {
-        setSelectedModalidadId(String(modalidadId));
+  // Estado inicial: si el DOM ya marca alguna como seleccionada (p.ej. al reabrir un borrador), reflejarlo en los botones
+  document.querySelectorAll(".form__plan.selected").forEach((plan) => {
+    setButtonState(plan, true);
+    document.querySelectorAll(".form__plan").forEach((p) => {
+      if (p !== plan && !p.classList.contains("selected")) {
+        p.classList.add("form__plan--no-selected");
       }
+    });
+    const modalidadId = plan.getAttribute("data-modalidad-id");
+    if (modalidadId != null && !getSelectedModalidadId()) {
+      setSelectedModalidadId(String(modalidadId));
     }
   });
 
