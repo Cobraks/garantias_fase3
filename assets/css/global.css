@@ -1164,7 +1164,7 @@ textarea {
 
 .notifications-toast {
   position: fixed;
-  top: 5.5rem;
+  top: calc(72px + 1.5rem);
   right: calc((100vw - min(100vw, 1440px)) / 2 + 1.5rem);
   width: min(22rem, 92vw);
   display: none;
@@ -2471,6 +2471,113 @@ textarea {
   .container,
   .footer__wrapper {
     max-width: 1800px;
+  }
+}
+
+.guarantees-table__row--is-new {
+  animation: go360-realtime-row-slide 360ms ease-out,
+    go360-realtime-row-glow 2200ms ease-in-out;
+}
+
+.guarantees-table__vehiculo,
+.guarantee-card__vehicle {
+  position: relative;
+}
+
+.guarantees-table__new-badge,
+.guarantee-card__new-badge {
+  position: absolute;
+  top: -0.4rem;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.08rem 0.45rem;
+  background: rgba(var(--go-color-22c55e-rgb), 0.15);
+  border: 1px solid rgba(var(--go-color-22c55e-rgb), 0.4);
+  color: var(--go-color-0f172a);
+  box-shadow: 0 10px 25px -12px rgba(var(--go-color-22c55e-rgb), 0.65);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.guarantees-table__new-badge {
+  top: -0.55rem;
+}
+
+.guarantee-card__new-badge {
+  top: -0.25rem;
+  background: rgba(var(--go-color-2563eb-rgb), 0.14);
+  border-color: rgba(var(--go-color-2563eb-rgb), 0.35);
+  color: var(--go-color-1d4ed8);
+}
+
+.guarantees-table__row--is-new .guarantees-table__new-badge,
+.guarantee-card--is-new .guarantee-card__new-badge {
+  opacity: 1;
+  transform: translateY(0);
+  animation: go360-realtime-badge 1200ms ease-in-out infinite;
+}
+
+.guarantee-card--is-new {
+  animation: go360-realtime-row-glow 2200ms ease-in-out;
+}
+
+@keyframes go360-realtime-row-slide {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+
+  55% {
+    opacity: 1;
+    transform: translateY(4px) scale(1.01);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes go360-realtime-row-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--go-color-3b82f6-rgb), 0.2);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--go-color-3b82f6-rgb), 0);
+  }
+}
+
+@keyframes go360-realtime-badge {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guarantees-table__row--is-new,
+  .guarantee-card--is-new {
+    animation: none;
+  }
+
+  .guarantees-table__row--is-new .guarantees-table__new-badge,
+  .guarantee-card--is-new .guarantee-card__new-badge {
+    animation: none;
   }
 }
 

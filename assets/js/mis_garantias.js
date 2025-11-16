@@ -262,6 +262,15 @@ const ADD_DOC_KEY = "add-document";
                         normalizedRole === "particular" ||
                         normalizedRole === "go_individual" ||
                         normalizedRole === "individual";
+                const rawListCacheVersion =
+                        goConfig.cache && typeof goConfig.cache.guaranteesListVersion !== "undefined"
+                                ? Number(goConfig.cache.guaranteesListVersion)
+                                : Number.NaN;
+                const listCacheVersion =
+                        Number.isFinite(rawListCacheVersion) && rawListCacheVersion > 0
+                                ? Math.floor(rawListCacheVersion)
+                                : 1;
+                let listCacheStorageVersion = listCacheVersion;
                 const canSeeVerifyCollectStates =
                         [
                                 "administrator",
@@ -275,6 +284,9 @@ const ADD_DOC_KEY = "add-document";
                 const canContinueGuarantee =
                         canManageDetailActions || isProfesional || isDirector || isParticular;
                 const canViewAdminSummary = isCoreAdmin || isDirector || isProfesional;
+                const REALTIME_POLL_INTERVAL = 6000;
+                const REALTIME_POLL_HIDDEN_INTERVAL = 15000;
+                const REALTIME_BADGE_DURATION = 14000;
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
                 const ADMIN_SUMMARY_DEFAULT_CONTEXT = "month";
@@ -1893,16 +1905,27 @@ const ADD_DOC_KEY = "add-document";
                         return String(intValue);
                 }
 
-                function getPeriodCacheKeyParts() {
+                function getPeriodCacheKeyParts(overrides = {}) {
                         if (!hasPeriodFilters) {
                                 return ["", "", ""];
                         }
-                        const yearValue = selectedYear || "";
+                        const yearValue =
+                                typeof overrides.year !== "undefined"
+                                        ? String(overrides.year || "")
+                                        : selectedYear || "";
                         if (!yearValue) {
                                 return ["", "", ""];
                         }
-                        let monthFromValue = normalizeMonthValue(selectedMonthFrom) || "";
-                        let monthToValue = normalizeMonthValue(selectedMonthTo) || "";
+                        let monthFromValue =
+                                typeof overrides.monthFrom !== "undefined"
+                                        ? normalizeMonthValue(overrides.monthFrom)
+                                        : normalizeMonthValue(selectedMonthFrom);
+                        let monthToValue =
+                                typeof overrides.monthTo !== "undefined"
+                                        ? normalizeMonthValue(overrides.monthTo)
+                                        : normalizeMonthValue(selectedMonthTo);
+                        monthFromValue = monthFromValue || "";
+                        monthToValue = monthToValue || "";
                         if (
                                 monthFromValue &&
                                 monthToValue &&
@@ -2214,16 +2237,25 @@ const ADD_DOC_KEY = "add-document";
                 const detailPreloadQueue = new Set();
                 let detailPreloadScheduled = false;
                 let detailPreloadProcessing = false;
-                const LIST_CACHE_STORAGE_KEY = "go:guarantees:list-cache:v1";
                 const LIST_CACHE_TTL_MS = 5 * 60 * 1000;
                 const LIST_CACHE_MAX_ENTRIES = 6;
+                const getListCacheStorageKey = () =>
+                        `go:guarantees:list-cache:v${listCacheStorageVersion}`;
+                const realtimeHighlightTimers = new Map();
+                let realtimePollTimer = null;
+                let realtimePendingGeneration = 0;
+                let realtimeRefreshInFlight = false;
+                let realtimeFetchController = null;
+                let realtimeKnownGeneration = listCacheVersion;
+                let realtimeStarted = false;
 
                 function loadPersistentListCache() {
                         if (typeof window === "undefined" || !window.sessionStorage) {
                                 return [];
                         }
                         try {
-                                const raw = window.sessionStorage.getItem(LIST_CACHE_STORAGE_KEY);
+                                const storageKey = getListCacheStorageKey();
+                                const raw = window.sessionStorage.getItem(storageKey);
                                 if (!raw) {
                                         return [];
                                 }
@@ -2268,7 +2300,7 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 if (entries.length === 0 && parsed.length > 0) {
                                         try {
-                                                window.sessionStorage.removeItem(LIST_CACHE_STORAGE_KEY);
+                                                window.sessionStorage.removeItem(storageKey);
                                         } catch (storageError) {
                                                 console.warn(
                                                         "No se pudo limpiar la caché de garantías caducada:",
@@ -2316,19 +2348,40 @@ const ADD_DOC_KEY = "add-document";
                                                 },
                                         ]);
                                 });
+                                const storageKey = getListCacheStorageKey();
                                 if (entries.length === 0) {
-                                        window.sessionStorage.removeItem(LIST_CACHE_STORAGE_KEY);
+                                        window.sessionStorage.removeItem(storageKey);
                                         return;
                                 }
                                 entries.sort((a, b) => (b[1].fetchedAt || 0) - (a[1].fetchedAt || 0));
                                 const limited = entries.slice(0, LIST_CACHE_MAX_ENTRIES);
-                                window.sessionStorage.setItem(
-                                        LIST_CACHE_STORAGE_KEY,
-                                        JSON.stringify(limited)
-                                );
+                                window.sessionStorage.setItem(storageKey, JSON.stringify(limited));
                         } catch (error) {
                                 console.warn("No se pudo guardar la caché de garantías:", error);
                         }
+                }
+
+                function resetListCacheStorageVersion(nextVersion) {
+                        if (!Number.isFinite(nextVersion) || nextVersion <= 0) {
+                                return;
+                        }
+                        if (listCacheStorageVersion === nextVersion) {
+                                return;
+                        }
+                        const previousKey = getListCacheStorageKey();
+                        listCacheStorageVersion = Math.floor(nextVersion);
+                        if (typeof window !== "undefined" && window.sessionStorage) {
+                                try {
+                                        window.sessionStorage.removeItem(previousKey);
+                                } catch (error) {
+                                        console.warn(
+                                                "No se pudo limpiar la caché antigua de garantías:",
+                                                error
+                                        );
+                                }
+                        }
+                        listCache.clear();
+                        persistListCacheSnapshot(listCache);
                 }
 
                 function isCacheEntryUsable(entry) {
@@ -4768,8 +4821,7 @@ const ADD_DOC_KEY = "add-document";
                                 "";
                         const clienteTelefono = clienteTelefonoValue;
                         const clienteTelefonoDataset = clienteTelefono !== "" ? clienteTelefono : "-";
-                        const shouldShowPlan =
-                                planName !== "" && planName !== "-" && estadoClase !== "sin-finalizar";
+                        const shouldShowPlan = planName !== "" && planName !== "-";
                         const periodHtml = hasPeriod
                                 ? `<div class="guarantees-table__period">
                                                 <div><strong>Desde:</strong> <time>${desdeDisplayRaw}</time></div>
@@ -4923,6 +4975,7 @@ const ADD_DOC_KEY = "add-document";
                         card.innerHTML = `
                                 <div class="guarantee-card__header">
                                         <div class="guarantee-card__vehicle">
+                                                <span class="guarantee-card__new-badge" aria-hidden="true">Nueva</span>
                                                 <div class="guarantee-card__mat">${escapeHtml(view.matricula || "-")}</div>
                                                 <div class="guarantee-card__model">${escapeHtml(view.marcaModelo || "-")}</div>
                                         </div>
@@ -5018,6 +5071,7 @@ const ADD_DOC_KEY = "add-document";
                         tr.innerHTML = `
                                 <td data-label="Vehículo">
                                         <div class="guarantees-table__vehiculo">
+                                                <span class="guarantees-table__new-badge" aria-hidden="true">Nueva</span>
                                                 <div class="vehiculo__mat">${view.matricula || "-"}</div>
                                                 <div class="vehiculo__marca_modelo">${view.marcaModelo || "-"}</div>
                                         </div>
@@ -6405,88 +6459,71 @@ const ADD_DOC_KEY = "add-document";
                         );
                 }
 
-                async function loadPage(page = 1, options = {}) {
-                        if (isLoading || !hasMore) return;
-                        isLoading = true;
-                        if (scrollEnd) {
-                                scrollEnd.hidden = false;
-                        }
-                        let spinnerToken = null;
-                        if (typeof options.spinnerToken === "number") {
-                                spinnerToken = setSpinnerVisible(true, options.spinnerToken);
-                        } else {
-                                spinnerToken = setSpinnerVisible(true);
-                        }
-                        let previousRowCount = tbody
-                                ? tbody.querySelectorAll(".guarantees-table__row").length
-                                : 0;
-                        let appendedRows = 0;
+                function getRequestFilters(overrides = {}) {
                         const search =
-                                typeof options.search === "string" ? options.search : searchQuery;
+                                typeof overrides.search === "string"
+                                        ? overrides.search
+                                        : searchQuery;
                         const estado =
-                                typeof options.estado === "string" ? options.estado : selectedEstado;
+                                typeof overrides.estado === "string"
+                                        ? overrides.estado
+                                        : selectedEstado;
                         const plan =
-                                typeof options.plan !== "undefined"
-                                        ? options.plan
+                                typeof overrides.plan !== "undefined"
+                                        ? overrides.plan
                                         : selectedPlan;
                         const canal =
-                                typeof options.canal === "string" ? options.canal : selectedCanal;
+                                typeof overrides.canal === "string"
+                                        ? overrides.canal
+                                        : selectedCanal;
                         const concesionario =
-                                typeof options.concesionario !== "undefined"
-                                        ? options.concesionario
+                                typeof overrides.concesionario !== "undefined"
+                                        ? overrides.concesionario
                                         : selectedConcesionario;
                         const vendorType =
-                                typeof options.vendorType === "string"
-                                        ? options.vendorType
+                                typeof overrides.vendorType === "string"
+                                        ? overrides.vendorType
                                         : selectedVendorType;
                         const paymentMethod =
-                                typeof options.paymentMethod === "string"
-                                        ? options.paymentMethod
+                                typeof overrides.paymentMethod === "string"
+                                        ? overrides.paymentMethod
                                         : selectedPaymentMethod;
                         const commercial =
-                                typeof options.commercial === "string"
-                                        ? options.commercial
-                                        : options.commercial != null
-                                        ? String(options.commercial)
+                                typeof overrides.commercial === "string"
+                                        ? overrides.commercial
+                                        : overrides.commercial != null
+                                        ? String(overrides.commercial)
                                         : selectedCommercial;
                         const orderBy =
-                                typeof options.orderBy === "string" && options.orderBy
-                                        ? options.orderBy
+                                typeof overrides.orderBy === "string" && overrides.orderBy
+                                        ? overrides.orderBy
                                         : selectedOrderBy;
                         const orderDirection =
-                                typeof options.orderDirection === "string" && options.orderDirection
-                                        ? options.orderDirection
+                                typeof overrides.orderDirection === "string" && overrides.orderDirection
+                                        ? overrides.orderDirection
                                         : selectedOrderDirection;
-                        const year = hasPeriodFilters
-                                ? (typeof options.year !== "undefined"
-                                          ? String(options.year)
-                                          : selectedYear)
+                        const overrideYear = hasPeriodFilters
+                                ? typeof overrides.year !== "undefined"
+                                        ? String(overrides.year)
+                                        : selectedYear
                                 : "";
-                        let monthFrom = hasPeriodFilters
-                                ? (typeof options.monthFrom !== "undefined"
-                                          ? String(options.monthFrom)
-                                          : selectedMonthFrom)
+                        const overrideMonthFrom = hasPeriodFilters
+                                ? typeof overrides.monthFrom !== "undefined"
+                                        ? String(overrides.monthFrom)
+                                        : selectedMonthFrom
                                 : "";
-                        let monthTo = hasPeriodFilters
-                                ? (typeof options.monthTo !== "undefined"
-                                          ? String(options.monthTo)
-                                          : selectedMonthTo)
+                        const overrideMonthTo = hasPeriodFilters
+                                ? typeof overrides.monthTo !== "undefined"
+                                        ? String(overrides.monthTo)
+                                        : selectedMonthTo
                                 : "";
-                        const normalizedYear = year || "";
-                        let normalizedMonthFrom = "";
-                        let normalizedMonthTo = "";
-                        if (normalizedYear) {
-                                normalizedMonthFrom = normalizeMonthValue(monthFrom) || "";
-                                normalizedMonthTo = normalizeMonthValue(monthTo) || "";
-                                if (
-                                        normalizedMonthFrom &&
-                                        normalizedMonthTo &&
-                                        Number(normalizedMonthFrom) >
-                                                Number(normalizedMonthTo)
-                                ) {
-                                        normalizedMonthTo = normalizedMonthFrom;
-                                }
-                        }
+                        const [normalizedYear, normalizedMonthFrom, normalizedMonthTo] =
+                                getPeriodCacheKeyParts({
+                                        year: overrideYear,
+                                        monthFrom: overrideMonthFrom,
+                                        monthTo: overrideMonthTo,
+                                });
+
                         const cacheKey = buildListCacheKey(
                                 search,
                                 estado,
@@ -6502,6 +6539,106 @@ const ADD_DOC_KEY = "add-document";
                                 normalizedMonthFrom,
                                 normalizedMonthTo
                         );
+
+                        return {
+                                search,
+                                estado,
+                                plan,
+                                canal,
+                                concesionario,
+                                vendorType,
+                                paymentMethod,
+                                commercial,
+                                orderBy,
+                                orderDirection,
+                                year: normalizedYear,
+                                monthFrom: normalizedMonthFrom,
+                                monthTo: normalizedMonthTo,
+                                cacheKey,
+                        };
+                }
+
+                function appendFiltersToParams(params, filters) {
+                        if (!params || !filters) {
+                                return;
+                        }
+                        if (filters.search) {
+                                params.append("search", filters.search);
+                        }
+                        if (filters.estado) {
+                                params.append("estado", filters.estado);
+                        }
+                        if (filters.plan) {
+                                params.append("plan", filters.plan);
+                        }
+                        if (filters.canal) {
+                                params.append("canal", filters.canal);
+                        }
+                        if (filters.concesionario) {
+                                params.append("concesionario", filters.concesionario);
+                        }
+                        if (filters.vendorType) {
+                                params.append("vendor_type", filters.vendorType);
+                        }
+                        if (filters.paymentMethod) {
+                                params.append("payment_method", filters.paymentMethod);
+                        }
+                        if (filters.orderBy) {
+                                params.append("order_by", filters.orderBy);
+                        }
+                        if (filters.orderDirection) {
+                                params.append("order", filters.orderDirection);
+                        }
+                        if (filters.commercial) {
+                                params.append("commercial", filters.commercial);
+                        }
+                        if (filters.year) {
+                                params.append("year", filters.year);
+                                if (filters.monthFrom) {
+                                        params.append("month_from", filters.monthFrom);
+                                }
+                                if (filters.monthTo) {
+                                        params.append("month_to", filters.monthTo);
+                                }
+                        }
+                }
+
+                async function loadPage(page = 1, options = {}) {
+                        if (isLoading || (!hasMore && page !== 1)) return;
+                        isLoading = true;
+                        if (scrollEnd) {
+                                scrollEnd.hidden = false;
+                        }
+                        let spinnerToken = null;
+                        if (typeof options.spinnerToken === "number") {
+                                spinnerToken = setSpinnerVisible(true, options.spinnerToken);
+                        } else {
+                                spinnerToken = setSpinnerVisible(true);
+                        }
+                        let previousRowCount = tbody
+                                ? tbody.querySelectorAll(".guarantees-table__row").length
+                                : 0;
+                        let appendedRows = 0;
+                        const requestFilters = getRequestFilters(options);
+                        const {
+                                search,
+                                estado,
+                                plan,
+                                canal,
+                                concesionario,
+                                vendorType,
+                                paymentMethod,
+                                commercial,
+                                orderBy,
+                                orderDirection,
+                                year,
+                                monthFrom,
+                                monthTo,
+                                cacheKey,
+                        } = requestFilters;
+                        const normalizedYear = year || "";
+                        const normalizedMonthFrom = monthFrom || "";
+                        const normalizedMonthTo = monthTo || "";
                         try {
                                 if (currentListAbort) currentListAbort.abort();
                                 currentListAbort = new AbortController();
@@ -6509,32 +6646,7 @@ const ADD_DOC_KEY = "add-document";
                                         page,
                                         per_page: perPage,
                                 });
-                                if (search && search.length > 0)
-                                        params.append("search", search);
-                                if (estado) params.append("estado", estado);
-                                if (plan) params.append("plan", plan);
-                                if (canal) params.append("canal", canal);
-                                if (concesionario)
-                                        params.append("concesionario", concesionario);
-                                if (vendorType)
-                                        params.append("vendor_type", vendorType);
-                                if (paymentMethod)
-                                        params.append("payment_method", paymentMethod);
-                                if (commercial)
-                                        params.append("commercial", commercial);
-                                if (orderBy)
-                                        params.append("order_by", orderBy);
-                                if (orderDirection)
-                                        params.append("order", orderDirection);
-                                if (normalizedYear) {
-                                        params.append("year", normalizedYear);
-                                        if (normalizedMonthFrom) {
-                                                params.append("month_from", normalizedMonthFrom);
-                                        }
-                                        if (normalizedMonthTo) {
-                                                params.append("month_to", normalizedMonthTo);
-                                        }
-                                }
+                                appendFiltersToParams(params, requestFilters);
                                 let url = `${restRoot}go/v1/guarantees?${params.toString()}`;
                                 const res = await fetch(url, {
                                         headers: { "X-WP-Nonce": restNonce },
@@ -6661,6 +6773,319 @@ const ADD_DOC_KEY = "add-document";
                                         spinnerToken
                                 );
                         }
+                }
+
+                function refreshSelectedRowIndex() {
+                        if (!tbody || !prevSelectedRow || !prevSelectedRow.isConnected) {
+                                prevSelectedRow = null;
+                                prevIdx = null;
+                                return;
+                        }
+                        const rows = Array.from(
+                                tbody.querySelectorAll(".guarantees-table__row")
+                        );
+                        const idx = rows.indexOf(prevSelectedRow);
+                        if (idx === -1) {
+                                prevSelectedRow = null;
+                                prevIdx = null;
+                                return;
+                        }
+                        prevIdx = idx;
+                        lastDetailTrigger = prevSelectedRow;
+                }
+
+                function insertRealtimeRows(items = []) {
+                        if (!tbody || !Array.isArray(items) || items.length === 0) {
+                                return [];
+                        }
+                        const rowsById = new Map();
+                        tbody.querySelectorAll(".guarantees-table__row").forEach((row) => {
+                                const rowId = row.dataset.id ? String(row.dataset.id) : "";
+                                if (rowId) {
+                                        rowsById.set(rowId, row);
+                                }
+                        });
+                        const selectedId =
+                                prevSelectedRow && prevSelectedRow.dataset
+                                        ? prevSelectedRow.dataset.id || null
+                                        : null;
+                        const fragment = document.createDocumentFragment();
+                        const insertedIds = [];
+                        let processed = 0;
+
+                        for (const item of items) {
+                                if (!item || !Object.prototype.hasOwnProperty.call(item, "id")) {
+                                        continue;
+                                }
+                                const normalizedId = String(item.id);
+                                if (!normalizedId) {
+                                        continue;
+                                }
+                                processed += 1;
+                                ensureDetailPreloaded(item);
+                                const existingRow = rowsById.get(normalizedId) || null;
+                                const wasSelected = Boolean(
+                                        (existingRow && existingRow.classList.contains("selected")) ||
+                                                (selectedId && normalizedId === selectedId)
+                                );
+                                const hadRealtime = realtimeHighlightTimers.has(normalizedId);
+                                if (existingRow) {
+                                        existingRow.remove();
+                                        rowsById.delete(normalizedId);
+                                }
+                                const row = renderRow(item, { prepend: true });
+                                if (wasSelected) {
+                                        row.classList.add("selected");
+                                        prevSelectedRow = row;
+                                        lastDetailTrigger = row;
+                                }
+                                if (hadRealtime) {
+                                        row.classList.add("guarantees-table__row--is-new");
+                                        const card = mobileCardsMap.get(normalizedId);
+                                        if (card) {
+                                                card.classList.add("guarantee-card--is-new");
+                                        }
+                                }
+                                fragment.appendChild(row);
+                                if (!existingRow && !loadedIds.has(normalizedId)) {
+                                        insertedIds.push(normalizedId);
+                                }
+                                loadedIds.add(normalizedId);
+                        }
+
+                        if (!processed) {
+                                return [];
+                        }
+
+                        const emptyRow = tbody.querySelector(".guarantees-table__empty-row");
+                        if (emptyRow) {
+                                emptyRow.remove();
+                        }
+                        setResultMessage("");
+
+                        const anchor = tbody.firstElementChild;
+                        if (anchor) {
+                                tbody.insertBefore(fragment, anchor);
+                        } else {
+                                tbody.appendChild(fragment);
+                        }
+
+                        insertedIds.forEach((id) => {
+                                markEntryAsRealtime(id);
+                        });
+
+                        refreshSelectedRowIndex();
+                        return insertedIds;
+                }
+
+                function clearRealtimeEntry(entryId) {
+                        const id = String(entryId || "");
+                        if (!id) {
+                                return;
+                        }
+                        const row = findRowById(id);
+                        if (row) {
+                                row.classList.remove("guarantees-table__row--is-new");
+                        }
+                        const card = mobileCardsMap.get(id);
+                        if (card) {
+                                card.classList.remove("guarantee-card--is-new");
+                        }
+                        if (realtimeHighlightTimers.has(id)) {
+                                clearTimeout(realtimeHighlightTimers.get(id));
+                                realtimeHighlightTimers.delete(id);
+                        }
+                }
+
+                function markEntryAsRealtime(entryId, { rowElement = null } = {}) {
+                        const id = String(entryId || "");
+                        if (!id) {
+                                return;
+                        }
+                        const row = rowElement || findRowById(id);
+                        if (row) {
+                                row.classList.add("guarantees-table__row--is-new");
+                        }
+                        const card = mobileCardsMap.get(id);
+                        if (card) {
+                                card.classList.add("guarantee-card--is-new");
+                        }
+                        if (realtimeHighlightTimers.has(id)) {
+                                clearTimeout(realtimeHighlightTimers.get(id));
+                        }
+                        const timer = window.setTimeout(() => {
+                                realtimeHighlightTimers.delete(id);
+                                clearRealtimeEntry(id);
+                        }, REALTIME_BADGE_DURATION);
+                        realtimeHighlightTimers.set(id, timer);
+                }
+
+                async function refreshListFromRealtime({ generation = null } = {}) {
+                        if (!restRoot || !restNonce || !tbody) {
+                                return [];
+                        }
+                        if (realtimeFetchController) {
+                                realtimeFetchController.abort();
+                        }
+                        const controller = new AbortController();
+                        realtimeFetchController = controller;
+                        try {
+                                const requestFilters = getRequestFilters();
+                                const params = new URLSearchParams({
+                                        page: 1,
+                                        per_page: perPage,
+                                });
+                                appendFiltersToParams(params, requestFilters);
+                                const url = `${restRoot}go/v1/guarantees?${params.toString()}`;
+                                const res = await fetch(url, {
+                                        headers: { "X-WP-Nonce": restNonce },
+                                        signal: controller.signal,
+                                        cache: "no-store",
+                                });
+                                if (!res.ok) {
+                                        throw new Error(`HTTP ${res.status}`);
+                                }
+                                const totalHeader = Number(res.headers.get("X-WP-Total"));
+                                const pagesHeader = Number(res.headers.get("X-WP-TotalPages"));
+                                const payload = await res.json();
+                                const data = Array.isArray(payload.data) ? payload.data : [];
+                                const insertedIds = insertRealtimeRows(data);
+                                const now = Date.now();
+                                listCache.set(requestFilters.cacheKey, {
+                                        data: data.slice(),
+                                        totalPages:
+                                                Number.isFinite(pagesHeader) && pagesHeader > 0
+                                                        ? Math.floor(pagesHeader)
+                                                        : 1,
+                                        totalPosts:
+                                                Number.isFinite(totalHeader) && totalHeader >= 0
+                                                        ? Math.floor(totalHeader)
+                                                        : data.length,
+                                        fetchedAt: now,
+                                });
+                                persistListCacheSnapshot(listCache);
+                                if (Number.isFinite(totalHeader) && totalHeader >= 0) {
+                                        totalPosts = Math.floor(totalHeader);
+                                }
+                                if (Number.isFinite(pagesHeader) && pagesHeader > 0) {
+                                        totalPages = Math.floor(pagesHeader);
+                                }
+                                hasMore = currentPage < totalPages;
+                                if (scrollEnd) {
+                                        scrollEnd.hidden = !hasMore;
+                                        scrollEnd.setAttribute(
+                                                "aria-hidden",
+                                                hasMore ? "false" : "true"
+                                        );
+                                }
+                                return insertedIds;
+                        } catch (error) {
+                                if (!controller.signal.aborted) {
+                                        console.warn(
+                                                "❌ Error al sincronizar las nuevas garantías:",
+                                                error
+                                        );
+                                }
+                                return [];
+                        } finally {
+                                if (realtimeFetchController === controller) {
+                                        realtimeFetchController = null;
+                                }
+                        }
+                }
+
+                function queueRealtimeRefresh(nextGeneration) {
+                        if (!Number.isFinite(nextGeneration) || nextGeneration <= 0) {
+                                return;
+                        }
+                        resetListCacheStorageVersion(nextGeneration);
+                        realtimePendingGeneration = Math.max(
+                                realtimePendingGeneration,
+                                Math.floor(nextGeneration)
+                        );
+                        triggerRealtimeRefresh();
+                }
+
+                function triggerRealtimeRefresh() {
+                        if (realtimeRefreshInFlight || !realtimePendingGeneration) {
+                                return;
+                        }
+                        const targetGeneration = realtimePendingGeneration;
+                        realtimePendingGeneration = 0;
+                        realtimeRefreshInFlight = true;
+                        refreshListFromRealtime({ generation: targetGeneration })
+                                .catch(() => {})
+                                .finally(() => {
+                                        realtimeRefreshInFlight = false;
+                                        if (
+                                                realtimePendingGeneration &&
+                                                realtimePendingGeneration > targetGeneration
+                                        ) {
+                                                triggerRealtimeRefresh();
+                                        }
+                                });
+                }
+
+                function scheduleRealtimePoll(delay = null) {
+                        if (realtimePollTimer) {
+                                window.clearTimeout(realtimePollTimer);
+                        }
+                        const interval =
+                                typeof delay === "number"
+                                        ? delay
+                                        : document.hidden
+                                        ? REALTIME_POLL_HIDDEN_INTERVAL
+                                        : REALTIME_POLL_INTERVAL;
+                        realtimePollTimer = window.setTimeout(runRealtimePoll, interval);
+                }
+
+                async function runRealtimePoll() {
+                        realtimePollTimer = null;
+                        if (!restRoot || !restNonce || !tbody) {
+                                return;
+                        }
+                        if (document.hidden) {
+                                scheduleRealtimePoll();
+                                return;
+                        }
+                        try {
+                                const response = await fetch(
+                                        `${restRoot}go/v1/guarantees/generation`,
+                                        {
+                                                headers: { "X-WP-Nonce": restNonce },
+                                                cache: "no-store",
+                                        }
+                                );
+                                if (!response.ok) {
+                                        throw new Error(`HTTP ${response.status}`);
+                                }
+                                const payload = await response.json();
+                                const remoteGeneration = Number(payload?.generation) || 0;
+                                if (remoteGeneration > realtimeKnownGeneration) {
+                                        realtimeKnownGeneration = remoteGeneration;
+                                        queueRealtimeRefresh(remoteGeneration);
+                                }
+                        } catch (error) {
+                                console.warn(
+                                        "❌ Error consultando nuevas garantías en tiempo real:",
+                                        error
+                                );
+                        } finally {
+                                scheduleRealtimePoll();
+                        }
+                }
+
+                function startRealtimeUpdates() {
+                        if (realtimeStarted || !restRoot || !restNonce || !tbody) {
+                                return;
+                        }
+                        realtimeStarted = true;
+                        scheduleRealtimePoll(REALTIME_POLL_INTERVAL);
+                        document.addEventListener("visibilitychange", () => {
+                                if (!document.hidden) {
+                                        scheduleRealtimePoll(REALTIME_POLL_INTERVAL / 2);
+                                }
+                        });
                 }
 
                 async function preloadByPlate(plate) {
@@ -8646,23 +9071,8 @@ async function activateRow(row, options = {}) {
                         hasMore = true;
                         lastValidQuery = "";
                         lastValidResults = [];
-                        const [cacheYear, cacheMonthFrom, cacheMonthTo] =
-                                getPeriodCacheKeyParts();
-                        const cacheKey = buildListCacheKey(
-                                searchQuery,
-                                selectedEstado,
-                                selectedPlan,
-                                selectedCanal,
-                                selectedConcesionario,
-                                selectedVendorType,
-                                selectedPaymentMethod,
-                                selectedOrderBy,
-                                selectedOrderDirection,
-                                selectedCommercial,
-                                cacheYear,
-                                cacheMonthFrom,
-                                cacheMonthTo
-                        );
+                        const filtersSnapshot = getRequestFilters();
+                        const cacheKey = filtersSnapshot.cacheKey;
                         tbody.innerHTML = "";
                         loadedIds.clear();
                         clearSelectionAndDetail();
@@ -8990,23 +9400,8 @@ async function activateRow(row, options = {}) {
                         searchQuery = query;
                         currentPage = 1;
                         hasMore = true;
-                        const [cacheYear, cacheMonthFrom, cacheMonthTo] =
-                                getPeriodCacheKeyParts();
-                        const cacheKey = buildListCacheKey(
-                                searchQuery,
-                                selectedEstado,
-                                selectedPlan,
-                                selectedCanal,
-                                selectedConcesionario,
-                                selectedVendorType,
-                                selectedPaymentMethod,
-                                selectedOrderBy,
-                                selectedOrderDirection,
-                                selectedCommercial,
-                                cacheYear,
-                                cacheMonthFrom,
-                                cacheMonthTo
-                        );
+                        const filtersSnapshot = getRequestFilters({ search: searchQuery });
+                        const cacheKey = filtersSnapshot.cacheKey;
                         tbody.innerHTML = "";
                         loadedIds.clear();
                         clearSelectionAndDetail();
@@ -9063,23 +9458,8 @@ async function activateRow(row, options = {}) {
                                 showHeader: !isDesktopView(),
                         });
                 }
-                const [initialCacheYear, initialCacheMonthFrom, initialCacheMonthTo] =
-                        getPeriodCacheKeyParts();
-                const initialCacheKey = buildListCacheKey(
-                        searchQuery,
-                        selectedEstado,
-                        selectedPlan,
-                        selectedCanal,
-                        selectedConcesionario,
-                        selectedVendorType,
-                        selectedPaymentMethod,
-                        selectedOrderBy,
-                        selectedOrderDirection,
-                        selectedCommercial,
-                        initialCacheYear,
-                        initialCacheMonthFrom,
-                        initialCacheMonthTo
-                );
+                const initialFiltersSnapshot = getRequestFilters();
+                const initialCacheKey = initialFiltersSnapshot.cacheKey;
                 let initialLoadPromise;
                 const cachedInitialEntry = listCache.get(initialCacheKey);
                 if (isCacheEntryUsable(cachedInitialEntry)) {
@@ -9102,6 +9482,14 @@ async function activateRow(row, options = {}) {
                                                 preloadByPlate(initialMatQuery);
                                         }
                                 });
+                }
+
+                if (initialLoadPromise && typeof initialLoadPromise.finally === "function") {
+                        initialLoadPromise.finally(() => {
+                                startRealtimeUpdates();
+                        });
+                } else {
+                        startRealtimeUpdates();
                 }
         });
 })();
