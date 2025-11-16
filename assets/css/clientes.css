@@ -46,6 +46,7 @@
     --admin-summary-action-collect: #3b82f6;
     --admin-summary-action-alert: #ef4444;
     color: var(--summary-text);
+    background: transparent;
 }
 
 :root[data-theme='dark'] .clients-page .guarantee-detail {
