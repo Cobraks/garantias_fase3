@@ -2241,6 +2241,7 @@ const ADD_DOC_KEY = "add-document";
                 const getListCacheStorageKey = () =>
                         `go:guarantees:list-cache:v${listCacheStorageVersion}`;
                 const realtimeHighlightEntries = new Set();
+                const REALTIME_BADGE_LABEL = "Nuevo";
                 let realtimePollTimer = null;
                 let realtimePendingGeneration = 0;
                 let realtimeRefreshInFlight = false;
@@ -4976,7 +4977,6 @@ const ADD_DOC_KEY = "add-document";
                                         <div class="guarantee-card__vehicle">
                                                 <div class="guarantee-card__mat">
                                                         ${escapeHtml(view.matricula || "-")}
-                                                        <span class="guarantee-card__new-badge" aria-hidden="true" data-realtime-badge="true">Nueva</span>
                                                 </div>
                                                 <div class="guarantee-card__model">${escapeHtml(view.marcaModelo || "-")}</div>
                                         </div>
@@ -5074,7 +5074,6 @@ const ADD_DOC_KEY = "add-document";
                                         <div class="guarantees-table__vehiculo">
                                                 <div class="vehiculo__mat">
                                                         ${view.matricula || "-"}
-                                                        <span class="guarantees-table__new-badge" aria-hidden="true" data-realtime-badge="true">Nueva</span>
                                                 </div>
                                                 <div class="vehiculo__marca_modelo">${view.marcaModelo || "-"}</div>
                                         </div>
@@ -6844,9 +6843,17 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 if (hadRealtime) {
                                         row.classList.add("guarantees-table__row--is-new");
+                                        ensureRowRealtimeBadge(row, true);
                                         const card = mobileCardsMap.get(normalizedId);
                                         if (card) {
                                                 card.classList.add("guarantee-card--is-new");
+                                                ensureCardRealtimeBadge(card, true);
+                                        }
+                                } else {
+                                        ensureRowRealtimeBadge(row, false);
+                                        const card = mobileCardsMap.get(normalizedId);
+                                        if (card) {
+                                                ensureCardRealtimeBadge(card, false);
                                         }
                                 }
                                 fragment.appendChild(row);
@@ -6889,10 +6896,12 @@ const ADD_DOC_KEY = "add-document";
                         const row = findRowById(id);
                         if (row) {
                                 row.classList.remove("guarantees-table__row--is-new");
+                                ensureRowRealtimeBadge(row, false);
                         }
                         const card = mobileCardsMap.get(id);
                         if (card) {
                                 card.classList.remove("guarantee-card--is-new");
+                                ensureCardRealtimeBadge(card, false);
                         }
                         realtimeHighlightEntries.delete(id);
                 }
@@ -6905,12 +6914,66 @@ const ADD_DOC_KEY = "add-document";
                         const row = rowElement || findRowById(id);
                         if (row) {
                                 row.classList.add("guarantees-table__row--is-new");
+                                ensureRowRealtimeBadge(row, true);
                         }
                         const card = mobileCardsMap.get(id);
                         if (card) {
                                 card.classList.add("guarantee-card--is-new");
+                                ensureCardRealtimeBadge(card, true);
                         }
                         realtimeHighlightEntries.add(id);
+                }
+
+                function ensureRowRealtimeBadge(row, active) {
+                        if (!row) {
+                                return;
+                        }
+                        const mat = row.querySelector(".vehiculo__mat");
+                        if (!mat) {
+                                return;
+                        }
+                        const badge = mat.querySelector("[data-realtime-badge]");
+                        if (active) {
+                                if (badge) {
+                                        badge.textContent = REALTIME_BADGE_LABEL;
+                                        return;
+                                }
+                                const indicator = document.createElement("span");
+                                indicator.className = "guarantees-table__new-badge";
+                                indicator.dataset.realtimeBadge = "true";
+                                indicator.textContent = REALTIME_BADGE_LABEL;
+                                mat.appendChild(indicator);
+                                return;
+                        }
+                        if (badge) {
+                                badge.remove();
+                        }
+                }
+
+                function ensureCardRealtimeBadge(card, active) {
+                        if (!card) {
+                                return;
+                        }
+                        const mat = card.querySelector(".guarantee-card__mat");
+                        if (!mat) {
+                                return;
+                        }
+                        const badge = mat.querySelector("[data-realtime-badge]");
+                        if (active) {
+                                if (badge) {
+                                        badge.textContent = REALTIME_BADGE_LABEL;
+                                        return;
+                                }
+                                const indicator = document.createElement("span");
+                                indicator.className = "guarantee-card__new-badge";
+                                indicator.dataset.realtimeBadge = "true";
+                                indicator.textContent = REALTIME_BADGE_LABEL;
+                                mat.appendChild(indicator);
+                                return;
+                        }
+                        if (badge) {
+                                badge.remove();
+                        }
                 }
 
                 function setupRealtimeBadgeDismissal() {

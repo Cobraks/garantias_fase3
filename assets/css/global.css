@@ -1166,7 +1166,7 @@ textarea {
   --notifications-toast-top: calc(72px + 1.5rem);
   position: fixed;
   top: var(--notifications-toast-top);
-  right: calc((100vw - min(100vw, 1440px)) / 2 + 1.5rem);
+  right: clamp(1.25rem, calc((100vw - min(100vw, 1440px)) / 2 + 1.5rem), 3rem);
   width: min(22rem, 92vw);
   display: none;
   z-index: 2147483647;
@@ -1175,7 +1175,7 @@ textarea {
 }
 
 body.scrolled .notifications-toast {
-  --notifications-toast-top: calc(72px + 1.5rem + 4.5rem);
+  --notifications-toast-top: calc(115px + 1.5rem);
 }
 
 .notifications-toast--visible {
@@ -2501,85 +2501,9 @@ body.scrolled .notifications-toast {
 
 .guarantees-table__new-badge,
 .guarantee-card__new-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border-radius: 999px;
-  padding: 0.12rem 0.65rem;
-  background: rgba(var(--go-color-22c55e-rgb), 0.16);
-  border: 1px solid rgba(var(--go-color-22c55e-rgb), 0.45);
-  color: var(--go-color-166534);
-  box-shadow: 0 8px 18px -12px rgba(var(--go-color-22c55e-rgb), 0.85);
-  opacity: 0;
-  transform: translateY(-2px);
-  pointer-events: auto;
-  cursor: pointer;
-  transition: opacity 220ms ease, transform 220ms ease, box-shadow 220ms ease,
-    filter 220ms ease;
-}
-
-.guarantees-table__new-badge::before,
-.guarantee-card__new-badge::before {
-  content: "";
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.55;
-  box-shadow: 0 0 0 0 rgba(var(--go-color-22c55e-rgb), 0.4);
-  animation: go360-realtime-badge-dot 1.4s ease-in-out infinite;
-  animation-play-state: paused;
-  flex-shrink: 0;
-}
-
-.guarantee-card__new-badge {
-  background: rgba(var(--go-color-2563eb-rgb), 0.18);
-  border-color: rgba(var(--go-color-2563eb-rgb), 0.45);
-  color: var(--go-color-1d4ed8);
-  box-shadow: 0 10px 22px -14px rgba(var(--go-color-2563eb-rgb), 0.85);
-}
-
-.guarantees-table__row--is-new .guarantees-table__new-badge,
-.guarantee-card--is-new .guarantee-card__new-badge {
-  opacity: 1;
-  transform: translateY(0);
-  animation: go360-realtime-badge 1400ms ease-in-out infinite;
-}
-
-.guarantees-table__row--is-new .guarantees-table__new-badge::before,
-.guarantee-card--is-new .guarantee-card__new-badge::before {
-  animation-play-state: running;
-}
-
-.guarantees-table__new-badge:focus-visible,
-.guarantee-card__new-badge:focus-visible,
-.guarantees-table__new-badge:hover,
-.guarantee-card__new-badge:hover {
-  box-shadow: 0 18px 32px -18px rgba(var(--go-color-22c55e-rgb), 0.85);
-}
-
-@keyframes go360-realtime-badge-dot {
-  0% {
-    transform: scale(0.85);
-    opacity: 0.3;
-    box-shadow: 0 0 0 0 rgba(var(--go-color-22c55e-rgb), 0.2);
-  }
-
-  70% {
-    transform: scale(1.15);
-    opacity: 0.75;
-    box-shadow: 0 0 0 6px rgba(var(--go-color-22c55e-rgb), 0);
-  }
-
-  100% {
-    transform: scale(0.9);
-    opacity: 0.35;
-    box-shadow: 0 0 0 0 rgba(var(--go-color-22c55e-rgb), 0);
-  }
+  color: #dc2626;
+  font-weight: 600;
+  margin-left: 0.35rem;
 }
 
 .guarantee-card--is-new {
@@ -2613,29 +2537,9 @@ body.scrolled .notifications-toast {
   }
 }
 
-@keyframes go360-realtime-badge {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-    filter: brightness(1) saturate(1);
-  }
-
-  50% {
-    transform: translateY(-1px) scale(1.04);
-    filter: brightness(1.12) saturate(1.08);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .guarantees-table__row--is-new,
   .guarantee-card--is-new {
-    animation: none;
-  }
-
-  .guarantees-table__row--is-new .guarantees-table__new-badge,
-  .guarantee-card--is-new .guarantee-card__new-badge,
-  .guarantees-table__row--is-new .guarantees-table__new-badge::before,
-  .guarantee-card--is-new .guarantee-card__new-badge::before {
     animation: none;
   }
 }

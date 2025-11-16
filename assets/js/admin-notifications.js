@@ -182,7 +182,9 @@
         const viewAllButton = container.querySelector(SELECTORS.viewAll);
         const scrollBox = container.querySelector(SELECTORS.scroll);
         const toast = container.querySelector(SELECTORS.toast);
-        const topBar = container.closest('.top-bar');
+        if (toast && toast.parentElement && toast.parentElement !== document.body) {
+            document.body.appendChild(toast);
+        }
 
         const config = window.go360Notifications || {};
         const endpoints = config.endpoints || {};
@@ -415,7 +417,6 @@
         const toastSoundSrc = container.dataset.toastSound || '';
         let toastAudio = null;
         let toastHideHandler = null;
-        let toastPositionListenersBound = false;
         let toastHideFallback = null;
 
         if (!toggle || !panel || !list || !listEndpoint) {
@@ -814,41 +815,6 @@
             toggle.classList.toggle('is-toasting', Boolean(active));
         };
 
-        const updateToastPosition = () => {
-            if (!toast || toast.hidden) {
-                return;
-            }
-            const anchor = topBar || toggle || container;
-            if (!anchor || typeof anchor.getBoundingClientRect !== 'function') {
-                return;
-            }
-            const rect = anchor.getBoundingClientRect();
-            const horizontalPadding = 24;
-            const verticalOffset = 12;
-            const rightOffset = Math.max(horizontalPadding, window.innerWidth - rect.right + horizontalPadding);
-            const topOffset = Math.max(verticalOffset, rect.bottom + verticalOffset);
-            toast.style.right = `${Math.round(rightOffset)}px`;
-            toast.style.top = `${Math.round(topOffset)}px`;
-        };
-
-        const bindToastPositionListeners = () => {
-            if (toastPositionListenersBound) {
-                return;
-            }
-            toastPositionListenersBound = true;
-            window.addEventListener('resize', updateToastPosition);
-            window.addEventListener('scroll', updateToastPosition, { passive: true });
-        };
-
-        const unbindToastPositionListeners = () => {
-            if (!toastPositionListenersBound) {
-                return;
-            }
-            toastPositionListenersBound = false;
-            window.removeEventListener('resize', updateToastPosition);
-            window.removeEventListener('scroll', updateToastPosition);
-        };
-
         const hideToast = (options = {}) => {
             if (!toast) {
                 return;
@@ -878,10 +844,7 @@
                 toast.innerHTML = '';
                 delete toast.dataset.notificationLink;
                 delete toast.dataset.notificationId;
-                toast.style.top = '';
-                toast.style.right = '';
                 setToggleToastState(false);
-                unbindToastPositionListeners();
                 state.currentToastId = null;
             };
 
@@ -1118,9 +1081,6 @@
             toast.classList.remove('notifications-toast--hiding');
             toast.classList.add('notifications-toast--visible');
             setToggleToastState(true);
-            updateToastPosition();
-            window.requestAnimationFrame(updateToastPosition);
-            bindToastPositionListeners();
 
             playToastSound();
 
