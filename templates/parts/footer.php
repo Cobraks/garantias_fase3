@@ -763,7 +763,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             nonce: <?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>,
             perPage: 10,
             pollInterval: 4000,
-            toastDuration: 40000,
+            toastDuration: 8000,
             user: {
                 id: <?php echo (int) get_current_user_id(); ?>,
             },
