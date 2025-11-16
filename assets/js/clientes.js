@@ -276,7 +276,7 @@
             state.quickFilter = finalValue;
             updateQuickFilterUi();
             updateResetFiltersButton();
-            loadPage(1, false);
+            loadPage(1, false, { preserveEmptyDetail: true });
         };
 
         const cache = new Map();
@@ -5351,7 +5351,8 @@
             lastRowIndex = -1;
         }
 
-        async function loadPage(page, append = false) {
+        async function loadPage(page, append = false, options = {}) {
+            const preserveEmptyDetail = Boolean(options && options.preserveEmptyDetail);
             if (state.isLoading) {
                 return;
             }
@@ -5370,10 +5371,13 @@
                 if (cardsList) {
                     cardsList.innerHTML = '';
                 }
-                if (initialSlug) {
-                    showLoadingDetail();
-                } else {
-                    showEmptyDetail('forward', { animate: false });
+                const shouldPreserveEmptyDetail = preserveEmptyDetail && !initialSlug;
+                if (!shouldPreserveEmptyDetail) {
+                    if (initialSlug) {
+                        showLoadingDetail();
+                    } else {
+                        showEmptyDetail('forward', { animate: false });
+                    }
                 }
             }
 
