@@ -86,7 +86,7 @@ class ClientSummary
         }
 
         return [
-            'default_context' => 'year',
+            'default_context' => 'month',
             'generated_at'    => current_time('mysql'),
             'contexts'        => $contexts,
         ];
@@ -109,7 +109,7 @@ class ClientSummary
 
         $sparkline = $context === 'year'
             ? self::build_monthly_sparkline($current['end'])
-            : self::build_daily_sparkline($current['end']);
+            : [];
 
         $trend_suffix = $context === 'year'
             ? __('vs año ant.', 'garantias-online-360vo')
@@ -161,12 +161,12 @@ class ClientSummary
                     ],
                 ],
             ],
-            'trendline' => [
-                'title'  => $context === 'year'
-                    ? __('Ritmo mensual', 'garantias-online-360vo')
-                    : __('Ritmo diario', 'garantias-online-360vo'),
-                'points' => $sparkline,
-            ],
+            'trendline' => $context === 'year'
+                ? [
+                    'title'  => __('Ritmo mensual', 'garantias-online-360vo'),
+                    'points' => $sparkline,
+                ]
+                : [],
         ];
     }
 

@@ -152,8 +152,12 @@
 }
 
 .clients-page .clients-summary__panel {
-    display: grid;
+    display: none;
     gap: 1rem;
+}
+
+.clients-page .clients-summary__panel.is-active {
+    display: grid;
 }
 
 .clients-page .clients-summary--interactive .clients-summary__panels {
@@ -161,6 +165,7 @@
 }
 
 .clients-page .clients-summary--interactive .clients-summary__panel {
+    display: grid;
     position: absolute;
     inset: 0;
     opacity: 0;

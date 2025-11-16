@@ -57,7 +57,8 @@ $clients_summary_contexts = isset($clients_summary_data['contexts']) && is_array
 $clients_summary_default_context = isset($clients_summary_data['default_context'])
     && in_array($clients_summary_data['default_context'], ['year', 'month'], true)
         ? (string) $clients_summary_data['default_context']
-        : 'year';
+        : 'month';
+$clients_summary_has_toggle = count($clients_summary_contexts) > 1;
 $clients_summary_context_labels = [
     'year'  => __('Global', 'garantias-online-360vo'),
     'month' => __('Mensual', 'garantias-online-360vo'),
@@ -157,8 +158,14 @@ $clients_summary_context_labels = [
                     <?php esc_html_e('Selecciona un cliente para consultar su información, asignar comerciales, gestionar ofertas y más.', 'garantias-online-360vo'); ?>
                 </p>
                 <?php if (! empty($clients_summary_contexts)) : ?>
+                    <?php
+                    $clients_summary_classes = 'clients-summary';
+                    if ($clients_summary_has_toggle) {
+                        $clients_summary_classes .= ' clients-summary--interactive';
+                    }
+                    ?>
                     <section
-                        class="clients-summary"
+                        class="<?php echo esc_attr($clients_summary_classes); ?>"
                         data-clients-summary
                         data-context="<?php echo esc_attr($clients_summary_default_context); ?>"
                         aria-labelledby="clients-summary-title"
@@ -166,7 +173,7 @@ $clients_summary_context_labels = [
                         <div class="clients-summary__card">
                             <header class="clients-summary__header">
                                 <h3 id="clients-summary-title" class="clients-summary__title"><?php esc_html_e('Resumen de Clientes', 'garantias-online-360vo'); ?></h3>
-                                <?php if (count($clients_summary_contexts) > 1) : ?>
+                                <?php if ($clients_summary_has_toggle) : ?>
                                     <fieldset class="clients-summary__context" data-clients-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
                                         <?php foreach ($clients_summary_context_labels as $context_key => $context_label) : ?>
                                             <?php if (! isset($clients_summary_contexts[$context_key])) { continue; } ?>
