@@ -207,6 +207,7 @@ class PushNotificationService
             'auth.login_success',
             'auth.logout',
             'user.verification_verified',
+            'guarantee.created',
             'guarantee.contracted',
             'payment.recorded',
             'payment.reported',
