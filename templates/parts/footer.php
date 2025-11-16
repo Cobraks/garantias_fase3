@@ -7,6 +7,7 @@ use GarantiasOnline360VO\Docs\ReclamationDocument;
 use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\Support\FeatureFlags;
 use GarantiasOnline360VO\Support\UserProfileResolver;
+use GarantiasOnline360VO\Rest\GuaranteeRestController;
 
 $example_data_enabled = false;
 if (! empty($is_add_guarantee)) {
@@ -96,6 +97,9 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
     } else {
         $js_user_role = 'user';
     }
+    $list_cache_generation = class_exists(GuaranteeRestController::class)
+        ? GuaranteeRestController::get_list_cache_generation_snapshot()
+        : 1;
     $icon_pdf_html = Svg::icon('pdf');
     $icon_download_html = Svg::icon('download');
     $icon_plus_html = Svg::icon('plus');
@@ -129,6 +133,9 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             },
             features: {
                 exampleData: <?php echo $example_data_enabled ? 'true' : 'false'; ?>
+            },
+            cache: {
+                guaranteesListVersion: <?php echo (int) $list_cache_generation; ?>
             }
         };
     </script>
@@ -756,7 +763,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             nonce: <?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>,
             perPage: 10,
             pollInterval: 4000,
-            toastDuration: 9000,
+            toastDuration: 40000,
             user: {
                 id: <?php echo (int) get_current_user_id(); ?>,
             },

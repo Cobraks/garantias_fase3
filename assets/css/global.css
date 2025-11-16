@@ -1163,14 +1163,19 @@ textarea {
 }
 
 .notifications-toast {
+  --notifications-toast-top: calc(72px + 1.5rem);
   position: fixed;
-  top: 5.5rem;
-  right: calc((100vw - min(100vw, 1440px)) / 2 + 1.5rem);
+  top: var(--notifications-toast-top);
+  right: clamp(1.25rem, calc((100vw - min(100vw, 1440px)) / 2 + 1.5rem), 3rem);
   width: min(22rem, 92vw);
   display: none;
-  z-index: 2147483000;
+  z-index: 2147483647;
   pointer-events: none;
   will-change: transform, opacity;
+}
+
+body.scrolled .notifications-toast {
+  --notifications-toast-top: calc(44px + 1.5rem);
 }
 
 .notifications-toast--visible {
@@ -1237,6 +1242,7 @@ textarea {
   margin: 0;
   font-size: 0.8rem;
   color: #cbd5f5;
+  text-wrap: pretty;
 }
 
 .notifications-toast__close {
@@ -2471,6 +2477,94 @@ textarea {
   .container,
   .footer__wrapper {
     max-width: 1800px;
+  }
+}
+
+
+.guarantees-table__row--is-new {
+  animation: go360-realtime-row-slide 360ms ease-out,
+    go360-realtime-row-glow 2200ms ease-in-out;
+}
+
+.guarantees-table__vehiculo,
+.guarantee-card__vehicle {
+  position: relative;
+}
+
+.guarantees-table__vehiculo .vehiculo__mat {
+  display: inline;
+}
+
+.vehiculo__mat,
+.guarantee-card__mat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  line-height: 1.2;
+}
+
+.guarantees-table__new-badge,
+.guarantee-card__new-badge {
+  color: #dc2626;
+  font-weight: 600;
+  margin-left: 0.35rem;
+  animation: go360-new-badge-shine 2s linear infinite;
+}
+
+.guarantee-card--is-new {
+  animation: go360-realtime-row-glow 2200ms ease-in-out;
+}
+
+@keyframes go360-realtime-row-slide {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+
+  55% {
+    opacity: 1;
+    transform: translateY(4px) scale(1.01);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes go360-new-badge-shine {
+  0% {
+    color: #b91c1c;
+  }
+
+  40% {
+    color: #ef4444;
+  }
+
+  60% {
+    color: #dc2626;
+  }
+
+  100% {
+    color: #b91c1c;
+  }
+}
+
+@keyframes go360-realtime-row-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--go-color-3b82f6-rgb), 0.2);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--go-color-3b82f6-rgb), 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guarantees-table__row--is-new,
+  .guarantee-card--is-new {
+    animation: none;
   }
 }
 
