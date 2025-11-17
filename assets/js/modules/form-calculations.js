@@ -2102,6 +2102,8 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                 mostrarMensajeAntiguedadMinima = false,
                 mostrarMensajeKilometrosMaximos = false,
                 mostrarMensajeKilometrosMinimos = false,
+                mostrarMensajePotenciaMaxima = false,
+                mostrarMensajePotenciaMinima = false,
                 mostrarMensajeGenerico = false,
         } = opciones;
 
@@ -2118,6 +2120,10 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         "El vehículo supera el límite de kilómetros permitido para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
                 const mensajeGenerico =
                         "No hay garantías disponibles para esta cobertura con los datos proporcionados. Ponte en contacto con el Departamento Comercial de 360VO";
+                const mensajePotenciaMaxima =
+                        "El vehículo supera la potencia máxima permitida en las condiciones de la garantía. Ponte en contacto con el Departamento Técnico de 360VO.";
+                const mensajePotenciaMinima =
+                        "El vehículo no supera la potencia mínima permitida en las condiciones de la garantía. Ponte en contacto con el Departamento Comercial de 360VO.";
 
                 let texto = mensajeGenerico;
                 let variant = "warning";
@@ -2129,6 +2135,12 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         variant = "warning";
                 } else if (mostrarMensajeKilometrosMaximos || mostrarMensajeKilometrosMinimos) {
                         texto = mensajeKilometros;
+                        variant = "warning";
+                } else if (mostrarMensajePotenciaMaxima) {
+                        texto = mensajePotenciaMaxima;
+                        variant = "warning";
+                } else if (mostrarMensajePotenciaMinima) {
+                        texto = mensajePotenciaMinima;
                         variant = "warning";
                 } else if (!mostrarMensajeGenerico) {
                         texto = "No hay garantías disponibles para estos filtros.";
@@ -2462,11 +2474,17 @@ async function filtrarModalidadesBase() {
         let maxKilometrosPermitidos = 0;
         let kilometrajeCondicionesConsideradas = 0;
         let kilometrajeCondicionesExcluyentes = 0;
+        let potenciaSuperaMaximo = false;
+        let maxPotenciaPermitida = 0;
+        let potenciaCondicionesConsideradas = 0;
+        let potenciaCondicionesExcluyentes = 0;
         const motivosDescarte = {
                 antiguedadMaxima: false,
                 antiguedadMinima: false,
                 kilometrosMaximos: false,
                 kilometrosMinimos: false,
+                potenciaMaxima: false,
+                potenciaMinima: false,
                 otros: false,
         };
 
@@ -2573,6 +2591,49 @@ async function filtrarModalidadesBase() {
                         maxKilometrosPermitidos = Infinity;
                 }
 
+                if (condicionesEspecialesArr.includes("potencia")) {
+                        const grupoPotencia = cm.condicion_por_potencia || {};
+                        const desdePot = parseNumericFormValue(grupoPotencia.desde || 0);
+                        const hastaPotRaw = grupoPotencia.hasta;
+                        const hastaPot =
+                                hastaPotRaw !== "" && hastaPotRaw !== undefined
+                                        ? parseNumericFormValue(hastaPotRaw)
+                                        : null;
+
+                        if (hastaPot === null) {
+                                maxPotenciaPermitida = Infinity;
+                        } else if (
+                                maxPotenciaPermitida !== Infinity &&
+                                (maxPotenciaPermitida === 0 || hastaPot > maxPotenciaPermitida)
+                        ) {
+                                maxPotenciaPermitida = hastaPot;
+                        }
+
+                        const potenciaValor = parseNumericFormValue(getValorInput("potencia"));
+                        if (isNaN(potenciaValor)) {
+                                potenciaCondicionesConsideradas += 1;
+                                potenciaCondicionesExcluyentes += 1;
+                                motivosDescarte.otros = true;
+                                return false;
+                        }
+
+                        potenciaCondicionesConsideradas += 1;
+
+                        if (potenciaValor < desdePot) {
+                                potenciaCondicionesExcluyentes += 1;
+                                motivosDescarte.potenciaMinima = true;
+                                return false;
+                        }
+                        if (hastaPot !== null && potenciaValor > hastaPot) {
+                                potenciaSuperaMaximo = true;
+                                potenciaCondicionesExcluyentes += 1;
+                                motivosDescarte.potenciaMaxima = true;
+                                return false;
+                        }
+                } else {
+                        maxPotenciaPermitida = Infinity;
+                }
+
                 if (excedeAntiguedad && excedeKilometros) {
                         // FLAG: Revisar condición para camiones si supera 12 años y 800.000km.
                         antiguedadSuperaMaximo = true;
@@ -2665,16 +2726,34 @@ async function filtrarModalidadesBase() {
                         motivosDescarte.kilometrosMaximos = true;
                 }
 
+                const potenciaVal = parseNumericFormValue(valoresForm.potencia);
+                if (
+                        !potenciaSuperaMaximo &&
+                        potenciaCondicionesConsideradas > 0 &&
+                        maxPotenciaPermitida !== Infinity &&
+                        potenciaVal > maxPotenciaPermitida
+                ) {
+                        potenciaSuperaMaximo = true;
+                        if (potenciaCondicionesExcluyentes < potenciaCondicionesConsideradas) {
+                                potenciaCondicionesExcluyentes = potenciaCondicionesConsideradas;
+                        }
+                        motivosDescarte.potenciaMaxima = true;
+                }
+
                 updateDuracionSelect([]);
                 const mostrarAntiguedadMinima = motivosDescarte.antiguedadMinima;
                 const mostrarAntiguedadMaxima = motivosDescarte.antiguedadMaxima;
                 const mostrarKilometrosMaximos = motivosDescarte.kilometrosMaximos;
                 const mostrarKilometrosMinimos = motivosDescarte.kilometrosMinimos;
+                const mostrarPotenciaMaxima = motivosDescarte.potenciaMaxima;
+                const mostrarPotenciaMinima = motivosDescarte.potenciaMinima;
                 const algunMotivoEspecifico =
                         mostrarAntiguedadMinima ||
                         mostrarAntiguedadMaxima ||
                         mostrarKilometrosMaximos ||
-                        mostrarKilometrosMinimos;
+                        mostrarKilometrosMinimos ||
+                        mostrarPotenciaMaxima ||
+                        mostrarPotenciaMinima;
 
                 if (!algunMotivoEspecifico) {
                         motivosDescarte.otros = true;
@@ -2685,6 +2764,8 @@ async function filtrarModalidadesBase() {
                         mostrarMensajeAntiguedadMinima: mostrarAntiguedadMinima,
                         mostrarMensajeKilometrosMaximos: mostrarKilometrosMaximos,
                         mostrarMensajeKilometrosMinimos: mostrarKilometrosMinimos,
+                        mostrarMensajePotenciaMaxima: mostrarPotenciaMaxima,
+                        mostrarMensajePotenciaMinima: mostrarPotenciaMinima,
                         mostrarMensajeGenerico: !algunMotivoEspecifico,
                 });
         } else {
