@@ -88,6 +88,7 @@ const ADMIN_SEPA_MESSAGES = {
 
 let baseUserRole = "";
 let currentChannelSlug = "";
+let usuariosRequestId = 0;
 let defaultSepaWarningText = "";
 
 function normalizeRole(value) {
@@ -322,6 +323,8 @@ async function loadUsuariosPorCanal(channelSlug, { keepValue = false } = {}) {
         const texts = getChannelTexts(channelSlug);
         const previousValue = keepValue ? select.value : "";
 
+        const requestId = ++usuariosRequestId;
+
         if (!role) {
                 select.innerHTML = "";
                 select.value = "";
@@ -346,6 +349,10 @@ async function loadUsuariosPorCanal(channelSlug, { keepValue = false } = {}) {
                 );
                 if (!res.ok) throw new Error(`REST ${res.status}`);
                 const data = await res.json();
+
+                if (requestId !== usuariosRequestId) {
+                        return;
+                }
 
                 select.innerHTML = "";
                 const defaultOption = document.createElement("option");
@@ -384,6 +391,7 @@ async function loadUsuariosPorCanal(channelSlug, { keepValue = false } = {}) {
                                 if (existing) {
                                         existing.selected = true;
                                         defaultOption.selected = false;
+                                        select.value = targetValue;
                                         if (select.dataset.pendingValue === targetValue) {
                                                 delete select.dataset.pendingValue;
                                         }
@@ -397,6 +405,9 @@ async function loadUsuariosPorCanal(channelSlug, { keepValue = false } = {}) {
                         select.appendChild(emptyOption);
                 }
         } catch (error) {
+                if (requestId !== usuariosRequestId) {
+                        return;
+                }
                 select.innerHTML = "";
                 const errorOption = document.createElement("option");
                 errorOption.value = "";
@@ -404,6 +415,10 @@ async function loadUsuariosPorCanal(channelSlug, { keepValue = false } = {}) {
                 errorOption.disabled = true;
                 select.appendChild(errorOption);
                 console.warn("[form-user-select] loadUsuariosPorCanal error:", error);
+        }
+
+        if (requestId !== usuariosRequestId) {
+                return;
         }
 
         updateSelectDataset(select);

@@ -253,7 +253,7 @@ function getSummaryText(fieldId) {
         // Doble motor (depende de combustible)
         if (fieldId === "doble_motor") {
                 const combustible = document.getElementById("combustible")?.value;
-                const aplica = ["electrico", "hibrido", "gpl_gnc"].includes(combustible);
+                const aplica = combustible === "electrico";
                 if (!aplica) {
                         return { text: "No aplica", error: false };
                 }
@@ -418,11 +418,11 @@ function updateSummary() {
         if (liTraccion) liTraccion.style.display = isCamion || isMoto ? "none" : "";
         if (liTraccionCamion) liTraccionCamion.style.display = isCamion ? "" : "none";
 
-	if (liDobleMotor) {
-		const combustible = document.getElementById("combustible")?.value;
-		const aplica = ["electrico", "hibrido", "gpl_gnc"].includes(combustible);
-		liDobleMotor.style.display = aplica ? "" : "none";
-	}
+        if (liDobleMotor) {
+                const combustible = document.getElementById("combustible")?.value;
+                const aplica = combustible === "electrico";
+                liDobleMotor.style.display = aplica ? "" : "none";
+        }
 
 	document.querySelectorAll("[data-summary-field]").forEach((elem) => {
 		const container = elem.closest("li.summary__item") || elem.parentElement;
