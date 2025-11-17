@@ -32,6 +32,7 @@ import {
         getSelectedModalidadId,
         getSpecialFixedOffers,
         subscribeSpecialFixedOffers,
+        setSpecialFixedOffers,
 } from "./form-state.js";
 import { setupPlanSelection } from "./plan-selection.js";
 
@@ -368,23 +369,23 @@ function getVehicleTypesForChannel(canal) {
 }
 
 function getActiveChannelSlug(canalesDisponibles = []) {
-        const select = document.getElementById("canal-venta");
-        const canalesSet = new Set(canalesDisponibles);
-        let selectValue = select ? normalizeChannel(select.value) : "";
+	const select = document.getElementById("canal-venta");
+	const canalesSet = new Set(canalesDisponibles.map((canal) => normalizeChannel(canal)));
+	const selectValue = select ? normalizeChannel(select.value) : "";
 
-        if (selectValue && (!canalesSet.size || canalesSet.has(selectValue))) {
-                return selectValue;
-        }
+	if (selectValue) {
+		return selectValue;
+	}
 
-        const fallback = getDefaultChannelForRole();
-        if (canalesSet.size) {
-                if (canalesSet.has(fallback)) {
-                        return fallback;
-                }
-                const first = canalesSet.values().next();
-                if (!first.done) return first.value;
-        }
-        return fallback;
+	const fallback = getDefaultChannelForRole();
+	if (!canalesSet.size) {
+		return fallback;
+	}
+	if (canalesSet.has(fallback)) {
+		return fallback;
+	}
+	const first = canalesSet.values().next();
+	return !first.done ? first.value : fallback;
 }
 
 function normalizeSelectValue(field) {
@@ -479,58 +480,45 @@ function evaluarFiltrosParticulares(tarifa, valoresForm) {
         return { coincide, especificidad };
 }
 
-function syncCanalVentaSelect(canalesDisponibles, canalActivo) {
-        const select = document.getElementById("canal-venta");
-        if (!select) return;
+function syncCanalVentaSelect(canalesDisponibles = [], canalActivo) {
+	const select = document.getElementById("canal-venta");
+	if (!select) return;
 
-        const opciones = Array.from(select.options).filter((opt) => opt.value !== "");
-        const disponiblesSet = new Set(canalesDisponibles);
+	const opciones = Array.from(select.options).filter((opt) => opt.value !== "");
+	const listaCanales = Array.isArray(canalesDisponibles)
+		? canalesDisponibles
+		: Array.from(canalesDisponibles || []);
+	const disponiblesSet = new Set(listaCanales.map((canal) => normalizeChannel(canal)));
+	const valorActual = normalizeChannel(select.value);
 
-        let needsValueReset = false;
-        opciones.forEach((opt) => {
-                const canalOpt = normalizeChannel(opt.value);
-                const habilitar = disponiblesSet.size === 0 || disponiblesSet.has(canalOpt);
-                opt.disabled = !habilitar;
-                opt.hidden = !habilitar;
-                if (!habilitar && opt.selected) {
-                        opt.selected = false;
-                        needsValueReset = true;
-                }
-        });
+	opciones.forEach((opt) => {
+		const canalOpt = normalizeChannel(opt.value);
+		const habilitar =
+			disponiblesSet.size === 0 || disponiblesSet.has(canalOpt) || canalOpt === valorActual;
+		opt.disabled = !habilitar;
+		opt.hidden = !habilitar;
+	});
 
-        if (disponiblesSet.size === 0) {
-                if (select.value) {
-                        select.value = "";
-                        select.dispatchEvent(new Event("change", { bubbles: true }));
-                }
-                const container = select.closest(".form__input-container");
-                if (container) container.classList.remove("has-value");
-                return;
-        }
-
-        let targetCanal = canalActivo && disponiblesSet.has(canalActivo)
-                ? canalActivo
-                : getActiveChannelSlug(Array.from(disponiblesSet));
-
-        let opcionObjetivo = opciones.find(
-                (opt) => !opt.disabled && normalizeChannel(opt.value) === targetCanal
-        );
-
-        if (!opcionObjetivo) {
-                opcionObjetivo = opciones.find((opt) => !opt.disabled) || null;
-                targetCanal = opcionObjetivo ? normalizeChannel(opcionObjetivo.value) : targetCanal;
-        }
-
-        if (opcionObjetivo) {
-                const nuevoValor = opcionObjetivo.value;
-                if (select.value !== nuevoValor || needsValueReset) {
-                        opcionObjetivo.selected = true;
-                        select.value = nuevoValor;
-                        select.dispatchEvent(new Event("change", { bubbles: true }));
-                }
-                const container = select.closest(".form__input-container");
-                if (container) container.classList.add("has-value");
-        }
+	const container = select.closest(".form__input-container");
+	if (!valorActual) {
+		let targetCanal = canalActivo && canalActivo !== valorActual ? canalActivo : null;
+		if (!targetCanal) {
+			targetCanal = getActiveChannelSlug(Array.from(disponiblesSet));
+		}
+		const opcionObjetivo = opciones.find(
+			(opt) => normalizeChannel(opt.value) === targetCanal
+		);
+		if (opcionObjetivo) {
+			opcionObjetivo.selected = true;
+			select.value = opcionObjetivo.value;
+			select.dispatchEvent(new Event("change", { bubbles: true }));
+			if (container) container.classList.add("has-value");
+		} else if (container) {
+			container.classList.remove("has-value");
+		}
+	} else if (container) {
+		container.classList.add("has-value");
+	}
 }
 
 function syncTipoVehiculoOptions(canalActivo) {
@@ -593,6 +581,65 @@ function getValoresModalidadCampo(campo) {
         if (typeof campo === "object" && campo !== null && campo.value)
                 return [campo.value];
         return [];
+}
+
+function normalizeVehicleText(value) {
+        if (typeof value !== "string") return "";
+        return value
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, " ")
+                .trim()
+                .replace(/\s+/g, " ");
+}
+
+function parseExcludedTerms(value) {
+        if (!value) return [];
+        let rawItems = [];
+        if (Array.isArray(value)) {
+                rawItems = value;
+        } else if (typeof value === "string") {
+                rawItems = value.split(/[,\n;]+/);
+        } else if (typeof value === "object") {
+                if (typeof value.value === "string") {
+                        rawItems = [value.value];
+                }
+        }
+        return rawItems
+                .map((item) => normalizeVehicleText(String(item || "")))
+                .filter(Boolean);
+}
+
+function textContainsAnyTerm(normalizedText, terms) {
+        if (!normalizedText || !Array.isArray(terms) || !terms.length) {
+                return false;
+        }
+        const paddedText = ` ${normalizedText} `;
+        return terms.some((term) => {
+                if (!term) return false;
+                const paddedTerm = ` ${term} `;
+                if (paddedText.includes(paddedTerm)) return true;
+                if (normalizedText.startsWith(term)) {
+                        const nextChar = normalizedText.charAt(term.length);
+                        if (!nextChar || nextChar === " ") {
+                                return true;
+                        }
+                }
+                return false;
+        });
+}
+
+function parseModelRestrictions(rows) {
+        if (!Array.isArray(rows)) return [];
+        return rows
+                .map((row) => {
+                        const marcas = parseExcludedTerms(row?.marca);
+                        const modelos = parseExcludedTerms(row?.modelos);
+                        if (!marcas.length || !modelos.length) return null;
+                        return { marcas, modelos };
+                })
+                .filter(Boolean);
 }
 
 function escapeHtml(value) {
@@ -2102,6 +2149,10 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                 mostrarMensajeAntiguedadMinima = false,
                 mostrarMensajeKilometrosMaximos = false,
                 mostrarMensajeKilometrosMinimos = false,
+                mostrarMensajePotenciaMaxima = false,
+                mostrarMensajePotenciaMinima = false,
+                mostrarMensajeMarcaExcluida = false,
+                mostrarMensajeModeloExcluido = false,
                 mostrarMensajeGenerico = false,
         } = opciones;
 
@@ -2118,10 +2169,22 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         "El vehículo supera el límite de kilómetros permitido para esta cobertura. Ponte en contacto con el Departamento Comercial de 360VO";
                 const mensajeGenerico =
                         "No hay garantías disponibles para esta cobertura con los datos proporcionados. Ponte en contacto con el Departamento Comercial de 360VO";
+                const mensajePotenciaMaxima =
+                        "El vehículo supera la potencia máxima permitida en las condiciones de la garantía. Ponte en contacto con el Departamento Técnico de 360VO.";
+                const mensajePotenciaMinima =
+                        "El vehículo no supera la potencia mínima permitida en las condiciones de la garantía. Ponte en contacto con el Departamento Comercial de 360VO.";
+                const mensajeMarcaExcluida =
+                        "No tenemos coberturas disponibles para ese vehículo. Ponte en contacto con el Departamento Técnico de 360VO";
 
                 let texto = mensajeGenerico;
                 let variant = "warning";
-                if (mostrarMensajeAntiguedadMinima) {
+                if (mostrarMensajeModeloExcluido) {
+                        texto = mensajeMarcaExcluida;
+                        variant = "warning";
+                } else if (mostrarMensajeMarcaExcluida) {
+                        texto = mensajeMarcaExcluida;
+                        variant = "warning";
+                } else if (mostrarMensajeAntiguedadMinima) {
                         texto = mensajeAntiguedadMinima;
                         variant = "warning";
                 } else if (mostrarMensajeAntiguedad) {
@@ -2129,6 +2192,12 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         variant = "warning";
                 } else if (mostrarMensajeKilometrosMaximos || mostrarMensajeKilometrosMinimos) {
                         texto = mensajeKilometros;
+                        variant = "warning";
+                } else if (mostrarMensajePotenciaMaxima) {
+                        texto = mensajePotenciaMaxima;
+                        variant = "warning";
+                } else if (mostrarMensajePotenciaMinima) {
+                        texto = mensajePotenciaMinima;
                         variant = "warning";
                 } else if (!mostrarMensajeGenerico) {
                         texto = "No hay garantías disponibles para estos filtros.";
@@ -2440,6 +2509,8 @@ async function filtrarModalidadesBase() {
                 traccion_camion: getValorInput("traccion_camion") || null,
                 combustible: getValorInput("combustible") || null,
                 traccion: getValorInput("traccion") || "",
+                marca: (getValorInput("marca") || "").trim(),
+                modelo: (getValorInput("modelo") || "").trim(),
                 antiguedad,
         };
 
@@ -2462,11 +2533,19 @@ async function filtrarModalidadesBase() {
         let maxKilometrosPermitidos = 0;
         let kilometrajeCondicionesConsideradas = 0;
         let kilometrajeCondicionesExcluyentes = 0;
+        let potenciaSuperaMaximo = false;
+        let maxPotenciaPermitida = 0;
+        let potenciaCondicionesConsideradas = 0;
+        let potenciaCondicionesExcluyentes = 0;
         const motivosDescarte = {
                 antiguedadMaxima: false,
                 antiguedadMinima: false,
                 kilometrosMaximos: false,
                 kilometrosMinimos: false,
+                potenciaMaxima: false,
+                potenciaMinima: false,
+                marcaExcluida: false,
+                modeloExcluido: false,
                 otros: false,
         };
 
@@ -2573,6 +2652,86 @@ async function filtrarModalidadesBase() {
                         maxKilometrosPermitidos = Infinity;
                 }
 
+                if (condicionesEspecialesArr.includes("potencia")) {
+                        const grupoPotencia = cm.condicion_por_potencia || {};
+                        const desdePot = parseNumericFormValue(grupoPotencia.desde || 0);
+                        const hastaPotRaw = grupoPotencia.hasta;
+                        const hastaPot =
+                                hastaPotRaw !== "" && hastaPotRaw !== undefined
+                                        ? parseNumericFormValue(hastaPotRaw)
+                                        : null;
+
+                        if (hastaPot === null) {
+                                maxPotenciaPermitida = Infinity;
+                        } else if (
+                                maxPotenciaPermitida !== Infinity &&
+                                (maxPotenciaPermitida === 0 || hastaPot > maxPotenciaPermitida)
+                        ) {
+                                maxPotenciaPermitida = hastaPot;
+                        }
+
+                        const potenciaValor = parseNumericFormValue(getValorInput("potencia"));
+                        if (isNaN(potenciaValor)) {
+                                potenciaCondicionesConsideradas += 1;
+                                potenciaCondicionesExcluyentes += 1;
+                                motivosDescarte.otros = true;
+                                return false;
+                        }
+
+                        potenciaCondicionesConsideradas += 1;
+
+                        if (potenciaValor < desdePot) {
+                                potenciaCondicionesExcluyentes += 1;
+                                motivosDescarte.potenciaMinima = true;
+                                return false;
+                        }
+                        if (hastaPot !== null && potenciaValor > hastaPot) {
+                                potenciaSuperaMaximo = true;
+                                potenciaCondicionesExcluyentes += 1;
+                                motivosDescarte.potenciaMaxima = true;
+                                return false;
+                        }
+                } else {
+                        maxPotenciaPermitida = Infinity;
+                }
+
+                if (condicionesEspecialesArr.includes("marca")) {
+                        const grupoMarca = cm.condicion_por_marca || {};
+                        const exclusiones = parseExcludedTerms(grupoMarca.marcas_excluidas);
+                        if (exclusiones.length) {
+                                const marcaNormalizada = normalizeVehicleText(valoresForm.marca);
+                                if (textContainsAnyTerm(marcaNormalizada, exclusiones)) {
+                                        motivosDescarte.marcaExcluida = true;
+                                        return false;
+                                }
+                        }
+                }
+
+                if (condicionesEspecialesArr.includes("modelos")) {
+                        const restriccionesModelos = parseModelRestrictions(
+                                cm.condicion_por_modelos
+                        );
+                        if (restriccionesModelos.length) {
+                                const marcaNormalizada = normalizeVehicleText(valoresForm.marca);
+                                const modeloNormalizado = normalizeVehicleText(valoresForm.modelo);
+                                if (marcaNormalizada && modeloNormalizado) {
+                                        const filaCoincidente = restriccionesModelos.find((fila) =>
+                                                textContainsAnyTerm(marcaNormalizada, fila.marcas)
+                                        );
+                                        if (
+                                                filaCoincidente &&
+                                                textContainsAnyTerm(
+                                                        modeloNormalizado,
+                                                        filaCoincidente.modelos
+                                                )
+                                        ) {
+                                                motivosDescarte.modeloExcluido = true;
+                                                return false;
+                                        }
+                                }
+                        }
+                }
+
                 if (excedeAntiguedad && excedeKilometros) {
                         // FLAG: Revisar condición para camiones si supera 12 años y 800.000km.
                         antiguedadSuperaMaximo = true;
@@ -2603,10 +2762,11 @@ async function filtrarModalidadesBase() {
                 canales.forEach((canal) => canalesDisponibles.add(canal));
         });
 
-        const canalActivo = getActiveChannelSlug(Array.from(canalesDisponibles));
+        const canalesDisponiblesArray = Array.from(canalesDisponibles);
+        const canalActivo = getActiveChannelSlug(canalesDisponiblesArray);
         valoresForm.canal = canalActivo;
 
-        syncCanalVentaSelect(canalesDisponibles, canalActivo);
+        syncCanalVentaSelect(canalesDisponiblesArray, canalActivo);
         syncTipoVehiculoOptions(canalActivo);
 
         if (canalActivo) {
@@ -2665,16 +2825,38 @@ async function filtrarModalidadesBase() {
                         motivosDescarte.kilometrosMaximos = true;
                 }
 
+                const potenciaVal = parseNumericFormValue(valoresForm.potencia);
+                if (
+                        !potenciaSuperaMaximo &&
+                        potenciaCondicionesConsideradas > 0 &&
+                        maxPotenciaPermitida !== Infinity &&
+                        potenciaVal > maxPotenciaPermitida
+                ) {
+                        potenciaSuperaMaximo = true;
+                        if (potenciaCondicionesExcluyentes < potenciaCondicionesConsideradas) {
+                                potenciaCondicionesExcluyentes = potenciaCondicionesConsideradas;
+                        }
+                        motivosDescarte.potenciaMaxima = true;
+                }
+
                 updateDuracionSelect([]);
                 const mostrarAntiguedadMinima = motivosDescarte.antiguedadMinima;
                 const mostrarAntiguedadMaxima = motivosDescarte.antiguedadMaxima;
                 const mostrarKilometrosMaximos = motivosDescarte.kilometrosMaximos;
                 const mostrarKilometrosMinimos = motivosDescarte.kilometrosMinimos;
+                const mostrarPotenciaMaxima = motivosDescarte.potenciaMaxima;
+                const mostrarPotenciaMinima = motivosDescarte.potenciaMinima;
+                const mostrarMarcaExcluida = motivosDescarte.marcaExcluida;
+                const mostrarModeloExcluido = motivosDescarte.modeloExcluido;
                 const algunMotivoEspecifico =
                         mostrarAntiguedadMinima ||
                         mostrarAntiguedadMaxima ||
                         mostrarKilometrosMaximos ||
-                        mostrarKilometrosMinimos;
+                        mostrarKilometrosMinimos ||
+                        mostrarPotenciaMaxima ||
+                        mostrarPotenciaMinima ||
+                        mostrarMarcaExcluida ||
+                        mostrarModeloExcluido;
 
                 if (!algunMotivoEspecifico) {
                         motivosDescarte.otros = true;
@@ -2685,6 +2867,10 @@ async function filtrarModalidadesBase() {
                         mostrarMensajeAntiguedadMinima: mostrarAntiguedadMinima,
                         mostrarMensajeKilometrosMaximos: mostrarKilometrosMaximos,
                         mostrarMensajeKilometrosMinimos: mostrarKilometrosMinimos,
+                        mostrarMensajePotenciaMaxima: mostrarPotenciaMaxima,
+                        mostrarMensajePotenciaMinima: mostrarPotenciaMinima,
+                        mostrarMensajeMarcaExcluida: mostrarMarcaExcluida,
+                        mostrarMensajeModeloExcluido: mostrarModeloExcluido,
                         mostrarMensajeGenerico: !algunMotivoEspecifico,
                 });
         } else {
@@ -2744,6 +2930,8 @@ async function initCalculations() {
                 "traccion",
                 "cambio",
                 "doble_motor",
+                "marca",
+                "modelo",
         ];
         dynamicFields.forEach((id) => {
                 const input = document.getElementById(id);
