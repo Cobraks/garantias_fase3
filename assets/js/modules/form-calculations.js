@@ -368,23 +368,23 @@ function getVehicleTypesForChannel(canal) {
 }
 
 function getActiveChannelSlug(canalesDisponibles = []) {
-        const select = document.getElementById("canal-venta");
-        const canalesSet = new Set(canalesDisponibles);
-        let selectValue = select ? normalizeChannel(select.value) : "";
+	const select = document.getElementById("canal-venta");
+	const canalesSet = new Set(canalesDisponibles.map((canal) => normalizeChannel(canal)));
+	const selectValue = select ? normalizeChannel(select.value) : "";
 
-        if (selectValue && (!canalesSet.size || canalesSet.has(selectValue))) {
-                return selectValue;
-        }
+	if (selectValue) {
+		return selectValue;
+	}
 
-        const fallback = getDefaultChannelForRole();
-        if (canalesSet.size) {
-                if (canalesSet.has(fallback)) {
-                        return fallback;
-                }
-                const first = canalesSet.values().next();
-                if (!first.done) return first.value;
-        }
-        return fallback;
+	const fallback = getDefaultChannelForRole();
+	if (!canalesSet.size) {
+		return fallback;
+	}
+	if (canalesSet.has(fallback)) {
+		return fallback;
+	}
+	const first = canalesSet.values().next();
+	return !first.done ? first.value : fallback;
 }
 
 function normalizeSelectValue(field) {
@@ -480,57 +480,41 @@ function evaluarFiltrosParticulares(tarifa, valoresForm) {
 }
 
 function syncCanalVentaSelect(canalesDisponibles, canalActivo) {
-        const select = document.getElementById("canal-venta");
-        if (!select) return;
+	const select = document.getElementById("canal-venta");
+	if (!select) return;
 
-        const opciones = Array.from(select.options).filter((opt) => opt.value !== "");
-        const disponiblesSet = new Set(canalesDisponibles);
+	const opciones = Array.from(select.options).filter((opt) => opt.value !== "");
+	const disponiblesSet = new Set(canalesDisponibles.map((canal) => normalizeChannel(canal)));
+	const valorActual = normalizeChannel(select.value);
 
-        let needsValueReset = false;
-        opciones.forEach((opt) => {
-                const canalOpt = normalizeChannel(opt.value);
-                const habilitar = disponiblesSet.size === 0 || disponiblesSet.has(canalOpt);
-                opt.disabled = !habilitar;
-                opt.hidden = !habilitar;
-                if (!habilitar && opt.selected) {
-                        opt.selected = false;
-                        needsValueReset = true;
-                }
-        });
+	opciones.forEach((opt) => {
+		const canalOpt = normalizeChannel(opt.value);
+		const habilitar =
+			disponiblesSet.size === 0 || disponiblesSet.has(canalOpt) || canalOpt === valorActual;
+		opt.disabled = !habilitar;
+		opt.hidden = !habilitar;
+	});
 
-        if (disponiblesSet.size === 0) {
-                if (select.value) {
-                        select.value = "";
-                        select.dispatchEvent(new Event("change", { bubbles: true }));
-                }
-                const container = select.closest(".form__input-container");
-                if (container) container.classList.remove("has-value");
-                return;
-        }
-
-        let targetCanal = canalActivo && disponiblesSet.has(canalActivo)
-                ? canalActivo
-                : getActiveChannelSlug(Array.from(disponiblesSet));
-
-        let opcionObjetivo = opciones.find(
-                (opt) => !opt.disabled && normalizeChannel(opt.value) === targetCanal
-        );
-
-        if (!opcionObjetivo) {
-                opcionObjetivo = opciones.find((opt) => !opt.disabled) || null;
-                targetCanal = opcionObjetivo ? normalizeChannel(opcionObjetivo.value) : targetCanal;
-        }
-
-        if (opcionObjetivo) {
-                const nuevoValor = opcionObjetivo.value;
-                if (select.value !== nuevoValor || needsValueReset) {
-                        opcionObjetivo.selected = true;
-                        select.value = nuevoValor;
-                        select.dispatchEvent(new Event("change", { bubbles: true }));
-                }
-                const container = select.closest(".form__input-container");
-                if (container) container.classList.add("has-value");
-        }
+	const container = select.closest(".form__input-container");
+	if (!valorActual) {
+		let targetCanal = canalActivo && canalActivo !== valorActual ? canalActivo : null;
+		if (!targetCanal) {
+			targetCanal = getActiveChannelSlug(Array.from(disponiblesSet));
+		}
+		const opcionObjetivo = opciones.find(
+			(opt) => normalizeChannel(opt.value) === targetCanal
+		);
+		if (opcionObjetivo) {
+			opcionObjetivo.selected = true;
+			select.value = opcionObjetivo.value;
+			select.dispatchEvent(new Event("change", { bubbles: true }));
+			if (container) container.classList.add("has-value");
+		} else if (container) {
+			container.classList.remove("has-value");
+		}
+	} else if (container) {
+		container.classList.add("has-value");
+	}
 }
 
 function syncTipoVehiculoOptions(canalActivo) {
