@@ -636,8 +636,8 @@ function parseModelRestrictions(rows) {
                 .map((row) => {
                         const marcas = parseExcludedTerms(row?.marca);
                         const modelos = parseExcludedTerms(row?.modelos);
-                        if (!marcas.length || !modelos.length) return null;
-                        return { marcas, modelos };
+                        if (!modelos.length) return null;
+                        return { marcas, modelos, aplicaATodasLasMarcas: marcas.length === 0 };
                 })
                 .filter(Boolean);
 }
@@ -2714,10 +2714,12 @@ async function filtrarModalidadesBase() {
                         if (restriccionesModelos.length) {
                                 const marcaNormalizada = normalizeVehicleText(valoresForm.marca);
                                 const modeloNormalizado = normalizeVehicleText(valoresForm.modelo);
-                                if (marcaNormalizada && modeloNormalizado) {
-                                        const filaCoincidente = restriccionesModelos.find((fila) =>
-                                                textContainsAnyTerm(marcaNormalizada, fila.marcas)
-                                        );
+                                if (modeloNormalizado) {
+                                        const filaCoincidente = restriccionesModelos.find((fila) => {
+                                                if (fila.aplicaATodasLasMarcas) return true;
+                                                if (!marcaNormalizada) return false;
+                                                return textContainsAnyTerm(marcaNormalizada, fila.marcas);
+                                        });
                                         if (
                                                 filaCoincidente &&
                                                 textContainsAnyTerm(
