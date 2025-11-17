@@ -2677,6 +2677,46 @@ tr.guarantees-table__row:not(.selected):hover td,
     z-index: 2;
 }
 
+.guarantee-detail__danger-zone {
+    margin: 2rem 1rem 0;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(var(--danger-color-rgb, 220, 38, 38), 0.25);
+    background: rgba(var(--danger-color-rgb, 220, 38, 38), 0.08);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.guarantee-detail__danger-btn {
+    width: 100%;
+}
+
+.guarantee-detail__btn--delete {
+    background: linear-gradient(135deg, var(--danger-color-strong, #b91c1c), var(--danger-color, #dc2626));
+    color: var(--go-color-f8fafc);
+    box-shadow: 0 12px 30px rgba(var(--danger-color-rgb, 220, 38, 38), 0.45);
+}
+
+.guarantee-detail__btn--delete:hover,
+.guarantee-detail__btn--delete:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 36px rgba(var(--danger-color-rgb, 220, 38, 38), 0.55);
+}
+
+@media (min-width: 768px) {
+    .guarantee-detail__danger-zone {
+        padding-inline: 2rem;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .guarantee-detail__danger-btn {
+        width: auto;
+    }
+}
+
 .guarantee-detail__dialog {
     padding-top: 0;
     padding-inline: 1rem;
@@ -3116,6 +3156,33 @@ tr.guarantees-table__row:not(.selected):hover td,
     opacity: 0.6;
     background-color: var(--go-color-007bff);
     color: var(--text-inverse);
+}
+
+.confirm-modal--danger .confirm-modal__dialog {
+    border: 1px solid rgba(var(--danger-color-rgb, 220, 38, 38), 0.4);
+    box-shadow: 0 40px 100px rgba(var(--danger-color-rgb, 220, 38, 38), 0.25);
+}
+
+.confirm-modal--danger .confirm-modal__title,
+.confirm-modal--danger .confirm-modal__checkbox-label {
+    color: var(--danger-color-strong, #b91c1c);
+}
+
+.confirm-modal--danger .confirm-modal__btn--confirm {
+    background: linear-gradient(135deg, var(--danger-color-strong, #b91c1c), var(--danger-color, #dc2626));
+    color: var(--go-color-f8fafc);
+    box-shadow: 0 12px 32px rgba(var(--danger-color-rgb, 220, 38, 38), 0.45);
+}
+
+.confirm-modal--danger .confirm-modal__btn--confirm:hover,
+.confirm-modal--danger .confirm-modal__btn--confirm:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 40px rgba(var(--danger-color-rgb, 220, 38, 38), 0.6);
+}
+
+:root[data-theme='dark'] .confirm-modal--danger .confirm-modal__dialog {
+    border-color: rgba(var(--danger-color-rgb, 220, 38, 38), 0.6);
+    box-shadow: 0 40px 110px rgba(var(--danger-color-rgb, 220, 38, 38), 0.35);
 }
 
 @media (min-width: 641px) {
@@ -3774,6 +3841,20 @@ tr.guarantees-table__row:not(.selected):hover td,
 :root[data-theme='dark'] .guarantee-detail__btn--report:hover,
 :root[data-theme='dark'] .guarantee-detail__btn--report:focus-visible {
     box-shadow: 0 28px 48px rgba(249, 115, 22, 0.58);
+}
+
+:root[data-theme='dark'] .guarantee-detail__danger-zone {
+    border-color: rgba(var(--danger-color-rgb, 220, 38, 38), 0.5);
+    background: rgba(var(--danger-color-rgb, 220, 38, 38), 0.18);
+}
+
+:root[data-theme='dark'] .guarantee-detail__btn--delete {
+    box-shadow: 0 24px 46px rgba(var(--danger-color-rgb, 220, 38, 38), 0.6);
+}
+
+:root[data-theme='dark'] .guarantee-detail__btn--delete:hover,
+:root[data-theme='dark'] .guarantee-detail__btn--delete:focus-visible {
+    box-shadow: 0 30px 52px rgba(var(--danger-color-rgb, 220, 38, 38), 0.7);
 }
 
 :root[data-theme='dark'] .vendor-card__badge {

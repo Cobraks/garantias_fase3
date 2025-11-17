@@ -2462,7 +2462,14 @@ class ClientRestController
         }
 
         $group = get_field('ofertas_y_descuentos', 'user_' . $user_id);
-        if (empty($group) || ! is_array($group) || empty($group['ofertas']) || ! is_array($group['ofertas'])) {
+        if (! is_array($group)) {
+            $group = [];
+        }
+
+        $rows = isset($group['ofertas']) && is_array($group['ofertas']) ? $group['ofertas'] : [];
+        $specials = OfertasRestController::extract_special_price_offers($group);
+
+        if (empty($rows) && empty($specials['offers'])) {
             self::$active_offers_cache[$user_id] = $offers;
 
             return $offers;
@@ -2470,7 +2477,7 @@ class ClientRestController
 
         $now = current_time('timestamp');
 
-        foreach ($group['ofertas'] as $offer) {
+        foreach ($rows as $offer) {
             if (! is_array($offer)) {
                 continue;
             }
@@ -2528,9 +2535,65 @@ class ClientRestController
             ];
         }
 
+        if (! empty($specials['offers'])) {
+            foreach ($specials['offers'] as $special_offer) {
+                $fixed = self::format_special_offer_summary($special_offer);
+                if ($fixed === null) {
+                    continue;
+                }
+                $offers[] = $fixed;
+            }
+        }
+
         self::$active_offers_cache[$user_id] = $offers;
 
         return $offers;
+    }
+
+    private static function format_special_offer_summary(array $offer): ?array
+    {
+        $price = isset($offer['precio_fijo']) ? (float) $offer['precio_fijo'] : null;
+        if ($price === null || ! is_numeric($offer['precio_fijo'])) {
+            return null;
+        }
+
+        $level_label = self::clean_text($offer['nivel_garantia_label'] ?? '');
+        if ($level_label === '' && ! empty($offer['nivel_garantia_slug'])) {
+            $level_label = self::humanize_slug((string) $offer['nivel_garantia_slug']);
+        }
+
+        $duration_label = self::clean_text($offer['duracion_label'] ?? '');
+        if ($duration_label === '' && ! empty($offer['duracion_meses'])) {
+            $duration_label = sprintf(
+                _n('%d mes', '%d meses', (int) $offer['duracion_meses'], 'garantias-online-360vo'),
+                (int) $offer['duracion_meses']
+            );
+        }
+
+        return [
+            'label'                => __('Precio fijo', 'garantias-online-360vo'),
+            'discount'             => null,
+            'expires'              => '',
+            'type'                 => 'precio_fijo',
+            'name'                 => '',
+            'special_type'         => 'fixed_price',
+            'fixed_price'          => (float) $price,
+            'fixed_level_label'    => $level_label,
+            'fixed_duration_label' => $duration_label,
+            'fixed_duration_months'=> isset($offer['duracion_meses']) ? (int) $offer['duracion_meses'] : null,
+        ];
+    }
+
+    private static function humanize_slug(string $slug): string
+    {
+        if ($slug === '') {
+            return '';
+        }
+
+        $normalized = str_replace(['-', '_'], ' ', strtolower($slug));
+        $normalized = preg_replace('/\s+/', ' ', $normalized);
+
+        return ucwords(trim($normalized));
     }
 
     private static function prepare_offers_response(int $user_id): array
