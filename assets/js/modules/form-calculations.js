@@ -611,6 +611,26 @@ function parseExcludedTerms(value) {
                 .filter(Boolean);
 }
 
+function matchesExcludedBrand(marcaNormalizada, exclusionTerms) {
+	if (!marcaNormalizada || !Array.isArray(exclusionTerms) || !exclusionTerms.length) {
+		return false;
+	}
+	const paddedMarca = ` ${marcaNormalizada} `;
+	return exclusionTerms.some((term) => {
+		if (!term) return false;
+		const paddedTerm = ` ${term} `;
+		if (paddedMarca.includes(paddedTerm)) return true;
+		// fallback para entradas sin separación (p. ej. "lotusvc")
+		if (marcaNormalizada.startsWith(term)) {
+			const nextChar = marcaNormalizada.charAt(term.length);
+			if (!nextChar || nextChar === " ") {
+				return true;
+			}
+		}
+		return false;
+	});
+}
+
 function escapeHtml(value) {
         if (value === null || value === undefined) return "";
         return String(value)
@@ -2662,9 +2682,8 @@ async function filtrarModalidadesBase() {
                         const grupoMarca = cm.condicion_por_marca || {};
                         const exclusiones = parseExcludedTerms(grupoMarca.marcas_excluidas);
                         if (exclusiones.length) {
-                                const exclusionSet = new Set(exclusiones);
                                 const marcaNormalizada = normalizeVehicleText(valoresForm.marca);
-                                if (marcaNormalizada && exclusionSet.has(marcaNormalizada)) {
+                                if (matchesExcludedBrand(marcaNormalizada, exclusiones)) {
                                         motivosDescarte.marcaExcluida = true;
                                         return false;
                                 }
