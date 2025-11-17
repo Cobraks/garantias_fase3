@@ -32,6 +32,7 @@ import {
         getSelectedModalidadId,
         getSpecialFixedOffers,
         subscribeSpecialFixedOffers,
+        setSpecialFixedOffers,
 } from "./form-state.js";
 import { setupPlanSelection } from "./plan-selection.js";
 
@@ -479,12 +480,15 @@ function evaluarFiltrosParticulares(tarifa, valoresForm) {
         return { coincide, especificidad };
 }
 
-function syncCanalVentaSelect(canalesDisponibles, canalActivo) {
+function syncCanalVentaSelect(canalesDisponibles = [], canalActivo) {
 	const select = document.getElementById("canal-venta");
 	if (!select) return;
 
 	const opciones = Array.from(select.options).filter((opt) => opt.value !== "");
-	const disponiblesSet = new Set(canalesDisponibles.map((canal) => normalizeChannel(canal)));
+	const listaCanales = Array.isArray(canalesDisponibles)
+		? canalesDisponibles
+		: Array.from(canalesDisponibles || []);
+	const disponiblesSet = new Set(listaCanales.map((canal) => normalizeChannel(canal)));
 	const valorActual = normalizeChannel(select.value);
 
 	opciones.forEach((opt) => {
@@ -2648,10 +2652,11 @@ async function filtrarModalidadesBase() {
                 canales.forEach((canal) => canalesDisponibles.add(canal));
         });
 
-        const canalActivo = getActiveChannelSlug(Array.from(canalesDisponibles));
+        const canalesDisponiblesArray = Array.from(canalesDisponibles);
+        const canalActivo = getActiveChannelSlug(canalesDisponiblesArray);
         valoresForm.canal = canalActivo;
 
-        syncCanalVentaSelect(canalesDisponibles, canalActivo);
+        syncCanalVentaSelect(canalesDisponiblesArray, canalActivo);
         syncTipoVehiculoOptions(canalActivo);
 
         if (canalActivo) {
