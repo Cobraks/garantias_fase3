@@ -151,7 +151,7 @@ class OfertasRestController
         ], 200);
     }
 
-    private static function extract_special_price_offers(array $group): array
+    public static function extract_special_price_offers(array $group): array
     {
         $result = [
             'enabled' => false,
@@ -241,14 +241,16 @@ class OfertasRestController
         }
 
         return [
-            'tipo_garantia_id'     => $tipo_info['id'],
-            'tipo_garantia_slug'   => $tipo_info['slug'],
-            'nivel_garantia_id'    => $nivel_info['id'],
-            'nivel_garantia_slug'  => $nivel_info['slug'],
-            'precio_fijo'          => $precio,
-            'excluir_resto_niveles'=> !empty($row['excluir_resto_de_niveles']),
-            'duracion_meses'       => $duracion_value ? (int) $duracion_value : null,
-            'duracion_label'       => $duracion_label,
+            'tipo_garantia_id'      => $tipo_info['id'],
+            'tipo_garantia_slug'    => $tipo_info['slug'],
+            'tipo_garantia_label'   => $tipo_info['name'],
+            'nivel_garantia_id'     => $nivel_info['id'],
+            'nivel_garantia_slug'   => $nivel_info['slug'],
+            'nivel_garantia_label'  => $nivel_info['name'],
+            'precio_fijo'           => $precio,
+            'excluir_resto_niveles' => !empty($row['excluir_resto_de_niveles']),
+            'duracion_meses'        => $duracion_value ? (int) $duracion_value : null,
+            'duracion_label'        => $duracion_label,
         ];
     }
 
@@ -257,12 +259,14 @@ class OfertasRestController
         $candidate = [
             'id'   => null,
             'slug' => '',
+            'name' => '',
         ];
 
         if ($field instanceof \WP_Term) {
             return [
                 'id'   => (int) $field->term_id,
                 'slug' => (string) $field->slug,
+                'name' => (string) $field->name,
             ];
         }
 
@@ -295,6 +299,9 @@ class OfertasRestController
                     if ($candidate['slug'] === '') {
                         $candidate['slug'] = $nested['slug'];
                     }
+                    if ($candidate['name'] === '') {
+                        $candidate['name'] = $nested['name'];
+                    }
                 } elseif (is_string($value) && $value !== '') {
                     $candidate['slug'] = $value;
                 }
@@ -315,6 +322,9 @@ class OfertasRestController
             if ($resolved['slug'] === '' && $candidate['slug'] !== '') {
                 $resolved['slug'] = (string) $candidate['slug'];
             }
+            if ($resolved['name'] === '' && $candidate['name'] !== '') {
+                $resolved['name'] = (string) $candidate['name'];
+            }
             return $resolved;
         }
 
@@ -324,11 +334,13 @@ class OfertasRestController
                 return [
                     'id'   => (int) $term->term_id,
                     'slug' => (string) $term->slug,
+                    'name' => (string) $term->name,
                 ];
             }
             return [
                 'id'   => null,
                 'slug' => (string) $candidate['slug'],
+                'name' => (string) ($candidate['name'] ?? ''),
             ];
         }
 
@@ -340,6 +352,7 @@ class OfertasRestController
         $info = [
             'id'   => null,
             'slug' => '',
+            'name' => '',
         ];
 
         if ($term_id <= 0) {
@@ -350,6 +363,7 @@ class OfertasRestController
         if ($term instanceof \WP_Term && ! is_wp_error($term)) {
             $info['id']   = (int) $term->term_id;
             $info['slug'] = (string) $term->slug;
+            $info['name'] = (string) $term->name;
             return $info;
         }
 

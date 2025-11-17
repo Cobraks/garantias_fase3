@@ -15,6 +15,16 @@
         const quickFilterCountPlural = typeof strings.quickFilterCountPlural === 'string'
             ? strings.quickFilterCountPlural.trim() || 'clientes'
             : 'clientes';
+        const offersFixedPriceLabel = typeof strings.offersFixedPrice === 'string' && strings.offersFixedPrice.trim() !== ''
+            ? strings.offersFixedPrice.trim()
+            : 'Precio fijo';
+        const monthsSuffix = typeof strings.monthsSuffix === 'string' && strings.monthsSuffix.trim() !== ''
+            ? strings.monthsSuffix.trim()
+            : 'meses';
+        const fixedPriceFormatter = new Intl.NumberFormat('es-ES', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        });
         const presenceConfig = config.presence || {};
         const presencePollInterval = Math.max(5000, Number(presenceConfig.pollInterval || 15000));
         const onlineLabel = typeof strings.online === 'string' && strings.online.trim() !== ''
@@ -1131,6 +1141,48 @@
             return `<span class="clients-table__initials">${escapeHtml(initials)}</span>`;
         }
 
+        function isSpecialFixedOffer(offer) {
+            if (!offer || typeof offer !== 'object') {
+                return false;
+            }
+            const type = typeof offer.type === 'string' ? offer.type.trim().toLowerCase() : '';
+            const specialType = typeof offer.special_type === 'string' ? offer.special_type.trim().toLowerCase() : '';
+            return specialType === 'fixed_price' || type === 'precio_fijo';
+        }
+
+        function formatSpecialFixedOffer(offer) {
+            if (!isSpecialFixedOffer(offer)) {
+                return '';
+            }
+
+            const priceValue = typeof offer.fixed_price === 'number' ? offer.fixed_price : null;
+            const level = typeof offer.fixed_level_label === 'string' ? offer.fixed_level_label.trim() : '';
+            const durationLabel = typeof offer.fixed_duration_label === 'string'
+                ? offer.fixed_duration_label.trim()
+                : '';
+            const durationMonths = typeof offer.fixed_duration_months === 'number'
+                ? offer.fixed_duration_months
+                : null;
+            const duration = durationLabel !== ''
+                ? durationLabel
+                : (durationMonths && durationMonths > 0 ? `${durationMonths} ${monthsSuffix}` : '');
+
+            const parts = [];
+            if (priceValue !== null && Number.isFinite(priceValue)) {
+                parts.push(`${offersFixedPriceLabel} ${fixedPriceFormatter.format(priceValue)}€`);
+            } else {
+                parts.push(offersFixedPriceLabel);
+            }
+            if (level !== '') {
+                parts.push(level);
+            }
+            if (duration !== '') {
+                parts.push(duration);
+            }
+
+            return parts.join(' ').trim();
+        }
+
         function formatOffers(offers) {
             if (!Array.isArray(offers) || offers.length === 0) {
                 return `<span class="clients-table__empty">${escapeHtml(strings.offersEmpty || 'Sin ofertas activas')}</span>`;
@@ -1138,6 +1190,17 @@
 
             return offers
                 .map((offer) => {
+                    if (isSpecialFixedOffer(offer)) {
+                        const fixedText = formatSpecialFixedOffer(offer);
+                        if (fixedText === '') {
+                            return '';
+                        }
+                        return `
+                            <span class="guarantees-list__badge clients-table__offer-badge clients-table__offer-badge--fixed">
+                                <span class="clients-table__offer-title">${escapeHtml(fixedText)}</span>
+                            </span>
+                        `;
+                    }
                     const label = typeof offer.label === 'string' ? offer.label.trim() : '';
                     const type = typeof offer.type === 'string' ? offer.type.trim() : '';
                     const name = typeof offer.name === 'string' ? offer.name.trim() : '';
@@ -1159,6 +1222,7 @@
                         </span>
                     `;
                 })
+                .filter((snippet) => snippet !== '')
                 .join('');
         }
 
@@ -1452,6 +1516,13 @@
             }
 
             const items = offers.map((offer) => {
+                if (isSpecialFixedOffer(offer)) {
+                    const fixedText = formatSpecialFixedOffer(offer);
+                    if (fixedText === '') {
+                        return '';
+                    }
+                    return `<li class="client-detail__chip client-detail__chip--fixed"><span class="client-detail__chip-title">${escapeHtml(fixedText)}</span></li>`;
+                }
                 const label = typeof offer.label === 'string' ? offer.label.trim() : '';
                 const type = typeof offer.type === 'string' ? offer.type.trim() : '';
                 const name = typeof offer.name === 'string' ? offer.name.trim() : '';
@@ -1467,7 +1538,11 @@
                     ? `<span class="client-detail__chip-extra">-${discountValue}%</span>`
                     : '';
                 return `<li class="client-detail__chip">${title}${discount}</li>`;
-            });
+            }).filter((item) => item !== '');
+
+            if (!items.length) {
+                return '';
+            }
 
             return `<ul class="client-detail__chips">${items.join('')}</ul>`;
         }
