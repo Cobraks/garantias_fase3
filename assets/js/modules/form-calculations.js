@@ -2034,8 +2034,9 @@ function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
         return [...new Set(mesesPorGarantia)].sort((a, b) => a - b);
 }
 
-function calcularPrecioBase(modalidad, valoresForm) {
-        const specialConfig = getSpecialFixedConfig(modalidad);
+function calcularPrecioBase(modalidad, valoresForm, options = {}) {
+        const { ignoreSpecialPrice = false } = options || {};
+        const specialConfig = ignoreSpecialPrice ? null : getSpecialFixedConfig(modalidad);
         if (specialConfig && specialConfig.precio !== null) {
                 return redondearEuros(specialConfig.precio);
         }
@@ -2275,6 +2276,9 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         const isSpecial = !!(specialConfig && specialConfig.precio !== null);
 
                         const precioBase = calcularPrecioBase(m, valoresForm);
+                        const precioBaseSinEspecial = isSpecial
+                                ? calcularPrecioBase(m, valoresForm, { ignoreSpecialPrice: true })
+                                : null;
 
 			const breakdown = calcularRecargos(m, {
 				...valoresForm,
@@ -2346,6 +2350,23 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                                         : null;
 
                         const precioAnteriorInfo = (() => {
+                                if (isSpecial && precioBaseSinEspecial !== null) {
+                                        const precioSinEspecialAplicado = redondearEuros(
+                                                precioBaseSinEspecial * (aplicaSinSuplementos ? 1 : factorRecargos),
+                                        );
+                                        const precioSinEspecialFinal = redondearEuros(
+                                                precioSinEspecialAplicado * (1 - descuentoTotalSync),
+                                        );
+                                        const precioSinEspecialIVA = redondearEuros(
+                                                precioSinEspecialFinal * (1 + IVA_PORCENTAJE / 100),
+                                        );
+                                        if (precioSinEspecialFinal !== null) {
+                                                return {
+                                                        sinIVA: precioSinEspecialFinal,
+                                                        conIVA: precioSinEspecialIVA,
+                                                };
+                                        }
+                                }
                                 if (aplicaSinSuplementos && tieneRecargos && precioConRecargos !== null) {
                                         return {
                                                 sinIVA: precioConRecargos,
