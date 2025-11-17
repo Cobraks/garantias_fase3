@@ -5,6 +5,7 @@ namespace GarantiasOnline360VO;
 
 use GarantiasOnline360VO\ActivityLog\ActivityLogger;
 use GarantiasOnline360VO\ActivityLog\ActivitySubscribers;
+use GarantiasOnline360VO\Clients\ClientSummary;
 use GarantiasOnline360VO\Auth\AuthController;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
@@ -68,7 +69,7 @@ class Plugin
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\ClientRestController::class, 'register_routes']);
 
-
+        ClientSummary::register_hooks();
 
         add_action('rest_api_init', function () {
             $controller = new \GarantiasOnline360VO\Rest\ModalidadesRestController();
