@@ -833,6 +833,7 @@
         width: 100%;
         min-width: 0;
         position: relative;
+        top: 0;
         overflow: hidden;
         isolation: isolate;
     }
