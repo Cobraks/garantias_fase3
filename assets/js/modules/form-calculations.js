@@ -2146,7 +2146,10 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 
                 let texto = mensajeGenerico;
                 let variant = "warning";
-                if (mostrarMensajeAntiguedadMinima) {
+                if (mostrarMensajeMarcaExcluida) {
+                        texto = mensajeMarcaExcluida;
+                        variant = "warning";
+                } else if (mostrarMensajeAntiguedadMinima) {
                         texto = mensajeAntiguedadMinima;
                         variant = "warning";
                 } else if (mostrarMensajeAntiguedad) {
@@ -2160,9 +2163,6 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         variant = "warning";
                 } else if (mostrarMensajePotenciaMinima) {
                         texto = mensajePotenciaMinima;
-                        variant = "warning";
-                } else if (mostrarMensajeMarcaExcluida) {
-                        texto = mensajeMarcaExcluida;
                         variant = "warning";
                 } else if (!mostrarMensajeGenerico) {
                         texto = "No hay garantías disponibles para estos filtros.";
