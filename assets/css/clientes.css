@@ -832,12 +832,29 @@
         flex-direction: column;
         width: 100%;
         min-width: 0;
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
     }
 
     .main-grid.clients-page .guarantee-detail__panel {
-        flex: 1 1 auto;
+        flex: 0 0 auto;
         width: 100%;
         max-width: none;
+        position: absolute;
+        inset: 0;
+        height: 100%;
+    }
+
+    .main-grid.clients-page .guarantee-detail__panel.active {
+        z-index: 2;
+        opacity: 1;
+    }
+
+    .main-grid.clients-page .guarantee-detail__panel:not(.active) {
+        z-index: 1;
+        opacity: 0;
+        pointer-events: none;
     }
 
     .main-grid.clients-page section.guarantees-list,

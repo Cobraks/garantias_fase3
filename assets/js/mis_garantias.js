@@ -284,6 +284,13 @@ const ADD_DOC_KEY = "add-document";
                 const canContinueGuarantee =
                         canManageDetailActions || isProfesional || isDirector || isParticular;
                 const canViewAdminSummary = isCoreAdmin || isDirector || isProfesional;
+                const canDeleteGuarantee =
+                        [
+                                "administrator",
+                                "admin",
+                                "go_garantias",
+                                "go_director_comercial",
+                        ].includes(normalizedRole);
                 const REALTIME_POLL_INTERVAL = 6000;
                 const REALTIME_POLL_HIDDEN_INTERVAL = 15000;
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
@@ -318,6 +325,8 @@ const ADD_DOC_KEY = "add-document";
                         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
                 const continueIcon =
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
+                const deleteIcon =
+                        '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>';
                 const ADMIN_SUMMARY_ACTIONS = [
                         {
                                 key: "draft",
@@ -788,6 +797,30 @@ const ADD_DOC_KEY = "add-document";
                 );
                 let lastMobileOpenState = mobileFiltersOpen;
                 const bodyElement = document.body;
+                const notificationsRoot = document.querySelector('[data-admin-notifications]');
+                const deleteNotificationIcon = (() => {
+                        if (
+                                !notificationsRoot ||
+                                typeof window === 'undefined' ||
+                                typeof window.atob !== 'function'
+                        ) {
+                                return '';
+                        }
+                        const encoded = notificationsRoot.dataset.iconDelete || '';
+                        if (!encoded) {
+                                return '';
+                        }
+                        try {
+                                return window
+                                        .atob(encoded)
+                                        .replace(
+                                                /notifications-panel__action-icon/g,
+                                                'notifications-panel__icon-svg'
+                                        );
+                        } catch (error) {
+                                return '';
+                        }
+                })();
                 const detailDialog = detail
                         ? detail.querySelector("[data-detail-dialog]")
                         : null;
@@ -2839,6 +2872,73 @@ const ADD_DOC_KEY = "add-document";
                                 .replace(/'/g, "&#039;");
                 }
 
+                function formatNotificationMetaText(value) {
+                        if (value === undefined || value === null) {
+                                return "";
+                        }
+                        return String(value).trim();
+                }
+
+                function dispatchTrashNotification(detail) {
+                        if (!notificationsRoot || !detail) {
+                                return;
+                        }
+                        if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") {
+                                return;
+                        }
+                        try {
+                                window.dispatchEvent(
+                                        new CustomEvent("go360:notifications:inject", { detail })
+                                );
+                        } catch (error) {
+                                if (typeof document !== "undefined" && typeof document.createEvent === "function") {
+                                        const fallback = document.createEvent("CustomEvent");
+                                        fallback.initCustomEvent(
+                                                "go360:notifications:inject",
+                                                true,
+                                                true,
+                                                detail
+                                        );
+                                        window.dispatchEvent(fallback);
+                                }
+                        }
+                }
+
+                function notifyGuaranteeTrashed(context = {}) {
+                        if (!notificationsRoot) {
+                                return;
+                        }
+                        const matricula = formatNotificationMetaText(context.matricula);
+                        const plan = formatNotificationMetaText(context.plan);
+                        const guaranteeId = formatNotificationMetaText(context.id);
+                        const meta = [];
+                        if (matricula) {
+                                meta.push({ label: "Matrícula", text: matricula });
+                        }
+                        if (plan) {
+                                meta.push({ label: "Plan", text: plan });
+                        }
+                        if (guaranteeId) {
+                                meta.push({ label: "ID", text: `#${guaranteeId}` });
+                        }
+                        const safePlate = matricula ? escapeHtml(matricula) : "";
+                        const body = safePlate
+                                ? `La garantía <strong>${safePlate}</strong> se envió a la papelera.`
+                                : "La garantía se envió a la papelera.";
+                        const detail = {
+                                id: Date.now(),
+                                title: "Garantía eliminada",
+                                body,
+                                icon_slug: "delete",
+                                icon_svg: deleteNotificationIcon,
+                                badge: "Garantías",
+                                tone: "danger",
+                                meta,
+                                created_at: new Date().toISOString(),
+                        };
+                        dispatchTrashNotification(detail);
+                }
+
                 function parseDisplayDate(value) {
                         if (typeof value !== "string") {
                                 return null;
@@ -3125,6 +3225,10 @@ const ADD_DOC_KEY = "add-document";
 
                 function runConfirmRequest(context) {
                         if (!context) return;
+                        if (context.intent === "trash") {
+                                runTrashRequest(context);
+                                return;
+                        }
                         if (context.intent === "transfer-report") {
                                 runTransferReportRequest(context);
                                 return;
@@ -3410,9 +3514,122 @@ const ADD_DOC_KEY = "add-document";
                                 });
                 }
 
+                function runTrashRequest(context) {
+                        if (!context) return;
+                        const { btn, panel, id } = context;
+                        if (!panel || !id) {
+                                return;
+                        }
+                        const normalizedId = String(id);
+                        const detailMatricula = panel.dataset.matricula || "";
+                        const detailPlan = panel.dataset.plan || "";
+                        const textSpan = btn?.querySelector(".guarantee-detail__btn-text") || null;
+                        const resetText =
+                                context.resetLabel ||
+                                (textSpan ? textSpan.textContent.trim() : "Eliminar garantía");
+                        let spinner = btn?.querySelector(".guarantee-detail__btn-spinner") || null;
+                        if (btn) {
+                                if (!spinner) {
+                                        spinner = document.createElement("span");
+                                        spinner.className = "guarantee-detail__btn-spinner";
+                                        if (textSpan) {
+                                                btn.insertBefore(spinner, textSpan);
+                                        } else {
+                                                btn.appendChild(spinner);
+                                        }
+                                }
+                                btn.disabled = true;
+                        }
+                        if (textSpan) {
+                                textSpan.textContent = "Enviando…";
+                        }
+
+                        fetch(`${restRoot}go/v1/guarantees/${normalizedId}/trash`, {
+                                method: "DELETE",
+                                headers: {
+                                        "X-WP-Nonce": restNonce,
+                                },
+                        })
+                                .then(async (res) => {
+                                        if (res.ok) {
+                                                try {
+                                                        return await res.json();
+                                                } catch (jsonError) {
+                                                        return {};
+                                                }
+                                        }
+                                        let message = "No se ha podido enviar la garantía a la papelera.";
+                                        try {
+                                                const data = await res.json();
+                                                if (data && typeof data.message === "string" && data.message.trim() !== "") {
+                                                        message = data.message;
+                                                }
+                                        } catch (jsonError) {
+                                                try {
+                                                        const text = await res.text();
+                                                        if (typeof text === "string" && text.trim() !== "") {
+                                                                message = text;
+                                                        }
+                                                } catch (textError) {
+                                                        // ignore
+                                                }
+                                        }
+                                        throw new Error(message);
+                                })
+                                .then(() => {
+                                        detailCache.delete(normalizedId);
+                                        const row =
+                                                context.row && context.row.isConnected
+                                                        ? context.row
+                                                        : findRowById(normalizedId);
+                                        const wasSelected = Boolean(row && row.classList.contains("selected"));
+                                        if (row && row.parentNode) {
+                                                row.parentNode.removeChild(row);
+                                        }
+                                        if (row && prevSelectedRow === row) {
+                                                prevSelectedRow = null;
+                                                prevIdx = null;
+                                        }
+                                        const card = mobileCardsMap.get(normalizedId);
+                                        if (card && card.parentNode) {
+                                                card.parentNode.removeChild(card);
+                                        }
+                                        mobileCardsMap.delete(normalizedId);
+                                        syncMobileCardsEmptyState();
+                                        refreshSelectedRowIndex();
+                                        lastDetailTrigger = null;
+                                        setEmptyDetailPanel("forward", "awaiting");
+                                        notifyGuaranteeTrashed({
+                                                id: normalizedId,
+                                                matricula: detailMatricula,
+                                                plan: detailPlan,
+                                        });
+                                        showDetailToast(panel, "La garantía se envió a la papelera.");
+                                })
+                                .catch((error) => {
+                                        const message =
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se ha podido enviar la garantía a la papelera.";
+                                        showDetailToast(panel, message);
+                                })
+                                .finally(() => {
+                                        if (textSpan) {
+                                                textSpan.textContent = resetText || "Eliminar garantía";
+                                        }
+                                        if (spinner && spinner.parentNode) {
+                                                spinner.remove();
+                                        }
+                                        if (btn) {
+                                                btn.disabled = false;
+                                        }
+                                });
+                }
+
                 document.addEventListener("click", handleConfirmClick);
                 document.addEventListener("click", handleTransferReportClick);
                 document.addEventListener("click", handleShareClick);
+                document.addEventListener("click", handleTrashClick);
 
                 function setupConfirmModal(modal) {
                         if (!modal) return null;
@@ -3443,11 +3660,35 @@ const ADD_DOC_KEY = "add-document";
                                 ".confirm-modal__checkbox-label"
                         );
                         const fileEmptyText = fileNameEl ? fileNameEl.dataset.empty || "" : "";
+                        const defaultCheckboxLabel = checkboxLabel ? checkboxLabel.textContent : "";
                         let requiresFile = false;
                         let requiresAcknowledgement = false;
                         let selectedFile = null;
                         let fileErrorMessage = "";
                         let isModalOpen = false;
+                        let activeVariant = "";
+
+                        function applyCheckboxLabel(labelText) {
+                                if (!checkboxLabel) {
+                                        return;
+                                }
+                                if (labelText) {
+                                        checkboxLabel.textContent = labelText;
+                                } else if (defaultCheckboxLabel) {
+                                        checkboxLabel.textContent = defaultCheckboxLabel;
+                                }
+                        }
+
+                        function setModalVariant(name) {
+                                const variant = typeof name === "string" ? name.trim() : "";
+                                if (activeVariant) {
+                                        modal.classList.remove(`confirm-modal--${activeVariant}`);
+                                }
+                                if (variant) {
+                                        modal.classList.add(`confirm-modal--${variant}`);
+                                }
+                                activeVariant = variant;
+                        }
 
                         function setFileError(message) {
                                 fileErrorMessage = message;
@@ -3505,9 +3746,11 @@ const ADD_DOC_KEY = "add-document";
                                 if (checkboxWrapper) {
                                         checkboxWrapper.hidden = true;
                                 }
+                                applyCheckboxLabel("");
                                 if (confirmBtn) {
                                         confirmBtn.disabled = true;
                                 }
+                                setModalVariant("");
                                 document.removeEventListener("keydown", onKeydown);
                                 pendingConfirmContext = null;
                                 isModalOpen = false;
@@ -3549,14 +3792,13 @@ const ADD_DOC_KEY = "add-document";
                                 if (checkboxWrapper) {
                                         checkboxWrapper.hidden = !requiresAcknowledgement;
                                 }
-                                if (checkboxLabel && cfg.checkboxLabel) {
-                                        checkboxLabel.textContent = cfg.checkboxLabel;
-                                }
+                                applyCheckboxLabel(cfg.checkboxLabel || "");
                                 if (checkboxInput) {
                                         checkboxInput.checked = false;
                                 }
                                 resetFileState();
                                 confirmBtn.textContent = cfg.confirmLabel || "Confirmar";
+                                setModalVariant(cfg.variant || "");
                                 updateConfirmState();
                                 modal.classList.add("is-open");
                                 modal.setAttribute("aria-hidden", "false");
@@ -3721,6 +3963,58 @@ const ADD_DOC_KEY = "add-document";
                         }
 
                         showDetailToast(panel, SHARE_UNAVAILABLE_MESSAGE);
+                }
+
+                function handleTrashClick(event) {
+                        if (!canDeleteGuarantee) {
+                                return;
+                        }
+                        const btn = event.target.closest("[data-trash-trigger]");
+                        if (!btn) {
+                                return;
+                        }
+                        const panel = btn.closest(".guarantee-detail__panel");
+                        if (!panel) {
+                                return;
+                        }
+                        const id = panel.dataset.loadedId;
+                        if (!id) {
+                                return;
+                        }
+                        const row = findRowById(id);
+                        const matricula =
+                                panel.dataset.matricula ||
+                                (row && row.dataset.matricula) ||
+                                "";
+                        const safeSubtitle = matricula
+                                ? `Garantía <strong>${escapeHtml(matricula)}</strong>`
+                                : "";
+                        const context = {
+                                intent: "trash",
+                                btn,
+                                panel,
+                                id,
+                                row,
+                                resetLabel:
+                                        btn.querySelector(".guarantee-detail__btn-text")?.textContent.trim() ||
+                                        "Eliminar garantía",
+                        };
+                        if (confirmModalController) {
+                                pendingConfirmContext = context;
+                                confirmModalController.open({
+                                        title: "Eliminar garantía",
+                                        subtitle: safeSubtitle,
+                                        message:
+                                                "¿Seguro que quieres enviar esta garantía a la papelera? Podrás restaurarla desde el panel de WordPress.",
+                                        note: "La garantía dejará de estar disponible para tramitación hasta que la recuperes.",
+                                        confirmLabel: "Enviar a la papelera",
+                                        requireAcknowledgement: true,
+                                        checkboxLabel: "Estoy seguro de que quiero eliminar esta garantía.",
+                                        variant: "danger",
+                                });
+                                return;
+                        }
+                        runTrashRequest(context);
                 }
 
                 function detailCopyText(text) {
@@ -4555,6 +4849,16 @@ const ADD_DOC_KEY = "add-document";
                         }
                         if (data.cambio && typeof data.cambio === "object") {
                                 data.cambio = data.cambio.label || data.cambio.name || data.cambio.value || data.cambio;
+                        }
+                        if (data.traccion && typeof data.traccion === "object") {
+                                data.traccion = data.traccion.label || data.traccion.name || data.traccion.value || data.traccion;
+                        }
+                        if (data.traccion_camion && typeof data.traccion_camion === "object") {
+                                data.traccion_camion =
+                                        data.traccion_camion.label ||
+                                        data.traccion_camion.name ||
+                                        data.traccion_camion.value ||
+                                        data.traccion_camion;
                         }
                         if (data.tipo && typeof data.tipo === "object") {
                                 data.tipo = data.tipo.label || data.tipo.name || data.tipo.value || data.tipo;
@@ -7352,6 +7656,17 @@ const ADD_DOC_KEY = "add-document";
         return fallback;
     };
 
+    const normalizeTipoValue = (value) => {
+        if (typeof value !== "string") {
+            return "";
+        }
+        return value
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim();
+    };
+
     const mesesTotales = getDurationMeses(
         data.desde ?? rowData.desde,
         data.hasta ?? rowData.hasta
@@ -7502,6 +7817,32 @@ const ADD_DOC_KEY = "add-document";
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
+    const rawTipoValue =
+        data.tipo_value ??
+        rowData.tipo_value ??
+        "";
+    const normalizedTipoValue = normalizeTipoValue(rawTipoValue);
+    const tipoLabelNormalized = normalizeTipoValue(pickField("tipo", ""));
+    const isTipoCamion =
+        normalizedTipoValue === "camion" || tipoLabelNormalized === "camion";
+    const primaryTraccionField = isTipoCamion
+        ? "traccion_camion"
+        : "traccion";
+    const secondaryTraccionField = isTipoCamion
+        ? "traccion"
+        : "traccion_camion";
+    const traccionValue = (() => {
+        const primary = pickField(primaryTraccionField, "");
+        if (cleanDisplayValue(primary)) {
+            return primary;
+        }
+        const secondary = pickField(secondaryTraccionField, "");
+        if (cleanDisplayValue(secondary)) {
+            return secondary;
+        }
+        return "-";
+    })();
+    const traccionRowHtml = `<li><strong>Tracción:</strong> ${traccionValue}</li>`;
     const docsSource = Array.isArray(data.documents)
         ? data.documents
         : Array.isArray(rowData.documents)
@@ -7653,6 +7994,14 @@ const ADD_DOC_KEY = "add-document";
     const sinFinalActionsHtml = sinFinalButtons.length
         ? `<div class="guarantee-detail__btn-container">${sinFinalButtons.join("")}</div>`
         : "";
+    const deleteActionHtml = canDeleteGuarantee
+        ? `<div class="guarantee-detail__danger-zone">
+                <button type="button" class="guarantee-detail__btn guarantee-detail__danger-btn guarantee-detail__btn--delete" data-trash-trigger>
+                        <span class="guarantee-detail__btn-icon guarantee-detail__danger-icon">${deleteIcon}</span>
+                        <span class="guarantee-detail__btn-text">Eliminar garantía</span>
+                </button>
+        </div>`
+        : "";
 
     if (isSinFinalizar) {
         return `
@@ -7713,6 +8062,7 @@ const ADD_DOC_KEY = "add-document";
                         <ul>
                                 <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
                                 <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                ${traccionRowHtml}
                                 <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
                                 <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
@@ -7739,6 +8089,7 @@ const ADD_DOC_KEY = "add-document";
                             : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
                 ${sinFinalActionsHtml}
+                ${deleteActionHtml}
         </div>`;
     }
 
@@ -7990,6 +8341,7 @@ const ADD_DOC_KEY = "add-document";
                         <ul>
                                 <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
                                 <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                ${traccionRowHtml}
                                 <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
                                 <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
@@ -8015,6 +8367,7 @@ const ADD_DOC_KEY = "add-document";
                         )}
                 </section>
                 ${actionsHtml}
+                ${deleteActionHtml}
         </div>
     `;
 }
