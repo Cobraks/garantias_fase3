@@ -194,6 +194,20 @@ class GuaranteeRestController
         );
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/trash',
+            [
+                [
+                    'methods'             => WP_REST_Server::DELETABLE,
+                    'callback'            => [__CLASS__, 'trash_item'],
+                    'permission_callback' => [__CLASS__, 'can_trash'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::BASE . '/(?P<id>\d+)/confirm-transfer',
             [
                 [
@@ -1878,6 +1892,60 @@ class GuaranteeRestController
         return new WP_REST_Response(['detail' => $snapshot], 200);
     }
 
+    public static function trash_item($request)
+    {
+        if (!is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para realizar esta acción.', 'garantias-online-360vo'),
+                ['status' => 401]
+            );
+        }
+
+        $post_id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($post_id <= 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        if ($post->post_status === 'trash') {
+            return new WP_REST_Response([
+                'success' => true,
+                'id'      => $post_id,
+                'status'  => 'trash',
+            ], 200);
+        }
+
+        $trashed = wp_trash_post($post_id);
+        if ($trashed === false || is_wp_error($trashed)) {
+            $error_message = $trashed instanceof WP_Error
+                ? $trashed->get_error_message()
+                : __('No se pudo enviar la garantía a la papelera.', 'garantias-online-360vo');
+            return new WP_Error('trash_failed', $error_message, ['status' => 500]);
+        }
+
+        delete_transient('go_gdetail_' . $post_id);
+        self::clear_list_transients($post_id, null, true);
+
+        return new WP_REST_Response([
+            'success' => true,
+            'id'      => $post_id,
+            'status'  => 'trash',
+        ], 200);
+    }
+
     public static function can_list($request)
     {
         return is_user_logged_in();
@@ -1968,6 +2036,38 @@ class GuaranteeRestController
     public static function can_edit($request)
     {
         return is_user_logged_in();
+    }
+
+    public static function can_trash($request)
+    {
+        if (!is_user_logged_in()) {
+            return false;
+        }
+
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $current_user = wp_get_current_user();
+        if (! $current_user instanceof \WP_User) {
+            return false;
+        }
+
+        $roles = (array) $current_user->roles;
+
+        if (in_array('admin', $roles, true)) {
+            return true;
+        }
+
+        if (in_array('go_garantias', $roles, true)) {
+            return true;
+        }
+
+        if (in_array('go_director_comercial', $roles, true)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -3925,8 +4025,25 @@ class GuaranteeRestController
             ? ($cambio_raw['value'] ?? $cambio_raw['label'] ?? '')
             : $cambio_raw;
 
-        $traccion = get_post_meta($id, 'datos_vehiculo_traccion', true);
-        $traccion_camion = get_post_meta($id, 'datos_vehiculo_traccion_camion', true);
+        $traccion_raw = function_exists('get_field')
+            ? get_field('datos_vehiculo_traccion', $id)
+            : get_post_meta($id, 'datos_vehiculo_traccion', true);
+        $traccion_label = is_array($traccion_raw)
+            ? ($traccion_raw['label'] ?? $traccion_raw['value'] ?? '')
+            : $traccion_raw;
+        $traccion_value = is_array($traccion_raw)
+            ? ($traccion_raw['value'] ?? $traccion_raw['label'] ?? '')
+            : $traccion_raw;
+
+        $traccion_camion_raw = function_exists('get_field')
+            ? get_field('datos_vehiculo_traccion_camion', $id)
+            : get_post_meta($id, 'datos_vehiculo_traccion_camion', true);
+        $traccion_camion_label = is_array($traccion_camion_raw)
+            ? ($traccion_camion_raw['label'] ?? $traccion_camion_raw['value'] ?? '')
+            : $traccion_camion_raw;
+        $traccion_camion_value = is_array($traccion_camion_raw)
+            ? ($traccion_camion_raw['value'] ?? $traccion_camion_raw['label'] ?? '')
+            : $traccion_camion_raw;
         $potencia = get_post_meta($id, 'datos_vehiculo_potencia', true);
         $potencia_kw = get_post_meta($id, 'datos_vehiculo_potencia_kw', true);
         $cilindrada = get_post_meta($id, 'datos_vehiculo_cilindrada', true);
@@ -4149,8 +4266,10 @@ class GuaranteeRestController
             'combustible_value' => $combustible_value ?: '',
             'cambio' => $cambio_label ?: '-',
             'cambio_value' => $cambio_value ?: '',
-            'traccion' => $traccion ?: '',
-            'traccion_camion' => $traccion_camion ?: '',
+            'traccion' => $traccion_label ?: '-',
+            'traccion_value' => $traccion_value ?: '',
+            'traccion_camion' => $traccion_camion_label ?: '-',
+            'traccion_camion_value' => $traccion_camion_value ?: '',
             'potencia' => $potencia ?: '-',
             'potencia_kw' => $potencia_kw ?: '',
             'cilindrada' => $cilindrada ?: '-',

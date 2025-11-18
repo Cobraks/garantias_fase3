@@ -15,12 +15,20 @@ import {
         getCurrentOfertas,
         getVisibleModalidades,
         setSpecialFixedOffers,
+        getSpecialFixedOffers,
 } from "./form-state.js";
 
 const ENABLE_LOGS = true;
 function log(...args) {
         if (ENABLE_LOGS) console.log("[form-ofertas]", ...args);
 }
+
+const SPECIAL_FIXED_LABEL = "Precio fijo";
+const SPECIAL_MONTHS_SUFFIX = "meses";
+const EURO_FORMATTER = new Intl.NumberFormat("es-ES", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+});
 
 const selfOffersPrefetchState = {
         done: false,
@@ -189,6 +197,172 @@ function normalizeAplicacion(oferta) {
 		return [aplic];
 	}
 	return [];
+}
+
+function normalizeToArray(value) {
+        if (Array.isArray(value)) return value;
+        if (value === null || typeof value === "undefined") return [];
+        return [value];
+}
+
+function toLowerSlug(value) {
+        return typeof value === "string" ? value.toLowerCase() : "";
+}
+
+function toPositiveInt(value) {
+        if (value === null || typeof value === "undefined" || value === "") return null;
+        const num = Number(value);
+        if (!Number.isFinite(num)) return null;
+        const intVal = Math.trunc(num);
+        return intVal > 0 ? intVal : null;
+}
+
+function getSlugSet(field) {
+        const set = new Set();
+        normalizeToArray(field)
+                .map((item) => {
+                        if (typeof item === "string") return item;
+                        if (item && typeof item === "object") {
+                                if (typeof item.slug === "string") return item.slug;
+                                if (typeof item.value === "string") return item.value;
+                        }
+                        return "";
+                })
+                .map(toLowerSlug)
+                .filter(Boolean)
+                .forEach((slug) => set.add(slug));
+        return set;
+}
+
+function getIdSet(field) {
+        const set = new Set();
+        normalizeToArray(field)
+                .map((item) => {
+                        if (item && typeof item === "object") {
+                                if (typeof item.id !== "undefined") return item.id;
+                                if (typeof item.term_id !== "undefined") return item.term_id;
+                                if (typeof item.value !== "undefined") return item.value;
+                        }
+                        return item;
+                })
+                .map(toPositiveInt)
+                .filter((id) => id !== null)
+                .forEach((id) => set.add(id));
+        return set;
+}
+
+function matchesSpecialFixedOffer(modalidad, special) {
+        if (!modalidad || !special) return false;
+        const tipoSlugs = getSlugSet(modalidad?.tipo_garantia);
+        const tipoIds = getIdSet(modalidad?.tipo_garantia_ids);
+        const nivelSlugs = getSlugSet(modalidad?.nivel_garantia);
+        const nivelIds = getIdSet(modalidad?.nivel_garantia_ids);
+
+        const tipoSlug = toLowerSlug(special.tipo_garantia_slug);
+        const tipoId = toPositiveInt(special.tipo_garantia_id);
+        const nivelSlug = toLowerSlug(special.nivel_garantia_slug);
+        const nivelId = toPositiveInt(special.nivel_garantia_id);
+
+        const matchesTipo =
+                (tipoSlug && tipoSlugs.has(tipoSlug)) ||
+                (tipoId !== null && tipoIds.has(tipoId));
+        if (!matchesTipo) return false;
+
+        const matchesNivel =
+                (nivelSlug && nivelSlugs.has(nivelSlug)) ||
+                (nivelId !== null && nivelIds.has(nivelId));
+        return matchesNivel;
+}
+
+function formatSlugLabel(slug) {
+        if (typeof slug !== "string" || slug.trim() === "") return "";
+        const normalized = slug.replace(/[-_]+/g, " ");
+        return normalized
+                .split(" ")
+                .filter(Boolean)
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ");
+}
+
+function formatDurationLabel(special) {
+	if (special && typeof special.duracion_label === "string" && special.duracion_label.trim() !== "") {
+	        return special.duracion_label.trim();
+	}
+	const months = toPositiveInt(special?.duracion_meses);
+	if (months !== null) {
+	        return `${months} ${SPECIAL_MONTHS_SUFFIX}`;
+	}
+	return "";
+}
+
+function formatEuro(value) {
+        if (typeof value !== "number" || Number.isNaN(value)) {
+                return "";
+        }
+        return `${EURO_FORMATTER.format(value)}€`;
+}
+
+function formatSpecialFixedOfferText(entry) {
+        if (!entry) return "";
+        const parts = [];
+        const priceLabel = typeof entry.price === "number" ? formatEuro(entry.price) : "";
+        if (priceLabel !== "") {
+                parts.push(`${SPECIAL_FIXED_LABEL} ${priceLabel}`);
+        } else {
+                parts.push(SPECIAL_FIXED_LABEL);
+        }
+        if (entry.levelLabel) {
+                parts.push(entry.levelLabel);
+        }
+        if (entry.durationLabel) {
+                parts.push(entry.durationLabel);
+        }
+        return parts.join(" ").trim();
+}
+
+function collectSpecialFixedMatches(modalidades) {
+        const specials = getSpecialFixedOffers();
+        if (!Array.isArray(specials) || specials.length === 0) {
+                return [];
+        }
+        const mods = Array.isArray(modalidades) ? modalidades : [];
+        if (mods.length === 0) {
+                return [];
+        }
+
+        const matches = [];
+        const seen = new Set();
+
+        mods.forEach((modalidad) => {
+                specials.forEach((special) => {
+                        if (!matchesSpecialFixedOffer(modalidad, special)) {
+                                return;
+                        }
+                        const key = [
+                                special.tipo_garantia_id ?? "",
+                                special.tipo_garantia_slug ?? "",
+                                special.nivel_garantia_id ?? "",
+                                special.nivel_garantia_slug ?? "",
+                                special.precio_fijo ?? "",
+                                special.duracion_meses ?? "",
+                        ].join("|");
+                        if (seen.has(key)) {
+                                return;
+                        }
+                        seen.add(key);
+                        const levelLabel =
+                                (typeof special.nivel_garantia_label === "string" && special.nivel_garantia_label.trim() !== "")
+                                        ? special.nivel_garantia_label.trim()
+                                        : formatSlugLabel(special.nivel_garantia_slug || "");
+                        matches.push({
+                                price: typeof special.precio_fijo === "number" ? special.precio_fijo : null,
+                                levelLabel,
+                                durationLabel: formatDurationLabel(special),
+                        });
+                });
+        });
+
+        return matches;
 }
 
 /**
@@ -405,9 +579,11 @@ export async function updateOfertasList(
                 return o.porcentaje_descuento > 0;
         });
 
-	// Render
-	ul.innerHTML = "";
-        if (!visibles.length && !caducadas.length) {
+        const specialFixed = collectSpecialFixedMatches(modalidadesVisibles);
+
+        // Render
+        ul.innerHTML = "";
+        if (!visibles.length && !caducadas.length && !specialFixed.length) {
                 if (isAdmin()) {
                         const li = document.createElement("li");
                         li.className = "ofertas__item ofertas__item--empty";
@@ -428,6 +604,17 @@ export async function updateOfertasList(
                 }
                 ul.appendChild(li);
         });
+        specialFixed.forEach((special) => {
+                const text = formatSpecialFixedOfferText(special);
+                if (!text) {
+                        return;
+                }
+                const li = document.createElement("li");
+                li.className = "ofertas__item ofertas__item--precio-fijo";
+                li.textContent = text;
+                ul.appendChild(li);
+        });
+
         caducadas.forEach((oferta) => {
                 const li = document.createElement("li");
                 const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
@@ -444,9 +631,9 @@ export async function updateOfertasList(
                 vencida.textContent = "VENCIDA";
                 li.appendChild(span);
                 li.appendChild(document.createTextNode(" "));
-		li.appendChild(vencida);
-		ul.appendChild(li);
-	});
+                li.appendChild(vencida);
+                ul.appendChild(li);
+        });
 }
 
 /**

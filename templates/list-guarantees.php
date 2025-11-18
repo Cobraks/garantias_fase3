@@ -1215,6 +1215,51 @@ if (($is_admin_user || $is_director || $is_professional)
     </div>
 </div>
 
+<div class="manage-actions-modal" data-manage-modal hidden aria-hidden="true">
+    <div class="manage-actions-modal__overlay" data-manage-dismiss></div>
+    <div
+        class="manage-actions-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manage-actions-modal-title"
+        tabindex="-1">
+        <button
+            type="button"
+            class="manage-actions-modal__close"
+            aria-label="<?php esc_attr_e('Cerrar panel de gestión', 'garantias-online-360vo'); ?>"
+            data-manage-dismiss>
+            <?php echo Svg::icon('cerrar'); ?>
+        </button>
+        <header class="manage-actions-modal__header">
+            <p class="manage-actions-modal__eyebrow">
+                <?php esc_html_e('Centro de gestión', 'garantias-online-360vo'); ?>
+            </p>
+            <h2 id="manage-actions-modal-title" class="manage-actions-modal__title">
+                <?php esc_html_e('Gestionar garantía', 'garantias-online-360vo'); ?>
+            </h2>
+            <p class="manage-actions-modal__subtitle" data-manage-subtitle>
+                <?php esc_html_e('Selecciona una acción y continúa sin salir del panel.', 'garantias-online-360vo'); ?>
+            </p>
+            <div class="manage-actions-modal__summary" data-manage-summary>
+                <span class="manage-actions-modal__chip" data-manage-plate>—</span>
+                <span class="manage-actions-modal__chip manage-actions-modal__chip--muted" data-manage-plan>—</span>
+                <span class="manage-actions-modal__chip manage-actions-modal__chip--status" data-manage-status hidden>—</span>
+            </div>
+        </header>
+        <div class="manage-actions-modal__body">
+            <div class="manage-actions-modal__list" data-manage-actions></div>
+        </div>
+        <footer class="manage-actions-modal__footer">
+            <button type="button" class="manage-actions-modal__ghost" data-manage-dismiss>
+                <?php esc_html_e('Cancelar', 'garantias-online-360vo'); ?>
+            </button>
+            <button type="button" class="manage-actions-modal__primary" data-manage-close>
+                <?php esc_html_e('Listo', 'garantias-online-360vo'); ?>
+            </button>
+        </footer>
+    </div>
+</div>
+
 <?php
 \GarantiasOnline360VO\TemplateLoader::load_part(
     'footer',
