@@ -284,6 +284,21 @@ const ADD_DOC_KEY = "add-document";
                 const canContinueGuarantee =
                         canManageDetailActions || isProfesional || isDirector || isParticular;
                 const canViewAdminSummary = isCoreAdmin || isDirector || isProfesional;
+                const canAccessGuaranteeManager =
+                        [
+                                "administrator",
+                                "admin",
+                                "go_garantias",
+                                "go_comercial",
+                                "go_director_comercial",
+                        ].includes(normalizedRole);
+                const canDeleteGuarantee =
+                        [
+                                "administrator",
+                                "admin",
+                                "go_garantias",
+                                "go_director_comercial",
+                        ].includes(normalizedRole);
                 const REALTIME_POLL_INTERVAL = 6000;
                 const REALTIME_POLL_HIDDEN_INTERVAL = 15000;
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
@@ -318,6 +333,8 @@ const ADD_DOC_KEY = "add-document";
                         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
                 const continueIcon =
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
+                const deleteIcon =
+                        '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>';
                 const ADMIN_SUMMARY_ACTIONS = [
                         {
                                 key: "draft",
@@ -378,6 +395,51 @@ const ADD_DOC_KEY = "add-document";
                 const shareIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M680-80q-50 0-85-35t-35-85q0-6 3-28L282-392q-16 15-37 23.5t-45 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q24 0 45 8.5t37 23.5l281-164q-2-7-2.5-13.5T560-760q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-24 0-45-8.5T598-672L317-508q2 7 2.5 13.5t.5 14.5q0 8-.5 14.5T317-452l281 164q16-15 37-23.5t45-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-200q0-17-11.5-28.5T680-240q-17 0-28.5 11.5T640-200q0 17 11.5 28.5T680-160ZM200-440q17 0 28.5-11.5T240-480q0-17-11.5-28.5T200-520q-17 0-28.5 11.5T160-480q0 17 11.5 28.5T200-440Zm480-280q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0 520ZM200-480Zm480-280Z"/></svg>';
                 const personAddIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M720-400v-120H600v-80h120v-120h80v120h120v80H800v120h-80Zm-360-80q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm80-80h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T440-640q0-33-23.5-56.5T360-720q-33 0-56.5 23.5T280-640q0 33 23.5 56.5T360-560Zm0-80Zm0 400Z"/></svg>';
                 const personIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z"/></svg>';
+                const manageSettingsIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="none" stroke="currentColor" stroke-width="70" stroke-linecap="round" stroke-linejoin="round"><circle cx="480" cy="-480" r="150"/><path d="M480-780v-120m0 840v-120m300-300h120M60-480h120m500-196 85-85m-610 610 85-85m0-430-85-85m610 610-85-85"/></svg>';
+                const notePadIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M240-840h480q33 0 56.5 23.5T800-760v360L560-80H240q-33 0-56.5-23.5T160-160v-480q0-33 23.5-56.5T240-840Zm320 600h160L560-200v-40Zm-280-160h320v-80H280v80Zm0-160h400v-80H280v80Z"/></svg>';
+                const stopIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-160q110 0 187-77t77-187q0-110-77-187t-187-77q-110 0-187 77t-77 187q0 110 77 187t187 77Zm-80-120 80-80 80 80 56-56-80-80 80-80-56-56-80 80-80-80-56 56 80 80-80 80 56 56Z"/></svg>';
+                const paperPlaneIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M120-120v-720l760 360-760 360Zm80-140 470-220-470-220v155l220 65-220 65v155Z"/></svg>';
+                const manageArrowIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M5.5 2.5 10 8l-4.5 5.5-.7-.6L8.7 8 4.8 3.1l.7-.6Z"/></svg>';
+                const MANAGE_ACTIONS = [
+                        {
+                                key: "certificate",
+                                label: "Hay un error en el certificado",
+                                description: "Reporta incidencias del certificado.",
+                                icon: warningIcon,
+                                tone: "alert",
+                                badge: "Incidencia",
+                        },
+                        {
+                                key: "send_email",
+                                label: "Enviar e-mail al cliente",
+                                description: "Contacta al cliente desde el panel.",
+                                icon: paperPlaneIcon,
+                                tone: "info",
+                        },
+                        {
+                                key: "add_note",
+                                label: "Añadir nota interna",
+                                description: "Guarda una nota para el equipo.",
+                                icon: notePadIcon,
+                                tone: "neutral",
+                                hasTextarea: true,
+                                textareaPlaceholder: "Escribe una nota interna...",
+                        },
+                        {
+                                key: "cancel_unpaid",
+                                label: "Cancelar garantía por impago",
+                                description: "Inicia la cancelación controlada.",
+                                icon: stopIcon,
+                                tone: "danger",
+                        },
+                        {
+                                key: "delete",
+                                label: "Enviar a la papelera",
+                                description: "Traslada la garantía a la papelera.",
+                                icon: deleteIcon,
+                                tone: "danger-soft",
+                        },
+                ];
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
                 const pdfIcon = (goConfig.icons && goConfig.icons.pdf) || "";
                const downloadIcon = (goConfig.icons && goConfig.icons.download) || "";
@@ -397,6 +459,9 @@ const ADD_DOC_KEY = "add-document";
                 let pendingConfirmContext = null;
                 const confirmModalController = setupConfirmModal(
                         document.querySelector(".confirm-modal")
+                );
+                const manageModalController = setupManageModal(
+                        document.querySelector("[data-manage-modal]")
                 );
 
                 const PDF_CACHE_LIMIT = 12;
@@ -788,6 +853,30 @@ const ADD_DOC_KEY = "add-document";
                 );
                 let lastMobileOpenState = mobileFiltersOpen;
                 const bodyElement = document.body;
+                const notificationsRoot = document.querySelector('[data-admin-notifications]');
+                const deleteNotificationIcon = (() => {
+                        if (
+                                !notificationsRoot ||
+                                typeof window === 'undefined' ||
+                                typeof window.atob !== 'function'
+                        ) {
+                                return '';
+                        }
+                        const encoded = notificationsRoot.dataset.iconDelete || '';
+                        if (!encoded) {
+                                return '';
+                        }
+                        try {
+                                return window
+                                        .atob(encoded)
+                                        .replace(
+                                                /notifications-panel__action-icon/g,
+                                                'notifications-panel__icon-svg'
+                                        );
+                        } catch (error) {
+                                return '';
+                        }
+                })();
                 const detailDialog = detail
                         ? detail.querySelector("[data-detail-dialog]")
                         : null;
@@ -2839,6 +2928,73 @@ const ADD_DOC_KEY = "add-document";
                                 .replace(/'/g, "&#039;");
                 }
 
+                function formatNotificationMetaText(value) {
+                        if (value === undefined || value === null) {
+                                return "";
+                        }
+                        return String(value).trim();
+                }
+
+                function dispatchTrashNotification(detail) {
+                        if (!notificationsRoot || !detail) {
+                                return;
+                        }
+                        if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") {
+                                return;
+                        }
+                        try {
+                                window.dispatchEvent(
+                                        new CustomEvent("go360:notifications:inject", { detail })
+                                );
+                        } catch (error) {
+                                if (typeof document !== "undefined" && typeof document.createEvent === "function") {
+                                        const fallback = document.createEvent("CustomEvent");
+                                        fallback.initCustomEvent(
+                                                "go360:notifications:inject",
+                                                true,
+                                                true,
+                                                detail
+                                        );
+                                        window.dispatchEvent(fallback);
+                                }
+                        }
+                }
+
+                function notifyGuaranteeTrashed(context = {}) {
+                        if (!notificationsRoot) {
+                                return;
+                        }
+                        const matricula = formatNotificationMetaText(context.matricula);
+                        const plan = formatNotificationMetaText(context.plan);
+                        const guaranteeId = formatNotificationMetaText(context.id);
+                        const meta = [];
+                        if (matricula) {
+                                meta.push({ label: "Matrícula", text: matricula });
+                        }
+                        if (plan) {
+                                meta.push({ label: "Plan", text: plan });
+                        }
+                        if (guaranteeId) {
+                                meta.push({ label: "ID", text: `#${guaranteeId}` });
+                        }
+                        const safePlate = matricula ? escapeHtml(matricula) : "";
+                        const body = safePlate
+                                ? `La garantía <strong>${safePlate}</strong> se envió a la papelera.`
+                                : "La garantía se envió a la papelera.";
+                        const detail = {
+                                id: Date.now(),
+                                title: "Garantía eliminada",
+                                body,
+                                icon_slug: "delete",
+                                icon_svg: deleteNotificationIcon,
+                                badge: "Garantías",
+                                tone: "danger",
+                                meta,
+                                created_at: new Date().toISOString(),
+                        };
+                        dispatchTrashNotification(detail);
+                }
+
                 function parseDisplayDate(value) {
                         if (typeof value !== "string") {
                                 return null;
@@ -3125,6 +3281,10 @@ const ADD_DOC_KEY = "add-document";
 
                 function runConfirmRequest(context) {
                         if (!context) return;
+                        if (context.intent === "trash") {
+                                runTrashRequest(context);
+                                return;
+                        }
                         if (context.intent === "transfer-report") {
                                 runTransferReportRequest(context);
                                 return;
@@ -3410,9 +3570,355 @@ const ADD_DOC_KEY = "add-document";
                                 });
                 }
 
+                function runTrashRequest(context) {
+                        if (!context) return;
+                        const { btn, panel, id } = context;
+                        if (!panel || !id) {
+                                return;
+                        }
+                        const normalizedId = String(id);
+                        const detailMatricula = panel.dataset.matricula || "";
+                        const detailPlan = panel.dataset.plan || "";
+                        const textSpan = btn?.querySelector(".guarantee-detail__btn-text") || null;
+                        const resetText =
+                                context.resetLabel ||
+                                (textSpan ? textSpan.textContent.trim() : "Eliminar garantía");
+                        let spinner = btn?.querySelector(".guarantee-detail__btn-spinner") || null;
+                        if (btn) {
+                                if (!spinner) {
+                                        spinner = document.createElement("span");
+                                        spinner.className = "guarantee-detail__btn-spinner";
+                                        if (textSpan) {
+                                                btn.insertBefore(spinner, textSpan);
+                                        } else {
+                                                btn.appendChild(spinner);
+                                        }
+                                }
+                                btn.disabled = true;
+                        }
+                        if (textSpan) {
+                                textSpan.textContent = "Enviando…";
+                        }
+
+                        fetch(`${restRoot}go/v1/guarantees/${normalizedId}/trash`, {
+                                method: "DELETE",
+                                headers: {
+                                        "X-WP-Nonce": restNonce,
+                                },
+                        })
+                                .then(async (res) => {
+                                        if (res.ok) {
+                                                try {
+                                                        return await res.json();
+                                                } catch (jsonError) {
+                                                        return {};
+                                                }
+                                        }
+                                        let message = "No se ha podido enviar la garantía a la papelera.";
+                                        try {
+                                                const data = await res.json();
+                                                if (data && typeof data.message === "string" && data.message.trim() !== "") {
+                                                        message = data.message;
+                                                }
+                                        } catch (jsonError) {
+                                                try {
+                                                        const text = await res.text();
+                                                        if (typeof text === "string" && text.trim() !== "") {
+                                                                message = text;
+                                                        }
+                                                } catch (textError) {
+                                                        // ignore
+                                                }
+                                        }
+                                        throw new Error(message);
+                                })
+                                .then(() => {
+                                        detailCache.delete(normalizedId);
+                                        const row =
+                                                context.row && context.row.isConnected
+                                                        ? context.row
+                                                        : findRowById(normalizedId);
+                                        const wasSelected = Boolean(row && row.classList.contains("selected"));
+                                        if (row && row.parentNode) {
+                                                row.parentNode.removeChild(row);
+                                        }
+                                        if (row && prevSelectedRow === row) {
+                                                prevSelectedRow = null;
+                                                prevIdx = null;
+                                        }
+                                        const card = mobileCardsMap.get(normalizedId);
+                                        if (card && card.parentNode) {
+                                                card.parentNode.removeChild(card);
+                                        }
+                                        mobileCardsMap.delete(normalizedId);
+                                        syncMobileCardsEmptyState();
+                                        refreshSelectedRowIndex();
+                                        lastDetailTrigger = null;
+                                        setEmptyDetailPanel("forward", "awaiting");
+                                        notifyGuaranteeTrashed({
+                                                id: normalizedId,
+                                                matricula: detailMatricula,
+                                                plan: detailPlan,
+                                        });
+                                        showDetailToast(panel, "La garantía se envió a la papelera.");
+                                })
+                                .catch((error) => {
+                                        const message =
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se ha podido enviar la garantía a la papelera.";
+                                        showDetailToast(panel, message);
+                                })
+                                .finally(() => {
+                                        if (textSpan) {
+                                                textSpan.textContent = resetText || "Eliminar garantía";
+                                        }
+                                        if (spinner && spinner.parentNode) {
+                                                spinner.remove();
+                                        }
+                                        if (btn) {
+                                                btn.disabled = false;
+                                        }
+                                });
+                }
+
                 document.addEventListener("click", handleConfirmClick);
                 document.addEventListener("click", handleTransferReportClick);
                 document.addEventListener("click", handleShareClick);
+                document.addEventListener("click", handleTrashClick);
+                document.addEventListener("click", handleManageTriggerClick);
+
+                function setupManageModal(modal) {
+                        if (!modal) {
+                                return null;
+                        }
+                        const dialog = modal.querySelector(".manage-actions-modal__dialog");
+                        const overlay = modal.querySelector(".manage-actions-modal__overlay");
+                        const actionsRoot = modal.querySelector("[data-manage-actions]");
+                        const plateEl = modal.querySelector("[data-manage-plate]");
+                        const planEl = modal.querySelector("[data-manage-plan]");
+                        const statusEl = modal.querySelector("[data-manage-status]");
+                        const subtitleEl = modal.querySelector("[data-manage-subtitle]");
+                        const summaryEl = modal.querySelector("[data-manage-summary]");
+                        if (!dialog || !actionsRoot) {
+                                return null;
+                        }
+                        const dismissTriggers = modal.querySelectorAll("[data-manage-dismiss]");
+                        const closeTriggers = modal.querySelectorAll("[data-manage-close]");
+                        const escapeAttr = (value) =>
+                                String(value)
+                                        .replace(/&/g, "&amp;")
+                                        .replace(/"/g, "&quot;")
+                                        .replace(/</g, "&lt;")
+                                        .replace(/>/g, "&gt;");
+                        let selectedActionKey = MANAGE_ACTIONS[0]?.key || "";
+                        let lastTrigger = null;
+
+                        const noteElements = () => ({
+                                textarea: actionsRoot.querySelector("[data-manage-note]"),
+                                submit: actionsRoot.querySelector("[data-manage-note-cta]"),
+                        });
+
+                        function resetNoteField() {
+                                const { textarea, submit } = noteElements();
+                                if (textarea) {
+                                        textarea.value = "";
+                                }
+                                if (submit) {
+                                        submit.disabled = true;
+                                }
+                        }
+
+                        function renderActions() {
+                                const cardsHtml = MANAGE_ACTIONS.map((action) => {
+                                        const classes = ["manage-actions__card"];
+                                        if (action.tone) {
+                                                classes.push(`manage-actions__card--${action.tone}`);
+                                        }
+                                        if (action.hasTextarea) {
+                                                classes.push("manage-actions__card--note");
+                                        }
+                                        const badge = action.badge
+                                                ? `<span class="manage-actions__pill">${escapeHtml(action.badge)}</span>`
+                                                : "";
+                                        const extra = (() => {
+                                                if (action.hasTextarea) {
+                                                        const placeholder = action.textareaPlaceholder
+                                                                ? escapeAttr(action.textareaPlaceholder)
+                                                                : "";
+                                                        return (
+                                                                `<div class="manage-actions__note">` +
+                                                                `<textarea data-manage-note placeholder="${placeholder}" aria-label="${escapeAttr(
+                                                                        action.label,
+                                                                )}"></textarea>` +
+                                                                `<div class="manage-actions__note-actions">` +
+                                                                `<button type="button" class="manage-actions__note-btn" data-manage-note-cta disabled>Guardar nota</button>` +
+                                                                `</div>` +
+                                                                `</div>`
+                                                        );
+                                                }
+                                                return "";
+                                        })();
+                                        return (
+                                                `<article class="${classes.join(" ")}" data-manage-action-card data-manage-action-key="${escapeAttr(
+                                                        action.key,
+                                                )}">` +
+                                                `<button type="button" class="manage-actions__button" data-manage-action="${escapeAttr(
+                                                        action.key,
+                                                )}" aria-expanded="false">` +
+                                                `<span class="manage-actions__icon" aria-hidden="true">${action.icon}</span>` +
+                                                `<span class="manage-actions__text">` +
+                                                `<span class="manage-actions__label">${escapeHtml(action.label)}</span>` +
+                                                `<span class="manage-actions__description">${escapeHtml(action.description)}</span>` +
+                                                `</span>` +
+                                                `${badge}` +
+                                                `<span class="manage-actions__arrow" aria-hidden="true">${manageArrowIcon}</span>` +
+                                                `</button>` +
+                                                `${extra}` +
+                                                `</article>`
+                                        );
+                                }).join("");
+                                actionsRoot.innerHTML = cardsHtml;
+                        }
+
+                        function updateSelectedAction(key, focusNote = false) {
+                                selectedActionKey = key;
+                                const cards = actionsRoot.querySelectorAll("[data-manage-action-card]");
+                                cards.forEach((card) => {
+                                        const isMatch = card.dataset.manageActionKey === key;
+                                        card.classList.toggle("is-active", isMatch);
+                                        const trigger = card.querySelector("[data-manage-action]");
+                                        if (trigger) {
+                                                trigger.setAttribute("aria-expanded", isMatch ? "true" : "false");
+                                        }
+                                        if (isMatch && focusNote && card.dataset.manageActionKey === "add_note") {
+                                                const textarea = card.querySelector("[data-manage-note]");
+                                                if (textarea) {
+                                                        textarea.focus();
+                                                }
+                                        }
+                                });
+                        }
+
+                        function setSummary(context = {}) {
+                                if (plateEl) {
+                                        plateEl.textContent = context.matricula && context.matricula.trim() !== ""
+                                                ? context.matricula
+                                                : "Garantía sin matrícula";
+                                }
+                                if (planEl) {
+                                        planEl.textContent = context.plan && context.plan.trim() !== ""
+                                                ? context.plan
+                                                : "Plan pendiente";
+                                }
+                                if (statusEl) {
+                                        const baseClasses = [
+                                                "manage-actions-modal__chip",
+                                                "manage-actions-modal__chip--status",
+                                        ];
+                                        if (context.stateClass) {
+                                                baseClasses.push(context.stateClass);
+                                        }
+                                        statusEl.className = baseClasses.join(" ");
+                                        if (context.state && context.state.trim() !== "") {
+                                                statusEl.textContent = context.state;
+                                                statusEl.hidden = false;
+                                        } else {
+                                                statusEl.hidden = true;
+                                        }
+                                }
+                                if (subtitleEl) {
+                                        subtitleEl.textContent = context.subtitle || "Selecciona una acción y continúa sin salir del panel.";
+                                }
+                                if (summaryEl) {
+                                        summaryEl.dataset.guaranteeId = context.id || "";
+                                }
+                        }
+
+                        function open(context = {}) {
+                                if (modal.hidden) {
+                                        modal.hidden = false;
+                                }
+                                modal.setAttribute("aria-hidden", "false");
+                                modal.classList.add("is-visible");
+                                document.body.classList.add("manage-modal-open");
+                                lastTrigger = context.trigger instanceof HTMLElement ? context.trigger : document.activeElement;
+                                setSummary(context);
+                                resetNoteField();
+                                updateSelectedAction(MANAGE_ACTIONS[0]?.key || "");
+                                window.requestAnimationFrame(() => {
+                                        dialog.focus({ preventScroll: true });
+                                });
+                        }
+
+                        function close() {
+                                modal.classList.remove("is-visible");
+                                modal.setAttribute("aria-hidden", "true");
+                                document.body.classList.remove("manage-modal-open");
+                                resetNoteField();
+                                window.setTimeout(() => {
+                                        if (!modal.classList.contains("is-visible")) {
+                                                modal.hidden = true;
+                                        }
+                                }, 250);
+                                if (lastTrigger && typeof lastTrigger.focus === "function") {
+                                        lastTrigger.focus();
+                                }
+                        }
+
+                        function handleDismiss(event) {
+                                event.preventDefault();
+                                close();
+                        }
+
+                        renderActions();
+                        updateSelectedAction(selectedActionKey);
+
+                        actionsRoot.addEventListener("click", (event) => {
+                                const trigger = event.target.closest("[data-manage-action]");
+                                if (!trigger) {
+                                        return;
+                                }
+                                event.preventDefault();
+                                const key = trigger.dataset.manageAction;
+                                if (!key) {
+                                        return;
+                                }
+                                const focusNote = key === "add_note";
+                                updateSelectedAction(key, focusNote);
+                        });
+
+                        actionsRoot.addEventListener("input", (event) => {
+                                const textarea = event.target.closest("[data-manage-note]");
+                                if (!textarea) {
+                                        return;
+                                }
+                                const { submit } = noteElements();
+                                if (submit) {
+                                        submit.disabled = textarea.value.trim().length < 3;
+                                }
+                        });
+
+                        const keydownHandler = (event) => {
+                                if (event.key === "Escape" && modal.classList.contains("is-visible")) {
+                                        event.preventDefault();
+                                        close();
+                                }
+                        };
+                        document.addEventListener("keydown", keydownHandler);
+
+                        dismissTriggers.forEach((node) => {
+                                node.addEventListener("click", handleDismiss);
+                        });
+                        closeTriggers.forEach((node) => {
+                                node.addEventListener("click", handleDismiss);
+                        });
+                        if (overlay) {
+                                overlay.addEventListener("click", handleDismiss);
+                        }
+
+                        return { open, close };
+                }
 
                 function setupConfirmModal(modal) {
                         if (!modal) return null;
@@ -3443,11 +3949,35 @@ const ADD_DOC_KEY = "add-document";
                                 ".confirm-modal__checkbox-label"
                         );
                         const fileEmptyText = fileNameEl ? fileNameEl.dataset.empty || "" : "";
+                        const defaultCheckboxLabel = checkboxLabel ? checkboxLabel.textContent : "";
                         let requiresFile = false;
                         let requiresAcknowledgement = false;
                         let selectedFile = null;
                         let fileErrorMessage = "";
                         let isModalOpen = false;
+                        let activeVariant = "";
+
+                        function applyCheckboxLabel(labelText) {
+                                if (!checkboxLabel) {
+                                        return;
+                                }
+                                if (labelText) {
+                                        checkboxLabel.textContent = labelText;
+                                } else if (defaultCheckboxLabel) {
+                                        checkboxLabel.textContent = defaultCheckboxLabel;
+                                }
+                        }
+
+                        function setModalVariant(name) {
+                                const variant = typeof name === "string" ? name.trim() : "";
+                                if (activeVariant) {
+                                        modal.classList.remove(`confirm-modal--${activeVariant}`);
+                                }
+                                if (variant) {
+                                        modal.classList.add(`confirm-modal--${variant}`);
+                                }
+                                activeVariant = variant;
+                        }
 
                         function setFileError(message) {
                                 fileErrorMessage = message;
@@ -3505,9 +4035,11 @@ const ADD_DOC_KEY = "add-document";
                                 if (checkboxWrapper) {
                                         checkboxWrapper.hidden = true;
                                 }
+                                applyCheckboxLabel("");
                                 if (confirmBtn) {
                                         confirmBtn.disabled = true;
                                 }
+                                setModalVariant("");
                                 document.removeEventListener("keydown", onKeydown);
                                 pendingConfirmContext = null;
                                 isModalOpen = false;
@@ -3549,14 +4081,13 @@ const ADD_DOC_KEY = "add-document";
                                 if (checkboxWrapper) {
                                         checkboxWrapper.hidden = !requiresAcknowledgement;
                                 }
-                                if (checkboxLabel && cfg.checkboxLabel) {
-                                        checkboxLabel.textContent = cfg.checkboxLabel;
-                                }
+                                applyCheckboxLabel(cfg.checkboxLabel || "");
                                 if (checkboxInput) {
                                         checkboxInput.checked = false;
                                 }
                                 resetFileState();
                                 confirmBtn.textContent = cfg.confirmLabel || "Confirmar";
+                                setModalVariant(cfg.variant || "");
                                 updateConfirmState();
                                 modal.classList.add("is-open");
                                 modal.setAttribute("aria-hidden", "false");
@@ -3721,6 +4252,58 @@ const ADD_DOC_KEY = "add-document";
                         }
 
                         showDetailToast(panel, SHARE_UNAVAILABLE_MESSAGE);
+                }
+
+                function handleTrashClick(event) {
+                        if (!canDeleteGuarantee) {
+                                return;
+                        }
+                        const btn = event.target.closest("[data-trash-trigger]");
+                        if (!btn) {
+                                return;
+                        }
+                        const panel = btn.closest(".guarantee-detail__panel");
+                        if (!panel) {
+                                return;
+                        }
+                        const id = panel.dataset.loadedId;
+                        if (!id) {
+                                return;
+                        }
+                        const row = findRowById(id);
+                        const matricula =
+                                panel.dataset.matricula ||
+                                (row && row.dataset.matricula) ||
+                                "";
+                        const safeSubtitle = matricula
+                                ? `Garantía <strong>${escapeHtml(matricula)}</strong>`
+                                : "";
+                        const context = {
+                                intent: "trash",
+                                btn,
+                                panel,
+                                id,
+                                row,
+                                resetLabel:
+                                        btn.querySelector(".guarantee-detail__btn-text")?.textContent.trim() ||
+                                        "Eliminar garantía",
+                        };
+                        if (confirmModalController) {
+                                pendingConfirmContext = context;
+                                confirmModalController.open({
+                                        title: "Eliminar garantía",
+                                        subtitle: safeSubtitle,
+                                        message:
+                                                "¿Seguro que quieres enviar esta garantía a la papelera? Podrás restaurarla desde el panel de WordPress.",
+                                        note: "La garantía dejará de estar disponible para tramitación hasta que la recuperes.",
+                                        confirmLabel: "Enviar a la papelera",
+                                        requireAcknowledgement: true,
+                                        checkboxLabel: "Estoy seguro de que quiero eliminar esta garantía.",
+                                        variant: "danger",
+                                });
+                                return;
+                        }
+                        runTrashRequest(context);
                 }
 
                 function detailCopyText(text) {
@@ -4555,6 +5138,16 @@ const ADD_DOC_KEY = "add-document";
                         }
                         if (data.cambio && typeof data.cambio === "object") {
                                 data.cambio = data.cambio.label || data.cambio.name || data.cambio.value || data.cambio;
+                        }
+                        if (data.traccion && typeof data.traccion === "object") {
+                                data.traccion = data.traccion.label || data.traccion.name || data.traccion.value || data.traccion;
+                        }
+                        if (data.traccion_camion && typeof data.traccion_camion === "object") {
+                                data.traccion_camion =
+                                        data.traccion_camion.label ||
+                                        data.traccion_camion.name ||
+                                        data.traccion_camion.value ||
+                                        data.traccion_camion;
                         }
                         if (data.tipo && typeof data.tipo === "object") {
                                 data.tipo = data.tipo.label || data.tipo.name || data.tipo.value || data.tipo;
@@ -6172,6 +6765,25 @@ const ADD_DOC_KEY = "add-document";
                                 });
                 }
 
+                function handleManageTriggerClick(event) {
+                        if (!canAccessGuaranteeManager || !manageModalController) {
+                                return;
+                        }
+                        const trigger = event.target.closest("[data-manage-trigger]");
+                        if (!trigger) {
+                                return;
+                        }
+                        event.preventDefault();
+                        manageModalController.open({
+                                id: trigger.dataset.manageId || "",
+                                matricula: trigger.dataset.managePlate || "",
+                                plan: trigger.dataset.managePlan || "",
+                                state: trigger.dataset.manageState || "",
+                                stateClass: trigger.dataset.manageStateClass || "",
+                                trigger,
+                        });
+                }
+
                 function initializeAdminSummary(panel) {
                         if (!canViewAdminSummary || !panel) {
                                 return;
@@ -7243,6 +7855,7 @@ const ADD_DOC_KEY = "add-document";
 
                 function buildRowData(row) {
                         return {
+                                id: row.dataset.id ?? "",
                                 marca_modelo: row.dataset.marca_modelo ?? "-",
                                 matricula: row.dataset.matricula ?? "-",
                                 plan: row.dataset.plan ?? "-",
@@ -7352,6 +7965,26 @@ const ADD_DOC_KEY = "add-document";
         return fallback;
     };
 
+    const normalizeTipoValue = (value) => {
+        if (typeof value !== "string") {
+            return "";
+        }
+        return value
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim();
+    };
+
+    const guaranteeId = [data.id, data.ID, rowData.id, rowData.ID, rowData.post_id, rowData.postId]
+        .map((value) => {
+            if (value === undefined || value === null) {
+                return "";
+            }
+            return String(value).trim();
+        })
+        .find((value) => value !== "") || "";
+
     const mesesTotales = getDurationMeses(
         data.desde ?? rowData.desde,
         data.hasta ?? rowData.hasta
@@ -7376,7 +8009,8 @@ const ADD_DOC_KEY = "add-document";
     const isPendientePago = estadoClase === "pendiente-pago";
     const isValidacionPendiente = estadoClase === "validacion-pendiente";
     const canShowReportBtn = estadoClase === "activada";
-    const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
+    const estadoBadgeModifier = estadoClase ? `guarantee-detail__badge--${estadoClase}` : "";
+    const badgeClase = ["guarantee-detail__badge", estadoBadgeModifier].filter(Boolean).join(" ");
     const metodoPago = (
         data.metodo_pago ?? rowData.metodo_pago ?? ""
     )
@@ -7414,13 +8048,15 @@ const ADD_DOC_KEY = "add-document";
     const hasCoverageInfo =
         isFilled(pickField("desde_fmt", "")) &&
         isFilled(pickField("hasta_fmt", ""));
-    const shouldShowPlanInfo = !isSinFinalizar && (hasPlanInfo || planPrice);
+    const shouldShowPlanInfo = !isSinFinalizar && hasPlanInfo;
     const planTitleHtml = shouldShowPlanInfo
         ? `<h3 class="guarantee-detail__plan-title">` +
               `${planPrimaryLabel ? `<span class=\"guarantee-detail__plan-name\">${planPrimaryLabel}</span>` : ""}` +
-              `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
               `</h3>`
         : "";
+    const managePlanLabel = planPrimaryLabel || (planName && planName !== "-" ? planName : "");
+    const guaranteeMatricula = pickField("matricula", "-");
+    const estadoLabel = pickField("estado", "Estado pendiente");
     const coverageCountdownLabel = computeRemainingDaysLabel(
         estadoClase,
         rawDesdeIso,
@@ -7434,6 +8070,30 @@ const ADD_DOC_KEY = "add-document";
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
             : "";
+    const planPriceChipHtml = planPrice
+        ? `<span class="guarantee-detail__header-chip guarantee-detail__header-chip--price">${escapeHtml(planPrice)}</span>`
+        : "";
+    const statusChipHtml = estadoLabel
+        ? `<span class="${badgeClase}">${escapeHtml(estadoLabel)}</span>`
+        : "";
+    const manageButtonHtml = canAccessGuaranteeManager
+        ? `<button type="button" class="guarantee-detail__manage-btn" data-manage-trigger data-manage-id="${escapeAttr(
+              guaranteeId,
+          )}" data-manage-plate="${escapeAttr(guaranteeMatricula)}" data-manage-plan="${escapeAttr(
+              managePlanLabel,
+          )}" data-manage-state="${escapeAttr(estadoLabel)}" data-manage-state-class="${escapeAttr(
+              estadoBadgeModifier,
+          )}">` +
+              `<span class="guarantee-detail__manage-btn-icon" aria-hidden="true">${manageSettingsIcon}</span>` +
+              `<span class="guarantee-detail__manage-btn-label">Gestionar garantía</span>` +
+              `</button>`
+        : "";
+    const headerActionsHtml = [planPriceChipHtml, statusChipHtml, manageButtonHtml]
+        .filter(Boolean)
+        .join("");
+    const headerAsideHtml = headerActionsHtml
+        ? `<div class="guarantee-detail__header-actions">${headerActionsHtml}</div>`
+        : "";
     const vendorChannelSummaryRaw = pickField("canal_venta_summary", "");
     const vendorChannelSummarySource =
         vendorChannelSummaryRaw !== ""
@@ -7502,6 +8162,32 @@ const ADD_DOC_KEY = "add-document";
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
+    const rawTipoValue =
+        data.tipo_value ??
+        rowData.tipo_value ??
+        "";
+    const normalizedTipoValue = normalizeTipoValue(rawTipoValue);
+    const tipoLabelNormalized = normalizeTipoValue(pickField("tipo", ""));
+    const isTipoCamion =
+        normalizedTipoValue === "camion" || tipoLabelNormalized === "camion";
+    const primaryTraccionField = isTipoCamion
+        ? "traccion_camion"
+        : "traccion";
+    const secondaryTraccionField = isTipoCamion
+        ? "traccion"
+        : "traccion_camion";
+    const traccionValue = (() => {
+        const primary = pickField(primaryTraccionField, "");
+        if (cleanDisplayValue(primary)) {
+            return primary;
+        }
+        const secondary = pickField(secondaryTraccionField, "");
+        if (cleanDisplayValue(secondary)) {
+            return secondary;
+        }
+        return "-";
+    })();
+    const traccionRowHtml = `<li><strong>Tracción:</strong> ${traccionValue}</li>`;
     const docsSource = Array.isArray(data.documents)
         ? data.documents
         : Array.isArray(rowData.documents)
@@ -7653,15 +8339,25 @@ const ADD_DOC_KEY = "add-document";
     const sinFinalActionsHtml = sinFinalButtons.length
         ? `<div class="guarantee-detail__btn-container">${sinFinalButtons.join("")}</div>`
         : "";
+    const deleteActionHtml = canDeleteGuarantee
+        ? `<div class="guarantee-detail__danger-zone">
+                <button type="button" class="guarantee-detail__btn guarantee-detail__danger-btn guarantee-detail__btn--delete" data-trash-trigger>
+                        <span class="guarantee-detail__btn-icon guarantee-detail__danger-icon">${deleteIcon}</span>
+                        <span class="guarantee-detail__btn-text">Eliminar garantía</span>
+                </button>
+        </div>`
+        : "";
 
     if (isSinFinalizar) {
         return `
                 <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
-                        <h2>Garantía ${pickField("matricula")}</h2>
-                        ${coverageHtml}
-                        <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
+                        <div class="guarantee-detail__header-content">
+                                <h2>Garantía ${pickField("matricula")}</h2>
+                                ${coverageHtml}
+                                <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
+                        </div>
+                        ${headerAsideHtml}
                 </div>
                 ${coverageAlertHtml}
                 ${showChannelSection
@@ -7713,6 +8409,7 @@ const ADD_DOC_KEY = "add-document";
                         <ul>
                                 <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
                                 <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                ${traccionRowHtml}
                                 <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
                                 <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
@@ -7739,6 +8436,7 @@ const ADD_DOC_KEY = "add-document";
                             : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
                 ${sinFinalActionsHtml}
+                ${deleteActionHtml}
         </div>`;
     }
 
@@ -7935,10 +8633,12 @@ const ADD_DOC_KEY = "add-document";
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
-                        <h2>Garantía ${pickField("matricula")}</h2>
-                        ${planTitleHtml}
-                        ${coverageHtml}
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
+                        <div class="guarantee-detail__header-content">
+                                <h2>Garantía ${pickField("matricula")}</h2>
+                                ${planTitleHtml}
+                                ${coverageHtml}
+                        </div>
+                        ${headerAsideHtml}
                 </div>
                 ${paymentHtml}
                 ${showChannelSection
@@ -7990,6 +8690,7 @@ const ADD_DOC_KEY = "add-document";
                         <ul>
                                 <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
                                 <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                ${traccionRowHtml}
                                 <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
                                 <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
@@ -8015,6 +8716,7 @@ const ADD_DOC_KEY = "add-document";
                         )}
                 </section>
                 ${actionsHtml}
+                ${deleteActionHtml}
         </div>
     `;
 }
