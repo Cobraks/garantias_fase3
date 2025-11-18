@@ -404,45 +404,40 @@ const ADD_DOC_KEY = "add-document";
                         {
                                 key: "certificate",
                                 label: "Hay un error en el certificado",
-                                description: "Notifica una incidencia y solicita revisión.",
+                                description: "Reporta incidencias del certificado.",
                                 icon: warningIcon,
                                 tone: "alert",
                                 badge: "Incidencia",
-                                hint: "El equipo de garantías revisará la documentación.",
                         },
                         {
                                 key: "send_email",
                                 label: "Enviar e-mail al cliente",
-                                description: "Envía recordatorios o documentación sin salir del panel.",
+                                description: "Contacta al cliente desde el panel.",
                                 icon: paperPlaneIcon,
                                 tone: "info",
-                                hint: "Muy pronto podrás usar plantillas personalizadas.",
                         },
                         {
                                 key: "add_note",
                                 label: "Añadir nota interna",
-                                description: "Comparte contexto con el resto del equipo.",
+                                description: "Guarda una nota para el equipo.",
                                 icon: notePadIcon,
                                 tone: "neutral",
                                 hasTextarea: true,
                                 textareaPlaceholder: "Escribe una nota interna...",
-                                helper: "Las notas quedarán visibles para los usuarios autorizados.",
                         },
                         {
                                 key: "cancel_unpaid",
                                 label: "Cancelar garantía por impago",
-                                description: "Activa el flujo de cancelación controlada por impago.",
+                                description: "Inicia la cancelación controlada.",
                                 icon: stopIcon,
                                 tone: "danger",
-                                hint: "Verificaremos el estado del cobro antes de aplicar cambios.",
                         },
                         {
                                 key: "delete",
                                 label: "Enviar a la papelera",
-                                description: "Traslada la garantía a la papelera manteniendo el histórico.",
+                                description: "Traslada la garantía a la papelera.",
                                 icon: deleteIcon,
                                 tone: "danger-soft",
-                                hint: "Solo los usuarios autorizados podrán completar la eliminación.",
                         },
                 ];
                 const paymentIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z"/></svg>';
@@ -3751,9 +3746,6 @@ const ADD_DOC_KEY = "add-document";
                                                         const placeholder = action.textareaPlaceholder
                                                                 ? escapeAttr(action.textareaPlaceholder)
                                                                 : "";
-                                                        const helper = action.helper
-                                                                ? `<p class="manage-actions__note-hint">${escapeHtml(action.helper)}</p>`
-                                                                : "";
                                                         return (
                                                                 `<div class="manage-actions__note">` +
                                                                 `<textarea data-manage-note placeholder="${placeholder}" aria-label="${escapeAttr(
@@ -3761,13 +3753,9 @@ const ADD_DOC_KEY = "add-document";
                                                                 )}"></textarea>` +
                                                                 `<div class="manage-actions__note-actions">` +
                                                                 `<button type="button" class="manage-actions__note-btn" data-manage-note-cta disabled>Guardar nota</button>` +
-                                                                `${helper}` +
                                                                 `</div>` +
                                                                 `</div>`
                                                         );
-                                                }
-                                                if (action.hint) {
-                                                        return `<p class="manage-actions__note-hint">${escapeHtml(action.hint)}</p>`;
                                                 }
                                                 return "";
                                         })();
@@ -3824,6 +3812,14 @@ const ADD_DOC_KEY = "add-document";
                                                 : "Plan pendiente";
                                 }
                                 if (statusEl) {
+                                        const baseClasses = [
+                                                "manage-actions-modal__chip",
+                                                "manage-actions-modal__chip--status",
+                                        ];
+                                        if (context.stateClass) {
+                                                baseClasses.push(context.stateClass);
+                                        }
+                                        statusEl.className = baseClasses.join(" ");
                                         if (context.state && context.state.trim() !== "") {
                                                 statusEl.textContent = context.state;
                                                 statusEl.hidden = false;
@@ -6783,6 +6779,7 @@ const ADD_DOC_KEY = "add-document";
                                 matricula: trigger.dataset.managePlate || "",
                                 plan: trigger.dataset.managePlan || "",
                                 state: trigger.dataset.manageState || "",
+                                stateClass: trigger.dataset.manageStateClass || "",
                                 trigger,
                         });
                 }
@@ -8012,7 +8009,8 @@ const ADD_DOC_KEY = "add-document";
     const isPendientePago = estadoClase === "pendiente-pago";
     const isValidacionPendiente = estadoClase === "validacion-pendiente";
     const canShowReportBtn = estadoClase === "activada";
-    const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
+    const estadoBadgeModifier = estadoClase ? `guarantee-detail__badge--${estadoClase}` : "";
+    const badgeClase = ["guarantee-detail__badge", estadoBadgeModifier].filter(Boolean).join(" ");
     const metodoPago = (
         data.metodo_pago ?? rowData.metodo_pago ?? ""
     )
@@ -8050,11 +8048,10 @@ const ADD_DOC_KEY = "add-document";
     const hasCoverageInfo =
         isFilled(pickField("desde_fmt", "")) &&
         isFilled(pickField("hasta_fmt", ""));
-    const shouldShowPlanInfo = !isSinFinalizar && (hasPlanInfo || planPrice);
+    const shouldShowPlanInfo = !isSinFinalizar && hasPlanInfo;
     const planTitleHtml = shouldShowPlanInfo
         ? `<h3 class="guarantee-detail__plan-title">` +
               `${planPrimaryLabel ? `<span class=\"guarantee-detail__plan-name\">${planPrimaryLabel}</span>` : ""}` +
-              `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
               `</h3>`
         : "";
     const managePlanLabel = planPrimaryLabel || (planName && planName !== "-" ? planName : "");
@@ -8073,6 +8070,30 @@ const ADD_DOC_KEY = "add-document";
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
             : "";
+    const planPriceChipHtml = planPrice
+        ? `<span class="guarantee-detail__header-chip guarantee-detail__header-chip--price">${escapeHtml(planPrice)}</span>`
+        : "";
+    const statusChipHtml = estadoLabel
+        ? `<span class="${badgeClase}">${escapeHtml(estadoLabel)}</span>`
+        : "";
+    const manageButtonHtml = canAccessGuaranteeManager
+        ? `<button type="button" class="guarantee-detail__manage-btn" data-manage-trigger data-manage-id="${escapeAttr(
+              guaranteeId,
+          )}" data-manage-plate="${escapeAttr(guaranteeMatricula)}" data-manage-plan="${escapeAttr(
+              managePlanLabel,
+          )}" data-manage-state="${escapeAttr(estadoLabel)}" data-manage-state-class="${escapeAttr(
+              estadoBadgeModifier,
+          )}">` +
+              `<span class="guarantee-detail__manage-btn-icon" aria-hidden="true">${manageSettingsIcon}</span>` +
+              `<span class="guarantee-detail__manage-btn-label">Gestionar garantía</span>` +
+              `</button>`
+        : "";
+    const headerActionsHtml = [planPriceChipHtml, statusChipHtml, manageButtonHtml]
+        .filter(Boolean)
+        .join("");
+    const headerAsideHtml = headerActionsHtml
+        ? `<div class="guarantee-detail__header-actions">${headerActionsHtml}</div>`
+        : "";
     const vendorChannelSummaryRaw = pickField("canal_venta_summary", "");
     const vendorChannelSummarySource =
         vendorChannelSummaryRaw !== ""
@@ -8331,10 +8352,12 @@ const ADD_DOC_KEY = "add-document";
         return `
                 <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
-                        <h2>Garantía ${pickField("matricula")}</h2>
-                        ${coverageHtml}
-                        <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
+                        <div class="guarantee-detail__header-content">
+                                <h2>Garantía ${pickField("matricula")}</h2>
+                                ${coverageHtml}
+                                <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
+                        </div>
+                        ${headerAsideHtml}
                 </div>
                 ${coverageAlertHtml}
                 ${showChannelSection
@@ -8607,42 +8630,16 @@ const ADD_DOC_KEY = "add-document";
         }
         return "";
     })();
-    const manageDescriptionText = isSinFinalizar
-        ? "Organiza incidencias antes de activar la póliza."
-        : "Centraliza comunicaciones, incidencias y notas internas.";
-    const manageSectionHtml = canAccessGuaranteeManager
-        ? `<section class="detail__section detail__section--manage">` +
-              `<div class="guarantee-manage">` +
-              `<div class="guarantee-manage__content">` +
-              `<p class="guarantee-manage__kicker">Centro de gestión</p>` +
-              `<h3 class="guarantee-manage__title">${escapeHtml(
-                  guaranteeMatricula && guaranteeMatricula !== "-"
-                      ? `Garantía ${guaranteeMatricula}`
-                      : "Gestionar garantía"
-              )}</h3>` +
-              `<p class="guarantee-manage__description">${escapeHtml(manageDescriptionText)}</p>` +
-              `</div>` +
-              `<button type="button" class="guarantee-manage__cta" data-manage-trigger data-manage-id="${escapeAttr(
-                  guaranteeId,
-              )}" data-manage-plate="${escapeAttr(guaranteeMatricula)}" data-manage-plan="${escapeAttr(
-                  managePlanLabel,
-              )}" data-manage-state="${escapeAttr(estadoLabel)}">` +
-              `<span class="guarantee-manage__cta-icon" aria-hidden="true">${manageSettingsIcon}</span>` +
-              `<span class="guarantee-manage__cta-label">Gestionar garantía</span>` +
-              `</button>` +
-              `</div>` +
-              `</section>`
-        : "";
-
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
-                        <h2>Garantía ${pickField("matricula")}</h2>
-                        ${planTitleHtml}
-                        ${coverageHtml}
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
+                        <div class="guarantee-detail__header-content">
+                                <h2>Garantía ${pickField("matricula")}</h2>
+                                ${planTitleHtml}
+                                ${coverageHtml}
+                        </div>
+                        ${headerAsideHtml}
                 </div>
-                ${manageSectionHtml}
                 ${paymentHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
