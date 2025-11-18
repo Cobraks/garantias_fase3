@@ -11,8 +11,8 @@
   const VERIFICATION_STORAGE_KEY = 'go360_register_verification';
 
   const CHANNEL_LABELS = {
-    compraventa: 'Profesional (Compraventa)',
-    concesionario: 'Profesional (Concesionario Oficial)',
+    compraventa: 'Compraventa',
+    concesionario: 'Concesionario Oficial',
     individual: 'Particular',
     agency: 'Gestoría',
   };
@@ -1760,21 +1760,18 @@
         }
         try {
           const field = form.getTextField(name);
+          const fontSize = 9;
           field.setText(stringValue);
-          field.setFontSize(9);
+          field.setFontSize(fontSize);
           if (field.acroField && typeof field.acroField.setDefaultAppearance === 'function') {
-            field.acroField.setDefaultAppearance(`0 0 0 rg /${resolvedFontName} 9 Tf`);
+            const resolvedName = resolvedFontName || 'Helvetica';
+            field.acroField.setDefaultAppearance(
+              `0.5 0.5 0.5 rg /${resolvedName} ${fontSize} Tf`,
+            );
           }
           if (typeof field.updateAppearances === 'function') {
             try {
-              if (PDFLib?.rgb) {
-                field.updateAppearances(activeFont, {
-                  textColor: PDFLib.rgb(0, 0, 0),
-                  fontSize: 9,
-                });
-              } else {
-                field.updateAppearances(activeFont);
-              }
+              field.updateAppearances(activeFont);
             } catch (appearanceError) {
               console.warn('[register] Unable to refresh field appearance', appearanceError);
             }
