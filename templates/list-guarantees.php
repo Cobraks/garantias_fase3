@@ -1038,6 +1038,178 @@ if (($is_admin_user || $is_director || $is_professional)
         <div data-empty-template="no-results"><?php echo $empty_detail_no_results; ?></div>
     </div>
 
+    <div
+        class="guarantee-management"
+        data-management-modal
+        data-state="closed"
+        aria-hidden="true">
+        <div class="guarantee-management__backdrop" data-management-dismiss></div>
+        <div
+            class="guarantee-management__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="guarantee-management-title"
+            data-management-dialog
+            tabindex="-1">
+            <header class="guarantee-management__header">
+                <div>
+                    <p class="guarantee-management__eyebrow">
+                        <?php esc_html_e('Panel de operaciones', 'garantias-online-360vo'); ?>
+                    </p>
+                    <h2 class="guarantee-management__title" id="guarantee-management-title">
+                        <?php esc_html_e('Gestionar garantía', 'garantias-online-360vo'); ?>
+                    </h2>
+                </div>
+                <button type="button" class="guarantee-management__close" data-management-dismiss>
+                    <?php echo Svg::icon('cerrar', 'guarantee-management__close-icon'); ?>
+                    <span class="screen-reader-text">
+                        <?php esc_html_e('Cerrar panel de gestión', 'garantias-online-360vo'); ?>
+                    </span>
+                </button>
+            </header>
+            <div class="guarantee-management__body">
+                <section class="guarantee-management__section">
+                    <h3><?php esc_html_e('Acciones inmediatas', 'garantias-online-360vo'); ?></h3>
+                    <p>
+                        <?php esc_html_e('Agrupa las operaciones internas más habituales para agilizar las incidencias.', 'garantias-online-360vo'); ?>
+                    </p>
+                    <ul class="guarantee-management__actions">
+                        <li>
+                            <button
+                                type="button"
+                                class="guarantee-management__action-button"
+                                data-management-action="certificate-error">
+                                <span class="guarantee-management__action-label">
+                                    <?php esc_html_e('Hay un error en el certificado', 'garantias-online-360vo'); ?>
+                                </span>
+                                <span class="guarantee-management__action-hint">
+                                    <?php esc_html_e('Solicita la revisión o la regeneración del certificado.', 'garantias-online-360vo'); ?>
+                                </span>
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                type="button"
+                                class="guarantee-management__action-button"
+                                data-management-action="email-client">
+                                <span class="guarantee-management__action-label">
+                                    <?php esc_html_e('Enviar e-mail al cliente', 'garantias-online-360vo'); ?>
+                                </span>
+                                <span class="guarantee-management__action-hint">
+                                    <?php esc_html_e('Prepara plantillas con copia al comercial responsable.', 'garantias-online-360vo'); ?>
+                                </span>
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                type="button"
+                                class="guarantee-management__action-button"
+                                data-management-action="follow-up">
+                                <span class="guarantee-management__action-label">
+                                    <?php esc_html_e('Programar seguimiento', 'garantias-online-360vo'); ?>
+                                </span>
+                                <span class="guarantee-management__action-hint">
+                                    <?php esc_html_e('Crea recordatorios para llamadas o visitas pendientes.', 'garantias-online-360vo'); ?>
+                                </span>
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                type="button"
+                                class="guarantee-management__action-button guarantee-management__action-button--danger"
+                                data-management-action="cancel-nonpayment">
+                                <span class="guarantee-management__action-label">
+                                    <?php esc_html_e('Cancelar garantía por impago', 'garantias-online-360vo'); ?>
+                                </span>
+                                <span class="guarantee-management__action-hint">
+                                    <?php esc_html_e('Inicia el proceso de cancelación controlando las notificaciones.', 'garantias-online-360vo'); ?>
+                                </span>
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                type="button"
+                                class="guarantee-management__action-button guarantee-management__action-button--danger"
+                                data-management-action="delete">
+                                <span class="guarantee-management__action-label">
+                                    <?php esc_html_e('Eliminar garantía', 'garantias-online-360vo'); ?>
+                                </span>
+                                <span class="guarantee-management__action-hint">
+                                    <?php esc_html_e('Mover a la papelera con control de auditoría.', 'garantias-online-360vo'); ?>
+                                </span>
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="guarantee-management__note">
+                        <label for="guarantee-management-note">
+                            <?php esc_html_e('Añadir nota interna', 'garantias-online-360vo'); ?>
+                        </label>
+                        <textarea
+                            id="guarantee-management-note"
+                            data-management-note
+                            placeholder="<?php esc_attr_e('Comparte contexto con tu equipo…', 'garantias-online-360vo'); ?>"></textarea>
+                        <div class="guarantee-management__note-footer">
+                            <button
+                                type="button"
+                                class="guarantee-management__ghost-button"
+                                data-management-action="save-note">
+                                <?php esc_html_e('Guardar nota', 'garantias-online-360vo'); ?>
+                            </button>
+                            <span class="guarantee-management__action-hint">
+                                <?php esc_html_e('La nota quedará visible solo para el equipo interno.', 'garantias-online-360vo'); ?>
+                            </span>
+                        </div>
+                    </div>
+                </section>
+                <section class="guarantee-management__section guarantee-management__section--ledger">
+                    <h3><?php esc_html_e('Recargos y descuentos', 'garantias-online-360vo'); ?></h3>
+                    <p>
+                        <?php esc_html_e('Consulta los ajustes aplicados antes de comunicarte con el cliente.', 'garantias-online-360vo'); ?>
+                    </p>
+                    <div class="guarantee-management__ledger">
+                        <div class="guarantee-management__ledger-row">
+                            <span class="guarantee-management__ledger-label">
+                                <?php esc_html_e('Recargos activos', 'garantias-online-360vo'); ?>
+                            </span>
+                            <span class="guarantee-management__ledger-value" data-management-modal-surcharges>0,00 €</span>
+                        </div>
+                        <div class="guarantee-management__ledger-row">
+                            <span class="guarantee-management__ledger-label">
+                                <?php esc_html_e('Descuentos aplicados', 'garantias-online-360vo'); ?>
+                            </span>
+                            <span class="guarantee-management__ledger-value" data-management-modal-discounts>- 0,00 €</span>
+                        </div>
+                        <div class="guarantee-management__ledger-row">
+                            <span class="guarantee-management__ledger-label">
+                                <?php esc_html_e('Último ajuste registrado', 'garantias-online-360vo'); ?>
+                            </span>
+                            <span class="guarantee-management__ledger-value" data-management-modal-last>
+                                <?php esc_html_e('Pendiente', 'garantias-online-360vo'); ?>
+                            </span>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        class="guarantee-management__ghost-button"
+                        data-management-action="open-ledger">
+                        <?php esc_html_e('Ver historial completo', 'garantias-online-360vo'); ?>
+                    </button>
+                </section>
+            </div>
+            <footer class="guarantee-management__footer">
+                <button
+                    type="button"
+                    class="guarantee-management__btn guarantee-management__btn--ghost"
+                    data-management-dismiss>
+                    <?php esc_html_e('Volver al detalle', 'garantias-online-360vo'); ?>
+                </button>
+                <button type="button" class="guarantee-management__btn guarantee-management__btn--primary">
+                    <?php esc_html_e('Registrar acción', 'garantias-online-360vo'); ?>
+                </button>
+            </footer>
+        </div>
+    </div>
+
     <div class="guarantees-mobile-search" data-mobile-search-panel>
         <div class="guarantees-mobile-search__slot" data-mobile-search-slot>
             <div class="guarantees-list__search-container" data-search-field>
