@@ -429,6 +429,9 @@ const ADD_DOC_KEY = "add-document";
                 const managementPanels = managementModal
                         ? Array.from(managementModal.querySelectorAll("[data-management-panel]"))
                         : [];
+                const managementPanelsContainer = managementModal
+                        ? managementModal.querySelector(".guarantee-management__panels")
+                        : null;
                 const managementDefaultTab = managementTabsNav
                         ? managementTabsNav.querySelector("[data-management-tab]")
                         : null;
@@ -447,6 +450,7 @@ const ADD_DOC_KEY = "add-document";
                         )
                         : [];
                 const MANAGEMENT_MODAL_TRANSITION = 260;
+                let managementPanelResizeObserver = null;
                 let managementModalCloseTimer = null;
                 let managementModalTrigger = null;
 
@@ -4057,6 +4061,66 @@ const ADD_DOC_KEY = "add-document";
                         runTrashRequest(context);
                 }
 
+                function getActiveManagementPanel() {
+                        if (!managementPanels || managementPanels.length === 0) {
+                                return null;
+                        }
+                        return managementPanels.find(
+                                (panel) =>
+                                        panel.classList.contains("is-active") &&
+                                        !panel.hasAttribute("hidden")
+                        );
+                }
+
+                function updateManagementPanelsHeight(options = {}) {
+                        if (!managementPanelsContainer) {
+                                return;
+                        }
+                        const { immediate = false } = options;
+                        const activePanel = getActiveManagementPanel();
+                        const targetHeight = activePanel ? activePanel.offsetHeight : 0;
+                        const applyHeight = () => {
+                                managementPanelsContainer.style.height = `${targetHeight}px`;
+                        };
+                        if (immediate) {
+                                const previousTransition = managementPanelsContainer.style.transition;
+                                managementPanelsContainer.style.transition = "none";
+                                applyHeight();
+                                void managementPanelsContainer.offsetHeight;
+                                if (previousTransition) {
+                                        managementPanelsContainer.style.transition = previousTransition;
+                                } else {
+                                        managementPanelsContainer.style.removeProperty("transition");
+                                }
+                                return;
+                        }
+                        applyHeight();
+                }
+
+                function attachPanelResizeObserver(panel) {
+                        if (typeof ResizeObserver !== "function") {
+                                return;
+                        }
+                        if (!panel) {
+                                detachPanelResizeObserver();
+                                return;
+                        }
+                        if (!managementPanelResizeObserver) {
+                                managementPanelResizeObserver = new ResizeObserver(() => {
+                                        updateManagementPanelsHeight();
+                                });
+                        } else {
+                                managementPanelResizeObserver.disconnect();
+                        }
+                        managementPanelResizeObserver.observe(panel);
+                }
+
+                function detachPanelResizeObserver() {
+                        if (managementPanelResizeObserver) {
+                                managementPanelResizeObserver.disconnect();
+                        }
+                }
+
                 function activateManagementTab(tabButton) {
                         if (!managementTabsNav || !tabButton) {
                                 return;
@@ -4081,10 +4145,22 @@ const ADD_DOC_KEY = "add-document";
                                         panel.setAttribute("hidden", "hidden");
                                 }
                         });
+                        const activePanel = getActiveManagementPanel();
+                        if (activePanel) {
+                                attachPanelResizeObserver(activePanel);
+                        }
+                        if (typeof requestAnimationFrame === "function") {
+                                requestAnimationFrame(() => {
+                                        updateManagementPanelsHeight();
+                                });
+                        } else {
+                                updateManagementPanelsHeight();
+                        }
                 }
 
                 if (managementDefaultTab) {
                         activateManagementTab(managementDefaultTab);
+                        updateManagementPanelsHeight({ immediate: true });
                 }
 
                 function resetManagementContext() {
@@ -4168,6 +4244,13 @@ const ADD_DOC_KEY = "add-document";
                         document.body.classList.add("has-management-modal-open");
                         if (typeof requestAnimationFrame === "function") {
                                 requestAnimationFrame(() => {
+                                        updateManagementPanelsHeight({ immediate: true });
+                                });
+                        } else {
+                                updateManagementPanelsHeight({ immediate: true });
+                        }
+                        if (typeof requestAnimationFrame === "function") {
+                                requestAnimationFrame(() => {
                                         if (managementDialog) {
                                                 managementDialog.focus();
                                         }
@@ -4195,8 +4278,10 @@ const ADD_DOC_KEY = "add-document";
                         }
                         managementModalTrigger = null;
                         resetManagementContext();
+                        detachPanelResizeObserver();
                         if (managementDefaultTab) {
                                 activateManagementTab(managementDefaultTab);
+                                updateManagementPanelsHeight({ immediate: true });
                         }
                 }
 

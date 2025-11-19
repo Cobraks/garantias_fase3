@@ -1142,7 +1142,6 @@ if (($is_admin_user || $is_director || $is_professional)
                                 </span>
                                 <span class="management-actions__copy">
                                     <strong><?php esc_html_e('Cancelar garantía por impago', 'garantias-online-360vo'); ?></strong>
-                                    <span><?php esc_html_e('Activa el protocolo de cancelación inmediata.', 'garantias-online-360vo'); ?></span>
                                 </span>
                             </button>
                             <button
@@ -1154,7 +1153,6 @@ if (($is_admin_user || $is_director || $is_professional)
                                 </span>
                                 <span class="management-actions__copy">
                                     <strong><?php esc_html_e('Eliminar garantía', 'garantias-online-360vo'); ?></strong>
-                                    <span><?php esc_html_e('Traslada el expediente a la papelera de WordPress.', 'garantias-online-360vo'); ?></span>
                                 </span>
                             </button>
                         </div>
@@ -1203,11 +1201,11 @@ if (($is_admin_user || $is_director || $is_professional)
                             <form class="management-notes__composer" action="#" method="post">
                                 <label class="management-notes__field">
                                     <span><?php esc_html_e('Nueva nota para el equipo', 'garantias-online-360vo'); ?></span>
-                                    <textarea rows="3" placeholder="<?php esc_attr_e('Escribe aquí la actualización para el resto de gestores…', 'garantias-online-360vo'); ?>" disabled></textarea>
+                                    <textarea rows="3" placeholder="<?php esc_attr_e('Escribe aquí la actualización para el resto de gestores…', 'garantias-online-360vo'); ?>"></textarea>
                                 </label>
                                 <div class="management-notes__actions">
-                                    <button type="button" class="management-notes__submit" disabled>
-                                        <?php esc_html_e('Publicar nota (próximamente)', 'garantias-online-360vo'); ?>
+                                    <button type="button" class="management-notes__submit">
+                                        <?php esc_html_e('Publicar nota', 'garantias-online-360vo'); ?>
                                     </button>
                                 </div>
                             </form>
@@ -1222,28 +1220,28 @@ if (($is_admin_user || $is_director || $is_professional)
                         <div class="management-breakdown">
                             <article class="management-breakdown__column management-breakdown__column--vehicle">
                                 <h3 class="management-breakdown__title"><?php esc_html_e('Datos del vehículo', 'garantias-online-360vo'); ?></h3>
-                                <ul class="management-breakdown__list">
-                                    <li class="management-breakdown__item">
-                                        <p class="management-breakdown__label"><?php esc_html_e('Modelo', 'garantias-online-360vo'); ?></p>
-                                        <p class="management-breakdown__value">Volkswagen Golf 2.0 TDI DSG</p>
-                                    </li>
-                                    <li class="management-breakdown__item">
-                                        <p class="management-breakdown__label"><?php esc_html_e('Bastidor', 'garantias-online-360vo'); ?></p>
-                                        <p class="management-breakdown__value">WVWZZZ1KZLW012345</p>
-                                    </li>
-                                    <li class="management-breakdown__item">
-                                        <p class="management-breakdown__label"><?php esc_html_e('Kilometraje', 'garantias-online-360vo'); ?></p>
-                                        <p class="management-breakdown__value">98.500 km</p>
-                                    </li>
-                                    <li class="management-breakdown__item">
-                                        <p class="management-breakdown__label"><?php esc_html_e('Primera matriculación', 'garantias-online-360vo'); ?></p>
-                                        <p class="management-breakdown__value">Junio 2020</p>
-                                    </li>
-                                    <li class="management-breakdown__item">
-                                        <p class="management-breakdown__label"><?php esc_html_e('Combustible', 'garantias-online-360vo'); ?></p>
-                                        <p class="management-breakdown__value"><?php esc_html_e('Diésel automático', 'garantias-online-360vo'); ?></p>
-                                    </li>
-                                </ul>
+                                <div class="management-vehicle-grid">
+                                    <article class="management-vehicle-card">
+                                        <p class="management-vehicle-card__label"><?php esc_html_e('Modelo', 'garantias-online-360vo'); ?></p>
+                                        <p class="management-vehicle-card__value">Volkswagen Golf 2.0 TDI DSG</p>
+                                    </article>
+                                    <article class="management-vehicle-card">
+                                        <p class="management-vehicle-card__label"><?php esc_html_e('Bastidor', 'garantias-online-360vo'); ?></p>
+                                        <p class="management-vehicle-card__value">WVWZZZ1KZLW012345</p>
+                                    </article>
+                                    <article class="management-vehicle-card">
+                                        <p class="management-vehicle-card__label"><?php esc_html_e('Kilometraje', 'garantias-online-360vo'); ?></p>
+                                        <p class="management-vehicle-card__value">98.500 km</p>
+                                    </article>
+                                    <article class="management-vehicle-card">
+                                        <p class="management-vehicle-card__label"><?php esc_html_e('Primera matriculación', 'garantias-online-360vo'); ?></p>
+                                        <p class="management-vehicle-card__value">Junio 2020</p>
+                                    </article>
+                                    <article class="management-vehicle-card">
+                                        <p class="management-vehicle-card__label"><?php esc_html_e('Combustible', 'garantias-online-360vo'); ?></p>
+                                        <p class="management-vehicle-card__value"><?php esc_html_e('Diésel automático', 'garantias-online-360vo'); ?></p>
+                                    </article>
+                                </div>
                             </article>
                             <article class="management-breakdown__column management-breakdown__column--pricing">
                                 <h3 class="management-breakdown__title"><?php esc_html_e('Desglose económico', 'garantias-online-360vo'); ?></h3>

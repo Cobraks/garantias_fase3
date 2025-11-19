@@ -2563,16 +2563,16 @@ body.has-management-modal-open {
     transform: scaleX(1);
 }
 .guarantee-management__panels {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-4);
-    padding: clamp(1.25rem, 4vw, 2.25rem);
-    transition: min-height 0.3s ease;
+    overflow: hidden;
+    position: relative;
+    transition: height 0.35s ease;
+    will-change: height;
 }
 .guarantee-management__panel {
     display: none;
     flex-direction: column;
     gap: var(--spacing-3);
+    padding: clamp(1.25rem, 4vw, 2.25rem);
 }
 .guarantee-management__panel.is-active {
     display: flex;
@@ -2662,17 +2662,17 @@ body.has-management-modal-open {
 .management-actions__item--quiet {
     border-color: transparent;
     background: transparent;
-    padding-inline: 0.25rem;
+    padding-inline: 0;
     box-shadow: none;
 }
 .management-actions__item--quiet:hover,
 .management-actions__item--quiet:focus-visible {
     border-color: transparent;
-    background: rgba(var(--go-color-94a3b8-rgb, 148, 163, 184), 0.12);
+    background: transparent;
 }
 .management-actions__item--quiet .management-actions__icon {
-    background: rgba(var(--go-color-94a3b8-rgb, 148, 163, 184), 0.15);
-    color: var(--text-color);
+    background: transparent;
+    color: var(--text-secondary);
 }
 .management-actions__item--quiet .management-actions__copy strong {
     color: var(--text-color);
@@ -2681,7 +2681,6 @@ body.has-management-modal-open {
     color: var(--go-color-dc2626);
 }
 .management-actions__item--quiet.management-actions__item--danger .management-actions__icon {
-    background: rgba(var(--go-color-dc2626-rgb, 220, 38, 38), 0.12);
     color: var(--go-color-dc2626);
 }
 .management-actions__item--quiet.management-actions__item--danger .management-actions__copy strong {
@@ -2699,30 +2698,16 @@ body.has-management-modal-open {
 }
 .management-note-card {
     border: 1px solid var(--card-border);
-    border-radius: 0.85rem;
+    border-radius: 0.65rem;
     padding: 1rem 1.25rem;
     background: #fff;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-2);
-    position: relative;
-    box-shadow: 0 6px 18px -12px rgba(15, 23, 42, 0.35);
-}
-.management-note-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 3px;
-    border-radius: 0.85rem 0 0 0.85rem;
-    background: var(--card-border);
-}
-.management-note-card--self::before {
-    background: var(--primary-color);
 }
 .management-note-card--self {
-    background: rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.06);
+    border-color: rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.35);
+    background: rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.04);
 }
 .management-note-card__header {
     display: flex;
@@ -2744,9 +2729,9 @@ body.has-management-modal-open {
     color: var(--text-secondary);
 }
 .management-note-card__meta {
-    display: inline-flex;
+    display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.75rem;
     align-items: center;
     font-size: 0.8rem;
     color: var(--text-secondary);
@@ -2774,10 +2759,10 @@ body.has-management-modal-open {
     background: rgba(var(--go-color-dc2626-rgb, 220, 38, 38), 0.08);
 }
 .management-notes__composer {
-    border: 1px dashed var(--card-border);
-    border-radius: 0.85rem;
+    border: 1px solid var(--card-border);
+    border-radius: 0.65rem;
     padding: 1rem 1.25rem;
-    background: rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.04);
+    background: #fff;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-2);
@@ -2789,7 +2774,7 @@ body.has-management-modal-open {
 }
 .management-notes__field textarea {
     width: 100%;
-    border-radius: 0.5rem;
+    border-radius: 0.4rem;
     border: 1px solid var(--card-border);
     padding: 0.75rem 1rem;
     resize: vertical;
@@ -2808,67 +2793,54 @@ body.has-management-modal-open {
 }
 .management-notes__submit {
     border: none;
-    border-radius: 0.4rem;
+    border-radius: 0.35rem;
     background: var(--primary-color);
     color: #fff;
-    padding: 0.65rem 1.25rem;
+    padding: 0.65rem 1.35rem;
     font-weight: 600;
-    cursor: not-allowed;
-    opacity: 0.6;
+    cursor: pointer;
 }
 .management-breakdown {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-3);
+    gap: clamp(1.25rem, 3vw, 2rem);
 }
 .management-breakdown__column {
-    border: 1px solid var(--card-border);
-    border-radius: 1.1rem;
-    padding: 1.25rem;
-    background: #fff;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-2);
-    box-shadow: 0 16px 30px -24px rgba(var(--go-color-0f172a-rgb, 15, 23, 42), 0.25);
 }
 .management-breakdown__title {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
 }
-.management-breakdown__list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
+.management-vehicle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: var(--spacing-2);
 }
-.management-breakdown__item {
+.management-vehicle-card {
     border: 1px solid var(--card-border);
-    border-radius: 0.85rem;
-    padding: 0.75rem 1rem;
+    border-radius: 0.65rem;
+    padding: 0.85rem 1rem;
+    background: #fff;
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
-    background: var(--go-color-f8fafc);
+    gap: 0.25rem;
 }
-.management-breakdown__label {
+.management-vehicle-card__label {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
+    letter-spacing: 0.03em;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
 }
-.management-breakdown__value {
+.management-vehicle-card__value {
     margin: 0;
     font-weight: 600;
 }
 .management-price-card {
-    border: 1px dashed var(--card-border);
-    border-radius: 1rem;
-    padding: 1.25rem;
-    background: var(--go-color-f8fafc);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-2);
@@ -2885,6 +2857,8 @@ body.has-management-modal-open {
     justify-content: space-between;
     gap: var(--spacing-2);
     font-size: 0.95rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--card-border);
 }
 .management-price-row dt {
     margin: 0;
@@ -2894,8 +2868,12 @@ body.has-management-modal-open {
     margin: 0;
     font-weight: 600;
 }
+.management-price-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
 .management-price-total {
-    border-top: 1px dashed var(--card-border);
+    border-top: 1px solid var(--card-border);
     padding-top: 1rem;
     display: flex;
     align-items: baseline;
@@ -2915,28 +2893,10 @@ body.has-management-modal-open {
     }
 }
 .management-breakdown__column--vehicle {
-    background: var(--go-color-f8fafc);
-}
-.management-breakdown__column--vehicle .management-breakdown__list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: var(--spacing-2);
-}
-.management-breakdown__column--vehicle .management-breakdown__item {
-    background: #fff;
-    border-radius: 0.65rem;
-}
-.management-breakdown__column--vehicle .management-breakdown__label {
-    font-size: 0.75rem;
-}
-.management-breakdown__column--vehicle .management-breakdown__value {
-    font-size: 0.9rem;
-}
-.management-breakdown__column--pricing .management-price-card {
-    background: #fff;
+    gap: var(--spacing-3);
 }
 .management-breakdown__column--pricing {
-    background: var(--go-color-f8fafc);
+    gap: var(--spacing-3);
 }
 .guarantee-management__footer {
     position: sticky;
@@ -2950,7 +2910,7 @@ body.has-management-modal-open {
     border-top: 1px solid var(--card-border);
 }
 .guarantee-management__btn {
-    border-radius: 0.4rem;
+    border-radius: 0.35rem;
     border: 1px solid transparent;
     padding: 0.75rem 1.5rem;
     font-weight: 600;
@@ -2993,14 +2953,24 @@ body.has-management-modal-open {
 :root[data-theme='dark'] .management-actions__item,
 :root[data-theme='dark'] .management-note-card,
 :root[data-theme='dark'] .management-notes__field textarea,
-:root[data-theme='dark'] .management-price-card,
-:root[data-theme='dark'] .management-breakdown__column {
+:root[data-theme='dark'] .management-vehicle-card,
+:root[data-theme='dark'] .management-notes__composer {
     background: rgba(30, 41, 59, 0.9);
     border-color: rgba(51, 65, 85, 0.8);
+}
+:root[data-theme='dark'] .management-actions__item--quiet {
+    background: transparent;
+    border-color: transparent;
 }
 :root[data-theme='dark'] .management-note-card--self {
     background: rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.25);
     border-color: rgba(59, 130, 246, 0.5);
+}
+:root[data-theme='dark'] .management-price-row {
+    border-color: rgba(51, 65, 85, 0.8);
+}
+:root[data-theme='dark'] .management-price-total {
+    border-color: rgba(51, 65, 85, 0.8);
 }
 
 
