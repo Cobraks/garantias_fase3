@@ -4,7 +4,11 @@ namespace GarantiasOnline360VO\Notifications\Push;
 
 use GarantiasOnline360VO\Support\UserProfileResolver;
 use GarantiasOnline360VO\Svg;
+use WP_User;
+use function esc_html;
 use function home_url;
+use function sanitize_title;
+use function trailingslashit;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -36,6 +40,8 @@ class PushMessageFactory
                 return $this->build_sepa_pending($activity_record);
             case 'sepa.signed_uploaded':
                 return $this->build_sepa_uploaded($activity_record);
+            case 'sepa.activated':
+                return $this->build_sepa_activated($activity_record);
             default:
                 return null;
         }
@@ -110,23 +116,58 @@ class PushMessageFactory
         $email = isset($context['user_email']) ? sanitize_text_field((string) $context['user_email']) : '';
         $user_id = isset($record['actor_id']) ? (int) $record['actor_id'] : 0;
         $channel_label = isset($context['channel_label']) ? sanitize_text_field((string) $context['channel_label']) : '';
+        $profile_url = isset($context['profile_url']) ? esc_url_raw((string) $context['profile_url']) : '';
+        if ($profile_url === '' && $user_id > 0) {
+            $profile_url = $this->build_client_profile_url($user_id);
+        }
+
+        $company_label = '';
+        if ($user_id > 0) {
+            $company_label = $this->resolve_company_label($user_id, ['vendor_id' => $user_id], '');
+        }
+        if ($company_label === '' && $email !== '') {
+            $company_label = $email;
+        }
+        if ($company_label === '') {
+            $company_label = __('Profesional', 'garantias-online-360vo');
+        }
 
         $meta = [];
         if ($channel_label !== '') {
             $meta[] = $this->meta_entry(__('Canal', 'garantias-online-360vo'), $channel_label);
         }
+        if ($email !== '') {
+            $meta[] = $this->meta_entry(__('Correo', 'garantias-online-360vo'), $email, 'actor');
+        }
+
+        $body = sprintf(
+            /* translators: %s: company or professional name */
+            __('%s se ha registrado en Garantías Online.', 'garantias-online-360vo'),
+            '<strong>' . esc_html($company_label) . '</strong>'
+        );
+
+        $link = $profile_url !== ''
+            ? $profile_url
+            : ($user_id > 0
+                ? admin_url('user-edit.php?user_id=' . $user_id)
+                : admin_url('users.php'));
 
         return [
-            'title' => __('Nuevo usuario verificado', 'garantias-online-360vo'),
-            'body'  => $email !== ''
-                ? sprintf(__('El usuario %s ha verificado su cuenta.', 'garantias-online-360vo'), $email)
-                : __('Se ha verificado una nueva cuenta de usuario.', 'garantias-online-360vo'),
-            'link'  => $user_id > 0 ? admin_url('user-edit.php?user_id=' . $user_id) : admin_url('users.php'),
+            'title' => __('Nuevo usuario registrado', 'garantias-online-360vo'),
+            'body'  => $body,
+            'link'  => $link,
             'icon'      => Svg::data_uri('check_shield'),
             'icon_slug' => 'check_shield',
             'tone'      => 'success',
             'badge'     => __('Nuevo', 'garantias-online-360vo'),
             'meta'      => $meta,
+            'actions'   => $profile_url !== '' ? [
+                [
+                    'action' => 'view-user',
+                    'title'  => __('Ver usuario', 'garantias-online-360vo'),
+                    'url'    => $profile_url,
+                ],
+            ] : [],
         ];
     }
 
@@ -375,6 +416,9 @@ class PushMessageFactory
 
         $profile_url = isset($context['profile_url']) ? esc_url_raw((string) $context['profile_url']) : '';
         if ($profile_url === '' && $actor_id > 0) {
+            $profile_url = $this->build_client_profile_url($actor_id);
+        }
+        if ($profile_url === '' && $actor_id > 0) {
             $profile_url = admin_url('user-edit.php?user_id=' . $actor_id);
         }
 
@@ -447,9 +491,19 @@ class PushMessageFactory
         $title = isset($context['guarantee_label']) ? (string) $context['guarantee_label'] : '';
         $actor_id = isset($record['actor_id']) ? (int) $record['actor_id'] : 0;
         $vendor_id = isset($context['vendor_id']) ? (int) $context['vendor_id'] : 0;
-        $link = $guarantee_id > 0
-            ? get_permalink($guarantee_id)
-            : admin_url('edit.php?post_type=garantia');
+        $profile_url = isset($context['profile_url']) ? esc_url_raw((string) $context['profile_url']) : '';
+        if ($profile_url === '') {
+            $target_user = $vendor_id > 0 ? $vendor_id : ($actor_id > 0 ? $actor_id : 0);
+            if ($target_user > 0) {
+                $profile_url = $this->build_client_profile_url($target_user);
+            }
+        }
+
+        $link = $profile_url !== ''
+            ? $profile_url
+            : ($guarantee_id > 0
+                ? get_permalink($guarantee_id)
+                : admin_url('edit.php?post_type=garantia'));
 
         $body = $title !== ''
             ? sprintf(__('Se ha subido el SEPA firmado para %s.', 'garantias-online-360vo'), $title)
@@ -484,6 +538,109 @@ class PushMessageFactory
                 ],
             ],
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    private function build_sepa_activated(array $record): array
+    {
+        $context = $this->decode_context($record['context'] ?? '');
+        $target_id = isset($record['target_id']) ? (int) $record['target_id'] : 0;
+        $actor_id = isset($record['actor_id']) ? (int) $record['actor_id'] : 0;
+        $user_id = $target_id > 0 ? $target_id : $actor_id;
+
+        $name = '';
+        if (! empty($context['user_name'])) {
+            $name = $this->sanitize_plain_text((string) $context['user_name']);
+        } elseif (! empty($context['client_name'])) {
+            $name = $this->sanitize_plain_text((string) $context['client_name']);
+        } elseif ($user_id > 0) {
+            $name = $this->sanitize_plain_text(UserProfileResolver::get_personal_name($user_id));
+        }
+        if ($name === '') {
+            $name = __('Profesional', 'garantias-online-360vo');
+        }
+
+        $company = '';
+        if (! empty($context['company_name'])) {
+            $company = $this->sanitize_plain_text((string) $context['company_name']);
+        }
+
+        $display_name = $company !== '' ? $company : $name;
+
+        $reference = ! empty($context['document_reference'])
+            ? $this->sanitize_plain_text((string) $context['document_reference'])
+            : '';
+        $status_label = ! empty($context['status_label'])
+            ? $this->sanitize_plain_text((string) $context['status_label'])
+            : __('SEPA válido y activo', 'garantias-online-360vo');
+
+        $profile_url = isset($context['profile_url'])
+            ? esc_url_raw((string) $context['profile_url'])
+            : '';
+        if ($profile_url === '' && $user_id > 0) {
+            $profile_url = $this->build_client_profile_url($user_id);
+        }
+        if ($profile_url === '' && $user_id > 0) {
+            $profile_url = admin_url('user-edit.php?user_id=' . $user_id);
+        }
+
+        $meta = [];
+        if ($status_label !== '') {
+            $meta[] = $this->meta_entry(__('Estado', 'garantias-online-360vo'), $status_label, 'status');
+        }
+        if ($reference !== '') {
+            $meta[] = $this->meta_entry(__('Referencia', 'garantias-online-360vo'), $reference);
+        }
+        if (! empty($context['user_email'])) {
+            $email = sanitize_email((string) $context['user_email']);
+            if ($email !== '') {
+                $meta[] = $this->meta_entry(__('Correo', 'garantias-online-360vo'), $email, 'actor');
+            }
+        }
+
+        return [
+            'title' => __('Domiciliación bancaria activada', 'garantias-online-360vo'),
+            'body'  => sprintf(
+                '<strong>%1$s</strong> %2$s',
+                esc_html($display_name),
+                esc_html(__('ya tiene la domiciliación bancaria activa.', 'garantias-online-360vo'))
+            ),
+            'link'      => $profile_url !== '' ? $profile_url : admin_url('users.php'),
+            'icon'      => Svg::data_uri('iban'),
+            'icon_slug' => 'iban',
+            'tone'      => 'success',
+            'badge'     => __('Actualización', 'garantias-online-360vo'),
+            'meta'      => $meta,
+            'actions'   => $profile_url !== '' ? [
+                [
+                    'action' => 'open-profile',
+                    'title'  => __('Abrir ficha del cliente', 'garantias-online-360vo'),
+                    'url'    => $profile_url,
+                ],
+            ] : [],
+        ];
+    }
+
+    private function build_client_profile_url(int $user_id): string
+    {
+        if ($user_id <= 0) {
+            return '';
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return '';
+        }
+
+        $slug = $user->user_nicename !== '' ? $user->user_nicename : $user->user_login;
+        $slug = sanitize_title($slug);
+        if ($slug === '') {
+            return '';
+        }
+
+        return trailingslashit(home_url('/garantias-online/clientes/' . rawurlencode($slug)));
     }
 
     /**

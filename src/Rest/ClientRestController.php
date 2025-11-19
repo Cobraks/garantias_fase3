@@ -13,6 +13,7 @@ use WP_REST_Response;
 use WP_REST_Server;
 use WP_User;
 use WP_User_Query;
+use function home_url;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -679,7 +680,11 @@ class ClientRestController
             self::build_client_log_context($user),
             [
                 'user_name'          => $actor_label,
+                'user_email'         => sanitize_email($user->user_email),
+                'company_name'       => $company_name,
                 'document_reference' => $reference,
+                'status_label'       => isset($sepa_details['label']) ? (string) $sepa_details['label'] : '',
+                'profile_url'        => self::build_client_profile_url($user),
             ]
         );
 
@@ -692,6 +697,8 @@ class ClientRestController
             ]
         );
 
+        AccountRestController::notify_sepa_activation($user_id, $sepa_details);
+
         return new WP_REST_Response(
             [
                 'message' => __('Domiciliación bancaria activada.', 'garantias-online-360vo'),
@@ -700,6 +707,17 @@ class ClientRestController
             ],
             200
         );
+    }
+
+    private static function build_client_profile_url(WP_User $user): string
+    {
+        $slug = $user->user_nicename !== '' ? $user->user_nicename : $user->user_login;
+        $slug = sanitize_title($slug);
+        if ($slug === '') {
+            return '';
+        }
+
+        return trailingslashit(home_url('/garantias-online/clientes/' . rawurlencode($slug)));
     }
 
     public static function deactivate_sepa(WP_REST_Request $request)
