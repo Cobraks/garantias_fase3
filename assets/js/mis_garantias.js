@@ -429,11 +429,25 @@ const ADD_DOC_KEY = "add-document";
                 const managementPanels = managementModal
                         ? Array.from(managementModal.querySelectorAll("[data-management-panel]"))
                         : [];
+                const managementPanelsWrapper = managementModal
+                        ? managementModal.querySelector("[data-management-panels]")
+                        : null;
+                const managementTitleNode = managementModal
+                        ? managementModal.querySelector("[data-management-title]")
+                        : null;
+                const managementStatusChip = managementModal
+                        ? managementModal.querySelector("[data-management-status-chip]")
+                        : null;
+                const managementStatusText = managementStatusChip
+                        ? managementStatusChip.querySelector("[data-management-status-text]")
+                        : null;
                 const managementDefaultTab = managementTabsNav
                         ? managementTabsNav.querySelector("[data-management-tab]")
                         : null;
                 const MANAGEMENT_MODAL_TRANSITION = 260;
+                const MANAGEMENT_PANEL_HEIGHT_DURATION = 260;
                 let managementModalCloseTimer = null;
+                let managementPanelHeightTimer = null;
                 let managementModalTrigger = null;
 
                 const PDF_CACHE_LIMIT = 12;
@@ -4055,6 +4069,12 @@ const ADD_DOC_KEY = "add-document";
                         if (!target) {
                                 return;
                         }
+                        const targetPanel = managementPanels.find(
+                                (panel) => panel.getAttribute("data-management-panel") === target
+                        );
+                        if (!targetPanel) {
+                                return;
+                        }
                         const buttons = managementTabsNav.querySelectorAll("[data-management-tab]");
                         buttons.forEach((btn) => {
                                 const isActive = btn === tabButton;
@@ -4062,8 +4082,16 @@ const ADD_DOC_KEY = "add-document";
                                 btn.classList.toggle("is-active", isActive);
                                 btn.setAttribute("tabindex", isActive ? "0" : "-1");
                         });
+                        const previousPanel = managementPanels.find(
+                                (panel) => panel.classList.contains("is-active") && !panel.hasAttribute("hidden")
+                        );
+                        const previousHeight = previousPanel
+                                ? previousPanel.offsetHeight
+                                : managementPanelsWrapper
+                                ? managementPanelsWrapper.offsetHeight
+                                : 0;
                         managementPanels.forEach((panel) => {
-                                const matches = panel.getAttribute("data-management-panel") === target;
+                                const matches = panel === targetPanel;
                                 panel.classList.toggle("is-active", matches);
                                 if (matches) {
                                         panel.removeAttribute("hidden");
@@ -4071,6 +4099,93 @@ const ADD_DOC_KEY = "add-document";
                                         panel.setAttribute("hidden", "hidden");
                                 }
                         });
+                        const nextHeight = targetPanel.offsetHeight;
+                        if (managementPanelsWrapper) {
+                                if (
+                                        previousHeight &&
+                                        nextHeight &&
+                                        previousHeight !== nextHeight
+                                ) {
+                                        animateManagementPanelsHeight(previousHeight, nextHeight);
+                                } else {
+                                        resetManagementPanelsHeight();
+                                }
+                        }
+                }
+
+                function resetManagementPanelsHeight() {
+                        if (!managementPanelsWrapper) {
+                                return;
+                        }
+                        managementPanelsWrapper.style.removeProperty("height");
+                        managementPanelsWrapper.style.removeProperty("transition");
+                }
+
+                function animateManagementPanelsHeight(fromHeight, toHeight) {
+                        if (!managementPanelsWrapper) {
+                                return;
+                        }
+                        if (!fromHeight || !toHeight || fromHeight === toHeight) {
+                                resetManagementPanelsHeight();
+                                return;
+                        }
+                        managementPanelsWrapper.style.height = `${fromHeight}px`;
+                        // force reflow
+                        void managementPanelsWrapper.offsetHeight;
+                        managementPanelsWrapper.style.transition = `height ${MANAGEMENT_PANEL_HEIGHT_DURATION}ms ease`;
+                        managementPanelsWrapper.style.height = `${toHeight}px`;
+                        if (managementPanelHeightTimer) {
+                                clearTimeout(managementPanelHeightTimer);
+                        }
+                        managementPanelHeightTimer = window.setTimeout(() => {
+                                resetManagementPanelsHeight();
+                                managementPanelHeightTimer = null;
+                        }, MANAGEMENT_PANEL_HEIGHT_DURATION + 50);
+                }
+
+                function updateManagementSummaryFromTrigger(trigger) {
+                        if (!trigger) {
+                                return;
+                        }
+                        const plate = (trigger.getAttribute("data-management-plate") || "").trim();
+                        const statusLabel = (trigger.getAttribute("data-management-status-label") || "").trim();
+                        const statusClass = (trigger.getAttribute("data-management-status-class") || "").trim();
+                        if (managementTitleNode) {
+                                const template = managementTitleNode.getAttribute("data-management-title-template") || "";
+                                const fallback =
+                                        managementTitleNode.getAttribute("data-management-default-title") ||
+                                        managementTitleNode.textContent ||
+                                        "";
+                                if (plate) {
+                                        if (template && template.includes("%s")) {
+                                                managementTitleNode.textContent = template.replace("%s", plate);
+                                        } else {
+                                                managementTitleNode.textContent = `Garantía ${plate}`;
+                                        }
+                                } else if (fallback) {
+                                        managementTitleNode.textContent = fallback;
+                                }
+                        }
+                        if (managementStatusText) {
+                                const defaultStatus =
+                                        managementStatusText.getAttribute("data-default-status") ||
+                                        managementStatusText.textContent ||
+                                        "";
+                                managementStatusText.textContent = statusLabel || defaultStatus;
+                        }
+                        if (managementStatusChip) {
+                                const baseClass = managementStatusChip.getAttribute("data-status-base") || "";
+                                const slug = statusClass || managementStatusChip.getAttribute("data-current-status") || "pendiente-pago";
+                                const nextClass = baseClass
+                                        ? `${baseClass} guarantee-detail__badge--${slug}`.trim()
+                                        : `guarantee-detail__badge guarantee-detail__badge--${slug}`;
+                                managementStatusChip.className = nextClass;
+                                if (slug) {
+                                        managementStatusChip.setAttribute("data-current-status", slug);
+                                } else {
+                                        managementStatusChip.removeAttribute("data-current-status");
+                                }
+                        }
                 }
 
                 if (managementDefaultTab) {
@@ -4087,6 +4202,9 @@ const ADD_DOC_KEY = "add-document";
                         if (managementModalCloseTimer) {
                                 clearTimeout(managementModalCloseTimer);
                                 managementModalCloseTimer = null;
+                        }
+                        if (trigger) {
+                                updateManagementSummaryFromTrigger(trigger);
                         }
                         managementModalTrigger = trigger || managementModalTrigger;
                         managementModal.dataset.state = "open";
@@ -4110,6 +4228,7 @@ const ADD_DOC_KEY = "add-document";
                         managementModal.dataset.state = "closing";
                         managementModal.setAttribute("aria-hidden", "true");
                         document.body.classList.remove("has-management-modal-open");
+                        resetManagementPanelsHeight();
                         managementModalCloseTimer = window.setTimeout(() => {
                                 if (!managementModal) {
                                         return;
@@ -8112,17 +8231,29 @@ const ADD_DOC_KEY = "add-document";
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
     const showManagementHub = canAccessManagementHub;
+    const managementPlate = pickField("matricula", "").trim();
+    const managementStatusLabel = pickField("estado", "Desconocido");
+    const managementButtonAttrs = ["data-management-open"];
+    if (managementPlate) {
+        managementButtonAttrs.push(`data-management-plate="${escapeAttr(managementPlate)}"`);
+    }
+    if (managementStatusLabel) {
+        managementButtonAttrs.push(`data-management-status-label="${escapeAttr(managementStatusLabel)}"`);
+    }
+    if (estadoClase) {
+        managementButtonAttrs.push(`data-management-status-class="${escapeAttr(estadoClase)}"`);
+    }
     const managementSectionHtml = showManagementHub
-        ? `<section class="detail__section detail__section--manage" aria-live="polite">
-                <button type="button" class="detail__manage-button" data-management-open>
+        ? `<section class="detail__section detail__section--manage" aria-live="polite">`
+              + `<button type="button" class="detail__manage-button" ${managementButtonAttrs.join(" ")}>
                         <span class="detail__manage-icon" aria-hidden="true">${managementShieldIcon}</span>
                         <span class="detail__manage-copy">
                                 <strong>Gestionar garantía</strong>
                                 <span>Operativa interna y ajustes</span>
                         </span>
                         <span class="detail__manage-caret" aria-hidden="true">${managementArrowIcon}</span>
-                </button>
-        </section>`
+                </button>`
+          + `</section>`
         : "";
 
     const sinFinalButtons = [];
