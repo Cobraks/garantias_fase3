@@ -432,6 +432,20 @@ const ADD_DOC_KEY = "add-document";
                 const managementDefaultTab = managementTabsNav
                         ? managementTabsNav.querySelector("[data-management-tab]")
                         : null;
+                const managementPlateDisplay = managementModal
+                        ? managementModal.querySelector("[data-management-plate]")
+                        : null;
+                const managementStatus = managementModal
+                        ? managementModal.querySelector("[data-management-status]")
+                        : null;
+                const managementStatusText = managementModal
+                        ? managementModal.querySelector("[data-management-status-text]")
+                        : null;
+                const managementStatusBaseClasses = managementStatus
+                        ? Array.from(managementStatus.classList).filter(
+                                (cls) => !cls.startsWith("guarantee-management__status--")
+                        )
+                        : [];
                 const MANAGEMENT_MODAL_TRANSITION = 260;
                 let managementModalCloseTimer = null;
                 let managementModalTrigger = null;
@@ -3361,9 +3375,7 @@ const ADD_DOC_KEY = "add-document";
                                                 detailCache.set(id, data);
                                                 panel.innerHTML = renderFullDetail(data, rowData);
                                                 setupTransferCountdown(panel);
-                                                panel.dataset.matricula =
-                                                        data.matricula || rowData.matricula || "";
-                                                panel.dataset.plan = data.plan || rowData.plan || "";
+                                                applyPanelMetadata(panel, data, rowData);
                                                 syncPdfModalDocs(panel);
                                         });
                                 })
@@ -3507,9 +3519,7 @@ const ADD_DOC_KEY = "add-document";
                                                 data,
                                                 rowData
                                         );
-                                        panel.dataset.matricula =
-                                                data.matricula || rowData.matricula || "";
-                                        panel.dataset.plan = data.plan || rowData.plan || "";
+                                        applyPanelMetadata(panel, data, rowData);
                                         panel.dataset.loadedId = id;
                                         setupTransferCountdown(panel);
                                         syncPdfModalDocs(panel);
@@ -4077,6 +4087,69 @@ const ADD_DOC_KEY = "add-document";
                         activateManagementTab(managementDefaultTab);
                 }
 
+                function resetManagementContext() {
+                        if (managementPlateDisplay) {
+                                managementPlateDisplay.textContent = "— — —";
+                        }
+                        if (managementStatusText) {
+                                managementStatusText.textContent = "Estado pendiente";
+                        }
+                        if (managementStatus) {
+                                const baseClasses =
+                                        managementStatusBaseClasses.length > 0
+                                                ? managementStatusBaseClasses.join(" ")
+                                                : "guarantee-management__status";
+                                managementStatus.className = baseClasses;
+                        }
+                }
+
+                function syncManagementContext(trigger, explicitPanel) {
+                        if (!managementModal) {
+                                return;
+                        }
+                        let sourcePanel = explicitPanel || null;
+                        if (!sourcePanel && trigger && typeof trigger.closest === "function") {
+                                sourcePanel = trigger.closest(".guarantee-detail__panel");
+                        }
+                        if (!sourcePanel && typeof activePanel !== "undefined") {
+                                sourcePanel = activePanel;
+                        }
+                        const loadedId = sourcePanel && sourcePanel.dataset.loadedId
+                                ? sourcePanel.dataset.loadedId
+                                : "";
+                        const relatedRow = loadedId ? findRowById(loadedId) : null;
+                        const plateValue =
+                                (sourcePanel && sourcePanel.dataset.matricula) ||
+                                (relatedRow && relatedRow.dataset.matricula) ||
+                                "— — —";
+                        const estadoLabel =
+                                (sourcePanel && sourcePanel.dataset.estado) ||
+                                (relatedRow && relatedRow.dataset.estado) ||
+                                "";
+                        const estadoClaseSource =
+                                (sourcePanel && sourcePanel.dataset.estadoclase) ||
+                                (relatedRow && relatedRow.dataset.estadoclase) ||
+                                estadoLabel ||
+                                "pendiente-pago";
+                        if (managementPlateDisplay) {
+                                const formattedPlate = plateValue && plateValue !== "-" ? plateValue : "— — —";
+                                managementPlateDisplay.textContent = formattedPlate;
+                        }
+                        if (managementStatusText) {
+                                managementStatusText.textContent = estadoLabel || "Estado pendiente";
+                        }
+                        if (managementStatus) {
+                                const normalizedState = normalizeEstadoClase(estadoClaseSource || "pendiente-pago");
+                                const nextClasses = managementStatusBaseClasses.length
+                                        ? managementStatusBaseClasses.slice()
+                                        : ["guarantee-management__status"];
+                                if (normalizedState) {
+                                        nextClasses.push(`guarantee-management__status--${normalizedState}`);
+                                }
+                                managementStatus.className = nextClasses.join(" ");
+                        }
+                }
+
                 function openManagementModal(trigger) {
                         if (!canAccessManagementHub || !managementModal) {
                                 return;
@@ -4089,6 +4162,7 @@ const ADD_DOC_KEY = "add-document";
                                 managementModalCloseTimer = null;
                         }
                         managementModalTrigger = trigger || managementModalTrigger;
+                        syncManagementContext(trigger);
                         managementModal.dataset.state = "open";
                         managementModal.setAttribute("aria-hidden", "false");
                         document.body.classList.add("has-management-modal-open");
@@ -4120,6 +4194,7 @@ const ADD_DOC_KEY = "add-document";
                                 managementModalTrigger.focus();
                         }
                         managementModalTrigger = null;
+                        resetManagementContext();
                         if (managementDefaultTab) {
                                 activateManagementTab(managementDefaultTab);
                         }
@@ -4272,6 +4347,69 @@ const ADD_DOC_KEY = "add-document";
                                .replace(/[\u0300-\u036f]/g, "")
                                .replace(/[^a-z0-9]+/g, "-")
                                .replace(/^-+|-+$/g, "");
+               }
+
+               function getEstadoMeta(detailData = {}, rowData = {}) {
+                       const detail = detailData && typeof detailData === "object" ? detailData : {};
+                       const row = rowData && typeof rowData === "object" ? rowData : {};
+                       const rawDetailEstado = Object.prototype.hasOwnProperty.call(detail, "estado")
+                               ? detail.estado
+                               : undefined;
+                       let estadoLabel = "";
+                       let estadoValue = "";
+                       if (rawDetailEstado && typeof rawDetailEstado === "object") {
+                               if (typeof rawDetailEstado.label === "string") {
+                                       estadoLabel = rawDetailEstado.label.trim();
+                               }
+                               if (typeof rawDetailEstado.value === "string") {
+                                       estadoValue = rawDetailEstado.value;
+                               }
+                       } else if (typeof rawDetailEstado === "string") {
+                               estadoValue = rawDetailEstado;
+                       }
+                       if (!estadoLabel && typeof row.estado === "string" && row.estado.trim() !== "") {
+                               estadoLabel = row.estado.trim();
+                       }
+                       let fallbackValue = estadoValue;
+                       if (!fallbackValue && typeof detail.estadoclase === "string") {
+                               fallbackValue = detail.estadoclase;
+                       }
+                       if (!fallbackValue && typeof row.estadoclase === "string") {
+                               fallbackValue = row.estadoclase;
+                       }
+                       if (!fallbackValue && estadoLabel) {
+                               fallbackValue = estadoLabel;
+                       }
+                       const normalizedClass = normalizeEstadoClase(fallbackValue || "pendiente-pago");
+                       let safeLabel = estadoLabel;
+                       if (!safeLabel && typeof rawDetailEstado === "string" && rawDetailEstado.trim() !== "") {
+                               safeLabel = rawDetailEstado.trim();
+                       }
+                       if (!safeLabel) {
+                               safeLabel =
+                                       normalizedClass === "pendiente-pago"
+                                               ? "Estado pendiente"
+                                               : normalizedClass
+                                                       .replace(/-/g, " ")
+                                                       .replace(/\b\w/g, (char) => char.toUpperCase());
+                       }
+                       return {
+                               label: safeLabel || "Estado pendiente",
+                               clase: normalizedClass || "pendiente-pago",
+                       };
+               }
+
+               function applyPanelMetadata(panel, detailData, rowData) {
+                       if (!panel) {
+                               return;
+                       }
+                       const detail = detailData && typeof detailData === "object" ? detailData : {};
+                       const row = rowData && typeof rowData === "object" ? rowData : {};
+                       const estadoMeta = getEstadoMeta(detail, row);
+                       panel.dataset.matricula = detail.matricula || row.matricula || "";
+                       panel.dataset.plan = detail.plan || row.plan || "";
+                       panel.dataset.estado = estadoMeta.label;
+                       panel.dataset.estadoclase = estadoMeta.clase;
                }
 
    function initResizableColumns(table) {
@@ -7818,17 +7956,8 @@ const ADD_DOC_KEY = "add-document";
     const rawHastaIso =
         pickField("hasta_raw", "") || pickField("hasta", "");
 
-    const estadoData =
-        data.estado ??
-        rowData.estado ??
-        data.estadoclase ??
-        rowData.estadoclase ??
-        "pendiente-pago";
-    const estadoValue =
-        estadoData && typeof estadoData === "object" && "value" in estadoData
-            ? estadoData.value
-            : estadoData;
-    const estadoClase = normalizeEstadoClase(estadoValue);
+    const estadoMeta = getEstadoMeta(data, rowData);
+    const estadoClase = estadoMeta.clase;
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
     const isValidacionPendiente = estadoClase === "validacion-pendiente";
@@ -8669,9 +8798,7 @@ async function activateRow(row, options = {}) {
                         if (cachedDetail) {
                                 nextPanel.innerHTML = renderFullDetail(cachedDetail, rowData);
                                 setupTransferCountdown(nextPanel);
-                                nextPanel.dataset.matricula =
-                                        cachedDetail.matricula || rowData.matricula || "";
-                                nextPanel.dataset.plan = cachedDetail.plan || rowData.plan || "";
+                                applyPanelMetadata(nextPanel, cachedDetail, rowData);
                                 syncPdfModalDocs(nextPanel);
                         } else {
                                 const fallbackPlate =
@@ -8682,8 +8809,7 @@ async function activateRow(row, options = {}) {
                                 }
                                 nextPanel.innerHTML = renderEmptyDetail("loading", loadingOptions);
                                 nextPanel.classList.add("is-loading");
-                                nextPanel.dataset.matricula = rowData.matricula || fallbackPlate || "";
-                                nextPanel.dataset.plan = rowData.plan || "";
+                                applyPanelMetadata(nextPanel, null, rowData);
                                 syncPdfModalDocs(nextPanel);
                         }
 
@@ -8734,9 +8860,7 @@ async function activateRow(row, options = {}) {
                                         if (nextPanel.dataset.loadedId === String(cacheKey)) {
                                                 nextPanel.innerHTML = renderFullDetail(data, rowData);
                                                 setupTransferCountdown(nextPanel);
-                                                nextPanel.dataset.matricula =
-                                                        data.matricula || rowData.matricula || "";
-                                                nextPanel.dataset.plan = data.plan || rowData.plan || "";
+                                                applyPanelMetadata(nextPanel, data, rowData);
                                                 syncPdfModalDocs(nextPanel);
                                                 nextPanel.classList.remove("is-loading");
                                         }
