@@ -32,6 +32,8 @@ class PushMessageFactory
             case 'guarantee.created':
             case 'guarantee.contracted':
                 return $this->build_guarantee_contracted($activity_record);
+            case 'guarantee.initiated':
+                return $this->build_guarantee_initiated($activity_record);
             case 'payment.recorded':
                 return $this->build_payment_recorded($activity_record);
             case 'payment.reported':
@@ -238,6 +240,73 @@ class PushMessageFactory
 
         return [
             'title' => __('Nueva garantía', 'garantias-online-360vo'),
+            'body'  => $body,
+            'link'  => $link,
+            'icon'      => Svg::data_uri('new_shield'),
+            'icon_slug' => 'new_shield',
+            'tone'      => 'primary',
+            'badge'     => __('Nuevo', 'garantias-online-360vo'),
+            'meta'      => $meta,
+            'actions' => [
+                [
+                    'action' => 'view',
+                    'title'  => __('Ver garantía', 'garantias-online-360vo'),
+                    'url'    => $link,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    private function build_guarantee_initiated(array $record): array
+    {
+        $context = $this->decode_context($record['context'] ?? '');
+        $guarantee_id = isset($record['guarantee_id']) ? (int) $record['guarantee_id'] : 0;
+
+        $customer = '';
+        if (! empty($context['initiated_customer_name'])) {
+            $customer = $this->sanitize_plain_text((string) $context['initiated_customer_name']);
+        }
+        if ($customer === '' && ! empty($context['initiator_label'])) {
+            $customer = $this->sanitize_plain_text((string) $context['initiator_label']);
+        }
+        if ($customer === '') {
+            $customer = __('Cliente sin identificar', 'garantias-online-360vo');
+        }
+
+        $state_label = '';
+        if (! empty($context['initiated_state_label'])) {
+            $state_label = $this->sanitize_plain_text((string) $context['initiated_state_label']);
+        }
+        if ($state_label === '') {
+            $state_slug = isset($context['initiated_state']) ? sanitize_key((string) $context['initiated_state']) : '';
+            $state_label = $this->status_label($state_slug !== '' ? $state_slug : 'sin_finalizar');
+        }
+        if ($state_label === '') {
+            $state_label = __('Sin finalizar', 'garantias-online-360vo');
+        }
+
+        $link = $this->build_guarantee_link($guarantee_id, $context);
+
+        $body = sprintf(
+            /* translators: 1: customer name, 2: guarantee state label */
+            __('<strong>%1$s</strong> ha iniciado una nueva contratación de garantía. Estado: %2$s', 'garantias-online-360vo'),
+            esc_html($customer),
+            esc_html($state_label)
+        );
+
+        $meta = [];
+        if ($customer !== '') {
+            $meta[] = $this->meta_entry(__('Cliente', 'garantias-online-360vo'), $customer, 'client');
+        }
+        if ($state_label !== '') {
+            $meta[] = $this->meta_entry(__('Estado', 'garantias-online-360vo'), $state_label, 'status');
+        }
+
+        return [
+            'title' => __('Nueva garantía iniciada', 'garantias-online-360vo'),
             'body'  => $body,
             'link'  => $link,
             'icon'      => Svg::data_uri('new_shield'),

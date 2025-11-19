@@ -30,6 +30,7 @@ class GuaranteeRestController
     const TRANSFER_RECEIPT_EXTENSION_META = '_go360_transfer_receipt_extension';
     const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
     const SUMMARY_TRANSIENT = 'go_gsummary_admin';
+    const CHANGES_OPTION = 'go_gchanges_state';
     const SUMMARY_PROFESSIONAL_TRANSIENT_PREFIX = 'go_gsummary_prof_';
     const RECEIPT_ALLOWED_MIMES = [
         'pdf'  => 'application/pdf',
@@ -40,6 +41,7 @@ class GuaranteeRestController
     const RECEIPT_MAX_BYTES = 10485760; // 10 MB
 
     private static $cache_hooks_registered = false;
+    private static $changes_state_cache = null;
 
     public static function register_routes()
     {
@@ -97,6 +99,17 @@ class GuaranteeRestController
                     'methods'             => WP_REST_Server::READABLE,
                     'callback'            => [__CLASS__, 'get_summary'],
                     'permission_callback' => [__CLASS__, 'can_view_summary'],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/changes',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'get_changes'],
+                    'permission_callback' => [__CLASS__, 'can_list'],
                 ],
             ]
         );
@@ -1975,6 +1988,9 @@ class GuaranteeRestController
         $pending_payment_event   = null;
         $payment_method          = '';
         $previous_cobro          = 0;
+        $cliente                 = [];
+        $should_log_initiated    = false;
+        $initiated_context       = [];
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
@@ -2415,6 +2431,17 @@ class GuaranteeRestController
             }
         }
 
+        if (
+            $new_contract_state === 'sin_finalizar'
+            && $previous_contract_state !== 'sin_finalizar'
+        ) {
+            $should_log_initiated = true;
+            $initiated_context = [
+                'customer_name' => self::resolve_initiated_customer_name($post_id, $cliente),
+                'state_label'   => __('Sin finalizar', 'garantias-online-360vo'),
+            ];
+        }
+
         $vendor_meta = $post_id
             ? get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true)
             : 0;
@@ -2503,6 +2530,25 @@ class GuaranteeRestController
 
         // Clear cached list and detail responses so subsequent fetches reflect the update.
         self::clear_list_transients($post_id, null, true);
+
+        if ($should_log_initiated) {
+            $payload = [
+                'state'       => 'sin_finalizar',
+                'state_label' => $initiated_context['state_label'] ?? __('Sin finalizar', 'garantias-online-360vo'),
+            ];
+
+            $customer_name = $initiated_context['customer_name'] ?? '';
+            if ($customer_name !== '') {
+                $payload['customer_name'] = $customer_name;
+            }
+
+            GuaranteeLogger::log(
+                get_current_user_id(),
+                $post_id,
+                'initiated',
+                wp_json_encode($payload)
+            );
+        }
 
         $firma_sello = [
             'add_firma_sello' => false,
@@ -4964,6 +5010,81 @@ class GuaranteeRestController
         return is_string($current) ? $current : '';
     }
 
+    private static function resolve_initiated_customer_name(int $post_id, array $cliente): string
+    {
+        $candidates = [];
+
+        if (! empty($cliente)) {
+            $fields = [
+                'nombre_y_apellidos',
+                'nombre_completo',
+                'nombre_apellidos',
+                'nombre_comprador',
+                'nombre',
+                'comprador_nombre',
+            ];
+            foreach ($fields as $field_key) {
+                if (! empty($cliente[$field_key])) {
+                    $candidates[] = $cliente[$field_key];
+                }
+            }
+        }
+
+        if ($post_id > 0) {
+            $meta_keys = [
+                'datos_cliente_nombre_y_apellidos',
+                'datos_cliente_nombre',
+                'datos_cliente_nombre_completo',
+                'datos_cliente_nombre_apellidos',
+                'nombre_comprador',
+                'cliente_nombre',
+            ];
+            foreach ($meta_keys as $meta_key) {
+                $value = get_post_meta($post_id, $meta_key, true);
+                if ($value !== '' && $value !== null) {
+                    $candidates[] = $value;
+                }
+            }
+
+            if (function_exists('get_field')) {
+                $cliente_field = get_field('datos_cliente', $post_id);
+                if (is_array($cliente_field) && ! empty($cliente_field)) {
+                    $candidates[] = $cliente_field;
+                }
+            }
+        }
+
+        $nested_keys = [
+            'nombre_y_apellidos',
+            'nombre_completo',
+            'nombre_apellidos',
+            'nombre',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                foreach ($nested_keys as $nested_key) {
+                    if (! empty($candidate[$nested_key])) {
+                        $value = sanitize_text_field((string) $candidate[$nested_key]);
+                        $value = trim($value);
+                        if ($value !== '' && $value !== '-') {
+                            return $value;
+                        }
+                    }
+                }
+                continue;
+            }
+
+            $value = sanitize_text_field((string) $candidate);
+            $value = trim($value);
+            if ($value !== '' && $value !== '-') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
     private static function resolve_sort_config(string $order_by, string $order): array
     {
         $order = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
@@ -5258,6 +5379,115 @@ class GuaranteeRestController
         );
     }
 
+    public static function get_changes($request)
+    {
+        $state    = self::get_changes_state();
+        $counts   = wp_count_posts(\GarantiasOnline360VO\GuaranteeCPT::POST_TYPE);
+        $statuses = self::get_list_post_statuses();
+        $total    = 0;
+
+        if ($counts instanceof \stdClass) {
+            foreach ($statuses as $status) {
+                if (isset($counts->{$status})) {
+                    $total += (int) $counts->{$status};
+                }
+            }
+        } elseif (is_array($counts)) {
+            foreach ($statuses as $status) {
+                if (isset($counts[$status])) {
+                    $total += (int) $counts[$status];
+                }
+            }
+        }
+
+        return rest_ensure_response([
+            'version'       => $state['version'],
+            'last_modified' => $state['last_modified'],
+            'total'         => $total,
+        ]);
+    }
+
+    private static function get_changes_state(): array
+    {
+        if (is_array(self::$changes_state_cache)) {
+            return self::$changes_state_cache;
+        }
+
+        $stored = get_option(self::CHANGES_OPTION);
+        $state  = [];
+        if (is_array($stored)) {
+            if (isset($stored['version']) && is_scalar($stored['version'])) {
+                $state['version'] = (string) $stored['version'];
+            }
+            if (isset($stored['last_modified']) && is_string($stored['last_modified'])) {
+                $state['last_modified'] = $stored['last_modified'];
+            }
+        }
+
+        if (empty($state['version']) || empty($state['last_modified'])) {
+            $normalized = self::normalize_changes_state($state);
+            update_option(self::CHANGES_OPTION, $normalized, false);
+            self::$changes_state_cache = $normalized;
+            return $normalized;
+        }
+
+        $normalized = self::normalize_changes_state($state);
+        if ($normalized['version'] !== $state['version'] || $normalized['last_modified'] !== $state['last_modified']) {
+            update_option(self::CHANGES_OPTION, $normalized, false);
+        }
+
+        self::$changes_state_cache = $normalized;
+        return $normalized;
+    }
+
+    private static function normalize_changes_state(array $state = []): array
+    {
+        $version       = isset($state['version']) ? (string) $state['version'] : '';
+        $last_modified = isset($state['last_modified']) ? (string) $state['last_modified'] : '';
+
+        if ($last_modified === '') {
+            $last_modified = get_lastpostmodified('gmt', \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE);
+            if (!is_string($last_modified) || $last_modified === '') {
+                $last_modified = current_time('mysql', true);
+            }
+        }
+
+        if ($version === '') {
+            $version = sprintf('%.6F', microtime(true));
+        }
+
+        return [
+            'version'       => $version,
+            'last_modified' => $last_modified,
+        ];
+    }
+
+    private static function bump_changes_state($last_modified)
+    {
+        $normalized_last_modified = '';
+        if (is_string($last_modified) && $last_modified !== '') {
+            $normalized_last_modified = $last_modified;
+        }
+        if ($normalized_last_modified === '') {
+            $normalized_last_modified = current_time('mysql', true);
+        }
+
+        $state = [
+            'version'       => sprintf('%.6F', microtime(true)),
+            'last_modified' => $normalized_last_modified,
+        ];
+
+        update_option(self::CHANGES_OPTION, $state, false);
+        self::$changes_state_cache = $state;
+
+        return $state;
+    }
+
+    private static function get_list_post_statuses(): array
+    {
+        return ['draft', 'publish', 'pending', 'future'];
+    }
+
     /**
      * Limpia todos los transients del listado al guardar una garantía.
      */
@@ -5272,6 +5502,14 @@ class GuaranteeRestController
             ));
         }
         delete_transient(self::SUMMARY_TRANSIENT);
+        $last_modified = '';
+        if ($post_id) {
+            $last_modified = get_post_modified_time('Y-m-d H:i:s', true, $post_id);
+            if (!is_string($last_modified)) {
+                $last_modified = '';
+            }
+        }
+        self::bump_changes_state($last_modified);
     }
     public static function clear_list_transients_on_delete($post_id)
     {

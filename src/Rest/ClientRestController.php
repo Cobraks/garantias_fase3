@@ -1642,22 +1642,22 @@ class ClientRestController
         $stored = get_transient(self::get_presence_transient_key($user_id));
         if (! is_array($stored)) {
             self::$presence_cache[$user_id] = [
-                'status'    => 'unknown',
-                'timestamp' => 0,
+                'status'    => 'inactive',
+                'timestamp' => time(),
             ];
 
             return self::$presence_cache[$user_id];
         }
 
-        $status = isset($stored['status']) ? (string) $stored['status'] : 'unknown';
+        $status = isset($stored['status']) ? (string) $stored['status'] : 'inactive';
         $timestamp = isset($stored['timestamp']) ? (int) $stored['timestamp'] : 0;
 
         if (! in_array($status, ['active', 'inactive'], true)) {
-            $status = 'unknown';
+            $status = 'inactive';
         }
 
-        if ($timestamp < 0) {
-            $timestamp = 0;
+        if ($timestamp <= 0) {
+            $timestamp = time();
         }
 
         self::$presence_cache[$user_id] = [
