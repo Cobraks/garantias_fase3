@@ -8706,11 +8706,6 @@ const ADD_DOC_KEY = "add-document";
                 </div>
             </details>
         </section>`;
-    const statusSectionHtml = `<section class="detail__section detail__section--status">`
-        + `<h3>Estado</h3>`
-        + `<div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>`
-        + `</section>`;
-
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
