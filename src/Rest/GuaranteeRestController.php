@@ -3925,8 +3925,25 @@ class GuaranteeRestController
             ? ($cambio_raw['value'] ?? $cambio_raw['label'] ?? '')
             : $cambio_raw;
 
-        $traccion = get_post_meta($id, 'datos_vehiculo_traccion', true);
-        $traccion_camion = get_post_meta($id, 'datos_vehiculo_traccion_camion', true);
+        $traccion_raw = function_exists('get_field')
+            ? get_field('datos_vehiculo_traccion', $id)
+            : get_post_meta($id, 'datos_vehiculo_traccion', true);
+        $traccion_label = is_array($traccion_raw)
+            ? ($traccion_raw['label'] ?? $traccion_raw['value'] ?? '')
+            : $traccion_raw;
+        $traccion_value = is_array($traccion_raw)
+            ? ($traccion_raw['value'] ?? $traccion_raw['label'] ?? '')
+            : $traccion_raw;
+
+        $traccion_camion_raw = function_exists('get_field')
+            ? get_field('datos_vehiculo_traccion_camion', $id)
+            : get_post_meta($id, 'datos_vehiculo_traccion_camion', true);
+        $traccion_camion_label = is_array($traccion_camion_raw)
+            ? ($traccion_camion_raw['label'] ?? $traccion_camion_raw['value'] ?? '')
+            : $traccion_camion_raw;
+        $traccion_camion_value = is_array($traccion_camion_raw)
+            ? ($traccion_camion_raw['value'] ?? $traccion_camion_raw['label'] ?? '')
+            : $traccion_camion_raw;
         $potencia = get_post_meta($id, 'datos_vehiculo_potencia', true);
         $potencia_kw = get_post_meta($id, 'datos_vehiculo_potencia_kw', true);
         $cilindrada = get_post_meta($id, 'datos_vehiculo_cilindrada', true);
@@ -4149,8 +4166,10 @@ class GuaranteeRestController
             'combustible_value' => $combustible_value ?: '',
             'cambio' => $cambio_label ?: '-',
             'cambio_value' => $cambio_value ?: '',
-            'traccion' => $traccion ?: '',
-            'traccion_camion' => $traccion_camion ?: '',
+            'traccion' => $traccion_label ?: '-',
+            'traccion_value' => $traccion_value ?: '',
+            'traccion_camion' => $traccion_camion_label ?: '-',
+            'traccion_camion_value' => $traccion_camion_value ?: '',
             'potencia' => $potencia ?: '-',
             'potencia_kw' => $potencia_kw ?: '',
             'cilindrada' => $cilindrada ?: '-',

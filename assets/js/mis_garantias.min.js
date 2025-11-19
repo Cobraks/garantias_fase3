@@ -4556,6 +4556,16 @@ const ADD_DOC_KEY = "add-document";
                         if (data.cambio && typeof data.cambio === "object") {
                                 data.cambio = data.cambio.label || data.cambio.name || data.cambio.value || data.cambio;
                         }
+                        if (data.traccion && typeof data.traccion === "object") {
+                                data.traccion = data.traccion.label || data.traccion.name || data.traccion.value || data.traccion;
+                        }
+                        if (data.traccion_camion && typeof data.traccion_camion === "object") {
+                                data.traccion_camion =
+                                        data.traccion_camion.label ||
+                                        data.traccion_camion.name ||
+                                        data.traccion_camion.value ||
+                                        data.traccion_camion;
+                        }
                         if (data.tipo && typeof data.tipo === "object") {
                                 data.tipo = data.tipo.label || data.tipo.name || data.tipo.value || data.tipo;
                         }
@@ -7352,6 +7362,17 @@ const ADD_DOC_KEY = "add-document";
         return fallback;
     };
 
+    const normalizeTipoValue = (value) => {
+        if (typeof value !== "string") {
+            return "";
+        }
+        return value
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim();
+    };
+
     const mesesTotales = getDurationMeses(
         data.desde ?? rowData.desde,
         data.hasta ?? rowData.hasta
@@ -7502,6 +7523,32 @@ const ADD_DOC_KEY = "add-document";
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
+    const rawTipoValue =
+        data.tipo_value ??
+        rowData.tipo_value ??
+        "";
+    const normalizedTipoValue = normalizeTipoValue(rawTipoValue);
+    const tipoLabelNormalized = normalizeTipoValue(pickField("tipo", ""));
+    const isTipoCamion =
+        normalizedTipoValue === "camion" || tipoLabelNormalized === "camion";
+    const primaryTraccionField = isTipoCamion
+        ? "traccion_camion"
+        : "traccion";
+    const secondaryTraccionField = isTipoCamion
+        ? "traccion"
+        : "traccion_camion";
+    const traccionValue = (() => {
+        const primary = pickField(primaryTraccionField, "");
+        if (cleanDisplayValue(primary)) {
+            return primary;
+        }
+        const secondary = pickField(secondaryTraccionField, "");
+        if (cleanDisplayValue(secondary)) {
+            return secondary;
+        }
+        return "-";
+    })();
+    const traccionRowHtml = `<li><strong>Tracción:</strong> ${traccionValue}</li>`;
     const docsSource = Array.isArray(data.documents)
         ? data.documents
         : Array.isArray(rowData.documents)
@@ -7713,6 +7760,7 @@ const ADD_DOC_KEY = "add-document";
                         <ul>
                                 <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
                                 <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                ${traccionRowHtml}
                                 <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
                                 <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
@@ -7990,6 +8038,7 @@ const ADD_DOC_KEY = "add-document";
                         <ul>
                                 <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
                                 <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                ${traccionRowHtml}
                                 <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
                                 <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
