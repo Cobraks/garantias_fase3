@@ -250,6 +250,14 @@ const ADD_DOC_KEY = "add-document";
                                 "go_comercial",
                                 "go_director_comercial",
                         ].includes(normalizedRole);
+                const canAccessManagementHub =
+                        [
+                                "administrator",
+                                "admin",
+                                "go_garantias",
+                                "go_comercial",
+                                "go_director_comercial",
+                        ].includes(normalizedRole);
                 const canUploadDocuments =
                         ["administrator", "admin", "go_garantias"].includes(normalizedRole);
                 const isCoreAdmin =
@@ -327,6 +335,10 @@ const ADD_DOC_KEY = "add-document";
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
                 const deleteIcon =
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>';
+                const managementShieldIcon =
+                        '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m438-338 226-226-57-57-169 169-84-84-57 57 141 141Zm42 258q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></svg>';
+                const managementArrowIcon =
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M360-200 320-240 520-440 320-640l40-40 240 240-240 240Z"/></svg>';
                 const ADMIN_SUMMARY_ACTIONS = [
                         {
                                 key: "draft",
@@ -407,6 +419,36 @@ const ADD_DOC_KEY = "add-document";
                 const confirmModalController = setupConfirmModal(
                         document.querySelector(".confirm-modal")
                 );
+                const managementModal = document.querySelector("[data-management-modal]");
+                const managementDialog = managementModal
+                        ? managementModal.querySelector("[data-management-dialog]")
+                        : null;
+                const managementTabsNav = managementModal
+                        ? managementModal.querySelector("[data-management-tabs]")
+                        : null;
+                const managementPanels = managementModal
+                        ? Array.from(managementModal.querySelectorAll("[data-management-panel]"))
+                        : [];
+                const managementPanelsWrapper = managementModal
+                        ? managementModal.querySelector("[data-management-panels]")
+                        : null;
+                const managementTitleNode = managementModal
+                        ? managementModal.querySelector("[data-management-title]")
+                        : null;
+                const managementStatusChip = managementModal
+                        ? managementModal.querySelector("[data-management-status-chip]")
+                        : null;
+                const managementStatusText = managementStatusChip
+                        ? managementStatusChip.querySelector("[data-management-status-text]")
+                        : null;
+                const managementDefaultTab = managementTabsNav
+                        ? managementTabsNav.querySelector("[data-management-tab]")
+                        : null;
+                const MANAGEMENT_MODAL_TRANSITION = 260;
+                const MANAGEMENT_PANEL_HEIGHT_DURATION = 260;
+                let managementModalCloseTimer = null;
+                let managementPanelHeightTimer = null;
+                let managementModalTrigger = null;
 
                 const PDF_CACHE_LIMIT = 12;
                 const pdfBlobCache = new Map();
@@ -3630,6 +3672,8 @@ const ADD_DOC_KEY = "add-document";
                 document.addEventListener("click", handleTransferReportClick);
                 document.addEventListener("click", handleShareClick);
                 document.addEventListener("click", handleTrashClick);
+                document.addEventListener("click", handleManagementClicks);
+                document.addEventListener("keydown", handleManagementKeydown);
 
                 function setupConfirmModal(modal) {
                         if (!modal) return null;
@@ -4015,6 +4059,223 @@ const ADD_DOC_KEY = "add-document";
                                 return;
                         }
                         runTrashRequest(context);
+                }
+
+                function activateManagementTab(tabButton) {
+                        if (!managementTabsNav || !tabButton) {
+                                return;
+                        }
+                        const target = tabButton.getAttribute("data-management-tab");
+                        if (!target) {
+                                return;
+                        }
+                        const targetPanel = managementPanels.find(
+                                (panel) => panel.getAttribute("data-management-panel") === target
+                        );
+                        if (!targetPanel) {
+                                return;
+                        }
+                        const buttons = managementTabsNav.querySelectorAll("[data-management-tab]");
+                        buttons.forEach((btn) => {
+                                const isActive = btn === tabButton;
+                                btn.setAttribute("aria-selected", isActive ? "true" : "false");
+                                btn.classList.toggle("is-active", isActive);
+                                btn.setAttribute("tabindex", isActive ? "0" : "-1");
+                        });
+                        const previousPanel = managementPanels.find(
+                                (panel) => panel.classList.contains("is-active") && !panel.hasAttribute("hidden")
+                        );
+                        const previousHeight = previousPanel
+                                ? previousPanel.offsetHeight
+                                : managementPanelsWrapper
+                                ? managementPanelsWrapper.offsetHeight
+                                : 0;
+                        managementPanels.forEach((panel) => {
+                                const matches = panel === targetPanel;
+                                panel.classList.toggle("is-active", matches);
+                                if (matches) {
+                                        panel.removeAttribute("hidden");
+                                } else {
+                                        panel.setAttribute("hidden", "hidden");
+                                }
+                        });
+                        const nextHeight = targetPanel.offsetHeight;
+                        if (managementPanelsWrapper) {
+                                if (
+                                        previousHeight &&
+                                        nextHeight &&
+                                        previousHeight !== nextHeight
+                                ) {
+                                        animateManagementPanelsHeight(previousHeight, nextHeight);
+                                } else {
+                                        resetManagementPanelsHeight();
+                                }
+                        }
+                }
+
+                function resetManagementPanelsHeight() {
+                        if (!managementPanelsWrapper) {
+                                return;
+                        }
+                        managementPanelsWrapper.style.removeProperty("height");
+                        managementPanelsWrapper.style.removeProperty("transition");
+                }
+
+                function animateManagementPanelsHeight(fromHeight, toHeight) {
+                        if (!managementPanelsWrapper) {
+                                return;
+                        }
+                        if (!fromHeight || !toHeight || fromHeight === toHeight) {
+                                resetManagementPanelsHeight();
+                                return;
+                        }
+                        managementPanelsWrapper.style.height = `${fromHeight}px`;
+                        // force reflow
+                        void managementPanelsWrapper.offsetHeight;
+                        managementPanelsWrapper.style.transition = `height ${MANAGEMENT_PANEL_HEIGHT_DURATION}ms ease`;
+                        managementPanelsWrapper.style.height = `${toHeight}px`;
+                        if (managementPanelHeightTimer) {
+                                clearTimeout(managementPanelHeightTimer);
+                        }
+                        managementPanelHeightTimer = window.setTimeout(() => {
+                                resetManagementPanelsHeight();
+                                managementPanelHeightTimer = null;
+                        }, MANAGEMENT_PANEL_HEIGHT_DURATION + 50);
+                }
+
+                function updateManagementSummaryFromTrigger(trigger) {
+                        if (!trigger) {
+                                return;
+                        }
+                        const plate = (trigger.getAttribute("data-management-plate") || "").trim();
+                        const statusLabel = (trigger.getAttribute("data-management-status-label") || "").trim();
+                        const statusClass = (trigger.getAttribute("data-management-status-class") || "").trim();
+                        if (managementTitleNode) {
+                                const template = managementTitleNode.getAttribute("data-management-title-template") || "";
+                                const fallback =
+                                        managementTitleNode.getAttribute("data-management-default-title") ||
+                                        managementTitleNode.textContent ||
+                                        "";
+                                if (plate) {
+                                        if (template && template.includes("%s")) {
+                                                managementTitleNode.textContent = template.replace("%s", plate);
+                                        } else {
+                                                managementTitleNode.textContent = `Garantía ${plate}`;
+                                        }
+                                } else if (fallback) {
+                                        managementTitleNode.textContent = fallback;
+                                }
+                        }
+                        if (managementStatusText) {
+                                const defaultStatus =
+                                        managementStatusText.getAttribute("data-default-status") ||
+                                        managementStatusText.textContent ||
+                                        "";
+                                managementStatusText.textContent = statusLabel || defaultStatus;
+                        }
+                        if (managementStatusChip) {
+                                const baseClass = managementStatusChip.getAttribute("data-status-base") || "";
+                                const slug = statusClass || managementStatusChip.getAttribute("data-current-status") || "pendiente-pago";
+                                const nextClass = baseClass
+                                        ? `${baseClass} guarantee-detail__badge--${slug}`.trim()
+                                        : `guarantee-detail__badge guarantee-detail__badge--${slug}`;
+                                managementStatusChip.className = nextClass;
+                                if (slug) {
+                                        managementStatusChip.setAttribute("data-current-status", slug);
+                                } else {
+                                        managementStatusChip.removeAttribute("data-current-status");
+                                }
+                        }
+                }
+
+                if (managementDefaultTab) {
+                        activateManagementTab(managementDefaultTab);
+                }
+
+                function openManagementModal(trigger) {
+                        if (!canAccessManagementHub || !managementModal) {
+                                return;
+                        }
+                        if (managementModal.dataset.state === "open") {
+                                return;
+                        }
+                        if (managementModalCloseTimer) {
+                                clearTimeout(managementModalCloseTimer);
+                                managementModalCloseTimer = null;
+                        }
+                        if (trigger) {
+                                updateManagementSummaryFromTrigger(trigger);
+                        }
+                        managementModalTrigger = trigger || managementModalTrigger;
+                        managementModal.dataset.state = "open";
+                        managementModal.setAttribute("aria-hidden", "false");
+                        document.body.classList.add("has-management-modal-open");
+                        if (typeof requestAnimationFrame === "function") {
+                                requestAnimationFrame(() => {
+                                        if (managementDialog) {
+                                                managementDialog.focus();
+                                        }
+                                });
+                        } else if (managementDialog) {
+                                managementDialog.focus();
+                        }
+                }
+
+                function closeManagementModal() {
+                        if (!managementModal || managementModal.dataset.state !== "open") {
+                                return;
+                        }
+                        managementModal.dataset.state = "closing";
+                        managementModal.setAttribute("aria-hidden", "true");
+                        document.body.classList.remove("has-management-modal-open");
+                        resetManagementPanelsHeight();
+                        managementModalCloseTimer = window.setTimeout(() => {
+                                if (!managementModal) {
+                                        return;
+                                }
+                                managementModal.dataset.state = "closed";
+                        }, MANAGEMENT_MODAL_TRANSITION);
+                        if (managementModalTrigger && typeof managementModalTrigger.focus === "function") {
+                                managementModalTrigger.focus();
+                        }
+                        managementModalTrigger = null;
+                        if (managementDefaultTab) {
+                                activateManagementTab(managementDefaultTab);
+                        }
+                }
+
+                function handleManagementClicks(event) {
+                        if (!canAccessManagementHub || !managementModal) {
+                                return;
+                        }
+                        const trigger = event.target.closest("[data-management-open]");
+                        if (trigger) {
+                                event.preventDefault();
+                                openManagementModal(trigger);
+                                return;
+                        }
+                        const dismiss = event.target.closest("[data-management-dismiss]");
+                        if (dismiss && managementModal.dataset.state === "open") {
+                                event.preventDefault();
+                                closeManagementModal();
+                        }
+                        if (managementTabsNav) {
+                                const tabButton = event.target.closest("[data-management-tab]");
+                                if (tabButton && managementTabsNav.contains(tabButton)) {
+                                        event.preventDefault();
+                                        activateManagementTab(tabButton);
+                                }
+                        }
+                }
+
+                function handleManagementKeydown(event) {
+                        if (!canAccessManagementHub || !managementModal) {
+                                return;
+                        }
+                        if (event.key === "Escape" && managementModal.dataset.state === "open") {
+                                event.preventDefault();
+                                closeManagementModal();
+                        }
                 }
 
                 function detailCopyText(text) {
@@ -7969,6 +8230,31 @@ const ADD_DOC_KEY = "add-document";
     const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
+    const showManagementHub = canAccessManagementHub;
+    const managementPlate = pickField("matricula", "").trim();
+    const managementStatusLabel = pickField("estado", "Desconocido");
+    const managementButtonAttrs = ["data-management-open"];
+    if (managementPlate) {
+        managementButtonAttrs.push(`data-management-plate="${escapeAttr(managementPlate)}"`);
+    }
+    if (managementStatusLabel) {
+        managementButtonAttrs.push(`data-management-status-label="${escapeAttr(managementStatusLabel)}"`);
+    }
+    if (estadoClase) {
+        managementButtonAttrs.push(`data-management-status-class="${escapeAttr(estadoClase)}"`);
+    }
+    const managementSectionHtml = showManagementHub
+        ? `<section class="detail__section detail__section--manage" aria-live="polite">`
+              + `<button type="button" class="detail__manage-button" ${managementButtonAttrs.join(" ")}>
+                        <span class="detail__manage-icon" aria-hidden="true">${managementShieldIcon}</span>
+                        <span class="detail__manage-copy">
+                                <strong>Gestionar garantía</strong>
+                                <span>Operativa interna y ajustes</span>
+                        </span>
+                        <span class="detail__manage-caret" aria-hidden="true">${managementArrowIcon}</span>
+                </button>`
+          + `</section>`
+        : "";
 
     const sinFinalButtons = [];
     if (canContinueGuarantee) {
@@ -8012,6 +8298,7 @@ const ADD_DOC_KEY = "add-document";
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${managementSectionHtml}
                 ${coverageAlertHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
@@ -8291,6 +8578,7 @@ const ADD_DOC_KEY = "add-document";
                         ${coverageHtml}
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${managementSectionHtml}
                 ${paymentHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">

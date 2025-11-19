@@ -1038,6 +1038,250 @@ if (($is_admin_user || $is_director || $is_professional)
         <div data-empty-template="no-results"><?php echo $empty_detail_no_results; ?></div>
     </div>
 
+    <div
+        class="guarantee-management"
+        data-management-modal
+        data-state="closed"
+        aria-hidden="true">
+        <div class="guarantee-management__backdrop" data-management-dismiss></div>
+        <div
+            class="guarantee-management__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="guarantee-management-title"
+            data-management-dialog
+            tabindex="-1">
+            <div class="guarantee-management__shell">
+                <header class="guarantee-management__sticky">
+                    <div class="guarantee-management__topline">
+                        <div class="guarantee-management__headline">
+                            <h2
+                                class="guarantee-management__title"
+                                id="guarantee-management-title"
+                                data-management-title
+                                data-management-title-template="<?php echo esc_attr__('Garantía %s', 'garantias-online-360vo'); ?>"
+                                data-management-default-title="<?php echo esc_attr__('Garantía — — —', 'garantias-online-360vo'); ?>">
+                                <?php esc_html_e('Garantía — — —', 'garantias-online-360vo'); ?>
+                            </h2>
+                            <span
+                                class="guarantee-management__badge guarantee-detail__badge guarantee-detail__badge--pendiente-pago"
+                                data-management-status-chip
+                                data-status-base="guarantee-management__badge guarantee-detail__badge">
+                                <span
+                                    data-management-status-text
+                                    data-default-status="<?php echo esc_attr__('Estado pendiente', 'garantias-online-360vo'); ?>">
+                                    <?php esc_html_e('Estado pendiente', 'garantias-online-360vo'); ?>
+                                </span>
+                            </span>
+                        </div>
+                        <button type="button" class="guarantee-management__close" data-management-dismiss>
+                            <?php echo Svg::icon('cerrar', 'guarantee-management__close-icon'); ?>
+                            <span class="screen-reader-text">
+                                <?php esc_html_e('Cerrar panel de gestión', 'garantias-online-360vo'); ?>
+                            </span>
+                        </button>
+                    </div>
+                    <nav
+                        class="guarantee-management__tabs"
+                        role="tablist"
+                        aria-label="<?php esc_attr_e('Opciones de gestión', 'garantias-online-360vo'); ?>"
+                        data-management-tabs>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected="true"
+                            aria-controls="management-panel-actions"
+                            data-management-tab="actions">
+                            <?php esc_html_e('Acciones', 'garantias-online-360vo'); ?>
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected="false"
+                            aria-controls="management-panel-notes"
+                            data-management-tab="notes">
+                            <?php esc_html_e('Notas', 'garantias-online-360vo'); ?>
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected="false"
+                            aria-controls="management-panel-breakdown"
+                            data-management-tab="breakdown">
+                            <?php esc_html_e('Desglose', 'garantias-online-360vo'); ?>
+                        </button>
+                    </nav>
+                </header>
+                <div class="guarantee-management__panels" data-management-panels>
+                    <section
+                        class="guarantee-management__panel is-active"
+                        id="management-panel-actions"
+                        role="tabpanel"
+                        data-management-panel="actions">
+                        <div class="management-actions" role="list">
+                            <button
+                                type="button"
+                                class="management-actions__item"
+                                data-management-action="certificate-error">
+                                <span class="management-actions__icon" aria-hidden="true">
+                                    <?php echo Svg::icon('check_shield'); ?>
+                                </span>
+                                <span class="management-actions__copy">
+                                    <strong><?php esc_html_e('Revisar certificado', 'garantias-online-360vo'); ?></strong>
+                                    <span><?php esc_html_e('Corrige incidencias del documento actual.', 'garantias-online-360vo'); ?></span>
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                class="management-actions__item"
+                                data-management-action="email-client">
+                                <span class="management-actions__icon" aria-hidden="true">
+                                    <?php echo Svg::icon('email'); ?>
+                                </span>
+                                <span class="management-actions__copy">
+                                    <strong><?php esc_html_e('Enviar e-mail al cliente', 'garantias-online-360vo'); ?></strong>
+                                    <span><?php esc_html_e('Activa la plantilla oficial y registra el envío.', 'garantias-online-360vo'); ?></span>
+                                </span>
+                            </button>
+                        </div>
+                        <div class="management-danger" role="list">
+                            <button type="button" class="management-danger__link" data-management-action="cancel-for-nonpayment">
+                                <span aria-hidden="true"><?php echo Svg::icon('warning'); ?></span>
+                                <span><?php esc_html_e('Cancelar garantía por impago', 'garantias-online-360vo'); ?></span>
+                            </button>
+                            <button type="button" class="management-danger__link" data-management-action="delete-guarantee">
+                                <span aria-hidden="true"><?php echo Svg::icon('trash'); ?></span>
+                                <span><?php esc_html_e('Eliminar garantía', 'garantias-online-360vo'); ?></span>
+                            </button>
+                        </div>
+                    </section>
+                    <section
+                        class="guarantee-management__panel"
+                        id="management-panel-notes"
+                        role="tabpanel"
+                        data-management-panel="notes"
+                        hidden>
+                        <div class="management-notes">
+                            <ul class="management-notes__list">
+                                <li class="management-notes__item management-notes__item--own">
+                                    <div class="management-notes__meta">
+                                        <div>
+                                            <span class="management-notes__author">Laura Méndez</span>
+                                            <span class="management-notes__time">20/03/2024 · 10:24h</span>
+                                        </div>
+                                        <button type="button" class="management-notes__remove" aria-label="<?php esc_attr_e('Eliminar nota propia', 'garantias-online-360vo'); ?>">
+                                            <?php echo Svg::icon('trash'); ?>
+                                        </button>
+                                    </div>
+                                    <p class="management-notes__body">
+                                        <?php esc_html_e('Revisado el cobro con el cliente. Esperamos justificante antes de 48h.', 'garantias-online-360vo'); ?>
+                                    </p>
+                                </li>
+                                <li class="management-notes__item">
+                                    <div class="management-notes__meta">
+                                        <div>
+                                            <span class="management-notes__author">Diego Álvarez</span>
+                                            <span class="management-notes__time">18/03/2024 · 16:05h</span>
+                                        </div>
+                                    </div>
+                                    <p class="management-notes__body">
+                                        <?php esc_html_e('Se compartió la actualización con el taller y quedó registrada la llamada.', 'garantias-online-360vo'); ?>
+                                    </p>
+                                </li>
+                            </ul>
+                            <div class="management-notes__composer">
+                                <label for="management-note-message"><?php esc_html_e('Mensaje', 'garantias-online-360vo'); ?></label>
+                                <textarea
+                                    id="management-note-message"
+                                    name="management-note-message"
+                                    rows="4"
+                                    placeholder="<?php esc_attr_e('Escribe un mensaje breve para el equipo', 'garantias-online-360vo'); ?>"
+                                ></textarea>
+                                <div class="management-notes__composer-actions">
+                                    <button type="button" class="management-notes__submit">
+                                        <?php esc_html_e('Publicar mensaje', 'garantias-online-360vo'); ?>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <section
+                        class="guarantee-management__panel"
+                        id="management-panel-breakdown"
+                        role="tabpanel"
+                        data-management-panel="breakdown"
+                        hidden>
+                        <div class="management-breakdown">
+                            <div class="management-breakdown__vehicle">
+                                <h3><?php esc_html_e('Vehículo', 'garantias-online-360vo'); ?></h3>
+                                <div class="management-breakdown__vehicle-grid">
+                                    <div class="management-breakdown__vehicle-item">
+                                        <span><?php esc_html_e('Marca', 'garantias-online-360vo'); ?></span>
+                                        <strong>Peugeot</strong>
+                                    </div>
+                                    <div class="management-breakdown__vehicle-item">
+                                        <span><?php esc_html_e('Modelo', 'garantias-online-360vo'); ?></span>
+                                        <strong>3008 Hybrid</strong>
+                                    </div>
+                                    <div class="management-breakdown__vehicle-item">
+                                        <span><?php esc_html_e('Matrícula', 'garantias-online-360vo'); ?></span>
+                                        <strong>3981 LXD</strong>
+                                    </div>
+                                    <div class="management-breakdown__vehicle-item">
+                                        <span><?php esc_html_e('VIN', 'garantias-online-360vo'); ?></span>
+                                        <strong>VF3CUHNZ6MS203811</strong>
+                                    </div>
+                                    <div class="management-breakdown__vehicle-item">
+                                        <span><?php esc_html_e('Versión', 'garantias-online-360vo'); ?></span>
+                                        <strong>GT Line</strong>
+                                    </div>
+                                    <div class="management-breakdown__vehicle-item">
+                                        <span><?php esc_html_e('Kilómetros', 'garantias-online-360vo'); ?></span>
+                                        <strong>62.150 km</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="management-breakdown__card">
+                                <h3><?php esc_html_e('Desglose económico', 'garantias-online-360vo'); ?></h3>
+                                <ul class="management-breakdown__list">
+                                    <li>
+                                        <span><?php esc_html_e('Precio base', 'garantias-online-360vo'); ?></span>
+                                        <strong>435,00 €</strong>
+                                    </li>
+                                    <li>
+                                        <span><?php esc_html_e('Recargos aplicados', 'garantias-online-360vo'); ?></span>
+                                        <strong>+ 85,00 €</strong>
+                                    </li>
+                                    <li>
+                                        <span><?php esc_html_e('Descuentos', 'garantias-online-360vo'); ?></span>
+                                        <strong>- 20,00 €</strong>
+                                    </li>
+                                    <li>
+                                        <span><?php esc_html_e('IVA (21%)', 'garantias-online-360vo'); ?></span>
+                                        <strong>92,15 €</strong>
+                                    </li>
+                                    <li class="management-breakdown__total">
+                                        <span><?php esc_html_e('Total a facturar', 'garantias-online-360vo'); ?></span>
+                                        <strong>592,15 €</strong>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                <footer class="guarantee-management__footer">
+                    <button type="button" class="guarantee-management__btn guarantee-management__btn--ghost" data-management-dismiss>
+                        <?php esc_html_e('Volver al detalle', 'garantias-online-360vo'); ?>
+                    </button>
+                    <button type="button" class="guarantee-management__btn guarantee-management__btn--primary">
+                        <?php esc_html_e('Registrar acción', 'garantias-online-360vo'); ?>
+                    </button>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+
     <div class="guarantees-mobile-search" data-mobile-search-panel>
         <div class="guarantees-mobile-search__slot" data-mobile-search-slot>
             <div class="guarantees-list__search-container" data-search-field>
