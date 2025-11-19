@@ -2470,19 +2470,6 @@ body.has-management-modal-open {
     background: rgba(var(--go-color-94a3b8-rgb, 148, 163, 184), 0.2);
     transform: translateY(-1px);
 }
-.guarantee-management__plate {
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.1rem 0.75rem;
-    border-radius: 999px;
-    border: 1px solid var(--card-border);
-    background: var(--go-color-f8fafc);
-}
 .guarantee-management__status {
     display: inline-flex;
     align-items: center;
@@ -2672,6 +2659,34 @@ body.has-management-modal-open {
 .management-actions__item--danger .management-actions__copy strong {
     color: var(--go-color-dc2626);
 }
+.management-actions__item--quiet {
+    border-color: transparent;
+    background: transparent;
+    padding-inline: 0.25rem;
+    box-shadow: none;
+}
+.management-actions__item--quiet:hover,
+.management-actions__item--quiet:focus-visible {
+    border-color: transparent;
+    background: rgba(var(--go-color-94a3b8-rgb, 148, 163, 184), 0.12);
+}
+.management-actions__item--quiet .management-actions__icon {
+    background: rgba(var(--go-color-94a3b8-rgb, 148, 163, 184), 0.15);
+    color: var(--text-color);
+}
+.management-actions__item--quiet .management-actions__copy strong {
+    color: var(--text-color);
+}
+.management-actions__item--quiet.management-actions__item--danger {
+    color: var(--go-color-dc2626);
+}
+.management-actions__item--quiet.management-actions__item--danger .management-actions__icon {
+    background: rgba(var(--go-color-dc2626-rgb, 220, 38, 38), 0.12);
+    color: var(--go-color-dc2626);
+}
+.management-actions__item--quiet.management-actions__item--danger .management-actions__copy strong {
+    color: var(--go-color-dc2626);
+}
 .management-notes {
     display: flex;
     flex-direction: column;
@@ -2684,43 +2699,65 @@ body.has-management-modal-open {
 }
 .management-note-card {
     border: 1px solid var(--card-border);
-    border-radius: 1.1rem;
-    padding: 1.25rem;
-    background: var(--go-color-f8fafc);
+    border-radius: 0.85rem;
+    padding: 1rem 1.25rem;
+    background: #fff;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-2);
+    position: relative;
+    box-shadow: 0 6px 18px -12px rgba(15, 23, 42, 0.35);
+}
+.management-note-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    border-radius: 0.85rem 0 0 0.85rem;
+    background: var(--card-border);
+}
+.management-note-card--self::before {
+    background: var(--primary-color);
 }
 .management-note-card--self {
-    border-color: rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.4);
-    background: rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.08);
+    background: rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.06);
 }
-.management-note-card__meta {
+.management-note-card__header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
     gap: var(--spacing-2);
+    align-items: flex-start;
 }
-.management-note-card__author {
-    margin: 0;
-    font-weight: 600;
+.management-note-card__identity {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
 }
-.management-note-card__tag {
-    margin: 0.15rem 0 0;
+.management-note-card__identity strong {
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+.management-note-card__identity span {
     font-size: 0.8rem;
     color: var(--text-secondary);
 }
-.management-note-card__meta-actions {
-    display: flex;
-    gap: var(--spacing-2);
+.management-note-card__meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     align-items: center;
     font-size: 0.8rem;
     color: var(--text-secondary);
 }
+.management-note-card__meta time {
+    font-variant-numeric: tabular-nums;
+}
 .management-note-card__body {
     margin: 0;
     color: var(--text-color);
-    line-height: 1.4;
+    line-height: 1.5;
 }
 .management-note-card__delete {
     border: none;
@@ -2729,7 +2766,7 @@ body.has-management-modal-open {
     font-weight: 600;
     cursor: pointer;
     padding: 0.25rem 0.35rem;
-    border-radius: 0.5rem;
+    border-radius: 0.35rem;
     transition: color 0.2s ease, background 0.2s ease;
 }
 .management-note-card__delete:hover,
@@ -2738,8 +2775,8 @@ body.has-management-modal-open {
 }
 .management-notes__composer {
     border: 1px dashed var(--card-border);
-    border-radius: 1.1rem;
-    padding: 1.25rem;
+    border-radius: 0.85rem;
+    padding: 1rem 1.25rem;
     background: rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.04);
     display: flex;
     flex-direction: column;
@@ -2752,7 +2789,7 @@ body.has-management-modal-open {
 }
 .management-notes__field textarea {
     width: 100%;
-    border-radius: 0.85rem;
+    border-radius: 0.5rem;
     border: 1px solid var(--card-border);
     padding: 0.75rem 1rem;
     resize: vertical;
@@ -2771,7 +2808,7 @@ body.has-management-modal-open {
 }
 .management-notes__submit {
     border: none;
-    border-radius: 0.65rem;
+    border-radius: 0.4rem;
     background: var(--primary-color);
     color: #fff;
     padding: 0.65rem 1.25rem;
@@ -2880,6 +2917,21 @@ body.has-management-modal-open {
 .management-breakdown__column--vehicle {
     background: var(--go-color-f8fafc);
 }
+.management-breakdown__column--vehicle .management-breakdown__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: var(--spacing-2);
+}
+.management-breakdown__column--vehicle .management-breakdown__item {
+    background: #fff;
+    border-radius: 0.65rem;
+}
+.management-breakdown__column--vehicle .management-breakdown__label {
+    font-size: 0.75rem;
+}
+.management-breakdown__column--vehicle .management-breakdown__value {
+    font-size: 0.9rem;
+}
 .management-breakdown__column--pricing .management-price-card {
     background: #fff;
 }
@@ -2898,7 +2950,7 @@ body.has-management-modal-open {
     border-top: 1px solid var(--card-border);
 }
 .guarantee-management__btn {
-    border-radius: 0.65rem;
+    border-radius: 0.4rem;
     border: 1px solid transparent;
     padding: 0.75rem 1.5rem;
     font-weight: 600;

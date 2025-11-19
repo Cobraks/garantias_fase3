@@ -1057,7 +1057,7 @@ if (($is_admin_user || $is_director || $is_professional)
                         <div class="guarantee-management__headline">
                             <h2 class="guarantee-management__title" id="guarantee-management-title">
                                 <?php esc_html_e('Garantía', 'garantias-online-360vo'); ?>
-                                <span class="guarantee-management__plate" data-management-plate>— — —</span>
+                                <span data-management-plate>— — —</span>
                             </h2>
                             <div class="guarantee-management__status guarantee-management__status--pendiente-pago" data-management-status>
                                 <span class="guarantee-management__status-dot" aria-hidden="true"></span>
@@ -1135,7 +1135,7 @@ if (($is_admin_user || $is_director || $is_professional)
                             </button>
                             <button
                                 type="button"
-                                class="management-actions__item management-actions__item--danger"
+                                class="management-actions__item management-actions__item--quiet management-actions__item--danger"
                                 data-management-action="cancel-for-nonpayment">
                                 <span class="management-actions__icon" aria-hidden="true">
                                     <?php echo Svg::icon('warning'); ?>
@@ -1147,7 +1147,7 @@ if (($is_admin_user || $is_director || $is_professional)
                             </button>
                             <button
                                 type="button"
-                                class="management-actions__item management-actions__item--danger"
+                                class="management-actions__item management-actions__item--quiet management-actions__item--danger"
                                 data-management-action="delete-guarantee">
                                 <span class="management-actions__icon" aria-hidden="true">
                                     <?php echo Svg::icon('delete'); ?>
@@ -1166,28 +1166,29 @@ if (($is_admin_user || $is_director || $is_professional)
                         data-management-panel="notes"
                         hidden>
                         <div class="management-notes">
-                            <div class="management-notes__list">
-                                <article class="management-note-card">
-                                    <header class="management-note-card__meta">
-                                        <div>
-                                            <p class="management-note-card__author">María López</p>
-                                            <p class="management-note-card__tag"><?php esc_html_e('Actualización interna', 'garantias-online-360vo'); ?></p>
+                            <div class="management-notes__list" role="list">
+                                <article class="management-note-card" role="listitem">
+                                    <header class="management-note-card__header">
+                                        <div class="management-note-card__identity">
+                                            <strong>María López</strong>
+                                            <span><?php esc_html_e('Actualización interna', 'garantias-online-360vo'); ?></span>
                                         </div>
-                                        <div class="management-note-card__meta-actions">
+                                        <div class="management-note-card__meta">
                                             <time datetime="2024-06-12T10:24:00+02:00">Hoy · 10:24h</time>
+                                            <span><?php esc_html_e('Solo lectura', 'garantias-online-360vo'); ?></span>
                                         </div>
                                     </header>
                                     <p class="management-note-card__body">
                                         <?php esc_html_e('Cliente informado de la necesidad de remitir justificante de pago. A la espera de adjunto.', 'garantias-online-360vo'); ?>
                                     </p>
                                 </article>
-                                <article class="management-note-card management-note-card--self">
-                                    <header class="management-note-card__meta">
-                                        <div>
-                                            <p class="management-note-card__author"><?php esc_html_e('Tú', 'garantias-online-360vo'); ?></p>
-                                            <p class="management-note-card__tag"><?php esc_html_e('Seguimiento', 'garantias-online-360vo'); ?></p>
+                                <article class="management-note-card management-note-card--self" role="listitem">
+                                    <header class="management-note-card__header">
+                                        <div class="management-note-card__identity">
+                                            <strong><?php esc_html_e('Tú', 'garantias-online-360vo'); ?></strong>
+                                            <span><?php esc_html_e('Seguimiento', 'garantias-online-360vo'); ?></span>
                                         </div>
-                                        <div class="management-note-card__meta-actions">
+                                        <div class="management-note-card__meta">
                                             <time datetime="2024-06-12T08:05:00+02:00">08:05h</time>
                                             <button type="button" class="management-note-card__delete">
                                                 <?php esc_html_e('Eliminar', 'garantias-online-360vo'); ?>
@@ -1280,7 +1281,7 @@ if (($is_admin_user || $is_director || $is_professional)
                 </div>
                 <footer class="guarantee-management__footer">
                     <button type="button" class="guarantee-management__btn guarantee-management__btn--ghost" data-management-dismiss>
-                        <?php esc_html_e('Volver al detalle', 'garantias-online-360vo'); ?>
+                        <?php esc_html_e('Cerrar', 'garantias-online-360vo'); ?>
                     </button>
                     <button type="button" class="guarantee-management__btn guarantee-management__btn--primary">
                         <?php esc_html_e('Registrar acción', 'garantias-online-360vo'); ?>
