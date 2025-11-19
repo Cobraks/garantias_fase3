@@ -496,7 +496,8 @@
         }
 
         const persistSnapshot = () => {
-            const panelItems = filterPanelItems(state.items);
+            const persistentItems = state.items.filter((item) => !item.localOnly);
+            const panelItems = filterPanelItems(persistentItems);
             const panelSnapshot = panelItems.slice(0, SNAPSHOT_LIMIT).map((item) => ({
                 id: item.id,
                 title: item.title,
@@ -514,7 +515,7 @@
                 category: item.category,
             }));
 
-            const modalSnapshot = state.items.slice(0, SNAPSHOT_LIMIT).map((item) => ({
+            const modalSnapshot = persistentItems.slice(0, SNAPSHOT_LIMIT).map((item) => ({
                 id: item.id,
                 title: item.title,
                 body: item.body,
@@ -671,6 +672,7 @@
                 is_read: Boolean(item.is_read),
                 created_at: typeof item.created_at === 'string' ? item.created_at : '',
                 actions: Array.isArray(item.actions) ? item.actions : [],
+                localOnly: Boolean(item.localOnly || item.local_only),
             }));
         };
 
@@ -1362,6 +1364,10 @@
             if (typeof item.category === 'string' && item.category !== '') {
                 li.dataset.notificationCategory = item.category;
             }
+            if (item.localOnly) {
+                li.dataset.localNotification = 'true';
+                li.classList.add('notifications-panel__item--local');
+            }
 
             const tone = item.tone || 'info';
             if (tone) {
@@ -1610,6 +1616,56 @@
             }
         };
 
+        const buildLocalNotification = (detail = {}) => {
+            if (!detail || typeof detail !== 'object') {
+                return null;
+            }
+            const nowIso = new Date().toISOString();
+            const rawId = Number(detail.id);
+            const id = Number.isFinite(rawId) && rawId > 0 ? rawId : Date.now();
+            const iconSlug = typeof detail.icon_slug === 'string' ? detail.icon_slug.trim() : '';
+            const providedCategory = typeof detail.category === 'string' ? detail.category : '';
+            const category = normalizeCategoryKey(providedCategory) || resolveCategory(iconSlug);
+            return {
+                id,
+                title: typeof detail.title === 'string' ? detail.title : '',
+                body: typeof detail.body === 'string' ? detail.body : '',
+                icon: typeof detail.icon === 'string' ? detail.icon : '',
+                icon_svg: typeof detail.icon_svg === 'string' ? detail.icon_svg : '',
+                icon_slug: iconSlug,
+                category,
+                tone: typeof detail.tone === 'string' ? detail.tone : '',
+                badge: typeof detail.badge === 'string' ? detail.badge : '',
+                link: typeof detail.link === 'string' ? detail.link : '',
+                meta: Array.isArray(detail.meta) ? detail.meta : [],
+                is_read: Boolean(detail.is_read),
+                created_at:
+                    typeof detail.created_at === 'string' && detail.created_at.trim() !== ''
+                        ? detail.created_at
+                        : nowIso,
+                actions: Array.isArray(detail.actions) ? detail.actions : [],
+                localOnly: true,
+            };
+        };
+
+        const injectLocalNotification = (detail = {}) => {
+            const item = buildLocalNotification(detail);
+            if (!item) {
+                return;
+            }
+            const allowToast = detail.toast !== false;
+            state.items = dedupeById([item].concat(state.items));
+            state.knownIds.add(item.id);
+            synchronizeInterface({
+                persist: false,
+                preservePanelScroll: true,
+                preserveModalScroll: true,
+            });
+            if (allowToast && state.toastEnabled) {
+                showToast(item);
+            }
+        };
+
         const fetchNotifications = async ({ append = false, background = false, category = 'all' } = {}) => {
             const normalizedCategory = normalizeCategoryKey(category);
             const targetCategory = normalizedCategory === '' ? 'all' : normalizedCategory;
@@ -1685,9 +1741,10 @@
                         items.forEach((item) => state.knownIds.add(item.id));
                     } else {
                         const previousItems = state.items.slice();
+                        const preservedLocal = previousItems.filter((entry) => entry.localOnly);
                         state.page = 1;
                         state.hasMore = Boolean(meta.has_more);
-                        state.items = items;
+                        state.items = dedupeById(preservedLocal.concat(items));
                         handleNewItems(items, { allowToast: background, previousItems });
                     }
 
@@ -2116,9 +2173,18 @@
 
                     const preservePanelScroll = state.isOpen;
                     const preserveModalScroll = state.modalOpen;
+                    const isLocal = itemElement.hasAttribute('data-local-notification');
 
                     if (actionType === 'delete') {
                         if (actionButton.classList.contains('is-disabled')) {
+                            return;
+                        }
+                        if (isLocal) {
+                            state.items = state.items.filter((item) => String(item.id) !== id);
+                            synchronizeInterface({
+                                preservePanelScroll,
+                                preserveModalScroll,
+                            });
                             return;
                         }
                         actionButton.classList.add('is-disabled');
@@ -2156,12 +2222,16 @@
                                 }
                                 return item;
                             });
-                            state.unread = Math.max(0, state.unread - 1);
+                            if (!isLocal) {
+                                state.unread = Math.max(0, state.unread - 1);
+                            }
                             synchronizeInterface({
                                 preservePanelScroll,
                                 preserveModalScroll,
                             });
-                            markNotification(id);
+                            if (!isLocal) {
+                                markNotification(id);
+                            }
                         }
                         return;
                     }
@@ -2176,14 +2246,16 @@
                             }
                             return item;
                         });
-                        if (state.unread > 0) {
+                        if (!isLocal && state.unread > 0) {
                             state.unread = Math.max(0, state.unread - 1);
                         }
                         synchronizeInterface({
                             preservePanelScroll,
                             preserveModalScroll,
                         });
-                        markNotification(id);
+                        if (!isLocal) {
+                            markNotification(id);
+                        }
                     }
                     return;
                 }
@@ -2196,6 +2268,7 @@
                 if (!id) {
                     return;
                 }
+                const isLocal = itemElement.hasAttribute('data-local-notification');
                 if (!itemElement.classList.contains('notifications-panel__item--unread')) {
                     return;
                 }
@@ -2205,14 +2278,16 @@
                     }
                     return item;
                 });
-                if (state.unread > 0) {
+                if (!isLocal && state.unread > 0) {
                     state.unread = Math.max(0, state.unread - 1);
                 }
                 synchronizeInterface({
                     preservePanelScroll: state.isOpen,
                     preserveModalScroll: state.modalOpen,
                 });
-                markNotification(id);
+                if (!isLocal) {
+                    markNotification(id);
+                }
             });
         };
 
@@ -2242,6 +2317,13 @@
 
         window.addEventListener('go360:notifications:refresh', () => {
             fetchNotifications({ append: false, background: !state.isOpen });
+        });
+
+        window.addEventListener('go360:notifications:inject', (event) => {
+            if (!event || typeof event.detail !== 'object' || event.detail === null) {
+                return;
+            }
+            injectLocalNotification(event.detail);
         });
 
         document.addEventListener('visibilitychange', () => {
