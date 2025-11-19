@@ -8079,17 +8079,14 @@ const ADD_DOC_KEY = "add-document";
     }
     const planPrimaryLabel =
         planParts.length > 0 ? planParts.join(" ") : planName && planName !== "-" ? planName : "";
-    const planPriceRaw = pickField("precio", "");
-    const planPrice = planPriceRaw && planPriceRaw !== "-" ? `${planPriceRaw} €` : "";
     const hasPlanInfo = Boolean(planPrimaryLabel);
     const hasCoverageInfo =
         isFilled(pickField("desde_fmt", "")) &&
         isFilled(pickField("hasta_fmt", ""));
-    const shouldShowPlanInfo = !isSinFinalizar && (hasPlanInfo || planPrice);
+    const shouldShowPlanInfo = !isSinFinalizar && hasPlanInfo;
     const planTitleHtml = shouldShowPlanInfo
         ? `<h3 class="guarantee-detail__plan-title">` +
               `${planPrimaryLabel ? `<span class=\"guarantee-detail__plan-name\">${planPrimaryLabel}</span>` : ""}` +
-              `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
               `</h3>`
         : "";
     const coverageCountdownLabel = computeRemainingDaysLabel(
@@ -8653,6 +8650,41 @@ const ADD_DOC_KEY = "add-document";
         }
         return "";
     })();
+    const paymentOverviewHtml = `
+        <section class="detail__section detail__section--payment-overview">
+            <div class="detail__payment-overview-grid">
+                <div class="detail__payment-pill detail__payment-pill--paid">
+                    <span class="detail__payment-pill-label">Cantidad abonada</span>
+                    <strong class="detail__payment-pill-value">526,00€</strong>
+                </div>
+                <div class="detail__payment-pill detail__payment-pill--current">
+                    <span class="detail__payment-pill-label">Precio actual</span>
+                    <strong class="detail__payment-pill-value">1.023,66€</strong>
+                </div>
+            </div>
+            <details class="detail__transfer-toggle detail__transfer-toggle--pricing">
+                <summary class="detail__transfer-toggle-summary">
+                    <span class="detail__transfer-toggle-label">Desglose del precio</span>
+                    <span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${
+                        arrowDownIcon || "&#9660;"
+                    }</span>
+                    <span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${
+                        arrowUpIcon || "&#9650;"
+                    }</span>
+                </summary>
+                <div class="detail__transfer-toggle-content">
+                    <ul class="detail__payment-breakdown-list">
+                        <li><span>Precio base más de 3001 CC</span><span>470,00€</span></li>
+                        <li><span>Recargo: Excede 12 años</span><span>94,00€</span></li>
+                        <li><span>Recargo: Excede 200.000km</span><span>94,00€</span></li>
+                        <li><span>Recargo: Tracción 4x4 y Cambio automátrico</span><span>94,00€</span></li>
+                        <li><span>Recargo: Excede 15 años</span><span>94,00€</span></li>
+                        <li><span>IVA (21%)</span><span>177,66€</span></li>
+                        <li><span>Precio total</span><span>1.023,66€</span></li>
+                    </ul>
+                </div>
+            </details>
+        </section>`;
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
@@ -8661,6 +8693,7 @@ const ADD_DOC_KEY = "add-document";
                         ${coverageHtml}
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${paymentOverviewHtml}
                 ${managementSectionHtml}
                 ${paymentHtml}
                 ${showChannelSection

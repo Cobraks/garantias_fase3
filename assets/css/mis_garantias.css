@@ -2051,6 +2051,73 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     width: 100%;
     border-bottom: solid 1px var(--border-color);
 }
+.detail__section--payment-overview {
+    padding-top: var(--spacing-3);
+    padding-bottom: var(--spacing-3);
+}
+
+.detail__payment-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-2);
+    margin-bottom: var(--spacing-2);
+}
+
+.detail__payment-pill {
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 0.9rem 1rem;
+    background: var(--go-color-f9fafb);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.detail__payment-pill-label {
+    font-size: 0.8rem;
+    color: var(--go-color-6b7280);
+}
+
+.detail__payment-pill-value {
+    font-size: 1.2rem;
+    color: var(--go-color-111827);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.detail__transfer-toggle--pricing {
+    margin-top: var(--spacing-3);
+}
+
+.detail__payment-breakdown-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    font-family: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.9rem;
+}
+
+.detail__payment-breakdown-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1.5rem;
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+    padding-bottom: 0.35rem;
+}
+
+.detail__payment-breakdown-list li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.detail__payment-breakdown-list span:last-child {
+    font-weight: 700;
+    color: var(--go-color-111827);
+}
 .detail__section ul {
     list-style: none;
     padding-left: 0;
