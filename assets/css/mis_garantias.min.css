@@ -2056,6 +2056,21 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     padding-bottom: var(--spacing-3);
 }
 
+.detail__period-inline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.4rem 0.75rem;
+    margin-bottom: var(--spacing-2);
+    color: var(--go-color-4b5563);
+    font-size: 0.85rem;
+}
+
+.detail__period-inline span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
 .detail__payment-overview-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -2139,6 +2154,10 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     padding: 0;
     border: none;
     background: transparent;
+}
+
+.detail__section--status .guarantee-detail__badge {
+    margin-top: 0;
 }
 .detail__manage-button {
     width: 100%;

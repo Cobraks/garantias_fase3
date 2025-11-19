@@ -8089,15 +8089,26 @@ const ADD_DOC_KEY = "add-document";
               `${planPrimaryLabel ? `<span class=\"guarantee-detail__plan-name\">${planPrimaryLabel}</span>` : ""}` +
               `</h3>`
         : "";
-    const coverageCountdownLabel = computeRemainingDaysLabel(
-        estadoClase,
-        rawDesdeIso,
-        rawHastaIso
-    );
-    const coverageHtml = hasCoverageInfo
-        ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
-              `${coverageCountdownLabel ? `<span class=\"guarantee-detail__plan-duration\">${coverageCountdownLabel}</span>` : ""}</p></div>`
-        : "";
+    const remainingDaysDisplay = (() => {
+        const endDate = parseDateOnly(rawHastaIso);
+        if (!endDate) return "";
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const diffDays = Math.round((endDate.getTime() - today.getTime()) / MS_PER_DAY);
+        if (diffDays < 0 || estadoClase === "expirada") {
+            return "Expirada";
+        }
+        if (diffDays === 0) {
+            return "0 días";
+        }
+        if (diffDays === 1) {
+            return "1 día";
+        }
+        const formatted = CARD_DAYS_FORMATTER.format(diffDays);
+        return `${formatted} días`;
+    })();
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
@@ -8335,6 +8346,10 @@ const ADD_DOC_KEY = "add-document";
                 </button>
         </section>`
         : "";
+    const statusSectionHtml = `<section class="detail__section detail__section--status">`
+        + `<h3>Estado</h3>`
+        + `<div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>`
+        + `</section>`;
 
     const sinFinalButtons = [];
     if (canContinueGuarantee) {
@@ -8374,10 +8389,9 @@ const ADD_DOC_KEY = "add-document";
                 <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
-                        ${coverageHtml}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${statusSectionHtml}
                 ${managementSectionHtml}
                 ${coverageAlertHtml}
                 ${showChannelSection
@@ -8650,16 +8664,23 @@ const ADD_DOC_KEY = "add-document";
         }
         return "";
     })();
+    const periodSummaryHtml = hasCoverageInfo
+        ? `<div class="detail__period-inline">`
+              + `<span>Fecha de inicio: ${pickField("desde_fmt", "-")}</span>`
+              + `<span>Fecha de expiración: ${pickField("hasta_fmt", "-")}</span>`
+          + `</div>`
+        : "";
     const paymentOverviewHtml = `
         <section class="detail__section detail__section--payment-overview">
+            ${periodSummaryHtml}
             <div class="detail__payment-overview-grid">
                 <div class="detail__payment-pill detail__payment-pill--paid">
                     <span class="detail__payment-pill-label">Cantidad abonada</span>
                     <strong class="detail__payment-pill-value">526,00€</strong>
                 </div>
                 <div class="detail__payment-pill detail__payment-pill--current">
-                    <span class="detail__payment-pill-label">Precio actual</span>
-                    <strong class="detail__payment-pill-value">1.023,66€</strong>
+                    <span class="detail__payment-pill-label">Expira en</span>
+                    <strong class="detail__payment-pill-value">${remainingDaysDisplay || "—"}</strong>
                 </div>
             </div>
             <details class="detail__transfer-toggle detail__transfer-toggle--pricing">
@@ -8685,15 +8706,19 @@ const ADD_DOC_KEY = "add-document";
                 </div>
             </details>
         </section>`;
+    const statusSectionHtml = `<section class="detail__section detail__section--status">`
+        + `<h3>Estado</h3>`
+        + `<div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>`
+        + `</section>`;
+
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
                         ${planTitleHtml}
-                        ${coverageHtml}
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
                 ${paymentOverviewHtml}
+                ${statusSectionHtml}
                 ${managementSectionHtml}
                 ${paymentHtml}
                 ${showChannelSection
