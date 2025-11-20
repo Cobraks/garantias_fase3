@@ -8199,7 +8199,16 @@ const ADD_DOC_KEY = "add-document";
             return "—";
         };
         const parsed = parseTimelineDate(raw);
-        if (!parsed) {
+        const parsedDate =
+            parsed instanceof Date
+                ? parsed
+                : parsed
+                ? (() => {
+                      const candidate = new Date(parsed);
+                      return Number.isNaN(candidate.getTime()) ? null : candidate;
+                  })()
+                : null;
+        if (!parsedDate) {
             return fallback();
         }
         try {
@@ -8208,7 +8217,7 @@ const ADD_DOC_KEY = "add-document";
                 month: "short",
                 year: "numeric",
             });
-            const parts = formatter.formatToParts(parsed);
+            const parts = formatter.formatToParts(parsedDate);
             const day = parts.find((part) => part.type === "day")?.value ?? "";
             const month = parts.find((part) => part.type === "month")?.value ?? "";
             const year = parts.find((part) => part.type === "year")?.value ?? "";
@@ -8216,7 +8225,7 @@ const ADD_DOC_KEY = "add-document";
                 const normalizedMonth = month.replace(/\.$/, "").toLowerCase();
                 return `${day} ${normalizedMonth}, ${year}`;
             }
-            return formatter.format(parsed);
+            return formatter.format(parsedDate);
         } catch (error) {
             return fallback();
         }
@@ -8236,6 +8245,19 @@ const ADD_DOC_KEY = "add-document";
         pickField("estado_garantia_updated_at", ""),
         pickField("estado_garantia_modificado", ""),
     ];
+    const publicationDateCandidates = [
+        pickField("published_at_fmt", ""),
+        pickField("published_at", ""),
+        pickField("published_on", ""),
+        pickField("publish_date", ""),
+        pickField("fecha_publicacion", ""),
+        pickField("fecha_publicado", ""),
+        pickField("publicado_en", ""),
+        pickField("post_date", ""),
+        pickField("post_date_gmt", ""),
+        pickField("post_modified", ""),
+        pickField("post_modified_gmt", ""),
+    ];
     const creationDateCandidates = [
         pickField("created_at_fmt", ""),
         pickField("created_at", ""),
@@ -8247,10 +8269,9 @@ const ADD_DOC_KEY = "add-document";
     const hasCoverageStart = isFilled(coverageStartDateRaw);
     const hasCoverageEnd = isFilled(coverageEndDateRaw);
     const contractDateRaw = isSinFinalizar
-        ? creationDateCandidates.find((value) => isFilled(value)) ||
+        ? creationDateCandidates.find((value) => isFilled(value)) || ""
+        : publicationDateCandidates.find((value) => isFilled(value)) ||
           contractDateCandidates.find((value) => isFilled(value)) ||
-          ""
-        : contractDateCandidates.find((value) => isFilled(value)) ||
           creationDateCandidates.find((value) => isFilled(value)) ||
           "";
     const billingTotalAmount = "1.125,00 €";
