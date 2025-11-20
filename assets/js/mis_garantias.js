@@ -7880,6 +7880,7 @@ const ADD_DOC_KEY = "add-document";
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
             : "";
+    const showManagementHub = canAccessManagementHub;
     const managementButtonHtml = showManagementHub
         ? `<button type=\"button\" class=\"detail__header-manage\" data-management-open aria-label=\"Gestionar garantía\">${managementShieldIcon}</button>`
         : "";
@@ -8131,7 +8132,6 @@ const ADD_DOC_KEY = "add-document";
     const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
-    const showManagementHub = canAccessManagementHub;
 
     const sinFinalButtons = [];
     if (canContinueGuarantee) {
