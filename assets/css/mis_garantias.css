@@ -1941,10 +1941,12 @@ body.has-mobile-summary-open .column-resizer {
     position: sticky;
     top: 0;
     z-index: 10;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
     background: #ffffffb8;
-    padding-top: var(--spacing-3);
-    padding-bottom: 1rem;
-    padding-inline: 1rem;
+    padding: var(--spacing-3) 1rem 1rem;
     border-bottom: 1px solid var(--border-color);
     backdrop-filter: blur(8px);
 }
@@ -1960,6 +1962,46 @@ body.has-mobile-summary-open .column-resizer {
 
 :root[data-theme='dark'] .guarantee-detail__header {
     background: rgba(46, 48, 56, 0.92);
+}
+
+.guarantee-detail__heading {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+.detail__eyebrow {
+    margin: 0;
+    color: var(--muted-color);
+    font-size: .85rem;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+}
+
+.detail__header-actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.detail__header-manage {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: .75rem;
+    border: 1px solid var(--border-color);
+    background: var(--surface-muted);
+    color: var(--text-color);
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.detail__header-manage:hover,
+.detail__header-manage:focus-visible {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #fff;
 }
 
 .guarantee-detail[data-mobile-open="true"] {
@@ -2016,6 +2058,141 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     font-weight: 600;
     font-size: 0.95rem;
     color: var(--text-color);
+}
+
+.detail__summary-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .75rem;
+}
+
+.detail__summary-title {
+    margin: 0;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.detail__summary-meta {
+    margin: .125rem 0 0;
+    color: var(--muted-color);
+    font-size: .9rem;
+}
+
+.detail__summary-grid {
+    display: grid;
+    gap: .75rem;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.detail__summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    padding: .75rem;
+    border: 1px solid var(--border-color);
+    border-radius: .75rem;
+    background: var(--surface-muted);
+}
+
+.detail__summary-label {
+    color: var(--muted-color);
+    font-size: .9rem;
+}
+
+.detail__summary-value {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text-color);
+}
+
+.detail__status {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .35rem .75rem;
+    border-radius: 999px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: .8rem;
+    letter-spacing: .02em;
+    border: 1px solid transparent;
+}
+
+.detail__status--activada {
+    background-color: rgba(22, 163, 74, 0.1);
+    color: var(--go-color-16a34a);
+    border-color: rgba(22, 163, 74, 0.35);
+}
+
+.detail__status--pendiente-pago,
+.detail__status--pendiente_pago {
+    background-color: rgba(245, 158, 11, 0.12);
+    color: var(--go-color-f59e0b);
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.detail__status--validacion-pendiente,
+.detail__status--validacion_pendiente {
+    background-color: rgba(59, 130, 246, 0.12);
+    color: var(--go-color-3b82f6);
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+.detail__status--sin-finalizar {
+    background-color: rgba(107, 114, 128, 0.15);
+    color: var(--go-color-6b7280);
+    border-color: rgba(107, 114, 128, 0.35);
+}
+
+.detail__status--expira-pronto {
+    background-color: rgba(251, 191, 36, 0.14);
+    color: var(--go-color-fbbf24);
+    border-color: rgba(251, 191, 36, 0.38);
+}
+
+.detail__section--pricing .detail__transfer-toggle {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    background: var(--surface-muted);
+}
+
+.detail__transfer-toggle--pricing .detail__transfer-toggle-summary {
+    padding: 1rem 1.25rem;
+}
+
+.detail__transfer-toggle--pricing .detail__transfer-toggle-content {
+    border-top: 1px solid var(--border-color);
+    padding: 1rem 1.25rem 1.1rem;
+}
+
+.detail__payment-breakdown-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+}
+
+.detail__payment-breakdown-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.detail__payment-breakdown-list li span:first-child {
+    color: var(--muted-color);
+    font-weight: 500;
+}
+
+.detail__payment-breakdown-empty span {
+    color: var(--muted-color);
 }
 
 .guarantee-detail__plan-name,

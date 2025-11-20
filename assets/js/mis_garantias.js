@@ -7871,26 +7871,46 @@ const ADD_DOC_KEY = "add-document";
     const hasCoverageInfo =
         isFilled(pickField("desde_fmt", "")) &&
         isFilled(pickField("hasta_fmt", ""));
-    const shouldShowPlanInfo = !isSinFinalizar && (hasPlanInfo || planPrice);
-    const planTitleHtml = shouldShowPlanInfo
-        ? `<h3 class="guarantee-detail__plan-title">` +
-              `${planPrimaryLabel ? `<span class=\"guarantee-detail__plan-name\">${planPrimaryLabel}</span>` : ""}` +
-              `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
-              `</h3>`
-        : "";
     const coverageCountdownLabel = computeRemainingDaysLabel(
         estadoClase,
         rawDesdeIso,
         rawHastaIso
     );
-    const coverageHtml = hasCoverageInfo
-        ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
-              `${coverageCountdownLabel ? `<span class=\"guarantee-detail__plan-duration\">${coverageCountdownLabel}</span>` : ""}</p></div>`
-        : "";
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
             : "";
+    const managementButtonHtml = showManagementHub
+        ? `<button type=\"button\" class=\"detail__header-manage\" data-management-open aria-label=\"Gestionar garantía\">${managementShieldIcon}</button>`
+        : "";
+    const creationRaw =
+        pickField("created_fmt", "") ||
+        pickField("created", "") ||
+        pickField("created_at", "");
+    const creationDate = creationRaw ? formatDate(creationRaw) : null;
+    const creationDisplay = creationDate && creationDate.display !== "-" ? creationDate.display : creationRaw;
+    const statusPillHtml = pickField("estado", "")
+        ? `<span class=\"detail__status detail__status--${estadoClase}\">${pickField("estado", "")}</span>`
+        : "";
+    const summaryPrice = planPrice || (planPriceRaw && planPriceRaw !== "-" ? `${planPriceRaw} €` : "—");
+    const summaryHtml = `
+        <section class=\"detail__section detail__section--summary\">\n                <div class=\"detail__summary-heading\">\n                        <div>\n                                <p class=\"detail__summary-title\">Resumen de la garantía</p>\n                                ${creationDisplay ? `<p class=\\\"detail__summary-meta\\\">Creada el ${creationDisplay}</p>` : ""}\n                        </div>\n                        ${statusPillHtml}\n                </div>\n                <div class=\"detail__summary-grid\">\n                        <div class=\"detail__summary-item\">\n                                <span class=\"detail__summary-label\">Precio</span>\n                                <span class=\"detail__summary-value\">${summaryPrice}</span>\n                        </div>\n                        <div class=\"detail__summary-item\">\n                                <span class=\"detail__summary-label\">Estado</span>\n                                <span class=\"detail__summary-value\">${pickField("estado", "Desconocido")}</span>\n                        </div>\n                        <div class=\"detail__summary-item\">\n                                <span class=\"detail__summary-label\">Fecha de inicio</span>\n                                <span class=\"detail__summary-value\">${pickField("desde_fmt", "-")}</span>\n                        </div>\n                        <div class=\"detail__summary-item\">\n                                <span class=\"detail__summary-label\">Fecha de expiración</span>\n                                <span class=\"detail__summary-value\">${pickField("hasta_fmt", "-")}</span>\n                        </div>\n                        <div class=\"detail__summary-item\">\n                                <span class=\"detail__summary-label\">Tiempo restante</span>\n                                <span class=\"detail__summary-value\">${coverageCountdownLabel || "—"}</span>\n                        </div>\n                </div>\n        </section>`;
+    const breakdownItems = Array.isArray(data.price_breakdown)
+        ? data.price_breakdown
+        : [];
+    const breakdownListHtml = (breakdownItems.length
+        ? breakdownItems
+              .map((item) => {
+                  const label = typeof item?.label === "string" ? item.label : "Concepto";
+                  const amount = typeof item?.amount === "string" || typeof item?.amount === "number"
+                      ? String(item.amount)
+                      : "-";
+                  return `<li><span>${label}</span><span>${amount}</span></li>`;
+              })
+              .join("")
+        : '<li class="detail__payment-breakdown-empty"><span>Sin desglose disponible</span></li>');
+    const pricingBreakdownHtml = `
+        <section class=\"detail__section detail__section--pricing\">\n                <details class=\"detail__transfer-toggle detail__transfer-toggle--pricing\" open>\n                        <summary class=\"detail__transfer-toggle-summary\">\n                                <span class=\"detail__transfer-toggle-label\">Desglose del precio</span>\n                                <span class=\"detail__transfer-toggle-icon detail__transfer-toggle-icon--closed\" aria-hidden=\"true\">${arrowDownIcon}</span>\n                                <span class=\"detail__transfer-toggle-icon detail__transfer-toggle-icon--open\" aria-hidden=\"true\">${arrowUpIcon}</span>\n                        </summary>\n                        <div class=\"detail__transfer-toggle-content\">\n                                <ul class=\"detail__payment-breakdown-list\">${breakdownListHtml}</ul>\n                        </div>\n                </details>\n        </section>`;
     const vendorChannelSummaryRaw = pickField("canal_venta_summary", "");
     const vendorChannelSummarySource =
         vendorChannelSummaryRaw !== ""
@@ -8112,18 +8132,6 @@ const ADD_DOC_KEY = "add-document";
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
     const showManagementHub = canAccessManagementHub;
-    const managementSectionHtml = showManagementHub
-        ? `<section class="detail__section detail__section--manage" aria-live="polite">
-                <button type="button" class="detail__manage-button" data-management-open>
-                        <span class="detail__manage-icon" aria-hidden="true">${managementShieldIcon}</span>
-                        <span class="detail__manage-copy">
-                                <strong>Gestionar garantía</strong>
-                                <span>Operativa interna y ajustes</span>
-                        </span>
-                        <span class="detail__manage-caret" aria-hidden="true">${managementArrowIcon}</span>
-                </button>
-        </section>`
-        : "";
 
     const sinFinalButtons = [];
     if (canContinueGuarantee) {
@@ -8162,12 +8170,15 @@ const ADD_DOC_KEY = "add-document";
         return `
                 <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
-                        <h2>Garantía ${pickField("matricula")}</h2>
-                        ${coverageHtml}
-                        <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
+                        <div class="guarantee-detail__heading">
+                                <p class="detail__eyebrow">Garantía</p>
+                                <h2>Garantía ${pickField("matricula")}</h2>
+                        </div>
+                        <div class="detail__header-actions">${managementButtonHtml}</div>
                 </div>
-                ${managementSectionHtml}
+                ${summaryHtml}
+                ${pricingBreakdownHtml}
+                <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                 ${coverageAlertHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
@@ -8442,12 +8453,14 @@ const ADD_DOC_KEY = "add-document";
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
-                        <h2>Garantía ${pickField("matricula")}</h2>
-                        ${planTitleHtml}
-                        ${coverageHtml}
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
+                        <div class="guarantee-detail__heading">
+                                <p class="detail__eyebrow">Garantía</p>
+                                <h2>Garantía ${pickField("matricula")}</h2>
+                        </div>
+                        <div class="detail__header-actions">${managementButtonHtml}</div>
                 </div>
-                ${managementSectionHtml}
+                ${summaryHtml}
+                ${pricingBreakdownHtml}
                 ${paymentHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
