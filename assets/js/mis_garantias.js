@@ -8115,6 +8115,26 @@ const ADD_DOC_KEY = "add-document";
     const billingStartDate = pickField("desde_fmt", "—");
     const billingEndDate = pickField("hasta_fmt", "—");
     const billingTotalAmount = "1.125,00 €";
+    const billingTimelineHtml = `<div class="detail__timeline">` +
+        `<div class="detail__timeline-point">` +
+            `<span class="detail__timeline-label">Fecha Inicio</span>` +
+            `<span class="detail__timeline-value">${billingStartDate}</span>` +
+        `</div>` +
+        `<div class="detail__timeline-connector" aria-hidden="true">` +
+            `<svg class="detail__timeline-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
+                `<line x1="5" y1="12" x2="19" y2="12"></line>` +
+                `<polyline points="12 5 19 12 12 19"></polyline>` +
+            `</svg>` +
+        `</div>` +
+        `<div class="detail__timeline-point detail__timeline-point--end">` +
+            `<span class="detail__timeline-label">Vencimiento</span>` +
+            `<span class="detail__timeline-value">${billingEndDate}</span>` +
+        `</div>` +
+    `</div>`;
+    const billingTotalHtml = `<div class="detail__billing-total">` +
+        `<p class="detail__billing-total-label">Total facturado</p>` +
+        `<p class="detail__billing-total-amount">${billingTotalAmount}</p>` +
+    `</div>`;
     const billingBreakdownHtml = `<div class="detail__billing-breakdown">` +
         `<div class="detail__billing-row"><span>Precio base</span><span>1.050,00 €</span></div>` +
         `<div class="detail__billing-row"><span>Recargo por kilometraje</span><span>+120,00 €</span></div>` +
@@ -8131,20 +8151,8 @@ const ADD_DOC_KEY = "add-document";
         `<div class="detail__transfer-toggle-content">${billingBreakdownHtml}</div>` +
     `</details>`;
     const billingSectionHtml = `<section class="detail__section detail__section--billing">` +
-        `<div class="detail__billing-grid">` +
-            `<div class="detail__billing-item">` +
-                `<p class="detail__billing-label">Fecha de inicio</p>` +
-                `<p class="detail__billing-value">${billingStartDate}</p>` +
-            `</div>` +
-            `<div class="detail__billing-item">` +
-                `<p class="detail__billing-label">Fecha de finalización</p>` +
-                `<p class="detail__billing-value">${billingEndDate}</p>` +
-            `</div>` +
-            `<div class="detail__billing-item detail__billing-item--total">` +
-                `<p class="detail__billing-label">Total facturado</p>` +
-                `<p class="detail__billing-amount">${billingTotalAmount}</p>` +
-            `</div>` +
-        `</div>` +
+        `${billingTimelineHtml}` +
+        `${billingTotalHtml}` +
         `${billingToggleHtml}` +
     `</section>`;
     const managementSectionHtml = showManagementHub
