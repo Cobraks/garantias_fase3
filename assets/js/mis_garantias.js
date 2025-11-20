@@ -8112,6 +8112,41 @@ const ADD_DOC_KEY = "add-document";
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
     const showManagementHub = canAccessManagementHub;
+    const billingStartDate = pickField("desde_fmt", "—");
+    const billingEndDate = pickField("hasta_fmt", "—");
+    const billingTotalAmount = "1.125,00 €";
+    const billingBreakdownHtml = `<div class="detail__billing-breakdown">` +
+        `<div class="detail__billing-row"><span>Precio base</span><span>1.050,00 €</span></div>` +
+        `<div class="detail__billing-row"><span>Recargo por kilometraje</span><span>+120,00 €</span></div>` +
+        `<div class="detail__billing-row"><span>Descuento comercial</span><span>-45,00 €</span></div>` +
+        `<div class="detail__billing-divider" role="presentation"></div>` +
+        `<div class="detail__billing-row detail__billing-row--total"><span>Total facturado</span><span>${billingTotalAmount}</span></div>` +
+    `</div>`;
+    const billingToggleHtml = `<details class="detail__transfer-toggle detail__billing-toggle">` +
+        `<summary class="detail__transfer-toggle-summary">` +
+            `<span class="detail__transfer-toggle-label">Ver desglose económico</span>` +
+            `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${arrowDownIcon || "&#9660;"}</span>` +
+            `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${arrowUpIcon || "&#9650;"}</span>` +
+        `</summary>` +
+        `<div class="detail__transfer-toggle-content">${billingBreakdownHtml}</div>` +
+    `</details>`;
+    const billingSectionHtml = `<section class="detail__section detail__section--billing">` +
+        `<div class="detail__billing-grid">` +
+            `<div class="detail__billing-item">` +
+                `<p class="detail__billing-label">Fecha de inicio</p>` +
+                `<p class="detail__billing-value">${billingStartDate}</p>` +
+            `</div>` +
+            `<div class="detail__billing-item">` +
+                `<p class="detail__billing-label">Fecha de finalización</p>` +
+                `<p class="detail__billing-value">${billingEndDate}</p>` +
+            `</div>` +
+            `<div class="detail__billing-item detail__billing-item--total">` +
+                `<p class="detail__billing-label">Total facturado</p>` +
+                `<p class="detail__billing-amount">${billingTotalAmount}</p>` +
+            `</div>` +
+        `</div>` +
+        `${billingToggleHtml}` +
+    `</section>`;
     const managementSectionHtml = showManagementHub
         ? `<section class="detail__section detail__section--manage" aria-live="polite">
                 <button type="button" class="detail__manage-button" data-management-open>
@@ -8167,6 +8202,7 @@ const ADD_DOC_KEY = "add-document";
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${billingSectionHtml}
                 ${managementSectionHtml}
                 ${coverageAlertHtml}
                 ${showChannelSection
@@ -8447,6 +8483,7 @@ const ADD_DOC_KEY = "add-document";
                         ${coverageHtml}
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${billingSectionHtml}
                 ${managementSectionHtml}
                 ${paymentHtml}
                 ${showChannelSection
