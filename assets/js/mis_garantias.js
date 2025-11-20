@@ -8112,23 +8112,84 @@ const ADD_DOC_KEY = "add-document";
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
     const showManagementHub = canAccessManagementHub;
-    const billingStartDate = pickField("desde_fmt", "—");
-    const billingEndDate = pickField("hasta_fmt", "—");
+    const formatTimelineDate = (raw) => {
+        const fallback = () => {
+            if (typeof raw === "string" && raw.trim() !== "") {
+                return raw.trim();
+            }
+            if (raw !== undefined && raw !== null) {
+                return String(raw);
+            }
+            return "—";
+        };
+        const parsed =
+            typeof parseDateTime === "function"
+                ? parseDateTime(raw)
+                : (() => {
+                      const date = new Date(raw);
+                      return Number.isNaN(date.getTime()) ? null : date;
+                  })();
+        if (!parsed) {
+            return fallback();
+        }
+        try {
+            const formatter = new Intl.DateTimeFormat("es-ES", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            });
+            const parts = formatter.formatToParts(parsed);
+            const day = parts.find((part) => part.type === "day")?.value ?? "";
+            const month = parts.find((part) => part.type === "month")?.value ?? "";
+            const year = parts.find((part) => part.type === "year")?.value ?? "";
+            if (day && month && year) {
+                return `${day} ${month.toLowerCase()}, ${year}`;
+            }
+            return formatter.format(parsed);
+        } catch (error) {
+            return fallback();
+        }
+    };
+
+    const timelineDateCandidates = [
+        pickField("fecha_contratacion", ""),
+        pickField("fecha_contratacion_fmt", ""),
+        pickField("fecha_contratacion_raw", ""),
+        pickField("created_at_fmt", ""),
+        pickField("created_at", ""),
+        pickField("created", ""),
+        pickField("post_date", ""),
+    ];
+    const contractDateRaw = timelineDateCandidates.find((value) => isFilled(value)) || "";
+    const coverageStartDateRaw = pickField("desde_fmt", "—");
+    const coverageEndDateRaw = pickField("hasta_fmt", "—");
     const billingTotalAmount = "1.125,00 €";
-    const billingTimelineHtml = `<div class="detail__timeline">` +
-        `<div class="detail__timeline-point">` +
-            `<span class="detail__timeline-label">Fecha Inicio</span>` +
-            `<span class="detail__timeline-value">${billingStartDate}</span>` +
+    const billingTimelineHtml = `<div class="detail__timeline-list">` +
+        `<div class="detail__timeline detail__timeline--contract">` +
+            `<div class="detail__timeline-point">` +
+                `<span class="detail__timeline-label">${
+                    isSinFinalizar ? "Fecha de inicio" : "Fecha contratación"
+                }</span>` +
+                `<span class="detail__timeline-value">${formatTimelineDate(
+                    isSinFinalizar ? contractDateRaw || coverageStartDateRaw : contractDateRaw
+                )}</span>` +
+            `</div>` +
         `</div>` +
-        `<div class="detail__timeline-connector" aria-hidden="true">` +
-            `<svg class="detail__timeline-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
-                `<line x1="5" y1="12" x2="19" y2="12"></line>` +
-                `<polyline points="12 5 19 12 12 19"></polyline>` +
-            `</svg>` +
-        `</div>` +
-        `<div class="detail__timeline-point detail__timeline-point--end">` +
-            `<span class="detail__timeline-label">Vencimiento</span>` +
-            `<span class="detail__timeline-value">${billingEndDate}</span>` +
+        `<div class="detail__timeline detail__timeline--range">` +
+            `<div class="detail__timeline-point">` +
+                `<span class="detail__timeline-label">Fecha Inicio</span>` +
+                `<span class="detail__timeline-value">${formatTimelineDate(coverageStartDateRaw)}</span>` +
+            `</div>` +
+            `<div class="detail__timeline-connector" aria-hidden="true">` +
+                `<svg class="detail__timeline-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
+                    `<line x1="5" y1="12" x2="19" y2="12"></line>` +
+                    `<polyline points="12 5 19 12 12 19"></polyline>` +
+                `</svg>` +
+            `</div>` +
+            `<div class="detail__timeline-point detail__timeline-point--end">` +
+                `<span class="detail__timeline-label">Vencimiento</span>` +
+                `<span class="detail__timeline-value">${formatTimelineDate(coverageEndDateRaw)}</span>` +
+            `</div>` +
         `</div>` +
     `</div>`;
     const billingTotalHtml = `<div class="detail__billing-total">` +
