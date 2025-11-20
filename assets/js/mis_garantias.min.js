@@ -429,10 +429,28 @@ const ADD_DOC_KEY = "add-document";
                 const managementPanels = managementModal
                         ? Array.from(managementModal.querySelectorAll("[data-management-panel]"))
                         : [];
+                const managementPanelsContainer = managementModal
+                        ? managementModal.querySelector(".guarantee-management__panels")
+                        : null;
                 const managementDefaultTab = managementTabsNav
                         ? managementTabsNav.querySelector("[data-management-tab]")
                         : null;
+                const managementPlateDisplay = managementModal
+                        ? managementModal.querySelector("[data-management-plate]")
+                        : null;
+                const managementStatus = managementModal
+                        ? managementModal.querySelector("[data-management-status]")
+                        : null;
+                const managementStatusText = managementModal
+                        ? managementModal.querySelector("[data-management-status-text]")
+                        : null;
+                const managementStatusBaseClasses = managementStatus
+                        ? Array.from(managementStatus.classList).filter(
+                                (cls) => !cls.startsWith("guarantee-management__status--")
+                        )
+                        : [];
                 const MANAGEMENT_MODAL_TRANSITION = 260;
+                let managementPanelResizeObserver = null;
                 let managementModalCloseTimer = null;
                 let managementModalTrigger = null;
 
@@ -3361,9 +3379,7 @@ const ADD_DOC_KEY = "add-document";
                                                 detailCache.set(id, data);
                                                 panel.innerHTML = renderFullDetail(data, rowData);
                                                 setupTransferCountdown(panel);
-                                                panel.dataset.matricula =
-                                                        data.matricula || rowData.matricula || "";
-                                                panel.dataset.plan = data.plan || rowData.plan || "";
+                                                applyPanelMetadata(panel, data, rowData);
                                                 syncPdfModalDocs(panel);
                                         });
                                 })
@@ -3507,9 +3523,7 @@ const ADD_DOC_KEY = "add-document";
                                                 data,
                                                 rowData
                                         );
-                                        panel.dataset.matricula =
-                                                data.matricula || rowData.matricula || "";
-                                        panel.dataset.plan = data.plan || rowData.plan || "";
+                                        applyPanelMetadata(panel, data, rowData);
                                         panel.dataset.loadedId = id;
                                         setupTransferCountdown(panel);
                                         syncPdfModalDocs(panel);
@@ -4047,6 +4061,66 @@ const ADD_DOC_KEY = "add-document";
                         runTrashRequest(context);
                 }
 
+                function getActiveManagementPanel() {
+                        if (!managementPanels || managementPanels.length === 0) {
+                                return null;
+                        }
+                        return managementPanels.find(
+                                (panel) =>
+                                        panel.classList.contains("is-active") &&
+                                        !panel.hasAttribute("hidden")
+                        );
+                }
+
+                function updateManagementPanelsHeight(options = {}) {
+                        if (!managementPanelsContainer) {
+                                return;
+                        }
+                        const { immediate = false } = options;
+                        const activePanel = getActiveManagementPanel();
+                        const targetHeight = activePanel ? activePanel.offsetHeight : 0;
+                        const applyHeight = () => {
+                                managementPanelsContainer.style.height = `${targetHeight}px`;
+                        };
+                        if (immediate) {
+                                const previousTransition = managementPanelsContainer.style.transition;
+                                managementPanelsContainer.style.transition = "none";
+                                applyHeight();
+                                void managementPanelsContainer.offsetHeight;
+                                if (previousTransition) {
+                                        managementPanelsContainer.style.transition = previousTransition;
+                                } else {
+                                        managementPanelsContainer.style.removeProperty("transition");
+                                }
+                                return;
+                        }
+                        applyHeight();
+                }
+
+                function attachPanelResizeObserver(panel) {
+                        if (typeof ResizeObserver !== "function") {
+                                return;
+                        }
+                        if (!panel) {
+                                detachPanelResizeObserver();
+                                return;
+                        }
+                        if (!managementPanelResizeObserver) {
+                                managementPanelResizeObserver = new ResizeObserver(() => {
+                                        updateManagementPanelsHeight();
+                                });
+                        } else {
+                                managementPanelResizeObserver.disconnect();
+                        }
+                        managementPanelResizeObserver.observe(panel);
+                }
+
+                function detachPanelResizeObserver() {
+                        if (managementPanelResizeObserver) {
+                                managementPanelResizeObserver.disconnect();
+                        }
+                }
+
                 function activateManagementTab(tabButton) {
                         if (!managementTabsNav || !tabButton) {
                                 return;
@@ -4071,10 +4145,85 @@ const ADD_DOC_KEY = "add-document";
                                         panel.setAttribute("hidden", "hidden");
                                 }
                         });
+                        const activePanel = getActiveManagementPanel();
+                        if (activePanel) {
+                                attachPanelResizeObserver(activePanel);
+                        }
+                        if (typeof requestAnimationFrame === "function") {
+                                requestAnimationFrame(() => {
+                                        updateManagementPanelsHeight();
+                                });
+                        } else {
+                                updateManagementPanelsHeight();
+                        }
                 }
 
                 if (managementDefaultTab) {
                         activateManagementTab(managementDefaultTab);
+                        updateManagementPanelsHeight({ immediate: true });
+                }
+
+                function resetManagementContext() {
+                        if (managementPlateDisplay) {
+                                managementPlateDisplay.textContent = "— — —";
+                        }
+                        if (managementStatusText) {
+                                managementStatusText.textContent = "Estado pendiente";
+                        }
+                        if (managementStatus) {
+                                const baseClasses =
+                                        managementStatusBaseClasses.length > 0
+                                                ? managementStatusBaseClasses.join(" ")
+                                                : "guarantee-management__status";
+                                managementStatus.className = baseClasses;
+                        }
+                }
+
+                function syncManagementContext(trigger, explicitPanel) {
+                        if (!managementModal) {
+                                return;
+                        }
+                        let sourcePanel = explicitPanel || null;
+                        if (!sourcePanel && trigger && typeof trigger.closest === "function") {
+                                sourcePanel = trigger.closest(".guarantee-detail__panel");
+                        }
+                        if (!sourcePanel && typeof activePanel !== "undefined") {
+                                sourcePanel = activePanel;
+                        }
+                        const loadedId = sourcePanel && sourcePanel.dataset.loadedId
+                                ? sourcePanel.dataset.loadedId
+                                : "";
+                        const relatedRow = loadedId ? findRowById(loadedId) : null;
+                        const plateValue =
+                                (sourcePanel && sourcePanel.dataset.matricula) ||
+                                (relatedRow && relatedRow.dataset.matricula) ||
+                                "— — —";
+                        const estadoLabel =
+                                (sourcePanel && sourcePanel.dataset.estado) ||
+                                (relatedRow && relatedRow.dataset.estado) ||
+                                "";
+                        const estadoClaseSource =
+                                (sourcePanel && sourcePanel.dataset.estadoclase) ||
+                                (relatedRow && relatedRow.dataset.estadoclase) ||
+                                estadoLabel ||
+                                "pendiente-pago";
+                        if (managementPlateDisplay) {
+                                const formattedPlate = plateValue && plateValue !== "-" ? plateValue : "— — —";
+                                managementPlateDisplay.textContent = formattedPlate;
+                        }
+                        if (managementStatusText) {
+                                managementStatusText.textContent = estadoLabel || "Estado pendiente";
+                        }
+                        if (managementStatus) {
+                                const normalizedState = normalizeEstadoClase(estadoClaseSource || "pendiente-pago");
+                                const nextClasses = managementStatusBaseClasses.length
+                                        ? managementStatusBaseClasses.slice()
+                                        : ["guarantee-management__status"];
+                                if (normalizedState) {
+                                        nextClasses.push(`guarantee-management__status--${normalizedState}`);
+                                }
+                                managementStatus.className = nextClasses.join(" ");
+                        }
                 }
 
                 function openManagementModal(trigger) {
@@ -4089,9 +4238,17 @@ const ADD_DOC_KEY = "add-document";
                                 managementModalCloseTimer = null;
                         }
                         managementModalTrigger = trigger || managementModalTrigger;
+                        syncManagementContext(trigger);
                         managementModal.dataset.state = "open";
                         managementModal.setAttribute("aria-hidden", "false");
                         document.body.classList.add("has-management-modal-open");
+                        if (typeof requestAnimationFrame === "function") {
+                                requestAnimationFrame(() => {
+                                        updateManagementPanelsHeight({ immediate: true });
+                                });
+                        } else {
+                                updateManagementPanelsHeight({ immediate: true });
+                        }
                         if (typeof requestAnimationFrame === "function") {
                                 requestAnimationFrame(() => {
                                         if (managementDialog) {
@@ -4120,8 +4277,11 @@ const ADD_DOC_KEY = "add-document";
                                 managementModalTrigger.focus();
                         }
                         managementModalTrigger = null;
+                        resetManagementContext();
+                        detachPanelResizeObserver();
                         if (managementDefaultTab) {
                                 activateManagementTab(managementDefaultTab);
+                                updateManagementPanelsHeight({ immediate: true });
                         }
                 }
 
@@ -4272,6 +4432,69 @@ const ADD_DOC_KEY = "add-document";
                                .replace(/[\u0300-\u036f]/g, "")
                                .replace(/[^a-z0-9]+/g, "-")
                                .replace(/^-+|-+$/g, "");
+               }
+
+               function getEstadoMeta(detailData = {}, rowData = {}) {
+                       const detail = detailData && typeof detailData === "object" ? detailData : {};
+                       const row = rowData && typeof rowData === "object" ? rowData : {};
+                       const rawDetailEstado = Object.prototype.hasOwnProperty.call(detail, "estado")
+                               ? detail.estado
+                               : undefined;
+                       let estadoLabel = "";
+                       let estadoValue = "";
+                       if (rawDetailEstado && typeof rawDetailEstado === "object") {
+                               if (typeof rawDetailEstado.label === "string") {
+                                       estadoLabel = rawDetailEstado.label.trim();
+                               }
+                               if (typeof rawDetailEstado.value === "string") {
+                                       estadoValue = rawDetailEstado.value;
+                               }
+                       } else if (typeof rawDetailEstado === "string") {
+                               estadoValue = rawDetailEstado;
+                       }
+                       if (!estadoLabel && typeof row.estado === "string" && row.estado.trim() !== "") {
+                               estadoLabel = row.estado.trim();
+                       }
+                       let fallbackValue = estadoValue;
+                       if (!fallbackValue && typeof detail.estadoclase === "string") {
+                               fallbackValue = detail.estadoclase;
+                       }
+                       if (!fallbackValue && typeof row.estadoclase === "string") {
+                               fallbackValue = row.estadoclase;
+                       }
+                       if (!fallbackValue && estadoLabel) {
+                               fallbackValue = estadoLabel;
+                       }
+                       const normalizedClass = normalizeEstadoClase(fallbackValue || "pendiente-pago");
+                       let safeLabel = estadoLabel;
+                       if (!safeLabel && typeof rawDetailEstado === "string" && rawDetailEstado.trim() !== "") {
+                               safeLabel = rawDetailEstado.trim();
+                       }
+                       if (!safeLabel) {
+                               safeLabel =
+                                       normalizedClass === "pendiente-pago"
+                                               ? "Estado pendiente"
+                                               : normalizedClass
+                                                       .replace(/-/g, " ")
+                                                       .replace(/\b\w/g, (char) => char.toUpperCase());
+                       }
+                       return {
+                               label: safeLabel || "Estado pendiente",
+                               clase: normalizedClass || "pendiente-pago",
+                       };
+               }
+
+               function applyPanelMetadata(panel, detailData, rowData) {
+                       if (!panel) {
+                               return;
+                       }
+                       const detail = detailData && typeof detailData === "object" ? detailData : {};
+                       const row = rowData && typeof rowData === "object" ? rowData : {};
+                       const estadoMeta = getEstadoMeta(detail, row);
+                       panel.dataset.matricula = detail.matricula || row.matricula || "";
+                       panel.dataset.plan = detail.plan || row.plan || "";
+                       panel.dataset.estado = estadoMeta.label;
+                       panel.dataset.estadoclase = estadoMeta.clase;
                }
 
    function initResizableColumns(table) {
@@ -7818,17 +8041,8 @@ const ADD_DOC_KEY = "add-document";
     const rawHastaIso =
         pickField("hasta_raw", "") || pickField("hasta", "");
 
-    const estadoData =
-        data.estado ??
-        rowData.estado ??
-        data.estadoclase ??
-        rowData.estadoclase ??
-        "pendiente-pago";
-    const estadoValue =
-        estadoData && typeof estadoData === "object" && "value" in estadoData
-            ? estadoData.value
-            : estadoData;
-    const estadoClase = normalizeEstadoClase(estadoValue);
+    const estadoMeta = getEstadoMeta(data, rowData);
+    const estadoClase = estadoMeta.clase;
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
     const isValidacionPendiente = estadoClase === "validacion-pendiente";
@@ -7865,28 +8079,36 @@ const ADD_DOC_KEY = "add-document";
     }
     const planPrimaryLabel =
         planParts.length > 0 ? planParts.join(" ") : planName && planName !== "-" ? planName : "";
-    const planPriceRaw = pickField("precio", "");
-    const planPrice = planPriceRaw && planPriceRaw !== "-" ? `${planPriceRaw} €` : "";
     const hasPlanInfo = Boolean(planPrimaryLabel);
     const hasCoverageInfo =
         isFilled(pickField("desde_fmt", "")) &&
         isFilled(pickField("hasta_fmt", ""));
-    const shouldShowPlanInfo = !isSinFinalizar && (hasPlanInfo || planPrice);
+    const shouldShowPlanInfo = !isSinFinalizar && hasPlanInfo;
     const planTitleHtml = shouldShowPlanInfo
         ? `<h3 class="guarantee-detail__plan-title">` +
               `${planPrimaryLabel ? `<span class=\"guarantee-detail__plan-name\">${planPrimaryLabel}</span>` : ""}` +
-              `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
               `</h3>`
         : "";
-    const coverageCountdownLabel = computeRemainingDaysLabel(
-        estadoClase,
-        rawDesdeIso,
-        rawHastaIso
-    );
-    const coverageHtml = hasCoverageInfo
-        ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
-              `${coverageCountdownLabel ? `<span class=\"guarantee-detail__plan-duration\">${coverageCountdownLabel}</span>` : ""}</p></div>`
-        : "";
+    const remainingDaysDisplay = (() => {
+        const endDate = parseDateOnly(rawHastaIso);
+        if (!endDate) return "";
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const diffDays = Math.round((endDate.getTime() - today.getTime()) / MS_PER_DAY);
+        if (diffDays < 0 || estadoClase === "expirada") {
+            return "Expirada";
+        }
+        if (diffDays === 0) {
+            return "0 días";
+        }
+        if (diffDays === 1) {
+            return "1 día";
+        }
+        const formatted = CARD_DAYS_FORMATTER.format(diffDays);
+        return `${formatted} días`;
+    })();
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
@@ -8124,6 +8346,10 @@ const ADD_DOC_KEY = "add-document";
                 </button>
         </section>`
         : "";
+    const statusSectionHtml = `<section class="detail__section detail__section--status">`
+        + `<h3>Estado</h3>`
+        + `<div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>`
+        + `</section>`;
 
     const sinFinalButtons = [];
     if (canContinueGuarantee) {
@@ -8163,10 +8389,9 @@ const ADD_DOC_KEY = "add-document";
                 <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
-                        ${coverageHtml}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${statusSectionHtml}
                 ${managementSectionHtml}
                 ${coverageAlertHtml}
                 ${showChannelSection
@@ -8439,14 +8664,56 @@ const ADD_DOC_KEY = "add-document";
         }
         return "";
     })();
+    const periodSummaryHtml = hasCoverageInfo
+        ? `<div class="detail__period-inline">`
+              + `<span>Fecha de inicio: ${pickField("desde_fmt", "-")}</span>`
+              + `<span>Fecha de expiración: ${pickField("hasta_fmt", "-")}</span>`
+          + `</div>`
+        : "";
+    const paymentOverviewHtml = `
+        <section class="detail__section detail__section--payment-overview">
+            ${periodSummaryHtml}
+            <div class="detail__payment-overview-grid">
+                <div class="detail__payment-pill detail__payment-pill--paid">
+                    <span class="detail__payment-pill-label">Cantidad abonada</span>
+                    <strong class="detail__payment-pill-value">526,00€</strong>
+                </div>
+                <div class="detail__payment-pill detail__payment-pill--current">
+                    <span class="detail__payment-pill-label">Expira en</span>
+                    <strong class="detail__payment-pill-value">${remainingDaysDisplay || "—"}</strong>
+                </div>
+            </div>
+            <details class="detail__transfer-toggle detail__transfer-toggle--pricing">
+                <summary class="detail__transfer-toggle-summary">
+                    <span class="detail__transfer-toggle-label">Desglose del precio</span>
+                    <span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${
+                        arrowDownIcon || "&#9660;"
+                    }</span>
+                    <span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${
+                        arrowUpIcon || "&#9650;"
+                    }</span>
+                </summary>
+                <div class="detail__transfer-toggle-content">
+                    <ul class="detail__payment-breakdown-list">
+                        <li><span>Precio base más de 3001 CC</span><span>470,00€</span></li>
+                        <li><span>Recargo: Excede 12 años</span><span>94,00€</span></li>
+                        <li><span>Recargo: Excede 200.000km</span><span>94,00€</span></li>
+                        <li><span>Recargo: Tracción 4x4 y Cambio automátrico</span><span>94,00€</span></li>
+                        <li><span>Recargo: Excede 15 años</span><span>94,00€</span></li>
+                        <li><span>IVA (21%)</span><span>177,66€</span></li>
+                        <li><span>Precio total</span><span>1.023,66€</span></li>
+                    </ul>
+                </div>
+            </details>
+        </section>`;
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
                         ${planTitleHtml}
-                        ${coverageHtml}
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${paymentOverviewHtml}
+                ${statusSectionHtml}
                 ${managementSectionHtml}
                 ${paymentHtml}
                 ${showChannelSection
@@ -8669,9 +8936,7 @@ async function activateRow(row, options = {}) {
                         if (cachedDetail) {
                                 nextPanel.innerHTML = renderFullDetail(cachedDetail, rowData);
                                 setupTransferCountdown(nextPanel);
-                                nextPanel.dataset.matricula =
-                                        cachedDetail.matricula || rowData.matricula || "";
-                                nextPanel.dataset.plan = cachedDetail.plan || rowData.plan || "";
+                                applyPanelMetadata(nextPanel, cachedDetail, rowData);
                                 syncPdfModalDocs(nextPanel);
                         } else {
                                 const fallbackPlate =
@@ -8682,8 +8947,7 @@ async function activateRow(row, options = {}) {
                                 }
                                 nextPanel.innerHTML = renderEmptyDetail("loading", loadingOptions);
                                 nextPanel.classList.add("is-loading");
-                                nextPanel.dataset.matricula = rowData.matricula || fallbackPlate || "";
-                                nextPanel.dataset.plan = rowData.plan || "";
+                                applyPanelMetadata(nextPanel, null, rowData);
                                 syncPdfModalDocs(nextPanel);
                         }
 
@@ -8734,9 +8998,7 @@ async function activateRow(row, options = {}) {
                                         if (nextPanel.dataset.loadedId === String(cacheKey)) {
                                                 nextPanel.innerHTML = renderFullDetail(data, rowData);
                                                 setupTransferCountdown(nextPanel);
-                                                nextPanel.dataset.matricula =
-                                                        data.matricula || rowData.matricula || "";
-                                                nextPanel.dataset.plan = data.plan || rowData.plan || "";
+                                                applyPanelMetadata(nextPanel, data, rowData);
                                                 syncPdfModalDocs(nextPanel);
                                                 nextPanel.classList.remove("is-loading");
                                         }

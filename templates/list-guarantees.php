@@ -1054,13 +1054,15 @@ if (($is_admin_user || $is_director || $is_professional)
             <div class="guarantee-management__shell">
                 <header class="guarantee-management__sticky">
                     <div class="guarantee-management__topline">
-                        <div>
-                            <p class="guarantee-management__eyebrow">
-                                <?php esc_html_e('Operativa avanzada', 'garantias-online-360vo'); ?>
-                            </p>
+                        <div class="guarantee-management__headline">
                             <h2 class="guarantee-management__title" id="guarantee-management-title">
-                                <?php esc_html_e('Gestionar garantía', 'garantias-online-360vo'); ?>
+                                <?php esc_html_e('Garantía', 'garantias-online-360vo'); ?>
+                                <span data-management-plate>— — —</span>
                             </h2>
+                            <div class="guarantee-management__status guarantee-management__status--pendiente-pago" data-management-status>
+                                <span class="guarantee-management__status-dot" aria-hidden="true"></span>
+                                <span data-management-status-text><?php esc_html_e('Estado pendiente', 'garantias-online-360vo'); ?></span>
+                            </div>
                         </div>
                         <button type="button" class="guarantee-management__close" data-management-dismiss>
                             <?php echo Svg::icon('cerrar', 'guarantee-management__close-icon'); ?>
@@ -1068,16 +1070,6 @@ if (($is_admin_user || $is_director || $is_professional)
                                 <?php esc_html_e('Cerrar panel de gestión', 'garantias-online-360vo'); ?>
                             </span>
                         </button>
-                    </div>
-                    <div class="guarantee-management__summary">
-                        <div class="guarantee-management__plate" data-management-plate>— — —</div>
-                        <div class="guarantee-management__status" data-management-status>
-                            <span class="guarantee-management__status-dot" aria-hidden="true"></span>
-                            <span data-management-status-text><?php esc_html_e('Estado pendiente', 'garantias-online-360vo'); ?></span>
-                        </div>
-                        <p class="guarantee-management__vehicle" data-management-vehicle>
-                            <?php esc_html_e('Vehículo en revisión', 'garantias-online-360vo'); ?>
-                        </p>
                     </div>
                     <nav
                         class="guarantee-management__tabs"
@@ -1096,17 +1088,17 @@ if (($is_admin_user || $is_director || $is_professional)
                             type="button"
                             role="tab"
                             aria-selected="false"
-                            aria-controls="management-panel-adjustments"
-                            data-management-tab="adjustments">
-                            <?php esc_html_e('Ajustes', 'garantias-online-360vo'); ?>
+                            aria-controls="management-panel-notes"
+                            data-management-tab="notes">
+                            <?php esc_html_e('Notas', 'garantias-online-360vo'); ?>
                         </button>
                         <button
                             type="button"
                             role="tab"
                             aria-selected="false"
-                            aria-controls="management-panel-history"
-                            data-management-tab="history">
-                            <?php esc_html_e('Seguimiento', 'garantias-online-360vo'); ?>
+                            aria-controls="management-panel-breakdown"
+                            data-management-tab="breakdown">
+                            <?php esc_html_e('Desglose', 'garantias-online-360vo'); ?>
                         </button>
                     </nav>
                 </header>
@@ -1143,113 +1135,151 @@ if (($is_admin_user || $is_director || $is_professional)
                             </button>
                             <button
                                 type="button"
-                                class="management-actions__item"
-                                data-management-action="request-docs">
+                                class="management-actions__item management-actions__item--quiet management-actions__item--danger"
+                                data-management-action="cancel-for-nonpayment">
                                 <span class="management-actions__icon" aria-hidden="true">
-                                    <?php echo Svg::icon('summary_outline'); ?>
+                                    <?php echo Svg::icon('warning'); ?>
                                 </span>
                                 <span class="management-actions__copy">
-                                    <strong><?php esc_html_e('Solicitar documentación', 'garantias-online-360vo'); ?></strong>
-                                    <span><?php esc_html_e('Pide justificantes o anexos pendientes.', 'garantias-online-360vo'); ?></span>
+                                    <strong><?php esc_html_e('Cancelar garantía por impago', 'garantias-online-360vo'); ?></strong>
                                 </span>
                             </button>
                             <button
                                 type="button"
-                                class="management-actions__item"
-                                data-management-action="assign-team">
+                                class="management-actions__item management-actions__item--quiet management-actions__item--danger"
+                                data-management-action="delete-guarantee">
                                 <span class="management-actions__icon" aria-hidden="true">
-                                    <?php echo Svg::icon('person_add'); ?>
+                                    <?php echo Svg::icon('delete'); ?>
                                 </span>
                                 <span class="management-actions__copy">
-                                    <strong><?php esc_html_e('Reasignar gestor', 'garantias-online-360vo'); ?></strong>
-                                    <span><?php esc_html_e('Define quién sigue la incidencia.', 'garantias-online-360vo'); ?></span>
+                                    <strong><?php esc_html_e('Eliminar garantía', 'garantias-online-360vo'); ?></strong>
                                 </span>
                             </button>
                         </div>
-                        <div class="management-note">
-                            <div class="management-note__header">
-                                <span class="management-note__icon" aria-hidden="true">
-                                    <?php echo Svg::icon('info'); ?>
-                                </span>
-                                <div>
-                                    <p><?php esc_html_e('Nota rápida', 'garantias-online-360vo'); ?></p>
-                                    <small><?php esc_html_e('Comparte el contexto esencial.', 'garantias-online-360vo'); ?></small>
+                    </section>
+                    <section
+                        class="guarantee-management__panel"
+                        id="management-panel-notes"
+                        role="tabpanel"
+                        data-management-panel="notes"
+                        hidden>
+                        <div class="management-notes">
+                            <div class="management-notes__list" role="list">
+                                <article class="management-note-card" role="listitem">
+                                    <header class="management-note-card__header">
+                                        <div class="management-note-card__identity">
+                                            <strong>María López</strong>
+                                            <span><?php esc_html_e('Actualización interna', 'garantias-online-360vo'); ?></span>
+                                        </div>
+                                        <div class="management-note-card__meta">
+                                            <time datetime="2024-06-12T10:24:00+02:00">Hoy · 10:24h</time>
+                                            <span><?php esc_html_e('Solo lectura', 'garantias-online-360vo'); ?></span>
+                                        </div>
+                                    </header>
+                                    <p class="management-note-card__body">
+                                        <?php esc_html_e('Cliente informado de la necesidad de remitir justificante de pago. A la espera de adjunto.', 'garantias-online-360vo'); ?>
+                                    </p>
+                                </article>
+                                <article class="management-note-card management-note-card--self" role="listitem">
+                                    <header class="management-note-card__header">
+                                        <div class="management-note-card__identity">
+                                            <strong><?php esc_html_e('Tú', 'garantias-online-360vo'); ?></strong>
+                                            <span><?php esc_html_e('Seguimiento', 'garantias-online-360vo'); ?></span>
+                                        </div>
+                                        <div class="management-note-card__meta">
+                                            <time datetime="2024-06-12T08:05:00+02:00">08:05h</time>
+                                            <button type="button" class="management-note-card__delete">
+                                                <?php esc_html_e('Eliminar', 'garantias-online-360vo'); ?>
+                                            </button>
+                                        </div>
+                                    </header>
+                                    <p class="management-note-card__body">
+                                        <?php esc_html_e('Garantía revisada en CRM. No hay incidencias añadidas desde el último contacto.', 'garantias-online-360vo'); ?>
+                                    </p>
+                                </article>
+                            </div>
+                            <form class="management-notes__composer" action="#" method="post">
+                                <label class="management-notes__field">
+                                    <span><?php esc_html_e('Nueva nota para el equipo', 'garantias-online-360vo'); ?></span>
+                                    <textarea rows="3" placeholder="<?php esc_attr_e('Escribe aquí la actualización para el resto de gestores…', 'garantias-online-360vo'); ?>"></textarea>
+                                </label>
+                                <div class="management-notes__actions">
+                                    <button type="button" class="management-notes__submit">
+                                        <?php esc_html_e('Publicar nota', 'garantias-online-360vo'); ?>
+                                    </button>
                                 </div>
-                            </div>
-                            <label class="management-note__field">
-                                <span class="screen-reader-text">
-                                    <?php esc_html_e('Añadir nota interna', 'garantias-online-360vo'); ?>
-                                </span>
-                                <textarea
-                                    name="management-note-input"
-                                    rows="3"
-                                    placeholder="<?php esc_attr_e('Escribe una nota breve para el equipo', 'garantias-online-360vo'); ?>"
-                                ></textarea>
-                            </label>
-                        </div>
-                        <div class="management-danger" role="list">
-                            <button type="button" class="management-danger__link" data-management-action="cancel-for-nonpayment">
-                                <span aria-hidden="true"><?php echo Svg::icon('warning'); ?></span>
-                                <span><?php esc_html_e('Cancelar garantía por impago', 'garantias-online-360vo'); ?></span>
-                            </button>
-                            <button type="button" class="management-danger__link" data-management-action="delete-guarantee">
-                                <span aria-hidden="true"><?php echo Svg::icon('trash'); ?></span>
-                                <span><?php esc_html_e('Eliminar garantía', 'garantias-online-360vo'); ?></span>
-                            </button>
+                            </form>
                         </div>
                     </section>
                     <section
                         class="guarantee-management__panel"
-                        id="management-panel-adjustments"
+                        id="management-panel-breakdown"
                         role="tabpanel"
-                        data-management-panel="adjustments"
+                        data-management-panel="breakdown"
                         hidden>
-                        <div class="management-ledger">
-                            <div class="management-ledger__item">
-                                <p><?php esc_html_e('Recargos aplicados', 'garantias-online-360vo'); ?></p>
-                                <strong data-management-surcharges>0,00 €</strong>
-                            </div>
-                            <div class="management-ledger__item">
-                                <p><?php esc_html_e('Descuentos activos', 'garantias-online-360vo'); ?></p>
-                                <strong data-management-discounts>- 0,00 €</strong>
-                            </div>
-                            <div class="management-ledger__item">
-                                <p><?php esc_html_e('Saldo pendiente', 'garantias-online-360vo'); ?></p>
-                                <strong data-management-balance>0,00 €</strong>
-                            </div>
-                        </div>
-                        <div class="management-movements">
-                            <p class="management-movements__title">
-                                <?php esc_html_e('Últimos movimientos', 'garantias-online-360vo'); ?>
-                            </p>
-                            <ul class="management-movements__list">
-                                <li>
-                                    <span><?php esc_html_e('No hay ajustes registrados todavía.', 'garantias-online-360vo'); ?></span>
-                                </li>
-                            </ul>
-                        </div>
-                    </section>
-                    <section
-                        class="guarantee-management__panel"
-                        id="management-panel-history"
-                        role="tabpanel"
-                        data-management-panel="history"
-                        hidden>
-                        <div class="management-timeline">
-                            <p class="management-timeline__title">
-                                <?php esc_html_e('Historial de acciones', 'garantias-online-360vo'); ?>
-                            </p>
-                            <ol class="management-timeline__list">
-                                <li>
-                                    <span><?php esc_html_e('Todavía no hay acciones registradas.', 'garantias-online-360vo'); ?></span>
-                                </li>
-                            </ol>
+                        <div class="management-breakdown">
+                            <article class="management-breakdown__column management-breakdown__column--vehicle">
+                                <h3 class="management-breakdown__title"><?php esc_html_e('Datos del vehículo', 'garantias-online-360vo'); ?></h3>
+                                <div class="management-vehicle-grid">
+                                    <article class="management-vehicle-card">
+                                        <p class="management-vehicle-card__label"><?php esc_html_e('Modelo', 'garantias-online-360vo'); ?></p>
+                                        <p class="management-vehicle-card__value">Volkswagen Golf 2.0 TDI DSG</p>
+                                    </article>
+                                    <article class="management-vehicle-card">
+                                        <p class="management-vehicle-card__label"><?php esc_html_e('Bastidor', 'garantias-online-360vo'); ?></p>
+                                        <p class="management-vehicle-card__value">WVWZZZ1KZLW012345</p>
+                                    </article>
+                                    <article class="management-vehicle-card">
+                                        <p class="management-vehicle-card__label"><?php esc_html_e('Kilometraje', 'garantias-online-360vo'); ?></p>
+                                        <p class="management-vehicle-card__value">98.500 km</p>
+                                    </article>
+                                    <article class="management-vehicle-card">
+                                        <p class="management-vehicle-card__label"><?php esc_html_e('Primera matriculación', 'garantias-online-360vo'); ?></p>
+                                        <p class="management-vehicle-card__value">Junio 2020</p>
+                                    </article>
+                                    <article class="management-vehicle-card">
+                                        <p class="management-vehicle-card__label"><?php esc_html_e('Combustible', 'garantias-online-360vo'); ?></p>
+                                        <p class="management-vehicle-card__value"><?php esc_html_e('Diésel automático', 'garantias-online-360vo'); ?></p>
+                                    </article>
+                                </div>
+                            </article>
+                            <article class="management-breakdown__column management-breakdown__column--pricing">
+                                <h3 class="management-breakdown__title"><?php esc_html_e('Desglose económico', 'garantias-online-360vo'); ?></h3>
+                                <div class="management-price-card">
+                                    <dl class="management-price-list">
+                                        <div class="management-price-row">
+                                            <dt><?php esc_html_e('Precio base del plan', 'garantias-online-360vo'); ?></dt>
+                                            <dd>425,00 €</dd>
+                                        </div>
+                                        <div class="management-price-row">
+                                            <dt><?php esc_html_e('Impuestos (21% IVA)', 'garantias-online-360vo'); ?></dt>
+                                            <dd>89,25 €</dd>
+                                        </div>
+                                        <div class="management-price-row">
+                                            <dt><?php esc_html_e('Recargo por financiación', 'garantias-online-360vo'); ?></dt>
+                                            <dd>18,00 €</dd>
+                                        </div>
+                                        <div class="management-price-row">
+                                            <dt><?php esc_html_e('Descuento fidelización', 'garantias-online-360vo'); ?></dt>
+                                            <dd>-20,00 €</dd>
+                                        </div>
+                                        <div class="management-price-row">
+                                            <dt><?php esc_html_e('Coste total vehículo', 'garantias-online-360vo'); ?></dt>
+                                            <dd>512,25 €</dd>
+                                        </div>
+                                    </dl>
+                                    <div class="management-price-total">
+                                        <span><?php esc_html_e('Total a facturar', 'garantias-online-360vo'); ?></span>
+                                        <strong>512,25 €</strong>
+                                    </div>
+                                </div>
+                            </article>
                         </div>
                     </section>
                 </div>
                 <footer class="guarantee-management__footer">
                     <button type="button" class="guarantee-management__btn guarantee-management__btn--ghost" data-management-dismiss>
-                        <?php esc_html_e('Volver al detalle', 'garantias-online-360vo'); ?>
+                        <?php esc_html_e('Cerrar', 'garantias-online-360vo'); ?>
                     </button>
                     <button type="button" class="guarantee-management__btn guarantee-management__btn--primary">
                         <?php esc_html_e('Registrar acción', 'garantias-online-360vo'); ?>
