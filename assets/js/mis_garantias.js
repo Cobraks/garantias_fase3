@@ -4780,19 +4780,28 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 const normalized = String(value).trim();
                                 if (!normalized) return null;
+                                const normalizeYearValue = (year) => {
+                                        const numericYear = Number(year);
+                                        if (!Number.isFinite(numericYear)) return null;
+                                        if (String(year).length === 2) {
+                                                return 2000 + numericYear;
+                                        }
+                                        return numericYear;
+                                };
                                 const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
-                                        const y = Number(year);
+                                        const y = normalizeYearValue(year);
                                         const m = Number(month) - 1;
                                         const d = Number(day);
                                         const hh = Number(hours);
                                         const mm = Number(minutes);
                                         const ss = Number(seconds);
+                                        if (!Number.isFinite(y)) return null;
                                         const candidate = new Date(y, m, d, hh, mm, ss);
                                         if (Number.isNaN(candidate.getTime())) return null;
                                         return candidate;
                                 };
                                 const localMatch = normalized.match(
-                                        /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                                        /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
                                 );
                                 if (localMatch) {
                                         const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
@@ -8114,11 +8123,17 @@ const ADD_DOC_KEY = "add-document";
     const showManagementHub = canAccessManagementHub;
     const formatTimelineDate = (raw) => {
         const fallback = () => {
-            if (typeof raw === "string" && raw.trim() !== "") {
-                return raw.trim();
+            if (typeof raw === "string") {
+                const trimmedRaw = raw.trim();
+                if (trimmedRaw !== "") {
+                    return trimmedRaw;
+                }
             }
             if (raw !== undefined && raw !== null) {
-                return String(raw);
+                const stringified = String(raw).trim();
+                if (stringified !== "") {
+                    return stringified;
+                }
             }
             return "—";
         };
@@ -8172,15 +8187,17 @@ const ADD_DOC_KEY = "add-document";
         pickField("created", ""),
         pickField("post_date", ""),
     ];
-    const coverageStartDateRaw = pickField("desde_fmt", "—");
-    const coverageEndDateRaw = pickField("hasta_fmt", "—");
+    const coverageStartDateRaw = pickField("desde_fmt", "");
+    const coverageEndDateRaw = pickField("hasta_fmt", "");
+    const hasCoverageStart = isFilled(coverageStartDateRaw);
+    const hasCoverageEnd = isFilled(coverageEndDateRaw);
     const contractDateRaw = isSinFinalizar
         ? creationDateCandidates.find((value) => isFilled(value)) ||
           contractDateCandidates.find((value) => isFilled(value)) ||
-          coverageStartDateRaw ||
+          (hasCoverageStart ? coverageStartDateRaw : "") ||
           ""
         : contractDateCandidates.find((value) => isFilled(value)) ||
-          coverageStartDateRaw ||
+          (hasCoverageStart ? coverageStartDateRaw : "") ||
           creationDateCandidates.find((value) => isFilled(value)) ||
           "";
     const billingTotalAmount = "1.125,00 €";
@@ -8198,7 +8215,9 @@ const ADD_DOC_KEY = "add-document";
         `<div class="detail__timeline detail__timeline--range">` +
             `<div class="detail__timeline-point">` +
                 `<span class="detail__timeline-label">Inicio cobertura</span>` +
-                `<span class="detail__timeline-value">${formatTimelineDate(coverageStartDateRaw)}</span>` +
+                `<span class="detail__timeline-value">${
+                    hasCoverageStart ? formatTimelineDate(coverageStartDateRaw) : "—"
+                }</span>` +
             `</div>` +
             `<div class="detail__timeline-connector" aria-hidden="true">` +
                 `<svg class="detail__timeline-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
@@ -8208,7 +8227,9 @@ const ADD_DOC_KEY = "add-document";
             `</div>` +
             `<div class="detail__timeline-point detail__timeline-point--end">` +
                 `<span class="detail__timeline-label">Vencimiento</span>` +
-                `<span class="detail__timeline-value">${formatTimelineDate(coverageEndDateRaw)}</span>` +
+                `<span class="detail__timeline-value">${
+                    hasCoverageEnd ? formatTimelineDate(coverageEndDateRaw) : "—"
+                }</span>` +
             `</div>` +
         `</div>` +
     `</div>`;
