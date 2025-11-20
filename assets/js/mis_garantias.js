@@ -8121,6 +8121,67 @@ const ADD_DOC_KEY = "add-document";
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
     const showManagementHub = canAccessManagementHub;
+    const parseTimelineDate = (value) => {
+        if (typeof parseDateTime === "function") {
+            return parseDateTime(value);
+        }
+        if (!value) return null;
+        const normalized = String(value).trim();
+        if (!normalized) return null;
+
+        const normalizeYearValue = (year) => {
+            const numericYear = Number(year);
+            if (!Number.isFinite(numericYear)) return null;
+            if (String(year).length === 2) {
+                return 2000 + numericYear;
+            }
+            return numericYear;
+        };
+
+        const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
+            const y = normalizeYearValue(year);
+            const m = Number(month) - 1;
+            const d = Number(day);
+            const hh = Number(hours);
+            const mm = Number(minutes);
+            const ss = Number(seconds);
+            if (!Number.isFinite(y)) return null;
+            const candidate = new Date(y, m, d, hh, mm, ss);
+            if (Number.isNaN(candidate.getTime())) return null;
+            return candidate;
+        };
+
+        const localMatch = normalized.match(
+            /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+        );
+        if (localMatch) {
+            const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
+            const date = safeDate(year, month, day, hours, minutes, seconds);
+            if (date) return date;
+        }
+
+        const isoMatch = normalized.match(
+            /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+        );
+        if (isoMatch) {
+            const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
+            const date = safeDate(year, month, day, hours, minutes, seconds);
+            if (date) return date;
+        }
+
+        const numeric = normalized.replace(/[^0-9]/g, "");
+        if (numeric.length >= 8) {
+            const year = numeric.length === 8 ? numeric.slice(4, 8) : numeric.slice(0, 4);
+            const month = numeric.length === 8 ? numeric.slice(2, 4) : numeric.slice(4, 6);
+            const day = numeric.length === 8 ? numeric.slice(0, 2) : numeric.slice(6, 8);
+            const date = safeDate(year, month, day);
+            if (date) return date;
+        }
+
+        const fallbackDate = new Date(normalized);
+        return Number.isNaN(fallbackDate.getTime()) ? null : fallbackDate;
+    };
+
     const formatTimelineDate = (raw) => {
         const fallback = () => {
             if (typeof raw === "string") {
@@ -8137,13 +8198,7 @@ const ADD_DOC_KEY = "add-document";
             }
             return "—";
         };
-        const parsed =
-            typeof parseDateTime === "function"
-                ? parseDateTime(raw)
-                : (() => {
-                      const date = new Date(raw);
-                      return Number.isNaN(date.getTime()) ? null : date;
-                  })();
+        const parsed = parseTimelineDate(raw);
         if (!parsed) {
             return fallback();
         }
@@ -8194,10 +8249,8 @@ const ADD_DOC_KEY = "add-document";
     const contractDateRaw = isSinFinalizar
         ? creationDateCandidates.find((value) => isFilled(value)) ||
           contractDateCandidates.find((value) => isFilled(value)) ||
-          (hasCoverageStart ? coverageStartDateRaw : "") ||
           ""
         : contractDateCandidates.find((value) => isFilled(value)) ||
-          (hasCoverageStart ? coverageStartDateRaw : "") ||
           creationDateCandidates.find((value) => isFilled(value)) ||
           "";
     const billingTotalAmount = "1.125,00 €";
