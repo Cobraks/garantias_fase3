@@ -2088,7 +2088,11 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
 }
 
 .detail__timeline--range {
-    flex: 2 1 100%;
+    flex: 2;
+}
+
+.detail__timeline--contract {
+    flex: 1;
 }
 
 .detail__timeline-point {
