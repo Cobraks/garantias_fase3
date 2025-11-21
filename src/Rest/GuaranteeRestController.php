@@ -2331,6 +2331,12 @@ class GuaranteeRestController
 
         $meses_contratados = 0;
         $gc = [];
+        $acf_gc_payload = function_exists('get_field')
+            ? get_field('garantia_contratada', $post_id)
+            : [];
+        if (!is_array($acf_gc_payload)) {
+            $acf_gc_payload = [];
+        }
         $is_publishing = isset($data['post_status']) && sanitize_text_field($data['post_status']) === 'publish';
         if (isset($data['garantia_contratada']) && is_array($data['garantia_contratada'])) {
             $gc   = [];
@@ -2413,10 +2419,20 @@ class GuaranteeRestController
                                     $tipo = sanitize_text_field($row['tipo'] ?? '');
                                     $por  = self::normalize_decimal($row['porcentaje'] ?? '');
                                     $raz  = sanitize_text_field($row['razon'] ?? '');
+                                    $concepto = sanitize_text_field($row['concepto'] ?? '');
+                                    $importe   = self::normalize_decimal($row['importe'] ?? '');
+                                    $orden     = isset($row['orden']) ? absint($row['orden']) : 0;
+                                    $destacado = isset($row['destacado']) && $row['destacado'] ? 1 : 0;
+                                    $base_calc = self::normalize_decimal($row['base_calculo'] ?? '');
                                     $list[] = [
                                         'tipo'       => $tipo,
                                         'porcentaje' => is_numeric($por) ? $por : '',
                                         'razon'      => $raz,
+                                        'concepto'   => $concepto,
+                                        'importe'    => is_numeric($importe) ? $importe : '',
+                                        'orden'      => $orden,
+                                        'destacado'  => $destacado,
+                                        'base_calculo' => is_numeric($base_calc) ? $base_calc : '',
                                     ];
                                 }
                                 if ($list) {
@@ -2430,6 +2446,10 @@ class GuaranteeRestController
                         $gc[$k] = sanitize_text_field($v);
                         break;
                 }
+            }
+
+            foreach ($gc as $key => $value) {
+                $acf_gc_payload[$key] = $value;
             }
 
             $preferred_channel_slug = '';
@@ -2496,6 +2516,22 @@ class GuaranteeRestController
                 }
                 if ($existing_vendor > 0) {
                     $gc['concesionario_empresa_profesional'] = $existing_vendor;
+                }
+            }
+
+            foreach ($gc as $key => $value) {
+                $acf_gc_payload[$key] = $value;
+            }
+
+            if (!empty($acf_gc_payload)) {
+                if (function_exists('update_field')) {
+                    if (isset($gc['descuentos_y_recargos']) && is_array($gc['descuentos_y_recargos'])) {
+                        update_field('field_6890a4be4435a', $gc['descuentos_y_recargos'], $post_id);
+                    }
+
+                    update_field('field_685e5b14b2de4', $acf_gc_payload, $post_id);
+                } else {
+                    update_post_meta($post_id, 'garantia_contratada', $acf_gc_payload);
                 }
             }
 
@@ -2596,8 +2632,10 @@ class GuaranteeRestController
             $context_payment_method = (string) get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
         }
 
+        $should_stamp_contract_date = in_array($new_contract_state, ['activada', 'pendiente_pago'], true);
+
         if (
-            in_array($new_contract_state, ['activada', 'pendiente_pago'], true)
+            $should_stamp_contract_date
             && $new_contract_state !== $previous_contract_state
         ) {
             $queued_contract_notice  = true;
@@ -2614,6 +2652,15 @@ class GuaranteeRestController
                 $new_contract_state,
                 $post_id
             ));
+        }
+
+        if ($should_stamp_contract_date && $post_id) {
+            $fecha_contratacion = get_post_meta($post_id, 'estado_garantia_fecha_contratacion', true);
+            $fecha_contratacion = is_string($fecha_contratacion) ? trim($fecha_contratacion) : '';
+            if ($fecha_contratacion === '') {
+                $current_contract_date = current_time('d/m/Y');
+                update_post_meta($post_id, 'estado_garantia_fecha_contratacion', $current_contract_date);
+            }
         }
 
         if (
@@ -4060,6 +4107,23 @@ class GuaranteeRestController
         $raw_desde = get_post_meta($id, 'estado_garantia_inicio', true);
         $desde   = self::resolve_effective_start_date((int) $id, (string) $estado, $raw_desde);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
+        $fecha_contratacion_raw = get_post_meta($id, 'estado_garantia_fecha_contratacion', true);
+        $fecha_contratacion_fmt = '';
+        $fecha_contratacion_value = '';
+        if (is_string($fecha_contratacion_raw) && $fecha_contratacion_raw !== '') {
+            $fecha_contratacion_raw = sanitize_text_field($fecha_contratacion_raw);
+            $fecha_contratacion_dt = DateTimeImmutable::createFromFormat('d/m/Y', $fecha_contratacion_raw);
+            if (! $fecha_contratacion_dt) {
+                $fecha_contratacion_dt = DateTimeImmutable::createFromFormat('Y-m-d', $fecha_contratacion_raw);
+            }
+            if ($fecha_contratacion_dt instanceof DateTimeImmutable) {
+                $fecha_contratacion_fmt = $fecha_contratacion_dt->format('d/m/Y');
+                $fecha_contratacion_value = $fecha_contratacion_dt->format('Y-m-d');
+            } else {
+                $fecha_contratacion_fmt = $fecha_contratacion_raw;
+                $fecha_contratacion_value = $fecha_contratacion_raw;
+            }
+        }
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
             'validacion_pendiente' => __('Validación pendiente', 'garantias-online-360vo'),
@@ -4239,6 +4303,11 @@ class GuaranteeRestController
 
         $uuid = get_post_meta($id, 'estado_garantia_uuid', true);
 
+        $post_date          = get_post_field('post_date', $id);
+        $post_date_gmt      = get_post_field('post_date_gmt', $id);
+        $post_modified      = get_post_field('post_modified', $id);
+        $post_modified_gmt  = get_post_field('post_modified_gmt', $id);
+
         $primera_matriculacion_display = '-';
         if (is_string($primera_matriculacion) && $primera_matriculacion !== '') {
             $date = DateTimeImmutable::createFromFormat('Y-m-d', $primera_matriculacion);
@@ -4283,6 +4352,14 @@ class GuaranteeRestController
                 'value' => $estado,
                 'label' => $estado_label,
             ],
+            'estado_garantia' => [
+                'estado_contratacion'   => $estado,
+                'inicio'                => $raw_desde,
+                'finalizacion'          => $hasta,
+                'fecha_contratacion'    => $fecha_contratacion_value,
+                'fecha_contratacion_raw' => $fecha_contratacion_raw,
+                'fecha_contratacion_fmt' => $fecha_contratacion_fmt,
+            ],
             'concesionario' => $concesionario !== '' ? $concesionario : '-',
             'vendor_id' => $vendor_id,
             'concesionario_personal' => $vendor_full_name,
@@ -4317,6 +4394,10 @@ class GuaranteeRestController
             'localidad_comprador' => $localidad_comprador ?: '-',
             'provincia_comprador' => $provincia_comprador ?: '-',
             'codigo_postal_comprador' => $codigo_postal_comprador ?: '-',
+            'post_date' => is_string($post_date) ? $post_date : '',
+            'post_date_gmt' => is_string($post_date_gmt) ? $post_date_gmt : '',
+            'post_modified' => is_string($post_modified) ? $post_modified : '',
+            'post_modified_gmt' => is_string($post_modified_gmt) ? $post_modified_gmt : '',
         ];
 
         return self::inject_document_collection($detail, $id, $include_document_urls);
