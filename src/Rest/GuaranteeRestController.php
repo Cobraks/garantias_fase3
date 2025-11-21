@@ -4009,6 +4009,13 @@ class GuaranteeRestController
         $bastidor = get_post_meta($id, 'datos_vehiculo_numero_bastidor', true);
         $precio_venta = get_post_meta($id, 'datos_vehiculo_precio_venta', true);
 
+        $fecha_contratacion = get_post_meta($id, 'estado_garantia_fecha_contratacion', true);
+
+        $post_date       = get_post_field('post_date', $id);
+        $post_date_gmt   = get_post_field('post_date_gmt', $id);
+        $post_modified   = get_post_field('post_modified', $id);
+        $post_modified_gmt = get_post_field('post_modified_gmt', $id);
+
         $combustible_raw = function_exists('get_field') ? get_field('datos_vehiculo_combustible', $id) : get_post_meta($id, 'datos_vehiculo_combustible', true);
         $combustible_label = is_array($combustible_raw)
             ? ($combustible_raw['label'] ?? $combustible_raw['value'] ?? '')
@@ -4279,6 +4286,11 @@ class GuaranteeRestController
             'metodo_pago' => $metodo_pago ?: '',
             'desde' => $desde,
             'hasta' => $hasta,
+            'fecha_contratacion' => is_string($fecha_contratacion) ? $fecha_contratacion : '',
+            'post_date' => self::normalize_post_date($post_date),
+            'post_date_gmt' => self::normalize_post_date($post_date_gmt),
+            'post_modified' => self::normalize_post_date($post_modified),
+            'post_modified_gmt' => self::normalize_post_date($post_modified_gmt),
             'estado' => [
                 'value' => $estado,
                 'label' => $estado_label,
@@ -5123,35 +5135,9 @@ class GuaranteeRestController
             return $start;
         }
 
-        if ($estado !== 'sin_finalizar') {
-            return '';
-        }
-
-        if ($post_id <= 0) {
-            return '';
-        }
-
-        $candidates = [
-            get_post_field('post_date', $post_id),
-            get_post_field('post_date_gmt', $post_id),
-            get_post_field('post_modified', $post_id),
-            get_post_field('post_modified_gmt', $post_id),
-        ];
-
-        foreach ($candidates as $candidate) {
-            $normalized = self::normalize_post_date($candidate);
-            if ($normalized !== '') {
-                return $normalized;
-            }
-        }
-
-        $created = get_post_time('Y-m-d', false, $post_id, false);
-        if (is_string($created) && $created !== '' && $created !== '0000-00-00') {
-            return $created;
-        }
-
-        $current = current_time('Y-m-d');
-        return is_string($current) ? $current : '';
+        // No fallback start date: if it has not been selected explicitly, keep it empty
+        // so the UI can distinguish between configured cobertura and drafts.
+        return '';
     }
 
     private static function resolve_sort_config(string $order_by, string $order): array

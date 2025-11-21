@@ -4596,6 +4596,46 @@ const ADD_DOC_KEY = "add-document";
                         return { iso: value, display: value };
                 }
 
+                const TIMELINE_DATE_FORMATTER = new Intl.DateTimeFormat("es-ES", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                });
+
+                function parseDateStrict(value) {
+                        if (!value) return null;
+                        if (value instanceof Date) return value;
+                        const normalized = String(value).trim();
+                        if (!normalized) return null;
+                        const normalizedDigits = normalized.replace(/[^0-9]/g, "");
+                        if (normalizedDigits.length === 6) {
+                                const d = normalizedDigits.slice(0, 2);
+                                const m = normalizedDigits.slice(2, 4);
+                                const y = normalizedDigits.slice(4);
+                                const fullYear = Number(y) < 100 ? 2000 + Number(y) : Number(y);
+                                const candidate = new Date(fullYear, Number(m) - 1, Number(d));
+                                if (!Number.isNaN(candidate.getTime())) return candidate;
+                        }
+                        const slashMatch = normalized.match(
+                                /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/
+                        );
+                        if (slashMatch) {
+                                const [, d, m, y] = slashMatch;
+                                const fullYear = Number(y.length === 2 ? `20${y}` : y);
+                                const candidate = new Date(fullYear, Number(m) - 1, Number(d));
+                                if (!Number.isNaN(candidate.getTime())) return candidate;
+                        }
+                        const candidate = new Date(normalized);
+                        if (!Number.isNaN(candidate.getTime())) return candidate;
+                        return null;
+                }
+
+                function formatTimelineDate(value) {
+                        const parsed = parseDateStrict(value);
+                        if (!parsed) return "—";
+                        return TIMELINE_DATE_FORMATTER.format(parsed).replace(/\.$/, "");
+                }
+
                 function formatPrice(value) {
                         if (value === null || value === undefined || value === "") return "-";
                         const num =
@@ -7830,10 +7870,105 @@ const ADD_DOC_KEY = "add-document";
         rawDesdeIso,
         rawHastaIso
     );
-    const coverageHtml = hasCoverageInfo
-        ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
-              `${coverageCountdownLabel ? `<span class=\"guarantee-detail__plan-duration\">${coverageCountdownLabel}</span>` : ""}</p></div>`
+    const timelineContractLabel = isSinFinalizar
+        ? "Iniciada"
+        : "Fecha contratación";
+    const creationCandidates = [
+        pickField("post_date", ""),
+        pickField("post_date_gmt", ""),
+        pickField("post_modified", ""),
+        pickField("post_modified_gmt", ""),
+    ];
+    const creationDateDisplay = formatTimelineDate(
+        creationCandidates.find((v) => isFilled(v)) || ""
+    );
+    const contractDateDisplay = !isSinFinalizar
+        ? formatTimelineDate(
+              pickField("fecha_contratacion", "") ||
+                  creationCandidates.find((v) => isFilled(v)) ||
+                  ""
+          )
+        : creationDateDisplay;
+    const coverageStartDisplay = formatTimelineDate(
+        pickField("desde_raw", "") || pickField("desde", "")
+    );
+    const coverageEndDisplay = formatTimelineDate(
+        pickField("hasta_raw", "") || pickField("hasta", "")
+    );
+    const coverageCountdownClean = coverageCountdownLabel
+        ? coverageCountdownLabel.replace(/[()]/g, "").trim()
         : "";
+    const countdownCard = coverageCountdownClean
+        ? `<div class="detail__billing-card detail__billing-card--countdown">` +
+              `<p class="detail__billing-card-label">${
+                  coverageCountdownClean.includes("inicio")
+                      ? "Días para inicio"
+                      : "Días restantes"
+              }</p>` +
+              `<p class="detail__billing-card-value">${coverageCountdownClean}</p>` +
+          `</div>`
+        : "";
+    const manageButtonHtml = showManagementHub
+        ? `<button type="button" class="detail__manage-button" data-management-open>` +
+              `<span class="detail__manage-copy">` +
+                  `<strong>Gestionar garantía</strong>` +
+                  `<span>Operativa interna y ajustes</span>` +
+              `</span>` +
+              `<span class="detail__manage-caret" aria-hidden="true">` +
+                  `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M360-200 320-240 520-440 320-640l40-40 240 240-240 240Z"></path></svg>` +
+              `</span>` +
+          `</button>`
+        : "";
+    const billingSummaryHtml =
+        countdownCard || manageButtonHtml
+            ? `<div class="detail__billing-summary">${countdownCard}${manageButtonHtml}</div>`
+            : "";
+    const billedAmount = planPriceRaw && planPriceRaw !== "-"
+        ? `${planPriceRaw} €`
+        : "—";
+    const billingToggleHtml =
+        `<details class="detail__transfer-toggle detail__billing-toggle">` +
+            `<summary class="detail__transfer-toggle-summary">` +
+                `<span class="detail__transfer-toggle-label">Ver desglose económico</span>` +
+                `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${arrowDownIcon}</span>` +
+                `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${arrowUpIcon}</span>` +
+            `</summary>` +
+            `<div class="detail__transfer-toggle-content">` +
+                `<div class="detail__billing-breakdown">` +
+                    `<div class="detail__billing-row"><span>Precio base</span><span>1.050,00 €</span></div>` +
+                    `<div class="detail__billing-row"><span>Recargo por kilometraje</span><span>+120,00 €</span></div>` +
+                    `<div class="detail__billing-row"><span>Descuento comercial</span><span>-45,00 €</span></div>` +
+                    `<div class="detail__billing-divider" role="presentation"></div>` +
+                    `<div class="detail__billing-row detail__billing-row--total"><span>Total facturado</span><span>${billedAmount}</span></div>` +
+                `</div>` +
+            `</div>` +
+        `</details>`;
+    const billingTimelineHtml =
+        `<section class="detail__section detail__section--billing">` +
+            `<div class="detail__timeline-list">` +
+                `<div class="detail__timeline detail__timeline--contract">` +
+                    `<div class="detail__timeline-point">` +
+                        `<span class="detail__timeline-label">${timelineContractLabel}</span>` +
+                        `<span class="detail__timeline-value">${contractDateDisplay}</span>` +
+                    `</div>` +
+                `</div>` +
+                `<div class="detail__timeline detail__timeline--range">` +
+                    `<div class="detail__timeline-point">` +
+                        `<span class="detail__timeline-label">Inicio cobertura</span>` +
+                        `<span class="detail__timeline-value">${coverageStartDisplay}</span>` +
+                    `</div>` +
+                    `<div class="detail__timeline-connector" aria-hidden="true">` +
+                        `<svg class="detail__timeline-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>` +
+                    `</div>` +
+                    `<div class="detail__timeline-point detail__timeline-point--end">` +
+                        `<span class="detail__timeline-label">Vencimiento</span>` +
+                        `<span class="detail__timeline-value">${coverageEndDisplay}</span>` +
+                    `</div>` +
+                `</div>` +
+            `</div>` +
+            `${billingSummaryHtml}` +
+            `${billingToggleHtml}` +
+        `</section>`;
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
@@ -8132,11 +8267,11 @@ const ADD_DOC_KEY = "add-document";
                 <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
-                        ${coverageHtml}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
                 ${managementSectionHtml}
+                ${billingTimelineHtml}
                 ${coverageAlertHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
@@ -8413,10 +8548,10 @@ const ADD_DOC_KEY = "add-document";
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
                         ${planTitleHtml}
-                        ${coverageHtml}
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
                 ${managementSectionHtml}
+                ${billingTimelineHtml}
                 ${paymentHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
