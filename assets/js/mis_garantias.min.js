@@ -7898,6 +7898,7 @@ const ADD_DOC_KEY = "add-document";
     const coverageCountdownClean = coverageCountdownLabel
         ? coverageCountdownLabel.replace(/[()]/g, "").trim()
         : "";
+    const showManagementHub = canAccessManagementHub;
     const countdownCard = coverageCountdownClean
         ? `<div class="detail__billing-card detail__billing-card--countdown">` +
               `<p class="detail__billing-card-label">${
@@ -8193,7 +8194,6 @@ const ADD_DOC_KEY = "add-document";
     const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
-    const showManagementHub = canAccessManagementHub;
     const managementSectionHtml = showManagementHub
         ? `<section class="detail__section detail__section--management" aria-live="polite">
                 <div class="detail__management-card">
