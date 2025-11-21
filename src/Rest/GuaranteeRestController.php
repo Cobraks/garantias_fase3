@@ -4256,6 +4256,11 @@ class GuaranteeRestController
 
         $uuid = get_post_meta($id, 'estado_garantia_uuid', true);
 
+        $post_date          = get_post_field('post_date', $id);
+        $post_date_gmt      = get_post_field('post_date_gmt', $id);
+        $post_modified      = get_post_field('post_modified', $id);
+        $post_modified_gmt  = get_post_field('post_modified_gmt', $id);
+
         $primera_matriculacion_display = '-';
         if (is_string($primera_matriculacion) && $primera_matriculacion !== '') {
             $date = DateTimeImmutable::createFromFormat('Y-m-d', $primera_matriculacion);
@@ -4342,6 +4347,10 @@ class GuaranteeRestController
             'localidad_comprador' => $localidad_comprador ?: '-',
             'provincia_comprador' => $provincia_comprador ?: '-',
             'codigo_postal_comprador' => $codigo_postal_comprador ?: '-',
+            'post_date' => is_string($post_date) ? $post_date : '',
+            'post_date_gmt' => is_string($post_date_gmt) ? $post_date_gmt : '',
+            'post_modified' => is_string($post_modified) ? $post_modified : '',
+            'post_modified_gmt' => is_string($post_modified_gmt) ? $post_modified_gmt : '',
         ];
 
         return self::inject_document_collection($detail, $id, $include_document_urls);
