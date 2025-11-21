@@ -8315,18 +8315,23 @@ const ADD_DOC_KEY = "add-document";
     const creationDateRaw = pickFirstFilled(...creationDateCandidates);
     const contractDateRaw = (() => {
         if (isSinFinalizar) {
-            return creationDateRaw || publicationDateRaw || contractDateFromAcf;
+            return pickFirstFilled(creationDateRaw, publicationDateRaw, coverageStartDateRaw, contractDateFromAcf);
         }
         if (isPendientePago || estadoClase === "activada") {
-            return contractDateFromAcf || publicationDateRaw || creationDateRaw;
+            if (isFilled(contractDateFromAcf)) {
+                return contractDateFromAcf;
+            }
+            return pickFirstFilled(coverageStartDateRaw, creationDateRaw, publicationDateRaw);
         }
         return "";
     })();
-    const contractDateLabel = isSinFinalizar
-        ? "Iniciada"
-        : isPendientePago || estadoClase === "activada"
-        ? "Fecha contratación"
-        : "";
+    const contractDateLabel = (() => {
+        if (isSinFinalizar) return "Iniciada";
+        if (isPendientePago || estadoClase === "activada") {
+            return isFilled(contractDateFromAcf) ? "Fecha contratación" : "Iniciada";
+        }
+        return "";
+    })();
     const shouldShowContractDate = Boolean(contractDateLabel);
     const today = (() => {
         const now = new Date();
