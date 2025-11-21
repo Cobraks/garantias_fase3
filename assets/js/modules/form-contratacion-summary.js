@@ -23,6 +23,12 @@ import {
 } from "./form-calculations.js";
 import { eurosString, IVA_PORCENTAJE } from "./form-utils.js";
 
+let lastSummaryBreakdown = [];
+
+export async function getEconomicBreakdownSnapshot() {
+        return lastSummaryBreakdown;
+}
+
 function getValoresForm() {
         return {
                 cilindrada: document.getElementById("cilindrada")?.value || 0,
@@ -139,10 +145,11 @@ function describeTramo(modalidad, valoresForm) {
 }
 
 async function buildSummaryHTML() {
-	const container = document.getElementById("final-summary");
-	if (!container) {
-		console.warn(
-			"[contratacion-summary] #final-summary no está presente, reintentando."
+        const container = document.getElementById("final-summary");
+        lastSummaryBreakdown = [];
+        if (!container) {
+                console.warn(
+                        "[contratacion-summary] #final-summary no está presente, reintentando."
 		);
 		setTimeout(buildSummaryHTML, 100);
 		return;
@@ -268,6 +275,9 @@ async function buildSummaryHTML() {
                                 ? Math.round((precioFinal + iva) * 100) / 100
                                 : null;
 
+                const summaryItems = [];
+                let orden = 1;
+
                 let html = `<div class="contratacion-summary">
     <h2>Certificado de Garantía</h2>
     <h3>${title} ${duracionLabel}</h3>
@@ -281,6 +291,17 @@ async function buildSummaryHTML() {
                 } else {
                         html += `<li class="item"><span class="concepto">${tramoTexto}</span><span class="valor">--</span></li>`;
                 }
+
+                summaryItems.push({
+                        concepto: tramoTexto,
+                        tipo: "base",
+                        importe: precioBase !== null ? precioBase : "",
+                        porcentaje: "",
+                        razon: "",
+                        orden: orden++,
+                        destacado: false,
+                        base_calculo: precioBase !== null ? precioBase : "",
+                });
 
                 if (breakdown.detalles && breakdown.detalles.length) {
                         breakdown.detalles.forEach((sup) => {
@@ -297,6 +318,21 @@ async function buildSummaryHTML() {
                                 html += `<li class="${itemClasses.join(" ")}"><span class="concepto">${label}</span><span class="valor">${
                                         recargoEuros !== null ? `${eurosString(recargoEuros)}€` : "--"
                                 }</span></li>`;
+
+                                summaryItems.push({
+                                        concepto: label,
+                                        tipo: "recargo",
+                                        importe: recargoEuros !== null ? recargoEuros : "",
+                                        porcentaje:
+                                                typeof sup.porcentajeAplicado === "number"
+                                                        ? Math.round(sup.porcentajeAplicado * 10000) / 100
+                                                        : "",
+                                        razon: sup.descripcion || "",
+                                        orden: orden++,
+                                        destacado: false,
+                                        base_calculo: precioBase !== null ? precioBase : "",
+                                        sin_suplementos: sinSuplementos,
+                                });
                         });
                         if (sinSuplementos) {
                                 const etiquetaOferta =
@@ -306,6 +342,17 @@ async function buildSummaryHTML() {
                                 html += `<li class="item item--nota"><span class="concepto concepto--nota">Suplementos no aplicados por la oferta “${escapeHtml(
                                         etiquetaOferta
                                 )}”.</span><span class="valor"></span></li>`;
+
+                                summaryItems.push({
+                                        concepto: `Suplementos no aplicados por la oferta “${etiquetaOferta}”.`,
+                                        tipo: "oferta",
+                                        importe: "",
+                                        porcentaje: "",
+                                        razon: etiquetaOferta,
+                                        orden: orden++,
+                                        destacado: false,
+                                        base_calculo: "",
+                                });
                         }
                 }
 
@@ -320,6 +367,20 @@ async function buildSummaryHTML() {
                                 html += `<li class="item"><span class="concepto">${label}</span><span class="valor">-${
                                         descuentoEuros !== null ? eurosString(descuentoEuros) + "€" : "--"
                                 }</span></li>`;
+
+                                summaryItems.push({
+                                        concepto: label,
+                                        tipo: "descuento",
+                                        importe: descuentoEuros !== null ? descuentoEuros : "",
+                                        porcentaje:
+                                                typeof desc.porcentaje === "number"
+                                                        ? Math.round(desc.porcentaje * 10000) / 100
+                                                        : "",
+                                        razon: nombre,
+                                        orden: orden++,
+                                        destacado: false,
+                                        base_calculo: precioAntesDescuento !== null ? precioAntesDescuento : "",
+                                });
                         }
                 }
 
@@ -327,19 +388,43 @@ async function buildSummaryHTML() {
                         html += `<li class="item"><span class="concepto">IVA (${IVA_PORCENTAJE}%)</span><span class="valor">${eurosString(
                                 iva
                         )}€</span></li>`;
+
+                        summaryItems.push({
+                                concepto: `IVA (${IVA_PORCENTAJE}%)`,
+                                tipo: "iva",
+                                importe: iva,
+                                porcentaje: IVA_PORCENTAJE,
+                                razon: "IVA",
+                                orden: orden++,
+                                destacado: false,
+                                base_calculo: precioFinal !== null ? precioFinal : "",
+                        });
                 }
 
                 if (totalConIva !== null) {
                         html += `<li class="item item--destacado"><span class="concepto">Precio total</span><span class="valor">${eurosString(
                                 totalConIva
                         )}€</span></li>`;
+
+                        summaryItems.push({
+                                concepto: "Precio total",
+                                tipo: "total",
+                                importe: totalConIva,
+                                porcentaje: "",
+                                razon: "",
+                                orden: orden++,
+                                destacado: true,
+                                base_calculo: "",
+                        });
                 }
 
                   html += `</ul>`;
-									if (breakdown.limiteTotalAlcanzado) {
-										html += `<p class="contratacion-summary__limite">*Límite máximo recargos ${breakdown.maximoAcumulableTotal}%</p>`;
-									}
-									html += `</div>`;
+                                                                        if (breakdown.limiteTotalAlcanzado) {
+                                                                                html += `<p class="contratacion-summary__limite">*Límite máximo recargos ${breakdown.maximoAcumulableTotal}%</p>`;
+                                                                        }
+                                                                        html += `</div>`;
+
+                lastSummaryBreakdown = summaryItems;
 
                 container.innerHTML = html;
         } catch (err) {
