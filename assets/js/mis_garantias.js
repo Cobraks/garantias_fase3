@@ -250,6 +250,14 @@ const ADD_DOC_KEY = "add-document";
                                 "go_comercial",
                                 "go_director_comercial",
                         ].includes(normalizedRole);
+                const canSeeBillingDetails =
+                        [
+                                "administrator",
+                                "admin",
+                                "go_garantias",
+                                "go_comercial",
+                                "go_director_comercial",
+                        ].includes(normalizedRole);
                 const canAccessManagementHub =
                         [
                                 "administrator",
@@ -8325,13 +8333,15 @@ a.getFullYear() === b.getFullYear() &&
           `</button>`
         : "";
 
-    const billingSummaryHtml = `<div class="detail__billing-summary">` +
-        `<div class="detail__billing-card">` +
-            `<p class="detail__billing-card-label">${billingCountdown.label}</p>` +
-            `<p class="detail__billing-card-value">${billingCountdown.value}</p>` +
-        `</div>` +
-        `${managementButtonHtml}` +
-    `</div>`;
+    const billingSummaryHtml = canSeeBillingDetails
+        ? `<div class="detail__billing-summary">` +
+              `<div class="detail__billing-card">` +
+                  `<p class="detail__billing-card-label">${billingCountdown.label}</p>` +
+                  `<p class="detail__billing-card-value">${billingCountdown.value}</p>` +
+              `</div>` +
+              `${managementButtonHtml}` +
+          `</div>`
+        : "";
     const billingTimelineHtml = `<div class="detail__timeline-list">` +
         `<div class="detail__timeline detail__timeline--contract">` +
             `<div class="detail__timeline-point">` +
@@ -8371,14 +8381,16 @@ a.getFullYear() === b.getFullYear() &&
         `<div class="detail__billing-divider" role="presentation"></div>` +
         `<div class="detail__billing-row detail__billing-row--total"><span>Total facturado</span><span>${billingTotalAmount}</span></div>` +
     `</div>`;
-    const billingToggleHtml = `<details class="detail__transfer-toggle detail__billing-toggle">` +
-        `<summary class="detail__transfer-toggle-summary">` +
-            `<span class="detail__transfer-toggle-label">Ver desglose económico</span>` +
-            `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${arrowDownIcon || "&#9660;"}</span>` +
-            `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${arrowUpIcon || "&#9650;"}</span>` +
-        `</summary>` +
-        `<div class="detail__transfer-toggle-content">${billingBreakdownHtml}</div>` +
-    `</details>`;
+    const billingToggleHtml = canSeeBillingDetails
+        ? `<details class="detail__transfer-toggle detail__billing-toggle">` +
+              `<summary class="detail__transfer-toggle-summary">` +
+                  `<span class="detail__transfer-toggle-label">Ver desglose económico</span>` +
+                  `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${arrowDownIcon || "&#9660;"}</span>` +
+                  `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${arrowUpIcon || "&#9650;"}</span>` +
+              `</summary>` +
+              `<div class="detail__transfer-toggle-content">${billingBreakdownHtml}</div>` +
+          `</details>`
+        : "";
     const billingSectionHtml = `<section class="detail__section detail__section--billing">` +
         `${billingTimelineHtml}` +
         `${billingSummaryHtml}` +
@@ -8428,6 +8440,7 @@ a.getFullYear() === b.getFullYear() &&
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${paymentHtml}
                 ${billingSectionHtml}
                 ${managementSectionHtml}
                 ${coverageAlertHtml}
@@ -8709,9 +8722,9 @@ a.getFullYear() === b.getFullYear() &&
                         ${coverageHtml}
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${paymentHtml}
                 ${billingSectionHtml}
                 ${managementSectionHtml}
-                ${paymentHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">
