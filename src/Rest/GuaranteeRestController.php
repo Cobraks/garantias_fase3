@@ -4060,6 +4060,23 @@ class GuaranteeRestController
         $raw_desde = get_post_meta($id, 'estado_garantia_inicio', true);
         $desde   = self::resolve_effective_start_date((int) $id, (string) $estado, $raw_desde);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
+        $fecha_contratacion_raw = get_post_meta($id, 'estado_garantia_fecha_contratacion', true);
+        $fecha_contratacion_fmt = '';
+        $fecha_contratacion_value = '';
+        if (is_string($fecha_contratacion_raw) && $fecha_contratacion_raw !== '') {
+            $fecha_contratacion_raw = sanitize_text_field($fecha_contratacion_raw);
+            $fecha_contratacion_dt = DateTimeImmutable::createFromFormat('d/m/Y', $fecha_contratacion_raw);
+            if (! $fecha_contratacion_dt) {
+                $fecha_contratacion_dt = DateTimeImmutable::createFromFormat('Y-m-d', $fecha_contratacion_raw);
+            }
+            if ($fecha_contratacion_dt instanceof DateTimeImmutable) {
+                $fecha_contratacion_fmt = $fecha_contratacion_dt->format('d/m/Y');
+                $fecha_contratacion_value = $fecha_contratacion_dt->format('Y-m-d');
+            } else {
+                $fecha_contratacion_fmt = $fecha_contratacion_raw;
+                $fecha_contratacion_value = $fecha_contratacion_raw;
+            }
+        }
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
             'validacion_pendiente' => __('Validación pendiente', 'garantias-online-360vo'),
@@ -4282,6 +4299,14 @@ class GuaranteeRestController
             'estado' => [
                 'value' => $estado,
                 'label' => $estado_label,
+            ],
+            'estado_garantia' => [
+                'estado_contratacion'   => $estado,
+                'inicio'                => $raw_desde,
+                'finalizacion'          => $hasta,
+                'fecha_contratacion'    => $fecha_contratacion_value,
+                'fecha_contratacion_raw' => $fecha_contratacion_raw,
+                'fecha_contratacion_fmt' => $fecha_contratacion_fmt,
             ],
             'concesionario' => $concesionario !== '' ? $concesionario : '-',
             'vendor_id' => $vendor_id,
