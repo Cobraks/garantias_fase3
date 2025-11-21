@@ -2085,20 +2085,24 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
 }
 
 .detail__timeline-list--countdown {
-    flex: 2 1 18rem;
+    flex: 1 1 0;
 }
 
 .detail__timeline-list--countdown .detail__timeline {
-    flex: 1 1 12rem;
+    flex: 1 1 0;
 }
 
 .detail__manage-wrapper {
     display: flex;
-    flex: 1 1 14rem;
+    flex: 1 1 0;
 }
 
 .detail__manage-wrapper .detail__manage-button {
     height: 100%;
+}
+
+.detail__manage-button strong {
+    font-size: 1rem;
 }
 
 .detail__timeline {
