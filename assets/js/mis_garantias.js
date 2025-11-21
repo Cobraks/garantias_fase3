@@ -5100,10 +5100,11 @@ a.getFullYear() === b.getFullYear() &&
                         if (!normalized) {
                                 return null;
                         }
-                        const candidate = new Date(normalized);
-                        if (Number.isNaN(candidate.getTime())) {
+                        const parsed = parseDateTime(normalized);
+                        if (!(parsed instanceof Date) || Number.isNaN(parsed.getTime())) {
                                 return null;
                         }
+                        const candidate = new Date(parsed.getTime());
                         candidate.setHours(0, 0, 0, 0);
                         return candidate;
                 }
@@ -8354,10 +8355,6 @@ a.getFullYear() === b.getFullYear() &&
             `</div>` +
         `</div>` +
     `</div>`;
-    const billingTotalHtml = `<div class="detail__billing-total">` +
-        `<p class="detail__billing-total-label">Total facturado</p>` +
-        `<p class="detail__billing-total-amount">${billingTotalAmount}</p>` +
-    `</div>`;
     const billingBreakdownHtml = `<div class="detail__billing-breakdown">` +
         `<div class="detail__billing-row"><span>Precio base</span><span>1.050,00 €</span></div>` +
         `<div class="detail__billing-row"><span>Recargo por kilometraje</span><span>+120,00 €</span></div>` +
@@ -8374,9 +8371,8 @@ a.getFullYear() === b.getFullYear() &&
         `<div class="detail__transfer-toggle-content">${billingBreakdownHtml}</div>` +
     `</details>`;
     const billingSectionHtml = `<section class="detail__section detail__section--billing">` +
-        `${billingSummaryHtml}` +
         `${billingTimelineHtml}` +
-        `${billingTotalHtml}` +
+        `${billingSummaryHtml}` +
         `${billingToggleHtml}` +
     `</section>`;
     const managementSectionHtml = showManagementHub
