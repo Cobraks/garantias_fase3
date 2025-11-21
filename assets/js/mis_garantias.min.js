@@ -7807,6 +7807,29 @@ const ADD_DOC_KEY = "add-document";
         return fallback;
     };
 
+    const pickEstadoGarantiaField = (field, fallback = "-") => {
+        const sources = [data, rowData];
+        for (const source of sources) {
+            const estadoGroup = source?.estado_garantia;
+            if (!estadoGroup || !(field in estadoGroup)) {
+                continue;
+            }
+            const raw = getFieldText(estadoGroup[field]);
+            if (raw === undefined || raw === null) {
+                continue;
+            }
+            if (typeof raw === "string") {
+                const trimmed = raw.trim();
+                if (!trimmed || trimmed === "-" || trimmed === "#") {
+                    continue;
+                }
+                return raw;
+            }
+            return raw;
+        }
+        return fallback;
+    };
+
     const normalizeTipoValue = (value) => {
         if (typeof value !== "string") {
             return "";
@@ -8232,6 +8255,9 @@ const ADD_DOC_KEY = "add-document";
     };
 
     const contractDateCandidates = [
+        pickEstadoGarantiaField("fecha_contratacion", ""),
+        pickEstadoGarantiaField("fecha_contratacion_fmt", ""),
+        pickEstadoGarantiaField("fecha_contratacion_raw", ""),
         pickField("fecha_contratacion", ""),
         pickField("fecha_contratacion_fmt", ""),
         pickField("fecha_contratacion_raw", ""),
@@ -8270,12 +8296,33 @@ const ADD_DOC_KEY = "add-document";
     const coverageEndDate = parseTimelineDate(coverageEndDateRaw);
     const hasCoverageStart = isFilled(coverageStartDateRaw);
     const hasCoverageEnd = isFilled(coverageEndDateRaw);
-    const contractDateRaw = isSinFinalizar
-        ? creationDateCandidates.find((value) => isFilled(value)) || ""
-        : publicationDateCandidates.find((value) => isFilled(value)) ||
-          contractDateCandidates.find((value) => isFilled(value)) ||
-          creationDateCandidates.find((value) => isFilled(value)) ||
-          "";
+    const creationDateValue =
+        creationDateCandidates.find((value) => isFilled(value)) || "";
+    const contratoFechaContratacion =
+        [
+            pickEstadoGarantiaField("fecha_contratacion", ""),
+            pickEstadoGarantiaField("fecha_contratacion_fmt", ""),
+            pickEstadoGarantiaField("fecha_contratacion_raw", ""),
+            pickField("fecha_contratacion", ""),
+            pickField("fecha_contratacion_fmt", ""),
+            pickField("fecha_contratacion_raw", ""),
+        ].find((value) => isFilled(value)) || "";
+    const shouldUseContractDate =
+        estadoClase === "activada" || isPendientePago;
+    const contractDateRaw = (() => {
+        if (shouldUseContractDate) {
+            return contratoFechaContratacion || creationDateValue;
+        }
+        if (isSinFinalizar) {
+            return creationDateValue;
+        }
+        return (
+            publicationDateCandidates.find((value) => isFilled(value)) ||
+            contractDateCandidates.find((value) => isFilled(value)) ||
+            creationDateValue ||
+            ""
+        );
+    })();
     const today = (() => {
         const now = new Date();
         return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -8360,6 +8407,14 @@ const ADD_DOC_KEY = "add-document";
             `</div>` +
         `</div>` +
     `</div>`;
+    const contractDateInfoHtml =
+        contratoFechaContratacion || creationDateValue
+            ? `<div class="detail__contract-date">` +
+                  `<strong>Fecha de contratación:</strong> ${
+                      contratoFechaContratacion || creationDateValue
+                  }` +
+              `</div>`
+            : "";
     const billingTotalHtml = `<div class="detail__billing-total">` +
         `<p class="detail__billing-total-label">Total facturado</p>` +
         `<p class="detail__billing-total-amount">${billingTotalAmount}</p>` +
@@ -8442,6 +8497,7 @@ const ADD_DOC_KEY = "add-document";
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${contractDateInfoHtml}
                 ${billingSectionHtml}
                 ${managementSectionHtml}
                 ${coverageAlertHtml}
@@ -8723,6 +8779,7 @@ const ADD_DOC_KEY = "add-document";
                         ${coverageHtml}
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${contractDateInfoHtml}
                 ${billingSectionHtml}
                 ${managementSectionHtml}
                 ${paymentHtml}
