@@ -2526,18 +2526,18 @@ class GuaranteeRestController
             if (!empty($acf_gc_payload)) {
                 if (function_exists('update_field')) {
                     if (isset($gc['descuentos_y_recargos']) && is_array($gc['descuentos_y_recargos'])) {
-                        update_field('field_6890a4be4435a', $gc['descuentos_y_recargos'], $post_id);
+                        update_field('descuentos_y_recargos', $gc['descuentos_y_recargos'], $post_id);
 
                         if (!empty($gc['descuentos_y_recargos']['listado_descuentos_recargos'])) {
                             update_field(
-                                'field_6890a4d24435b',
+                                'listado_descuentos_recargos',
                                 $gc['descuentos_y_recargos']['listado_descuentos_recargos'],
                                 $post_id
                             );
                         }
                     }
 
-                    update_field('field_685e5b14b2de4', $acf_gc_payload, $post_id);
+                    update_field('garantia_contratada', $acf_gc_payload, $post_id);
                 } else {
                     update_post_meta($post_id, 'garantia_contratada', $acf_gc_payload);
                 }
