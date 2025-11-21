@@ -7930,10 +7930,7 @@ a.getFullYear() === b.getFullYear() &&
         rawHastaIso
     );
     const billingCountdown = computeCoverageCountdownData(rawDesdeIso, rawHastaIso);
-    const coverageHtml = hasCoverageInfo
-        ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
-              `${coverageCountdownLabel ? `<span class=\"guarantee-detail__plan-duration\">${coverageCountdownLabel}</span>` : ""}</p></div>`
-        : "";
+    const coverageHtml = "";
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
@@ -8300,7 +8297,10 @@ a.getFullYear() === b.getFullYear() &&
         pickField("created_at_fmt", ""),
         pickField("created_at", ""),
         pickField("created", ""),
+        pickField("created_gmt", ""),
         pickField("post_date", ""),
+        pickField("post_date_gmt", ""),
+        pickField("post_modified", ""),
     ];
     const coverageStartDateRaw = pickField("desde_fmt", "");
     const coverageEndDateRaw = pickField("hasta_fmt", "");
