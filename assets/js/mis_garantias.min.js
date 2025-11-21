@@ -8400,6 +8400,32 @@ const ADD_DOC_KEY = "add-document";
     `</div>`;
     const countdownListHtml =
         `<div class="detail__timeline-list detail__timeline-list--countdown">${coverageCountdownHtml}${expirationCountdownHtml}</div>`;
+    const wpDates = [
+        { label: "Fecha de creación", value: pickField("post_date", "") },
+        {
+            label: "Fecha de creación (GMT)",
+            value: pickField("post_date_gmt", ""),
+        },
+        {
+            label: "Fecha de modificación",
+            value: pickField("post_modified", ""),
+        },
+        {
+            label: "Fecha de modificación (GMT)",
+            value: pickField("post_modified_gmt", ""),
+        },
+    ];
+    const wpDatesHtml =
+        `<div class="detail__dates detail__dates--wp">` +
+        wpDates
+            .map(
+                ({ label, value }) =>
+                    `<p class="detail__dates-row"><strong>${label}:</strong> <span>${formatTimelineDate(
+                        value
+                    )}</span></p>`
+            )
+            .join("") +
+        `</div>`;
     const billingTimelineHtml = `<div class="detail__timeline-list">` +
         `<div class="detail__timeline detail__timeline--contract">` +
             `<div class="detail__timeline-point">` +
@@ -8465,6 +8491,7 @@ const ADD_DOC_KEY = "add-document";
     const billingMetaHtml =
         `<div class="detail__timeline-meta">${countdownListHtml}${managementButtonHtml}</div>`;
     const billingSectionHtml = `<section class="detail__section detail__section--billing">` +
+        `${wpDatesHtml}` +
         `${billingTimelineHtml}` +
         `${billingMetaHtml}` +
         `${billingTotalHtml}` +
