@@ -8407,6 +8407,14 @@ const ADD_DOC_KEY = "add-document";
             `</div>` +
         `</div>` +
     `</div>`;
+    const contractDateInfoHtml =
+        contratoFechaContratacion || creationDateValue
+            ? `<div class="detail__contract-date">` +
+                  `<strong>Fecha de contratación:</strong> ${
+                      contratoFechaContratacion || creationDateValue
+                  }` +
+              `</div>`
+            : "";
     const billingTotalHtml = `<div class="detail__billing-total">` +
         `<p class="detail__billing-total-label">Total facturado</p>` +
         `<p class="detail__billing-total-amount">${billingTotalAmount}</p>` +
@@ -8489,6 +8497,7 @@ const ADD_DOC_KEY = "add-document";
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${contractDateInfoHtml}
                 ${billingSectionHtml}
                 ${managementSectionHtml}
                 ${coverageAlertHtml}
@@ -8770,6 +8779,7 @@ const ADD_DOC_KEY = "add-document";
                         ${coverageHtml}
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
+                ${contractDateInfoHtml}
                 ${billingSectionHtml}
                 ${managementSectionHtml}
                 ${paymentHtml}
