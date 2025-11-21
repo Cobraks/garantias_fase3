@@ -2578,6 +2578,17 @@ class GuaranteeRestController
             unset($data['estado_garantia']);
         }
 
+        if ($is_publishing && $post_id) {
+            $existing_contract_date = get_post_meta($post_id, 'estado_garantia_fecha_contratacion', true);
+            if (!is_string($existing_contract_date) || trim($existing_contract_date) === '') {
+                $now_timestamp = current_time('timestamp');
+                $formatted_contract_date = $now_timestamp
+                    ? wp_date('d/m/Y', $now_timestamp)
+                    : date_i18n('d/m/Y');
+                update_post_meta($post_id, 'estado_garantia_fecha_contratacion', $formatted_contract_date);
+            }
+        }
+
         if ($new_contract_state === '' && $post_id) {
             $current_meta_state = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
             if ($current_meta_state !== '') {
@@ -4057,6 +4068,7 @@ class GuaranteeRestController
             ? ($metodo_pago_raw['value'] ?? '')
             : $metodo_pago_raw;
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
+        $fecha_contratacion = get_post_meta($id, 'estado_garantia_fecha_contratacion', true);
         $raw_desde = get_post_meta($id, 'estado_garantia_inicio', true);
         $desde   = self::resolve_effective_start_date((int) $id, (string) $estado, $raw_desde);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
@@ -4277,6 +4289,9 @@ class GuaranteeRestController
             'plan_id' => $plan_id,
             'precio' => $precio,
             'metodo_pago' => $metodo_pago ?: '',
+            'fecha_contratacion' => is_string($fecha_contratacion) ? $fecha_contratacion : '',
+            'fecha_contratacion_raw' => is_string($fecha_contratacion) ? $fecha_contratacion : '',
+            'fecha_contratacion_fmt' => is_string($fecha_contratacion) ? $fecha_contratacion : '',
             'desde' => $desde,
             'hasta' => $hasta,
             'estado' => [
@@ -5123,35 +5138,7 @@ class GuaranteeRestController
             return $start;
         }
 
-        if ($estado !== 'sin_finalizar') {
-            return '';
-        }
-
-        if ($post_id <= 0) {
-            return '';
-        }
-
-        $candidates = [
-            get_post_field('post_date', $post_id),
-            get_post_field('post_date_gmt', $post_id),
-            get_post_field('post_modified', $post_id),
-            get_post_field('post_modified_gmt', $post_id),
-        ];
-
-        foreach ($candidates as $candidate) {
-            $normalized = self::normalize_post_date($candidate);
-            if ($normalized !== '') {
-                return $normalized;
-            }
-        }
-
-        $created = get_post_time('Y-m-d', false, $post_id, false);
-        if (is_string($created) && $created !== '' && $created !== '0000-00-00') {
-            return $created;
-        }
-
-        $current = current_time('Y-m-d');
-        return is_string($current) ? $current : '';
+        return '';
     }
 
     private static function resolve_sort_config(string $order_by, string $order): array

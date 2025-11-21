@@ -2066,6 +2066,121 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     font-weight: 600;
     margin-right: 0.25rem;
 }
+.detail__billing-toggle {
+    margin: 0;
+}
+
+.detail__timeline-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.detail__timeline {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    flex: 1 1 100%;
+    background: var(--bg-section);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+}
+
+.detail__timeline--range {
+    flex: 2;
+}
+
+.detail__timeline--contract {
+    flex: 1;
+}
+
+.detail__timeline-point {
+    flex: 1;
+}
+
+.detail__timeline-point--end {
+    text-align: right;
+}
+
+.detail__timeline-label {
+    display: block;
+    margin-bottom: 0;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.detail__timeline-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.detail__timeline-connector {
+    display: flex;
+    align-items: center;
+    padding: 0 1.25rem;
+    color: var(--text-tertiary);
+}
+
+.detail__timeline-arrow {
+    display: inline-flex;
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.detail__billing-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin: 0.5rem 0 0;
+}
+
+.detail__billing-total-label {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.detail__billing-total-amount {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.detail__billing-breakdown {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.detail__billing-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.95rem;
+    color: var(--go-color-374151);
+}
+
+.detail__billing-row span:last-child {
+    font-weight: 700;
+    color: var(--go-color-111827);
+}
+
+.detail__billing-row--total span:last-child {
+    color: var(--primary-color);
+}
+
+.detail__billing-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 0.35rem 0 0.2rem;
+}
 .detail__section--manage {
     margin: var(--spacing-3) 0;
     padding: 0;
