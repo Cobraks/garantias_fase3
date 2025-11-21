@@ -8321,9 +8321,6 @@ const ADD_DOC_KEY = "add-document";
             if (isFilled(contractDateFromAcf)) {
                 return contractDateFromAcf;
             }
-            if (isFilled(coverageStartDateRaw)) {
-                return coverageStartDateRaw;
-            }
             return "";
         }
         return "";
@@ -8331,13 +8328,11 @@ const ADD_DOC_KEY = "add-document";
     const contractDateLabel = (() => {
         if (isSinFinalizar) return "Iniciada";
         if (isPendientePago || estadoClase === "activada") {
-            if (isFilled(contractDateFromAcf)) return "Fecha contratación";
-            if (isFilled(coverageStartDateRaw)) return "Iniciada";
-            return "";
+            return isFilled(contractDateFromAcf) ? "Fecha contratación" : "";
         }
         return "";
     })();
-    const shouldShowContractDate = Boolean(contractDateLabel);
+    const shouldShowContractDate = isFilled(contractDateRaw) && Boolean(contractDateLabel);
     const today = (() => {
         const now = new Date();
         return new Date(now.getFullYear(), now.getMonth(), now.getDate());
