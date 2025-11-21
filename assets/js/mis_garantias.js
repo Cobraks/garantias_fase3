@@ -8430,94 +8430,6 @@ a.getFullYear() === b.getFullYear() &&
                 </button>
         </div>`
         : "";
-
-    if (isSinFinalizar) {
-        return `
-                <div class="guarantee-detail__inner">
-                <div class="guarantee-detail__header">
-                        <h2>Garantía ${pickField("matricula")}</h2>
-                        ${coverageHtml}
-                        <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
-                </div>
-                ${paymentHtml}
-                ${billingSectionHtml}
-                ${managementSectionHtml}
-                ${coverageAlertHtml}
-                ${showChannelSection
-                        ? `<section class="detail__section detail__section--channel">
-                                <h3 class="detail__section-title">
-                                        <span>Canal de venta</span>
-                                </h3>
-                                <div class="vendor-card">
-                                        <div class="vendor-card__header">
-                                                <div class="vendor-card__primary">
-                                                        ${vendorAvatarWrapper}
-                                                        <div class="vendor-card__info">
-                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
-                                                                <p class="vendor-card__contact">${vendorContactName}</p>
-                                                        </div>
-                                                </div>
-                                                ${vendorChannelSummary ? `<span class="vendor-card__badge">${vendorChannelSummary}</span>` : ""}
-                                        </div>
-                                        ${vendorActionsHtml
-                                            ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
-                                            : ``}
-                                        <div class="vendor-card__footer">
-                                                <a href="${vendorDetailsHref}" class="vendor-card__cta vendor-card__cta--details">
-                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personIcon}</span>
-                                                        <span class="vendor-card__cta-label">Ver ficha del cliente</span>
-                                                </a>
-                                                <button type="button" class="vendor-card__cta vendor-card__cta--contact">
-                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personAddIcon}</span>
-                                                        <span class="vendor-card__cta-label">Añadir contacto</span>
-                                                </button>
-                                        </div>
-                                </div>
-                        </section>`
-                        : ""}
-                <section class="detail__section">
-                        <h3>Datos del vehículo</h3>
-                        <ul>
-                                <li><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
-                                <li><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
-                                <li><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
-                                <li><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
-                                <li><strong>Matrícula:</strong> ${pickField("matricula")}</li>
-                                <li><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
-                                <li><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
-                        </ul>
-                </section>
-                <section class="detail__section">
-                        <h3>Detalles técnicos</h3>
-                        <ul>
-                                <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
-                                <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
-                                ${traccionRowHtml}
-                                <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
-                                <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
-                        </ul>
-                </section>
-                ${docsSectionHtml}
-                <section class="detail__section detail__section--datos_cliente">
-                        <h3>Datos del cliente</h3>
-                        ${hasBuyerInfo
-                            ? `<ul>
-                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
-                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
-                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
-                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
-                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
-                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
-                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
-                        
-                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
-                        </ul>
-                        ${renderFastActions(
-                                data.telefono_comprador ?? rowData.telefono_comprador,
-                                data.email_comprador ?? rowData.email_comprador
-                        )}`
-                            : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
                 ${sinFinalActionsHtml}
                 ${deleteActionHtml}
@@ -8714,6 +8626,96 @@ a.getFullYear() === b.getFullYear() &&
         }
         return "";
     })();
+    if (isSinFinalizar) {
+        return `
+                <div class="guarantee-detail__inner">
+                <div class="guarantee-detail__header">
+                        <h2>Garantía ${pickField("matricula")}</h2>
+                        ${coverageHtml}
+                        <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
+                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
+                </div>
+                ${paymentHtml}
+                ${billingSectionHtml}
+                ${managementSectionHtml}
+                ${coverageAlertHtml}
+                ${showChannelSection
+                        ? `<section class="detail__section detail__section--channel">
+                                <h3 class="detail__section-title">
+                                        <span>Canal de venta</span>
+                                </h3>
+                                <div class="vendor-card">
+                                        <div class="vendor-card__header">
+                                                <div class="vendor-card__primary">
+                                                        ${vendorAvatarWrapper}
+                                                        <div class="vendor-card__info">
+                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                                <p class="vendor-card__contact">${vendorContactName}</p>
+                                                        </div>
+                                                </div>
+                                                ${vendorChannelSummary ? `<span class=\"vendor-card__badge\">${vendorChannelSummary}</span>` : ""}
+                                        </div>
+                                        ${vendorActionsHtml
+                                            ? `<div class=\"vendor-card__actions\">${vendorActionsHtml}</div>`
+                                            : ``}
+                                        <div class="vendor-card__footer">
+                                                <a href="${vendorDetailsHref}" class="vendor-card__cta vendor-card__cta--details">
+                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personIcon}</span>
+                                                        <span class="vendor-card__cta-label">Ver ficha del cliente</span>
+                                                </a>
+                                                <button type="button" class="vendor-card__cta vendor-card__cta--contact">
+                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personAddIcon}</span>
+                                                        <span class="vendor-card__cta-label">Añadir contacto</span>
+                                                </button>
+                                        </div>
+                                </div>
+                        </section>`
+                        : ""}
+                <section class="detail__section">
+                        <h3>Datos del vehículo</h3>
+                        <ul>
+                                <li><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
+                                <li><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
+                                <li><strong>Kilómetros:</strong> ${pickField("kilometros", "-")}</li>
+                                <li><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
+                                <li><strong>Matrícula:</strong> ${pickField("matricula")}</li>
+                                <li><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
+                                <li><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
+                        </ul>
+                </section>
+                <section class="detail__section">
+                        <h3>Detalles técnicos</h3>
+                        <ul>
+                                <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
+                                <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                ${traccionRowHtml}
+                                <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
+                                <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
+                        </ul>
+                </section>
+                ${docsSectionHtml}
+                <section class="detail__section detail__section--datos_cliente">
+                        <h3>Datos del cliente</h3>
+                        ${hasBuyerInfo
+                            ? `<ul>
+                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
+                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
+                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
+                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
+                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
+                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
+                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
+
+                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
+                        </ul>`
+                            : `<p>No se han añadido los datos del cliente.</p>`}
+                </section>
+                ${deleteActionHtml}
+                ${sinFinalActionsHtml}
+        </div>
+        `;
+    }
+
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
