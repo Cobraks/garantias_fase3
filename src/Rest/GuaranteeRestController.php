@@ -2408,6 +2408,7 @@ class GuaranteeRestController
                         break;
                     case 'descuentos_y_recargos':
                         if (is_array($v)) {
+                            error_log('[AUTOSAVE] incoming descuentos_y_recargos: ' . wp_json_encode($v));
                             $dr = [];
                             if (isset($v['precio_base'])) {
                                 $base               = self::normalize_decimal($v['precio_base']);
@@ -2416,29 +2417,22 @@ class GuaranteeRestController
                             if (!empty($v['listado_descuentos_recargos']) && is_array($v['listado_descuentos_recargos'])) {
                                 $list = [];
                                 foreach ($v['listado_descuentos_recargos'] as $row) {
-                                    $tipo = sanitize_text_field($row['tipo'] ?? '');
-                                    $por  = self::normalize_decimal($row['porcentaje'] ?? '');
-                                    $raz  = sanitize_text_field($row['razon'] ?? '');
                                     $concepto = sanitize_text_field($row['concepto'] ?? '');
-                                    $importe   = self::normalize_decimal($row['importe'] ?? '');
-                                    $orden     = isset($row['orden']) ? absint($row['orden']) : 0;
+                                    $valor     = self::normalize_decimal(
+                                        $row['valor'] ?? ($row['importe'] ?? '')
+                                    );
                                     $destacado = isset($row['destacado']) && $row['destacado'] ? 1 : 0;
-                                    $base_calc = self::normalize_decimal($row['base_calculo'] ?? '');
                                     $list[] = [
-                                        'tipo'       => $tipo,
-                                        'porcentaje' => is_numeric($por) ? $por : '',
-                                        'razon'      => $raz,
-                                        'concepto'   => $concepto,
-                                        'importe'    => is_numeric($importe) ? $importe : '',
-                                        'orden'      => $orden,
-                                        'destacado'  => $destacado,
-                                        'base_calculo' => is_numeric($base_calc) ? $base_calc : '',
+                                        'concepto'  => $concepto,
+                                        'valor'     => is_numeric($valor) ? $valor : '',
+                                        'destacado' => $destacado,
                                     ];
                                 }
                                 if ($list) {
                                     $dr['listado_descuentos_recargos'] = array_values($list);
                                 }
                             }
+                            error_log('[AUTOSAVE] normalized descuentos_y_recargos: ' . wp_json_encode($dr));
                             $gc['descuentos_y_recargos'] = $dr;
                         }
                         break;
@@ -2525,18 +2519,6 @@ class GuaranteeRestController
 
             if (!empty($acf_gc_payload)) {
                 if (function_exists('update_field')) {
-                    if (isset($gc['descuentos_y_recargos']) && is_array($gc['descuentos_y_recargos'])) {
-                        update_field('descuentos_y_recargos', $gc['descuentos_y_recargos'], $post_id);
-
-                        if (!empty($gc['descuentos_y_recargos']['listado_descuentos_recargos'])) {
-                            update_field(
-                                'listado_descuentos_recargos',
-                                $gc['descuentos_y_recargos']['listado_descuentos_recargos'],
-                                $post_id
-                            );
-                        }
-                    }
-
                     update_field('garantia_contratada', $acf_gc_payload, $post_id);
                 } else {
                     update_post_meta($post_id, 'garantia_contratada', $acf_gc_payload);
