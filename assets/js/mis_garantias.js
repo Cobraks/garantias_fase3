@@ -250,14 +250,6 @@ const ADD_DOC_KEY = "add-document";
                                 "go_comercial",
                                 "go_director_comercial",
                         ].includes(normalizedRole);
-                const canSeeBillingDetails =
-                        [
-                                "administrator",
-                                "admin",
-                                "go_garantias",
-                                "go_comercial",
-                                "go_director_comercial",
-                        ].includes(normalizedRole);
                 const canAccessManagementHub =
                         [
                                 "administrator",
@@ -343,11 +335,6 @@ const ADD_DOC_KEY = "add-document";
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
                 const deleteIcon =
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>';
-                const managementShieldIcon =
-                        '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m438-338 226-226-57-57-169 169-84-84-57 57 141 141Zm42 258q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></svg>';
-                const managementArrowIcon =
-                        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M360-200 320-240 520-440 320-640l40-40 240 240-240 240Z"/></svg>';
-                const caretRightIcon = managementArrowIcon;
                 const ADMIN_SUMMARY_ACTIONS = [
                         {
                                 key: "draft",
@@ -431,15 +418,6 @@ const ADD_DOC_KEY = "add-document";
                 const managementModal = document.querySelector("[data-management-modal]");
                 const managementDialog = managementModal
                         ? managementModal.querySelector("[data-management-dialog]")
-                        : null;
-                const managementTabsNav = managementModal
-                        ? managementModal.querySelector("[data-management-tabs]")
-                        : null;
-                const managementPanels = managementModal
-                        ? Array.from(managementModal.querySelectorAll("[data-management-panel]"))
-                        : [];
-                const managementDefaultTab = managementTabsNav
-                        ? managementTabsNav.querySelector("[data-management-tab]")
                         : null;
                 const MANAGEMENT_MODAL_TRANSITION = 260;
                 let managementModalCloseTimer = null;
@@ -4056,36 +4034,6 @@ const ADD_DOC_KEY = "add-document";
                         runTrashRequest(context);
                 }
 
-                function activateManagementTab(tabButton) {
-                        if (!managementTabsNav || !tabButton) {
-                                return;
-                        }
-                        const target = tabButton.getAttribute("data-management-tab");
-                        if (!target) {
-                                return;
-                        }
-                        const buttons = managementTabsNav.querySelectorAll("[data-management-tab]");
-                        buttons.forEach((btn) => {
-                                const isActive = btn === tabButton;
-                                btn.setAttribute("aria-selected", isActive ? "true" : "false");
-                                btn.classList.toggle("is-active", isActive);
-                                btn.setAttribute("tabindex", isActive ? "0" : "-1");
-                        });
-                        managementPanels.forEach((panel) => {
-                                const matches = panel.getAttribute("data-management-panel") === target;
-                                panel.classList.toggle("is-active", matches);
-                                if (matches) {
-                                        panel.removeAttribute("hidden");
-                                } else {
-                                        panel.setAttribute("hidden", "hidden");
-                                }
-                        });
-                }
-
-                if (managementDefaultTab) {
-                        activateManagementTab(managementDefaultTab);
-                }
-
                 function openManagementModal(trigger) {
                         if (!canAccessManagementHub || !managementModal) {
                                 return;
@@ -4129,9 +4077,6 @@ const ADD_DOC_KEY = "add-document";
                                 managementModalTrigger.focus();
                         }
                         managementModalTrigger = null;
-                        if (managementDefaultTab) {
-                                activateManagementTab(managementDefaultTab);
-                        }
                 }
 
                 function handleManagementClicks(event) {
@@ -4148,13 +4093,6 @@ const ADD_DOC_KEY = "add-document";
                         if (dismiss && managementModal.dataset.state === "open") {
                                 event.preventDefault();
                                 closeManagementModal();
-                        }
-                        if (managementTabsNav) {
-                                const tabButton = event.target.closest("[data-management-tab]");
-                                if (tabButton && managementTabsNav.contains(tabButton)) {
-                                        event.preventDefault();
-                                        activateManagementTab(tabButton);
-                                }
                         }
                 }
 
@@ -4623,146 +4561,40 @@ const ADD_DOC_KEY = "add-document";
            }
    }
 
-function parseDateTime(value) {
-if (!value) return null;
-if (value instanceof Date) return value;
-if (typeof value === "number") {
-const fromNumber = new Date(value);
-if (!Number.isNaN(fromNumber.getTime())) {
-return fromNumber;
-}
-}
-const normalized = String(value).trim();
-if (!normalized) return null;
-const normalizeYearValue = (year) => {
-const numericYear = Number(year);
-if (!Number.isFinite(numericYear)) return null;
-if (String(year).length === 2) {
-return 2000 + numericYear;
-}
-return numericYear;
-};
-const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
-const y = normalizeYearValue(year);
-const m = Number(month) - 1;
-const d = Number(day);
-const hh = Number(hours);
-const mm = Number(minutes);
-const ss = Number(seconds);
-if (!Number.isFinite(y)) return null;
-const candidate = new Date(y, m, d, hh, mm, ss);
-if (Number.isNaN(candidate.getTime())) return null;
-return candidate;
-};
-const localMatch = normalized.match(
-/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
-);
-if (localMatch) {
-const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
-const date = safeDate(year, month, day, hours, minutes, seconds);
-if (date) return date;
-}
-const isoMatch = normalized.match(
-/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
-);
-if (isoMatch) {
-const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
-const date = safeDate(year, month, day, hours, minutes, seconds);
-if (date) return date;
-}
-const numeric = normalized.replace(/[^0-9]/g, "");
-const parseFromNumeric = (year, month, day, hours = "0", minutes = "0", seconds = "0") =>
-safeDate(year, month, day, hours, minutes, seconds);
-if (numeric.length >= 14) {
-const firstChunk = Number(numeric.slice(0, 4));
-if (firstChunk > 1900) {
-const date = parseFromNumeric(
-numeric.slice(0, 4),
-numeric.slice(4, 6),
-numeric.slice(6, 8),
-numeric.slice(8, 10),
-numeric.slice(10, 12),
-numeric.slice(12, 14)
-);
-if (date) return date;
-} else {
-const date = parseFromNumeric(
-numeric.slice(4, 8),
-numeric.slice(2, 4),
-numeric.slice(0, 2),
-numeric.slice(8, 10),
-numeric.slice(10, 12),
-numeric.slice(12, 14)
-);
-if (date) return date;
-}
-}
-if (numeric.length === 12) {
-const firstChunk = Number(numeric.slice(0, 4));
-if (firstChunk > 1900) {
-const date = parseFromNumeric(
-numeric.slice(0, 4),
-numeric.slice(4, 6),
-numeric.slice(6, 8),
-numeric.slice(8, 10),
-numeric.slice(10, 12)
-);
-if (date) return date;
-} else {
-const date = parseFromNumeric(
-numeric.slice(4, 8),
-numeric.slice(2, 4),
-numeric.slice(0, 2),
-numeric.slice(8, 10),
-numeric.slice(10, 12)
-);
-if (date) return date;
-}
-}
-if (numeric.length === 8) {
-const firstChunk = Number(numeric.slice(0, 4));
-if (firstChunk > 1900) {
-const date = parseFromNumeric(
-numeric.slice(0, 4),
-numeric.slice(4, 6),
-numeric.slice(6, 8)
-);
-if (date) return date;
-} else {
-const date = parseFromNumeric(
-numeric.slice(4, 8),
-numeric.slice(2, 4),
-numeric.slice(0, 2)
-);
-if (date) return date;
-}
-}
-const parsed = new Date(normalized);
-if (!Number.isNaN(parsed.getTime())) {
-return parsed;
-}
-return null;
-}
-
-function formatDate(value) {
-if (!value) return { iso: "-", display: "-" };
-
-const parsed = parseDateTime(value);
-                       if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) {
-                               const year = parsed.getFullYear();
-                               const month = String(parsed.getMonth() + 1).padStart(2, "0");
-                               const day = String(parsed.getDate()).padStart(2, "0");
-                               const iso = `${year}-${month}-${day}`;
-                               const display = new Intl.DateTimeFormat("es-ES", {
-                                       day: "2-digit",
-                                       month: "2-digit",
-                                       year: "2-digit",
-                               }).format(parsed);
-                               return { iso, display };
-                       }
-
-                       return { iso: String(value), display: String(value) };
-               }
+                function formatDate(value) {
+                        if (!value) return { iso: "-", display: "-" };
+                        let cleaned = String(value).replace(/[^0-9]/g, "");
+                        if (cleaned.length === 8) {
+                                const y = cleaned.slice(0, 4);
+                                const m = cleaned.slice(4, 6);
+                                const d = cleaned.slice(6, 8);
+                                const iso = `${y}-${m}-${d}`;
+                                const date = new Date(iso);
+                                if (!isNaN(date)) {
+                                        const display = new Intl.DateTimeFormat("es-ES", {
+                                                day: "2-digit",
+                                                month: "2-digit",
+                                                year: "2-digit",
+                                        }).format(date);
+                                        return { iso, display };
+                                }
+                                return { iso, display: `${d}/${m}/${y.slice(2)}` };
+                        }
+                        const date = new Date(value);
+                        if (!isNaN(date)) {
+                                const year = date.getFullYear();
+                                const month = String(date.getMonth() + 1).padStart(2, "0");
+                                const day = String(date.getDate()).padStart(2, "0");
+                                const iso = `${year}-${month}-${day}`;
+                                const display = new Intl.DateTimeFormat("es-ES", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "2-digit",
+                                }).format(date);
+                                return { iso, display };
+                        }
+                        return { iso: value, display: value };
+                }
 
                 function formatPrice(value) {
                         if (value === null || value === undefined || value === "") return "-";
@@ -4884,9 +4716,121 @@ const parsed = parseDateTime(value);
                 }
 
                 const { getTransferDeadlineMillis, getTransferDeadlineInfo } = (() => {
-function isSameCalendarDay(a, b) {
-return (
-a.getFullYear() === b.getFullYear() &&
+                        function parseDateTime(value) {
+                                if (!value) return null;
+                                if (value instanceof Date) return value;
+                                if (typeof value === "number") {
+                                        const fromNumber = new Date(value);
+                                        if (!Number.isNaN(fromNumber.getTime())) {
+                                                return fromNumber;
+                                        }
+                                }
+                                const normalized = String(value).trim();
+                                if (!normalized) return null;
+                                const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
+                                        const y = Number(year);
+                                        const m = Number(month) - 1;
+                                        const d = Number(day);
+                                        const hh = Number(hours);
+                                        const mm = Number(minutes);
+                                        const ss = Number(seconds);
+                                        const candidate = new Date(y, m, d, hh, mm, ss);
+                                        if (Number.isNaN(candidate.getTime())) return null;
+                                        return candidate;
+                                };
+                                const localMatch = normalized.match(
+                                        /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                                );
+                                if (localMatch) {
+                                        const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
+                                        const date = safeDate(year, month, day, hours, minutes, seconds);
+                                        if (date) return date;
+                                }
+                                const isoMatch = normalized.match(
+                                        /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                                );
+                                if (isoMatch) {
+                                        const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
+                                        const date = safeDate(year, month, day, hours, minutes, seconds);
+                                        if (date) return date;
+                                }
+                                const numeric = normalized.replace(/[^0-9]/g, "");
+                                const parseFromNumeric = (year, month, day, hours = "0", minutes = "0", seconds = "0") =>
+                                        safeDate(year, month, day, hours, minutes, seconds);
+                                if (numeric.length >= 14) {
+                                        const firstChunk = Number(numeric.slice(0, 4));
+                                        if (firstChunk > 1900) {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(0, 4),
+                                                        numeric.slice(4, 6),
+                                                        numeric.slice(6, 8),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12),
+                                                        numeric.slice(12, 14)
+                                                );
+                                                if (date) return date;
+                                        } else {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(4, 8),
+                                                        numeric.slice(2, 4),
+                                                        numeric.slice(0, 2),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12),
+                                                        numeric.slice(12, 14)
+                                                );
+                                                if (date) return date;
+                                        }
+                                }
+                                if (numeric.length === 12) {
+                                        const firstChunk = Number(numeric.slice(0, 4));
+                                        if (firstChunk > 1900) {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(0, 4),
+                                                        numeric.slice(4, 6),
+                                                        numeric.slice(6, 8),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12)
+                                                );
+                                                if (date) return date;
+                                        } else {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(4, 8),
+                                                        numeric.slice(2, 4),
+                                                        numeric.slice(0, 2),
+                                                        numeric.slice(8, 10),
+                                                        numeric.slice(10, 12)
+                                                );
+                                                if (date) return date;
+                                        }
+                                }
+                                if (numeric.length === 8) {
+                                        const firstChunk = Number(numeric.slice(0, 4));
+                                        if (firstChunk > 1900) {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(0, 4),
+                                                        numeric.slice(4, 6),
+                                                        numeric.slice(6, 8)
+                                                );
+                                                if (date) return date;
+                                        } else {
+                                                const date = parseFromNumeric(
+                                                        numeric.slice(4, 8),
+                                                        numeric.slice(2, 4),
+                                                        numeric.slice(0, 2)
+                                                );
+                                                if (date) return date;
+                                        }
+                                }
+                                const parsed = new Date(normalized);
+                                if (!Number.isNaN(parsed.getTime())) {
+                                        return parsed;
+                                }
+                                return null;
+                        }
+
+                        function isSameCalendarDay(a, b) {
+                                return (
+                                        a.getFullYear() === b.getFullYear() &&
                                         a.getMonth() === b.getMonth() &&
                                         a.getDate() === b.getDate()
                                 );
@@ -4965,13 +4909,6 @@ a.getFullYear() === b.getFullYear() &&
                         data.hasta = h.iso;
                         data.hasta_fmt = h.display;
                         data.hasta_raw = rawHasta || "";
-                        if (data.fecha_contratacion !== undefined) {
-                                const rawContractDate = data.fecha_contratacion;
-                                const c = formatDate(rawContractDate);
-                                data.fecha_contratacion = c.iso;
-                                data.fecha_contratacion_fmt = c.display;
-                                data.fecha_contratacion_raw = rawContractDate || "";
-                        }
                         if (data.precio !== undefined) data.precio = formatPrice(data.precio);
                         if (data.precio_venta !== undefined)
                                 data.precio_venta = formatPrice(data.precio_venta);
@@ -5109,11 +5046,10 @@ a.getFullYear() === b.getFullYear() &&
                         if (!normalized) {
                                 return null;
                         }
-                        const parsed = parseDateTime(normalized);
-                        if (!(parsed instanceof Date) || Number.isNaN(parsed.getTime())) {
+                        const candidate = new Date(normalized);
+                        if (Number.isNaN(candidate.getTime())) {
                                 return null;
                         }
-                        const candidate = new Date(parsed.getTime());
                         candidate.setHours(0, 0, 0, 0);
                         return candidate;
                 }
@@ -5155,50 +5091,6 @@ a.getFullYear() === b.getFullYear() &&
                         }
                         const formatted = CARD_DAYS_FORMATTER.format(diffDays);
                         return `(${formatted} días restantes)`;
-                }
-
-                function computeCoverageCountdownData(desdeIso, hastaIso) {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-
-                        const startDate = parseDateOnly(desdeIso);
-                        const endDate = parseDateOnly(hastaIso);
-                        const formatDays = (days) =>
-                                days === 1 ? "1 día" : `${CARD_DAYS_FORMATTER.format(days)} días`;
-
-                        if (startDate && startDate.getTime() > today.getTime()) {
-                                const diffToStart = Math.round(
-                                        (startDate.getTime() - today.getTime()) / MS_PER_DAY
-                                );
-                                if (diffToStart > 0) {
-                                        return {
-                                                label: "Días para inicio",
-                                                value: formatDays(diffToStart),
-                                        };
-                                }
-                        }
-
-                        if (endDate) {
-                                const diffDays = Math.round(
-                                        (endDate.getTime() - today.getTime()) / MS_PER_DAY
-                                );
-                                if (diffDays < 0) {
-                                        return { label: "Cobertura", value: "Expirada" };
-                                }
-                                if (diffDays === 0) {
-                                        return { label: "Cobertura", value: "Caduca hoy" };
-                                }
-                                return {
-                                        label: "Días restantes",
-                                        value: formatDays(diffDays),
-                                };
-                        }
-
-                        if (startDate) {
-                                return { label: "Cobertura", value: "En curso" };
-                        }
-
-                        return { label: "Cobertura", value: "Pendiente" };
                 }
 
                 function buildGuaranteeViewModel(item) {
@@ -7938,8 +7830,10 @@ a.getFullYear() === b.getFullYear() &&
         rawDesdeIso,
         rawHastaIso
     );
-    const billingCountdown = computeCoverageCountdownData(rawDesdeIso, rawHastaIso);
-    const coverageHtml = "";
+    const coverageHtml = hasCoverageInfo
+        ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
+              `${coverageCountdownLabel ? `<span class=\"guarantee-detail__plan-duration\">${coverageCountdownLabel}</span>` : ""}</p></div>`
+        : "";
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
@@ -8165,238 +8059,40 @@ a.getFullYear() === b.getFullYear() &&
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
     const showManagementHub = canAccessManagementHub;
-    const parseTimelineDate = (value) => {
-        if (typeof parseDateTime === "function") {
-            return parseDateTime(value);
-        }
-        if (!value) return null;
-        const normalized = String(value).trim();
-        if (!normalized) return null;
-
-        const normalizeYearValue = (year) => {
-            const numericYear = Number(year);
-            if (!Number.isFinite(numericYear)) return null;
-            if (String(year).length === 2) {
-                return 2000 + numericYear;
-            }
-            return numericYear;
-        };
-
-        const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
-            const y = normalizeYearValue(year);
-            const m = Number(month) - 1;
-            const d = Number(day);
-            const hh = Number(hours);
-            const mm = Number(minutes);
-            const ss = Number(seconds);
-            if (!Number.isFinite(y)) return null;
-            const candidate = new Date(y, m, d, hh, mm, ss);
-            if (Number.isNaN(candidate.getTime())) return null;
-            return candidate;
-        };
-
-        const localMatch = normalized.match(
-            /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
-        );
-        if (localMatch) {
-            const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
-            const date = safeDate(year, month, day, hours, minutes, seconds);
-            if (date) return date;
-        }
-
-        const isoMatch = normalized.match(
-            /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
-        );
-        if (isoMatch) {
-            const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
-            const date = safeDate(year, month, day, hours, minutes, seconds);
-            if (date) return date;
-        }
-
-        const numeric = normalized.replace(/[^0-9]/g, "");
-        if (numeric.length >= 8) {
-            const year = numeric.length === 8 ? numeric.slice(4, 8) : numeric.slice(0, 4);
-            const month = numeric.length === 8 ? numeric.slice(2, 4) : numeric.slice(4, 6);
-            const day = numeric.length === 8 ? numeric.slice(0, 2) : numeric.slice(6, 8);
-            const date = safeDate(year, month, day);
-            if (date) return date;
-        }
-
-        const fallbackDate = new Date(normalized);
-        return Number.isNaN(fallbackDate.getTime()) ? null : fallbackDate;
-    };
-
-    const formatTimelineDate = (raw) => {
-        const fallback = () => {
-            if (typeof raw === "string") {
-                const trimmedRaw = raw.trim();
-                if (trimmedRaw !== "") {
-                    return trimmedRaw;
-                }
-            }
-            if (raw !== undefined && raw !== null) {
-                const stringified = String(raw).trim();
-                if (stringified !== "") {
-                    return stringified;
-                }
-            }
-            return "—";
-        };
-        const parsed = parseTimelineDate(raw);
-        const parsedDate =
-            parsed instanceof Date
-                ? parsed
-                : parsed
-                ? (() => {
-                      const candidate = new Date(parsed);
-                      return Number.isNaN(candidate.getTime()) ? null : candidate;
-                  })()
-                : null;
-        if (!parsedDate) {
-            return fallback();
-        }
-        try {
-            const formatter = new Intl.DateTimeFormat("es-ES", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-            });
-            const parts = formatter.formatToParts(parsedDate);
-            const day = parts.find((part) => part.type === "day")?.value ?? "";
-            const month = parts.find((part) => part.type === "month")?.value ?? "";
-            const year = parts.find((part) => part.type === "year")?.value ?? "";
-            if (day && month && year) {
-                const normalizedMonth = month.replace(/\.$/, "").toLowerCase();
-                return `${day} ${normalizedMonth}, ${year}`;
-            }
-            return formatter.format(parsedDate);
-        } catch (error) {
-            return fallback();
-        }
-    };
-
-    const contractDateCandidates = [
-        pickField("fecha_contratacion", ""),
-        pickField("fecha_contratacion_fmt", ""),
-        pickField("fecha_contratacion_raw", ""),
-        pickField("estado_cambio_fecha", ""),
-        pickField("estado_cambio_en", ""),
-        pickField("estado_actualizado_en", ""),
-        pickField("estado_updated_at", ""),
-        pickField("estado_updated", ""),
-        pickField("estado_modificado_en", ""),
-        pickField("estado_modificado", ""),
-        pickField("estado_garantia_updated_at", ""),
-        pickField("estado_garantia_modificado", ""),
-    ];
-    const publicationDateCandidates = [
-        pickField("published_at_fmt", ""),
-        pickField("published_at", ""),
-        pickField("published_on", ""),
-        pickField("publish_date", ""),
-        pickField("fecha_publicacion", ""),
-        pickField("fecha_publicado", ""),
-        pickField("publicado_en", ""),
-        pickField("post_date", ""),
-        pickField("post_date_gmt", ""),
-        pickField("post_modified", ""),
-        pickField("post_modified_gmt", ""),
-    ];
-    const creationDateCandidates = [
-        pickField("created_at_fmt", ""),
-        pickField("created_at", ""),
-        pickField("created", ""),
-        pickField("created_gmt", ""),
-        pickField("post_date", ""),
-        pickField("post_date_gmt", ""),
-        pickField("post_modified", ""),
-        pickField("post_modified_gmt", ""),
-    ];
-    const coverageStartDateRaw = pickField("desde_fmt", "");
-    const coverageEndDateRaw = pickField("hasta_fmt", "");
-    const hasCoverageStart = isFilled(coverageStartDateRaw);
-    const hasCoverageEnd = isFilled(coverageEndDateRaw);
-    const contractDateRaw = isSinFinalizar
-        ? creationDateCandidates.find((value) => isFilled(value)) || ""
-        : contractDateCandidates.find((value) => isFilled(value)) ||
-          publicationDateCandidates.find((value) => isFilled(value)) ||
-          creationDateCandidates.find((value) => isFilled(value)) ||
-          "";
-    const billingTotalAmount = planPrice || "—";
-    const managementButtonHtml = showManagementHub
-        ? `<button type="button" class="detail__manage-button" data-management-open>` +
-          `<span class="detail__manage-copy">` +
-                `<strong>Gestionar garantía</strong>` +
-                `<span>Operativa interna y ajustes</span>` +
-          `</span>` +
-          `<span class="detail__manage-caret" aria-hidden="true">${caretRightIcon}</span>` +
-          `</button>`
+    const managementSectionHtml = showManagementHub
+        ? `<section class="detail__section detail__section--management" aria-live="polite">
+                <div class="detail__management-card">
+                        <div class="detail__management-primary">
+                                <p class="detail__management-eyebrow">Centro de operaciones</p>
+                                <h3 class="detail__management-title">Gestionar garantía</h3>
+                                <p class="detail__management-description">Coordina incidencias, comunicaciones y ajustes económicos desde un único lugar.</p>
+                                <ul class="detail__management-tags" role="list">
+                                        <li>Certificados</li>
+                                        <li>Comunicaciones</li>
+                                        <li>Notas</li>
+                                        <li>Finanzas</li>
+                                </ul>
+                        </div>
+                        <div class="detail__management-cta">
+                                <button type="button" class="detail__management-trigger" data-management-open>
+                                        <span class="detail__management-trigger-label">Gestionar garantía</span>
+                                        <span class="detail__management-trigger-sub">Abrir panel</span>
+                                </button>
+                                <div class="detail__management-ledger" aria-label="Resumen de ajustes">
+                                        <div class="detail__management-ledger-item">
+                                                <span>Recargos activos</span>
+                                                <strong data-management-surcharges>0,00 €</strong>
+                                        </div>
+                                        <div class="detail__management-ledger-item">
+                                                <span>Descuentos aplicados</span>
+                                                <strong data-management-discounts>- 0,00 €</strong>
+                                        </div>
+                                </div>
+                                <p class="detail__management-footnote">Las acciones quedarán registradas en el historial interno.</p>
+                        </div>
+                </div>
+        </section>`
         : "";
-
-    const billingSummaryHtml = canSeeBillingDetails
-        ? `<div class="detail__billing-summary">` +
-              `<div class="detail__billing-card">` +
-                  `<p class="detail__billing-card-label">${billingCountdown.label}</p>` +
-                  `<p class="detail__billing-card-value">${billingCountdown.value}</p>` +
-              `</div>` +
-              `${managementButtonHtml}` +
-          `</div>`
-        : "";
-    const billingTimelineHtml = `<div class="detail__timeline-list">` +
-        `<div class="detail__timeline detail__timeline--contract">` +
-            `<div class="detail__timeline-point">` +
-                `<span class="detail__timeline-label">${
-                    isSinFinalizar ? "Iniciada" : "Fecha contratación"
-                }</span>` +
-                `<span class="detail__timeline-value">${formatTimelineDate(
-                    contractDateRaw
-                )}</span>` +
-            `</div>` +
-        `</div>` +
-        `<div class="detail__timeline detail__timeline--range">` +
-            `<div class="detail__timeline-point">` +
-                `<span class="detail__timeline-label">Inicio cobertura</span>` +
-                `<span class="detail__timeline-value">${
-                    hasCoverageStart ? formatTimelineDate(coverageStartDateRaw) : "—"
-                }</span>` +
-            `</div>` +
-            `<div class="detail__timeline-connector" aria-hidden="true">` +
-                `<svg class="detail__timeline-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
-                    `<line x1="5" y1="12" x2="19" y2="12"></line>` +
-                    `<polyline points="12 5 19 12 12 19"></polyline>` +
-                `</svg>` +
-            `</div>` +
-            `<div class="detail__timeline-point detail__timeline-point--end">` +
-                `<span class="detail__timeline-label">Vencimiento</span>` +
-                `<span class="detail__timeline-value">${
-                    hasCoverageEnd ? formatTimelineDate(coverageEndDateRaw) : "—"
-                }</span>` +
-            `</div>` +
-        `</div>` +
-    `</div>`;
-    const billingBreakdownHtml = `<div class="detail__billing-breakdown">` +
-        `<div class="detail__billing-row"><span>Precio base</span><span>1.050,00 €</span></div>` +
-        `<div class="detail__billing-row"><span>Recargo por kilometraje</span><span>+120,00 €</span></div>` +
-        `<div class="detail__billing-row"><span>Descuento comercial</span><span>-45,00 €</span></div>` +
-        `<div class="detail__billing-divider" role="presentation"></div>` +
-        `<div class="detail__billing-row detail__billing-row--total"><span>Total facturado</span><span>${billingTotalAmount}</span></div>` +
-    `</div>`;
-    const billingToggleHtml = canSeeBillingDetails
-        ? `<details class="detail__transfer-toggle detail__billing-toggle">` +
-              `<summary class="detail__transfer-toggle-summary">` +
-                  `<span class="detail__transfer-toggle-label">Ver desglose económico</span>` +
-                  `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${arrowDownIcon || "&#9660;"}</span>` +
-                  `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${arrowUpIcon || "&#9650;"}</span>` +
-              `</summary>` +
-              `<div class="detail__transfer-toggle-content">${billingBreakdownHtml}</div>` +
-          `</details>`
-        : "";
-    const billingSectionHtml = `<section class="detail__section detail__section--billing">` +
-        `${billingTimelineHtml}` +
-        `${billingSummaryHtml}` +
-        `${billingToggleHtml}` +
-    `</section>`;
-    const managementSectionHtml = "";
 
     const sinFinalButtons = [];
     if (canContinueGuarantee) {
@@ -8430,6 +8126,96 @@ a.getFullYear() === b.getFullYear() &&
                 </button>
         </div>`
         : "";
+
+    if (isSinFinalizar) {
+        return `
+                <div class="guarantee-detail__inner">
+                <div class="guarantee-detail__header">
+                        <h2>Garantía ${pickField("matricula")}</h2>
+                        ${coverageHtml}
+                        <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
+                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
+                </div>
+                ${managementSectionHtml}
+                ${coverageAlertHtml}
+                ${showChannelSection
+                        ? `<section class="detail__section detail__section--channel">
+                                <h3 class="detail__section-title">
+                                        <span>Canal de venta</span>
+                                </h3>
+                                <div class="vendor-card">
+                                        <div class="vendor-card__header">
+                                                <div class="vendor-card__primary">
+                                                        ${vendorAvatarWrapper}
+                                                        <div class="vendor-card__info">
+                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                                <p class="vendor-card__contact">${vendorContactName}</p>
+                                                        </div>
+                                                </div>
+                                                ${vendorChannelSummary ? `<span class="vendor-card__badge">${vendorChannelSummary}</span>` : ""}
+                                        </div>
+                                        ${vendorActionsHtml
+                                            ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
+                                            : ``}
+                                        <div class="vendor-card__footer">
+                                                <a href="${vendorDetailsHref}" class="vendor-card__cta vendor-card__cta--details">
+                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personIcon}</span>
+                                                        <span class="vendor-card__cta-label">Ver ficha del cliente</span>
+                                                </a>
+                                                <button type="button" class="vendor-card__cta vendor-card__cta--contact">
+                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personAddIcon}</span>
+                                                        <span class="vendor-card__cta-label">Añadir contacto</span>
+                                                </button>
+                                        </div>
+                                </div>
+                        </section>`
+                        : ""}
+                <section class="detail__section">
+                        <h3>Datos del vehículo</h3>
+                        <ul>
+                                <li><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
+                                <li><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
+                                <li><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
+                                <li><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
+                                <li><strong>Matrícula:</strong> ${pickField("matricula")}</li>
+                                <li><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
+                                <li><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
+                        </ul>
+                </section>
+                <section class="detail__section">
+                        <h3>Detalles técnicos</h3>
+                        <ul>
+                                <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
+                                <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                ${traccionRowHtml}
+                                <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
+                                <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
+                        </ul>
+                </section>
+                ${docsSectionHtml}
+                <section class="detail__section detail__section--datos_cliente">
+                        <h3>Datos del cliente</h3>
+                        ${hasBuyerInfo
+                            ? `<ul>
+                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
+                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
+                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
+                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
+                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
+                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
+                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
+                        
+                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
+                        </ul>
+                        ${renderFastActions(
+                                data.telefono_comprador ?? rowData.telefono_comprador,
+                                data.email_comprador ?? rowData.email_comprador
+                        )}`
+                            : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
+                </section>
+                ${sinFinalActionsHtml}
+                ${deleteActionHtml}
+        </div>`;
     }
 
     const adminPendingDomiciliacion =
@@ -8622,96 +8408,6 @@ a.getFullYear() === b.getFullYear() &&
         }
         return "";
     })();
-    if (isSinFinalizar) {
-        return `
-                <div class="guarantee-detail__inner">
-                <div class="guarantee-detail__header">
-                        <h2>Garantía ${pickField("matricula")}</h2>
-                        ${coverageHtml}
-                        <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
-                        <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
-                </div>
-                ${paymentHtml}
-                ${billingSectionHtml}
-                ${managementSectionHtml}
-                ${coverageAlertHtml}
-                ${showChannelSection
-                        ? `<section class="detail__section detail__section--channel">
-                                <h3 class="detail__section-title">
-                                        <span>Canal de venta</span>
-                                </h3>
-                                <div class="vendor-card">
-                                        <div class="vendor-card__header">
-                                                <div class="vendor-card__primary">
-                                                        ${vendorAvatarWrapper}
-                                                        <div class="vendor-card__info">
-                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
-                                                                <p class="vendor-card__contact">${vendorContactName}</p>
-                                                        </div>
-                                                </div>
-                                                ${vendorChannelSummary ? `<span class=\"vendor-card__badge\">${vendorChannelSummary}</span>` : ""}
-                                        </div>
-                                        ${vendorActionsHtml
-                                            ? `<div class=\"vendor-card__actions\">${vendorActionsHtml}</div>`
-                                            : ``}
-                                        <div class="vendor-card__footer">
-                                                <a href="${vendorDetailsHref}" class="vendor-card__cta vendor-card__cta--details">
-                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personIcon}</span>
-                                                        <span class="vendor-card__cta-label">Ver ficha del cliente</span>
-                                                </a>
-                                                <button type="button" class="vendor-card__cta vendor-card__cta--contact">
-                                                        <span class="vendor-card__cta-icon" aria-hidden="true">${personAddIcon}</span>
-                                                        <span class="vendor-card__cta-label">Añadir contacto</span>
-                                                </button>
-                                        </div>
-                                </div>
-                        </section>`
-                        : ""}
-                <section class="detail__section">
-                        <h3>Datos del vehículo</h3>
-                        <ul>
-                                <li><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
-                                <li><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
-                                <li><strong>Kilómetros:</strong> ${pickField("kilometros", "-")}</li>
-                                <li><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
-                                <li><strong>Matrícula:</strong> ${pickField("matricula")}</li>
-                                <li><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
-                                <li><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
-                        </ul>
-                </section>
-                <section class="detail__section">
-                        <h3>Detalles técnicos</h3>
-                        <ul>
-                                <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
-                                <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
-                                ${traccionRowHtml}
-                                <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
-                                <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
-                        </ul>
-                </section>
-                ${docsSectionHtml}
-                <section class="detail__section detail__section--datos_cliente">
-                        <h3>Datos del cliente</h3>
-                        ${hasBuyerInfo
-                            ? `<ul>
-                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
-                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
-                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
-                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
-                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
-                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
-                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
-
-                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
-                        </ul>`
-                            : `<p>No se han añadido los datos del cliente.</p>`}
-                </section>
-                ${deleteActionHtml}
-                ${sinFinalActionsHtml}
-        </div>
-        `;
-    }
-
     return `
         <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
@@ -8720,9 +8416,8 @@ a.getFullYear() === b.getFullYear() &&
                         ${coverageHtml}
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
-                ${paymentHtml}
-                ${billingSectionHtml}
                 ${managementSectionHtml}
+                ${paymentHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
                                 <h3 class="detail__section-title">
@@ -8804,50 +8499,42 @@ a.getFullYear() === b.getFullYear() &&
 }
 
 function syncPdfModalDocs(panel) {
-    const modal = document.querySelector(".pdf-modal");
-    if (!modal) return;
-
-    const modalList = modal.querySelector(".pdf-modal__docs-list");
-    const panelList = panel.querySelector(".detail__docs-list");
-
-    if (modalList) {
-        modalList.innerHTML = "";
-    }
-
-    if (modalList && panelList) {
-        const panelButtons = Array.from(
-            panelList.querySelectorAll(".detail__docs-btn")
-        );
-
+        const modal = document.querySelector(".pdf-modal");
+        if (!modal) return;
+        const modalList = modal.querySelector(".pdf-modal__docs-list");
+        const panelList = panel.querySelector(".detail__docs-list");
+        if (modalList) {
+                modalList.innerHTML = "";
+        }
+        if (modalList && panelList) {
+                const panelButtons = Array.from(
+                        panelList.querySelectorAll(".detail__docs-btn")
+                );
+                panelButtons.forEach((btn, idx) => {
+                        btn.dataset.docIndex = String(idx);
+                });
         panelButtons.forEach((btn, idx) => {
-            btn.dataset.docIndex = String(idx);
+                const item = btn.closest(".detail__docs-item");
+                if (!item) return;
+                const clone = item.cloneNode(true);
+                const cloneBtn = clone.querySelector(
+                        ".detail__docs-btn"
+                );
+                if (cloneBtn) {
+                        cloneBtn.dataset.docIndex = String(idx);
+                }
+                modalList.appendChild(clone);
         });
-
-        panelButtons.forEach((btn, idx) => {
-            const item = btn.closest(".detail__docs-item");
-            if (!item) return;
-
-            const clone = item.cloneNode(true);
-            const cloneBtn = clone.querySelector(".detail__docs-btn");
-
-            if (cloneBtn) {
-                cloneBtn.dataset.docIndex = String(idx);
-            }
-
-            modalList.appendChild(clone);
-        });
-
         updateModalControls(modal);
     } else if (modalList) {
         modalList.innerHTML = "";
         updateModalControls(modal);
     }
-
     const subtitle = modal.querySelector(".pdf-modal-subttitle");
-    if (subtitle) {
-        const mat = panel.dataset.matricula || "";
-        subtitle.textContent = mat ? `Garantía ${mat}` : "";
-    }
+        if (subtitle) {
+                const mat = panel.dataset.matricula || "";
+                subtitle.textContent = mat ? `Garantía ${mat}` : "";
+        }
 }
 
 function updateModalControls(modal) {
