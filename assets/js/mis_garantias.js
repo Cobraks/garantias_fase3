@@ -4614,40 +4614,25 @@ const ADD_DOC_KEY = "add-document";
            }
    }
 
-                function formatDate(value) {
-                        if (!value) return { iso: "-", display: "-" };
-                        let cleaned = String(value).replace(/[^0-9]/g, "");
-                        if (cleaned.length === 8) {
-                                const y = cleaned.slice(0, 4);
-                                const m = cleaned.slice(4, 6);
-                                const d = cleaned.slice(6, 8);
-                                const iso = `${y}-${m}-${d}`;
-                                const date = new Date(iso);
-                                if (!isNaN(date)) {
-                                        const display = new Intl.DateTimeFormat("es-ES", {
-                                                day: "2-digit",
-                                                month: "2-digit",
-                                                year: "2-digit",
-                                        }).format(date);
-                                        return { iso, display };
-                                }
-                                return { iso, display: `${d}/${m}/${y.slice(2)}` };
-                        }
-                        const date = new Date(value);
-                        if (!isNaN(date)) {
-                                const year = date.getFullYear();
-                                const month = String(date.getMonth() + 1).padStart(2, "0");
-                                const day = String(date.getDate()).padStart(2, "0");
-                                const iso = `${year}-${month}-${day}`;
-                                const display = new Intl.DateTimeFormat("es-ES", {
-                                        day: "2-digit",
-                                        month: "2-digit",
-                                        year: "2-digit",
-                                }).format(date);
-                                return { iso, display };
-                        }
-                        return { iso: value, display: value };
-                }
+               function formatDate(value) {
+                       if (!value) return { iso: "-", display: "-" };
+
+                       const parsed = parseDateTime(value);
+                       if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) {
+                               const year = parsed.getFullYear();
+                               const month = String(parsed.getMonth() + 1).padStart(2, "0");
+                               const day = String(parsed.getDate()).padStart(2, "0");
+                               const iso = `${year}-${month}-${day}`;
+                               const display = new Intl.DateTimeFormat("es-ES", {
+                                       day: "2-digit",
+                                       month: "2-digit",
+                                       year: "2-digit",
+                               }).format(parsed);
+                               return { iso, display };
+                       }
+
+                       return { iso: String(value), display: String(value) };
+               }
 
                 function formatPrice(value) {
                         if (value === null || value === undefined || value === "") return "-";
@@ -8277,8 +8262,8 @@ const ADD_DOC_KEY = "add-document";
     const hasCoverageEnd = isFilled(coverageEndDateRaw);
     const contractDateRaw = isSinFinalizar
         ? creationDateCandidates.find((value) => isFilled(value)) || ""
-        : publicationDateCandidates.find((value) => isFilled(value)) ||
-          contractDateCandidates.find((value) => isFilled(value)) ||
+        : contractDateCandidates.find((value) => isFilled(value)) ||
+          publicationDateCandidates.find((value) => isFilled(value)) ||
           creationDateCandidates.find((value) => isFilled(value)) ||
           "";
     const billingTotalAmount = "1.125,00 €";
@@ -8286,7 +8271,7 @@ const ADD_DOC_KEY = "add-document";
         `<div class="detail__timeline detail__timeline--contract">` +
             `<div class="detail__timeline-point">` +
                 `<span class="detail__timeline-label">${
-                    isSinFinalizar ? "Inicializada" : "Fecha contratación"
+                    isSinFinalizar ? "Iniciada" : "Fecha contratación"
                 }</span>` +
                 `<span class="detail__timeline-value">${formatTimelineDate(
                     contractDateRaw
