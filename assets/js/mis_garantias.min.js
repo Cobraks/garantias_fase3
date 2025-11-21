@@ -8270,12 +8270,30 @@ const ADD_DOC_KEY = "add-document";
     const coverageEndDate = parseTimelineDate(coverageEndDateRaw);
     const hasCoverageStart = isFilled(coverageStartDateRaw);
     const hasCoverageEnd = isFilled(coverageEndDateRaw);
-    const contractDateRaw = isSinFinalizar
-        ? creationDateCandidates.find((value) => isFilled(value)) || ""
-        : publicationDateCandidates.find((value) => isFilled(value)) ||
-          contractDateCandidates.find((value) => isFilled(value)) ||
-          creationDateCandidates.find((value) => isFilled(value)) ||
-          "";
+    const creationDateValue =
+        creationDateCandidates.find((value) => isFilled(value)) || "";
+    const contratoFechaContratacion =
+        [
+            pickField("fecha_contratacion", ""),
+            pickField("fecha_contratacion_fmt", ""),
+            pickField("fecha_contratacion_raw", ""),
+        ].find((value) => isFilled(value)) || "";
+    const shouldUseContractDate =
+        estadoClase === "activada" || isPendientePago;
+    const contractDateRaw = (() => {
+        if (shouldUseContractDate) {
+            return contratoFechaContratacion || creationDateValue;
+        }
+        if (isSinFinalizar) {
+            return creationDateValue;
+        }
+        return (
+            publicationDateCandidates.find((value) => isFilled(value)) ||
+            contractDateCandidates.find((value) => isFilled(value)) ||
+            creationDateValue ||
+            ""
+        );
+    })();
     const today = (() => {
         const now = new Date();
         return new Date(now.getFullYear(), now.getMonth(), now.getDate());
