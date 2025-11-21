@@ -7887,14 +7887,14 @@ const ADD_DOC_KEY = "add-document";
               `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
               `</h3>`
         : "";
-    const coverageCountdownLabel = computeRemainingDaysLabel(
+    const planCoverageCountdownLabel = computeRemainingDaysLabel(
         estadoClase,
         rawDesdeIso,
         rawHastaIso
     );
     const coverageHtml = hasCoverageInfo
         ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
-              `${coverageCountdownLabel ? `<span class=\"guarantee-detail__plan-duration\">${coverageCountdownLabel}</span>` : ""}</p></div>`
+              `${planCoverageCountdownLabel ? `<span class=\"guarantee-detail__plan-duration\">${planCoverageCountdownLabel}</span>` : ""}</p></div>`
         : "";
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
