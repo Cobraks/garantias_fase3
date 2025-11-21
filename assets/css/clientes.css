@@ -65,6 +65,16 @@
     --client-overlay-blur: blur(2px);
     --client-dialog-shadow: 0 40px 80px rgba(0, 0, 0, 0.75);
 }
+
+@media (min-width: 1280px) {
+    .clients-page .guarantees-list__filters {
+        grid-column: span 2;
+    }
+
+    .clients-page .guarantees-container {
+        grid-column: span 2;
+    }
+}
 .guarantees-table__vehiculo,
 .guarantees-table__vendedor,
 .guarantees-table__cliente {
