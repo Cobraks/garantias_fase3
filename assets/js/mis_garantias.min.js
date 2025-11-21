@@ -8804,42 +8804,50 @@ a.getFullYear() === b.getFullYear() &&
 }
 
 function syncPdfModalDocs(panel) {
-        const modal = document.querySelector(".pdf-modal");
-        if (!modal) return;
-        const modalList = modal.querySelector(".pdf-modal__docs-list");
-        const panelList = panel.querySelector(".detail__docs-list");
-        if (modalList) {
-                modalList.innerHTML = "";
-        }
-        if (modalList && panelList) {
-                const panelButtons = Array.from(
-                        panelList.querySelectorAll(".detail__docs-btn")
-                );
-                panelButtons.forEach((btn, idx) => {
-                        btn.dataset.docIndex = String(idx);
-                });
+    const modal = document.querySelector(".pdf-modal");
+    if (!modal) return;
+
+    const modalList = modal.querySelector(".pdf-modal__docs-list");
+    const panelList = panel.querySelector(".detail__docs-list");
+
+    if (modalList) {
+        modalList.innerHTML = "";
+    }
+
+    if (modalList && panelList) {
+        const panelButtons = Array.from(
+            panelList.querySelectorAll(".detail__docs-btn")
+        );
+
         panelButtons.forEach((btn, idx) => {
-                const item = btn.closest(".detail__docs-item");
-                if (!item) return;
-                const clone = item.cloneNode(true);
-                const cloneBtn = clone.querySelector(
-                        ".detail__docs-btn"
-                );
-                if (cloneBtn) {
-                        cloneBtn.dataset.docIndex = String(idx);
-                }
-                modalList.appendChild(clone);
+            btn.dataset.docIndex = String(idx);
         });
+
+        panelButtons.forEach((btn, idx) => {
+            const item = btn.closest(".detail__docs-item");
+            if (!item) return;
+
+            const clone = item.cloneNode(true);
+            const cloneBtn = clone.querySelector(".detail__docs-btn");
+
+            if (cloneBtn) {
+                cloneBtn.dataset.docIndex = String(idx);
+            }
+
+            modalList.appendChild(clone);
+        });
+
         updateModalControls(modal);
     } else if (modalList) {
         modalList.innerHTML = "";
         updateModalControls(modal);
     }
+
     const subtitle = modal.querySelector(".pdf-modal-subttitle");
-        if (subtitle) {
-                const mat = panel.dataset.matricula || "";
-                subtitle.textContent = mat ? `Garantía ${mat}` : "";
-        }
+    if (subtitle) {
+        const mat = panel.dataset.matricula || "";
+        subtitle.textContent = mat ? `Garantía ${mat}` : "";
+    }
 }
 
 function updateModalControls(modal) {
