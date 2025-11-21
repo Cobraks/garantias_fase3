@@ -4614,10 +4614,131 @@ const ADD_DOC_KEY = "add-document";
            }
    }
 
-               function formatDate(value) {
-                       if (!value) return { iso: "-", display: "-" };
+function parseDateTime(value) {
+if (!value) return null;
+if (value instanceof Date) return value;
+if (typeof value === "number") {
+const fromNumber = new Date(value);
+if (!Number.isNaN(fromNumber.getTime())) {
+return fromNumber;
+}
+}
+const normalized = String(value).trim();
+if (!normalized) return null;
+const normalizeYearValue = (year) => {
+const numericYear = Number(year);
+if (!Number.isFinite(numericYear)) return null;
+if (String(year).length === 2) {
+return 2000 + numericYear;
+}
+return numericYear;
+};
+const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
+const y = normalizeYearValue(year);
+const m = Number(month) - 1;
+const d = Number(day);
+const hh = Number(hours);
+const mm = Number(minutes);
+const ss = Number(seconds);
+if (!Number.isFinite(y)) return null;
+const candidate = new Date(y, m, d, hh, mm, ss);
+if (Number.isNaN(candidate.getTime())) return null;
+return candidate;
+};
+const localMatch = normalized.match(
+/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+);
+if (localMatch) {
+const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
+const date = safeDate(year, month, day, hours, minutes, seconds);
+if (date) return date;
+}
+const isoMatch = normalized.match(
+/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+);
+if (isoMatch) {
+const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
+const date = safeDate(year, month, day, hours, minutes, seconds);
+if (date) return date;
+}
+const numeric = normalized.replace(/[^0-9]/g, "");
+const parseFromNumeric = (year, month, day, hours = "0", minutes = "0", seconds = "0") =>
+safeDate(year, month, day, hours, minutes, seconds);
+if (numeric.length >= 14) {
+const firstChunk = Number(numeric.slice(0, 4));
+if (firstChunk > 1900) {
+const date = parseFromNumeric(
+numeric.slice(0, 4),
+numeric.slice(4, 6),
+numeric.slice(6, 8),
+numeric.slice(8, 10),
+numeric.slice(10, 12),
+numeric.slice(12, 14)
+);
+if (date) return date;
+} else {
+const date = parseFromNumeric(
+numeric.slice(4, 8),
+numeric.slice(2, 4),
+numeric.slice(0, 2),
+numeric.slice(8, 10),
+numeric.slice(10, 12),
+numeric.slice(12, 14)
+);
+if (date) return date;
+}
+}
+if (numeric.length === 12) {
+const firstChunk = Number(numeric.slice(0, 4));
+if (firstChunk > 1900) {
+const date = parseFromNumeric(
+numeric.slice(0, 4),
+numeric.slice(4, 6),
+numeric.slice(6, 8),
+numeric.slice(8, 10),
+numeric.slice(10, 12)
+);
+if (date) return date;
+} else {
+const date = parseFromNumeric(
+numeric.slice(4, 8),
+numeric.slice(2, 4),
+numeric.slice(0, 2),
+numeric.slice(8, 10),
+numeric.slice(10, 12)
+);
+if (date) return date;
+}
+}
+if (numeric.length === 8) {
+const firstChunk = Number(numeric.slice(0, 4));
+if (firstChunk > 1900) {
+const date = parseFromNumeric(
+numeric.slice(0, 4),
+numeric.slice(4, 6),
+numeric.slice(6, 8)
+);
+if (date) return date;
+} else {
+const date = parseFromNumeric(
+numeric.slice(4, 8),
+numeric.slice(2, 4),
+numeric.slice(0, 2)
+);
+if (date) return date;
+}
+}
+const parsed = new Date(normalized);
+if (!Number.isNaN(parsed.getTime())) {
+return parsed;
+}
+return null;
+}
 
-                       const parsed = parseDateTime(value);
+function formatDate(value) {
+if (!value) return { iso: "-", display: "-" };
+
+const parsed = parseDateTime(value);
                        if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) {
                                const year = parsed.getFullYear();
                                const month = String(parsed.getMonth() + 1).padStart(2, "0");
@@ -4754,130 +4875,9 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 const { getTransferDeadlineMillis, getTransferDeadlineInfo } = (() => {
-                        function parseDateTime(value) {
-                                if (!value) return null;
-                                if (value instanceof Date) return value;
-                                if (typeof value === "number") {
-                                        const fromNumber = new Date(value);
-                                        if (!Number.isNaN(fromNumber.getTime())) {
-                                                return fromNumber;
-                                        }
-                                }
-                                const normalized = String(value).trim();
-                                if (!normalized) return null;
-                                const normalizeYearValue = (year) => {
-                                        const numericYear = Number(year);
-                                        if (!Number.isFinite(numericYear)) return null;
-                                        if (String(year).length === 2) {
-                                                return 2000 + numericYear;
-                                        }
-                                        return numericYear;
-                                };
-                                const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
-                                        const y = normalizeYearValue(year);
-                                        const m = Number(month) - 1;
-                                        const d = Number(day);
-                                        const hh = Number(hours);
-                                        const mm = Number(minutes);
-                                        const ss = Number(seconds);
-                                        if (!Number.isFinite(y)) return null;
-                                        const candidate = new Date(y, m, d, hh, mm, ss);
-                                        if (Number.isNaN(candidate.getTime())) return null;
-                                        return candidate;
-                                };
-                                const localMatch = normalized.match(
-                                        /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
-                                );
-                                if (localMatch) {
-                                        const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
-                                        const date = safeDate(year, month, day, hours, minutes, seconds);
-                                        if (date) return date;
-                                }
-                                const isoMatch = normalized.match(
-                                        /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
-                                );
-                                if (isoMatch) {
-                                        const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
-                                        const date = safeDate(year, month, day, hours, minutes, seconds);
-                                        if (date) return date;
-                                }
-                                const numeric = normalized.replace(/[^0-9]/g, "");
-                                const parseFromNumeric = (year, month, day, hours = "0", minutes = "0", seconds = "0") =>
-                                        safeDate(year, month, day, hours, minutes, seconds);
-                                if (numeric.length >= 14) {
-                                        const firstChunk = Number(numeric.slice(0, 4));
-                                        if (firstChunk > 1900) {
-                                                const date = parseFromNumeric(
-                                                        numeric.slice(0, 4),
-                                                        numeric.slice(4, 6),
-                                                        numeric.slice(6, 8),
-                                                        numeric.slice(8, 10),
-                                                        numeric.slice(10, 12),
-                                                        numeric.slice(12, 14)
-                                                );
-                                                if (date) return date;
-                                        } else {
-                                                const date = parseFromNumeric(
-                                                        numeric.slice(4, 8),
-                                                        numeric.slice(2, 4),
-                                                        numeric.slice(0, 2),
-                                                        numeric.slice(8, 10),
-                                                        numeric.slice(10, 12),
-                                                        numeric.slice(12, 14)
-                                                );
-                                                if (date) return date;
-                                        }
-                                }
-                                if (numeric.length === 12) {
-                                        const firstChunk = Number(numeric.slice(0, 4));
-                                        if (firstChunk > 1900) {
-                                                const date = parseFromNumeric(
-                                                        numeric.slice(0, 4),
-                                                        numeric.slice(4, 6),
-                                                        numeric.slice(6, 8),
-                                                        numeric.slice(8, 10),
-                                                        numeric.slice(10, 12)
-                                                );
-                                                if (date) return date;
-                                        } else {
-                                                const date = parseFromNumeric(
-                                                        numeric.slice(4, 8),
-                                                        numeric.slice(2, 4),
-                                                        numeric.slice(0, 2),
-                                                        numeric.slice(8, 10),
-                                                        numeric.slice(10, 12)
-                                                );
-                                                if (date) return date;
-                                        }
-                                }
-                                if (numeric.length === 8) {
-                                        const firstChunk = Number(numeric.slice(0, 4));
-                                        if (firstChunk > 1900) {
-                                                const date = parseFromNumeric(
-                                                        numeric.slice(0, 4),
-                                                        numeric.slice(4, 6),
-                                                        numeric.slice(6, 8)
-                                                );
-                                                if (date) return date;
-                                        } else {
-                                                const date = parseFromNumeric(
-                                                        numeric.slice(4, 8),
-                                                        numeric.slice(2, 4),
-                                                        numeric.slice(0, 2)
-                                                );
-                                                if (date) return date;
-                                        }
-                                }
-                                const parsed = new Date(normalized);
-                                if (!Number.isNaN(parsed.getTime())) {
-                                        return parsed;
-                                }
-                                return null;
-                        }
-
-                        function isSameCalendarDay(a, b) {
-                                return (
-                                        a.getFullYear() === b.getFullYear() &&
+function isSameCalendarDay(a, b) {
+return (
+a.getFullYear() === b.getFullYear() &&
                                         a.getMonth() === b.getMonth() &&
                                         a.getDate() === b.getDate()
                                 );
