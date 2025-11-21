@@ -8266,6 +8266,8 @@ const ADD_DOC_KEY = "add-document";
     ];
     const coverageStartDateRaw = pickField("desde_fmt", "");
     const coverageEndDateRaw = pickField("hasta_fmt", "");
+    const coverageStartDate = parseTimelineDate(coverageStartDateRaw);
+    const coverageEndDate = parseTimelineDate(coverageEndDateRaw);
     const hasCoverageStart = isFilled(coverageStartDateRaw);
     const hasCoverageEnd = isFilled(coverageEndDateRaw);
     const contractDateRaw = isSinFinalizar
@@ -8274,7 +8276,58 @@ const ADD_DOC_KEY = "add-document";
           contractDateCandidates.find((value) => isFilled(value)) ||
           creationDateCandidates.find((value) => isFilled(value)) ||
           "";
+    const today = (() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    })();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysBetween = (targetDate) => {
+        if (!(targetDate instanceof Date)) {
+            return null;
+        }
+        const diff = targetDate.getTime() - today.getTime();
+        return Math.max(0, Math.ceil(diff / msPerDay));
+    };
+    const daysUntilStart = daysBetween(coverageStartDate);
+    const daysUntilEnd = daysBetween(coverageEndDate);
+
+    let coverageCountdownLabel = "—";
+    let coverageCountdownValue = "—";
+
+    if (coverageStartDate instanceof Date && coverageStartDate.getTime() > today.getTime()) {
+        coverageCountdownLabel = "Días para inicio";
+        coverageCountdownValue =
+            daysUntilStart !== null && Number.isFinite(daysUntilStart)
+                ? `${daysUntilStart} días`
+                : "—";
+    } else if (coverageEndDate instanceof Date) {
+        coverageCountdownLabel = "Expira en";
+        coverageCountdownValue =
+            daysUntilEnd !== null && Number.isFinite(daysUntilEnd)
+                ? `${daysUntilEnd} días`
+                : "—";
+    }
+
+    const expirationCountdownLabel = "Expira en";
+    const expirationCountdownValue =
+        coverageEndDate instanceof Date && daysUntilEnd !== null && Number.isFinite(daysUntilEnd)
+            ? `${daysUntilEnd} días`
+            : "—";
     const billingTotalAmount = "1.125,00 €";
+    const coverageCountdownHtml = `<div class="detail__timeline detail__timeline--countdown">` +
+        `<div class="detail__timeline-point">` +
+            `<span class="detail__timeline-label">${coverageCountdownLabel}</span>` +
+            `<span class="detail__timeline-value">${coverageCountdownValue}</span>` +
+        `</div>` +
+    `</div>`;
+    const expirationCountdownHtml = `<div class="detail__timeline detail__timeline--countdown">` +
+        `<div class="detail__timeline-point">` +
+            `<span class="detail__timeline-label">${expirationCountdownLabel}</span>` +
+            `<span class="detail__timeline-value">${expirationCountdownValue}</span>` +
+        `</div>` +
+    `</div>`;
+    const countdownListHtml =
+        `<div class="detail__timeline-list detail__timeline-list--countdown">${coverageCountdownHtml}${expirationCountdownHtml}</div>`;
     const billingTimelineHtml = `<div class="detail__timeline-list">` +
         `<div class="detail__timeline detail__timeline--contract">` +
             `<div class="detail__timeline-point">` +
@@ -8326,23 +8379,26 @@ const ADD_DOC_KEY = "add-document";
         `</summary>` +
         `<div class="detail__transfer-toggle-content">${billingBreakdownHtml}</div>` +
     `</details>`;
+    const managementButtonHtml = showManagementHub
+        ? `<div class="detail__manage-wrapper">` +
+              `<button type="button" class="detail__manage-button" data-management-open>` +
+                  `<span class="detail__manage-copy">` +
+                      `<strong>Gestionar garantía</strong>` +
+                      `<span>Operativa interna y ajustes</span>` +
+                  `</span>` +
+                  `<span class="detail__manage-caret" aria-hidden="true">${managementArrowIcon}</span>` +
+              `</button>` +
+          `</div>`
+        : "";
+    const billingMetaHtml =
+        `<div class="detail__timeline-meta">${countdownListHtml}${managementButtonHtml}</div>`;
     const billingSectionHtml = `<section class="detail__section detail__section--billing">` +
         `${billingTimelineHtml}` +
+        `${billingMetaHtml}` +
         `${billingTotalHtml}` +
         `${billingToggleHtml}` +
     `</section>`;
-    const managementSectionHtml = showManagementHub
-        ? `<section class="detail__section detail__section--manage" aria-live="polite">
-                <button type="button" class="detail__manage-button" data-management-open>
-                        <span class="detail__manage-icon" aria-hidden="true">${managementShieldIcon}</span>
-                        <span class="detail__manage-copy">
-                                <strong>Gestionar garantía</strong>
-                                <span>Operativa interna y ajustes</span>
-                        </span>
-                        <span class="detail__manage-caret" aria-hidden="true">${managementArrowIcon}</span>
-                </button>
-        </section>`
-        : "";
+    const managementSectionHtml = "";
 
     const sinFinalButtons = [];
     if (canContinueGuarantee) {
