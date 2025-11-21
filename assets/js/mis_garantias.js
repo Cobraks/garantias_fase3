@@ -7807,6 +7807,29 @@ const ADD_DOC_KEY = "add-document";
         return fallback;
     };
 
+    const pickEstadoGarantiaField = (field, fallback = "-") => {
+        const sources = [data, rowData];
+        for (const source of sources) {
+            const estadoGroup = source?.estado_garantia;
+            if (!estadoGroup || !(field in estadoGroup)) {
+                continue;
+            }
+            const raw = getFieldText(estadoGroup[field]);
+            if (raw === undefined || raw === null) {
+                continue;
+            }
+            if (typeof raw === "string") {
+                const trimmed = raw.trim();
+                if (!trimmed || trimmed === "-" || trimmed === "#") {
+                    continue;
+                }
+                return raw;
+            }
+            return raw;
+        }
+        return fallback;
+    };
+
     const normalizeTipoValue = (value) => {
         if (typeof value !== "string") {
             return "";
@@ -7887,15 +7910,7 @@ const ADD_DOC_KEY = "add-document";
               `${planPrice ? `<span class=\"guarantee-detail__plan-price\">${planPrice}</span>` : ""}` +
               `</h3>`
         : "";
-    const planCoverageCountdownLabel = computeRemainingDaysLabel(
-        estadoClase,
-        rawDesdeIso,
-        rawHastaIso
-    );
-    const coverageHtml = hasCoverageInfo
-        ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
-              `${planCoverageCountdownLabel ? `<span class=\"guarantee-detail__plan-duration\">${planCoverageCountdownLabel}</span>` : ""}</p></div>`
-        : "";
+    const coverageHtml = "";
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
@@ -8140,14 +8155,26 @@ const ADD_DOC_KEY = "add-document";
 
         const safeDate = (year, month, day, hours = 0, minutes = 0, seconds = 0) => {
             const y = normalizeYearValue(year);
-            const m = Number(month) - 1;
+            const m = Number(month);
             const d = Number(day);
             const hh = Number(hours);
             const mm = Number(minutes);
             const ss = Number(seconds);
-            if (!Number.isFinite(y)) return null;
-            const candidate = new Date(y, m, d, hh, mm, ss);
+            if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+                return null;
+            }
+            if (m < 1 || m > 12 || d < 1 || d > 31) {
+                return null;
+            }
+            const candidate = new Date(y, m - 1, d, hh, mm, ss);
             if (Number.isNaN(candidate.getTime())) return null;
+            if (
+                candidate.getFullYear() !== y ||
+                candidate.getMonth() !== m - 1 ||
+                candidate.getDate() !== d
+            ) {
+                return null;
+            }
             return candidate;
         };
 
@@ -8171,11 +8198,24 @@ const ADD_DOC_KEY = "add-document";
 
         const numeric = normalized.replace(/[^0-9]/g, "");
         if (numeric.length >= 8) {
-            const year = numeric.length === 8 ? numeric.slice(4, 8) : numeric.slice(0, 4);
-            const month = numeric.length === 8 ? numeric.slice(2, 4) : numeric.slice(4, 6);
-            const day = numeric.length === 8 ? numeric.slice(0, 2) : numeric.slice(6, 8);
-            const date = safeDate(year, month, day);
-            if (date) return date;
+            const numericDatePart = numeric.slice(-8);
+            const numericCandidates = [
+                {
+                    year: numericDatePart.slice(4, 8),
+                    month: numericDatePart.slice(2, 4),
+                    day: numericDatePart.slice(0, 2),
+                },
+                {
+                    year: numericDatePart.slice(0, 4),
+                    month: numericDatePart.slice(4, 6),
+                    day: numericDatePart.slice(6, 8),
+                },
+            ];
+
+            for (const candidate of numericCandidates) {
+                const date = safeDate(candidate.year, candidate.month, candidate.day);
+                if (date) return date;
+            }
         }
 
         const fallbackDate = new Date(normalized);
@@ -8232,6 +8272,9 @@ const ADD_DOC_KEY = "add-document";
     };
 
     const contractDateCandidates = [
+        pickEstadoGarantiaField("fecha_contratacion", ""),
+        pickEstadoGarantiaField("fecha_contratacion_fmt", ""),
+        pickEstadoGarantiaField("fecha_contratacion_raw", ""),
         pickField("fecha_contratacion", ""),
         pickField("fecha_contratacion_fmt", ""),
         pickField("fecha_contratacion_raw", ""),
@@ -8270,12 +8313,33 @@ const ADD_DOC_KEY = "add-document";
     const coverageEndDate = parseTimelineDate(coverageEndDateRaw);
     const hasCoverageStart = isFilled(coverageStartDateRaw);
     const hasCoverageEnd = isFilled(coverageEndDateRaw);
-    const contractDateRaw = isSinFinalizar
-        ? creationDateCandidates.find((value) => isFilled(value)) || ""
-        : publicationDateCandidates.find((value) => isFilled(value)) ||
-          contractDateCandidates.find((value) => isFilled(value)) ||
-          creationDateCandidates.find((value) => isFilled(value)) ||
-          "";
+    const creationDateValue =
+        creationDateCandidates.find((value) => isFilled(value)) || "";
+    const contratoFechaContratacion =
+        [
+            pickEstadoGarantiaField("fecha_contratacion", ""),
+            pickEstadoGarantiaField("fecha_contratacion_fmt", ""),
+            pickEstadoGarantiaField("fecha_contratacion_raw", ""),
+            pickField("fecha_contratacion", ""),
+            pickField("fecha_contratacion_fmt", ""),
+            pickField("fecha_contratacion_raw", ""),
+        ].find((value) => isFilled(value)) || "";
+    const shouldUseContractDate =
+        estadoClase === "activada" || isPendientePago;
+    const contractDateRaw = (() => {
+        if (shouldUseContractDate) {
+            return contratoFechaContratacion || creationDateValue;
+        }
+        if (isSinFinalizar) {
+            return creationDateValue;
+        }
+        return (
+            publicationDateCandidates.find((value) => isFilled(value)) ||
+            contractDateCandidates.find((value) => isFilled(value)) ||
+            creationDateValue ||
+            ""
+        );
+    })();
     const today = (() => {
         const now = new Date();
         return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -8308,11 +8372,6 @@ const ADD_DOC_KEY = "add-document";
                 : "—";
     }
 
-    const expirationCountdownLabel = "Expira en";
-    const expirationCountdownValue =
-        coverageEndDate instanceof Date && daysUntilEnd !== null && Number.isFinite(daysUntilEnd)
-            ? `${daysUntilEnd} días`
-            : "—";
     const billingTotalAmount = "1.125,00 €";
     const coverageCountdownHtml = `<div class="detail__timeline detail__timeline--countdown">` +
         `<div class="detail__timeline-point">` +
@@ -8320,22 +8379,16 @@ const ADD_DOC_KEY = "add-document";
             `<span class="detail__timeline-value">${coverageCountdownValue}</span>` +
         `</div>` +
     `</div>`;
-    const expirationCountdownHtml = `<div class="detail__timeline detail__timeline--countdown">` +
-        `<div class="detail__timeline-point">` +
-            `<span class="detail__timeline-label">${expirationCountdownLabel}</span>` +
-            `<span class="detail__timeline-value">${expirationCountdownValue}</span>` +
-        `</div>` +
-    `</div>`;
     const countdownListHtml =
-        `<div class="detail__timeline-list detail__timeline-list--countdown">${coverageCountdownHtml}${expirationCountdownHtml}</div>`;
+        `<div class="detail__timeline-list detail__timeline-list--countdown">${coverageCountdownHtml}</div>`;
     const billingTimelineHtml = `<div class="detail__timeline-list">` +
         `<div class="detail__timeline detail__timeline--contract">` +
             `<div class="detail__timeline-point">` +
                 `<span class="detail__timeline-label">${
-                    isSinFinalizar ? "Inicializada" : "Fecha contratación"
+                    isSinFinalizar ? "Iniciada" : "Fecha contratación"
                 }</span>` +
                 `<span class="detail__timeline-value">${formatTimelineDate(
-                    contractDateRaw
+                    isSinFinalizar ? creationDateValue : contractDateRaw
                 )}</span>` +
             `</div>` +
         `</div>` +
@@ -8360,10 +8413,6 @@ const ADD_DOC_KEY = "add-document";
             `</div>` +
         `</div>` +
     `</div>`;
-    const billingTotalHtml = `<div class="detail__billing-total">` +
-        `<p class="detail__billing-total-label">Total facturado</p>` +
-        `<p class="detail__billing-total-amount">${billingTotalAmount}</p>` +
-    `</div>`;
     const billingBreakdownHtml = `<div class="detail__billing-breakdown">` +
         `<div class="detail__billing-row"><span>Precio base</span><span>1.050,00 €</span></div>` +
         `<div class="detail__billing-row"><span>Recargo por kilometraje</span><span>+120,00 €</span></div>` +
@@ -8371,14 +8420,16 @@ const ADD_DOC_KEY = "add-document";
         `<div class="detail__billing-divider" role="presentation"></div>` +
         `<div class="detail__billing-row detail__billing-row--total"><span>Total facturado</span><span>${billingTotalAmount}</span></div>` +
     `</div>`;
-    const billingToggleHtml = `<details class="detail__transfer-toggle detail__billing-toggle">` +
+    const billingToggleHtml = canAccessManagementHub
+        ? `<details class="detail__transfer-toggle detail__billing-toggle">` +
         `<summary class="detail__transfer-toggle-summary">` +
             `<span class="detail__transfer-toggle-label">Ver desglose económico</span>` +
             `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${arrowDownIcon || "&#9660;"}</span>` +
             `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${arrowUpIcon || "&#9650;"}</span>` +
         `</summary>` +
         `<div class="detail__transfer-toggle-content">${billingBreakdownHtml}</div>` +
-    `</details>`;
+    `</details>`
+        : "";
     const managementButtonHtml = showManagementHub
         ? `<div class="detail__manage-wrapper">` +
               `<button type="button" class="detail__manage-button" data-management-open>` +
@@ -8390,12 +8441,12 @@ const ADD_DOC_KEY = "add-document";
               `</button>` +
           `</div>`
         : "";
-    const billingMetaHtml =
-        `<div class="detail__timeline-meta">${countdownListHtml}${managementButtonHtml}</div>`;
+    const billingMetaHtml = canAccessManagementHub
+        ? `<div class="detail__timeline-meta">${countdownListHtml}${managementButtonHtml}</div>`
+        : "";
     const billingSectionHtml = `<section class="detail__section detail__section--billing">` +
         `${billingTimelineHtml}` +
         `${billingMetaHtml}` +
-        `${billingTotalHtml}` +
         `${billingToggleHtml}` +
     `</section>`;
     const managementSectionHtml = "";
