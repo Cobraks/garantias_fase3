@@ -7807,6 +7807,29 @@ const ADD_DOC_KEY = "add-document";
         return fallback;
     };
 
+    const pickEstadoGarantiaField = (field, fallback = "-") => {
+        const sources = [data, rowData];
+        for (const source of sources) {
+            const estadoGroup = source?.estado_garantia;
+            if (!estadoGroup || !(field in estadoGroup)) {
+                continue;
+            }
+            const raw = getFieldText(estadoGroup[field]);
+            if (raw === undefined || raw === null) {
+                continue;
+            }
+            if (typeof raw === "string") {
+                const trimmed = raw.trim();
+                if (!trimmed || trimmed === "-" || trimmed === "#") {
+                    continue;
+                }
+                return raw;
+            }
+            return raw;
+        }
+        return fallback;
+    };
+
     const normalizeTipoValue = (value) => {
         if (typeof value !== "string") {
             return "";
@@ -8232,6 +8255,9 @@ const ADD_DOC_KEY = "add-document";
     };
 
     const contractDateCandidates = [
+        pickEstadoGarantiaField("fecha_contratacion", ""),
+        pickEstadoGarantiaField("fecha_contratacion_fmt", ""),
+        pickEstadoGarantiaField("fecha_contratacion_raw", ""),
         pickField("fecha_contratacion", ""),
         pickField("fecha_contratacion_fmt", ""),
         pickField("fecha_contratacion_raw", ""),
@@ -8274,6 +8300,9 @@ const ADD_DOC_KEY = "add-document";
         creationDateCandidates.find((value) => isFilled(value)) || "";
     const contratoFechaContratacion =
         [
+            pickEstadoGarantiaField("fecha_contratacion", ""),
+            pickEstadoGarantiaField("fecha_contratacion_fmt", ""),
+            pickEstadoGarantiaField("fecha_contratacion_raw", ""),
             pickField("fecha_contratacion", ""),
             pickField("fecha_contratacion_fmt", ""),
             pickField("fecha_contratacion_raw", ""),
