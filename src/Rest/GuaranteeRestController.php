@@ -2416,23 +2416,13 @@ class GuaranteeRestController
                             if (!empty($v['listado_descuentos_recargos']) && is_array($v['listado_descuentos_recargos'])) {
                                 $list = [];
                                 foreach ($v['listado_descuentos_recargos'] as $row) {
-                                    $tipo = sanitize_text_field($row['tipo'] ?? '');
-                                    $por  = self::normalize_decimal($row['porcentaje'] ?? '');
-                                    $raz  = sanitize_text_field($row['razon'] ?? '');
                                     $concepto = sanitize_text_field($row['concepto'] ?? '');
-                                    $importe   = self::normalize_decimal($row['importe'] ?? '');
-                                    $orden     = isset($row['orden']) ? absint($row['orden']) : 0;
-                                    $destacado = isset($row['destacado']) && $row['destacado'] ? 1 : 0;
-                                    $base_calc = self::normalize_decimal($row['base_calculo'] ?? '');
+                                    $valor   = self::normalize_decimal($row['valor'] ?? '');
+                                    $destacado = !empty($row['destacado']) ? 1 : 0;
                                     $list[] = [
-                                        'tipo'       => $tipo,
-                                        'porcentaje' => is_numeric($por) ? $por : '',
-                                        'razon'      => $raz,
                                         'concepto'   => $concepto,
-                                        'importe'    => is_numeric($importe) ? $importe : '',
-                                        'orden'      => $orden,
                                         'destacado'  => $destacado,
-                                        'base_calculo' => is_numeric($base_calc) ? $base_calc : '',
+                                        'valor'    => is_numeric($valor) ? $valor : '',
                                     ];
                                 }
                                 if ($list) {
@@ -2525,21 +2515,40 @@ class GuaranteeRestController
 
             if (!empty($acf_gc_payload)) {
                 if (function_exists('update_field')) {
-                    if (isset($gc['descuentos_y_recargos']) && is_array($gc['descuentos_y_recargos'])) {
-                        update_field('field_6890a4be4435a', $gc['descuentos_y_recargos'], $post_id);
+                    if (isset($acf_gc_payload['descuentos_y_recargos'])) {
+                        update_field(
+                            'garantia_contratada_descuentos_y_recargos',
+                            $acf_gc_payload['descuentos_y_recargos'],
+                            $post_id
+                        );
 
-                        if (!empty($gc['descuentos_y_recargos']['listado_descuentos_recargos'])) {
+                        if (!empty($acf_gc_payload['descuentos_y_recargos']['listado_descuentos_recargos'])) {
                             update_field(
-                                'field_6890a4d24435b',
-                                $gc['descuentos_y_recargos']['listado_descuentos_recargos'],
+                                'garantia_contratada_descuentos_y_recargos_listado_descuentos_recargos',
+                                $acf_gc_payload['descuentos_y_recargos']['listado_descuentos_recargos'],
                                 $post_id
                             );
                         }
                     }
 
-                    update_field('field_685e5b14b2de4', $acf_gc_payload, $post_id);
+                    update_field('garantia_contratada', $acf_gc_payload, $post_id);
                 } else {
                     update_post_meta($post_id, 'garantia_contratada', $acf_gc_payload);
+                    if (isset($acf_gc_payload['descuentos_y_recargos'])) {
+                        update_post_meta(
+                            $post_id,
+                            'garantia_contratada_descuentos_y_recargos',
+                            $acf_gc_payload['descuentos_y_recargos']
+                        );
+
+                        if (!empty($acf_gc_payload['descuentos_y_recargos']['listado_descuentos_recargos'])) {
+                            update_post_meta(
+                                $post_id,
+                                'garantia_contratada_descuentos_y_recargos_listado_descuentos_recargos',
+                                $acf_gc_payload['descuentos_y_recargos']['listado_descuentos_recargos']
+                            );
+                        }
+                    }
                 }
             }
 
