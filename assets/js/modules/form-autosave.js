@@ -15,11 +15,6 @@ import {
 import { AVAILABLE_DOCS } from "./docs-config.js";
 import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
-import { calcularRecargos, getDescuentosAplicables } from "./form-calculations.js";
-import {
-        getEconomicBreakdownSnapshot,
-        ensureEconomicBreakdownReady,
-} from "./form-contratacion-summary.js";
 
 const pdfCache = new Map();
 
@@ -67,6 +62,25 @@ function buildEconomicBreakdownFromDom(normalizePriceFn) {
                         destacado,
                         base_calculo: "",
                 });
+        });
+
+        return rows;
+}
+
+function buildListadoDescuentosRecargos(normalizePriceFn) {
+        const container = document.querySelector("#final-summary .contratacion-summary__list");
+        if (!container) return [];
+
+        const rows = [];
+        container.querySelectorAll(".item").forEach((row) => {
+                const concepto = row.querySelector(".concepto")?.textContent?.trim() || "";
+                const valorText = row.querySelector(".valor")?.textContent || "";
+                const valor = normalizePriceFn(valorText);
+                const destacado = row.classList.contains("item--destacado");
+
+                if (concepto || valor !== "") {
+                        rows.push({ concepto, valor, destacado });
+                }
         });
 
         return rows;
@@ -1971,117 +1985,6 @@ export default function initAutosave() {
                                         : modalidad.nivel_garantia;
                                 if (tipo) garantia.tipo_garantia = tipo;
                                 if (nivel) garantia.nivel_garantia = nivel;
-
-                                const dr = {};
-                                let economicBreakdown = buildEconomicBreakdownFromDom(normalizePrice);
-
-                                if (!Array.isArray(economicBreakdown) || !economicBreakdown.length) {
-                                        await ensureEconomicBreakdownReady();
-                                        economicBreakdown =
-                                                (await getEconomicBreakdownSnapshot()) ||
-                                                buildEconomicBreakdownFromDom(normalizePrice) ||
-                                                [];
-                                }
-
-                                if (Array.isArray(economicBreakdown) && economicBreakdown.length) {
-                                        const baseLine = economicBreakdown.find(
-                                                (item) => item && item.tipo === "base"
-                                        );
-                                        if (baseLine && baseLine.importe !== undefined) {
-                                                dr.precio_base = normalizePrice(baseLine.importe);
-                                        }
-
-                                        const listado = [];
-                                        economicBreakdown.forEach((row) => {
-                                                if (!row || typeof row !== "object") return;
-                                                const mapped = {
-                                                        concepto: row.concepto || "",
-                                                        tipo: row.tipo || "",
-                                                        importe: normalizePrice(row.importe),
-                                                        porcentaje:
-                                                                row.porcentaje !== undefined
-                                                                        ? normalizePrice(row.porcentaje)
-                                                                        : "",
-                                                        razon: row.razon || "",
-                                                        orden:
-                                                                row.orden !== undefined
-                                                                        ? parseInt(row.orden, 10) || 0
-                                                                        : "",
-                                                        destacado: !!row.destacado,
-                                                        base_calculo:
-                                                                row.base_calculo !== undefined
-                                                                        ? normalizePrice(row.base_calculo)
-                                                                        : "",
-                                                };
-                                                listado.push(mapped);
-                                        });
-
-                                        if (listado.length) {
-                                                dr.listado_descuentos_recargos = listado;
-                                        }
-
-                                        if (garantia.precio === undefined || garantia.precio === "") {
-                                                const totalRow = economicBreakdown.find(
-                                                        (item) => item && item.tipo === "total" && item.importe !== undefined
-                                                );
-                                                if (totalRow) {
-                                                        garantia.precio = normalizePrice(totalRow.importe);
-                                                }
-                                        }
-                                } else {
-                                        const recargosEl = document.querySelector(
-                                                ".form__plan.selected .form__plan-recargos-precios"
-                                        );
-                                        if (recargosEl) {
-                                                const txt = recargosEl.textContent;
-                                                const baseMatch = txt.match(/Precio base:\s*([0-9.,]+)/i);
-                                                const finalMatch = txt.match(/Precio final \+ IVA:\s*([0-9.,]+)/i);
-                                                if (baseMatch) {
-                                                        dr.precio_base = normalizePrice(baseMatch[1]);
-                                                }
-                                                if (finalMatch) {
-                                                        garantia.precio = normalizePrice(finalMatch[1]);
-                                                }
-                                        }
-
-                                        const listado = [];
-                                        const descuentos = await getDescuentosAplicables(modalidad);
-                                        descuentos.forEach((d) => {
-                                                listado.push({
-                                                        tipo: "descuento",
-                                                        porcentaje: Math.round(d.porcentaje * 10000) / 100,
-                                                        razon: d.nombre,
-                                                });
-                                        });
-                                        const valoresRecargo = { ...datosVehiculo };
-                                        if (datosVehiculo.primera_matriculacion) {
-                                                valoresRecargo.fecha_primera_matriculacion =
-                                                        datosVehiculo.primera_matriculacion;
-                                        }
-                                        const breakdown = calcularRecargos(
-                                                modalidad,
-                                                valoresRecargo
-                                        );
-                                        if (breakdown && Array.isArray(breakdown.detalles)) {
-                                                breakdown.detalles.forEach((det) => {
-                                                        listado.push({
-                                                                tipo: "recargo",
-                                                                porcentaje:
-                                                                        Math.round(
-                                                                                det.porcentajeAplicado * 10000
-                                                                        ) / 100,
-                                                                razon: det.descripcion || "",
-                                                        });
-                                                });
-                                        }
-                                        if (listado.length) {
-                                                dr.listado_descuentos_recargos = listado;
-                                        }
-                                }
-
-                                if (Object.keys(dr).length) {
-                                        garantia.descuentos_y_recargos = dr;
-                                }
                         }
                 }
 
@@ -2103,6 +2006,55 @@ export default function initAutosave() {
                                 garantia.precio = normalizePrice(
                                         resumenPrecioEl.textContent
                                 );
+                        }
+                }
+
+                let precioBase;
+                const resumenItems = document.querySelectorAll(
+                        "#final-summary .contratacion-summary__list .item"
+                );
+                resumenItems.forEach((item) => {
+                        const concepto = item.querySelector(".concepto")?.textContent || "";
+                        if (/precio base/i.test(concepto)) {
+                                const valorText = item.querySelector(".valor")?.textContent || "";
+                                precioBase = normalizePrice(valorText);
+                        }
+                });
+
+                if (precioBase === undefined || precioBase === "") {
+                        const recargosEl = document.querySelector(
+                                ".form__plan.selected .form__plan-recargos-precios"
+                        );
+                        if (recargosEl) {
+                                const txt = recargosEl.textContent;
+                                const baseMatch = txt.match(/Precio base:\s*([0-9.,]+)/i);
+                                if (baseMatch) {
+                                        precioBase = normalizePrice(baseMatch[1]);
+                                }
+                        }
+                }
+
+                const listadoDescuentosRecargos = buildListadoDescuentosRecargos(normalizePrice);
+                const hasListado = listadoDescuentosRecargos.length > 0;
+
+                if (finalize || precioBase !== undefined || hasListado) {
+                        const descuentosYRecargos = {};
+
+                        if (precioBase !== undefined && precioBase !== "") {
+                                descuentosYRecargos.precio_base = precioBase;
+                        }
+
+                        if (hasListado) {
+                                descuentosYRecargos.listado_descuentos_recargos = listadoDescuentosRecargos;
+                        }
+
+                        if (Object.keys(descuentosYRecargos).length > 0) {
+                                console.log("[AUTOSAVE] descuentos_y_recargos payload", {
+                                        finalize,
+                                        precioBase,
+                                        listadoDescuentosRecargos,
+                                });
+                                garantia.descuentos_y_recargos = descuentosYRecargos;
                         }
                 }
 
