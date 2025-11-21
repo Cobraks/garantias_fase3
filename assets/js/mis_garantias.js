@@ -8301,6 +8301,7 @@ a.getFullYear() === b.getFullYear() &&
         pickField("post_date", ""),
         pickField("post_date_gmt", ""),
         pickField("post_modified", ""),
+        pickField("post_modified_gmt", ""),
     ];
     const coverageStartDateRaw = pickField("desde_fmt", "");
     const coverageEndDateRaw = pickField("hasta_fmt", "");
@@ -8313,15 +8314,22 @@ a.getFullYear() === b.getFullYear() &&
           creationDateCandidates.find((value) => isFilled(value)) ||
           "";
     const billingTotalAmount = planPrice || "—";
+    const managementButtonHtml = showManagementHub
+        ? `<button type="button" class="detail__manage-button" data-management-open>` +
+          `<span class="detail__manage-copy">` +
+                `<strong>Gestionar garantía</strong>` +
+                `<span>Operativa interna y ajustes</span>` +
+          `</span>` +
+          `<span class="detail__manage-caret" aria-hidden="true">${caretRightIcon}</span>` +
+          `</button>`
+        : "";
+
     const billingSummaryHtml = `<div class="detail__billing-summary">` +
         `<div class="detail__billing-card">` +
             `<p class="detail__billing-card-label">${billingCountdown.label}</p>` +
             `<p class="detail__billing-card-value">${billingCountdown.value}</p>` +
         `</div>` +
-        `<div class="detail__billing-card detail__billing-card--amount">` +
-            `<p class="detail__billing-card-label">Importe recibido</p>` +
-            `<p class="detail__billing-card-value">${billingTotalAmount}</p>` +
-        `</div>` +
+        `${managementButtonHtml}` +
     `</div>`;
     const billingTimelineHtml = `<div class="detail__timeline-list">` +
         `<div class="detail__timeline detail__timeline--contract">` +
@@ -8375,18 +8383,7 @@ a.getFullYear() === b.getFullYear() &&
         `${billingSummaryHtml}` +
         `${billingToggleHtml}` +
     `</section>`;
-    const managementSectionHtml = showManagementHub
-        ? `<section class="detail__section detail__section--manage" aria-live="polite">
-                <button type="button" class="detail__manage-button" data-management-open>
-                        <span class="detail__manage-icon" aria-hidden="true">${managementShieldIcon}</span>
-                        <span class="detail__manage-copy">
-                                <strong>Gestionar garantía</strong>
-                                <span>Operativa interna y ajustes</span>
-                        </span>
-                        <span class="detail__manage-caret" aria-hidden="true">${managementArrowIcon}</span>
-                </button>
-        </section>`
-        : "";
+    const managementSectionHtml = "";
 
     const sinFinalButtons = [];
     if (canContinueGuarantee) {

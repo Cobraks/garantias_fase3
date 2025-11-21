@@ -4007,6 +4007,12 @@ class GuaranteeRestController
     {
         $id = (int) $id;
 
+        $post = get_post($id);
+        $post_date = $post instanceof \WP_Post ? (string) $post->post_date : '';
+        $post_date_gmt = $post instanceof \WP_Post ? (string) $post->post_date_gmt : '';
+        $post_modified = $post instanceof \WP_Post ? (string) $post->post_modified : '';
+        $post_modified_gmt = $post instanceof \WP_Post ? (string) $post->post_modified_gmt : '';
+
         $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
         $marca = get_post_meta($id, 'datos_vehiculo_marca', true);
         $modelo = get_post_meta($id, 'datos_vehiculo_modelo', true);
@@ -4289,6 +4295,13 @@ class GuaranteeRestController
             'plan_id' => $plan_id,
             'precio' => $precio,
             'metodo_pago' => $metodo_pago ?: '',
+            'created_at' => $post_date,
+            'created_at_fmt' => $post_date,
+            'created_at_gmt' => $post_date_gmt,
+            'post_date' => $post_date,
+            'post_date_gmt' => $post_date_gmt,
+            'post_modified' => $post_modified,
+            'post_modified_gmt' => $post_modified_gmt,
             'fecha_contratacion' => is_string($fecha_contratacion) ? $fecha_contratacion : '',
             'fecha_contratacion_raw' => is_string($fecha_contratacion) ? $fecha_contratacion : '',
             'fecha_contratacion_fmt' => is_string($fecha_contratacion) ? $fecha_contratacion : '',
