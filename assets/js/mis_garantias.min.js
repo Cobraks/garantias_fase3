@@ -8430,10 +8430,6 @@ a.getFullYear() === b.getFullYear() &&
                 </button>
         </div>`
         : "";
-                </section>
-                ${sinFinalActionsHtml}
-                ${deleteActionHtml}
-        </div>`;
     }
 
     const adminPendingDomiciliacion =
