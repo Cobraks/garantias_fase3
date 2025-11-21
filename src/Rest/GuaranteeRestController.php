@@ -4060,6 +4060,23 @@ class GuaranteeRestController
         $raw_desde = get_post_meta($id, 'estado_garantia_inicio', true);
         $desde   = self::resolve_effective_start_date((int) $id, (string) $estado, $raw_desde);
         $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
+        $fecha_contratacion_raw = get_post_meta($id, 'estado_garantia_fecha_contratacion', true);
+        $fecha_contratacion_fmt = '';
+        $fecha_contratacion_value = '';
+        if (is_string($fecha_contratacion_raw) && $fecha_contratacion_raw !== '') {
+            $fecha_contratacion_raw = sanitize_text_field($fecha_contratacion_raw);
+            $fecha_contratacion_dt = DateTimeImmutable::createFromFormat('d/m/Y', $fecha_contratacion_raw);
+            if (! $fecha_contratacion_dt) {
+                $fecha_contratacion_dt = DateTimeImmutable::createFromFormat('Y-m-d', $fecha_contratacion_raw);
+            }
+            if ($fecha_contratacion_dt instanceof DateTimeImmutable) {
+                $fecha_contratacion_fmt = $fecha_contratacion_dt->format('d/m/Y');
+                $fecha_contratacion_value = $fecha_contratacion_dt->format('Y-m-d');
+            } else {
+                $fecha_contratacion_fmt = $fecha_contratacion_raw;
+                $fecha_contratacion_value = $fecha_contratacion_raw;
+            }
+        }
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
             'validacion_pendiente' => __('Validación pendiente', 'garantias-online-360vo'),
@@ -4239,6 +4256,11 @@ class GuaranteeRestController
 
         $uuid = get_post_meta($id, 'estado_garantia_uuid', true);
 
+        $post_date          = get_post_field('post_date', $id);
+        $post_date_gmt      = get_post_field('post_date_gmt', $id);
+        $post_modified      = get_post_field('post_modified', $id);
+        $post_modified_gmt  = get_post_field('post_modified_gmt', $id);
+
         $primera_matriculacion_display = '-';
         if (is_string($primera_matriculacion) && $primera_matriculacion !== '') {
             $date = DateTimeImmutable::createFromFormat('Y-m-d', $primera_matriculacion);
@@ -4283,6 +4305,14 @@ class GuaranteeRestController
                 'value' => $estado,
                 'label' => $estado_label,
             ],
+            'estado_garantia' => [
+                'estado_contratacion'   => $estado,
+                'inicio'                => $raw_desde,
+                'finalizacion'          => $hasta,
+                'fecha_contratacion'    => $fecha_contratacion_value,
+                'fecha_contratacion_raw' => $fecha_contratacion_raw,
+                'fecha_contratacion_fmt' => $fecha_contratacion_fmt,
+            ],
             'concesionario' => $concesionario !== '' ? $concesionario : '-',
             'vendor_id' => $vendor_id,
             'concesionario_personal' => $vendor_full_name,
@@ -4317,6 +4347,10 @@ class GuaranteeRestController
             'localidad_comprador' => $localidad_comprador ?: '-',
             'provincia_comprador' => $provincia_comprador ?: '-',
             'codigo_postal_comprador' => $codigo_postal_comprador ?: '-',
+            'post_date' => is_string($post_date) ? $post_date : '',
+            'post_date_gmt' => is_string($post_date_gmt) ? $post_date_gmt : '',
+            'post_modified' => is_string($post_modified) ? $post_modified : '',
+            'post_modified_gmt' => is_string($post_modified_gmt) ? $post_modified_gmt : '',
         ];
 
         return self::inject_document_collection($detail, $id, $include_document_urls);
