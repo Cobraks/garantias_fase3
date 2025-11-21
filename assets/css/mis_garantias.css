@@ -2131,6 +2131,41 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     height: 1.25rem;
 }
 
+.detail__billing-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin: 0.5rem 0 0.25rem;
+}
+
+.detail__billing-card {
+    background: var(--bg-section);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    display: grid;
+    gap: 0.15rem;
+}
+
+.detail__billing-card-label {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.detail__billing-card-value {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.detail__billing-card--amount .detail__billing-card-value {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
 .detail__billing-total {
     display: flex;
     justify-content: space-between;
