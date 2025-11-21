@@ -39,34 +39,13 @@ function buildEconomicBreakdownFromDom(normalizePriceFn) {
         if (!container) return [];
 
         const rows = [];
-        let orden = 1;
         container.querySelectorAll(".item").forEach((row) => {
                 const concepto = row.querySelector(".concepto")?.textContent?.trim() || "";
                 const valorText = row.querySelector(".valor")?.textContent || "";
-                const importe = normalizePriceFn(valorText);
+                const valor = normalizePriceFn(valorText);
                 const destacado = row.classList.contains("item--destacado");
-                const isRecargo = /recargo/i.test(concepto);
-                const isDescuento = /descuento/i.test(concepto);
-                const isIva = /iva/i.test(concepto);
-                const isBase = /precio base/i.test(concepto);
 
-                let tipo = "nota";
-                if (isBase) tipo = "base";
-                else if (isRecargo) tipo = "recargo";
-                else if (isDescuento) tipo = "descuento";
-                else if (isIva) tipo = "iva";
-                else if (destacado) tipo = "total";
-
-                rows.push({
-                        concepto,
-                        tipo,
-                        importe,
-                        porcentaje: "",
-                        razon: concepto,
-                        orden: orden++,
-                        destacado,
-                        base_calculo: "",
-                });
+                rows.push({ concepto, valor, destacado });
         });
 
         return rows;
@@ -1984,11 +1963,14 @@ export default function initAutosave() {
                                 }
 
                                 if (Array.isArray(economicBreakdown) && economicBreakdown.length) {
-                                        const baseLine = economicBreakdown.find(
-                                                (item) => item && item.tipo === "base"
+                                const baseLine = economicBreakdown.find(
+                                                (item) =>
+                                                        item &&
+                                                        /precio\s*base/i.test(item.concepto || "") &&
+                                                        item.valor !== undefined
                                         );
-                                        if (baseLine && baseLine.importe !== undefined) {
-                                                dr.precio_base = normalizePrice(baseLine.importe);
+                                        if (baseLine && baseLine.valor !== undefined) {
+                                                dr.precio_base = normalizePrice(baseLine.valor);
                                         }
 
                                         const listado = [];
@@ -1996,22 +1978,8 @@ export default function initAutosave() {
                                                 if (!row || typeof row !== "object") return;
                                                 const mapped = {
                                                         concepto: row.concepto || "",
-                                                        tipo: row.tipo || "",
-                                                        importe: normalizePrice(row.importe),
-                                                        porcentaje:
-                                                                row.porcentaje !== undefined
-                                                                        ? normalizePrice(row.porcentaje)
-                                                                        : "",
-                                                        razon: row.razon || "",
-                                                        orden:
-                                                                row.orden !== undefined
-                                                                        ? parseInt(row.orden, 10) || 0
-                                                                        : "",
+                                                        valor: normalizePrice(row.valor),
                                                         destacado: !!row.destacado,
-                                                        base_calculo:
-                                                                row.base_calculo !== undefined
-                                                                        ? normalizePrice(row.base_calculo)
-                                                                        : "",
                                                 };
                                                 listado.push(mapped);
                                         });
@@ -2022,10 +1990,23 @@ export default function initAutosave() {
 
                                         if (garantia.precio === undefined || garantia.precio === "") {
                                                 const totalRow = economicBreakdown.find(
-                                                        (item) => item && item.tipo === "total" && item.importe !== undefined
+                                                        (item) =>
+                                                                item &&
+                                                                item.destacado === true &&
+                                                                item.valor !== undefined
                                                 );
-                                                if (totalRow) {
-                                                        garantia.precio = normalizePrice(totalRow.importe);
+                                                if (!totalRow) {
+                                                        economicBreakdown.find((item) => {
+                                                                if (!item || item.valor === undefined) return false;
+                                                                const label = item.concepto || "";
+                                                                if (/total/i.test(label)) {
+                                                                        garantia.precio = normalizePrice(item.valor);
+                                                                        return true;
+                                                                }
+                                                                return false;
+                                                        });
+                                                } else {
+                                                        garantia.precio = normalizePrice(totalRow.valor);
                                                 }
                                         }
                                 } else {
@@ -2045,33 +2026,18 @@ export default function initAutosave() {
                                         }
 
                                         const listado = [];
-                                        const descuentos = await getDescuentosAplicables(modalidad);
-                                        descuentos.forEach((d) => {
+                                        if (dr.precio_base !== undefined && dr.precio_base !== "") {
                                                 listado.push({
-                                                        tipo: "descuento",
-                                                        porcentaje: Math.round(d.porcentaje * 10000) / 100,
-                                                        razon: d.nombre,
+                                                        concepto: "Precio base",
+                                                        valor: dr.precio_base,
+                                                        destacado: false,
                                                 });
-                                        });
-                                        const valoresRecargo = { ...datosVehiculo };
-                                        if (datosVehiculo.primera_matriculacion) {
-                                                valoresRecargo.fecha_primera_matriculacion =
-                                                        datosVehiculo.primera_matriculacion;
                                         }
-                                        const breakdown = calcularRecargos(
-                                                modalidad,
-                                                valoresRecargo
-                                        );
-                                        if (breakdown && Array.isArray(breakdown.detalles)) {
-                                                breakdown.detalles.forEach((det) => {
-                                                        listado.push({
-                                                                tipo: "recargo",
-                                                                porcentaje:
-                                                                        Math.round(
-                                                                                det.porcentajeAplicado * 10000
-                                                                        ) / 100,
-                                                                razon: det.descripcion || "",
-                                                        });
+                                        if (garantia.precio !== undefined && garantia.precio !== "") {
+                                                listado.push({
+                                                        concepto: "Precio total",
+                                                        valor: garantia.precio,
+                                                        destacado: true,
                                                 });
                                         }
                                         if (listado.length) {
