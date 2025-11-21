@@ -1996,22 +1996,12 @@ export default function initAutosave() {
                                                 if (!row || typeof row !== "object") return;
                                                 const mapped = {
                                                         concepto: row.concepto || "",
-                                                        tipo: row.tipo || "",
-                                                        importe: normalizePrice(row.importe),
-                                                        porcentaje:
-                                                                row.porcentaje !== undefined
-                                                                        ? normalizePrice(row.porcentaje)
-                                                                        : "",
-                                                        razon: row.razon || "",
-                                                        orden:
-                                                                row.orden !== undefined
-                                                                        ? parseInt(row.orden, 10) || 0
-                                                                        : "",
+                                                        valor: normalizePrice(
+                                                                row.importe !== undefined
+                                                                        ? row.importe
+                                                                        : row.valor
+                                                        ),
                                                         destacado: !!row.destacado,
-                                                        base_calculo:
-                                                                row.base_calculo !== undefined
-                                                                        ? normalizePrice(row.base_calculo)
-                                                                        : "",
                                                 };
                                                 listado.push(mapped);
                                         });
@@ -2048,9 +2038,9 @@ export default function initAutosave() {
                                         const descuentos = await getDescuentosAplicables(modalidad);
                                         descuentos.forEach((d) => {
                                                 listado.push({
-                                                        tipo: "descuento",
-                                                        porcentaje: Math.round(d.porcentaje * 10000) / 100,
-                                                        razon: d.nombre,
+                                                        concepto: d.nombre || "",
+                                                        valor: "",
+                                                        destacado: false,
                                                 });
                                         });
                                         const valoresRecargo = { ...datosVehiculo };
@@ -2065,12 +2055,9 @@ export default function initAutosave() {
                                         if (breakdown && Array.isArray(breakdown.detalles)) {
                                                 breakdown.detalles.forEach((det) => {
                                                         listado.push({
-                                                                tipo: "recargo",
-                                                                porcentaje:
-                                                                        Math.round(
-                                                                                det.porcentajeAplicado * 10000
-                                                                        ) / 100,
-                                                                razon: det.descripcion || "",
+                                                                concepto: det.descripcion || "",
+                                                                valor: "",
+                                                                destacado: false,
                                                         });
                                                 });
                                         }
