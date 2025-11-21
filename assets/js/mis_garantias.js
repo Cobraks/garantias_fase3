@@ -7775,10 +7775,13 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 function renderFullDetail(data = {}, rowData = {}) {
-    const getFieldText = (val) =>
-        val && typeof val === "object" && "label" in val
-            ? val.label
-            : val;
+    const getFieldText = (val) => {
+        if (val && typeof val === "object") {
+            if ("label" in val) return val.label;
+            if ("value" in val) return val.value;
+        }
+        return val;
+    };
     const escapeAttr = (value) =>
         String(value)
             .replace(/&/g, "&amp;")
@@ -7892,6 +7895,8 @@ const ADD_DOC_KEY = "add-document";
         const str = String(val).trim();
         return str !== "" && str !== "-" && str !== "#";
     };
+
+    const pickFirstFilled = (...candidates) => candidates.find((value) => isFilled(value)) || "";
 
     const planName = pickField("plan", "-");
     const planParts = [];
@@ -8262,6 +8267,8 @@ const ADD_DOC_KEY = "add-document";
 
     const contractDateCandidates = [
         pickNestedField("estado_garantia", "fecha_contratacion", ""),
+        pickNestedField("estado_garantia", "fecha_contratacion_fmt", ""),
+        pickNestedField("estado_garantia", "fecha_contratacion_raw", ""),
         pickField("fecha_contratacion", ""),
         pickField("fecha_contratacion_fmt", ""),
         pickField("fecha_contratacion_raw", ""),
@@ -8303,12 +8310,24 @@ const ADD_DOC_KEY = "add-document";
     const coverageEndDate = parseTimelineDate(coverageEndDateRaw);
     const hasCoverageStart = isFilled(coverageStartDateRaw);
     const hasCoverageEnd = isFilled(coverageEndDateRaw);
-    const contractDateRaw = isSinFinalizar
-        ? creationDateCandidates.find((value) => isFilled(value)) || ""
-        : publicationDateCandidates.find((value) => isFilled(value)) ||
-          contractDateCandidates.find((value) => isFilled(value)) ||
-          creationDateCandidates.find((value) => isFilled(value)) ||
-          "";
+    const contractDateFromAcf = pickFirstFilled(...contractDateCandidates);
+    const publicationDateRaw = pickFirstFilled(...publicationDateCandidates);
+    const creationDateRaw = pickFirstFilled(...creationDateCandidates);
+    const contractDateRaw = (() => {
+        if (isSinFinalizar) {
+            return creationDateRaw || publicationDateRaw || contractDateFromAcf;
+        }
+        if (isPendientePago || estadoClase === "activada") {
+            return contractDateFromAcf || publicationDateRaw || creationDateRaw;
+        }
+        return "";
+    })();
+    const contractDateLabel = isSinFinalizar
+        ? "Iniciada"
+        : isPendientePago || estadoClase === "activada"
+        ? "Fecha contratación"
+        : "";
+    const shouldShowContractDate = Boolean(contractDateLabel);
     const today = (() => {
         const now = new Date();
         return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -8353,17 +8372,18 @@ const ADD_DOC_KEY = "add-document";
     const countdownListHtml = coverageCountdownHtml
         ? `<div class="detail__timeline-list detail__timeline-list--countdown">${coverageCountdownHtml}</div>`
         : "";
+    const contractTimelineHtml = shouldShowContractDate
+        ? `<div class="detail__timeline detail__timeline--contract">` +
+              `<div class="detail__timeline-point">` +
+                  `<span class="detail__timeline-label">${contractDateLabel}</span>` +
+                  `<span class="detail__timeline-value">${formatTimelineDate(
+                      contractDateRaw
+                  )}</span>` +
+              `</div>` +
+          `</div>`
+        : "";
     const billingTimelineHtml = `<div class="detail__timeline-list">` +
-        `<div class="detail__timeline detail__timeline--contract">` +
-            `<div class="detail__timeline-point">` +
-                `<span class="detail__timeline-label">${
-                    isSinFinalizar ? "Inicializada" : "Fecha contratación"
-                }</span>` +
-                `<span class="detail__timeline-value">${formatTimelineDate(
-                    contractDateRaw
-                )}</span>` +
-            `</div>` +
-        `</div>` +
+        `${contractTimelineHtml}` +
         `<div class="detail__timeline detail__timeline--range">` +
             `<div class="detail__timeline-point">` +
                 `<span class="detail__timeline-label">Inicio cobertura</span>` +

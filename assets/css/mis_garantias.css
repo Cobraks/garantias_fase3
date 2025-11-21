@@ -2214,22 +2214,24 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
 }
 .detail__manage-button {
     width: 100%;
-    border: 1px solid var(--card-border);
+    border: 1px solid var(--border-color);
     border-radius: 1.1rem;
     padding: 1rem 1.25rem;
-    background: linear-gradient(120deg, var(--go-color-f8fafc), rgba(248, 250, 252, 0.45));
+    background: var(--bg-section);
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--spacing-2);
     cursor: pointer;
     color: inherit;
     text-align: left;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 6px 18px -14px rgba(0, 0, 0, 0.35);
 }
 .detail__manage-button:hover,
 .detail__manage-button:focus-visible {
     border-color: var(--primary-color);
-    box-shadow: 0 24px 45px -30px rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.9);
+    box-shadow: 0 16px 30px -20px rgba(var(--go-color-2563eb-rgb, 37, 99, 235), 0.75);
     transform: translateY(-1px);
 }
 .detail__manage-button:focus-visible {
