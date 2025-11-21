@@ -335,10 +335,6 @@ const ADD_DOC_KEY = "add-document";
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
                 const deleteIcon =
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>';
-                const managementShieldIcon =
-                        '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m438-338 226-226-57-57-169 169-84-84-57 57 141 141Zm42 258q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></svg>';
-                const managementArrowIcon =
-                        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M360-200 320-240 520-440 320-640l40-40 240 240-240 240Z"/></svg>';
                 const ADMIN_SUMMARY_ACTIONS = [
                         {
                                 key: "draft",
@@ -422,15 +418,6 @@ const ADD_DOC_KEY = "add-document";
                 const managementModal = document.querySelector("[data-management-modal]");
                 const managementDialog = managementModal
                         ? managementModal.querySelector("[data-management-dialog]")
-                        : null;
-                const managementTabsNav = managementModal
-                        ? managementModal.querySelector("[data-management-tabs]")
-                        : null;
-                const managementPanels = managementModal
-                        ? Array.from(managementModal.querySelectorAll("[data-management-panel]"))
-                        : [];
-                const managementDefaultTab = managementTabsNav
-                        ? managementTabsNav.querySelector("[data-management-tab]")
                         : null;
                 const MANAGEMENT_MODAL_TRANSITION = 260;
                 let managementModalCloseTimer = null;
@@ -4047,36 +4034,6 @@ const ADD_DOC_KEY = "add-document";
                         runTrashRequest(context);
                 }
 
-                function activateManagementTab(tabButton) {
-                        if (!managementTabsNav || !tabButton) {
-                                return;
-                        }
-                        const target = tabButton.getAttribute("data-management-tab");
-                        if (!target) {
-                                return;
-                        }
-                        const buttons = managementTabsNav.querySelectorAll("[data-management-tab]");
-                        buttons.forEach((btn) => {
-                                const isActive = btn === tabButton;
-                                btn.setAttribute("aria-selected", isActive ? "true" : "false");
-                                btn.classList.toggle("is-active", isActive);
-                                btn.setAttribute("tabindex", isActive ? "0" : "-1");
-                        });
-                        managementPanels.forEach((panel) => {
-                                const matches = panel.getAttribute("data-management-panel") === target;
-                                panel.classList.toggle("is-active", matches);
-                                if (matches) {
-                                        panel.removeAttribute("hidden");
-                                } else {
-                                        panel.setAttribute("hidden", "hidden");
-                                }
-                        });
-                }
-
-                if (managementDefaultTab) {
-                        activateManagementTab(managementDefaultTab);
-                }
-
                 function openManagementModal(trigger) {
                         if (!canAccessManagementHub || !managementModal) {
                                 return;
@@ -4120,9 +4077,6 @@ const ADD_DOC_KEY = "add-document";
                                 managementModalTrigger.focus();
                         }
                         managementModalTrigger = null;
-                        if (managementDefaultTab) {
-                                activateManagementTab(managementDefaultTab);
-                        }
                 }
 
                 function handleManagementClicks(event) {
@@ -4139,13 +4093,6 @@ const ADD_DOC_KEY = "add-document";
                         if (dismiss && managementModal.dataset.state === "open") {
                                 event.preventDefault();
                                 closeManagementModal();
-                        }
-                        if (managementTabsNav) {
-                                const tabButton = event.target.closest("[data-management-tab]");
-                                if (tabButton && managementTabsNav.contains(tabButton)) {
-                                        event.preventDefault();
-                                        activateManagementTab(tabButton);
-                                }
                         }
                 }
 
@@ -4647,6 +4594,46 @@ const ADD_DOC_KEY = "add-document";
                                 return { iso, display };
                         }
                         return { iso: value, display: value };
+                }
+
+                const TIMELINE_DATE_FORMATTER = new Intl.DateTimeFormat("es-ES", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                });
+
+                function parseDateStrict(value) {
+                        if (!value) return null;
+                        if (value instanceof Date) return value;
+                        const normalized = String(value).trim();
+                        if (!normalized) return null;
+                        const normalizedDigits = normalized.replace(/[^0-9]/g, "");
+                        if (normalizedDigits.length === 6) {
+                                const d = normalizedDigits.slice(0, 2);
+                                const m = normalizedDigits.slice(2, 4);
+                                const y = normalizedDigits.slice(4);
+                                const fullYear = Number(y) < 100 ? 2000 + Number(y) : Number(y);
+                                const candidate = new Date(fullYear, Number(m) - 1, Number(d));
+                                if (!Number.isNaN(candidate.getTime())) return candidate;
+                        }
+                        const slashMatch = normalized.match(
+                                /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/
+                        );
+                        if (slashMatch) {
+                                const [, d, m, y] = slashMatch;
+                                const fullYear = Number(y.length === 2 ? `20${y}` : y);
+                                const candidate = new Date(fullYear, Number(m) - 1, Number(d));
+                                if (!Number.isNaN(candidate.getTime())) return candidate;
+                        }
+                        const candidate = new Date(normalized);
+                        if (!Number.isNaN(candidate.getTime())) return candidate;
+                        return null;
+                }
+
+                function formatTimelineDate(value) {
+                        const parsed = parseDateStrict(value);
+                        if (!parsed) return "—";
+                        return TIMELINE_DATE_FORMATTER.format(parsed).replace(/\.$/, "");
                 }
 
                 function formatPrice(value) {
@@ -7883,10 +7870,106 @@ const ADD_DOC_KEY = "add-document";
         rawDesdeIso,
         rawHastaIso
     );
-    const coverageHtml = hasCoverageInfo
-        ? `<div><p>${pickField("desde_fmt")} — ${pickField("hasta_fmt")}` +
-              `${coverageCountdownLabel ? `<span class=\"guarantee-detail__plan-duration\">${coverageCountdownLabel}</span>` : ""}</p></div>`
+    const timelineContractLabel = isSinFinalizar
+        ? "Iniciada"
+        : "Fecha contratación";
+    const creationCandidates = [
+        pickField("post_date", ""),
+        pickField("post_date_gmt", ""),
+        pickField("post_modified", ""),
+        pickField("post_modified_gmt", ""),
+    ];
+    const creationDateDisplay = formatTimelineDate(
+        creationCandidates.find((v) => isFilled(v)) || ""
+    );
+    const contractDateDisplay = !isSinFinalizar
+        ? formatTimelineDate(
+              pickField("fecha_contratacion", "") ||
+                  creationCandidates.find((v) => isFilled(v)) ||
+                  ""
+          )
+        : creationDateDisplay;
+    const coverageStartDisplay = formatTimelineDate(
+        pickField("desde_raw", "") || pickField("desde", "")
+    );
+    const coverageEndDisplay = formatTimelineDate(
+        pickField("hasta_raw", "") || pickField("hasta", "")
+    );
+    const coverageCountdownClean = coverageCountdownLabel
+        ? coverageCountdownLabel.replace(/[()]/g, "").trim()
         : "";
+    const showManagementHub = canAccessManagementHub;
+    const countdownCard = coverageCountdownClean
+        ? `<div class="detail__billing-card detail__billing-card--countdown">` +
+              `<p class="detail__billing-card-label">${
+                  coverageCountdownClean.includes("inicio")
+                      ? "Días para inicio"
+                      : "Días restantes"
+              }</p>` +
+              `<p class="detail__billing-card-value">${coverageCountdownClean}</p>` +
+          `</div>`
+        : "";
+    const manageButtonHtml = showManagementHub
+        ? `<button type="button" class="detail__manage-button" data-management-open>` +
+              `<span class="detail__manage-copy">` +
+                  `<strong>Gestionar garantía</strong>` +
+                  `<span>Operativa interna y ajustes</span>` +
+              `</span>` +
+              `<span class="detail__manage-caret" aria-hidden="true">` +
+                  `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M360-200 320-240 520-440 320-640l40-40 240 240-240 240Z"></path></svg>` +
+              `</span>` +
+          `</button>`
+        : "";
+    const billingSummaryHtml =
+        countdownCard || manageButtonHtml
+            ? `<div class="detail__billing-summary">${countdownCard}${manageButtonHtml}</div>`
+            : "";
+    const billedAmount = planPriceRaw && planPriceRaw !== "-"
+        ? `${planPriceRaw} €`
+        : "—";
+    const billingToggleHtml =
+        `<details class="detail__transfer-toggle detail__billing-toggle">` +
+            `<summary class="detail__transfer-toggle-summary">` +
+                `<span class="detail__transfer-toggle-label">Ver desglose económico</span>` +
+                `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${arrowDownIcon}</span>` +
+                `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${arrowUpIcon}</span>` +
+            `</summary>` +
+            `<div class="detail__transfer-toggle-content">` +
+                `<div class="detail__billing-breakdown">` +
+                    `<div class="detail__billing-row"><span>Precio base</span><span>1.050,00 €</span></div>` +
+                    `<div class="detail__billing-row"><span>Recargo por kilometraje</span><span>+120,00 €</span></div>` +
+                    `<div class="detail__billing-row"><span>Descuento comercial</span><span>-45,00 €</span></div>` +
+                    `<div class="detail__billing-divider" role="presentation"></div>` +
+                    `<div class="detail__billing-row detail__billing-row--total"><span>Total facturado</span><span>${billedAmount}</span></div>` +
+                `</div>` +
+            `</div>` +
+        `</details>`;
+    const billingTimelineHtml =
+        `<section class="detail__section detail__section--billing">` +
+            `<div class="detail__timeline-list">` +
+                `<div class="detail__timeline detail__timeline--contract">` +
+                    `<div class="detail__timeline-point">` +
+                        `<span class="detail__timeline-label">${timelineContractLabel}</span>` +
+                        `<span class="detail__timeline-value">${contractDateDisplay}</span>` +
+                    `</div>` +
+                `</div>` +
+                `<div class="detail__timeline detail__timeline--range">` +
+                    `<div class="detail__timeline-point">` +
+                        `<span class="detail__timeline-label">Inicio cobertura</span>` +
+                        `<span class="detail__timeline-value">${coverageStartDisplay}</span>` +
+                    `</div>` +
+                    `<div class="detail__timeline-connector" aria-hidden="true">` +
+                        `<svg class="detail__timeline-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>` +
+                    `</div>` +
+                    `<div class="detail__timeline-point detail__timeline-point--end">` +
+                        `<span class="detail__timeline-label">Vencimiento</span>` +
+                        `<span class="detail__timeline-value">${coverageEndDisplay}</span>` +
+                    `</div>` +
+                `</div>` +
+            `</div>` +
+            `${billingSummaryHtml}` +
+            `${billingToggleHtml}` +
+        `</section>`;
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
             ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
@@ -8111,17 +8194,38 @@ const ADD_DOC_KEY = "add-document";
     const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
-    const showManagementHub = canAccessManagementHub;
     const managementSectionHtml = showManagementHub
-        ? `<section class="detail__section detail__section--manage" aria-live="polite">
-                <button type="button" class="detail__manage-button" data-management-open>
-                        <span class="detail__manage-icon" aria-hidden="true">${managementShieldIcon}</span>
-                        <span class="detail__manage-copy">
-                                <strong>Gestionar garantía</strong>
-                                <span>Operativa interna y ajustes</span>
-                        </span>
-                        <span class="detail__manage-caret" aria-hidden="true">${managementArrowIcon}</span>
-                </button>
+        ? `<section class="detail__section detail__section--management" aria-live="polite">
+                <div class="detail__management-card">
+                        <div class="detail__management-primary">
+                                <p class="detail__management-eyebrow">Centro de operaciones</p>
+                                <h3 class="detail__management-title">Gestionar garantía</h3>
+                                <p class="detail__management-description">Coordina incidencias, comunicaciones y ajustes económicos desde un único lugar.</p>
+                                <ul class="detail__management-tags" role="list">
+                                        <li>Certificados</li>
+                                        <li>Comunicaciones</li>
+                                        <li>Notas</li>
+                                        <li>Finanzas</li>
+                                </ul>
+                        </div>
+                        <div class="detail__management-cta">
+                                <button type="button" class="detail__management-trigger" data-management-open>
+                                        <span class="detail__management-trigger-label">Gestionar garantía</span>
+                                        <span class="detail__management-trigger-sub">Abrir panel</span>
+                                </button>
+                                <div class="detail__management-ledger" aria-label="Resumen de ajustes">
+                                        <div class="detail__management-ledger-item">
+                                                <span>Recargos activos</span>
+                                                <strong data-management-surcharges>0,00 €</strong>
+                                        </div>
+                                        <div class="detail__management-ledger-item">
+                                                <span>Descuentos aplicados</span>
+                                                <strong data-management-discounts>- 0,00 €</strong>
+                                        </div>
+                                </div>
+                                <p class="detail__management-footnote">Las acciones quedarán registradas en el historial interno.</p>
+                        </div>
+                </div>
         </section>`
         : "";
 
@@ -8163,11 +8267,11 @@ const ADD_DOC_KEY = "add-document";
                 <div class="guarantee-detail__inner">
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
-                        ${coverageHtml}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
                 ${managementSectionHtml}
+                ${billingTimelineHtml}
                 ${coverageAlertHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">
@@ -8444,10 +8548,10 @@ const ADD_DOC_KEY = "add-document";
                 <div class="guarantee-detail__header">
                         <h2>Garantía ${pickField("matricula")}</h2>
                         ${planTitleHtml}
-                        ${coverageHtml}
                         <div class="${badgeClase}">${pickField("estado", "Desconocido")}</div>
                 </div>
                 ${managementSectionHtml}
+                ${billingTimelineHtml}
                 ${paymentHtml}
                 ${showChannelSection
                         ? `<section class="detail__section detail__section--channel">

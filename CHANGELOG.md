@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## Unreleased
+- Restablecida la versión estable del detalle de garantía y la sincronización del modal de PDF tras revertir regresiones recientes.
+
 ## 4.2.0 - 2025-11-15
 - Panel de detalles de clientes renovado con hint guiado, acciones rápidas y filtros sincronizados con la API.
 - Nueva sección "Resumen de Clientes" con métricas Global/Mensual, spotlight de clientes y microtendencias.
