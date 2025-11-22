@@ -3,6 +3,8 @@
    Mobile-first → escritorio clásico + detalle sticky
 ---------------------------------------------------*/
 
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap");
+
 /* 0) Layout base mobile-first */
 body {
     overflow-x: hidden;
@@ -2209,6 +2211,16 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     height: 1px;
     background: var(--border-color);
     margin: 0.35rem 0 0.2rem;
+}
+
+.detail__billing-breakdown,
+.detail__billing-breakdown .detail__billing-amount {
+    font-family: 'Roboto Mono', Menlo, Monaco, Consolas, 'Courier New', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+.detail__billing-breakdown--empty .detail__billing-row {
+    color: var(--text-secondary);
 }
 .detail__section--manage {
     margin: var(--spacing-3) 0;
