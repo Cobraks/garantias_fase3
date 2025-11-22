@@ -8372,7 +8372,32 @@ const ADD_DOC_KEY = "add-document";
                 : "—";
     }
 
-    const billingTotalAmount = "1.125,00 €";
+    const breakdownAmountFormatter =
+        typeof Intl !== "undefined" && Intl.NumberFormat
+            ? new Intl.NumberFormat("es-ES", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+              })
+            : null;
+    const parseBreakdownAmount = (value) => {
+        if (value === undefined || value === null || value === "") {
+            return null;
+        }
+        const numeric = normalizeToFloat(value);
+        return Number.isFinite(numeric) ? numeric : null;
+    };
+    const formatBreakdownAmount = (value) => {
+        const numeric = parseBreakdownAmount(value);
+        if (numeric === null) return "";
+        if (breakdownAmountFormatter) {
+            try {
+                return breakdownAmountFormatter.format(numeric);
+            } catch (error) {
+                /* noop */
+            }
+        }
+        return numeric.toFixed(2).replace(".", ",");
+    };
     const coverageCountdownHtml = `<div class="detail__timeline detail__timeline--countdown">` +
         `<div class="detail__timeline-point">` +
             `<span class="detail__timeline-label">${coverageCountdownLabel}</span>` +
@@ -8413,17 +8438,103 @@ const ADD_DOC_KEY = "add-document";
             `</div>` +
         `</div>` +
     `</div>`;
-    const billingBreakdownHtml = `<div class="detail__billing-breakdown">` +
-        `<div class="detail__billing-row"><span>Precio base</span><span>1.050,00 €</span></div>` +
-        `<div class="detail__billing-row"><span>Recargo por kilometraje</span><span>+120,00 €</span></div>` +
-        `<div class="detail__billing-row"><span>Descuento comercial</span><span>-45,00 €</span></div>` +
-        `<div class="detail__billing-divider" role="presentation"></div>` +
-        `<div class="detail__billing-row detail__billing-row--total"><span>Total facturado</span><span>${billingTotalAmount}</span></div>` +
-    `</div>`;
+    const breakdownSource =
+        [
+            data?.descuentos_y_recargos,
+            data?.garantia_contratada?.descuentos_y_recargos,
+            rowData?.descuentos_y_recargos,
+            rowData?.garantia_contratada?.descuentos_y_recargos,
+        ].find((candidate) => candidate && typeof candidate === "object") || {};
+
+    const listadoDescuentosRecargos = Array.isArray(
+        breakdownSource.listado_descuentos_recargos
+    )
+        ? breakdownSource.listado_descuentos_recargos
+        : [];
+
+    const parsedBreakdownRows = listadoDescuentosRecargos
+        .map((row) => ({
+            concepto:
+                typeof row.concepto === "string" && row.concepto.trim() !== ""
+                    ? row.concepto.trim()
+                    : "",
+            valor: parseBreakdownAmount(row.valor ?? row.importe ?? null),
+            destacado:
+                row.destacado === true || row.destacado === 1 || row.destacado === "1",
+        }))
+        .filter((row) => row.concepto !== "" || row.valor !== null);
+
+    const billingSegments = [];
+    parsedBreakdownRows.forEach((row, idx) => {
+        if (row.destacado && idx > 0) {
+            billingSegments.push(
+                '<div class="detail__billing-divider" role="presentation"></div>'
+            );
+        }
+
+        const amountLabel = formatBreakdownAmount(row.valor);
+        billingSegments.push(
+            `<div class="detail__billing-row${
+                row.destacado ? " detail__billing-row--total" : ""
+            }">` +
+                `<span>${escapeHtml(row.concepto || `Línea ${idx + 1}`)}</span>` +
+                `<span class="detail__billing-amount">${escapeHtml(
+                    amountLabel ? `${amountLabel} €` : "—"
+                )}</span>` +
+            `</div>`
+        );
+    });
+
+    if (
+        billingSegments.length === 0 &&
+        (breakdownSource.precio_base !== undefined || planPrice)
+    ) {
+        const baseAmount = formatBreakdownAmount(breakdownSource.precio_base);
+        if (baseAmount) {
+            billingSegments.push(
+                `<div class="detail__billing-row"><span>Precio base</span><span class="detail__billing-amount">${escapeHtml(
+                    `${baseAmount} €`
+                )}</span></div>`
+            );
+        }
+        if (planPrice) {
+            if (billingSegments.length) {
+                billingSegments.push(
+                    '<div class="detail__billing-divider" role="presentation"></div>'
+                );
+            }
+            billingSegments.push(
+                `<div class="detail__billing-row detail__billing-row--total"><span>Total facturado</span><span class="detail__billing-amount">${escapeHtml(
+                    planPrice
+                )}</span></div>`
+            );
+        }
+    }
+
+    const billingBreakdownHtml =
+        billingSegments.length > 0
+            ? `<div class="detail__billing-breakdown">${billingSegments.join("")}</div>`
+            : `<div class="detail__billing-breakdown detail__billing-breakdown--empty">` +
+              `<div class="detail__billing-row"><span>Sin desglose disponible</span><span class="detail__billing-amount">—</span></div>` +
+              `</div>`;
+
+    const highlightedRow =
+        parsedBreakdownRows.find((row) => row.destacado) || null;
+
+    const billingTotalAmount = (() => {
+        const highlightedAmount =
+            highlightedRow && formatBreakdownAmount(highlightedRow.valor)
+                ? `${formatBreakdownAmount(highlightedRow.valor)} €`
+                : "";
+        if (highlightedAmount) return highlightedAmount;
+        if (planPrice) return planPrice;
+        const fallbackBase = formatBreakdownAmount(breakdownSource.precio_base);
+        return fallbackBase ? `${fallbackBase} €` : "";
+    })();
     const billingToggleHtml = canAccessManagementHub
         ? `<details class="detail__transfer-toggle detail__billing-toggle">` +
         `<summary class="detail__transfer-toggle-summary">` +
-            `<span class="detail__transfer-toggle-label">Ver desglose económico</span>` +
+            `<span class="detail__transfer-toggle-label">Detalle de facturación</span>` +
             `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${arrowDownIcon || "&#9660;"}</span>` +
             `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${arrowUpIcon || "&#9650;"}</span>` +
         `</summary>` +
