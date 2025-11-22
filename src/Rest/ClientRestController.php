@@ -2879,12 +2879,8 @@ class ClientRestController
                 continue;
             }
 
-            $type_value  = is_array($row['tipo_de_garantia'] ?? null)
-                ? (int) ($row['tipo_de_garantia']['value'] ?? 0)
-                : (int) ($row['tipo_de_garantia'] ?? 0);
-            $level_value = is_array($row['nivel_garantia'] ?? null)
-                ? (int) ($row['nivel_garantia']['value'] ?? 0)
-                : (int) ($row['nivel_garantia'] ?? 0);
+            $type_value  = self::get_special_offer_term_id($row['tipo_de_garantia'] ?? null);
+            $level_value = self::get_special_offer_term_id($row['nivel_garantia'] ?? null);
 
             if ($type_value <= 0 || $level_value <= 0) {
                 continue;
@@ -3057,6 +3053,28 @@ class ClientRestController
         }
 
         return $map;
+    }
+
+    /**
+     * Normalize a taxonomy value coming from ACF into its term ID.
+     *
+     * @param mixed $value raw field value (array, WP_Term, scalar)
+     */
+    private static function get_special_offer_term_id($value): int
+    {
+        if ($value instanceof \WP_Term) {
+            return isset($value->term_id) ? (int) $value->term_id : 0;
+        }
+
+        if (is_array($value)) {
+            return (int) ($value['value'] ?? $value['term_id'] ?? 0);
+        }
+
+        if (is_scalar($value)) {
+            return (int) $value;
+        }
+
+        return 0;
     }
 
     private static function get_special_duration_choices(): array
