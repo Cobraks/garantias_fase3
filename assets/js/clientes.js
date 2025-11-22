@@ -5090,6 +5090,21 @@
                 return isValid;
             }
 
+            async function parseJsonResponse(response) {
+                const contentType = (response.headers && response.headers.get('content-type')) || '';
+                const text = await response.text();
+
+                if (contentType.includes('application/json')) {
+                    try {
+                        return JSON.parse(text);
+                    } catch (parseError) {
+                        throw new Error('Invalid JSON response');
+                    }
+                }
+
+                throw new Error(text || 'Unexpected empty response');
+            }
+
             async function loadOffers(userId) {
                 isLoading = true;
                 updateSaveButton();
@@ -5104,7 +5119,8 @@
                     if (!response.ok) {
                         throw new Error(`Request failed: ${response.status}`);
                     }
-                    const data = await response.json();
+
+                    const data = await parseJsonResponse(response);
                     choices = normalizeChoices(data?.choices || {});
                     specialChoices = normalizeSpecialChoices(data?.special_choices || {});
                     modalities = normalizeModalities(data?.modalidades || []);
@@ -5149,7 +5165,7 @@
                     if (!response.ok) {
                         throw new Error(`Request failed: ${response.status}`);
                     }
-                    const data = await response.json();
+                    const data = await parseJsonResponse(response);
                     choices = normalizeChoices(data?.choices || {});
                     specialChoices = normalizeSpecialChoices(data?.special_choices || {});
                     modalities = normalizeModalities(data?.modalidades || []);
