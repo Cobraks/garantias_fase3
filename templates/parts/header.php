@@ -108,6 +108,12 @@ $home_destination = $is_admin_user
             }
         })();
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    >
     <link rel="stylesheet" href="<?= esc_url(plugins_url('assets/css/global.min.css', GARANTIAS360VO__FILE__)); ?>">
 
 
