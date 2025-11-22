@@ -394,8 +394,17 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
                     <textarea id="client-sepa-confirm-reason" class="confirm-modal__textarea" rows="3"></textarea>
                     <p class="confirm-modal__field-help"></p>
                 </div>
+                <?php
+                $client_confirm_checkbox_id   = uniqid('confirm-modal-checkbox-');
+                $client_confirm_checkbox_name = $client_confirm_checkbox_id . '-field';
+                ?>
                 <label class="confirm-modal__checkbox">
-                    <input type="checkbox" class="confirm-modal__checkbox-input">
+                    <input
+                        type="checkbox"
+                        class="confirm-modal__checkbox-input"
+                        id="<?php echo esc_attr($client_confirm_checkbox_id); ?>"
+                        name="<?php echo esc_attr($client_confirm_checkbox_name); ?>"
+                    >
                     <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
                 </label>
                 <div class="confirm-modal__actions">
