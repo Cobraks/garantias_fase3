@@ -5577,15 +5577,43 @@ const ADD_DOC_KEY = "add-document";
                         if (typeof value === "number") {
                                 return Number.isFinite(value) ? value : 0;
                         }
-                        const normalized = String(value).trim();
-                        if (!normalized) {
+
+                        const raw = String(value).trim();
+                        if (!raw) {
                                 return 0;
                         }
-                        const numeric = normalized
-                                .replace(/[^0-9,.-]/g, "")
-                                .replace(/\./g, "")
-                                .replace(/,/g, ".");
-                        const parsed = Number(numeric);
+
+                        // Keep only digits, separators and sign for parsing heuristics
+                        const cleaned = raw.replace(/[^0-9,.-]/g, "");
+                        const hasComma = cleaned.includes(",");
+                        const hasDot = cleaned.includes(".");
+
+                        // Decide decimal separator: last occurring separator wins when both exist
+                        let decimalSeparator = null;
+                        if (hasComma && hasDot) {
+                                decimalSeparator =
+                                        cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".") ? "," : ".";
+                        } else if (hasComma) {
+                                decimalSeparator = ",";
+                        } else if (hasDot) {
+                                decimalSeparator = ".";
+                        }
+
+                        if (decimalSeparator) {
+                                const separatorIndex = cleaned.lastIndexOf(decimalSeparator);
+                                const integerPartRaw = cleaned.slice(0, separatorIndex);
+                                const decimalPartRaw = cleaned.slice(separatorIndex + 1);
+
+                                const sign = integerPartRaw.trim().startsWith("-") ? "-" : "";
+                                const integerPart = integerPartRaw.replace(/[^0-9]/g, "");
+                                const decimalPart = decimalPartRaw.replace(/[^0-9]/g, "");
+
+                                const composed = `${sign}${integerPart || "0"}.${decimalPart || "0"}`;
+                                const parsed = Number(composed);
+                                return Number.isFinite(parsed) ? parsed : 0;
+                        }
+
+                        const parsed = Number(cleaned.replace(/[^0-9-]/g, ""));
                         return Number.isFinite(parsed) ? parsed : 0;
                 }
 
@@ -7830,6 +7858,99 @@ const ADD_DOC_KEY = "add-document";
         return fallback;
     };
 
+    const parseVehicleDate = (value) => {
+        if (!value) return null;
+        if (typeof value !== "string") {
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+            const [year, month, day] = trimmed.split("-").map((part) => Number.parseInt(part, 10));
+            const parsed = new Date(year, (month || 1) - 1, day || 1);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        const slashParts = trimmed.split(/[\\/]/);
+        if (slashParts.length >= 3 && slashParts.every((part) => part.trim() !== "")) {
+            const [dayStr, monthStr, yearStr] = slashParts;
+            const day = Number.parseInt(dayStr, 10);
+            const month = Number.parseInt(monthStr, 10);
+            let year = Number.parseInt(yearStr, 10);
+            if (!Number.isNaN(year) && year < 100) {
+                year = year >= 70 ? 1900 + year : 2000 + year;
+            }
+            const parsed = new Date(year, (month || 1) - 1, day || 1);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        const fallback = new Date(trimmed);
+        return Number.isNaN(fallback.getTime()) ? null : fallback;
+    };
+
+    const computeVehicleAgeYears = (value) => {
+        const parsed = parseVehicleDate(value);
+        if (!parsed) return null;
+
+        const today = new Date();
+        const matriculationDate = new Date(
+            parsed.getFullYear(),
+            parsed.getMonth(),
+            parsed.getDate()
+        );
+
+        if (Number.isNaN(matriculationDate.getTime())) return null;
+        if (today < matriculationDate) return 0;
+
+        let years = today.getFullYear() - matriculationDate.getFullYear();
+        let months = today.getMonth() - matriculationDate.getMonth();
+        let days = today.getDate() - matriculationDate.getDate();
+        let baseDays = 0;
+
+        if (days < 0) {
+            const previousMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+            baseDays = previousMonth.getDate();
+            days += baseDays;
+            months -= 1;
+        } else {
+            baseDays = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        }
+
+        if (months < 0) {
+            months += 12;
+            years -= 1;
+        }
+
+        const totalMonths = years * 12 + months;
+        const monthFraction = baseDays > 0 ? days / baseDays : 0;
+        const ageYears = (totalMonths + monthFraction) / 12;
+        const normalized = ageYears < 0 ? 0 : ageYears;
+        return Number(normalized.toFixed(1));
+    };
+
+    const resolveRecargoFieldSet = () => {
+        if (!canAccessManagementHub) return new Set();
+
+        const candidates = [
+            data?.recargo_campos,
+            data?.detail?.recargo_campos,
+            rowData?.recargo_campos,
+            rowData?.detail?.recargo_campos,
+        ];
+        const found = candidates.find((entry) => Array.isArray(entry)) || [];
+
+        return new Set(found.map((v) => String(v)));
+    };
+
+    const recargoFields = resolveRecargoFieldSet();
+    const recargoClass = (field) =>
+        canAccessManagementHub && recargoFields.has(field)
+            ? " detail__item--recargo"
+            : "";
+
     const normalizeTipoValue = (value) => {
         if (typeof value !== "string") {
             return "";
@@ -7983,6 +8104,21 @@ const ADD_DOC_KEY = "add-document";
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "") === "electrico";
     const potenciaUnidad = isElectric ? "kW" : "CV";
+    const vehicleAgeValue = computeVehicleAgeYears(
+        pickField("primera_matriculacion_raw", "") || pickField("primera_matriculacion", "")
+    );
+    const vehicleAgeLabel =
+        isAdmin && Number.isFinite(vehicleAgeValue)
+            ? vehicleAgeValue === 1
+                ? "1 año"
+                : `${vehicleAgeValue.toLocaleString("es-ES", {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                  })} años`
+            : "";
+    const antiguedadRowHtml = vehicleAgeLabel
+        ? `<li class="detail__item${recargoClass("antiguedad")}"><strong>Antigüedad:</strong> ${vehicleAgeLabel}</li>`
+        : "";
     const rawTipoValue =
         data.tipo_value ??
         rowData.tipo_value ??
@@ -8008,7 +8144,7 @@ const ADD_DOC_KEY = "add-document";
         }
         return "-";
     })();
-    const traccionRowHtml = `<li><strong>Tracción:</strong> ${traccionValue}</li>`;
+    const traccionRowHtml = `<li class="detail__item${recargoClass("traccion")}"><strong>Tracción:</strong> ${traccionValue}</li>`;
     const docsSource = Array.isArray(data.documents)
         ? data.documents
         : Array.isArray(rowData.documents)
@@ -8372,7 +8508,18 @@ const ADD_DOC_KEY = "add-document";
                 : "—";
     }
 
-    const billingTotalAmount = "1.125,00 €";
+    const parseBreakdownAmount = (value) => {
+        if (value === undefined || value === null || value === "") {
+            return null;
+        }
+        const numeric = normalizeToFloat(value);
+        return Number.isFinite(numeric) ? numeric : null;
+    };
+    const formatBreakdownAmount = (value) => {
+        const numeric = parseBreakdownAmount(value);
+        if (numeric === null) return "";
+        return numeric.toFixed(2).replace(".", ",");
+    };
     const coverageCountdownHtml = `<div class="detail__timeline detail__timeline--countdown">` +
         `<div class="detail__timeline-point">` +
             `<span class="detail__timeline-label">${coverageCountdownLabel}</span>` +
@@ -8413,17 +8560,108 @@ const ADD_DOC_KEY = "add-document";
             `</div>` +
         `</div>` +
     `</div>`;
-    const billingBreakdownHtml = `<div class="detail__billing-breakdown">` +
-        `<div class="detail__billing-row"><span>Precio base</span><span>1.050,00 €</span></div>` +
-        `<div class="detail__billing-row"><span>Recargo por kilometraje</span><span>+120,00 €</span></div>` +
-        `<div class="detail__billing-row"><span>Descuento comercial</span><span>-45,00 €</span></div>` +
-        `<div class="detail__billing-divider" role="presentation"></div>` +
-        `<div class="detail__billing-row detail__billing-row--total"><span>Total facturado</span><span>${billingTotalAmount}</span></div>` +
-    `</div>`;
+    const breakdownSource =
+        [
+            data?.descuentos_y_recargos,
+            data?.garantia_contratada?.descuentos_y_recargos,
+            data?.detail?.descuentos_y_recargos,
+            data?.detail?.garantia_contratada?.descuentos_y_recargos,
+            rowData?.descuentos_y_recargos,
+            rowData?.garantia_contratada?.descuentos_y_recargos,
+        ].find((candidate) => candidate && typeof candidate === "object") || {};
+
+    const listadoDescuentosRecargos = Array.isArray(
+        breakdownSource.listado_descuentos_recargos
+    )
+        ? breakdownSource.listado_descuentos_recargos
+        : [];
+
+    const parsedBreakdownRows = listadoDescuentosRecargos
+        .map((row) => ({
+            concepto:
+                typeof row.concepto === "string" && row.concepto.trim() !== ""
+                    ? row.concepto.trim()
+                    : "",
+            valor: parseBreakdownAmount(row.valor ?? row.importe ?? null),
+            destacado:
+                row.destacado === true || row.destacado === 1 || row.destacado === "1",
+        }))
+        .filter((row) => row.concepto !== "" || row.valor !== null);
+
+    const billingSegments = [];
+    parsedBreakdownRows.forEach((row, idx) => {
+        const nextIsTotal = parsedBreakdownRows[idx + 1]?.destacado || false;
+
+        if (row.destacado && idx > 0) {
+            billingSegments.push(
+                '<div class="detail__billing-divider" role="presentation"></div>'
+            );
+        }
+
+        const amountLabel = formatBreakdownAmount(row.valor);
+        const rowClasses = ["detail__billing-row"];
+        if (row.destacado) rowClasses.push("detail__billing-row--total");
+        if (nextIsTotal) rowClasses.push("detail__billing-row--pre-divider");
+        billingSegments.push(
+            `<div class="${rowClasses.join(" ")}">` +
+                `<span>${escapeHtml(row.concepto || `Línea ${idx + 1}`)}</span>` +
+                `<span class="detail__billing-amount">${escapeHtml(
+                    amountLabel ? `${amountLabel}€` : "—"
+                )}</span>` +
+            `</div>`
+        );
+    });
+
+    if (
+        billingSegments.length === 0 &&
+        (breakdownSource.precio_base !== undefined || planPrice)
+    ) {
+        const baseAmount = formatBreakdownAmount(breakdownSource.precio_base);
+        if (baseAmount) {
+            billingSegments.push(
+                `<div class="detail__billing-row"><span>Precio base</span><span class="detail__billing-amount">${escapeHtml(
+                    `${baseAmount}€`
+                )}</span></div>`
+            );
+        }
+        if (planPrice) {
+            if (billingSegments.length) {
+                billingSegments.push(
+                    '<div class="detail__billing-divider" role="presentation"></div>'
+                );
+            }
+            billingSegments.push(
+                `<div class="detail__billing-row detail__billing-row--total"><span>Total facturado</span><span class="detail__billing-amount">${escapeHtml(
+                    planPrice
+                )}</span></div>`
+            );
+        }
+    }
+
+    const billingBreakdownHtml =
+        billingSegments.length > 0
+            ? `<div class="detail__billing-breakdown">${billingSegments.join("")}</div>`
+            : `<div class="detail__billing-breakdown detail__billing-breakdown--empty">` +
+              `<div class="detail__billing-row"><span>Sin desglose disponible</span><span class="detail__billing-amount">—</span></div>` +
+              `</div>`;
+
+    const highlightedRow =
+        parsedBreakdownRows.find((row) => row.destacado) || null;
+
+    const billingTotalAmount = (() => {
+        const highlightedAmount =
+            highlightedRow && formatBreakdownAmount(highlightedRow.valor)
+                ? `${formatBreakdownAmount(highlightedRow.valor)} €`
+                : "";
+        if (highlightedAmount) return highlightedAmount;
+        if (planPrice) return planPrice;
+        const fallbackBase = formatBreakdownAmount(breakdownSource.precio_base);
+        return fallbackBase ? `${fallbackBase} €` : "";
+    })();
     const billingToggleHtml = canAccessManagementHub
         ? `<details class="detail__transfer-toggle detail__billing-toggle">` +
         `<summary class="detail__transfer-toggle-summary">` +
-            `<span class="detail__transfer-toggle-label">Ver desglose económico</span>` +
+            `<span class="detail__transfer-toggle-label">Detalle de facturación</span>` +
             `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--closed" aria-hidden="true">${arrowDownIcon || "&#9660;"}</span>` +
             `<span class="detail__transfer-toggle-icon detail__transfer-toggle-icon--open" aria-hidden="true">${arrowUpIcon || "&#9650;"}</span>` +
         `</summary>` +
@@ -8531,23 +8769,24 @@ const ADD_DOC_KEY = "add-document";
                 <section class="detail__section">
                         <h3>Datos del vehículo</h3>
                         <ul>
-                                <li><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
-                                <li><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
-                                <li><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
-                                <li><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
-                                <li><strong>Matrícula:</strong> ${pickField("matricula")}</li>
-                                <li><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
-                                <li><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
+                                <li class="detail__item"><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
+                                <li class="detail__item"><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
+                                <li class="detail__item${recargoClass("kilometros")}"><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
+                                <li class="detail__item${recargoClass("antiguedad")}"><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
+                                ${antiguedadRowHtml}
+                                <li class="detail__item"><strong>Matrícula:</strong> ${pickField("matricula")}</li>
+                                <li class="detail__item"><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
+                                <li class="detail__item"><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
                         </ul>
                 </section>
                 <section class="detail__section">
                         <h3>Detalles técnicos</h3>
                         <ul>
-                                <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
-                                <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                <li class="detail__item${recargoClass("combustible")}"><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
+                                <li class="detail__item${recargoClass("cambio")}"><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
                                 ${traccionRowHtml}
-                                <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
-                                <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
+                                <li class="detail__item${recargoClass("potencia")}"><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
+                                <li class="detail__item"><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
                 </section>
                 ${docsSectionHtml}
@@ -8812,23 +9051,24 @@ const ADD_DOC_KEY = "add-document";
                 <section class="detail__section">
                         <h3>Datos del vehículo</h3>
                         <ul>
-                                <li><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
-                                <li><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
-                                <li><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
-                                <li><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
-                                <li><strong>Matrícula:</strong> ${pickField("matricula")}</li>
-                                <li><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
-                                <li><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
+                                <li class="detail__item"><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
+                                <li class="detail__item"><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
+                                <li class="detail__item${recargoClass("kilometros")}"><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
+                                <li class="detail__item${recargoClass("antiguedad")}"><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
+                                ${antiguedadRowHtml}
+                                <li class="detail__item"><strong>Matrícula:</strong> ${pickField("matricula")}</li>
+                                <li class="detail__item"><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
+                                <li class="detail__item"><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
                         </ul>
                 </section>
                 <section class="detail__section">
                         <h3>Detalles técnicos</h3>
                         <ul>
-                                <li><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
-                                <li><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
+                                <li class="detail__item${recargoClass("combustible")}"><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
+                                <li class="detail__item${recargoClass("cambio")}"><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
                                 ${traccionRowHtml}
-                                <li><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
-                                <li><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
+                                <li class="detail__item${recargoClass("potencia")}"><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
+                                <li class="detail__item"><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
                         </ul>
                 </section>
                 ${docsSectionHtml}
