@@ -3,6 +3,8 @@
    Mobile-first → escritorio clásico + detalle sticky
 ---------------------------------------------------*/
 
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap");
+
 /* 0) Layout base mobile-first */
 body {
     overflow-x: hidden;
@@ -1654,23 +1656,26 @@ body.has-mobile-summary-open .column-resizer {
 
 
 .guarantees-list__badge {
-    padding: 0.05rem 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
     font-size: 0.75rem;
     font-weight: 600;
-    border-radius: 2rem;
-    text-transform: none;
-    color: var(--neutral30);
-    background: var(--go-color-ffffff);
+    border-radius: 9999px;
+    line-height: 1;
     white-space: nowrap;
-    border: solid 1px currentColor;
+    transition: all 0.3s ease;
+    cursor: default;
+    background: var(--bg-section);
+    color: var(--text-primary);
 }
-.guarantees-list__badge--activada      { color: var(--go-color-16a34a); }
-.guarantees-list__badge--expirada      { color: var(--go-color-dc2626); }
-.guarantees-list__badge--pendiente-pago{ color: var(--go-color-f59e0b); }
-.guarantees-list__badge--sin-finalizar { color: var(--go-color-6b7280); }
-.guarantees-list__badge--expira-pronto { color: var(--go-color-fbbf24); }
-.guarantees-list__badge--pend-cobro { color: var(--go-color-3b82f6); }
-.guarantees-list__badge--validacion-pendiente { color: var(--go-color-3b82f6); }
+.guarantees-list__badge--activada { background: #d1fae5; color: #065f46; }
+.guarantees-list__badge--expirada { background: #fee2e2; color: #991b1b; }
+.guarantees-list__badge--pendiente-pago { background: #fef3c7; color: #92400e; }
+.guarantees-list__badge--sin-finalizar { background: #e5e7eb; color: #1f2937; }
+.guarantees-list__badge--expira-pronto { background: #fef3c7; color: #92400e; }
+.guarantees-list__badge--pend-cobro { background: #dbeafe; color: #1e40af; }
+.guarantees-list__badge--validacion-pendiente { background: #dbeafe; color: #1e40af; }
 
 /* Periodo Validez */
 .guarantees-table__period > div {
@@ -2160,7 +2165,7 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     height: 1.25rem;
 }
 
-.detail__billing-total {
+.detail__billing-total { 
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -2184,7 +2189,7 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
 
 .detail__billing-breakdown {
     display: grid;
-    gap: 0.15rem;
+    gap: 0.4rem;
 }
 
 .detail__billing-row {
@@ -2192,23 +2197,52 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
+    padding: 0.35rem 0;
     font-size: 0.95rem;
     color: var(--go-color-374151);
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.detail__billing-row span:first-child {
+    font-weight: 400;
+    color: var(--text-primary);
 }
 
 .detail__billing-row span:last-child {
-    font-weight: 700;
+    font-weight: 500;
     color: var(--go-color-111827);
 }
 
+
+.detail__billing-row--pre-divider {
+    border-bottom: none;
+}
+
+.detail__billing-row--total span,
 .detail__billing-row--total span:last-child {
+    font-weight: 600;
     color: var(--primary-color);
+}
+
+.detail__billing-row:last-of-type,
+.detail__billing-row--total {
+    border-bottom: none;
 }
 
 .detail__billing-divider {
     height: 1px;
     background: var(--border-color);
-    margin: 0.35rem 0 0.2rem;
+    margin: 0.65rem 0 0.35rem;
+}
+
+.detail__billing-breakdown,
+.detail__billing-breakdown .detail__billing-amount {
+    font-family: 'Roboto Mono', Menlo, Monaco, Consolas, 'Courier New', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+.detail__billing-breakdown--empty .detail__billing-row {
+    color: var(--text-secondary);
 }
 .detail__section--manage {
     margin: var(--spacing-3) 0;
@@ -3233,35 +3267,85 @@ tr.guarantees-table__row:not(.selected):hover td,
     height: 100%;
 }
 .guarantee-detail__badge {
-    position: relative;
-    top: 0;
-    right: 0;
-    margin-top: 1rem;
-    width: fit-content;
-    padding: .25rem .75rem;
-    font-size: .75rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
     font-weight: 600;
-    border-radius: .375rem;
-    text-transform: uppercase;
-    color: var(--text-inverse);
+    border-radius: 9999px;
+    line-height: 1;
     white-space: nowrap;
-    
+    transition: all 0.3s ease;
+    cursor: default;
+    background: var(--bg-section);
+    color: var(--text-primary);
+}
+
+.guarantee-detail__badge::before {
+    content: '';
+    display: inline-block;
+    width: 0.5em;
+    height: 0.5em;
+    margin-right: 0.5em;
+    border-radius: 50%;
+    background-color: currentColor;
+    opacity: 0.8;
 }
 
 .guarantee-detail__badge--activada {
-    background-color: var(--go-color-16a34a);
+    background: #d1fae5;
+    color: #065f46;
 }
+
+:root[data-theme='dark'] .guarantee-detail__badge--activada {
+    background: #064e3b;
+    color: #6ee7b7;
+}
+
 .guarantee-detail__badge--pendiente-pago {
-    background-color: var(--go-color-f59e0b);
+    background: #fef3c7;
+    color: #92400e;
 }
+
+:root[data-theme='dark'] .guarantee-detail__badge--pendiente-pago {
+    background: #78350f;
+    color: #fcd34d;
+}
+
 .guarantee-detail__badge--validacion-pendiente {
-    background-color: var(--go-color-3b82f6);
+    background: #dbeafe;
+    color: #1e40af;
 }
+
+.guarantee-detail__badge--pend-cobro {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+:root[data-theme='dark'] .guarantee-detail__badge--validacion-pendiente,
+:root[data-theme='dark'] .guarantee-detail__badge--pend-cobro {
+    background: #1e3a8a;
+    color: #93c5fd;
+}
+
 .guarantee-detail__badge--sin-finalizar {
-    background-color: var(--go-color-6b7280);
+    background: #e5e7eb;
+    color: #1f2937;
 }
+
 .guarantee-detail__badge--expira-pronto {
-    background-color: var(--go-color-fbbf24);
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.guarantee-detail__badge--expirada {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+:root[data-theme='dark'] .guarantee-detail__badge--expirada {
+    background: #7f1d1d;
+    color: #fca5a5;
 }
 
 
@@ -3454,6 +3538,12 @@ tr.guarantees-table__row:not(.selected):hover td,
     overflow: hidden;
 }
 
+.detail__billing-toggle {
+    background: var(--go-color-f9fafb);
+    border-color: var(--border-color);
+    box-shadow: none;
+}
+
 .detail__transfer-toggle-summary {
     cursor: pointer;
     display: flex;
@@ -3517,6 +3607,11 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .detail__transfer-toggle-content {
     padding: 0.75rem 1rem 1rem;
+}
+
+.detail__billing-toggle .detail__transfer-toggle-content {
+    padding: 1rem 1.25rem 1.25rem;
+    background: #fff;
 }
 
 .guarantee-detail__btn--report:focus-visible {
@@ -4362,45 +4457,38 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 :root[data-theme='dark'] .guarantees-list__badge {
     background: rgba(40, 42, 48, 0.88);
-    border-color: rgba(214, 220, 234, 0.28);
     color: var(--text-secondary);
 }
 
 :root[data-theme='dark'] .guarantees-list__badge--activada {
-    color: #34d399;
-    background: rgba(52, 211, 153, 0.18);
-    border-color: rgba(52, 211, 153, 0.42);
+    background: #064e3b;
+    color: #6ee7b7;
 }
 
 :root[data-theme='dark'] .guarantees-list__badge--expirada {
-    color: #f87171;
-    background: rgba(248, 113, 113, 0.2);
-    border-color: rgba(248, 113, 113, 0.45);
+    background: #7f1d1d;
+    color: #fca5a5;
 }
 
 :root[data-theme='dark'] .guarantees-list__badge--pendiente-pago {
-    color: #fbbf24;
-    background: rgba(251, 191, 36, 0.22);
-    border-color: rgba(251, 191, 36, 0.45);
+    background: #78350f;
+    color: #fcd34d;
 }
 
 :root[data-theme='dark'] .guarantees-list__badge--sin-finalizar {
-    color: #9aa9c2;
-    background: rgba(154, 169, 194, 0.18);
-    border-color: rgba(154, 169, 194, 0.35);
+    background: rgba(55, 65, 81, 0.8);
+    color: #e5e7eb;
 }
 
 :root[data-theme='dark'] .guarantees-list__badge--expira-pronto {
-    color: #f59e0b;
-    background: rgba(245, 158, 11, 0.2);
-    border-color: rgba(245, 158, 11, 0.45);
+    background: #78350f;
+    color: #fcd34d;
 }
 
 :root[data-theme='dark'] .guarantees-list__badge--pend-cobro,
 :root[data-theme='dark'] .guarantees-list__badge--validacion-pendiente {
-    color: #60a5fa;
-    background: rgba(96, 165, 250, 0.22);
-    border-color: rgba(96, 165, 250, 0.45);
+    background: #1e3a8a;
+    color: #93c5fd;
 }
 
 :root[data-theme='dark'] .guarantee-detail__btn--fav,
@@ -5763,7 +5851,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
 
     .guarantees-table__row.selected .guarantees-list__badge {
         border-color: transparent;
-        color: #ffffff;
+        color: inherit;
     }
 
     .guarantees-table__row.selected .vehiculo__mat {
@@ -5771,28 +5859,34 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
     }
 
     .guarantees-table__row.selected .guarantees-list__badge--activada {
-        background-color: var(--go-color-16a34a);
+        background-color: #34d399;
+        color: #0b1a13;
     }
 
     .guarantees-table__row.selected .guarantees-list__badge--pendiente-pago {
-        background-color: var(--go-color-f59e0b);
+        background-color: #fbbf24;
+        color: #1f2937;
     }
 
     .guarantees-table__row.selected .guarantees-list__badge--sin-finalizar {
-        background-color: var(--go-color-6b7280);
+        background-color: #6b7280;
+        color: #f8fafc;
     }
 
     .guarantees-table__row.selected .guarantees-list__badge--expira-pronto {
-        background-color: var(--go-color-fbbf24);
+        background-color: #fbbf24;
+        color: #1f2937;
     }
 
     .guarantees-table__row.selected .guarantees-list__badge--expirada {
-        background-color: var(--go-color-dc2626);
+        background-color: #dc2626;
+        color: #fef2f2;
     }
 
     .guarantees-table__row.selected .guarantees-list__badge--pend-cobro,
     .guarantees-table__row.selected .guarantees-list__badge--validacion-pendiente {
-        background-color: var(--go-color-3b82f6);
+        background-color: #3b82f6;
+        color: #f8fafc;
     }
 
     .guarantees-table tbody tr.selected:nth-child(even) td {
@@ -5801,33 +5895,29 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
 
     :root[data-theme='dark'] .guarantees-table__row.selected .guarantees-list__badge {
         border: none;
+        color: #ffffff;
     }
 
     :root[data-theme='dark'] .guarantees-table__row.selected .guarantees-list__badge--activada {
-        background-color: #34d399;
-        color: #0b1a13;
+        background-color: var(--go-color-16a34a);
     }
 
     :root[data-theme='dark'] .guarantees-table__row.selected .guarantees-list__badge--pendiente-pago,
     :root[data-theme='dark'] .guarantees-table__row.selected .guarantees-list__badge--expira-pronto {
-        background-color: #fbbf24;
-        color: #1f2937;
+        background-color: var(--go-color-f59e0b);
     }
 
     :root[data-theme='dark'] .guarantees-table__row.selected .guarantees-list__badge--sin-finalizar {
-        background-color: #6b7280;
-        color: #f8fafc;
+        background-color: var(--go-color-6b7280);
     }
 
     :root[data-theme='dark'] .guarantees-table__row.selected .guarantees-list__badge--expirada {
-        background-color: #dc2626;
-        color: #fef2f2;
+        background-color: var(--go-color-dc2626);
     }
 
     :root[data-theme='dark'] .guarantees-table__row.selected .guarantees-list__badge--pend-cobro,
     :root[data-theme='dark'] .guarantees-table__row.selected .guarantees-list__badge--validacion-pendiente {
-        background-color: #3b82f6;
-        color: #f8fafc;
+        background-color: var(--go-color-3b82f6);
     }
 
     :root[data-theme='dark'] .guarantees-table__row.selected:hover td {
@@ -5946,10 +6036,8 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
 
     .guarantee-detail__badge {
         position: absolute;
-        width: auto;
         top: var(--spacing-4);
         right: var(--spacing-3);
-        margin-top: 0;
     }
 
     .guarantee-detail__inner {
