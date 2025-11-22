@@ -1,5 +1,26 @@
 # Historial de cambios
 
+## Referencia interna: patrones sospechosos para validaciones de contacto
+
+### Correos (parte local antes de @)
+- Genéricos de ausencia/negación: `notiene`, `nohay`, `no_tiene`, `no.tiene`, `no-tiene`, `ninguno`, `ninguna`, `nada`, `ningún`, `sincorreo`, `sinemail`, `sin_mail`, `sin.mail`, `sin-mail`, `nocorreo`, `nomail`, `noemail`, `nope`, `na`, `vacío`, `vacio`, `unknown`, `desconocido`, `anonimo`, `anonymous`, `placeholder`, `sinuser`.
+- Palabras de prueba: `prueba`, `test`, `testing`, `demo`, `ejemplo`, `example`, `dummy`, `fake`, `falso`, `temporal`, `tmp`, `tempa`, `temporalmail`.
+- Teclado y patrones rápidos: `asdf`, `asdfg`, `asdfgh`, `qwerty`, `qwer`, `qwert`, `zxcv`, `zxcvb`, `zxcvbn`, `poiuy`, `lkjh`, `mnbv`, `123`, `1234`, `12345`, `123456`, `000`, `0000`, `111`, `999`, `abc`, `abcd`, `abcde`, `xyz`, `hola`, `hello`.
+- Repetición del mismo carácter (3+): `aaa`, `aaaa`, `aaaaa`, `bbb`, `bbbb`, `cc`, `ccc`, `cccc`, `dddd`, `eeeee`, etc. (cualquier letra o dígito repetido tres veces o más).
+- Apodos desechables: `trash`, `spam`, `basura`, `correo`, `email`, `ninguno123`, `usuario`, `user`, `usuario1`, `fakeuser`, `fake123`, `guest`, `visitante`, `invited`, `cliente`, `cliente1`, `cliente2`.
+- Negaciones y sinónimos extra: `sinregistro`, `sincuenta`, `sindato`, `nodisponible`, `nodato`, `no.dato`, `no-dato`, `sin.dato`, `sin-dato`, `nodato`, `nodatos`, `nodata`, `sindata`, `noaplica`, `naoaplica`, `naaplica`.
+- Variantes con signos: cualquier término anterior separado por puntos, guiones o guiones bajos (`no.tiene`, `no_tiene`, `no-tiene`, `sin.correo`, `sin_correo`, `sin-correo`, etc.).
+
+### Teléfonos (España, 9 dígitos) sospechosos
+- Repetición completa del mismo dígito: `000000000`, `111111111`, `222222222`, `333333333`, `444444444`, `555555555`, `666666666`, `777777777`, `888888888`, `999999999`.
+- Prefijo válido + todos ceros: `600000000`, `700000000`, `800000000`, `900000000`, `611111111`, `711111111`, `811111111`, `911111111`, `622222222`, `722222222`, `633333333`, `733333333`, `644444444`, `744444444`, `655555555`, `755555555`, `666000000`, `676000000`, `696000000`.
+- Repetición parcial o bloques: `600600600`, `700700700`, `900900900`, `666000666`, `777000777`, `888000888`, `999000999`, `123123123`, `321321321`, `612612612`, `612312312`, `616161616`.
+- Secuencias ascendentes o descendentes: `601234567`, `612345678`, `622345678`, `698765432`, `987654321`, `678901234`, `654321000`, `789012345`, `890123456`.
+- Prefijo + ceros + contador mínimo: `600000001` a `600000019`, `700000001` a `700000019`, `900000001` a `900000019`, y variaciones próximas (`600000010`, `600000011`, `600000012`, `600000013`, etc.).
+- Prefijo + número obvio repetido: `699999990`, `699999991`, `699999992`, `699999999`, `900000001`, `900000002`, `900000003`.
+- Otros patrones genéricos detectables: `612312312`, `611223344`, `622233344`, `633344455`, `644455566`, `655566677`, `666112233`, `666123123`, `666999666`, `777123456`, `888123123`, `999123123`.
+
+
 ## 4.2.0 - 2025-11-15
 - Panel de detalles de clientes renovado con hint guiado, acciones rápidas y filtros sincronizados con la API.
 - Nueva sección "Resumen de Clientes" con métricas Global/Mensual, spotlight de clientes y microtendencias.

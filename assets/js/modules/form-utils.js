@@ -27,11 +27,100 @@ export function logDebug(...args) {
 // 1. Límites y constantes globales
 // ===============================
 export const numericLimits = {
-	kilometros: { min: 0, max: Infinity },
-	precio_venta: { min: 0, max: 999999 },
-	cilindrada: { min: 0, max: 9000 },
-	potencia: { min: 0, max: 3000 },
+        kilometros: { min: 0, max: Infinity },
+        precio_venta: { min: 0, max: 999999 },
+        cilindrada: { min: 0, max: 9000 },
+        potencia: { min: 0, max: 3000 },
 };
+
+// -- Listas y helpers de validación avanzada
+const SUSPICIOUS_EMAIL_TERMS = new Set([
+        "notiene",
+        "nohay",
+        "sincorreo",
+        "sinemail",
+        "sinmail",
+        "sin_mail",
+        "sinmail",
+        "nocorreo",
+        "nomail",
+        "noemail",
+        "ninguno",
+        "ninguna",
+        "nada",
+        "vacio",
+        "vacío",
+        "unknown",
+        "desconocido",
+        "anonimo",
+        "anonymous",
+        "placeholder",
+        "fake",
+        "falso",
+        "temporal",
+        "tmp",
+        "tempa",
+        "temporalmail",
+        "prueba",
+        "test",
+        "testing",
+        "demo",
+        "ejemplo",
+        "example",
+        "dummy",
+        "spam",
+        "trash",
+        "basura",
+        "guest",
+        "usuario",
+        "user",
+        "cliente",
+        "na",
+        "noaplica",
+        "naoaplica",
+        "nodisponible",
+        "nodato",
+        "nodatos",
+        "sindato",
+        "nodata",
+        "sindata",
+        "sinregistro",
+        "sincuenta",
+        "sinuser",
+        "hola",
+        "hello",
+        "qwerty",
+        "qwer",
+        "asdf",
+        "asdfg",
+        "asdfgh",
+        "zxcv",
+        "zxcvb",
+        "zxcvbn",
+        "qwertyui",
+        "qwertyuiop",
+        "abc",
+        "abcd",
+        "abcde",
+        "xyz",
+        "123",
+        "1234",
+        "12345",
+        "123456",
+        "000",
+        "0000",
+        "111",
+        "999",
+]);
+
+const SUSPICIOUS_GENERIC_LOCALPARTS = new Set([
+        "correo",
+        "email",
+        "mail",
+        "user",
+        "usuario",
+        "cliente",
+]);
 
 export const IVA_PORCENTAJE = 21;
 
@@ -93,9 +182,124 @@ export const PROVINCIAS = new Set([
 // Cache auxiliar para startsWith sobre provincias clásicas
 const PROVINCIAS_ARRAY = Array.from(PROVINCIAS);
 export function provinciaEmpiezaPor(prefijo) {
-	if (!prefijo) return false;
-	const upper = prefijo.toUpperCase();
-	return PROVINCIAS_ARRAY.some((p) => p.startsWith(upper));
+        if (!prefijo) return false;
+        const upper = prefijo.toUpperCase();
+        return PROVINCIAS_ARRAY.some((p) => p.startsWith(upper));
+}
+
+// Normaliza cadenas (acentos y mayúsculas) para validaciones heurísticas
+function normalizeString(str) {
+        return str
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase();
+}
+
+// Detecta si la cadena es una repetición del mismo carácter (mínimo len)
+function isFullRepetition(str, minLength = 3) {
+        if (!str || str.length < minLength) return false;
+        return new Set(str).size === 1;
+}
+
+function hasSequentialRun(str, minLength = 5) {
+        if (!str || str.length < minLength) return false;
+        const sequences = [
+                "0123456789",
+                "9876543210",
+                "abcdefghijklmnopqrstuvwxyz",
+                "zyxwvutsrqponmlkjihgfedcba",
+        ];
+        return sequences.some((seq) => seq.includes(str));
+}
+
+function hasNumericStepRun(str, minLength = 6) {
+        if (!str || str.length < minLength) return false;
+        for (let start = 0; start <= str.length - minLength; start++) {
+                let asc = true;
+                let desc = true;
+                for (let i = start + 1; i < start + minLength; i++) {
+                        const prev = Number.parseInt(str[i - 1], 10);
+                        const curr = Number.parseInt(str[i], 10);
+                        if (Number.isNaN(prev) || Number.isNaN(curr)) {
+                                asc = false;
+                                desc = false;
+                                break;
+                        }
+                        asc = asc && curr - prev === 1;
+                        desc = desc && prev - curr === 1;
+                }
+                if (asc || desc) return true;
+        }
+        return false;
+}
+
+function hasSuspiciousEmailLocalPart(localPartRaw) {
+        if (!localPartRaw) return false;
+        const normalized = normalizeString(localPartRaw);
+        const compact = normalized.replace(/[._+-]/g, "");
+        const tokens = normalized.split(/[._+-]+/).filter(Boolean);
+
+        if (SUSPICIOUS_EMAIL_TERMS.has(compact) || SUSPICIOUS_EMAIL_TERMS.has(normalized)) {
+                return true;
+        }
+
+        if (tokens.length > 0) {
+                const allSuspicious = tokens.every(
+                        (t) => SUSPICIOUS_EMAIL_TERMS.has(t) || SUSPICIOUS_GENERIC_LOCALPARTS.has(t)
+                );
+                if (allSuspicious) return true;
+                if (tokens.some((t) => SUSPICIOUS_EMAIL_TERMS.has(t))) return true;
+        }
+
+        const baseWithoutDigits = compact.replace(/\d+/g, "");
+        if (SUSPICIOUS_GENERIC_LOCALPARTS.has(baseWithoutDigits)) {
+                        const tailDigits = compact.slice(baseWithoutDigits.length);
+                        if (tailDigits === "" || /^0{1,4}$/.test(tailDigits) || /^1{1,4}$/.test(tailDigits) || /^1234?$/.test(tailDigits)) {
+                                return true;
+                        }
+        }
+
+        if (isFullRepetition(compact)) return true;
+
+        const keyboardStarts = ["asdf", "asdfg", "qwert", "qwerty", "zxcv", "zxcvb", "zxcvbn", "qwer", "poiuy", "lkjh", "mnbv"];
+        if (keyboardStarts.some((seq) => compact.startsWith(seq) && compact.length >= seq.length + 1)) {
+                return true;
+        }
+
+        if (hasSequentialRun(compact, 5) || hasNumericStepRun(compact, 6)) {
+                return true;
+        }
+
+        if (compact.length <= 2 && /^[a-z0-9]+$/.test(compact)) {
+                return true;
+        }
+
+        return false;
+}
+
+function isSuspiciousPhone(value) {
+        if (!value || value.length !== 9) return false;
+
+        if (/^(\d)\1{8}$/.test(value)) return true; // todos iguales
+        if (/^[6789](\d)\1{7}$/.test(value)) return true; // prefijo válido + resto repetido
+
+        const block1 = value.slice(0, 3);
+        const block2 = value.slice(3, 6);
+        const block3 = value.slice(6);
+        if (block1 === block2 && block2 === block3) return true; // 3 bloques idénticos
+        if (block1 === block2 || block2 === block3 || block1 === block3) return true;
+
+        if (hasNumericStepRun(value, 7)) return true; // escaleras largas
+
+        if (/(\d)\1{4,}$/.test(value)) return true; // tramo final muy repetido
+
+        const zeroCounterMatch = value.match(/^([6789])0{6,7}(\d{1,3})$/);
+        if (zeroCounterMatch) {
+                const tail = Number.parseInt(zeroCounterMatch[2], 10);
+                if (!Number.isNaN(tail) && tail >= 1 && tail <= 199) return true;
+        }
+
+        return false;
 }
 
 // ===============================
@@ -416,25 +620,26 @@ export function validateDNIField(input, showError, isHardCheck = false) {
 
 // -- TELÉFONO
 export function validateTelefonoField(input, showError, isHardCheck = false) {
-	if (!input) return false;
-	const value = input.value.trim();
-	const firstDigit = value[0] || "";
-	if (value.length > 0 && !/^[6-9]$/.test(firstDigit)) {
-		if (showError) setError(input, "Debe empezar con 6-9");
-		return false;
-	}
-	if (isHardCheck) {
-		if (value === "") {
-			if (showError) setError(input, "Este campo es obligatorio.");
-			return false;
-		}
-		if (!/^[6-9]\d{8}$/.test(value)) {
-			if (showError) setError(input, "Teléfono inválido (9 dígitos)");
-			return false;
-		}
-	}
-	clearError(input);
-	return true;
+        if (!input) return false;
+        const value = input.value.trim();
+        const firstDigit = value[0] || "";
+        if (value.length > 0 && !/^[6-9]$/.test(firstDigit)) {
+                if (showError)
+                        setError(input, isHardCheck ? "Teléfono no válido" : "Debe empezar con 6-9");
+                return false;
+        }
+        if (isHardCheck) {
+                if (value === "") {
+                        if (showError) setError(input, "Este campo es obligatorio.");
+                        return false;
+                }
+                if (!/^[6-9]\d{8}$/.test(value) || isSuspiciousPhone(value)) {
+                        if (showError) setError(input, "Teléfono no válido");
+                        return false;
+                }
+        }
+        clearError(input);
+        return true;
 }
 
 // -- CÓDIGO POSTAL
@@ -472,17 +677,23 @@ export function validateCodigoPostalField(
 
 // -- EMAIL
 export function validateEmailField(input, showError, isHardCheck = false) {
-	if (!input) return false;
-	const value = input.value.trim();
-	if (isHardCheck) {
-		const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-		if (!emailRegex.test(value)) {
-			if (showError) setError(input, "Correo electrónico inválido.");
-			return false;
-		}
-	}
-	clearError(input);
-	return true;
+        if (!input) return false;
+        const value = input.value.trim();
+        if (isHardCheck) {
+                const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+                if (!emailRegex.test(value)) {
+                        if (showError) setError(input, "Correo electrónico no válido");
+                        return false;
+                }
+
+                const localPart = value.split("@")[0];
+                if (hasSuspiciousEmailLocalPart(localPart)) {
+                        if (showError) setError(input, "Correo electrónico no válido");
+                        return false;
+                }
+        }
+        clearError(input);
+        return true;
 }
 
 // -- CAMPO OBLIGATORIO
