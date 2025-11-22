@@ -3530,6 +3530,42 @@
     outline: none;
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
 }
+.client-offers__add-picker {
+    padding: 1.25rem;
+}
+.client-offers__add-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.client-offers__add-option {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    background: var(--surface-soft);
+    color: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.client-offers__add-option:hover,
+.client-offers__add-option:focus-visible {
+    background: var(--surface-strong);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    outline: none;
+}
+.client-offers__add-option--primary {
+    background: #0f172a;
+    color: #fff;
+    border-color: #0f172a;
+}
+.client-offers__add-option--primary:hover,
+.client-offers__add-option--primary:focus-visible {
+    background: #020617;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+}
 .client-offer-card {
     position: relative;
     display: grid;
