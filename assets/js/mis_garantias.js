@@ -423,14 +423,11 @@ const ADD_DOC_KEY = "add-document";
                 const managementDialog = managementModal
                         ? managementModal.querySelector("[data-management-dialog]")
                         : null;
-                const managementTabsNav = managementModal
-                        ? managementModal.querySelector("[data-management-tabs]")
+                const managementPlateLabel = managementModal
+                        ? managementModal.querySelector("[data-management-plate]")
                         : null;
-                const managementPanels = managementModal
-                        ? Array.from(managementModal.querySelectorAll("[data-management-panel]"))
-                        : [];
-                const managementDefaultTab = managementTabsNav
-                        ? managementTabsNav.querySelector("[data-management-tab]")
+                const managementStatusBadge = managementModal
+                        ? managementModal.querySelector("[data-management-status]")
                         : null;
                 const MANAGEMENT_MODAL_TRANSITION = 260;
                 let managementModalCloseTimer = null;
@@ -3510,6 +3507,8 @@ const ADD_DOC_KEY = "add-document";
                                         panel.dataset.matricula =
                                                 data.matricula || rowData.matricula || "";
                                         panel.dataset.plan = data.plan || rowData.plan || "";
+                                        panel.dataset.estado = newEstadoLabel;
+                                        panel.dataset.estadoclase = newEstadoClase;
                                         panel.dataset.loadedId = id;
                                         setupTransferCountdown(panel);
                                         syncPdfModalDocs(panel);
@@ -4047,34 +4046,29 @@ const ADD_DOC_KEY = "add-document";
                         runTrashRequest(context);
                 }
 
-                function activateManagementTab(tabButton) {
-                        if (!managementTabsNav || !tabButton) {
+                function updateManagementHeaderFromDetail(panel) {
+                        if (!managementModal) {
                                 return;
                         }
-                        const target = tabButton.getAttribute("data-management-tab");
-                        if (!target) {
-                                return;
-                        }
-                        const buttons = managementTabsNav.querySelectorAll("[data-management-tab]");
-                        buttons.forEach((btn) => {
-                                const isActive = btn === tabButton;
-                                btn.setAttribute("aria-selected", isActive ? "true" : "false");
-                                btn.classList.toggle("is-active", isActive);
-                                btn.setAttribute("tabindex", isActive ? "0" : "-1");
-                        });
-                        managementPanels.forEach((panel) => {
-                                const matches = panel.getAttribute("data-management-panel") === target;
-                                panel.classList.toggle("is-active", matches);
-                                if (matches) {
-                                        panel.removeAttribute("hidden");
-                                } else {
-                                        panel.setAttribute("hidden", "hidden");
-                                }
-                        });
-                }
+                        const activePanel = panel || document.querySelector(".guarantee-detail__panel.active");
+                        const plateValue = activePanel?.dataset?.matricula || "";
+                        const estadoLabel = activePanel?.dataset?.estado || "";
+                        const estadoClase =
+                                activePanel?.dataset?.estadoclase || activePanel?.dataset?.estadoClase || "";
 
-                if (managementDefaultTab) {
-                        activateManagementTab(managementDefaultTab);
+                        if (managementPlateLabel) {
+                                managementPlateLabel.textContent = plateValue || "— — —";
+                        }
+
+                        if (managementStatusBadge) {
+                                managementStatusBadge.innerHTML = "";
+                                if (estadoClase && estadoLabel) {
+                                        const badge = document.createElement("span");
+                                        badge.className = `guarantees-list__badge guarantees-list__badge--${estadoClase}`;
+                                        badge.textContent = estadoLabel;
+                                        managementStatusBadge.appendChild(badge);
+                                }
+                        }
                 }
 
                 function openManagementModal(trigger) {
@@ -4084,6 +4078,7 @@ const ADD_DOC_KEY = "add-document";
                         if (managementModal.dataset.state === "open") {
                                 return;
                         }
+                        updateManagementHeaderFromDetail();
                         if (managementModalCloseTimer) {
                                 clearTimeout(managementModalCloseTimer);
                                 managementModalCloseTimer = null;
@@ -4120,9 +4115,6 @@ const ADD_DOC_KEY = "add-document";
                                 managementModalTrigger.focus();
                         }
                         managementModalTrigger = null;
-                        if (managementDefaultTab) {
-                                activateManagementTab(managementDefaultTab);
-                        }
                 }
 
                 function handleManagementClicks(event) {
@@ -4139,13 +4131,6 @@ const ADD_DOC_KEY = "add-document";
                         if (dismiss && managementModal.dataset.state === "open") {
                                 event.preventDefault();
                                 closeManagementModal();
-                        }
-                        if (managementTabsNav) {
-                                const tabButton = event.target.closest("[data-management-tab]");
-                                if (tabButton && managementTabsNav.contains(tabButton)) {
-                                        event.preventDefault();
-                                        activateManagementTab(tabButton);
-                                }
                         }
                 }
 
