@@ -423,6 +423,12 @@ const ADD_DOC_KEY = "add-document";
                 const managementDialog = managementModal
                         ? managementModal.querySelector("[data-management-dialog]")
                         : null;
+                const managementPlateLabel = managementModal
+                        ? managementModal.querySelector("[data-management-plate]")
+                        : null;
+                const managementStatusBadge = managementModal
+                        ? managementModal.querySelector("[data-management-status]")
+                        : null;
                 const managementTabsNav = managementModal
                         ? managementModal.querySelector("[data-management-tabs]")
                         : null;
@@ -3510,6 +3516,8 @@ const ADD_DOC_KEY = "add-document";
                                         panel.dataset.matricula =
                                                 data.matricula || rowData.matricula || "";
                                         panel.dataset.plan = data.plan || rowData.plan || "";
+                                        panel.dataset.estado = newEstadoLabel;
+                                        panel.dataset.estadoclase = newEstadoClase;
                                         panel.dataset.loadedId = id;
                                         setupTransferCountdown(panel);
                                         syncPdfModalDocs(panel);
@@ -4077,6 +4085,31 @@ const ADD_DOC_KEY = "add-document";
                         activateManagementTab(managementDefaultTab);
                 }
 
+                function updateManagementHeaderFromDetail(panel) {
+                        if (!managementModal) {
+                                return;
+                        }
+                        const activePanel = panel || document.querySelector(".guarantee-detail__panel.active");
+                        const plateValue = activePanel?.dataset?.matricula || "";
+                        const estadoLabel = activePanel?.dataset?.estado || "";
+                        const estadoClase =
+                                activePanel?.dataset?.estadoclase || activePanel?.dataset?.estadoClase || "";
+
+                        if (managementPlateLabel) {
+                                managementPlateLabel.textContent = plateValue || "— — —";
+                        }
+
+                        if (managementStatusBadge) {
+                                managementStatusBadge.innerHTML = "";
+                                if (estadoClase && estadoLabel) {
+                                        const badge = document.createElement("span");
+                                        badge.className = `guarantees-list__badge guarantees-list__badge--${estadoClase}`;
+                                        badge.textContent = estadoLabel;
+                                        managementStatusBadge.appendChild(badge);
+                                }
+                        }
+                }
+
                 function openManagementModal(trigger) {
                         if (!canAccessManagementHub || !managementModal) {
                                 return;
@@ -4084,6 +4117,7 @@ const ADD_DOC_KEY = "add-document";
                         if (managementModal.dataset.state === "open") {
                                 return;
                         }
+                        updateManagementHeaderFromDetail();
                         if (managementModalCloseTimer) {
                                 clearTimeout(managementModalCloseTimer);
                                 managementModalCloseTimer = null;
