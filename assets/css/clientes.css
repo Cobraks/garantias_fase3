@@ -2158,7 +2158,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
-    z-index: 15000;
+    z-index: 99999;
 }
 .client-dialog.is-open {
     opacity: 1;
@@ -3292,6 +3292,16 @@
     font-size: 0.85rem;
     color: var(--text-secondary);
 }
+.confirm-modal__select,
+.confirm-modal__input {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    background: var(--surface-soft);
+    color: var(--text-color);
+    font: inherit;
+}
 .confirm-modal__field.confirm-modal__field--invalid .confirm-modal__textarea {
     border-color: var(--danger-color, #dc2626);
     box-shadow: 0 0 0 1px var(--danger-color, #dc2626);
@@ -3528,6 +3538,54 @@
     background: #020617;
     transform: translateY(-1px);
     outline: none;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+}
+.client-offers__add-picker {
+    padding: 1.25rem;
+}
+.client-offers__add-popover {
+    position: absolute;
+    inset: auto auto auto auto;
+    min-width: min(340px, 90vw);
+    max-width: min(360px, 92vw);
+    padding: 1rem 1.25rem;
+    border-radius: 0.85rem;
+    border: 1px solid var(--border-color);
+    background: var(--surface);
+    box-shadow: var(--client-dialog-shadow);
+    z-index: 100000;
+}
+.client-offers__add-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.client-offers__add-option {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    background: var(--surface-soft);
+    color: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.client-offers__add-option:hover,
+.client-offers__add-option:focus-visible {
+    background: var(--surface-strong);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    outline: none;
+}
+.client-offers__add-option--primary {
+    background: #0f172a;
+    color: #fff;
+    border-color: #0f172a;
+}
+.client-offers__add-option--primary:hover,
+.client-offers__add-option--primary:focus-visible {
+    background: #020617;
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
 }
 .client-offer-card {

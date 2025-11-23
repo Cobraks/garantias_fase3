@@ -113,6 +113,19 @@ class GuaranteeEmailDataFactory
         $state_value = sanitize_text_field($detail['estado']['value'] ?? '');
         $state_label = sanitize_text_field($detail['estado']['label'] ?? '');
 
+        $cancellation_reason = sanitize_text_field($detail['estado_garantia']['motivo_cancelacion'] ?? '');
+        $cancellation_other = sanitize_text_field($detail['estado_garantia']['otra_causa'] ?? '');
+        $cancellation_reason_label = $cancellation_reason === 'Otra causa'
+            ? ($cancellation_other !== '' ? $cancellation_other : $cancellation_reason)
+            : $cancellation_reason;
+        if ($cancellation_reason_label === '' && $cancellation_other !== '') {
+            $cancellation_reason_label = $cancellation_other;
+        }
+        $cancellation_date = sanitize_text_field(
+            $detail['estado_garantia']['fecha_cancelacion_fmt']
+                ?? ($detail['estado_garantia']['fecha_cancelacion'] ?? '')
+        );
+
         $permalink = home_url('/garantias-online/mis-garantias/');
         if ($plate !== '') {
             $permalink = add_query_arg('matricula', rawurlencode($plate), $permalink);
@@ -131,6 +144,12 @@ class GuaranteeEmailDataFactory
             'state'       => [
                 'value' => $state_value,
                 'label' => $state_label,
+            ],
+            'cancellation' => [
+                'reason'       => $cancellation_reason,
+                'other'        => $cancellation_other,
+                'reason_label' => $cancellation_reason_label,
+                'date'         => $cancellation_date,
             ],
             'dates'       => $dates,
             'customer'    => [

@@ -337,8 +337,8 @@ const ADD_DOC_KEY = "add-document";
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>';
                 const managementShieldIcon =
                         '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m438-338 226-226-57-57-169 169-84-84-57 57 141 141Zm42 258q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></svg>';
-                const managementArrowIcon =
-                        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M360-200 320-240 520-440 320-640l40-40 240 240-240 240Z"/></svg>';
+                const managementInlineIcon =
+                        '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M360-600v-80h360v80H360Zm0 120v-80h360v80H360Zm120 320H200h280Zm0 80H240q-50 0-85-35t-35-85v-120h120v-560h600v361q-20-2-40.5 1.5T760-505v-295H320v480h240l-80 80H200v40q0 17 11.5 28.5T240-160h240v80Zm80 0v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q8 9 12.5 20t4.5 22q0 11-4 22.5T903-300L683-80H560Zm300-263-37-37 37 37ZM620-140h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z"/></svg>';
                 const ADMIN_SUMMARY_ACTIONS = [
                         {
                                 key: "draft",
@@ -423,18 +423,57 @@ const ADD_DOC_KEY = "add-document";
                 const managementDialog = managementModal
                         ? managementModal.querySelector("[data-management-dialog]")
                         : null;
-                const managementTabsNav = managementModal
-                        ? managementModal.querySelector("[data-management-tabs]")
+                const managementPlateLabel = managementModal
+                        ? managementModal.querySelector("[data-management-plate]")
                         : null;
-                const managementPanels = managementModal
-                        ? Array.from(managementModal.querySelectorAll("[data-management-panel]"))
-                        : [];
-                const managementDefaultTab = managementTabsNav
-                        ? managementTabsNav.querySelector("[data-management-tab]")
+                const managementStatusBadge = managementModal
+                        ? managementModal.querySelector("[data-management-status]")
+                        : null;
+                const managementStatusText = managementModal
+                        ? managementModal.querySelector("[data-management-status-text]")
+                        : null;
+                const managementNotesList = managementModal
+                        ? managementModal.querySelector("[data-management-notes]")
+                        : null;
+                const managementNotesEmpty = managementModal
+                        ? managementModal.querySelector("[data-management-notes-empty]")
+                        : null;
+                const managementNotesComposer = managementModal
+                        ? managementModal.querySelector(".management-notes__composer")
+                        : null;
+                const managementNoteInput = managementModal
+                        ? managementModal.querySelector("[data-management-note-input]")
+                        : null;
+                const managementNoteSaveBtn = managementModal
+                        ? managementModal.querySelector("[data-management-save-note]")
+                        : null;
+                const managementNoteSaveLabel = managementNoteSaveBtn
+                        ? managementNoteSaveBtn.querySelector("[data-management-save-label]")
+                        : null;
+                const defaultSaveLabel = managementNoteSaveLabel
+                        ? managementNoteSaveLabel.textContent.trim()
+                        : "";
+                const defaultSaveIconHtml = managementNoteSaveBtn?.querySelector(
+                        ".guarantee-management__btn-icon"
+                )?.innerHTML;
+                const managementVehicleLabel = managementModal
+                        ? managementModal.querySelector("[data-management-vehicle]")
+                        : null;
+                const managementVendorLabel = managementModal
+                        ? managementModal.querySelector("[data-management-vendor]")
+                        : null;
+                const managementValidUntilLabel = managementModal
+                        ? managementModal.querySelector("[data-management-valid-until]")
+                        : null;
+                const managementCoverageLabel = managementModal
+                        ? managementModal.querySelector("[data-management-coverage]")
                         : null;
                 const MANAGEMENT_MODAL_TRANSITION = 260;
                 let managementModalCloseTimer = null;
                 let managementModalTrigger = null;
+                let managementNotesState = { notes: [], currentUserId: null };
+                let managementNotesLoadedId = null;
+                let managementNoteSavingTimer = null;
 
                 const PDF_CACHE_LIMIT = 12;
                 const pdfBlobCache = new Map();
@@ -3364,6 +3403,8 @@ const ADD_DOC_KEY = "add-document";
                                                 panel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
                                                 panel.dataset.plan = data.plan || rowData.plan || "";
+                                                hydrateManagementDataset(panel, data, rowData);
+                                                syncManagementDetailFields(panel);
                                                 syncPdfModalDocs(panel);
                                         });
                                 })
@@ -3510,7 +3551,11 @@ const ADD_DOC_KEY = "add-document";
                                         panel.dataset.matricula =
                                                 data.matricula || rowData.matricula || "";
                                         panel.dataset.plan = data.plan || rowData.plan || "";
+                                        panel.dataset.estado = newEstadoLabel;
+                                        panel.dataset.estadoclase = newEstadoClase;
                                         panel.dataset.loadedId = id;
+                                        hydrateManagementDataset(panel, data, rowData);
+                                        syncManagementDetailFields(panel);
                                         setupTransferCountdown(panel);
                                         syncPdfModalDocs(panel);
                                         showDetailToast(
@@ -3654,11 +3699,145 @@ const ADD_DOC_KEY = "add-document";
                                 });
                 }
 
+                function runCancelRequest(context, ui = {}) {
+                        const { confirmBtn = null, closeModal = () => {} } = ui;
+                        const panel = context.panel || document.querySelector(".guarantee-detail__panel.active");
+                        const id = context.id || panel?.dataset?.loadedId || "";
+                        if (!id) {
+                                closeModal();
+                                return;
+                        }
+
+                        let row = context.row && context.row.isConnected ? context.row : findRowById(id);
+                        const detail = detailCache.get(id) || {};
+                        const uuid = context.uuid || detail.uuid || "";
+                        const originalLabel = confirmBtn?.textContent?.trim() || "Cancelar garantía";
+
+                        const setConfirmLabel = (text, disabled) => {
+                                if (!confirmBtn) return;
+                                confirmBtn.textContent = text;
+                                confirmBtn.disabled = Boolean(disabled);
+                        };
+
+                        setConfirmLabel("Cancelando garantía", true);
+
+                        const todayIso = formatDateIsoLocal(new Date());
+                                const body = {
+                                        id,
+                                        uuid,
+                                        data: {
+                                                estado_garantia: {
+                                                        estado_contratacion: "cancelada",
+                                                        fecha_cancelacion: todayIso,
+                                                        motivo_cancelacion: context.cancelReason || "",
+                                                        otra_causa: context.cancelOtherReason || "",
+                                                },
+                                        },
+                                        notify_customer: Boolean(context.notifyCustomer),
+                                };
+
+                        fetch(`${restRoot}go/v1/guarantees/autosave`, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": restNonce,
+                                },
+                                body: JSON.stringify(body),
+                        })
+                                .then(async (res) => {
+                                        if (!res.ok) {
+                                                let message = "No se ha podido cancelar la garantía.";
+                                                try {
+                                                        const data = await res.json();
+                                                        if (data && typeof data.message === "string" && data.message.trim() !== "") {
+                                                                message = data.message;
+                                                        }
+                                                } catch (jsonError) {
+                                                        try {
+                                                                const text = await res.text();
+                                                                if (typeof text === "string" && text.trim() !== "") {
+                                                                        message = text;
+                                                                }
+                                                        } catch (textError) {
+                                                                // ignore
+                                                        }
+                                                }
+                                                throw new Error(message);
+                                        }
+                                        return res.json();
+                                })
+                                .then((json) => {
+                                        const detailResponse = json?.detail || json;
+                                        if (!detailResponse) {
+                                                return;
+                                        }
+                                        const data = normalizeDetailData(detailResponse);
+                                        detailCache.set(id, data);
+
+                                        if (!row || !row.isConnected) {
+                                                row = findRowById(id);
+                                        }
+
+                                        const newEstadoValue = (data.estado && data.estado.value) || "cancelada";
+                                        const newEstadoLabel = (data.estado && data.estado.label) || "Cancelada";
+                                        const newEstadoClase = normalizeEstadoClase(newEstadoValue);
+
+                                        if (row) {
+                                                row.dataset.estadoclase = newEstadoClase;
+                                                row.dataset.estado = newEstadoLabel;
+                                                const badge = row.querySelector(".guarantees-list__badge");
+                                                if (badge) {
+                                                        badge.className =
+                                                                "guarantees-list__badge guarantees-list__badge--" + newEstadoClase;
+                                                        badge.textContent = newEstadoLabel;
+                                                }
+                                        }
+
+                                        const rowData = row ? buildRowData(row) : {};
+                                        const targetPanel = panel || document.querySelector(".guarantee-detail__panel.active");
+                                        if (targetPanel) {
+                                                targetPanel.innerHTML = renderFullDetail(data, rowData);
+                                                targetPanel.dataset.matricula =
+                                                        data.matricula || rowData.matricula || "";
+                                                targetPanel.dataset.plan = data.plan || rowData.plan || "";
+                                                targetPanel.dataset.estado = newEstadoLabel;
+                                                targetPanel.dataset.estadoclase = newEstadoClase;
+                                                targetPanel.dataset.loadedId = id;
+                                                hydrateManagementDataset(targetPanel, data, rowData);
+                                                syncManagementDetailFields(targetPanel);
+                                                setupTransferCountdown(targetPanel);
+                                                syncPdfModalDocs(targetPanel);
+                                                updateManagementHeaderFromDetail(targetPanel);
+                                                showDetailToast(targetPanel, "Garantía cancelada.");
+                                        }
+
+                                        setConfirmLabel("Garantía cancelada", true);
+                                        pendingConfirmContext = null;
+                                        window.setTimeout(() => {
+                                                closeModal();
+                                        }, 1200);
+                                })
+                                .catch((error) => {
+                                        const message =
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se ha podido cancelar la garantía.";
+                                        const targetPanel = panel || document.querySelector(".guarantee-detail__panel.active");
+                                        if (targetPanel) {
+                                                showDetailToast(targetPanel, message);
+                                        }
+                                        setConfirmLabel(originalLabel, false);
+                                        pendingConfirmContext = null;
+                                        closeModal();
+                                });
+                }
+
                 document.addEventListener("click", handleConfirmClick);
                 document.addEventListener("click", handleTransferReportClick);
                 document.addEventListener("click", handleShareClick);
                 document.addEventListener("click", handleTrashClick);
                 document.addEventListener("click", handleManagementClicks);
+                document.addEventListener("click", handleManagementNotesClick);
                 document.addEventListener("keydown", handleManagementKeydown);
 
                 function setupConfirmModal(modal) {
@@ -3669,6 +3848,9 @@ const ADD_DOC_KEY = "add-document";
                         const subtitleEl = modal.querySelector(".confirm-modal__subtitle");
                         const messageEl = modal.querySelector(".confirm-modal__message");
                         const noteEl = modal.querySelector(".confirm-modal__note");
+                        const notifyNoteEl = modal.querySelector(
+                                ".confirm-modal__note--notify"
+                        );
                         const confirmBtn = modal.querySelector(
                                 ".confirm-modal__btn--confirm"
                         );
@@ -3689,10 +3871,36 @@ const ADD_DOC_KEY = "add-document";
                         const checkboxLabel = modal.querySelector(
                                 ".confirm-modal__checkbox-label"
                         );
+                        const notifyCheckboxWrapper = modal.querySelector(
+                                ".confirm-modal__checkbox--notify"
+                        );
+                        const notifyCheckboxInput = modal.querySelector(
+                                ".confirm-modal__checkbox-input--notify"
+                        );
+                        const notifyCheckboxLabel = modal.querySelector(
+                                ".confirm-modal__checkbox-label--notify"
+                        );
+                        const cancelFields = modal.querySelector(
+                                ".confirm-modal__cancel-fields"
+                        );
+                        const cancelSelect = modal.querySelector(
+                                "[data-confirm-cancel-reason]"
+                        );
+                        const cancelOtherField = modal.querySelector(
+                                ".confirm-modal__other-reason"
+                        );
+                        const cancelOtherInput = modal.querySelector(
+                                "[data-confirm-cancel-other]"
+                        );
                         const fileEmptyText = fileNameEl ? fileNameEl.dataset.empty || "" : "";
                         const defaultCheckboxLabel = checkboxLabel ? checkboxLabel.textContent : "";
+                        const defaultNotifyLabel = notifyCheckboxLabel
+                                ? notifyCheckboxLabel.textContent
+                                : "";
                         let requiresFile = false;
                         let requiresAcknowledgement = false;
+                        let requiresReason = false;
+                        let notifyNoteText = "";
                         let selectedFile = null;
                         let fileErrorMessage = "";
                         let isModalOpen = false;
@@ -3706,6 +3914,48 @@ const ADD_DOC_KEY = "add-document";
                                         checkboxLabel.textContent = labelText;
                                 } else if (defaultCheckboxLabel) {
                                         checkboxLabel.textContent = defaultCheckboxLabel;
+                                }
+                        }
+
+                        function applyNotifyLabel(labelText) {
+                                if (!notifyCheckboxLabel) {
+                                        return;
+                                }
+                                if (labelText) {
+                                        notifyCheckboxLabel.textContent = labelText;
+                                } else if (defaultNotifyLabel) {
+                                        notifyCheckboxLabel.textContent = defaultNotifyLabel;
+                                }
+                        }
+
+                        function updateNotifyNote() {
+                                if (!notifyNoteEl) return;
+                                const shouldShow =
+                                        Boolean(notifyNoteText) &&
+                                        notifyCheckboxInput &&
+                                        notifyCheckboxInput.checked;
+                                notifyNoteEl.textContent = shouldShow ? notifyNoteText : "";
+                                notifyNoteEl.hidden = !shouldShow;
+                        }
+
+                        function populateCancelReasons(options, placeholder) {
+                                if (!cancelSelect) return;
+                                const placeholderOption = document.createElement("option");
+                                placeholderOption.value = "";
+                                placeholderOption.disabled = true;
+                                placeholderOption.selected = true;
+                                placeholderOption.textContent = placeholder || "Selecciona un motivo";
+
+                                cancelSelect.innerHTML = "";
+                                cancelSelect.appendChild(placeholderOption);
+
+                                if (Array.isArray(options)) {
+                                        options.forEach((entry) => {
+                                                const option = document.createElement("option");
+                                                option.value = `${entry}`;
+                                                option.textContent = `${entry}`;
+                                                cancelSelect.appendChild(option);
+                                        });
                                 }
                         }
 
@@ -3746,7 +3996,28 @@ const ADD_DOC_KEY = "add-document";
                                 const ackOk =
                                         !requiresAcknowledgement ||
                                         (checkboxInput ? checkboxInput.checked : false);
-                                confirmBtn.disabled = !(fileOk && ackOk);
+                                const requiresOther =
+                                        requiresReason &&
+                                        cancelSelect &&
+                                        cancelSelect.value === "Otra causa";
+                                const otherReasonValue = cancelOtherInput
+                                        ? cancelOtherInput.value.trim()
+                                        : "";
+                                const reasonOk =
+                                        !requiresReason ||
+                                        (cancelSelect && cancelSelect.value !== "" && cancelSelect.value !== "undefined");
+                                const otherOk = !requiresOther || otherReasonValue !== "";
+                                confirmBtn.disabled = !(fileOk && ackOk && reasonOk && otherOk);
+                        }
+
+                        function syncCancelOtherReason() {
+                                const isOther = cancelSelect && cancelSelect.value === "Otra causa";
+                                if (cancelOtherField) {
+                                        cancelOtherField.hidden = !isOther;
+                                }
+                                if (!isOther && cancelOtherInput) {
+                                        cancelOtherInput.value = "";
+                                }
                         }
 
                         function closeModal(options = {}) {
@@ -3764,11 +4035,29 @@ const ADD_DOC_KEY = "add-document";
                                         noteEl.textContent = "";
                                         noteEl.hidden = true;
                                 }
+                                if (notifyNoteEl) {
+                                        notifyNoteEl.textContent = "";
+                                        notifyNoteEl.hidden = true;
+                                }
+                                if (cancelFields) {
+                                        cancelFields.hidden = true;
+                                }
+                                if (cancelOtherField) {
+                                        cancelOtherField.hidden = true;
+                                }
+                                if (cancelOtherInput) {
+                                        cancelOtherInput.value = "";
+                                }
+                                if (cancelSelect) {
+                                        cancelSelect.value = "";
+                                }
                                 if (uploadBlock) {
                                         uploadBlock.hidden = true;
                                 }
                                 requiresFile = false;
                                 requiresAcknowledgement = false;
+                                requiresReason = false;
+                                notifyNoteText = "";
                                 resetFileState();
                                 if (checkboxInput) {
                                         checkboxInput.checked = false;
@@ -3776,7 +4065,14 @@ const ADD_DOC_KEY = "add-document";
                                 if (checkboxWrapper) {
                                         checkboxWrapper.hidden = true;
                                 }
+                                if (notifyCheckboxWrapper) {
+                                        notifyCheckboxWrapper.hidden = true;
+                                }
+                                if (notifyCheckboxInput) {
+                                        notifyCheckboxInput.checked = false;
+                                }
                                 applyCheckboxLabel("");
+                                applyNotifyLabel("");
                                 if (confirmBtn) {
                                         confirmBtn.disabled = true;
                                 }
@@ -3812,6 +4108,27 @@ const ADD_DOC_KEY = "add-document";
                                         noteEl.textContent = cfg.note || "";
                                         noteEl.hidden = !hasNote;
                                 }
+                                const reasonOptions = Array.isArray(cfg.reasonOptions)
+                                        ? cfg.reasonOptions
+                                        : [];
+                                requiresReason = Boolean(cfg.requireReason) && reasonOptions.length > 0;
+                                if (cancelFields) {
+                                        cancelFields.hidden = !requiresReason;
+                                }
+                                if (cancelOtherField) {
+                                        cancelOtherField.hidden = true;
+                                }
+                                if (cancelOtherInput) {
+                                        cancelOtherInput.value = "";
+                                }
+                                if (cancelSelect) {
+                                        populateCancelReasons(
+                                                reasonOptions,
+                                                cfg.reasonPlaceholder || "Selecciona un motivo"
+                                        );
+                                        cancelSelect.value = "";
+                                        syncCancelOtherReason();
+                                }
                                 requiresFile = Boolean(cfg.requireFile);
                                 requiresAcknowledgement = Boolean(
                                         cfg.requireAcknowledgement
@@ -3826,6 +4143,16 @@ const ADD_DOC_KEY = "add-document";
                                 if (checkboxInput) {
                                         checkboxInput.checked = false;
                                 }
+                                const showNotify = Boolean(cfg.enableNotify);
+                                notifyNoteText = typeof cfg.notifyNote === "string" ? cfg.notifyNote : "";
+                                if (notifyCheckboxWrapper) {
+                                        notifyCheckboxWrapper.hidden = !showNotify;
+                                }
+                                if (notifyCheckboxInput) {
+                                        notifyCheckboxInput.checked = Boolean(cfg.notifyChecked);
+                                }
+                                applyNotifyLabel(cfg.notifyLabel || "");
+                                updateNotifyNote();
                                 resetFileState();
                                 confirmBtn.textContent = cfg.confirmLabel || "Confirmar";
                                 setModalVariant(cfg.variant || "");
@@ -3903,6 +4230,25 @@ const ADD_DOC_KEY = "add-document";
                                 });
                         }
 
+                        if (cancelSelect) {
+                                cancelSelect.addEventListener("change", () => {
+                                        syncCancelOtherReason();
+                                        updateConfirmState();
+                                });
+                        }
+
+                        if (cancelOtherInput) {
+                                cancelOtherInput.addEventListener("input", () => {
+                                        updateConfirmState();
+                                });
+                        }
+
+                        if (notifyCheckboxInput) {
+                                notifyCheckboxInput.addEventListener("change", () => {
+                                        updateNotifyNote();
+                                });
+                        }
+
                         if (cancelBtn) {
                                 cancelBtn.addEventListener("click", () => {
                                         closeModal();
@@ -3927,8 +4273,21 @@ const ADD_DOC_KEY = "add-document";
                                                 return;
                                         }
                                         const context = pendingConfirmContext;
+                                        const selectedReason = cancelSelect ? cancelSelect.value : "";
+                                        const notifyCustomer = notifyCheckboxInput
+                                                ? Boolean(notifyCheckboxInput.checked)
+                                                : false;
                                         if (context) {
                                                 context.receiptFile = selectedFile || null;
+                                                context.cancelReason = selectedReason;
+                                                context.cancelOtherReason = cancelOtherInput
+                                                        ? cancelOtherInput.value.trim()
+                                                        : "";
+                                                context.notifyCustomer = notifyCustomer;
+                                        }
+                                        if (context && context.intent === "cancel-guarantee") {
+                                                runCancelRequest(context, { confirmBtn, closeModal });
+                                                return;
                                         }
                                         closeModal();
                                         if (context) {
@@ -3960,7 +4319,11 @@ const ADD_DOC_KEY = "add-document";
                         if (!btn) {
                                 return;
                         }
-                        const panel = btn.closest(".guarantee-detail__panel");
+                        let panel = btn.closest(".guarantee-detail__panel");
+                        if (!panel) {
+                                const context = getActiveManagementContext();
+                                panel = context.panel;
+                        }
                         if (!panel) {
                                 return;
                         }
@@ -4047,34 +4410,638 @@ const ADD_DOC_KEY = "add-document";
                         runTrashRequest(context);
                 }
 
-                function activateManagementTab(tabButton) {
-                        if (!managementTabsNav || !tabButton) {
-                                return;
+                function normalizeManagementValue(value) {
+                        if (value === undefined || value === null) {
+                                return "";
                         }
-                        const target = tabButton.getAttribute("data-management-tab");
-                        if (!target) {
-                                return;
+                        const str = String(value).trim();
+                        if (!str || str === "-") {
+                                return "";
                         }
-                        const buttons = managementTabsNav.querySelectorAll("[data-management-tab]");
-                        buttons.forEach((btn) => {
-                                const isActive = btn === tabButton;
-                                btn.setAttribute("aria-selected", isActive ? "true" : "false");
-                                btn.classList.toggle("is-active", isActive);
-                                btn.setAttribute("tabindex", isActive ? "0" : "-1");
-                        });
-                        managementPanels.forEach((panel) => {
-                                const matches = panel.getAttribute("data-management-panel") === target;
-                                panel.classList.toggle("is-active", matches);
-                                if (matches) {
-                                        panel.removeAttribute("hidden");
-                                } else {
-                                        panel.setAttribute("hidden", "hidden");
+                        return str;
+                }
+
+                function hydrateManagementDataset(panel, detailData = {}, rowData = {}) {
+                        if (!panel) return;
+                        const joinParts = (...parts) => {
+                                for (const part of parts) {
+                                        if (Array.isArray(part)) {
+                                                const joined = part.filter(Boolean).join(" ").trim();
+                                                const normalized = normalizeManagementValue(joined);
+                                                if (normalized) return normalized;
+                                        } else {
+                                                const normalized = normalizeManagementValue(part);
+                                                if (normalized) return normalized;
+                                        }
                                 }
+                                return "";
+                        };
+
+                        const vehicle = joinParts(
+                                detailData.marca_modelo,
+                                detailData.vehicle_name,
+                                detailData.detail?.marca_modelo,
+                                [detailData.marca, detailData.modelo],
+                                rowData.marca_modelo
+                        );
+                        const vendorRole = joinParts(
+                                detailData.detail?.canal_venta_summary,
+                                detailData.vendedor,
+                                rowData.canal_venta
+                        );
+                        const vendorName = joinParts(
+                                detailData.detail?.concesionario,
+                                detailData.detail?.concesionario_personal,
+                                rowData.concesionario,
+                                rowData.vendedor_name
+                        );
+                        const vendorCombined = normalizeManagementValue(
+                                [vendorRole, vendorName].filter(Boolean).join(" · ")
+                        );
+                        const vendor = vendorCombined || joinParts(vendorName, vendorRole);
+                        const validUntil = joinParts(
+                                detailData.hasta_fmt,
+                                detailData.hasta_display,
+                                detailData.hasta,
+                                rowData.hasta_fmt,
+                                rowData.hasta
+                        );
+                        const coverage = joinParts(
+                                detailData.plan,
+                                detailData.plan_name,
+                                detailData.detail?.plan_nombre,
+                                rowData.plan
+                        );
+
+                        panel.dataset.vehicle = vehicle;
+                        panel.dataset.vendor = vendor;
+                        panel.dataset.valid_until = validUntil;
+                        panel.dataset.coverage = coverage;
+                }
+
+                function syncManagementDetailFields(panel) {
+                        if (!panel) return;
+                        if (managementPlateLabel) {
+                                managementPlateLabel.textContent =
+                                        panel.dataset?.matricula || managementPlateLabel.textContent || "— — —";
+                        }
+                        if (managementVehicleLabel) {
+                                const vehicle = panel.dataset?.vehicle || "";
+                                managementVehicleLabel.textContent = vehicle || "—";
+                        }
+                        if (managementVendorLabel) {
+                                const vendor = panel.dataset?.vendor || "";
+                                managementVendorLabel.textContent = vendor || "—";
+                        }
+                        if (managementValidUntilLabel) {
+                                const validUntil = panel.dataset?.valid_until || "";
+                                managementValidUntilLabel.textContent = validUntil || "—";
+                        }
+                        if (managementCoverageLabel) {
+                                const coverage = panel.dataset?.coverage || "";
+                                managementCoverageLabel.textContent = coverage || "—";
+                        }
+                }
+
+                function formatDateIsoLocal(value) {
+                        const date = value instanceof Date ? value : new Date(value);
+                        if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+                                return "";
+                        }
+                        const pad = (v) => String(v).padStart(2, "0");
+                        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+                }
+
+                function syncManagementNotesEmptyState() {
+                        if (!managementNotesList || !managementNotesEmpty) {
+                                return;
+                        }
+
+                        const visibleNotes = Array.from(managementNotesList.children || []).filter((child) =>
+                                child.classList && child.classList.contains("management-notes__item")
+                        );
+                        const hasNotes = visibleNotes.length > 0;
+                        managementNotesEmpty.toggleAttribute("hidden", hasNotes);
+                }
+
+                function clearManagementNotes() {
+                        if (!managementNotesList) {
+                                return;
+                        }
+                        const items = managementNotesList.querySelectorAll(
+                                ".management-notes__item"
+                        );
+                        items.forEach((item) => item.remove());
+                        syncManagementNotesEmptyState();
+                }
+
+                function createNoteElement(note) {
+                        const article = document.createElement("article");
+                        article.className = "management-notes__item";
+                        if (note.is_owner) {
+                                article.classList.add("management-notes__item--own");
+                        }
+                        article.dataset.noteId = `${note.id}`;
+
+                        const meta = document.createElement("div");
+                        meta.className = "management-notes__meta";
+
+                        const author = document.createElement("span");
+                        author.className = "management-notes__author";
+                        author.textContent = note.author_name || "";
+                        meta.appendChild(author);
+
+                        const time = document.createElement("time");
+                        time.className = "management-notes__time";
+                        time.dateTime = note.datetime || "";
+                        time.textContent = note.time_label || "";
+                        meta.appendChild(time);
+
+                        article.appendChild(meta);
+
+                        const body = document.createElement("p");
+                        body.className = "management-notes__body";
+                        body.textContent = note.note || "";
+                        article.appendChild(body);
+
+                        if (note.is_owner) {
+                                const actions = document.createElement("div");
+                                actions.className = "management-notes__actions";
+                                actions.setAttribute(
+                                        "aria-label",
+                                        "Acciones de nota"
+                                );
+
+                                const editBtn = document.createElement("button");
+                                editBtn.type = "button";
+                                editBtn.className = "management-notes__action management-notes__action--ghost";
+                                editBtn.dataset.noteAction = "edit";
+                                editBtn.textContent = "Editar";
+                                actions.appendChild(editBtn);
+
+                                const deleteBtn = document.createElement("button");
+                                deleteBtn.type = "button";
+                                deleteBtn.className = "management-notes__action management-notes__action--danger";
+                                deleteBtn.dataset.noteAction = "delete";
+                                deleteBtn.textContent = "Eliminar";
+                                actions.appendChild(deleteBtn);
+
+                                article.appendChild(actions);
+                        }
+
+                        return article;
+                }
+
+                function animateNoteEntry(element) {
+                        if (!element) return;
+                        element.style.opacity = "0";
+                        element.style.transform = "translateY(6px)";
+                        requestAnimationFrame(() => {
+                                element.style.transition = "opacity 160ms ease, transform 160ms ease";
+                                element.style.opacity = "1";
+                                element.style.transform = "translateY(0)";
                         });
                 }
 
-                if (managementDefaultTab) {
-                        activateManagementTab(managementDefaultTab);
+                function renderManagementNotes(notes) {
+                        if (!managementNotesList) {
+                                return;
+                        }
+                        clearManagementNotes();
+                        notes.forEach((note) => {
+                                const entry = createNoteElement(note);
+                                managementNotesList.appendChild(entry);
+                                animateNoteEntry(entry);
+                        });
+                        syncManagementNotesEmptyState();
+                }
+
+                function appendManagementNote(note) {
+                        if (!managementNotesList) {
+                                return;
+                        }
+                        const entry = createNoteElement(note);
+                        managementNotesList.insertBefore(entry, managementNotesList.firstChild);
+                        animateNoteEntry(entry);
+                        syncManagementNotesEmptyState();
+                }
+
+                function getManagementNotesEndpoint(id) {
+                        if (!restRoot || !id) {
+                                return "";
+                        }
+                        return `${restRoot}go/v1/guarantees/${encodeURIComponent(id)}/notes`;
+                }
+
+                function setNoteSaveState(state, labelOverride) {
+                        if (!managementNoteSaveBtn) return;
+                        const icon = managementNoteSaveBtn.querySelector(
+                                ".guarantee-management__btn-icon"
+                        );
+                        const label = managementNoteSaveLabel;
+
+                        if (managementNoteSavingTimer) {
+                                clearTimeout(managementNoteSavingTimer);
+                                managementNoteSavingTimer = null;
+                        }
+
+                        if (state === "saving") {
+                                managementNoteSaveBtn.disabled = true;
+                                if (icon) {
+                                        icon.innerHTML =
+                                                '<span class="guarantee-detail__btn-spinner" aria-hidden="true"></span>';
+                                }
+                                if (label) {
+                                        label.textContent = labelOverride || "Guardando nota";
+                                }
+                                return;
+                        }
+
+                        if (state === "saved") {
+                                managementNoteSaveBtn.disabled = false;
+                                if (icon && defaultSaveIconHtml) {
+                                        icon.innerHTML = defaultSaveIconHtml;
+                                }
+                                if (label) {
+                                        label.textContent = labelOverride || "Nota guardada";
+                                }
+                                managementNoteSavingTimer = window.setTimeout(() => {
+                                        if (label && defaultSaveLabel) {
+                                                label.textContent = defaultSaveLabel;
+                                        }
+                                }, 1400);
+                                return;
+                        }
+
+                        managementNoteSaveBtn.disabled = false;
+                        if (icon && defaultSaveIconHtml) {
+                                icon.innerHTML = defaultSaveIconHtml;
+                        }
+                        if (label && defaultSaveLabel) {
+                                label.textContent = defaultSaveLabel;
+                        }
+                }
+
+                function normalizeNoteEntry(entry) {
+                        if (!entry || typeof entry !== "object") {
+                                return null;
+                        }
+                        return {
+                                id: entry.id ?? 0,
+                                author_name: entry.author_name || "",
+                                datetime: entry.datetime || "",
+                                time_label: entry.time_label || "",
+                                note: entry.note || "",
+                                is_owner: Boolean(entry.is_owner),
+                        };
+                }
+
+                function applyNotesPayload(payload) {
+                        if (!payload || typeof payload !== "object") {
+                                return;
+                        }
+                        const notes = Array.isArray(payload.notes)
+                                ? payload.notes.map((entry) => normalizeNoteEntry(entry)).filter(Boolean)
+                                : [];
+                        managementNotesState = {
+                                notes,
+                                currentUserId: payload.current_user?.id ?? null,
+                        };
+                        renderManagementNotes(notes);
+                }
+
+                function loadManagementNotes(force = false) {
+                        const context = getActiveManagementContext();
+                        if (!context.id) {
+                                return;
+                        }
+                        if (!force && managementNotesLoadedId === context.id && managementNotesState.notes.length) {
+                                return;
+                        }
+                        const endpoint = getManagementNotesEndpoint(context.id);
+                        if (!endpoint) {
+                                return;
+                        }
+                        managementNotesLoadedId = context.id;
+                        fetch(endpoint, {
+                                headers: {
+                                        "X-WP-Nonce": restNonce,
+                                },
+                        })
+                                .then((res) => {
+                                        if (!res.ok) {
+                                                return res
+                                                        .json()
+                                                        .catch(() => ({}))
+                                                        .then((data) => {
+                                                                const message =
+                                                                        data && typeof data.message === "string"
+                                                                                ? data.message
+                                                                                : "No se han podido cargar las notas.";
+                                                                throw new Error(message);
+                                                        });
+                                        }
+                                        return res.json();
+                                })
+                                .then((data) => {
+                                        applyNotesPayload(data || {});
+                                })
+                                .catch((error) => {
+                                        const message =
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se han podido cargar las notas.";
+                                        const contextPanel = context.panel || document.querySelector(".guarantee-detail__panel.active");
+                                        if (contextPanel) {
+                                                showDetailToast(contextPanel, message);
+                                        }
+                                });
+                }
+
+                function handleNoteSave() {
+                        if (!managementNoteInput) {
+                                return;
+                        }
+                        const context = getActiveManagementContext();
+                        if (!context.id) {
+                                return;
+                        }
+                        const noteText = managementNoteInput.value.trim();
+                        if (!noteText) {
+                                return;
+                        }
+                        const endpoint = getManagementNotesEndpoint(context.id);
+                        if (!endpoint) return;
+
+                        setNoteSaveState("saving");
+                        fetch(endpoint, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": restNonce,
+                                },
+                                body: JSON.stringify({ note: noteText }),
+                        })
+                                .then((res) => {
+                                        if (!res.ok) {
+                                                return res
+                                                        .json()
+                                                        .catch(() => ({}))
+                                                        .then((data) => {
+                                                                const message =
+                                                                        data && typeof data.message === "string"
+                                                                                ? data.message
+                                                                                : "No se ha podido guardar la nota.";
+                                                                throw new Error(message);
+                                                        });
+                                        }
+                                        return res.json();
+                                })
+                                .then((data) => {
+                                        applyNotesPayload(data || {});
+                                        setNoteSaveState("saved");
+                                        managementNoteInput.value = "";
+                                })
+                                .catch((error) => {
+                                        setNoteSaveState("idle");
+                                        const message =
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se ha podido guardar la nota.";
+                                        const panel = context.panel || document.querySelector(".guarantee-detail__panel.active");
+                                        if (panel) {
+                                                showDetailToast(panel, message);
+                                        }
+                                });
+                }
+
+                function restoreNoteContent(noteEl, noteData) {
+                        const body = noteEl.querySelector(".management-notes__body");
+                        if (body) {
+                                body.remove();
+                        }
+                        const textarea = noteEl.querySelector("textarea");
+                        if (textarea) {
+                                textarea.remove();
+                        }
+                        const actions = noteEl.querySelector(".management-notes__actions");
+                        if (actions) {
+                                actions.remove();
+                        }
+
+                        const rebuilt = createNoteElement(noteData);
+                        noteEl.replaceWith(rebuilt);
+                        animateNoteEntry(rebuilt);
+                }
+
+                function startNoteEdit(noteEl) {
+                        if (!noteEl || noteEl.dataset.editing === "true") {
+                                return;
+                        }
+                        const body = noteEl.querySelector(".management-notes__body");
+                        const actions = noteEl.querySelector(".management-notes__actions");
+                        if (!body || !actions) {
+                                return;
+                        }
+                        const originalText = body.textContent || "";
+                        const textarea = document.createElement("textarea");
+                        textarea.className = "management-notes__textarea";
+                        textarea.value = originalText.trim();
+                        noteEl.dataset.editing = "true";
+                        body.replaceWith(textarea);
+
+                        const saveBtn = document.createElement("button");
+                        saveBtn.type = "button";
+                        saveBtn.className = "management-notes__action management-notes__action--ghost";
+                        saveBtn.dataset.noteAction = "save-edit";
+                        saveBtn.textContent = "Guardar";
+
+                        const cancelBtn = document.createElement("button");
+                        cancelBtn.type = "button";
+                        cancelBtn.className = "management-notes__action management-notes__action--danger";
+                        cancelBtn.dataset.noteAction = "cancel-edit";
+                        cancelBtn.textContent = "Cancelar";
+
+                        actions.innerHTML = "";
+                        actions.appendChild(saveBtn);
+                        actions.appendChild(cancelBtn);
+                        textarea.focus();
+                }
+
+                function submitNoteEdit(noteEl) {
+                        const textarea = noteEl.querySelector("textarea");
+                        const noteId = noteEl.dataset.noteId;
+                        const context = getActiveManagementContext();
+                        if (!textarea || !noteId || !context.id) {
+                                return;
+                        }
+                        const newText = textarea.value.trim();
+                        if (!newText) {
+                                return;
+                        }
+                        const endpoint = `${getManagementNotesEndpoint(context.id)}/${encodeURIComponent(noteId)}`;
+                        noteEl.dataset.saving = "true";
+                        fetch(endpoint, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": restNonce,
+                                },
+                                body: JSON.stringify({ note: newText }),
+                        })
+                                .then((res) => {
+                                        if (!res.ok) {
+                                                return res
+                                                        .json()
+                                                        .catch(() => ({}))
+                                                        .then((data) => {
+                                                                const message =
+                                                                        data && typeof data.message === "string"
+                                                                                ? data.message
+                                                                                : "No se ha podido actualizar la nota.";
+                                                                throw new Error(message);
+                                                        });
+                                        }
+                                        return res.json();
+                                })
+                                .then((data) => {
+                                        applyNotesPayload(data || {});
+                                })
+                                .catch((error) => {
+                                        const panel = context.panel || document.querySelector(".guarantee-detail__panel.active");
+                                        const message =
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se ha podido actualizar la nota.";
+                                        if (panel) {
+                                                showDetailToast(panel, message);
+                                        }
+                                })
+                                .finally(() => {
+                                        noteEl.dataset.saving = "false";
+                                });
+                }
+
+                function requestNoteDelete(noteEl) {
+                        const noteId = noteEl?.dataset?.noteId;
+                        const context = getActiveManagementContext();
+                        if (!noteId || !context.id) {
+                                return;
+                        }
+                        const confirmed = window.confirm("¿Seguro que quieres eliminar esta nota?");
+                        if (!confirmed) {
+                                return;
+                        }
+                        const endpoint = `${getManagementNotesEndpoint(context.id)}/${encodeURIComponent(noteId)}`;
+                        fetch(endpoint, {
+                                method: "DELETE",
+                                headers: {
+                                        "X-WP-Nonce": restNonce,
+                                },
+                        })
+                                .then((res) => {
+                                        if (!res.ok) {
+                                                return res
+                                                        .json()
+                                                        .catch(() => ({}))
+                                                        .then((data) => {
+                                                                const message =
+                                                                        data && typeof data.message === "string"
+                                                                                ? data.message
+                                                                                : "No se ha podido eliminar la nota.";
+                                                                throw new Error(message);
+                                                        });
+                                        }
+                                        return res.json();
+                                })
+                                .then((data) => {
+                                        applyNotesPayload(data || {});
+                                })
+                                .catch((error) => {
+                                        const panel = context.panel || document.querySelector(".guarantee-detail__panel.active");
+                                        const message =
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se ha podido eliminar la nota.";
+                                        if (panel) {
+                                                showDetailToast(panel, message);
+                                        }
+                                });
+                }
+
+                function updateManagementHeaderFromDetail(panel) {
+                        if (!managementModal) {
+                                return;
+                        }
+                        const activePanel = panel || document.querySelector(".guarantee-detail__panel.active");
+                        const plateValue = activePanel?.dataset?.matricula || "";
+                        const estadoLabel = activePanel?.dataset?.estado || "";
+                        const estadoClase =
+                                activePanel?.dataset?.estadoclase || activePanel?.dataset?.estadoClase || "";
+                        const detailBadge = activePanel?.querySelector(
+                                ".guarantee-detail__badge"
+                        );
+
+                        if (managementPlateLabel) {
+                                managementPlateLabel.textContent = plateValue || "— — —";
+                        }
+
+                        if (managementStatusBadge) {
+                                const badge = managementStatusBadge.querySelector(
+                                        "[data-management-status-badge]"
+                                );
+                                const badgeLabel = (detailBadge?.textContent || "").trim() || estadoLabel || "";
+                                const badgeModifiers = detailBadge
+                                        ? Array.from(detailBadge.classList || []).filter((cls) =>
+                                                  cls.indexOf("guarantee-detail__badge--") === 0
+                                          ).map((cls) =>
+                                                  cls.replace(
+                                                          "guarantee-detail__badge--",
+                                                          "guarantee-management__badge--"
+                                                  )
+                                          )
+                                        : estadoClase
+                                          ? [
+                                                  `guarantee-management__badge--${estadoClase}`,
+                                          ]
+                                          : [];
+                                const badgeClass = [
+                                        "guarantee-management__badge",
+                                        ...badgeModifiers,
+                                ]
+                                        .filter(Boolean)
+                                        .join(" ")
+                                        .trim();
+
+                                if (managementStatusText && badgeLabel) {
+                                        managementStatusText.textContent = badgeLabel;
+                                }
+
+                                if (badge) {
+                                        badge.className = badgeClass;
+                                        const textTarget = badge.querySelector(
+                                                "[data-management-status-text]"
+                                        );
+                                        if (textTarget) {
+                                                textTarget.textContent = badgeLabel;
+                                        } else {
+                                                badge.textContent = badgeLabel;
+                                        }
+                                        badge.toggleAttribute("hidden", badgeLabel === "");
+                                } else if (estadoClase && estadoLabel) {
+                                        const newBadge = document.createElement("span");
+                                        newBadge.className = badgeClass;
+                                        newBadge.setAttribute("data-management-status-badge", "");
+                                        const labelSpan = document.createElement("span");
+                                        labelSpan.setAttribute("data-management-status-text", "");
+                                        labelSpan.textContent = badgeLabel;
+                                        newBadge.appendChild(labelSpan);
+                                        managementStatusBadge.appendChild(newBadge);
+                                }
+                        }
+
+                        syncManagementDetailFields(activePanel);
+                        syncManagementNotesEmptyState();
                 }
 
                 function openManagementModal(trigger) {
@@ -4084,6 +5051,8 @@ const ADD_DOC_KEY = "add-document";
                         if (managementModal.dataset.state === "open") {
                                 return;
                         }
+                        updateManagementHeaderFromDetail();
+                        loadManagementNotes(true);
                         if (managementModalCloseTimer) {
                                 clearTimeout(managementModalCloseTimer);
                                 managementModalCloseTimer = null;
@@ -4120,9 +5089,23 @@ const ADD_DOC_KEY = "add-document";
                                 managementModalTrigger.focus();
                         }
                         managementModalTrigger = null;
-                        if (managementDefaultTab) {
-                                activateManagementTab(managementDefaultTab);
-                        }
+                }
+
+                function getActiveManagementContext() {
+                        const panel = document.querySelector(
+                                ".guarantee-detail__panel.active"
+                        );
+                        const id = panel?.dataset?.loadedId || "";
+                        const row =
+                                id && tbody
+                                        ? tbody.querySelector(
+                                                  `.guarantees-table__row[data-id="${id}"]`
+                                          )
+                                        : null;
+                        const plate =
+                                panel?.dataset?.matricula || row?.dataset?.matricula || "";
+
+                        return { panel, id, row, plate };
                 }
 
                 function handleManagementClicks(event) {
@@ -4139,13 +5122,170 @@ const ADD_DOC_KEY = "add-document";
                         if (dismiss && managementModal.dataset.state === "open") {
                                 event.preventDefault();
                                 closeManagementModal();
+                                return;
                         }
-                        if (managementTabsNav) {
-                                const tabButton = event.target.closest("[data-management-tab]");
-                                if (tabButton && managementTabsNav.contains(tabButton)) {
-                                        event.preventDefault();
-                                        activateManagementTab(tabButton);
+
+                        const actionButton = event.target.closest(
+                                "[data-management-action]"
+                        );
+                        if (actionButton && managementModal.dataset.state === "open") {
+                                event.preventDefault();
+                                const action = actionButton.dataset.managementAction || "";
+                                const context = getActiveManagementContext();
+
+                                if (action === "delete-guarantee") {
+                                        const safePlate = escapeHtml(context.plate || "");
+                                        const subtitle = safePlate
+                                                ? `Garantía <strong>${safePlate}</strong>`
+                                                : "";
+                                        const resetLabel =
+                                                actionButton.querySelector(
+                                                        ".management-actions__copy strong"
+                                                )?.textContent.trim() || "Eliminar garantía";
+                                        const trashContext = {
+                                                intent: "trash",
+                                                btn: actionButton,
+                                                panel: context.panel,
+                                                id: context.id,
+                                                row: context.row,
+                                                resetLabel,
+                                        };
+
+                                        if (confirmModalController) {
+                                                pendingConfirmContext = trashContext;
+                                                confirmModalController.open({
+                                                        title: "Eliminar garantía",
+                                                        subtitle,
+                                                        message:
+                                                                "¿Seguro que quieres enviar esta garantía a la papelera? Podrás restaurarla desde el panel de WordPress.",
+                                                        note:
+                                                                "La garantía dejará de estar disponible para tramitación hasta que la recuperes.",
+                                                        confirmLabel: "Enviar a la papelera",
+                                                        requireAcknowledgement: true,
+                                                        checkboxLabel:
+                                                                "Estoy seguro de que quiero eliminar esta garantía.",
+                                                        variant: "danger",
+                                                });
+                                        } else {
+                                                runTrashRequest(trashContext);
+                                        }
+                                        return;
                                 }
+
+                                if (action === "cancel-for-nonpayment") {
+                                        const safePlate = escapeHtml(context.plate || "");
+                                        const subtitle = safePlate
+                                                ? `Garantía <strong>${safePlate}</strong>`
+                                                : "";
+                                        const vendorName = managementVendorLabel
+                                                ? managementVendorLabel.textContent.trim()
+                                                : "";
+                                        const companyForNote = escapeHtml(
+                                                vendorName || "el cliente"
+                                        );
+                                        const cancelReasons = [
+                                                "Pago no recibido",
+                                                "Solicitud del cliente",
+                                                "Datos incorrectos",
+                                                "Vehículo no apto",
+                                                "Otra causa",
+                                        ];
+
+                                        const cachedDetail = context.id ? detailCache.get(context.id) : null;
+                                        const uuid = cachedDetail && cachedDetail.uuid ? cachedDetail.uuid : "";
+                                        pendingConfirmContext = {
+                                                intent: "cancel-guarantee",
+                                                btn: actionButton,
+                                                panel: context.panel,
+                                                id: context.id,
+                                                row: context.row,
+                                                uuid,
+                                                resetLabel:
+                                                        actionButton.querySelector(
+                                                                ".management-actions__copy strong"
+                                                        )?.textContent.trim() || "Cancelar garantía",
+                                        };
+                                        if (confirmModalController) {
+                                                confirmModalController.open({
+                                                        title: "Cancelar garantía",
+                                                        subtitle,
+                                                        message:
+                                                                "¿Seguro que quieres cancelar esta garantía? Podrás activarla de nuevo desde el panel de WordPress.",
+                                                        note: "",
+                                                        confirmLabel: "Cancelar garantía",
+                                                        requireAcknowledgement: true,
+                                                        checkboxLabel:
+                                                                "Estoy seguro de que quiero cancelar esta garantía.",
+                                                        requireReason: true,
+                                                        reasonOptions: cancelReasons,
+                                                        reasonPlaceholder: "Selecciona un motivo",
+                                                        enableNotify: true,
+                                                        notifyLabel:
+                                                                "Informar al cliente de la cancelación.",
+                                                        notifyNote: `Se enviará un correo a ${companyForNote} indicando que la garantía ha sido cancelada.`,
+                                                });
+                                        }
+                                        return;
+                                }
+
+                                if (action === "edit-wordpress") {
+                                        if (!context.id) {
+                                                return;
+                                        }
+                                        let origin = window.location.origin;
+                                        try {
+                                                origin = restRoot
+                                                        ? new URL(restRoot).origin
+                                                        : origin;
+                                        } catch (err) {
+                                                // ignore
+                                        }
+                                        const editUrl = `${origin}/wp-admin/post.php?post=${encodeURIComponent(
+                                                context.id
+                                        )}&action=edit`;
+                                        window.open(editUrl, "_blank", "noopener");
+                                }
+                        }
+                }
+
+                function handleManagementNotesClick(event) {
+                        if (!canAccessManagementHub || !managementModal) {
+                                return;
+                        }
+                        const saveTrigger = event.target.closest("[data-management-save-note]");
+                        if (saveTrigger && managementModal.dataset.state === "open") {
+                                event.preventDefault();
+                                handleNoteSave();
+                                return;
+                        }
+
+                        const noteAction = event.target.closest("[data-note-action]");
+                        if (!noteAction) {
+                                return;
+                        }
+                        const noteItem = noteAction.closest(".management-notes__item");
+                        const action = noteAction.dataset.noteAction;
+
+                        if (action === "edit") {
+                                startNoteEdit(noteItem);
+                        } else if (action === "save-edit") {
+                                submitNoteEdit(noteItem);
+                        } else if (action === "cancel-edit") {
+                                const noteId = noteItem?.dataset?.noteId;
+                                const existing = managementNotesState.notes.find(
+                                        (entry) => `${entry.id}` === `${noteId}`
+                                );
+                                if (noteItem) {
+                                        noteItem.dataset.editing = "false";
+                                }
+                                if (noteItem && existing) {
+                                        restoreNoteContent(noteItem, existing);
+                                } else if (noteItem) {
+                                        noteItem.remove();
+                                        syncManagementNotesEmptyState();
+                                }
+                        } else if (action === "delete") {
+                                requestNoteDelete(noteItem);
                         }
                 }
 
@@ -7985,6 +9125,7 @@ const ADD_DOC_KEY = "add-document";
     const isSinFinalizar = estadoClase === "sin-finalizar";
     const isPendientePago = estadoClase === "pendiente-pago";
     const isValidacionPendiente = estadoClase === "validacion-pendiente";
+    const isCancelada = estadoClase === "cancelada";
     const canShowReportBtn = estadoClase === "activada";
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
     const metodoPago = (
@@ -8034,7 +9175,7 @@ const ADD_DOC_KEY = "add-document";
     const coverageHtml = "";
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
-            ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
+            ? `<p class=\"detail__alert-section detail__alert-section--coverage detail__alert-section--coverage-empty\">No has seleccionado cobertura.</p>`
             : "";
     const vendorChannelSummaryRaw = pickField("canal_venta_summary", "");
     const vendorChannelSummarySource =
@@ -8075,6 +9216,13 @@ const ADD_DOC_KEY = "add-document";
         }
     }
     const vendorCompanyName = vendorDisplayName;
+    const vendorContactLabel = escapeHtml(vendorContactName);
+    const vendorChannelLabel = vendorChannelSummary
+        ? `<span class="vendor-card__channel">(${escapeHtml(vendorChannelSummary)})</span>`
+        : "";
+    const vendorContactDisplay = vendorContactLabel
+        ? `${vendorContactLabel}${vendorChannelLabel ? ` ${vendorChannelLabel}` : ""}`
+        : vendorContactLabel;
     const vendorAvatarUrl =
         data.avatar_vendedor ?? rowData.avatar_vendedor ?? "";
     const vendorAvatarWrapper = vendorAvatarUrl
@@ -8407,6 +9555,25 @@ const ADD_DOC_KEY = "add-document";
         }
     };
 
+    const formatCancellationDate = (raw) => {
+        if (!raw) return "";
+        const parsed = parseTimelineDate(raw);
+        if (parsed instanceof Date) {
+            try {
+                const formatted = new Intl.DateTimeFormat("es-ES", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                }).format(parsed);
+                return formatted;
+            } catch (err) {
+                // ignore
+            }
+        }
+        const fallback = formatTimelineDate(raw);
+        return fallback !== "—" ? fallback : String(raw).trim();
+    };
+
     const contractDateCandidates = [
         pickEstadoGarantiaField("fecha_contratacion", ""),
         pickEstadoGarantiaField("fecha_contratacion_fmt", ""),
@@ -8491,22 +9658,25 @@ const ADD_DOC_KEY = "add-document";
     const daysUntilStart = daysBetween(coverageStartDate);
     const daysUntilEnd = daysBetween(coverageEndDate);
 
-    let coverageCountdownLabel = "—";
-    let coverageCountdownValue = "—";
+    let inlineCountdownValue = "";
 
     if (coverageStartDate instanceof Date && coverageStartDate.getTime() > today.getTime()) {
-        coverageCountdownLabel = "Días para inicio";
-        coverageCountdownValue =
+        inlineCountdownValue =
             daysUntilStart !== null && Number.isFinite(daysUntilStart)
-                ? `${daysUntilStart} días`
-                : "—";
+                ? `${daysUntilStart} días para inicio`
+                : "";
     } else if (coverageEndDate instanceof Date) {
-        coverageCountdownLabel = "Expira en";
-        coverageCountdownValue =
+        inlineCountdownValue =
             daysUntilEnd !== null && Number.isFinite(daysUntilEnd)
-                ? `${daysUntilEnd} días`
-                : "—";
+                ? `Expira en ${daysUntilEnd} días`
+                : "";
     }
+
+    const inlineCountdownHtml = inlineCountdownValue
+        ? `<div class="detail__inline-meta detail__inline-meta--countdown">` +
+              `<span>${inlineCountdownValue}</span>` +
+          `</div>`
+        : "";
 
     const parseBreakdownAmount = (value) => {
         if (value === undefined || value === null || value === "") {
@@ -8520,15 +9690,19 @@ const ADD_DOC_KEY = "add-document";
         if (numeric === null) return "";
         return numeric.toFixed(2).replace(".", ",");
     };
-    const coverageCountdownHtml = `<div class="detail__timeline detail__timeline--countdown">` +
-        `<div class="detail__timeline-point">` +
-            `<span class="detail__timeline-label">${coverageCountdownLabel}</span>` +
-            `<span class="detail__timeline-value">${coverageCountdownValue}</span>` +
-        `</div>` +
-    `</div>`;
-    const countdownListHtml =
-        `<div class="detail__timeline-list detail__timeline-list--countdown">${coverageCountdownHtml}</div>`;
-    const billingTimelineHtml = `<div class="detail__timeline-list">` +
+    const inlineUtilitiesHtml =
+        canAccessManagementHub || inlineCountdownHtml
+            ? `<div class="detail__inline-utilities">` +
+                  `${inlineCountdownHtml}` +
+                  `${canAccessManagementHub
+                      ? `<button type="button" class="detail__inline-cta" data-management-open>` +
+                            `<span class="detail__inline-cta-icon" aria-hidden="true">${managementInlineIcon}</span>` +
+                            `<span class="detail__inline-cta-text">Gestionar garantía</span>` +
+                        `</button>`
+                      : ""}` +
+              `</div>`
+            : "";
+    const billingTimelineHtml = `${inlineUtilitiesHtml}<div class="detail__timeline-list">` +
         `<div class="detail__timeline detail__timeline--contract">` +
             `<div class="detail__timeline-point">` +
                 `<span class="detail__timeline-label">${
@@ -8668,23 +9842,8 @@ const ADD_DOC_KEY = "add-document";
         `<div class="detail__transfer-toggle-content">${billingBreakdownHtml}</div>` +
     `</details>`
         : "";
-    const managementButtonHtml = showManagementHub
-        ? `<div class="detail__manage-wrapper">` +
-              `<button type="button" class="detail__manage-button" data-management-open>` +
-                  `<span class="detail__manage-copy">` +
-                      `<strong>Gestionar garantía</strong>` +
-                      `<span>Operativa interna y ajustes</span>` +
-                  `</span>` +
-                  `<span class="detail__manage-caret" aria-hidden="true">${managementArrowIcon}</span>` +
-              `</button>` +
-          `</div>`
-        : "";
-    const billingMetaHtml = canAccessManagementHub
-        ? `<div class="detail__timeline-meta">${countdownListHtml}${managementButtonHtml}</div>`
-        : "";
     const billingSectionHtml = `<section class="detail__section detail__section--billing">` +
         `${billingTimelineHtml}` +
-        `${billingMetaHtml}` +
         `${billingToggleHtml}` +
     `</section>`;
     const managementSectionHtml = "";
@@ -8697,31 +9856,10 @@ const ADD_DOC_KEY = "add-document";
                 `<span class="guarantee-detail__btn-text">Continuar con la garantía</span>` +
             `</button>`
         );
-        if (showActions) {
-            sinFinalButtons.push(
-                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos">` +
-                    `<span class="guarantee-detail__btn-icon">${heartIcon}</span>` +
-                `</button>`
-            );
-            sinFinalButtons.push(
-                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir">` +
-                    `<span class="guarantee-detail__btn-icon">${shareIcon}</span>` +
-                `</button>`
-            );
-        }
     }
     const sinFinalActionsHtml = sinFinalButtons.length
         ? `<div class="guarantee-detail__btn-container">${sinFinalButtons.join("")}</div>`
         : "";
-    const deleteActionHtml = canDeleteGuarantee
-        ? `<div class="guarantee-detail__danger-zone">
-                <button type="button" class="guarantee-detail__btn guarantee-detail__danger-btn guarantee-detail__btn--delete" data-trash-trigger>
-                        <span class="guarantee-detail__btn-icon guarantee-detail__danger-icon">${deleteIcon}</span>
-                        <span class="guarantee-detail__btn-text">Eliminar garantía</span>
-                </button>
-        </div>`
-        : "";
-
     if (isSinFinalizar) {
         return `
                 <div class="guarantee-detail__inner">
@@ -8740,16 +9878,21 @@ const ADD_DOC_KEY = "add-document";
                                         <span>Canal de venta</span>
                                 </h3>
                                 <div class="vendor-card">
-                                        <div class="vendor-card__header">
-                                                <div class="vendor-card__primary">
-                                                        ${vendorAvatarWrapper}
-                                                        <div class="vendor-card__info">
-                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
-                                                                <p class="vendor-card__contact">${vendorContactName}</p>
-                                                        </div>
+                                <div class="vendor-card__header">
+                                        <div class="vendor-card__primary">
+                                                ${vendorAvatarWrapper}
+                                                <div class="vendor-card__info">
+                                                        <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                        <p class="vendor-card__contact">${vendorContactDisplay}</p>
                                                 </div>
-                                                ${vendorChannelSummary ? `<span class="vendor-card__badge">${vendorChannelSummary}</span>` : ""}
                                         </div>
+                                        ${vendorDetailsHref
+                                            ? `<a href="${vendorDetailsHref}" class="fast-actions__link vendor-card__quick-link">` +
+                                                  `<span class="fast-actions__icon" aria-hidden="true">${personIcon}</span>` +
+                                                  `<span class="fast-actions__label">Ver cliente</span>` +
+                                              `</a>`
+                                            : ""}
+                                </div>
                                         ${vendorActionsHtml
                                             ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
                                             : ``}
@@ -8811,7 +9954,6 @@ const ADD_DOC_KEY = "add-document";
                             : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
                 ${sinFinalActionsHtml}
-                ${deleteActionHtml}
         </div>`;
     }
 
@@ -8860,16 +10002,6 @@ const ADD_DOC_KEY = "add-document";
                 `</button>`
             );
         }
-        adminActionButtons.push(
-            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos">` +
-                `<span class="guarantee-detail__btn-icon">${heartIcon}</span>` +
-            `</button>`
-        );
-        adminActionButtons.push(
-            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir">` +
-                `<span class="guarantee-detail__btn-icon">${shareIcon}</span>` +
-            `</button>`
-        );
     }
     const combinedActionButtons = [
         ...professionalActionButtons,
@@ -8878,6 +10010,7 @@ const ADD_DOC_KEY = "add-document";
     const actionsHtml = combinedActionButtons.length
         ? `<div class="guarantee-detail__btn-container">${combinedActionButtons.join("")}</div>`
         : "";
+    const deleteActionHtml = "";
 
     const { vendorDisplayHtml, adminEntityHtml } = (() => {
         const vendorCompanyData =
@@ -8934,8 +10067,31 @@ const ADD_DOC_KEY = "add-document";
         : escapeHtml("El cliente ha indicado que ha realizado la transferencia.");
     const adminValidationHtml = `${validationBaseHtml} Revisa la operación y activa la garantía cuando proceda.`;
     const staffValidationHtml = validationBaseHtml;
+        const cancellationDateRaw = pickEstadoGarantiaField("fecha_cancelacion", "");
+        const cancellationDateFmt = pickEstadoGarantiaField("fecha_cancelacion_fmt", cancellationDateRaw);
+        const cancellationReason = pickEstadoGarantiaField("motivo_cancelacion", "");
+        const cancellationOther = pickEstadoGarantiaField("otra_causa", "");
 
-    const paymentHtml = (() => {
+        const paymentHtml = (() => {
+            if (isCancelada) {
+                const cancelDateLabel = formatCancellationDate(cancellationDateFmt || cancellationDateRaw);
+                const cancelTarget = vendorDisplayHtml || "<strong>360VO</strong>";
+                const cancelText = cancelDateLabel
+                    ? `La garantía ha sido cancelada el ${cancelDateLabel}.`
+                    : "La garantía ha sido cancelada.";
+                const cancelNote = `${cancelText} Ponte en contacto con ${cancelTarget}.`;
+                const reasonDisplay = cancellationReason === "Otra causa"
+                    ? cancellationOther
+                    : cancellationReason;
+                const reasonHtml = reasonDisplay
+                    ? `<p class="detail__payment-note detail__payment-note--cancelled-reason">` +
+                      `Motivo: ${escapeHtml(reasonDisplay)}</p>`
+                    : "";
+                return `<section class="detail__section detail__section--payment">` +
+                        `<p class="detail__payment-note detail__payment-note--cancelled">${cancelNote}</p>` +
+                        `${reasonHtml}` +
+                        `</section>`;
+            }
         if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
             const concepto = `Garantía ${pickField("matricula")}`;
             const cantidad = `${pickField("precio", "0")} €`;
@@ -9022,16 +10178,21 @@ const ADD_DOC_KEY = "add-document";
                                         <span>Canal de venta</span>
                                 </h3>
                                 <div class="vendor-card">
-                                        <div class="vendor-card__header">
-                                                <div class="vendor-card__primary">
-                                                        ${vendorAvatarWrapper}
-                                                        <div class="vendor-card__info">
-                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
-                                                                <p class="vendor-card__contact">${vendorContactName}</p>
-                                                        </div>
+                                <div class="vendor-card__header">
+                                        <div class="vendor-card__primary">
+                                                ${vendorAvatarWrapper}
+                                                <div class="vendor-card__info">
+                                                        <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                        <p class="vendor-card__contact">${vendorContactDisplay}</p>
                                                 </div>
-                                                ${vendorChannelSummary ? `<span class="vendor-card__badge">${vendorChannelSummary}</span>` : ""}
                                         </div>
+                                        ${vendorDetailsHref
+                                            ? `<a href="${vendorDetailsHref}" class="fast-actions__link vendor-card__quick-link">` +
+                                                  `<span class="fast-actions__icon" aria-hidden="true">${personIcon}</span>` +
+                                                  `<span class="fast-actions__label">Ver cliente</span>` +
+                                              `</a>`
+                                            : ""}
+                                </div>
                                         ${vendorActionsHtml
                                             ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
                                             : ``}
@@ -9240,6 +10401,8 @@ async function activateRow(row, options = {}) {
                                 nextPanel.dataset.matricula =
                                         cachedDetail.matricula || rowData.matricula || "";
                                 nextPanel.dataset.plan = cachedDetail.plan || rowData.plan || "";
+                                hydrateManagementDataset(nextPanel, cachedDetail, rowData);
+                                syncManagementDetailFields(nextPanel);
                                 syncPdfModalDocs(nextPanel);
                         } else {
                                 const fallbackPlate =
@@ -9252,6 +10415,8 @@ async function activateRow(row, options = {}) {
                                 nextPanel.classList.add("is-loading");
                                 nextPanel.dataset.matricula = rowData.matricula || fallbackPlate || "";
                                 nextPanel.dataset.plan = rowData.plan || "";
+                                hydrateManagementDataset(nextPanel, {}, rowData);
+                                syncManagementDetailFields(nextPanel);
                                 syncPdfModalDocs(nextPanel);
                         }
 
@@ -9305,6 +10470,8 @@ async function activateRow(row, options = {}) {
                                                 nextPanel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
                                                 nextPanel.dataset.plan = data.plan || rowData.plan || "";
+                                                hydrateManagementDataset(nextPanel, data, rowData);
+                                                syncManagementDetailFields(nextPanel);
                                                 syncPdfModalDocs(nextPanel);
                                                 nextPanel.classList.remove("is-loading");
                                         }
