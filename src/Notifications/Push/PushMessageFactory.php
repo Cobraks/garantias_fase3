@@ -32,6 +32,8 @@ class PushMessageFactory
             case 'guarantee.created':
             case 'guarantee.contracted':
                 return $this->build_guarantee_event($activity_record, $event_type);
+            case 'guarantee.note_added':
+                return $this->build_guarantee_note_added($activity_record);
             case 'payment.recorded':
                 return $this->build_payment_recorded($activity_record);
             case 'payment.reported':
@@ -170,6 +172,55 @@ class PushMessageFactory
                     'url'    => $profile_url,
                 ],
             ] : [],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    private function build_guarantee_note_added(array $record): ?array
+    {
+        $context = $this->decode_context($record['context'] ?? '');
+        $plate = isset($context['matricula']) ? sanitize_text_field((string) $context['matricula']) : '';
+        $guarantee_id = isset($record['guarantee_id']) ? (int) $record['guarantee_id'] : 0;
+        $guarantee_label = isset($context['guarantee_label']) ? sanitize_text_field((string) $context['guarantee_label']) : '';
+        if ($guarantee_label === '' && $plate !== '') {
+            $guarantee_label = sprintf(__('Garantía %s', 'garantias-online-360vo'), $plate);
+        }
+
+        $actor_name = isset($record['actor_name']) ? sanitize_text_field((string) $record['actor_name']) : '';
+        $note_excerpt = isset($context['note_excerpt']) ? sanitize_text_field((string) $context['note_excerpt']) : '';
+
+        $body = $actor_name !== ''
+            ? sprintf(
+                /* translators: %1$s user name, %2$s license plate */
+                __('%1$s ha añadido una nota en la garantía %2$s.', 'garantias-online-360vo'),
+                $actor_name,
+                $plate !== '' ? $plate : ($guarantee_label !== '' ? $guarantee_label : '#')
+            )
+            : __('Se añadió una nota en una garantía.', 'garantias-online-360vo');
+
+        $link = $guarantee_id > 0
+            ? admin_url('post.php?post=' . $guarantee_id . '&action=edit')
+            : admin_url('edit.php?post_type=go_garantia');
+
+        $meta = [];
+        if ($guarantee_label !== '') {
+            $meta[] = $this->meta_entry(__('Garantía', 'garantias-online-360vo'), $guarantee_label);
+        }
+        if ($note_excerpt !== '') {
+            $meta[] = $this->meta_entry(__('Nota', 'garantias-online-360vo'), $note_excerpt);
+        }
+
+        return [
+            'title'     => __('Nueva nota en garantía', 'garantias-online-360vo'),
+            'body'      => $body,
+            'link'      => $link,
+            'icon'      => Svg::data_uri('note_event'),
+            'icon_slug' => 'note_event',
+            'tone'      => 'info',
+            'badge'     => $plate !== '' ? $plate : '',
+            'meta'      => $meta,
         ];
     }
 
