@@ -423,14 +423,32 @@ const ADD_DOC_KEY = "add-document";
                 const managementDialog = managementModal
                         ? managementModal.querySelector("[data-management-dialog]")
                         : null;
-                const managementTabsNav = managementModal
-                        ? managementModal.querySelector("[data-management-tabs]")
+                const managementPlateLabel = managementModal
+                        ? managementModal.querySelector("[data-management-plate]")
                         : null;
-                const managementPanels = managementModal
-                        ? Array.from(managementModal.querySelectorAll("[data-management-panel]"))
-                        : [];
-                const managementDefaultTab = managementTabsNav
-                        ? managementTabsNav.querySelector("[data-management-tab]")
+                const managementStatusBadge = managementModal
+                        ? managementModal.querySelector("[data-management-status]")
+                        : null;
+                const managementStatusText = managementModal
+                        ? managementModal.querySelector("[data-management-status-text]")
+                        : null;
+                const managementNotesList = managementModal
+                        ? managementModal.querySelector("[data-management-notes]")
+                        : null;
+                const managementNotesEmpty = managementModal
+                        ? managementModal.querySelector("[data-management-notes-empty]")
+                        : null;
+                const managementVehicleLabel = managementModal
+                        ? managementModal.querySelector("[data-management-vehicle]")
+                        : null;
+                const managementVendorLabel = managementModal
+                        ? managementModal.querySelector("[data-management-vendor]")
+                        : null;
+                const managementValidUntilLabel = managementModal
+                        ? managementModal.querySelector("[data-management-valid-until]")
+                        : null;
+                const managementCoverageLabel = managementModal
+                        ? managementModal.querySelector("[data-management-coverage]")
                         : null;
                 const MANAGEMENT_MODAL_TRANSITION = 260;
                 let managementModalCloseTimer = null;
@@ -3364,6 +3382,8 @@ const ADD_DOC_KEY = "add-document";
                                                 panel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
                                                 panel.dataset.plan = data.plan || rowData.plan || "";
+                                                hydrateManagementDataset(panel, data, rowData);
+                                                syncManagementDetailFields(panel);
                                                 syncPdfModalDocs(panel);
                                         });
                                 })
@@ -3510,7 +3530,11 @@ const ADD_DOC_KEY = "add-document";
                                         panel.dataset.matricula =
                                                 data.matricula || rowData.matricula || "";
                                         panel.dataset.plan = data.plan || rowData.plan || "";
+                                        panel.dataset.estado = newEstadoLabel;
+                                        panel.dataset.estadoclase = newEstadoClase;
                                         panel.dataset.loadedId = id;
+                                        hydrateManagementDataset(panel, data, rowData);
+                                        syncManagementDetailFields(panel);
                                         setupTransferCountdown(panel);
                                         syncPdfModalDocs(panel);
                                         showDetailToast(
@@ -4047,34 +4071,184 @@ const ADD_DOC_KEY = "add-document";
                         runTrashRequest(context);
                 }
 
-                function activateManagementTab(tabButton) {
-                        if (!managementTabsNav || !tabButton) {
-                                return;
+                function normalizeManagementValue(value) {
+                        if (value === undefined || value === null) {
+                                return "";
                         }
-                        const target = tabButton.getAttribute("data-management-tab");
-                        if (!target) {
-                                return;
+                        const str = String(value).trim();
+                        if (!str || str === "-") {
+                                return "";
                         }
-                        const buttons = managementTabsNav.querySelectorAll("[data-management-tab]");
-                        buttons.forEach((btn) => {
-                                const isActive = btn === tabButton;
-                                btn.setAttribute("aria-selected", isActive ? "true" : "false");
-                                btn.classList.toggle("is-active", isActive);
-                                btn.setAttribute("tabindex", isActive ? "0" : "-1");
-                        });
-                        managementPanels.forEach((panel) => {
-                                const matches = panel.getAttribute("data-management-panel") === target;
-                                panel.classList.toggle("is-active", matches);
-                                if (matches) {
-                                        panel.removeAttribute("hidden");
-                                } else {
-                                        panel.setAttribute("hidden", "hidden");
-                                }
-                        });
+                        return str;
                 }
 
-                if (managementDefaultTab) {
-                        activateManagementTab(managementDefaultTab);
+                function hydrateManagementDataset(panel, detailData = {}, rowData = {}) {
+                        if (!panel) return;
+                        const joinParts = (...parts) => {
+                                for (const part of parts) {
+                                        if (Array.isArray(part)) {
+                                                const joined = part.filter(Boolean).join(" ").trim();
+                                                const normalized = normalizeManagementValue(joined);
+                                                if (normalized) return normalized;
+                                        } else {
+                                                const normalized = normalizeManagementValue(part);
+                                                if (normalized) return normalized;
+                                        }
+                                }
+                                return "";
+                        };
+
+                        const vehicle = joinParts(
+                                detailData.marca_modelo,
+                                detailData.vehicle_name,
+                                detailData.detail?.marca_modelo,
+                                [detailData.marca, detailData.modelo],
+                                rowData.marca_modelo
+                        );
+                        const vendorRole = joinParts(
+                                detailData.detail?.canal_venta_summary,
+                                detailData.vendedor,
+                                rowData.canal_venta
+                        );
+                        const vendorName = joinParts(
+                                detailData.detail?.concesionario,
+                                detailData.detail?.concesionario_personal,
+                                rowData.concesionario,
+                                rowData.vendedor_name
+                        );
+                        const vendorCombined = normalizeManagementValue(
+                                [vendorRole, vendorName].filter(Boolean).join(" · ")
+                        );
+                        const vendor = vendorCombined || joinParts(vendorName, vendorRole);
+                        const validUntil = joinParts(
+                                detailData.hasta_fmt,
+                                detailData.hasta_display,
+                                detailData.hasta,
+                                rowData.hasta_fmt,
+                                rowData.hasta
+                        );
+                        const coverage = joinParts(
+                                detailData.plan,
+                                detailData.plan_name,
+                                detailData.detail?.plan_nombre,
+                                rowData.plan
+                        );
+
+                        panel.dataset.vehicle = vehicle;
+                        panel.dataset.vendor = vendor;
+                        panel.dataset.valid_until = validUntil;
+                        panel.dataset.coverage = coverage;
+                }
+
+                function syncManagementDetailFields(panel) {
+                        if (!panel) return;
+                        if (managementPlateLabel) {
+                                managementPlateLabel.textContent =
+                                        panel.dataset?.matricula || managementPlateLabel.textContent || "— — —";
+                        }
+                        if (managementVehicleLabel) {
+                                const vehicle = panel.dataset?.vehicle || "";
+                                managementVehicleLabel.textContent = vehicle || "—";
+                        }
+                        if (managementVendorLabel) {
+                                const vendor = panel.dataset?.vendor || "";
+                                managementVendorLabel.textContent = vendor || "—";
+                        }
+                        if (managementValidUntilLabel) {
+                                const validUntil = panel.dataset?.valid_until || "";
+                                managementValidUntilLabel.textContent = validUntil || "—";
+                        }
+                        if (managementCoverageLabel) {
+                                const coverage = panel.dataset?.coverage || "";
+                                managementCoverageLabel.textContent = coverage || "—";
+                        }
+                }
+
+                function syncManagementNotesEmptyState() {
+                        if (!managementNotesList || !managementNotesEmpty) {
+                                return;
+                        }
+
+                        const visibleNotes = Array.from(managementNotesList.children || []).filter((child) =>
+                                child.classList && child.classList.contains("management-notes__item")
+                        );
+                        const hasNotes = visibleNotes.length > 0;
+                        managementNotesEmpty.toggleAttribute("hidden", hasNotes);
+                }
+
+                function updateManagementHeaderFromDetail(panel) {
+                        if (!managementModal) {
+                                return;
+                        }
+                        const activePanel = panel || document.querySelector(".guarantee-detail__panel.active");
+                        const plateValue = activePanel?.dataset?.matricula || "";
+                        const estadoLabel = activePanel?.dataset?.estado || "";
+                        const estadoClase =
+                                activePanel?.dataset?.estadoclase || activePanel?.dataset?.estadoClase || "";
+                        const detailBadge = activePanel?.querySelector(
+                                ".guarantee-detail__badge"
+                        );
+
+                        if (managementPlateLabel) {
+                                managementPlateLabel.textContent = plateValue || "— — —";
+                        }
+
+                        if (managementStatusBadge) {
+                                const badge = managementStatusBadge.querySelector(
+                                        "[data-management-status-badge]"
+                                );
+                                const badgeLabel = (detailBadge?.textContent || "").trim() || estadoLabel || "";
+                                const badgeModifiers = detailBadge
+                                        ? Array.from(detailBadge.classList || []).filter((cls) =>
+                                                  cls.indexOf("guarantee-detail__badge--") === 0
+                                          ).map((cls) =>
+                                                  cls.replace(
+                                                          "guarantee-detail__badge--",
+                                                          "guarantee-management__badge--"
+                                                  )
+                                          )
+                                        : estadoClase
+                                          ? [
+                                                  `guarantee-management__badge--${estadoClase}`,
+                                          ]
+                                          : [];
+                                const badgeClass = [
+                                        "guarantee-management__badge",
+                                        ...badgeModifiers,
+                                ]
+                                        .filter(Boolean)
+                                        .join(" ")
+                                        .trim();
+
+                                if (managementStatusText && badgeLabel) {
+                                        managementStatusText.textContent = badgeLabel;
+                                }
+
+                                if (badge) {
+                                        badge.className = badgeClass;
+                                        const textTarget = badge.querySelector(
+                                                "[data-management-status-text]"
+                                        );
+                                        if (textTarget) {
+                                                textTarget.textContent = badgeLabel;
+                                        } else {
+                                                badge.textContent = badgeLabel;
+                                        }
+                                        badge.toggleAttribute("hidden", badgeLabel === "");
+                                } else if (estadoClase && estadoLabel) {
+                                        const newBadge = document.createElement("span");
+                                        newBadge.className = badgeClass;
+                                        newBadge.setAttribute("data-management-status-badge", "");
+                                        const labelSpan = document.createElement("span");
+                                        labelSpan.setAttribute("data-management-status-text", "");
+                                        labelSpan.textContent = badgeLabel;
+                                        newBadge.appendChild(labelSpan);
+                                        managementStatusBadge.appendChild(newBadge);
+                                }
+                        }
+
+                        syncManagementDetailFields(activePanel);
+                        syncManagementNotesEmptyState();
                 }
 
                 function openManagementModal(trigger) {
@@ -4084,6 +4258,7 @@ const ADD_DOC_KEY = "add-document";
                         if (managementModal.dataset.state === "open") {
                                 return;
                         }
+                        updateManagementHeaderFromDetail();
                         if (managementModalCloseTimer) {
                                 clearTimeout(managementModalCloseTimer);
                                 managementModalCloseTimer = null;
@@ -4120,9 +4295,23 @@ const ADD_DOC_KEY = "add-document";
                                 managementModalTrigger.focus();
                         }
                         managementModalTrigger = null;
-                        if (managementDefaultTab) {
-                                activateManagementTab(managementDefaultTab);
-                        }
+                }
+
+                function getActiveManagementContext() {
+                        const panel = document.querySelector(
+                                ".guarantee-detail__panel.active"
+                        );
+                        const id = panel?.dataset?.loadedId || "";
+                        const row =
+                                id && tbody
+                                        ? tbody.querySelector(
+                                                  `.guarantees-table__row[data-id="${id}"]`
+                                          )
+                                        : null;
+                        const plate =
+                                panel?.dataset?.matricula || row?.dataset?.matricula || "";
+
+                        return { panel, id, row, plate };
                 }
 
                 function handleManagementClicks(event) {
@@ -4139,12 +4328,72 @@ const ADD_DOC_KEY = "add-document";
                         if (dismiss && managementModal.dataset.state === "open") {
                                 event.preventDefault();
                                 closeManagementModal();
+                                return;
                         }
-                        if (managementTabsNav) {
-                                const tabButton = event.target.closest("[data-management-tab]");
-                                if (tabButton && managementTabsNav.contains(tabButton)) {
-                                        event.preventDefault();
-                                        activateManagementTab(tabButton);
+
+                        const actionButton = event.target.closest(
+                                "[data-management-action]"
+                        );
+                        if (actionButton && managementModal.dataset.state === "open") {
+                                event.preventDefault();
+                                const action = actionButton.dataset.managementAction || "";
+                                const context = getActiveManagementContext();
+
+                                if (action === "delete-guarantee") {
+                                        const safePlate = escapeHtml(context.plate || "");
+                                        const subtitle = safePlate
+                                                ? `Garantía <strong>${safePlate}</strong>`
+                                                : "";
+                                        const resetLabel =
+                                                actionButton.querySelector(
+                                                        ".management-actions__copy strong"
+                                                )?.textContent.trim() || "Eliminar garantía";
+                                        const trashContext = {
+                                                intent: "trash",
+                                                btn: actionButton,
+                                                panel: context.panel,
+                                                id: context.id,
+                                                row: context.row,
+                                                resetLabel,
+                                        };
+
+                                        if (confirmModalController) {
+                                                pendingConfirmContext = trashContext;
+                                                confirmModalController.open({
+                                                        title: "Eliminar garantía",
+                                                        subtitle,
+                                                        message:
+                                                                "¿Seguro que quieres enviar esta garantía a la papelera? Podrás restaurarla desde el panel de WordPress.",
+                                                        note:
+                                                                "La garantía dejará de estar disponible para tramitación hasta que la recuperes.",
+                                                        confirmLabel: "Enviar a la papelera",
+                                                        requireAcknowledgement: true,
+                                                        checkboxLabel:
+                                                                "Estoy seguro de que quiero eliminar esta garantía.",
+                                                        variant: "danger",
+                                                });
+                                        } else {
+                                                runTrashRequest(trashContext);
+                                        }
+                                        return;
+                                }
+
+                                if (action === "edit-wordpress") {
+                                        if (!context.id) {
+                                                return;
+                                        }
+                                        let origin = window.location.origin;
+                                        try {
+                                                origin = restRoot
+                                                        ? new URL(restRoot).origin
+                                                        : origin;
+                                        } catch (err) {
+                                                // ignore
+                                        }
+                                        const editUrl = `${origin}/wp-admin/post.php?post=${encodeURIComponent(
+                                                context.id
+                                        )}&action=edit`;
+                                        window.open(editUrl, "_blank", "noopener");
                                 }
                         }
                 }
@@ -9240,6 +9489,8 @@ async function activateRow(row, options = {}) {
                                 nextPanel.dataset.matricula =
                                         cachedDetail.matricula || rowData.matricula || "";
                                 nextPanel.dataset.plan = cachedDetail.plan || rowData.plan || "";
+                                hydrateManagementDataset(nextPanel, cachedDetail, rowData);
+                                syncManagementDetailFields(nextPanel);
                                 syncPdfModalDocs(nextPanel);
                         } else {
                                 const fallbackPlate =
@@ -9252,6 +9503,8 @@ async function activateRow(row, options = {}) {
                                 nextPanel.classList.add("is-loading");
                                 nextPanel.dataset.matricula = rowData.matricula || fallbackPlate || "";
                                 nextPanel.dataset.plan = rowData.plan || "";
+                                hydrateManagementDataset(nextPanel, {}, rowData);
+                                syncManagementDetailFields(nextPanel);
                                 syncPdfModalDocs(nextPanel);
                         }
 
@@ -9305,6 +9558,8 @@ async function activateRow(row, options = {}) {
                                                 nextPanel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
                                                 nextPanel.dataset.plan = data.plan || rowData.plan || "";
+                                                hydrateManagementDataset(nextPanel, data, rowData);
+                                                syncManagementDetailFields(nextPanel);
                                                 syncPdfModalDocs(nextPanel);
                                                 nextPanel.classList.remove("is-loading");
                                         }
