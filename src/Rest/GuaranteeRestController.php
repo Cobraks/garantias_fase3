@@ -3821,13 +3821,29 @@ class GuaranteeRestController
             'type' => ['value' => '', 'label' => ''],
             'address' => ['street' => '', 'city' => '', 'state' => '', 'zip' => '', 'country' => ''],
         ];
-        $concesionario_raw = $labels['company_name'] !== ''
-            ? $labels['company_name']
-            : ($labels['personal_name'] ?? '');
-        $concesionario = sanitize_text_field($concesionario_raw);
-        $vendor_full_name = sanitize_text_field($labels['personal_full_name'] ?? ($labels['personal_name'] ?? ''));
-        $vendor_first_name = sanitize_text_field($labels['first_name'] ?? '');
-        $vendor_last_name  = sanitize_text_field($labels['last_name'] ?? '');
+
+        $company_name_raw   = is_string($labels['company_name'] ?? '') ? trim((string) $labels['company_name']) : '';
+        $personal_name_raw  = is_string($labels['personal_name'] ?? '') ? trim((string) $labels['personal_name']) : '';
+        $personal_full_raw  = is_string($labels['personal_full_name'] ?? '') ? trim((string) $labels['personal_full_name']) : '';
+        $personal_display   = $personal_full_raw !== '' ? $personal_full_raw : $personal_name_raw;
+        $concesionario_raw  = $company_name_raw !== ''
+            ? $company_name_raw
+            : ($personal_name_raw !== '' ? $personal_name_raw : $personal_full_raw);
+        $concesionario      = sanitize_text_field($concesionario_raw);
+        if ($concesionario === '' && $personal_display !== '') {
+            $concesionario = sanitize_text_field($personal_display);
+        }
+
+        $vendor_first_name = sanitize_text_field((string) ($labels['first_name'] ?? ''));
+        $vendor_last_name  = sanitize_text_field((string) ($labels['last_name'] ?? ''));
+        $vendor_full_name  = sanitize_text_field(
+            $personal_full_raw !== ''
+                ? $personal_full_raw
+                : ($personal_name_raw !== '' ? $personal_name_raw : '')
+        );
+        if ($vendor_full_name === '' && ($vendor_first_name !== '' || $vendor_last_name !== '')) {
+            $vendor_full_name = trim($vendor_first_name . ' ' . $vendor_last_name);
+        }
         $vendor_type_label = '';
         $vendor_type_value = '';
         if (isset($vendor_company['type']) && is_array($vendor_company['type'])) {

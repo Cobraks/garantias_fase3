@@ -1756,6 +1756,39 @@ export default function initAutosave() {
                         }
                 }
 
+                if (garantia.precio === undefined || garantia.precio === "") {
+                        const selectedPlan = document.querySelector(
+                                ".form__plan.selected"
+                        );
+                        if (selectedPlan) {
+                                const priceCandidates = [
+                                        selectedPlan.querySelector(
+                                                ".plan-price-value"
+                                        ),
+                                        selectedPlan.querySelector(
+                                                ".plan-price-value-noiva"
+                                        ),
+                                ];
+                                for (const candidate of priceCandidates) {
+                                        if (
+                                                !candidate ||
+                                                getComputedStyle(candidate)
+                                                        .display === "none"
+                                        ) {
+                                                continue;
+                                        }
+                                        const priceText = candidate.textContent
+                                                ?.trim();
+                                        if (priceText) {
+                                                garantia.precio = normalizePrice(
+                                                        priceText
+                                                );
+                                                break;
+                                        }
+                                }
+                        }
+                }
+
                 const normalizedRole = String(userRole).toLowerCase();
                 if (
                         normalizedRole === "admin" ||
@@ -1787,6 +1820,10 @@ export default function initAutosave() {
                         }
                } else if (normalizedRole === "go_particular" || normalizedRole === "particular") {
                         garantia.canal_venta = "particular";
+                        const currentId = getCurrentUserId();
+                        if (currentId) {
+                                garantia.concesionario_empresa_profesional = currentId;
+                        }
                 }
 
                 if (Object.keys(garantia).length) {
