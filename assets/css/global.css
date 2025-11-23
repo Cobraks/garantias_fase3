@@ -1,6 +1,8 @@
+/* View transitions disabled to avoid Chrome blink during navigation
 @view-transition {
       navigation: auto;
     }
+*/
     
 
    
