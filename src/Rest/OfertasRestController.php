@@ -176,6 +176,10 @@ class OfertasRestController
             if ($normalized === null) {
                 continue;
             }
+
+            if (isset($normalized['estado']) && $normalized['estado'] === false) {
+                continue;
+            }
             $result['offers'][] = $normalized;
         }
 
@@ -251,6 +255,7 @@ class OfertasRestController
             'excluir_resto_niveles' => !empty($row['excluir_resto_de_niveles']),
             'duracion_meses'        => $duracion_value ? (int) $duracion_value : null,
             'duracion_label'        => $duracion_label,
+            'estado'                => isset($row['estado']) ? (bool) $row['estado'] : true,
         ];
     }
 
