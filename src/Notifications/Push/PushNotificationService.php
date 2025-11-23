@@ -209,6 +209,8 @@ class PushNotificationService
             'user.verification_verified',
             'guarantee.created',
             'guarantee.contracted',
+            'guarantee.cancelled',
+            'guarantee.note_added',
             'payment.recorded',
             'payment.reported',
             'sepa.pending_requested',
