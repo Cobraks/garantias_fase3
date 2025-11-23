@@ -67,7 +67,7 @@ $clients_summary_context_labels = [
 \GarantiasOnline360VO\TemplateLoader::load_part('header', compact('is_clients_page'));
 ?>
 
-<div class="guarantees-list__filters" style="view-transition-name: filtros">
+<div class="guarantees-list__filters">
     <div class="guarantees-list__search-container">
         <span class="guarantees-list__search-icon" aria-hidden="true">
             <?php echo Svg::icon('search'); ?>
@@ -121,7 +121,7 @@ $clients_summary_context_labels = [
         </div>
 
         <div class="guarantees-table__scroll">
-            <table class="guarantees-table" style="view-transition-name: garantias-table">
+            <table class="guarantees-table">
                 <colgroup>
                     <col class="guarantees-table__col guarantees-table__col--client" data-default-width="360">
                     <col class="guarantees-table__col guarantees-table__col--registered" data-default-width="72">
@@ -148,7 +148,7 @@ $clients_summary_context_labels = [
         </div>
     </section>
 
-    <aside class="guarantee-detail" style="view-transition-name: resume-derecha">
+    <aside class="guarantee-detail">
         <div class="guarantee-detail__panel active" id="detail-panel-1">
             <div class="guarantee-detail__empty">
                 <p class="guarantee-detail__hint">

@@ -371,11 +371,15 @@ class ClientRestController
             );
         }
 
-        $payload = $request->get_json_params();
-        $offers  = isset($payload['offers']) && is_array($payload['offers']) ? $payload['offers'] : null;
+        $payload          = $request->get_json_params();
+        $offers           = isset($payload['offers']) && is_array($payload['offers']) ? $payload['offers'] : null;
+        $special_offers   = isset($payload['special_offers']) && is_array($payload['special_offers'])
+            ? $payload['special_offers']
+            : [];
 
-        $previous_offers = self::collect_user_offers($user_id);
-        $previous_snapshot = self::format_offers_for_log($previous_offers);
+        $previous_offers        = self::collect_user_offers($user_id);
+        $previous_special       = self::collect_special_offers($user_id);
+        $previous_snapshot      = self::format_all_offers_for_log($previous_offers, $previous_special);
 
         if ($offers === null) {
             return new WP_Error(
@@ -385,9 +389,13 @@ class ClientRestController
             );
         }
 
-        $normalized = [];
-        $choices_map = self::get_offer_type_map();
-        $scope_map   = self::get_offer_scope_map();
+        $normalized            = [];
+        $normalized_special    = [];
+        $choices_map           = self::get_offer_type_map();
+        $scope_map             = self::get_offer_scope_map();
+        $special_type_choices  = self::get_special_offer_term_map('tipo_garantia');
+        $special_level_choices = self::get_special_offer_term_map('nivel_garantia');
+        $duration_choices      = self::get_special_duration_map();
 
         foreach ($offers as $index => $offer) {
             if (! is_array($offer)) {
@@ -524,6 +532,87 @@ class ClientRestController
             ];
         }
 
+        foreach ($special_offers as $index => $offer) {
+            if (! is_array($offer)) {
+                return new WP_Error(
+                    'go_special_offers_invalid_entry',
+                    sprintf(
+                        /* translators: %d: offer index */
+                        __('La oferta de precio fijo %d no tiene el formato correcto.', 'garantias-online-360vo'),
+                        $index + 1
+                    ),
+                    ['status' => 400]
+                );
+            }
+
+            $type_value = isset($offer['tipo_de_garantia']) ? (int) $offer['tipo_de_garantia'] : 0;
+            if ($type_value <= 0 || ! isset($special_type_choices[$type_value])) {
+                return new WP_Error(
+                    'go_special_offers_invalid_type',
+                    sprintf(
+                        /* translators: %d: offer index */
+                        __('Selecciona un tipo de garantía válido en la fila %d.', 'garantias-online-360vo'),
+                        $index + 1
+                    ),
+                    ['status' => 400]
+                );
+            }
+
+            $level_value = isset($offer['nivel_garantia']) ? (int) $offer['nivel_garantia'] : 0;
+            if ($level_value <= 0 || ! isset($special_level_choices[$level_value])) {
+                return new WP_Error(
+                    'go_special_offers_invalid_level',
+                    sprintf(
+                        /* translators: %d: offer index */
+                        __('Selecciona una cobertura válida en la fila %d.', 'garantias-online-360vo'),
+                        $index + 1
+                    ),
+                    ['status' => 400]
+                );
+            }
+
+            $price = isset($offer['precio_fijo']) ? (float) $offer['precio_fijo'] : 0.0;
+            if ($price <= 0) {
+                return new WP_Error(
+                    'go_special_offers_invalid_price',
+                    sprintf(
+                        /* translators: %d: offer index */
+                        __('Introduce un precio fijo válido en la fila %d.', 'garantias-online-360vo'),
+                        $index + 1
+                    ),
+                    ['status' => 400]
+                );
+            }
+
+            $duration_value = isset($offer['duracion_maxima']) ? (int) $offer['duracion_maxima'] : 0;
+            if ($duration_value <= 0 || ! isset($duration_choices[$duration_value])) {
+                $duration_value = 12;
+            }
+
+            $duration_label = $duration_choices[$duration_value] ?? sprintf(
+                _n('%d mes', '%d meses', $duration_value, 'garantias-online-360vo'),
+                $duration_value
+            );
+
+            $normalized_special[] = [
+                'tipo_de_garantia'      => [
+                    'value' => $type_value,
+                    'label' => $special_type_choices[$type_value],
+                ],
+                'nivel_garantia'        => [
+                    'value' => $level_value,
+                    'label' => $special_level_choices[$level_value],
+                ],
+                'precio_fijo'           => $price,
+                'excluir_resto_de_niveles' => ! empty($offer['excluir_resto_de_niveles']),
+                'duracion_maxima'       => [
+                    'value' => $duration_value,
+                    'label' => $duration_label,
+                ],
+                'estado'                => isset($offer['estado']) ? (bool) $offer['estado'] : true,
+            ];
+        }
+
         if (! function_exists('update_field')) {
             return new WP_Error(
                 'go_offers_acf_missing',
@@ -532,13 +621,24 @@ class ClientRestController
             );
         }
 
-        $desired_snapshot = self::format_offers_for_log($normalized);
-        $result = update_field('ofertas_y_descuentos', ['ofertas' => $normalized], 'user_' . $user_id);
+        $desired_snapshot = self::format_all_offers_for_log($normalized, $normalized_special);
+        $result = update_field(
+            'ofertas_y_descuentos',
+            [
+                'ofertas'                         => $normalized,
+                'oferta_especial_precio_fijo'     => $normalized_special,
+                'tiene_oferta_especial_precio_fijo' => ! empty($normalized_special),
+            ],
+            'user_' . $user_id
+        );
         self::$clients_with_active_offers = null;
         self::$active_offers_cache      = [];
 
         if ($result === false) {
-            $stored_snapshot = self::format_offers_for_log(self::collect_user_offers($user_id));
+            $stored_snapshot = self::format_all_offers_for_log(
+                self::collect_user_offers($user_id),
+                self::collect_special_offers($user_id)
+            );
             if ($stored_snapshot !== $desired_snapshot) {
                 return new WP_Error(
                     'go_offers_save_failed',
@@ -1493,6 +1593,78 @@ class ClientRestController
                 'expires'   => $expires,
                 'selection' => $selection,
                 'active'    => isset($offer['estado']) ? (bool) $offer['estado'] : true,
+            ];
+        }
+
+        return array_values($formatted);
+    }
+
+    private static function format_all_offers_for_log(array $offers, array $special_offers): array
+    {
+        $formatted = self::format_offers_for_log($offers);
+
+        foreach ($special_offers as $offer) {
+            if (! is_array($offer)) {
+                continue;
+            }
+
+            $price = isset($offer['precio_fijo']) ? (float) $offer['precio_fijo'] : null;
+            if ($price === null || ! is_numeric($offer['precio_fijo'])) {
+                continue;
+            }
+
+            $type_value  = is_array($offer['tipo_de_garantia'] ?? null)
+                ? (int) ($offer['tipo_de_garantia']['value'] ?? 0)
+                : (int) ($offer['tipo_de_garantia'] ?? 0);
+            $type_label  = is_array($offer['tipo_de_garantia'] ?? null)
+                ? self::clean_text($offer['tipo_de_garantia']['label'] ?? '')
+                : '';
+
+            $level_value = is_array($offer['nivel_garantia'] ?? null)
+                ? (int) ($offer['nivel_garantia']['value'] ?? 0)
+                : (int) ($offer['nivel_garantia'] ?? 0);
+            $level_label = is_array($offer['nivel_garantia'] ?? null)
+                ? self::clean_text($offer['nivel_garantia']['label'] ?? '')
+                : '';
+
+            $duration_raw   = $offer['duracion_maxima'] ?? null;
+            $duration_value = is_array($duration_raw)
+                ? (int) ($duration_raw['value'] ?? 0)
+                : (int) $duration_raw;
+            $duration_label = is_array($duration_raw)
+                ? self::clean_text($duration_raw['label'] ?? '')
+                : '';
+
+            if ($duration_label === '' && $duration_value > 0) {
+                $duration_label = sprintf(
+                    _n('%d mes', '%d meses', $duration_value, 'garantias-online-360vo'),
+                    $duration_value
+                );
+            }
+
+            $formatted[] = [
+                'type'      => [
+                    'value' => 'precio_fijo',
+                    'label' => __('Precio fijo', 'garantias-online-360vo'),
+                ],
+                'name'      => '',
+                'scope'     => [
+                    'value' => '',
+                    'label' => '',
+                ],
+                'discount'  => null,
+                'expires'   => '',
+                'selection' => [],
+                'active'    => isset($offer['estado']) ? (bool) $offer['estado'] : true,
+                'special'   => [
+                    'price'           => $price,
+                    'tipo_garantia'   => $type_value,
+                    'tipo_label'      => $type_label,
+                    'nivel_garantia'  => $level_value,
+                    'nivel_label'     => $level_label,
+                    'duration_months' => $duration_value,
+                    'duration_label'  => $duration_label,
+                ],
             ];
         }
 
@@ -2599,13 +2771,15 @@ class ClientRestController
     private static function prepare_offers_response(int $user_id): array
     {
         return [
-            'offers'      => self::collect_user_offers($user_id),
-            'choices'     => [
+            'offers'          => self::collect_user_offers($user_id),
+            'special_offers'  => self::collect_special_offers($user_id),
+            'choices'         => [
                 'tipo_oferta' => array_values(self::get_offer_type_choices()),
                 'aplicacion'  => array_values(self::get_offer_scope_choices()),
             ],
-            'modalidades' => self::get_modalidad_options(),
-            'summary'     => self::get_active_offers($user_id),
+            'special_choices' => self::get_special_offer_choices(),
+            'modalidades'     => self::get_modalidad_options(),
+            'summary'         => self::get_active_offers($user_id),
         ];
     }
 
@@ -2680,6 +2854,97 @@ class ClientRestController
         return $offers;
     }
 
+    private static function collect_special_offers(int $user_id): array
+    {
+        if (! function_exists('get_field')) {
+            return [];
+        }
+
+        $group = get_field('ofertas_y_descuentos', 'user_' . $user_id);
+        if (empty($group) || ! is_array($group)) {
+            return [];
+        }
+
+        $rows = isset($group['oferta_especial_precio_fijo']) && is_array($group['oferta_especial_precio_fijo'])
+            ? $group['oferta_especial_precio_fijo']
+            : [];
+
+        $type_map   = self::get_special_offer_term_map('tipo_garantia');
+        $level_map  = self::get_special_offer_term_map('nivel_garantia');
+        $durations  = self::get_special_duration_map();
+        $normalized = [];
+
+        foreach ($rows as $index => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $type_value  = self::get_special_offer_term_id($row['tipo_de_garantia'] ?? null);
+            $level_value = self::get_special_offer_term_id($row['nivel_garantia'] ?? null);
+
+            if ($type_value <= 0 || $level_value <= 0) {
+                continue;
+            }
+
+            $price = null;
+            if (isset($row['precio_fijo'])) {
+                $price_raw = $row['precio_fijo'];
+                if (is_numeric($price_raw)) {
+                    $price = (float) $price_raw;
+                }
+            }
+
+            if ($price === null) {
+                continue;
+            }
+
+            $duration_raw   = $row['duracion_maxima'] ?? null;
+            $duration_value = is_array($duration_raw)
+                ? (int) ($duration_raw['value'] ?? 0)
+                : (int) $duration_raw;
+
+            if ($duration_value <= 0) {
+                $duration_value = 12;
+            }
+
+            $duration_label = '';
+            if (is_array($duration_raw) && ! empty($duration_raw['label'])) {
+                $duration_label = (string) $duration_raw['label'];
+            }
+
+            if ($duration_label === '' && isset($durations[$duration_value])) {
+                $duration_label = $durations[$duration_value];
+            } elseif ($duration_label === '' && $duration_value > 0) {
+                $duration_label = sprintf(
+                    _n('%d mes', '%d meses', $duration_value, 'garantias-online-360vo'),
+                    $duration_value
+                );
+            }
+
+            $normalized[] = [
+                'index'                    => $index,
+                'special_type'             => 'fixed_price',
+                'tipo_de_garantia'         => [
+                    'value' => $type_value,
+                    'label' => $type_map[$type_value] ?? '',
+                ],
+                'nivel_garantia'           => [
+                    'value' => $level_value,
+                    'label' => $level_map[$level_value] ?? '',
+                ],
+                'precio_fijo'              => $price,
+                'excluir_resto_de_niveles' => ! empty($row['excluir_resto_de_niveles']),
+                'duracion_maxima'          => [
+                    'value' => $duration_value,
+                    'label' => $duration_label,
+                ],
+                'estado'                   => isset($row['estado']) ? (bool) $row['estado'] : true,
+            ];
+        }
+
+        return $normalized;
+    }
+
     private static function get_offer_type_choices(): array
     {
         return [
@@ -2739,6 +3004,96 @@ class ClientRestController
         $map = [];
         foreach (self::get_offer_scope_choices() as $choice) {
             $map[$choice['value']] = $choice['label'];
+        }
+
+        return $map;
+    }
+
+    private static function get_special_offer_choices(): array
+    {
+        return [
+            'tipo_de_garantia' => array_values(self::get_special_offer_term_choices('tipo_garantia')),
+            'nivel_garantia'   => array_values(self::get_special_offer_term_choices('nivel_garantia')),
+            'duracion_maxima'  => array_values(self::get_special_duration_choices()),
+        ];
+    }
+
+    private static function get_special_offer_term_choices(string $taxonomy): array
+    {
+        $terms = get_terms([
+            'taxonomy'   => $taxonomy,
+            'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC',
+        ]);
+
+        if (is_wp_error($terms) || empty($terms) || ! is_array($terms)) {
+            return [];
+        }
+
+        $choices = [];
+        foreach ($terms as $term) {
+            $choices[] = [
+                'value' => (int) ($term->term_id ?? 0),
+                'label' => self::clean_text($term->name ?? ''),
+                'slug'  => sanitize_key($term->slug ?? ''),
+            ];
+        }
+
+        return array_filter($choices, function ($choice) {
+            return isset($choice['value']) && $choice['value'] > 0 && $choice['label'] !== '';
+        });
+    }
+
+    private static function get_special_offer_term_map(string $taxonomy): array
+    {
+        $map = [];
+        foreach (self::get_special_offer_term_choices($taxonomy) as $choice) {
+            $map[(int) $choice['value']] = $choice['label'];
+        }
+
+        return $map;
+    }
+
+    /**
+     * Normalize a taxonomy value coming from ACF into its term ID.
+     *
+     * @param mixed $value raw field value (array, WP_Term, scalar)
+     */
+    private static function get_special_offer_term_id($value): int
+    {
+        if ($value instanceof \WP_Term) {
+            return isset($value->term_id) ? (int) $value->term_id : 0;
+        }
+
+        if (is_array($value)) {
+            return (int) ($value['value'] ?? $value['term_id'] ?? 0);
+        }
+
+        if (is_scalar($value)) {
+            return (int) $value;
+        }
+
+        return 0;
+    }
+
+    private static function get_special_duration_choices(): array
+    {
+        $options = [6, 12, 24, 36];
+
+        return array_map(function ($months) {
+            return [
+                'value' => $months,
+                'label' => sprintf(_n('%d mes', '%d meses', $months, 'garantias-online-360vo'), $months),
+            ];
+        }, $options);
+    }
+
+    private static function get_special_duration_map(): array
+    {
+        $map = [];
+        foreach (self::get_special_duration_choices() as $choice) {
+            $map[(int) $choice['value']] = $choice['label'];
         }
 
         return $map;
