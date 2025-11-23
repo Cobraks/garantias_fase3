@@ -22,7 +22,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
 ?>
 </div> <!-- /.main-grid -->
 </div> <!-- /.container -->
-<footer class="footer" style="view-transition-name: footer">
+<footer class="footer">
     <div class="footer__wrapper">
         <div class="footer__brand">
             <p class="footer__text"><?php echo '©'  . esc_html(date('Y')) . ' ' . '<span class="text--red">360</span>VO '; ?></p>
@@ -275,6 +275,8 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             'online'               => __('Online', 'garantias-online-360vo'),
             'manageOffersEmptyState' => __('No hay ofertas configuradas para este cliente.', 'garantias-online-360vo'),
             'manageOffersAdd'      => __('Añadir nueva oferta', 'garantias-online-360vo'),
+            'manageOffersAddPercent' => __('Porcentaje descuento / sin suplementos', 'garantias-online-360vo'),
+            'manageOffersAddFixed' => __('Precio fijo', 'garantias-online-360vo'),
             'manageOffersCardTitle'=> __('Oferta', 'garantias-online-360vo'),
             'manageOffersTypeLabel'=> __('Tipo de oferta', 'garantias-online-360vo'),
             'manageOffersTypePlaceholder' => __('Selecciona un tipo…', 'garantias-online-360vo'),
@@ -297,6 +299,21 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             'manageOffersStatusActive' => __('Activa', 'garantias-online-360vo'),
             'manageOffersStatusInactive' => __('Inactiva', 'garantias-online-360vo'),
             'manageOffersSinSuplementosNote' => __('No se aplicarán suplementos cuando esta oferta esté activa.', 'garantias-online-360vo'),
+            'manageOffersFixedTypeLabel' => __('Tipo de garantía', 'garantias-online-360vo'),
+            'manageOffersFixedTypePlaceholder' => __('Selecciona un ámbito…', 'garantias-online-360vo'),
+            'manageOffersFixedLevelLabel' => __('Cobertura', 'garantias-online-360vo'),
+            'manageOffersFixedLevelPlaceholder' => __('Selecciona una cobertura…', 'garantias-online-360vo'),
+            'manageOffersFixedPriceLabel' => __('Precio fijo', 'garantias-online-360vo'),
+            'manageOffersFixedPricePlaceholder' => __('Ej. 120', 'garantias-online-360vo'),
+            'manageOffersFixedDurationLabel' => __('Duración máxima', 'garantias-online-360vo'),
+            'manageOffersFixedDurationPlaceholder' => __('Selecciona una duración…', 'garantias-online-360vo'),
+            'manageOffersFixedExcludeLabel' => __('Excluir resto de coberturas', 'garantias-online-360vo'),
+            'manageOffersFixedExcludeTitle' => __('Coberturas disponibles', 'garantias-online-360vo'),
+            'manageOffersFixedExcludeNote' => __('Activado: Solo muestra la cobertura seleccionada. Desactivado: Permite seleccionar el resto de coberturas', 'garantias-online-360vo'),
+            'manageOffersFixedTypeError' => __('Selecciona un tipo de garantía.', 'garantias-online-360vo'),
+            'manageOffersFixedLevelError' => __('Selecciona una cobertura.', 'garantias-online-360vo'),
+            'manageOffersFixedPriceError' => __('Introduce un precio válido.', 'garantias-online-360vo'),
+            'manageOffersFixedDurationError' => __('Selecciona una duración.', 'garantias-online-360vo'),
             'manageOffersDuplicate' => __('Duplicar', 'garantias-online-360vo'),
             'manageOffersDelete'    => __('Eliminar', 'garantias-online-360vo'),
             'manageOffersSaving'    => __('Guardando…', 'garantias-online-360vo'),
