@@ -108,78 +108,7 @@ $home_destination = $is_admin_user
             }
         })();
     </script>
-    <script>
-        (function (doc) {
-            var FONT_CACHE_KEY = 'go360:fonts:inter:v1';
-            var FONT_URL = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
-            var storedCss = null;
-            var styleElement = null;
-            var storageAvailable = true;
-
-            try {
-                storedCss = window.localStorage.getItem(FONT_CACHE_KEY);
-            } catch (error) {
-                storageAvailable = false;
-            }
-
-            var injectCss = function (cssText) {
-                if (!cssText || typeof cssText !== 'string') {
-                    return;
-                }
-                if (!styleElement) {
-                    styleElement = doc.createElement('style');
-                    styleElement.setAttribute('data-go-font-cache', 'inter');
-                    doc.head.appendChild(styleElement);
-                }
-                styleElement.textContent = cssText;
-                doc.documentElement.classList.add('go-fonts-ready');
-            };
-
-            if (storedCss) {
-                injectCss(storedCss);
-            }
-
-            var persistCss = function (cssText) {
-                if (!storageAvailable || !cssText) {
-                    return;
-                }
-                try {
-                    window.localStorage.setItem(FONT_CACHE_KEY, cssText);
-                } catch (error) {
-                    // No almacenamos si el espacio está lleno o bloqueado
-                }
-            };
-
-            var fetchAndCacheCss = function () {
-                if (!window.fetch) {
-                    return;
-                }
-
-                fetch(FONT_URL, { mode: 'cors', credentials: 'omit' })
-                    .then(function (response) {
-                        if (!response || !response.ok) {
-                            throw new Error('GO360: no se pudo obtener la fuente');
-                        }
-                        return response.text();
-                    })
-                    .then(function (cssText) {
-                        injectCss(cssText);
-                        persistCss(cssText);
-                    })
-                    .catch(function () {
-                        // Si hay un error, dejamos que el <link> tradicional actúe como reserva
-                    });
-            };
-
-            if (!storedCss) {
-                fetchAndCacheCss();
-            } else if (typeof window.requestIdleCallback === 'function') {
-                window.requestIdleCallback(fetchAndCacheCss, { timeout: 1200 });
-            } else {
-                window.setTimeout(fetchAndCacheCss, 600);
-            }
-        })(document);
-    </script>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
