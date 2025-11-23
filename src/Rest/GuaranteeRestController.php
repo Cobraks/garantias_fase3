@@ -15,6 +15,7 @@ use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
 use GarantiasOnline360VO\Notifications\Email\GuaranteeEmailDataFactory;
 use GarantiasOnline360VO\Notifications\Email\Mailer;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
+use GarantiasOnline360VO\ActivityLog\ActivityLogger;
 use GarantiasOnline360VO\SettingsPage;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
 use GarantiasOnline360VO\Support\UserProfileResolver;
@@ -202,6 +203,54 @@ class GuaranteeRestController
                     'permission_callback' => [__CLASS__, 'can_trash'],
                     'args'                => [
                         'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/notes',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'get_notes'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'add_note'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id'   => ['validate_callback' => 'absint'],
+                        'note' => ['sanitize_callback' => 'wp_kses_post'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/notes/(?P<note_index>\d+)',
+            [
+                [
+                    'methods'             => WP_REST_Server::EDITABLE,
+                    'callback'            => [__CLASS__, 'update_note'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id'         => ['validate_callback' => 'absint'],
+                        'note_index' => ['validate_callback' => 'absint'],
+                        'note'       => ['sanitize_callback' => 'wp_kses_post'],
+                    ],
+                ],
+                [
+                    'methods'             => WP_REST_Server::DELETABLE,
+                    'callback'            => [__CLASS__, 'delete_note'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id'         => ['validate_callback' => 'absint'],
+                        'note_index' => ['validate_callback' => 'absint'],
                     ],
                 ],
             ]
@@ -467,6 +516,8 @@ class GuaranteeRestController
         $pending_validation_amount = 0.0;
         $draft_count               = 0;
 
+        $total_considered = 0;
+
         foreach ($post_ids as $post_id) {
             $post_id = (int) $post_id;
             if ($post_id <= 0) {
@@ -478,11 +529,16 @@ class GuaranteeRestController
                 $state = 'sin_finalizar';
             }
 
+            if ($state === 'cancelada') {
+                continue;
+            }
+
             if (! array_key_exists($state, $state_counts)) {
                 $state_counts[$state] = 0;
                 $state_amounts[$state] = 0.0;
             }
 
+            $total_considered++;
             $state_counts[$state]++;
 
             if ($state === 'sin_finalizar') {
@@ -509,7 +565,7 @@ class GuaranteeRestController
 
         $states      = self::aggregate_summary_states($state_counts);
         $amounts     = self::aggregate_summary_state_amounts($state_amounts);
-        $total_posts = count($post_ids);
+        $total_posts = $total_considered;
         $month_label = function_exists('date_i18n') ? date_i18n('F Y') : gmdate('F Y');
 
         $context = [
@@ -1987,6 +2043,254 @@ class GuaranteeRestController
         ], 200);
     }
 
+    public static function get_notes($request)
+    {
+        $post_id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($post_id <= 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        if (! self::can_view($request)) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para ver esta garantía.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        return rest_ensure_response(self::build_notes_payload($post_id));
+    }
+
+    public static function add_note($request)
+    {
+        if (! is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para realizar esta acción.', 'garantias-online-360vo'),
+                ['status' => 401]
+            );
+        }
+
+        $post_id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($post_id <= 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        if (! self::can_view($request)) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para ver esta garantía.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $note_text = self::normalize_note_text($request->get_param('note'));
+        if ($note_text === '') {
+            return new WP_Error(
+                'empty_note',
+                __('La nota no puede estar vacía.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $current_user = wp_get_current_user();
+        $author_id    = (int) ($current_user->ID ?? 0);
+        $rows         = self::load_notes_rows($post_id);
+        $now          = function_exists('current_datetime') ? current_datetime() : new DateTimeImmutable('now');
+        $timestamp    = $now instanceof \DateTimeInterface ? $now->getTimestamp() : current_time('timestamp');
+        $timestamp    = $timestamp ?: current_time('timestamp');
+        $formatted    = $now instanceof \DateTimeInterface
+            ? $now->format('d/m/Y H:i')
+            : wp_date('d/m/Y H:i', $timestamp);
+
+        $rows[] = [
+            'autor'        => $author_id,
+            'fecha_y_hora' => $formatted,
+            'nota'         => $note_text,
+        ];
+
+        if (! self::persist_notes_rows($post_id, $rows)) {
+            return new WP_Error(
+                'note_save_failed',
+                __('No se ha podido guardar la nota.', 'garantias-online-360vo'),
+                ['status' => 500]
+            );
+        }
+
+        $plate     = get_post_meta($post_id, 'datos_vehiculo_matricula', true);
+        $actorName = self::resolve_user_name($current_user);
+        ActivityLogger::log('guarantee.note_added', [
+            'actor_id'     => $author_id,
+            'actor_name'   => $actorName,
+            'actor_email'  => $current_user instanceof \WP_User ? $current_user->user_email : '',
+            'guarantee_id' => $post_id,
+            'target_type'  => 'guarantee',
+            'target_id'    => $post_id,
+            'context'      => [
+                'guarantee_label' => $plate ? sprintf(__('Garantía %s', 'garantias-online-360vo'), $plate) : get_the_title($post_id),
+                'matricula'       => $plate,
+                'note_excerpt'    => mb_substr($note_text, 0, 160),
+            ],
+        ]);
+
+        return rest_ensure_response(self::build_notes_payload($post_id));
+    }
+
+    public static function update_note($request)
+    {
+        if (! is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para realizar esta acción.', 'garantias-online-360vo'),
+                ['status' => 401]
+            );
+        }
+
+        $post_id = isset($request['id']) ? (int) $request['id'] : 0;
+        $index   = isset($request['note_index']) ? (int) $request['note_index'] : -1;
+
+        if ($post_id <= 0 || $index < 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía o nota no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        if (! self::can_view($request)) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para ver esta garantía.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $note_text = self::normalize_note_text($request->get_param('note'));
+        if ($note_text === '') {
+            return new WP_Error(
+                'empty_note',
+                __('La nota no puede estar vacía.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $rows = self::load_notes_rows($post_id);
+        if (! isset($rows[$index]) || ! is_array($rows[$index])) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la nota solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        $rows[$index]['nota'] = $note_text;
+
+        if (! self::persist_notes_rows($post_id, $rows)) {
+            return new WP_Error(
+                'note_save_failed',
+                __('No se ha podido actualizar la nota.', 'garantias-online-360vo'),
+                ['status' => 500]
+            );
+        }
+
+        return rest_ensure_response(self::build_notes_payload($post_id));
+    }
+
+    public static function delete_note($request)
+    {
+        if (! is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para realizar esta acción.', 'garantias-online-360vo'),
+                ['status' => 401]
+            );
+        }
+
+        $post_id = isset($request['id']) ? (int) $request['id'] : 0;
+        $index   = isset($request['note_index']) ? (int) $request['note_index'] : -1;
+
+        if ($post_id <= 0 || $index < 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía o nota no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        if (! self::can_view($request)) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para ver esta garantía.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $rows = self::load_notes_rows($post_id);
+        if (! isset($rows[$index])) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la nota solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        array_splice($rows, $index, 1);
+
+        if (! self::persist_notes_rows($post_id, $rows)) {
+            return new WP_Error(
+                'note_save_failed',
+                __('No se ha podido eliminar la nota.', 'garantias-online-360vo'),
+                ['status' => 500]
+            );
+        }
+
+        return rest_ensure_response(self::build_notes_payload($post_id));
+    }
+
     public static function can_list($request)
     {
         return is_user_logged_in();
@@ -2077,6 +2381,223 @@ class GuaranteeRestController
     public static function can_edit($request)
     {
         return is_user_logged_in();
+    }
+
+    private static function normalize_note_text($note): string
+    {
+        $text = is_string($note) ? sanitize_textarea_field($note) : '';
+        $text = trim($text);
+
+        return $text;
+    }
+
+    private static function parse_note_timestamp($value): ?int
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->getTimestamp();
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $timezone = function_exists('wp_timezone') ? wp_timezone() : null;
+        $candidates = [
+            'd/m/Y \· H:i',
+            'd/m/Y H:i',
+            'd/m/Y g:i a',
+            \DateTimeInterface::ATOM,
+        ];
+
+        foreach ($candidates as $format) {
+            $parsed = DateTimeImmutable::createFromFormat($format, $value, $timezone ?: null);
+            if ($parsed instanceof DateTimeImmutable) {
+                return $parsed->getTimestamp();
+            }
+        }
+
+        try {
+            $fallback = $timezone
+                ? new DateTimeImmutable($value, $timezone)
+                : new DateTimeImmutable($value);
+            return $fallback->getTimestamp();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private static function resolve_user_id($value): int
+    {
+        if ($value instanceof \WP_User) {
+            return (int) $value->ID;
+        }
+        if (is_array($value) && isset($value['ID'])) {
+            return (int) $value['ID'];
+        }
+        return (int) $value;
+    }
+
+    private static function resolve_user_name($value): string
+    {
+        $user_id = self::resolve_user_id($value);
+        if ($user_id > 0) {
+            $user = get_userdata($user_id);
+            if ($user instanceof \WP_User) {
+                $first_name = trim((string) get_user_meta($user->ID, 'first_name', true));
+                if ($first_name !== '') {
+                    return $first_name;
+                }
+
+                return trim((string) $user->display_name) !== ''
+                    ? $user->display_name
+                    : $user->user_login;
+            }
+        }
+
+        if ($value instanceof \WP_User) {
+            $first_name = trim((string) get_user_meta($value->ID, 'first_name', true));
+            if ($first_name !== '') {
+                return $first_name;
+            }
+
+            return $value->display_name ?: $value->user_login;
+        }
+
+        if (is_array($value)) {
+            if (! empty($value['first_name'])) {
+                return (string) $value['first_name'];
+            }
+            if (isset($value['display_name'])) {
+                return (string) $value['display_name'];
+            }
+            if (isset($value['user_login'])) {
+                return (string) $value['user_login'];
+            }
+        }
+
+        return '';
+    }
+
+    private static function log_cancellation_event(int $post_id, array $context = []): void
+    {
+        $reason = sanitize_text_field($context['reason'] ?? '');
+        $reason_label = $reason;
+
+        $actor_id   = get_current_user_id();
+        $actor_name = self::resolve_user_name($actor_id);
+        $plate      = sanitize_text_field((string) get_post_meta($post_id, 'datos_vehiculo_matricula', true));
+        $label      = $plate !== ''
+            ? sprintf(__('Garantía %s', 'garantias-online-360vo'), $plate)
+            : get_the_title($post_id);
+
+        ActivityLogger::log('guarantee.cancelled', [
+            'actor_id'     => $actor_id,
+            'actor_name'   => $actor_name,
+            'guarantee_id' => $post_id,
+            'target_type'  => 'guarantee',
+            'target_id'    => $post_id,
+            'vendor_id'    => isset($context['vendor_id']) ? (int) $context['vendor_id'] : 0,
+            'context'      => [
+                'guarantee_label' => $label,
+                'matricula'       => $plate,
+                'reason'          => $reason_label,
+                'raw_reason'      => $reason,
+                'actor_name'      => $actor_name,
+            ],
+        ]);
+
+        EmailNotificationService::notify_cancelled($post_id, [
+            'initiator'    => $actor_id,
+            'reason'       => $reason_label,
+            'raw_reason'   => $reason,
+        ]);
+    }
+
+    private static function load_notes_rows(int $post_id): array
+    {
+        if (! function_exists('get_field')) {
+            return [];
+        }
+
+        $group = get_field('notas_internas', $post_id);
+        if (is_array($group) && isset($group['todas_las_notas']) && is_array($group['todas_las_notas'])) {
+            return $group['todas_las_notas'];
+        }
+
+        $direct = get_field('todas_las_notas', $post_id);
+        return is_array($direct) ? $direct : [];
+    }
+
+    private static function persist_notes_rows(int $post_id, array $rows): bool
+    {
+        if (! function_exists('update_field')) {
+            return false;
+        }
+
+        $payload = get_field('notas_internas', $post_id);
+        if (! is_array($payload)) {
+            $payload = [];
+        }
+
+        $payload['todas_las_notas'] = array_values($rows);
+
+        $saved = update_field('notas_internas', $payload, $post_id);
+        if ($saved === false) {
+            $saved = update_field('todas_las_notas', array_values($rows), $post_id);
+        }
+
+        return $saved !== false;
+    }
+
+    private static function format_note_entry(array $row, int $index, int $current_user_id): array
+    {
+        $author_id   = self::resolve_user_id($row['autor'] ?? 0);
+        $author_name = self::resolve_user_name($row['autor'] ?? 0);
+        $note_text   = self::normalize_note_text($row['nota'] ?? '');
+
+        $timestamp = self::parse_note_timestamp($row['fecha_y_hora'] ?? '');
+        if (! $timestamp) {
+            $timestamp = current_time('timestamp');
+        }
+
+        return [
+            'id'          => $index,
+            'author_id'   => $author_id,
+            'author_name' => $author_name !== '' ? $author_name : __('Usuario', 'garantias-online-360vo'),
+            'datetime'    => wp_date(DateTimeImmutable::ATOM, $timestamp),
+            'time_label'  => wp_date('d/m/Y \· H:i\h', $timestamp),
+            'note'        => $note_text,
+            'is_owner'    => $author_id > 0 && $author_id === $current_user_id,
+        ];
+    }
+
+    private static function build_notes_payload(int $post_id): array
+    {
+        $current_user = wp_get_current_user();
+        $current_id   = (int) ($current_user->ID ?? 0);
+        $rows         = self::load_notes_rows($post_id);
+
+        $notes = [];
+        foreach ($rows as $idx => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $notes[] = self::format_note_entry($row, (int) $idx, $current_id);
+        }
+
+        return [
+            'notes'        => $notes,
+            'current_user' => [
+                'id'   => $current_id,
+                'name' => $current_user instanceof \WP_User
+                    ? (self::resolve_user_name($current_user) ?: $current_user->display_name)
+                    : '',
+            ],
+        ];
     }
 
     public static function can_trash($request)
@@ -2181,6 +2702,7 @@ class GuaranteeRestController
         $condicionado_source = '';
         $previous_contract_state = '';
         $new_contract_state      = '';
+        $estado                   = [];
         $queued_contract_notice  = false;
         $contract_notice_context = [];
         $pending_payment_event   = null;
@@ -2646,10 +3168,19 @@ class GuaranteeRestController
                 $estado['estado_contratacion'] = 'activada';
             } elseif (isset($data['estado_garantia']['estado_contratacion'])) {
                 $ec = sanitize_text_field($data['estado_garantia']['estado_contratacion']);
-                $valid = ['pendiente_pago', 'validacion_pendiente', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto'];
+                $valid = ['pendiente_pago', 'validacion_pendiente', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto', 'cancelada'];
                 if (in_array($ec, $valid, true)) {
                     $estado['estado_contratacion'] = $ec;
                 }
+            }
+            if (isset($data['estado_garantia']['fecha_cancelacion'])) {
+                $estado['fecha_cancelacion'] = sanitize_text_field($data['estado_garantia']['fecha_cancelacion']);
+            }
+            if (isset($data['estado_garantia']['motivo_cancelacion'])) {
+                $estado['motivo_cancelacion'] = sanitize_text_field($data['estado_garantia']['motivo_cancelacion']);
+            }
+            if (($estado['estado_contratacion'] ?? '') === 'cancelada' && empty($estado['fecha_cancelacion'])) {
+                $estado['fecha_cancelacion'] = current_time('Y-m-d');
             }
             if ($estado) {
                 if (isset($estado['estado_contratacion'])) {
@@ -2679,6 +3210,15 @@ class GuaranteeRestController
         $context_payment_method = $payment_method;
         if ($context_payment_method === '' && $post_id) {
             $context_payment_method = (string) get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
+        }
+
+        $just_cancelled = $new_contract_state === 'cancelada' && $previous_contract_state !== 'cancelada';
+        if ($just_cancelled) {
+            $cancellation_context = [
+                'reason'    => $estado['motivo_cancelacion'] ?? '',
+                'vendor_id' => $context_vendor_id,
+            ];
+            self::log_cancellation_event($post_id, $cancellation_context);
         }
 
         $should_stamp_contract_date = in_array($new_contract_state, ['activada', 'pendiente_pago'], true);
@@ -2830,6 +3370,8 @@ class GuaranteeRestController
             'notify_url'       => set_url_scheme($notify_url, $scheme),
         ];
 
+        $response['detail'] = self::get_detail_data($post_id, true);
+
         if ($queued_contract_notice && ! empty($contract_notice_context)) {
             $contract_notice_context['queued_at'] = current_time('mysql');
             update_post_meta($post_id, self::CONTRACT_NOTICE_META, $contract_notice_context);
@@ -2908,6 +3450,12 @@ class GuaranteeRestController
         $total = (int) $wpdb->get_var($wpdb->prepare($total_sql, $total_params));
 
         $states = self::collect_state_distribution($statuses);
+        $total = array_reduce($states, static function ($carry, $entry) {
+            if (! is_array($entry)) {
+                return $carry;
+            }
+            return $carry + (int) ($entry['count'] ?? 0);
+        }, 0);
         $pending_draft = ['count' => 0, 'amount' => 0.0];
         foreach ($states as $state_entry) {
             if (! is_array($state_entry)) {
@@ -3149,6 +3697,10 @@ class GuaranteeRestController
                     continue;
                 }
 
+                if ($state === 'cancelada') {
+                    continue;
+                }
+
                 if (! isset($state_counts[$state])) {
                     $state_counts[$state] = 0;
                 }
@@ -3373,10 +3925,13 @@ class GuaranteeRestController
 
         if (is_array($rows)) {
             foreach ($rows as $row) {
+                $state = isset($row['state']) ? (string) $row['state'] : '';
+                if ($state === 'cancelada') {
+                    continue;
+                }
                 $count++;
                 $normalized_price = self::normalize_price_amount($row['price'] ?? '');
                 $amount_values[] = $normalized_price;
-                $state = isset($row['state']) ? (string) $row['state'] : '';
                 if ($state === '') {
                     continue;
                 }
@@ -4192,8 +4747,25 @@ class GuaranteeRestController
             'activada'       => __('Activada', 'garantias-online-360vo'),
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
+            'cancelada'      => __('Cancelada', 'garantias-online-360vo'),
         ];
         $estado_label = $estado_labels[$estado] ?? $estado;
+
+        $fecha_cancelacion_raw = get_post_meta($id, 'estado_garantia_fecha_cancelacion', true);
+        $fecha_cancelacion_fmt = '';
+        if (is_string($fecha_cancelacion_raw) && $fecha_cancelacion_raw !== '') {
+            $fecha_cancelacion_raw = sanitize_text_field($fecha_cancelacion_raw);
+            $fecha_cancelacion_dt = DateTimeImmutable::createFromFormat('Y-m-d', $fecha_cancelacion_raw);
+            if (! $fecha_cancelacion_dt) {
+                $fecha_cancelacion_dt = DateTimeImmutable::createFromFormat('d/m/Y', $fecha_cancelacion_raw);
+            }
+            if ($fecha_cancelacion_dt instanceof DateTimeImmutable) {
+                $fecha_cancelacion_fmt = $fecha_cancelacion_dt->format('d/m/Y');
+            } else {
+                $fecha_cancelacion_fmt = $fecha_cancelacion_raw;
+            }
+        }
+        $motivo_cancelacion = get_post_meta($id, 'estado_garantia_motivo_cancelacion', true);
 
         $vendor_id = get_post_meta($id, 'garantia_contratada_concesionario_empresa_profesional', true);
         $vendor_id = is_array($vendor_id) && isset($vendor_id['ID']) ? (int) $vendor_id['ID'] : (int) $vendor_id;
@@ -4423,6 +4995,9 @@ class GuaranteeRestController
                 'fecha_contratacion'    => $fecha_contratacion_value,
                 'fecha_contratacion_raw' => $fecha_contratacion_raw,
                 'fecha_contratacion_fmt' => $fecha_contratacion_fmt,
+                'fecha_cancelacion'      => $fecha_cancelacion_raw,
+                'fecha_cancelacion_fmt'  => $fecha_cancelacion_fmt,
+                'motivo_cancelacion'     => sanitize_text_field((string) $motivo_cancelacion),
             ],
             'concesionario' => $concesionario !== '' ? $concesionario : '-',
             'vendor_id' => $vendor_id,
