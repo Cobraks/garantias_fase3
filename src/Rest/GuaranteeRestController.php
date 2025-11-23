@@ -208,6 +208,54 @@ class GuaranteeRestController
         );
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/notes',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'get_notes'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'add_note'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id'   => ['validate_callback' => 'absint'],
+                        'note' => ['sanitize_callback' => 'wp_kses_post'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/notes/(?P<note_index>\d+)',
+            [
+                [
+                    'methods'             => WP_REST_Server::EDITABLE,
+                    'callback'            => [__CLASS__, 'update_note'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id'         => ['validate_callback' => 'absint'],
+                        'note_index' => ['validate_callback' => 'absint'],
+                        'note'       => ['sanitize_callback' => 'wp_kses_post'],
+                    ],
+                ],
+                [
+                    'methods'             => WP_REST_Server::DELETABLE,
+                    'callback'            => [__CLASS__, 'delete_note'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id'         => ['validate_callback' => 'absint'],
+                        'note_index' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::BASE . '/(?P<id>\d+)/confirm-transfer',
             [
                 [
@@ -1987,6 +2035,233 @@ class GuaranteeRestController
         ], 200);
     }
 
+    public static function get_notes($request)
+    {
+        $post_id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($post_id <= 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        if (! self::can_view($request)) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para ver esta garantía.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        return rest_ensure_response(self::build_notes_payload($post_id));
+    }
+
+    public static function add_note($request)
+    {
+        if (! is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para realizar esta acción.', 'garantias-online-360vo'),
+                ['status' => 401]
+            );
+        }
+
+        $post_id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($post_id <= 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        if (! self::can_view($request)) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para ver esta garantía.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $note_text = self::normalize_note_text($request->get_param('note'));
+        if ($note_text === '') {
+            return new WP_Error(
+                'empty_note',
+                __('La nota no puede estar vacía.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $current_user = wp_get_current_user();
+        $author_id    = (int) ($current_user->ID ?? 0);
+        $rows         = self::load_notes_rows($post_id);
+        $timestamp    = current_time('timestamp');
+
+        $rows[] = [
+            'autor'        => $author_id,
+            'fecha_y_hora' => wp_date('d/m/Y H:i', $timestamp),
+            'nota'         => $note_text,
+        ];
+
+        if (! self::persist_notes_rows($post_id, $rows)) {
+            return new WP_Error(
+                'note_save_failed',
+                __('No se ha podido guardar la nota.', 'garantias-online-360vo'),
+                ['status' => 500]
+            );
+        }
+
+        return rest_ensure_response(self::build_notes_payload($post_id));
+    }
+
+    public static function update_note($request)
+    {
+        if (! is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para realizar esta acción.', 'garantias-online-360vo'),
+                ['status' => 401]
+            );
+        }
+
+        $post_id = isset($request['id']) ? (int) $request['id'] : 0;
+        $index   = isset($request['note_index']) ? (int) $request['note_index'] : -1;
+
+        if ($post_id <= 0 || $index < 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía o nota no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        if (! self::can_view($request)) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para ver esta garantía.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $note_text = self::normalize_note_text($request->get_param('note'));
+        if ($note_text === '') {
+            return new WP_Error(
+                'empty_note',
+                __('La nota no puede estar vacía.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $rows = self::load_notes_rows($post_id);
+        if (! isset($rows[$index]) || ! is_array($rows[$index])) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la nota solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        $rows[$index]['nota'] = $note_text;
+
+        if (! self::persist_notes_rows($post_id, $rows)) {
+            return new WP_Error(
+                'note_save_failed',
+                __('No se ha podido actualizar la nota.', 'garantias-online-360vo'),
+                ['status' => 500]
+            );
+        }
+
+        return rest_ensure_response(self::build_notes_payload($post_id));
+    }
+
+    public static function delete_note($request)
+    {
+        if (! is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para realizar esta acción.', 'garantias-online-360vo'),
+                ['status' => 401]
+            );
+        }
+
+        $post_id = isset($request['id']) ? (int) $request['id'] : 0;
+        $index   = isset($request['note_index']) ? (int) $request['note_index'] : -1;
+
+        if ($post_id <= 0 || $index < 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía o nota no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        if (! self::can_view($request)) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para ver esta garantía.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $rows = self::load_notes_rows($post_id);
+        if (! isset($rows[$index])) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la nota solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        array_splice($rows, $index, 1);
+
+        if (! self::persist_notes_rows($post_id, $rows)) {
+            return new WP_Error(
+                'note_save_failed',
+                __('No se ha podido eliminar la nota.', 'garantias-online-360vo'),
+                ['status' => 500]
+            );
+        }
+
+        return rest_ensure_response(self::build_notes_payload($post_id));
+    }
+
     public static function can_list($request)
     {
         return is_user_logged_in();
@@ -2077,6 +2352,165 @@ class GuaranteeRestController
     public static function can_edit($request)
     {
         return is_user_logged_in();
+    }
+
+    private static function normalize_note_text($note): string
+    {
+        $text = is_string($note) ? sanitize_textarea_field($note) : '';
+        $text = trim($text);
+
+        return $text;
+    }
+
+    private static function parse_note_timestamp($value): ?int
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->getTimestamp();
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $candidates = [
+            'd/m/Y \· H:i',
+            'd/m/Y H:i',
+            'd/m/Y g:i a',
+            \DateTimeInterface::ATOM,
+        ];
+
+        foreach ($candidates as $format) {
+            $parsed = DateTimeImmutable::createFromFormat($format, $value);
+            if ($parsed instanceof DateTimeImmutable) {
+                return $parsed->getTimestamp();
+            }
+        }
+
+        try {
+            $fallback = new DateTimeImmutable($value);
+            return $fallback->getTimestamp();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private static function resolve_user_id($value): int
+    {
+        if ($value instanceof \WP_User) {
+            return (int) $value->ID;
+        }
+        if (is_array($value) && isset($value['ID'])) {
+            return (int) $value['ID'];
+        }
+        return (int) $value;
+    }
+
+    private static function resolve_user_name($value): string
+    {
+        $user_id = self::resolve_user_id($value);
+        if ($user_id > 0) {
+            $user = get_userdata($user_id);
+            if ($user instanceof \WP_User) {
+                return trim((string) $user->display_name) !== ''
+                    ? $user->display_name
+                    : $user->user_login;
+            }
+        }
+
+        if ($value instanceof \WP_User) {
+            return $value->display_name ?: $value->user_login;
+        }
+
+        if (is_array($value) && isset($value['display_name'])) {
+            return (string) $value['display_name'];
+        }
+
+        return '';
+    }
+
+    private static function load_notes_rows(int $post_id): array
+    {
+        if (! function_exists('get_field')) {
+            return [];
+        }
+
+        $group = get_field('notas_internas', $post_id);
+        if (is_array($group) && isset($group['todas_las_notas']) && is_array($group['todas_las_notas'])) {
+            return $group['todas_las_notas'];
+        }
+
+        $direct = get_field('todas_las_notas', $post_id);
+        return is_array($direct) ? $direct : [];
+    }
+
+    private static function persist_notes_rows(int $post_id, array $rows): bool
+    {
+        if (! function_exists('update_field')) {
+            return false;
+        }
+
+        $payload = get_field('notas_internas', $post_id);
+        if (! is_array($payload)) {
+            $payload = [];
+        }
+
+        $payload['todas_las_notas'] = array_values($rows);
+
+        $saved = update_field('notas_internas', $payload, $post_id);
+        if ($saved === false) {
+            $saved = update_field('todas_las_notas', array_values($rows), $post_id);
+        }
+
+        return $saved !== false;
+    }
+
+    private static function format_note_entry(array $row, int $index, int $current_user_id): array
+    {
+        $author_id   = self::resolve_user_id($row['autor'] ?? 0);
+        $author_name = self::resolve_user_name($row['autor'] ?? 0);
+        $note_text   = self::normalize_note_text($row['nota'] ?? '');
+
+        $timestamp = self::parse_note_timestamp($row['fecha_y_hora'] ?? '');
+        if (! $timestamp) {
+            $timestamp = current_time('timestamp');
+        }
+
+        return [
+            'id'          => $index,
+            'author_id'   => $author_id,
+            'author_name' => $author_name !== '' ? $author_name : __('Usuario', 'garantias-online-360vo'),
+            'datetime'    => wp_date(DateTimeImmutable::ATOM, $timestamp),
+            'time_label'  => wp_date('d/m/Y \· H:i', $timestamp),
+            'note'        => $note_text,
+            'is_owner'    => $author_id > 0 && $author_id === $current_user_id,
+        ];
+    }
+
+    private static function build_notes_payload(int $post_id): array
+    {
+        $current_user = wp_get_current_user();
+        $current_id   = (int) ($current_user->ID ?? 0);
+        $rows         = self::load_notes_rows($post_id);
+
+        $notes = [];
+        foreach ($rows as $idx => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $notes[] = self::format_note_entry($row, (int) $idx, $current_id);
+        }
+
+        return [
+            'notes'        => $notes,
+            'current_user' => [
+                'id'   => $current_id,
+                'name' => $current_user instanceof \WP_User ? $current_user->display_name : '',
+            ],
+        ];
     }
 
     public static function can_trash($request)
