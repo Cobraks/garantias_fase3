@@ -405,7 +405,7 @@ if ($can_use_acf && post_type_exists(GuaranteeCPT::POST_TYPE)) {
 <div
     class="guarantees-list__filters guarantees-list__filters--averias"
     data-sticky-target=".guarantees-list--averias"
-    style="view-transition-name: filtros-averias"
+    
 >
     <div class="guarantees-list__filters-row">
         <div class="guarantees-list__search-container">
@@ -513,7 +513,7 @@ if ($can_use_acf && post_type_exists(GuaranteeCPT::POST_TYPE)) {
 
 <div class="guarantees-container guarantees-container--averias">
     <section class="guarantees-list guarantees-list--averias">
-        <table class="guarantees-table guarantees-table--averias" style="view-transition-name: averias-table">
+        <table class="guarantees-table guarantees-table--averias">
             <colgroup>
                 <col class="guarantees-table__col guarantees-table__col--vehiculo" data-min-width="220" data-max-width="380" data-default-width="260">
                 <col class="guarantees-table__col guarantees-table__col--estado" data-min-width="160" data-max-width="320" data-default-width="200">
