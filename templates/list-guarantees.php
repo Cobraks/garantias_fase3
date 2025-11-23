@@ -1159,7 +1159,7 @@ if (($is_admin_user || $is_director || $is_professional)
                             <div class="management-notes__list" data-management-notes>
                                 <div class="management-notes__empty" data-management-notes-empty hidden>
                                     <p class="management-notes__empty-title"><?php esc_html_e('Todavía no hay notas registradas', 'garantias-online-360vo'); ?></p>
-                                    <p class="management-notes__empty-copy"><?php esc_html_e('Añade la primera nota interna para mantener el contexto del cliente.', 'garantias-online-360vo'); ?></p>
+                                    <p class="management-notes__empty-copy"><?php esc_html_e('Añade la primera nota interna para documentar incidencias, cambios o acciones pendientes.', 'garantias-online-360vo'); ?></p>
                                 </div>
                                 <article class="management-notes__item">
                                     <div class="management-notes__meta">

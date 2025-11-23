@@ -4297,6 +4297,23 @@ const ADD_DOC_KEY = "add-document";
                         managementModalTrigger = null;
                 }
 
+                function getActiveManagementContext() {
+                        const panel = document.querySelector(
+                                ".guarantee-detail__panel.active"
+                        );
+                        const id = panel?.dataset?.loadedId || "";
+                        const row =
+                                id && tbody
+                                        ? tbody.querySelector(
+                                                  `.guarantees-table__row[data-id="${id}"]`
+                                          )
+                                        : null;
+                        const plate =
+                                panel?.dataset?.matricula || row?.dataset?.matricula || "";
+
+                        return { panel, id, row, plate };
+                }
+
                 function handleManagementClicks(event) {
                         if (!canAccessManagementHub || !managementModal) {
                                 return;
@@ -4311,6 +4328,73 @@ const ADD_DOC_KEY = "add-document";
                         if (dismiss && managementModal.dataset.state === "open") {
                                 event.preventDefault();
                                 closeManagementModal();
+                                return;
+                        }
+
+                        const actionButton = event.target.closest(
+                                "[data-management-action]"
+                        );
+                        if (actionButton && managementModal.dataset.state === "open") {
+                                event.preventDefault();
+                                const action = actionButton.dataset.managementAction || "";
+                                const context = getActiveManagementContext();
+
+                                if (action === "delete-guarantee") {
+                                        const safePlate = escapeHtml(context.plate || "");
+                                        const subtitle = safePlate
+                                                ? `Garantía <strong>${safePlate}</strong>`
+                                                : "";
+                                        const resetLabel =
+                                                actionButton.querySelector(
+                                                        ".management-actions__copy strong"
+                                                )?.textContent.trim() || "Eliminar garantía";
+                                        const trashContext = {
+                                                intent: "trash",
+                                                btn: actionButton,
+                                                panel: context.panel,
+                                                id: context.id,
+                                                row: context.row,
+                                                resetLabel,
+                                        };
+
+                                        if (confirmModalController) {
+                                                pendingConfirmContext = trashContext;
+                                                confirmModalController.open({
+                                                        title: "Eliminar garantía",
+                                                        subtitle,
+                                                        message:
+                                                                "¿Seguro que quieres enviar esta garantía a la papelera? Podrás restaurarla desde el panel de WordPress.",
+                                                        note:
+                                                                "La garantía dejará de estar disponible para tramitación hasta que la recuperes.",
+                                                        confirmLabel: "Enviar a la papelera",
+                                                        requireAcknowledgement: true,
+                                                        checkboxLabel:
+                                                                "Estoy seguro de que quiero eliminar esta garantía.",
+                                                        variant: "danger",
+                                                });
+                                        } else {
+                                                runTrashRequest(trashContext);
+                                        }
+                                        return;
+                                }
+
+                                if (action === "edit-wordpress") {
+                                        if (!context.id) {
+                                                return;
+                                        }
+                                        let origin = window.location.origin;
+                                        try {
+                                                origin = restRoot
+                                                        ? new URL(restRoot).origin
+                                                        : origin;
+                                        } catch (err) {
+                                                // ignore
+                                        }
+                                        const editUrl = `${origin}/wp-admin/post.php?post=${encodeURIComponent(
+                                                context.id
+                                        )}&action=edit`;
+                                        window.open(editUrl, "_blank", "noopener");
+                                }
                         }
                 }
 

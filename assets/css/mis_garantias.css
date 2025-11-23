@@ -2793,6 +2793,7 @@ body.has-management-modal-open {
 .management-actions__item--danger:focus-visible {
     background: #fff5f5;
     color: #991b1b;
+    border-color: rgba(220, 38, 38, 0.55);
 }
 .management-actions__item--danger .management-actions__icon {
     background: #fdf2f2;
