@@ -1133,6 +1133,20 @@ if (($is_admin_user || $is_director || $is_professional)
                                     </span>
                                 </button>
                             </div>
+                            <div class="management-actions__inline" role="presentation">
+                                <button
+                                    type="button"
+                                    class="management-actions__inline-btn guarantee-detail__btn guarantee-detail__btn--fav"
+                                    aria-label="<?php esc_attr_e('Guardar en favoritos', 'garantias-online-360vo'); ?>">
+                                    <span class="guarantee-detail__btn-icon" aria-hidden="true"><?php echo Svg::icon('heart'); ?></span>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="management-actions__inline-btn guarantee-detail__btn guarantee-detail__btn--share"
+                                    aria-label="<?php esc_attr_e('Compartir', 'garantias-online-360vo'); ?>">
+                                    <span class="guarantee-detail__btn-icon" aria-hidden="true"><?php echo Svg::icon('share'); ?></span>
+                                </button>
+                            </div>
                             <div class="management-actions__danger" role="presentation">
                                 <div class="management-actions__danger-label"><?php esc_html_e('Zona de riesgo', 'garantias-online-360vo'); ?></div>
                                 <button

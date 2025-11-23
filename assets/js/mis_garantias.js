@@ -4006,7 +4006,11 @@ const ADD_DOC_KEY = "add-document";
                         if (!btn) {
                                 return;
                         }
-                        const panel = btn.closest(".guarantee-detail__panel");
+                        let panel = btn.closest(".guarantee-detail__panel");
+                        if (!panel) {
+                                const context = getActiveManagementContext();
+                                panel = context.panel;
+                        }
                         if (!panel) {
                                 return;
                         }
@@ -8792,7 +8796,7 @@ const ADD_DOC_KEY = "add-document";
     const coverageHtml = "";
     const coverageAlertHtml =
         isSinFinalizar && (!hasPlanInfo || !hasCoverageInfo)
-            ? `<p class=\"detail__alert-section detail__alert-section--coverage\">No has seleccionado cobertura.</p>`
+            ? `<p class=\"detail__alert-section detail__alert-section--coverage detail__alert-section--coverage-empty\">No has seleccionado cobertura.</p>`
             : "";
     const vendorChannelSummaryRaw = pickField("canal_venta_summary", "");
     const vendorChannelSummarySource =
@@ -8833,6 +8837,13 @@ const ADD_DOC_KEY = "add-document";
         }
     }
     const vendorCompanyName = vendorDisplayName;
+    const vendorContactLabel = escapeHtml(vendorContactName);
+    const vendorChannelLabel = vendorChannelSummary
+        ? `<span class="vendor-card__channel">(${escapeHtml(vendorChannelSummary)})</span>`
+        : "";
+    const vendorContactDisplay = vendorContactLabel
+        ? `${vendorContactLabel}${vendorChannelLabel ? ` ${vendorChannelLabel}` : ""}`
+        : vendorContactLabel;
     const vendorAvatarUrl =
         data.avatar_vendedor ?? rowData.avatar_vendedor ?? "";
     const vendorAvatarWrapper = vendorAvatarUrl
@@ -9455,31 +9466,10 @@ const ADD_DOC_KEY = "add-document";
                 `<span class="guarantee-detail__btn-text">Continuar con la garantía</span>` +
             `</button>`
         );
-        if (showActions) {
-            sinFinalButtons.push(
-                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos">` +
-                    `<span class="guarantee-detail__btn-icon">${heartIcon}</span>` +
-                `</button>`
-            );
-            sinFinalButtons.push(
-                `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir">` +
-                    `<span class="guarantee-detail__btn-icon">${shareIcon}</span>` +
-                `</button>`
-            );
-        }
     }
     const sinFinalActionsHtml = sinFinalButtons.length
         ? `<div class="guarantee-detail__btn-container">${sinFinalButtons.join("")}</div>`
         : "";
-    const deleteActionHtml = canDeleteGuarantee
-        ? `<div class="guarantee-detail__danger-zone">
-                <button type="button" class="guarantee-detail__btn guarantee-detail__danger-btn guarantee-detail__btn--delete" data-trash-trigger>
-                        <span class="guarantee-detail__btn-icon guarantee-detail__danger-icon">${deleteIcon}</span>
-                        <span class="guarantee-detail__btn-text">Eliminar garantía</span>
-                </button>
-        </div>`
-        : "";
-
     if (isSinFinalizar) {
         return `
                 <div class="guarantee-detail__inner">
@@ -9498,16 +9488,21 @@ const ADD_DOC_KEY = "add-document";
                                         <span>Canal de venta</span>
                                 </h3>
                                 <div class="vendor-card">
-                                        <div class="vendor-card__header">
-                                                <div class="vendor-card__primary">
-                                                        ${vendorAvatarWrapper}
-                                                        <div class="vendor-card__info">
-                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
-                                                                <p class="vendor-card__contact">${vendorContactName}</p>
-                                                        </div>
+                                <div class="vendor-card__header">
+                                        <div class="vendor-card__primary">
+                                                ${vendorAvatarWrapper}
+                                                <div class="vendor-card__info">
+                                                        <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                        <p class="vendor-card__contact">${vendorContactDisplay}</p>
                                                 </div>
-                                                ${vendorChannelSummary ? `<span class="vendor-card__badge">${vendorChannelSummary}</span>` : ""}
                                         </div>
+                                        ${vendorDetailsHref
+                                            ? `<a href="${vendorDetailsHref}" class="fast-actions__link vendor-card__quick-link">` +
+                                                  `<span class="fast-actions__icon" aria-hidden="true">${personIcon}</span>` +
+                                                  `<span class="fast-actions__label">Ver cliente</span>` +
+                                              `</a>`
+                                            : ""}
+                                </div>
                                         ${vendorActionsHtml
                                             ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
                                             : ``}
@@ -9569,7 +9564,6 @@ const ADD_DOC_KEY = "add-document";
                             : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
                 </section>
                 ${sinFinalActionsHtml}
-                ${deleteActionHtml}
         </div>`;
     }
 
@@ -9618,16 +9612,6 @@ const ADD_DOC_KEY = "add-document";
                 `</button>`
             );
         }
-        adminActionButtons.push(
-            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--fav" aria-label="Guardar en favoritos">` +
-                `<span class="guarantee-detail__btn-icon">${heartIcon}</span>` +
-            `</button>`
-        );
-        adminActionButtons.push(
-            `<button type="button" class="guarantee-detail__btn guarantee-detail__btn--share" aria-label="Compartir">` +
-                `<span class="guarantee-detail__btn-icon">${shareIcon}</span>` +
-            `</button>`
-        );
     }
     const combinedActionButtons = [
         ...professionalActionButtons,
@@ -9780,16 +9764,21 @@ const ADD_DOC_KEY = "add-document";
                                         <span>Canal de venta</span>
                                 </h3>
                                 <div class="vendor-card">
-                                        <div class="vendor-card__header">
-                                                <div class="vendor-card__primary">
-                                                        ${vendorAvatarWrapper}
-                                                        <div class="vendor-card__info">
-                                                                <p class="vendor-card__name">${vendorCompanyName}</p>
-                                                                <p class="vendor-card__contact">${vendorContactName}</p>
-                                                        </div>
+                                <div class="vendor-card__header">
+                                        <div class="vendor-card__primary">
+                                                ${vendorAvatarWrapper}
+                                                <div class="vendor-card__info">
+                                                        <p class="vendor-card__name">${vendorCompanyName}</p>
+                                                        <p class="vendor-card__contact">${vendorContactDisplay}</p>
                                                 </div>
-                                                ${vendorChannelSummary ? `<span class="vendor-card__badge">${vendorChannelSummary}</span>` : ""}
                                         </div>
+                                        ${vendorDetailsHref
+                                            ? `<a href="${vendorDetailsHref}" class="fast-actions__link vendor-card__quick-link">` +
+                                                  `<span class="fast-actions__icon" aria-hidden="true">${personIcon}</span>` +
+                                                  `<span class="fast-actions__label">Ver cliente</span>` +
+                                              `</a>`
+                                            : ""}
+                                </div>
                                         ${vendorActionsHtml
                                             ? `<div class="vendor-card__actions">${vendorActionsHtml}</div>`
                                             : ``}
