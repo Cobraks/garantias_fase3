@@ -432,6 +432,12 @@ const ADD_DOC_KEY = "add-document";
                 const managementStatusText = managementModal
                         ? managementModal.querySelector("[data-management-status-text]")
                         : null;
+                const managementNotesList = managementModal
+                        ? managementModal.querySelector("[data-management-notes]")
+                        : null;
+                const managementNotesEmpty = managementModal
+                        ? managementModal.querySelector("[data-management-notes-empty]")
+                        : null;
                 const managementVehicleLabel = managementModal
                         ? managementModal.querySelector("[data-management-vehicle]")
                         : null;
@@ -4158,6 +4164,18 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
+                function syncManagementNotesEmptyState() {
+                        if (!managementNotesList || !managementNotesEmpty) {
+                                return;
+                        }
+
+                        const visibleNotes = Array.from(managementNotesList.children || []).filter((child) =>
+                                child.classList && child.classList.contains("management-notes__item")
+                        );
+                        const hasNotes = visibleNotes.length > 0;
+                        managementNotesEmpty.toggleAttribute("hidden", hasNotes);
+                }
+
                 function updateManagementHeaderFromDetail(panel) {
                         if (!managementModal) {
                                 return;
@@ -4230,6 +4248,7 @@ const ADD_DOC_KEY = "add-document";
                         }
 
                         syncManagementDetailFields(activePanel);
+                        syncManagementNotesEmptyState();
                 }
 
                 function openManagementModal(trigger) {

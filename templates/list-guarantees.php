@@ -1132,21 +1132,21 @@ if (($is_admin_user || $is_director || $is_professional)
                                         <span class="management-actions__description"><?php esc_html_e('Acceder al panel de administración', 'garantias-online-360vo'); ?></span>
                                     </span>
                                 </button>
-                                <div class="management-actions__danger" role="presentation">
-                                    <div class="management-actions__danger-label"><?php esc_html_e('Zona de riesgo', 'garantias-online-360vo'); ?></div>
-                                    <button
-                                        type="button"
-                                        class="management-actions__item management-actions__item--danger"
-                                        data-management-action="delete-guarantee">
-                                        <span class="management-actions__icon" aria-hidden="true">
-                                            <?php echo Svg::icon('delete'); ?>
-                                        </span>
-                                        <span class="management-actions__copy">
-                                            <strong><?php esc_html_e('Eliminar garantía', 'garantias-online-360vo'); ?></strong>
-                                            <span class="management-actions__description"><?php esc_html_e('Eliminar permanentemente del sistema', 'garantias-online-360vo'); ?></span>
-                                        </span>
-                                    </button>
-                                </div>
+                            </div>
+                            <div class="management-actions__danger" role="presentation">
+                                <div class="management-actions__danger-label"><?php esc_html_e('Zona de riesgo', 'garantias-online-360vo'); ?></div>
+                                <button
+                                    type="button"
+                                    class="management-actions__item management-actions__item--danger"
+                                    data-management-action="delete-guarantee">
+                                    <span class="management-actions__icon" aria-hidden="true">
+                                        <?php echo Svg::icon('delete'); ?>
+                                    </span>
+                                    <span class="management-actions__copy">
+                                        <strong><?php esc_html_e('Eliminar garantía', 'garantias-online-360vo'); ?></strong>
+                                        <span class="management-actions__description"><?php esc_html_e('Eliminar permanentemente del sistema', 'garantias-online-360vo'); ?></span>
+                                    </span>
+                                </button>
                             </div>
                         </section>
                         <section class="management-notes" aria-live="polite">
@@ -1157,6 +1157,10 @@ if (($is_admin_user || $is_director || $is_professional)
                                 </div>
                             </div>
                             <div class="management-notes__list" data-management-notes>
+                                <div class="management-notes__empty" data-management-notes-empty hidden>
+                                    <p class="management-notes__empty-title"><?php esc_html_e('Todavía no hay notas registradas', 'garantias-online-360vo'); ?></p>
+                                    <p class="management-notes__empty-copy"><?php esc_html_e('Añade la primera nota interna para mantener el contexto del cliente.', 'garantias-online-360vo'); ?></p>
+                                </div>
                                 <article class="management-notes__item">
                                     <div class="management-notes__meta">
                                         <span class="management-notes__author"><?php esc_html_e('Equipo de soporte', 'garantias-online-360vo'); ?></span>
@@ -1212,6 +1216,7 @@ if (($is_admin_user || $is_director || $is_professional)
                                         <?php esc_html_e('Cerrar', 'garantias-online-360vo'); ?>
                                     </button>
                                     <button type="button" class="guarantee-management__btn guarantee-management__btn--primary">
+                                        <span class="guarantee-management__btn-icon" aria-hidden="true"><?php echo Svg::icon('save'); ?></span>
                                         <?php esc_html_e('Guardar nota', 'garantias-online-360vo'); ?>
                                     </button>
                                 </div>
