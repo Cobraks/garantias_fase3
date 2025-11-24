@@ -3043,15 +3043,46 @@ const ADD_DOC_KEY = "add-document";
                         dispatchNotificationEvent(detail);
                 }
 
+                function resolveCurrentActorName(context = {}) {
+                        const detailActor = formatNotificationMetaText(
+                                context.userName || context.actorName || context.currentUser
+                        );
+
+                        if (detailActor) {
+                                return detailActor;
+                        }
+
+                        const bodyDatasetName = document.body?.dataset?.currentUserName || "";
+                        if (bodyDatasetName && typeof bodyDatasetName === "string") {
+                                const trimmed = bodyDatasetName.trim();
+                                if (trimmed) {
+                                        return trimmed;
+                                }
+                        }
+
+                        const configName = resolveCurrentUserNameFromConfig(goConfig);
+                        if (configName) {
+                                return configName;
+                        }
+
+                        const legacyConfig = window.GO_REST && window.GO_REST.currentUser
+                                ? window.GO_REST.currentUser
+                                : null;
+                        const legacyName = resolveCurrentUserNameFromConfig({ user: legacyConfig });
+                        if (legacyName) {
+                                return legacyName;
+                        }
+
+                        return "";
+                }
+
                 function notifyGuaranteeCancelled(context = {}) {
                         if (!notificationsRoot) {
                                 return;
                         }
                         const matricula = formatNotificationMetaText(context.matricula);
                         const reason = formatNotificationMetaText(context.reason);
-                        const actorName = formatNotificationMetaText(
-                                context.userName || context.actorName
-                        );
+                        const actorName = resolveCurrentActorName(context);
 
                         const meta = [];
                         if (matricula) {
@@ -3063,11 +3094,7 @@ const ADD_DOC_KEY = "add-document";
 
                         const safePlate = matricula ? escapeHtml(matricula) : "";
                         const displayPlate = safePlate;
-                        const actor =
-                                actorName ||
-                                currentUserName ||
-                                resolveCurrentUserNameFromConfig(goConfig) ||
-                                "Un usuario";
+                        const actor = actorName || resolveCurrentActorName({ currentUser: currentUserName }) || "Un usuario";
                         const reasonText = reason || "-";
 
                         const bodyParts = [
