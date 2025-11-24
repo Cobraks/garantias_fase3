@@ -32,7 +32,7 @@ class NotificationCategories
             ],
             'guarantees' => [
                 'label' => __('Garantías', 'garantias-online-360vo'),
-                'icons' => ['new_shield'],
+                'icons' => ['new_shield', 'note_event', 'cancel_guarantee'],
                 'permission' => 'management',
             ],
             'registrations' => [

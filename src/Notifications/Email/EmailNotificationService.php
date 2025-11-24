@@ -60,6 +60,18 @@ class EmailNotificationService
     {
         add_action('go360/guarantee/contracted', [$this, 'handle_contracted'], 10, 2);
         add_action('go360/guarantee/payment_recorded', [$this, 'handle_payment_recorded'], 10, 5);
+        add_action('go360/guarantee/cancelled', [$this, 'handle_cancelled'], 10, 3);
+    }
+
+    public static function notify_cancelled(int $guarantee_id, array $context = []): void
+    {
+        $service = new self(
+            new Mailer(),
+            new GuaranteeEmailDataFactory(),
+            new GuaranteeEmailBuilder(new TemplateRenderer())
+        );
+
+        $service->handle_cancelled($guarantee_id, $context, (int) ($context['initiator'] ?? 0));
     }
 
     public function handle_contracted(int $guarantee_id, array $context = []): void
@@ -153,6 +165,39 @@ class EmailNotificationService
         }
 
         $this->send_transfer_activation_notification($guarantee_id, $data, $context, $initiator_id);
+    }
+
+    public function handle_cancelled(int $guarantee_id, array $context = [], int $initiator_id = 0): void
+    {
+        $data = $this->data_factory->build($guarantee_id);
+        $initiator = $this->resolve_initiator_id($context);
+        $initiator_id = $initiator ?: $initiator_id;
+
+        if (empty($data)) {
+            $this->log_skip($guarantee_id, 'cancelled_admin', 'empty_data', $initiator_id);
+            return;
+        }
+
+        $reason_label = isset($context['reason']) && $context['reason'] !== ''
+            ? sanitize_text_field((string) $context['reason'])
+            : ($data['cancellation']['reason_label'] ?? '');
+        $context['reason_label'] = $reason_label;
+
+        if (
+            ! $this->has_been_notified($guarantee_id, 'cancelled_admin')
+            && $this->should_notify('cancelled_admin', $data, $context)
+        ) {
+            $this->send_admin_notification(
+                'cancelled_admin',
+                static function (GuaranteeEmailBuilder $builder, array $data, array $recipients, array $context, array $options) {
+                    return $builder->composeCancelledAdmin($data, $recipients, $context, $options);
+                },
+                $guarantee_id,
+                $data,
+                $context,
+                $initiator_id
+            );
+        }
     }
 
     private function dispatch(?EmailMessage $message, int $guarantee_id, string $event_slug, int $initiator_id): bool

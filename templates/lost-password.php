@@ -150,7 +150,7 @@ if ($redirect_to !== $default_login_url) {
 }
 ?>
 
-<main class="register-page login-page" style="view-transition-name: login">
+<main class="register-page login-page">
     <?php TemplateLoader::load_part('auth-styles'); ?>
 
     <div class="container">
@@ -159,7 +159,7 @@ if ($redirect_to !== $default_login_url) {
             <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
         </div>
 
-        <div class="login-card" style="view-transition-name: header">
+        <div class="login-card">
             <span class="login-card__badge">
                 <?php echo Svg::icon('shield', 'login-card__badge-icon'); ?>
                 <span class="login-card__badge-text"><?php esc_html_e('Garantías Online', 'garantias-online-360vo'); ?></span>
@@ -169,7 +169,7 @@ if ($redirect_to !== $default_login_url) {
             <div class="login-card__layout">
                 <div class="login-card__intro">
                     <div class="login-card__brand">
-                        <div class="login-card__logo login-card__logo--desktop" style="view-transition-name: logo">
+                        <div class="login-card__logo login-card__logo--desktop">
                             <?php TemplateLoader::load_part('logo-inline'); ?>
                             <span class="screen-reader-text"><?php esc_html_e('Garantías Online 360VO', 'garantias-online-360vo'); ?></span>
                         </div>

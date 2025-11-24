@@ -42,7 +42,7 @@ $current_month_spanish = $spanish_months[$current_month] ?? $current_month;
 
 
         <!-- Mensaje de contexto -->
-        <div class="dashboard__context-message" style="view-transition-name: black-message">
+        <div class="dashboard__context-message">
             Mostrando datos de <strong>todas las garantías</strong> del mes de <strong><?php echo $current_month_spanish; ?></strong>
         </div>
 
@@ -108,7 +108,7 @@ $current_month_spanish = $spanish_months[$current_month] ?? $current_month;
             <!-- Contenedor para KPIs de Garantías y Averías (apilados verticalmente) -->
             <div class="dashboard__kpi-stack">
                 <!-- KPIs de Garantías (solo mes actual) -->
-                <div class="dashboard__module dashboard__kpi" style="view-transition-name: garantias-table">
+                <div class="dashboard__module dashboard__kpi">
                     <div class="dashboard__kpi-header">
                         <h3 class="dashboard__module-title"> <?php echo Svg::icon('shield'); ?> Garantías - <?php echo $current_month_spanish; ?></h3>
                     </div>
@@ -162,7 +162,7 @@ $current_month_spanish = $spanish_months[$current_month] ?? $current_month;
             </div>
 
             <!-- Alertas de Expiración (más prominente) -->
-            <div class="dashboard__module dashboard__alerts" style="view-transition-name: white-message">
+            <div class="dashboard__module dashboard__alerts">
                 <div class="dashboard__module-header">
                     <h3 class="dashboard__module-title"><?php echo Svg::icon('shield_off'); ?>Alertas de Expiración</h3>
                     <span class="dashboard__alerts-count">12</span>
