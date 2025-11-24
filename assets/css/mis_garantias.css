@@ -1363,6 +1363,14 @@ section.guarantees-list {
     display: none;
 }
 
+.guarantee-card[data-estadoclase="cancelada"] .guarantee-card__validity,
+.guarantee-card[data-estadoclase="cancelada"] .guarantee-card__plan {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.3px;
+    text-decoration-color: var(--neutral30);
+    opacity: 0.75;
+}
+
 body.has-mobile-detail-open:not(.has-mobile-summary-open) .guarantees-cards {
     transform: translateX(-100%);
 }
@@ -1633,6 +1641,14 @@ body.has-mobile-summary-open .column-resizer {
 
 .guarantees-table__plan .plan__price {
     font-weight: 500;
+}
+
+.guarantees-table__row[data-estadoclase="cancelada"] .guarantees-table__period,
+.guarantees-table__row[data-estadoclase="cancelada"] .guarantees-table__plan {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.3px;
+    text-decoration-color: var(--neutral30);
+    opacity: 0.75;
 }
 
 .guarantees-table__cliente,
@@ -2175,6 +2191,15 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     font-weight: 500;
 }
 
+.guarantee-detail__panel[data-estadoclase="cancelada"] .detail__inline-meta--countdown span,
+.guarantee-detail__panel[data-estadoclase="cancelada"] .detail__timeline-value,
+.detail__timeline-value--cancelled {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.3px;
+    text-decoration-color: var(--go-color-ef4444);
+    opacity: 0.75;
+}
+
 .detail__timeline-list--countdown {
     flex: 1;
 }
@@ -2450,6 +2475,50 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     cursor: pointer;
     transition: background var(--transition-speed),
         border-color var(--transition-speed), color var(--transition-speed);
+    position: relative;
+}
+.detail__docs-btn--loading {
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+.detail__docs-btn--loading::after {
+    content: "";
+    position: absolute;
+    right: 0.85rem;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    border: 2px solid rgba(15, 23, 42, 0.15);
+    border-top-color: var(--go-color-2563eb);
+    animation: detail-docs-spinner 0.9s linear infinite;
+}
+.detail__docs-btn--loading .detail__docs-label {
+    opacity: 0.7;
+}
+.detail__docs-btn--loading.detail__docs-btn--cancelled::after {
+    border-color: rgba(255, 255, 255, 0.55);
+    border-top-color: #fff;
+}
+@keyframes detail-docs-spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+.detail__docs-btn--cancelled {
+    background: var(--go-color-b91c1c);
+    border-color: var(--go-color-b91c1c);
+    color: #fff;
+}
+.detail__docs-btn--cancelled .detail__docs-label,
+.detail__docs-btn--cancelled .detail__docs-icon svg {
+    color: #fff;
+    fill: #fff;
+}
+.detail__docs-btn--cancelled:hover,
+.detail__docs-btn--cancelled:focus-visible {
+    background: var(--go-color-ef4444);
+    border-color: var(--go-color-ef4444);
+    color: #fff;
 }
 
 .detail__docs-btn:hover,
@@ -4256,17 +4325,56 @@ tr.guarantees-table__row:not(.selected):hover td,
     font-size: 0.9rem;
 }
 .detail__payment-note--cancelled {
-    background: var(--go-color-fee2e2);
-    color: var(--go-color-b91c1c);
-    border-left-color: var(--go-color-ef4444);
-    font-weight: 500;
+    background: var(--go-color-b91c1c);
+    color: #fff;
+    border: 1px solid var(--go-color-ef4444);
+    border-left: 6px solid var(--go-color-ef4444);
+    border-radius: 12px;
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    padding: 1rem 1.05rem;
 }
 .detail__payment-note--cancelled-reason {
-    margin-top: 6px;
-    background: #fff;
-    color: var(--go-color-333333);
-    border-left-color: var(--go-color-b91c1c);
-    font-weight: 400;
+    margin-top: 8px;
+    background: var(--go-color-b91c1c);
+    color: #fff;
+    border: 1px solid var(--go-color-ef4444);
+    border-left: 6px solid var(--go-color-ef4444);
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 0.85rem 1rem;
+}
+.detail__payment-note-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    width: 24px;
+    height: 24px;
+}
+.detail__payment-note-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    line-height: 1.4;
+}
+.detail__payment-note-row {
+    display: block;
+    line-height: 1.45;
+}
+.detail__payment-note-subtext {
+    color: var(--go-color-9f1239);
+    font-weight: 600;
+}
+.detail__payment-note-label {
+    font-weight: 700;
+    color: var(--go-color-7f1d1d);
+    margin-right: 4px;
+}
+.detail__payment-note-value {
+    font-weight: 600;
+    color: var(--text-primary);
 }
 .detail__payment-note--expired strong {
     font-weight: 600;
@@ -4717,16 +4825,29 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: rgba(255, 244, 189, 0.95);
 }
 
-:root[data-theme='dark'] .detail__payment-note--expired,
-:root[data-theme='dark'] .detail__payment-note--cancelled {
+:root[data-theme='dark'] .detail__payment-note--expired {
     background: rgba(220, 38, 38, 0.2);
     color: rgba(254, 226, 226, 0.92);
     border-left-color: rgba(248, 113, 113, 0.65);
 }
+:root[data-theme='dark'] .detail__payment-note--cancelled {
+    background: rgba(185, 28, 28, 0.8);
+    color: #fff;
+    border-color: rgba(248, 113, 113, 0.9);
+    border-left-color: rgba(248, 113, 113, 1);
+}
 :root[data-theme='dark'] .detail__payment-note--cancelled-reason {
-    background: rgba(15, 23, 42, 0.6);
-    color: rgba(226, 232, 240, 0.9);
-    border-left-color: rgba(248, 113, 113, 0.65);
+    background: rgba(185, 28, 28, 0.8);
+    color: #fff;
+    border-color: rgba(248, 113, 113, 0.9);
+    border-left-color: rgba(248, 113, 113, 1);
+}
+:root[data-theme='dark'] .detail__payment-note-subtext {
+    color: rgba(255, 255, 255, 0.9);
+}
+:root[data-theme='dark'] .detail__payment-note-label,
+:root[data-theme='dark'] .detail__payment-note--cancelled .detail__payment-note-icon {
+    color: #fff;
 }
 
 :root[data-theme='dark'] .detail__payment-note--domiciliacion {

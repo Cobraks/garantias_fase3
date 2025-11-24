@@ -28,6 +28,7 @@ class GuaranteeRestController
     const BASE      = 'guarantees';
     const ADDITIONAL_DOCS_FIELD = 'garantia_contratada_documentacion_add_document';
     const TRANSFER_RECEIPT_HASH_META = '_go360_transfer_receipt_hash';
+    const CANCELLED_CERTIFICATE_HASH_META = 'documentacion_certificado_cancelado_hash';
     const TRANSFER_RECEIPT_EXTENSION_META = '_go360_transfer_receipt_extension';
     const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
     const SUMMARY_TRANSIENT = 'go_gsummary_admin';
@@ -696,23 +697,68 @@ class GuaranteeRestController
 
         switch ($type) {
             case 'certificado':
-                $hash = get_post_meta($id, 'documentacion_certificado_hash', true);
-                if (!$hash) {
+                $original_hash = get_post_meta($id, 'documentacion_certificado_hash', true);
+                if (!$original_hash) {
                     error_log('[download_document] no hash for ' . $id . ' type ' . $type);
                     return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
                 }
-                error_log('[download_document] retrieving ' . $hash);
-                $binary = PrivateDocsManager::retrieve($hash, 'pdf');
-                if (!$binary) {
-                    error_log('[download_document] retrieval failed ' . $hash);
+                $original_binary = PrivateDocsManager::retrieve($original_hash, 'pdf');
+                if (!$original_binary) {
+                    error_log('[download_document] retrieval failed ' . $original_hash);
                     return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
                 }
+
                 $info = self::get_plan_info($id);
-                $filename = self::normalize_document_filename(sprintf(
+                $is_cancelled = self::is_cancelled_state($id);
+                $cancelled_filename = self::normalize_document_filename(sprintf(
+                    'Certificado cancelado %s %s.pdf',
+                    $info['plan'],
+                    $info['matricula']
+                ));
+                $default_filename = self::normalize_document_filename(sprintf(
                     'Certificado Garantía %s %s.pdf',
                     $info['plan'],
                     $info['matricula']
                 ));
+
+                if ($is_cancelled) {
+                    $cancelled_hash = get_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META, true);
+                    if ($cancelled_hash) {
+                        $binary = PrivateDocsManager::retrieve($cancelled_hash, 'pdf');
+                        if (!$binary) {
+                            delete_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META);
+                        }
+                    }
+
+                    if (!$binary) {
+                        $overlay_binary = self::build_cancelled_certificate_overlay(
+                            $original_binary,
+                            self::format_cancellation_date(self::get_cancellation_date($id))
+                        );
+                        if ($overlay_binary) {
+                            $new_hash = PrivateDocsManager::store($overlay_binary, 'pdf');
+                            if ($new_hash) {
+                                update_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META, $new_hash);
+                            }
+                            $binary = $overlay_binary;
+                        }
+                    }
+
+                    if (!$binary) {
+                        $binary = $original_binary;
+                    }
+
+                    $filename = $cancelled_filename;
+                } else {
+                    $binary = $original_binary;
+                    $filename = $default_filename;
+
+                    $stale_cancel_hash = get_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META, true);
+                    if ($stale_cancel_hash) {
+                        delete_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META);
+                    }
+                }
+
                 $mime = 'application/pdf';
                 break;
             case 'condicionado':
@@ -775,6 +821,122 @@ class GuaranteeRestController
             'png'  => 'image/png',
             default => 'application/octet-stream',
         };
+    }
+
+    private static function is_cancelled_state(int $post_id): bool
+    {
+        return get_post_meta($post_id, 'estado_garantia_estado_contratacion', true) === 'cancelada';
+    }
+
+    private static function get_cancellation_date(int $post_id): string
+    {
+        $raw = get_post_meta($post_id, 'estado_garantia_fecha_cancelacion', true);
+        return is_string($raw) ? sanitize_text_field($raw) : '';
+    }
+
+    private static function format_cancellation_date(string $raw): string
+    {
+        if ($raw === '') {
+            return '';
+        }
+
+        $raw = sanitize_text_field($raw);
+        $candidate = DateTimeImmutable::createFromFormat('Y-m-d', $raw)
+            ?: DateTimeImmutable::createFromFormat('d/m/Y', $raw);
+
+        if ($candidate instanceof DateTimeImmutable) {
+            return $candidate->format('d/m/Y');
+        }
+
+        return $raw;
+    }
+
+    private static function build_cancelled_certificate_overlay(string $binary, string $cancel_date): ?string
+    {
+        if (!class_exists('\\Imagick')) {
+            return null;
+        }
+
+        try {
+            $pdf = new \Imagick();
+            $pdf->setResolution(150, 150);
+            $pdf->readImageBlob($binary);
+
+            $pageCount = $pdf->getNumberImages();
+            if ($pageCount === 0) {
+                return null;
+            }
+
+            $result = new \Imagick();
+            for ($i = 0; $i < $pageCount; $i++) {
+                $pdf->setIteratorIndex($i);
+                $page = $pdf->getImage();
+                $page->setImageAlphaChannel(\Imagick::ALPHACHANNEL_ACTIVATE);
+
+                $width = $page->getImageWidth();
+                $height = $page->getImageHeight();
+
+                $overlay = new \Imagick();
+                $overlay->newImage($width, $height, new \ImagickPixel('transparent'), 'png');
+                $overlay->setImageAlphaChannel(\Imagick::ALPHACHANNEL_ACTIVATE);
+                $overlay->setImageVirtualPixelMethod(\Imagick::VIRTUALPIXELMETHOD_TRANSPARENT);
+
+                $stroke = new \ImagickPixel('#ef4444');
+                $fill = new \ImagickPixel('rgba(239,68,68,0.08)');
+
+                $box = new \ImagickDraw();
+                $box->setStrokeColor($stroke);
+                $box->setFillColor($fill);
+                $box->setStrokeWidth(max(4, $width * 0.004));
+                $box->setStrokeLineJoin(\Imagick::LINEJOIN_ROUND);
+                $box_width = max(320, $width * 0.55);
+                $box_height = max(160, $height * 0.22);
+                $x1 = ($width - $box_width) / 2;
+                $y1 = ($height - $box_height) / 2;
+                $radius = min($box_height, $box_width) * 0.08;
+                $box->roundRectangle($x1, $y1, $x1 + $box_width, $y1 + $box_height, $radius, $radius);
+                $overlay->drawImage($box);
+
+                $title = new \ImagickDraw();
+                $title->setFillColor($stroke);
+                $title->setStrokeColor($stroke);
+                $title->setTextAlignment(\Imagick::ALIGN_CENTER);
+                $title->setFontWeight(700);
+                $title->setFontSize(max(42, $box_height * 0.32));
+                $overlay->annotateImage($title, $width / 2, $height / 2, -12, 'CANCELADA');
+
+                $date_text = $cancel_date !== ''
+                    ? sprintf(__('Cancelada el %s', 'garantias-online-360vo'), $cancel_date)
+                    : __('Cancelada', 'garantias-online-360vo');
+                $subtitle = new \ImagickDraw();
+                $subtitle->setFillColor($stroke);
+                $subtitle->setStrokeColor($stroke);
+                $subtitle->setTextAlignment(\Imagick::ALIGN_CENTER);
+                $subtitle->setFontSize(max(28, $box_height * 0.18));
+                $overlay->annotateImage($subtitle, $width / 2, ($height / 2) + ($box_height * 0.22), -12, $date_text);
+
+                $overlay->rotateImage(new \ImagickPixel('transparent'), -12);
+
+                $overlay->extentImage(
+                    $width,
+                    $height,
+                    ($overlay->getImageWidth() - $width) / 2,
+                    ($overlay->getImageHeight() - $height) / 2
+                );
+
+                $page->compositeImage($overlay, \Imagick::COMPOSITE_OVER, 0, 0);
+                $page->setImageFormat('pdf');
+                $result->addImage($page);
+            }
+
+            $result->setImageFormat('pdf');
+            $result->resetIterator();
+
+            return $result->getImagesBlob();
+        } catch (\Exception $e) {
+            error_log('[download_document] cancelled stamp failed: ' . $e->getMessage());
+            return null;
+        }
     }
 
     private static function load_public_document_binary(array $document)
@@ -1071,10 +1233,15 @@ class GuaranteeRestController
     {
         $documents = [];
 
+        $is_cancelled = self::is_cancelled_state($post_id);
+        $cancel_date = self::get_cancellation_date($post_id);
+
         $static_docs = [
             [
                 'key'           => 'certificate',
-                'title'         => __('Certificado completo', 'garantias-online-360vo'),
+                'title'         => $is_cancelled
+                    ? __('Certificado cancelado', 'garantias-online-360vo')
+                    : __('Certificado completo', 'garantias-online-360vo'),
                 'routeType'     => 'certificado',
                 'is_private'    => true,
                 'extension'     => 'pdf',
@@ -1082,6 +1249,8 @@ class GuaranteeRestController
                 'allowed_users' => [],
                 'filename'      => '',
                 'source'        => 'static',
+                'is_cancelled_certificate' => $is_cancelled,
+                'cancel_date'   => $cancel_date,
             ],
             [
                 'key'           => 'cobertura',
