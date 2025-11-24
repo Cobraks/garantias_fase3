@@ -24,9 +24,14 @@ class PushNotificationService
     private $dispatcher;
 
     /**
-     * @var array<int, array{event:string,record:array}>
+     * @var array<int, array{event:string,record:array,normalized:string}>
      */
     private $pending = [];
+
+    /**
+     * @var array<string, bool>
+     */
+    private $queue_signatures = [];
 
     /** @var bool */
     private $shutdown_registered = false;
@@ -59,6 +64,7 @@ class PushNotificationService
         add_action('init', [PushTables::class, 'ensure_tables']);
         add_action('rest_api_init', [$this, 'register_rest']);
         add_action('go360/activity/logged', [$this, 'handle_activity'], 20, 4);
+        add_action('go360/guarantee/cancelled', [$this, 'handle_guarantee_cancelled'], 10, 3);
         add_filter('go360/push/public_key', [$this, 'get_public_key']);
     }
 
@@ -90,14 +96,97 @@ class PushNotificationService
      */
     public function handle_activity(int $activity_id, string $event_type, array $record, array $raw): void
     {
-        if (! $this->is_relevant_event($event_type)) {
+        $raw_event      = isset($raw['event_type']) ? (string) $raw['event_type'] : $event_type;
+        $normalized_key = $this->normalize_event_type($raw_event);
+
+        if (! $this->is_relevant_event($normalized_key)) {
             return;
         }
 
-        $this->pending[] = [
-            'event'  => $event_type,
-            'record' => $record,
+        $canonical_event = $this->canonical_event_from_normalized($normalized_key) ?: $raw_event;
+
+        $this->enqueue_event($canonical_event, $normalized_key, $record);
+    }
+
+    /**
+     * @param int   $guarantee_id
+     * @param array $context
+     * @param int   $initiator_id
+     */
+    public function handle_guarantee_cancelled(int $guarantee_id, array $context = [], int $initiator_id = 0): void
+    {
+        $guarantee_id = (int) $guarantee_id;
+        if ($guarantee_id <= 0) {
+            return;
+        }
+
+        $actor_id = $initiator_id > 0 ? $initiator_id : get_current_user_id();
+        $actor_name = '';
+        if ($actor_id > 0) {
+            $user = get_userdata($actor_id);
+            if ($user instanceof \WP_User) {
+                $actor_name = trim((string) $user->first_name)
+                    ?: ($user->display_name ?: $user->user_login);
+            }
+        }
+
+        $plate = sanitize_text_field((string) get_post_meta($guarantee_id, 'datos_vehiculo_matricula', true));
+        $label = $plate !== ''
+            ? sprintf(__('Garantía %s', 'garantias-online-360vo'), $plate)
+            : get_the_title($guarantee_id);
+        $reason = sanitize_text_field($context['raw_reason'] ?? $context['reason'] ?? '');
+        $reason_label = $reason !== '' ? $reason : sanitize_text_field($context['reason'] ?? '');
+
+        $payload_context = [
+            'guarantee_label' => $label,
+            'matricula'       => $plate,
+            'reason'          => $reason_label,
+            'raw_reason'      => $reason,
+            'actor_name'      => $actor_name,
         ];
+
+        $record = [
+            'event_type'   => 'guarantee.cancelled',
+            'actor_id'     => $actor_id,
+            'actor_name'   => $actor_name,
+            'guarantee_id' => $guarantee_id,
+            'target_type'  => 'guarantee',
+            'target_id'    => $guarantee_id,
+            'context'      => wp_json_encode($payload_context),
+        ];
+
+        $normalized = $this->normalize_event_type('guarantee.cancelled');
+        $this->enqueue_event('guarantee.cancelled', $normalized, $record);
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    private function enqueue_event(string $canonical_event, string $normalized_key, array $record): void
+    {
+        $signature_parts = [
+            $normalized_key,
+            (string) ($record['target_id'] ?? $record['guarantee_id'] ?? ''),
+            (string) ($record['context'] ?? ''),
+        ];
+        $signature = md5(implode('|', $signature_parts));
+
+        if (isset($this->queue_signatures[$signature])) {
+            return;
+        }
+
+        $this->queue_signatures[$signature] = true;
+
+        $this->pending[] = [
+            'event'      => $canonical_event,
+            'normalized' => $normalized_key,
+            'record'     => $record,
+        ];
+
+        if (wp_doing_ajax() || (defined('REST_REQUEST') && REST_REQUEST)) {
+            $this->flush_pending();
+            return;
+        }
 
         if (! $this->shutdown_registered) {
             $this->shutdown_registered = true;
@@ -112,7 +201,7 @@ class PushNotificationService
         }
 
         foreach ($this->pending as $entry) {
-            $recipients = $this->get_recipients_for_event($entry['event']);
+            $recipients = $this->get_recipients_for_event($entry['normalized'] ?? $entry['event']);
             if (empty($recipients)) {
                 continue;
             }
@@ -135,6 +224,7 @@ class PushNotificationService
 
         $this->pending = [];
         $this->shutdown_registered = false;
+        $this->queue_signatures = [];
     }
 
     /**
@@ -142,9 +232,10 @@ class PushNotificationService
      */
     private function get_recipients_for_event(string $event_type): array
     {
+        $normalized = $this->normalize_event_type($event_type);
         $administrators = $this->get_users_by_roles(['administrator']);
 
-        if (in_array($event_type, ['auth.login_success', 'auth.logout'], true)) {
+        if (in_array($normalized, ['auth_login_success', 'auth_logout'], true)) {
             return $administrators;
         }
 
@@ -203,19 +294,53 @@ class PushNotificationService
 
     private function is_relevant_event(string $event_type): bool
     {
-        return in_array($event_type, [
-            'auth.login_success',
-            'auth.logout',
-            'user.verification_verified',
-            'guarantee.created',
-            'guarantee.contracted',
-            'payment.recorded',
-            'payment.reported',
-            'sepa.pending_requested',
-            'sepa.signed_uploaded',
-            'sepa.activated',
-            'client.commercials_updated',
+        $normalized = $this->normalize_event_type($event_type);
+
+        return in_array($normalized, [
+            'auth_login_success',
+            'auth_logout',
+            'user_verification_verified',
+            'guarantee_created',
+            'guarantee_contracted',
+            'guarantee_cancelled',
+            'guarantee_note_added',
+            'payment_recorded',
+            'payment_reported',
+            'sepa_pending_requested',
+            'sepa_signed_uploaded',
+            'sepa_activated',
+            'client_commercials_updated',
         ], true);
+    }
+
+    private function normalize_event_type(string $event_type): string
+    {
+        $normalized = strtolower($event_type);
+        $normalized = str_replace(['.', '-', ' '], '_', $normalized);
+        $normalized = preg_replace('/_+/', '_', $normalized);
+
+        return trim((string) $normalized, '_');
+    }
+
+    private function canonical_event_from_normalized(string $normalized): string
+    {
+        $map = [
+            'auth_login_success'       => 'auth.login_success',
+            'auth_logout'              => 'auth.logout',
+            'user_verification_verified' => 'user.verification_verified',
+            'guarantee_created'        => 'guarantee.created',
+            'guarantee_contracted'     => 'guarantee.contracted',
+            'guarantee_cancelled'      => 'guarantee.cancelled',
+            'guarantee_note_added'     => 'guarantee.note_added',
+            'payment_recorded'         => 'payment.recorded',
+            'payment_reported'         => 'payment.reported',
+            'sepa_pending_requested'   => 'sepa.pending_requested',
+            'sepa_signed_uploaded'     => 'sepa.signed_uploaded',
+            'sepa_activated'           => 'sepa.activated',
+            'client_commercials_updated' => 'client.commercials_updated',
+        ];
+
+        return $map[$normalized] ?? $normalized;
     }
 
 }

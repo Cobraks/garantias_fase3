@@ -163,6 +163,18 @@ class EventCatalog
             'level'    => 'info',
             'message'  => 'Garantía {{context.guarantee_label}} reasignada de {{context.old_assignee}} a {{context.new_assignee}}.',
         ],
+        'guarantee.cancelled' => [
+            'label'    => 'Garantía cancelada',
+            'category' => 'guarantee',
+            'level'    => 'warning',
+            'message'  => 'Garantía {{context.guarantee_label}} cancelada por {{context.actor_name}} (motivo: {{context.reason}}).',
+        ],
+        'guarantee.note_added' => [
+            'label'    => 'Nueva nota en garantía',
+            'category' => 'guarantee',
+            'level'    => 'info',
+            'message'  => '{{actor_name}} añadió una nota en {{context.guarantee_label}}.',
+        ],
         'guarantee.expired' => [
             'label'    => 'Garantía caducada',
             'category' => 'guarantee',

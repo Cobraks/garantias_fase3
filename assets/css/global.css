@@ -1,12 +1,4 @@
-@view-transition {
-      navigation: auto;
-    }
-    
-
-   
-
-
-    :root {
+:root {
   --go-color-000000: #000000;
   --go-color-000000-rgb: 0 0 0;
   --go-color-001d5c: #001d5c;

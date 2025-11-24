@@ -58,6 +58,21 @@ class GuaranteeEmailBuilder
         );
     }
 
+    public function composeCancelledAdmin(array $data, array $recipients, array $context = [], array $options = []): ?EmailMessage
+    {
+        $plate = $this->resolve_plate_label($data);
+        $subject = sprintf(__('Garantía %s cancelada', 'garantias-online-360vo'), $plate);
+
+        return $this->create_message(
+            $recipients,
+            $subject,
+            'guarantee-cancelled-admin',
+            $data,
+            $context,
+            $options
+        );
+    }
+
     private function create_message(array $recipients, string $subject, string $template, array $data, array $context = [], array $options = []): ?EmailMessage
     {
         $headers = $options['headers'] ?? [];
