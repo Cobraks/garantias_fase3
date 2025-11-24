@@ -3043,26 +3043,58 @@ const ADD_DOC_KEY = "add-document";
                         dispatchNotificationEvent(detail);
                 }
 
+                function resolveCurrentActorName(context = {}) {
+                        const detailActor = formatNotificationMetaText(
+                                context.userName || context.actorName || context.currentUser
+                        );
+
+                        if (detailActor) {
+                                return detailActor;
+                        }
+
+                        const bodyDatasetName = document.body?.dataset?.currentUserName || "";
+                        if (bodyDatasetName && typeof bodyDatasetName === "string") {
+                                const trimmed = bodyDatasetName.trim();
+                                if (trimmed) {
+                                        return trimmed;
+                                }
+                        }
+
+                        const configName = resolveCurrentUserNameFromConfig(goConfig);
+                        if (configName) {
+                                return configName;
+                        }
+
+                        const legacyConfig = window.GO_REST && window.GO_REST.currentUser
+                                ? window.GO_REST.currentUser
+                                : null;
+                        const legacyName = resolveCurrentUserNameFromConfig({ user: legacyConfig });
+                        if (legacyName) {
+                                return legacyName;
+                        }
+
+                        return "";
+                }
+
                 function notifyGuaranteeCancelled(context = {}) {
                         if (!notificationsRoot) {
                                 return;
                         }
                         const matricula = formatNotificationMetaText(context.matricula);
                         const reason = formatNotificationMetaText(context.reason);
-                        const userName = formatNotificationMetaText(context.userName);
+                        const actorName = resolveCurrentActorName(context);
 
                         const meta = [];
                         if (matricula) {
                                 meta.push({ label: "Matrícula", text: matricula });
                         }
+                        if (actorName) {
+                                meta.push({ label: "Cancelada por", text: actorName });
+                        }
 
                         const safePlate = matricula ? escapeHtml(matricula) : "";
                         const displayPlate = safePlate;
-                        const actor =
-                                userName ||
-                                currentUserName ||
-                                resolveCurrentUserNameFromConfig(goConfig) ||
-                                "Un usuario";
+                        const actor = actorName || resolveCurrentActorName({ currentUser: currentUserName }) || "Un usuario";
                         const reasonText = reason || "-";
 
                         const bodyParts = [
@@ -3894,8 +3926,8 @@ const ADD_DOC_KEY = "add-document";
                                                 syncPdfModalDocs(targetPanel);
                                                 updateManagementHeaderFromDetail(targetPanel);
                                                 syncManagementActionsAvailability(targetPanel);
-                                                showDetailToast(targetPanel, "Garantía cancelada.");
-                                        }
+                                showDetailToast(targetPanel, "Garantía cancelada.");
+                        }
 
                                         const cancellationReasonText = resolveCancellationReasonText(
                                                 data?.estado_garantia || {},
@@ -3908,7 +3940,19 @@ const ADD_DOC_KEY = "add-document";
                                                 plan: data.plan || rowData.plan || "",
                                                 reason: cancellationReasonText,
                                                 userName: currentUserName,
+                                                actorName:
+                                                        resolveCurrentUserNameFromConfig(goConfig) ||
+                                                        currentUserName,
                                         });
+
+                                        if (
+                                                typeof window !== "undefined" &&
+                                                typeof window.dispatchEvent === "function"
+                                        ) {
+                                                window.dispatchEvent(
+                                                        new CustomEvent("go360:notifications:refresh")
+                                                );
+                                        }
 
                                         setConfirmLabel("Garantía cancelada", true);
                                         pendingConfirmContext = null;
