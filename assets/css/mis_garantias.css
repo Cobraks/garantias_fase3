@@ -2030,6 +2030,10 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     transform: translateY(0);
 }
 
+.guarantee-detail__panel {
+    --guarantee-detail-accent: var(--text-primary);
+}
+
 .guarantee-detail__plan-title {
     display: flex;
     align-items: baseline;
@@ -2043,7 +2047,7 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
 .guarantee-detail__plan-name,
 .guarantee-detail__plan-price {
     font: inherit;
-    color: inherit;
+    color: var(--guarantee-detail-accent);
 }
 
 .guarantee-detail__title {
@@ -2521,8 +2525,8 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
     color: #fff;
 }
 
-.detail__docs-btn:hover,
-.detail__docs-btn:focus-visible {
+.detail__docs-btn:not(.detail__docs-btn--cancelled):hover,
+.detail__docs-btn:not(.detail__docs-btn--cancelled):focus-visible {
     background: var(--go-color-f1f5f9);
     border-color: var(--go-color-cbd5e1);
     color: var(--text-color);
@@ -3286,10 +3290,19 @@ body.has-management-modal-open {
     justify-content: center;
     background: rgba(var(--go-color-ffffff-rgb), 0.8);
     z-index: 10;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    text-align: center;
+    color: var(--text-color);
 }
 
 .pdf-modal__spinner.active {
     display: flex;
+}
+
+.pdf-modal__spinner-text {
+    margin: 0;
+    font-weight: 600;
 }
 
 .pdf-modal__upload {
@@ -3601,7 +3614,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     transition: all 0.3s ease;
     cursor: default;
     background: var(--bg-section);
-    color: var(--text-primary);
+    color: var(--guarantee-detail-accent);
 }
 
 .guarantee-detail__badge::before {
@@ -3617,60 +3630,102 @@ tr.guarantees-table__row:not(.selected):hover td,
 
 .guarantee-detail__badge--activada {
     background: #d1fae5;
-    color: #065f46;
+    color: var(--guarantee-detail-accent);
 }
 
 :root[data-theme='dark'] .guarantee-detail__badge--activada {
     background: #064e3b;
-    color: #6ee7b7;
+    color: var(--guarantee-detail-accent);
 }
 
 .guarantee-detail__badge--pendiente-pago {
     background: #fef3c7;
-    color: #92400e;
+    color: var(--guarantee-detail-accent);
 }
 
 :root[data-theme='dark'] .guarantee-detail__badge--pendiente-pago {
     background: #78350f;
-    color: #fcd34d;
+    color: var(--guarantee-detail-accent);
 }
 
 .guarantee-detail__badge--validacion-pendiente {
     background: #dbeafe;
-    color: #1e40af;
+    color: var(--guarantee-detail-accent);
 }
 
 .guarantee-detail__badge--pend-cobro {
     background: #dbeafe;
-    color: #1e40af;
+    color: var(--guarantee-detail-accent);
 }
 
 :root[data-theme='dark'] .guarantee-detail__badge--validacion-pendiente,
 :root[data-theme='dark'] .guarantee-detail__badge--pend-cobro {
     background: #1e3a8a;
-    color: #93c5fd;
+    color: var(--guarantee-detail-accent);
 }
 
 .guarantee-detail__badge--sin-finalizar {
     background: #e5e7eb;
-    color: #1f2937;
+    color: var(--guarantee-detail-accent);
 }
 
 .guarantee-detail__badge--expira-pronto {
     background: #fef3c7;
-    color: #92400e;
+    color: var(--guarantee-detail-accent);
 }
 
 .guarantee-detail__badge--expirada,
 .guarantee-detail__badge--cancelada {
     background: #fee2e2;
-    color: #991b1b;
+    color: var(--guarantee-detail-accent);
 }
 
 :root[data-theme='dark'] .guarantee-detail__badge--expirada,
 :root[data-theme='dark'] .guarantee-detail__badge--cancelada {
     background: #7f1d1d;
-    color: #fca5a5;
+    color: var(--guarantee-detail-accent);
+}
+
+.guarantee-detail__panel[data-estadoclase="activada"] {
+    --guarantee-detail-accent: #065f46;
+}
+
+:root[data-theme='dark'] .guarantee-detail__panel[data-estadoclase="activada"] {
+    --guarantee-detail-accent: #6ee7b7;
+}
+
+.guarantee-detail__panel[data-estadoclase="pendiente-pago"],
+.guarantee-detail__panel[data-estadoclase="expira-pronto"] {
+    --guarantee-detail-accent: #92400e;
+}
+
+:root[data-theme='dark'] .guarantee-detail__panel[data-estadoclase="pendiente-pago"],
+:root[data-theme='dark'] .guarantee-detail__panel[data-estadoclase="expira-pronto"] {
+    --guarantee-detail-accent: #fcd34d;
+}
+
+.guarantee-detail__panel[data-estadoclase="validacion-pendiente"],
+.guarantee-detail__panel[data-estadoclase="pend-cobro"] {
+    --guarantee-detail-accent: #1e40af;
+}
+
+:root[data-theme='dark'] .guarantee-detail__panel[data-estadoclase="validacion-pendiente"],
+:root[data-theme='dark'] .guarantee-detail__panel[data-estadoclase="pend-cobro"] {
+    --guarantee-detail-accent: #93c5fd;
+}
+
+.guarantee-detail__panel[data-estadoclase="sin-finalizar"] {
+    --guarantee-detail-accent: #1f2937;
+}
+
+.guarantee-detail__panel[data-estadoclase="expirada"],
+.guarantee-detail__panel[data-estadoclase="cancelada"] {
+    --guarantee-detail-accent: #991b1b;
+}
+
+:root[data-theme='dark'] .guarantee-detail__panel[data-estadoclase="expirada"],
+:root[data-theme='dark'] .guarantee-detail__panel[data-estadoclase="cancelada"] {
+    --guarantee-detail-accent: #fca5a5;
 }
 
 
