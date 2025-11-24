@@ -3049,17 +3049,22 @@ const ADD_DOC_KEY = "add-document";
                         }
                         const matricula = formatNotificationMetaText(context.matricula);
                         const reason = formatNotificationMetaText(context.reason);
-                        const userName = formatNotificationMetaText(context.userName);
+                        const actorName = formatNotificationMetaText(
+                                context.userName || context.actorName
+                        );
 
                         const meta = [];
                         if (matricula) {
                                 meta.push({ label: "Matrícula", text: matricula });
                         }
+                        if (actorName) {
+                                meta.push({ label: "Cancelada por", text: actorName });
+                        }
 
                         const safePlate = matricula ? escapeHtml(matricula) : "";
                         const displayPlate = safePlate;
                         const actor =
-                                userName ||
+                                actorName ||
                                 currentUserName ||
                                 resolveCurrentUserNameFromConfig(goConfig) ||
                                 "Un usuario";
@@ -3894,8 +3899,8 @@ const ADD_DOC_KEY = "add-document";
                                                 syncPdfModalDocs(targetPanel);
                                                 updateManagementHeaderFromDetail(targetPanel);
                                                 syncManagementActionsAvailability(targetPanel);
-                                                showDetailToast(targetPanel, "Garantía cancelada.");
-                                        }
+                                showDetailToast(targetPanel, "Garantía cancelada.");
+                        }
 
                                         const cancellationReasonText = resolveCancellationReasonText(
                                                 data?.estado_garantia || {},
@@ -3908,7 +3913,19 @@ const ADD_DOC_KEY = "add-document";
                                                 plan: data.plan || rowData.plan || "",
                                                 reason: cancellationReasonText,
                                                 userName: currentUserName,
+                                                actorName:
+                                                        resolveCurrentUserNameFromConfig(goConfig) ||
+                                                        currentUserName,
                                         });
+
+                                        if (
+                                                typeof window !== "undefined" &&
+                                                typeof window.dispatchEvent === "function"
+                                        ) {
+                                                window.dispatchEvent(
+                                                        new CustomEvent("go360:notifications:refresh")
+                                                );
+                                        }
 
                                         setConfirmLabel("Garantía cancelada", true);
                                         pendingConfirmContext = null;
