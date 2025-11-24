@@ -1318,14 +1318,15 @@ if (($is_admin_user || $is_director || $is_professional)
             </ul>
         </div>
 
-        <div class="pdf-modal__body">
-            <iframe class="pdf-modal__iframe" src="" title="<?php esc_attr_e('Vista previa de documento', 'garantias-online-360vo'); ?>"></iframe>
-            <div class="pdf-modal__spinner" aria-hidden="true">
-                <div class="spinner"></div>
-            </div>
-            <div class="pdf-modal__upload" hidden>
-                <div class="pdf-modal__upload-inner">
-                    <h3><?php esc_html_e('Añadir documento', 'garantias-online-360vo'); ?></h3>
+            <div class="pdf-modal__body">
+                <iframe class="pdf-modal__iframe" src="" title="<?php esc_attr_e('Vista previa de documento', 'garantias-online-360vo'); ?>"></iframe>
+                <div class="pdf-modal__spinner" aria-hidden="true">
+                    <div class="spinner"></div>
+                    <p class="pdf-modal__spinner-text"><?php esc_html_e('Espera por favor.', 'garantias-online-360vo'); ?></p>
+                </div>
+                <div class="pdf-modal__upload" hidden>
+                    <div class="pdf-modal__upload-inner">
+                        <h3><?php esc_html_e('Añadir documento', 'garantias-online-360vo'); ?></h3>
                     <p><?php esc_html_e('Aquí el sistema para subir documentación.', 'garantias-online-360vo'); ?></p>
                 </div>
             </div>

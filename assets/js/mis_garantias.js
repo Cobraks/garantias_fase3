@@ -3043,53 +3043,6 @@ const ADD_DOC_KEY = "add-document";
                         dispatchNotificationEvent(detail);
                 }
 
-                function notifyGuaranteeCancelled(context = {}) {
-                        if (!notificationsRoot) {
-                                return;
-                        }
-                        const matricula = formatNotificationMetaText(context.matricula);
-                        const reason = formatNotificationMetaText(context.reason);
-                        const userName = formatNotificationMetaText(context.userName);
-
-                        const meta = [];
-                        if (matricula) {
-                                meta.push({ label: "Matrícula", text: matricula });
-                        }
-
-                        const safePlate = matricula ? escapeHtml(matricula) : "";
-                        const displayPlate = safePlate;
-                        const actor =
-                                userName ||
-                                currentUserName ||
-                                resolveCurrentUserNameFromConfig(goConfig) ||
-                                "Un usuario";
-                        const reasonText = reason || "-";
-
-                        const bodyParts = [
-                                displayPlate
-                                        ? `${actor} ha cancelado la garantía ${displayPlate}.`
-                                        : `${actor} ha cancelado una garantía.`,
-                        ];
-
-                        if (reasonText) {
-                                bodyParts.push(`Motivo: ${reasonText}.`);
-                        }
-
-                        const detail = {
-                                id: Date.now(),
-                                title: "Garantía cancelada",
-                                body: bodyParts.join(" "),
-                                icon_slug: "delete",
-                                icon_svg: deleteNotificationIcon,
-                                badge: "Garantías",
-                                tone: "warning",
-                                meta,
-                                created_at: new Date().toISOString(),
-                        };
-
-                        dispatchNotificationEvent(detail);
-                }
-
                 function parseDisplayDate(value) {
                         if (typeof value !== "string") {
                                 return null;
@@ -3894,21 +3847,32 @@ const ADD_DOC_KEY = "add-document";
                                                 syncPdfModalDocs(targetPanel);
                                                 updateManagementHeaderFromDetail(targetPanel);
                                                 syncManagementActionsAvailability(targetPanel);
-                                                showDetailToast(targetPanel, "Garantía cancelada.");
-                                        }
+                                showDetailToast(targetPanel, "Garantía cancelada.");
+                        }
 
-                                        const cancellationReasonText = resolveCancellationReasonText(
-                                                data?.estado_garantia || {},
-                                                cancelReasons.reason,
-                                                cancelReasons.other
-                                        );
-                                        notifyGuaranteeCancelled({
-                                                id,
-                                                matricula: data.matricula || rowData.matricula || "",
-                                                plan: data.plan || rowData.plan || "",
-                                                reason: cancellationReasonText,
-                                                userName: currentUserName,
-                                        });
+                                        if (
+                                                typeof window !== "undefined" &&
+                                                typeof window.dispatchEvent === "function"
+                                        ) {
+                                                try {
+                                                        console.log(
+                                                                "[GO360][cancel] Notificación de cancelación registrada, refrescando panel",
+                                                                {
+                                                                        id,
+                                                                        plate:
+                                                                                data.matricula ||
+                                                                                rowData.matricula ||
+                                                                                "",
+                                                                        reason: cancelReasons.reason || "",
+                                                                }
+                                                        );
+                                                } catch (logError) {
+                                                        // noop
+                                                }
+                                                window.dispatchEvent(
+                                                        new CustomEvent("go360:notifications:refresh")
+                                                );
+                                        }
 
                                         setConfirmLabel("Garantía cancelada", true);
                                         pendingConfirmContext = null;
@@ -4141,6 +4105,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (cancelFields) {
                                         cancelFields.hidden = true;
                                 }
+                                modal.classList.remove("confirm-modal--requires-reason");
                                 if (cancelOtherField) {
                                         cancelOtherField.hidden = true;
                                 }
@@ -4214,6 +4179,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (cancelFields) {
                                         cancelFields.hidden = !requiresReason;
                                 }
+                                modal.classList.toggle("confirm-modal--requires-reason", requiresReason);
                                 if (cancelOtherField) {
                                         cancelOtherField.hidden = true;
                                 }
@@ -9256,6 +9222,37 @@ const ADD_DOC_KEY = "add-document";
         return Number.isNaN(fallback.getTime()) ? null : fallback;
     };
 
+    const resolveDetailAccent = (estadoClaseValue) => {
+        const theme =
+            document.documentElement?.getAttribute("data-theme") === "dark"
+                ? "dark"
+                : "light";
+        const palette = {
+            light: {
+                activada: "#065f46",
+                "pendiente-pago": "#92400e",
+                "validacion-pendiente": "#1e40af",
+                "pend-cobro": "#1e40af",
+                "sin-finalizar": "#1f2937",
+                "expira-pronto": "#92400e",
+                expirada: "#991b1b",
+                cancelada: "#991b1b",
+            },
+            dark: {
+                activada: "#6ee7b7",
+                "pendiente-pago": "#fcd34d",
+                "validacion-pendiente": "#93c5fd",
+                "pend-cobro": "#93c5fd",
+                "sin-finalizar": "#1f2937",
+                "expira-pronto": "#fcd34d",
+                expirada: "#fca5a5",
+                cancelada: "#fca5a5",
+            },
+        };
+        const paletteForTheme = palette[theme] || palette.light;
+        return paletteForTheme?.[estadoClaseValue] || "";
+    };
+
     const computeVehicleAgeYears = (value) => {
         const parsed = parseVehicleDate(value);
         if (!parsed) return null;
@@ -9351,6 +9348,12 @@ const ADD_DOC_KEY = "add-document";
     const isPendientePago = estadoClase === "pendiente-pago";
     const isValidacionPendiente = estadoClase === "validacion-pendiente";
     const isCancelada = estadoClase === "cancelada";
+    const detailAccent = resolveDetailAccent(estadoClase);
+    const headerAccentStyle = detailAccent
+        ? ` style="--guarantee-detail-accent:${detailAccent}"`
+        : "";
+    const hideDetailSections =
+        isCancelada && (isParticular || isProfesional);
     const canShowReportBtn = estadoClase === "activada";
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
     const metodoPago = (
@@ -9663,7 +9666,7 @@ const ADD_DOC_KEY = "add-document";
               `${docsListHtml}` +
           `</section>`;
     const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
-    const vehicleSectionHtml = isCancelada
+    const vehicleSectionHtml = hideDetailSections
         ? ""
         : `<section class="detail__section">` +
               `<h3>Datos del vehículo</h3>` +
@@ -9678,7 +9681,7 @@ const ADD_DOC_KEY = "add-document";
                   `<li class="detail__item"><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>` +
               `</ul>` +
           `</section>`;
-    const technicalSectionHtml = isCancelada
+    const technicalSectionHtml = hideDetailSections
         ? ""
         : `<section class="detail__section">` +
               `<h3>Detalles técnicos</h3>` +
@@ -9690,7 +9693,7 @@ const ADD_DOC_KEY = "add-document";
                   `<li class="detail__item"><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>` +
               `</ul>` +
           `</section>`;
-    const customerSectionHtml = isCancelada
+    const customerSectionHtml = hideDetailSections
         ? ""
         : `<section class="detail__section detail__section--datos_cliente">`
               + `<h3>Datos del cliente</h3>`
@@ -10164,7 +10167,7 @@ const ADD_DOC_KEY = "add-document";
     if (isSinFinalizar) {
         return `
                 <div class="guarantee-detail__inner">
-                <div class="guarantee-detail__header">
+                <div class="guarantee-detail__header"${headerAccentStyle}>
                         <h2>Garantía ${pickField("matricula")}</h2>
                         ${coverageHtml}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
@@ -10434,7 +10437,7 @@ const ADD_DOC_KEY = "add-document";
     })();
         return `
         <div class="guarantee-detail__inner">
-                <div class="guarantee-detail__header">
+                <div class="guarantee-detail__header"${headerAccentStyle}>
                         <h2>Garantía ${pickField("matricula")}</h2>
                         ${planTitleHtml}
                         ${coverageHtml}
