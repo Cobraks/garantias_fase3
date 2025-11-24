@@ -236,6 +236,9 @@ const ADD_DOC_KEY = "add-document";
                         (goConfig.rest && goConfig.rest.nonce) ||
                         (window.GO_REST && window.GO_REST.nonce) ||
                         "";
+                const currentUserName =
+                        (goConfig.user && goConfig.user.name) ||
+                        "";
                 const userRole =
                         (goConfig.user && goConfig.user.role) ||
                         "user";
@@ -2946,7 +2949,7 @@ const ADD_DOC_KEY = "add-document";
                         return String(value).trim();
                 }
 
-                function dispatchTrashNotification(detail) {
+                function dispatchNotificationEvent(detail) {
                         if (!notificationsRoot || !detail) {
                                 return;
                         }
@@ -3003,7 +3006,50 @@ const ADD_DOC_KEY = "add-document";
                                 meta,
                                 created_at: new Date().toISOString(),
                         };
-                        dispatchTrashNotification(detail);
+                        dispatchNotificationEvent(detail);
+                }
+
+                function notifyGuaranteeCancelled(context = {}) {
+                        if (!notificationsRoot) {
+                                return;
+                        }
+                        const matricula = formatNotificationMetaText(context.matricula);
+                        const reason = formatNotificationMetaText(context.reason);
+                        const userName = formatNotificationMetaText(context.userName);
+
+                        const meta = [];
+                        if (matricula) {
+                                meta.push({ label: "Matrícula", text: matricula });
+                        }
+
+                        const safePlate = matricula ? escapeHtml(matricula) : "";
+                        const displayPlate = safePlate;
+                        const actor = userName || currentUserName || "Un usuario";
+                        const reasonText = reason || "-";
+
+                        const bodyParts = [
+                                displayPlate
+                                        ? `${actor} ha cancelado la garantía ${displayPlate}.`
+                                        : `${actor} ha cancelado una garantía.`,
+                        ];
+
+                        if (reasonText) {
+                                bodyParts.push(`Motivo: ${reasonText}.`);
+                        }
+
+                        const detail = {
+                                id: Date.now(),
+                                title: "Garantía cancelada",
+                                body: bodyParts.join(" "),
+                                icon_slug: "delete",
+                                icon_svg: deleteNotificationIcon,
+                                badge: "Garantías",
+                                tone: "warning",
+                                meta,
+                                created_at: new Date().toISOString(),
+                        };
+
+                        dispatchNotificationEvent(detail);
                 }
 
                 function parseDisplayDate(value) {
@@ -3722,6 +3768,7 @@ const ADD_DOC_KEY = "add-document";
                         setConfirmLabel("Cancelando garantía", true);
 
                         const todayIso = formatDateIsoLocal(new Date());
+                        const cancelReasons = resolveCancelReasons(context);
                                 const body = {
                                         id,
                                         uuid,
@@ -3729,8 +3776,8 @@ const ADD_DOC_KEY = "add-document";
                                                 estado_garantia: {
                                                         estado_contratacion: "cancelada",
                                                         fecha_cancelacion: todayIso,
-                                                        motivo_cancelacion: context.cancelReason || "",
-                                                        otra_causa: context.cancelOtherReason || "",
+                                                        motivo_cancelacion: cancelReasons.reason || "",
+                                                        otra_causa: cancelReasons.other || "",
                                                 },
                                         },
                                         notify_customer: Boolean(context.notifyCustomer),
@@ -3808,8 +3855,22 @@ const ADD_DOC_KEY = "add-document";
                                                 setupTransferCountdown(targetPanel);
                                                 syncPdfModalDocs(targetPanel);
                                                 updateManagementHeaderFromDetail(targetPanel);
+                                                syncManagementActionsAvailability(targetPanel);
                                                 showDetailToast(targetPanel, "Garantía cancelada.");
                                         }
+
+                                        const cancellationReasonText = resolveCancellationReasonText(
+                                                data?.estado_garantia || {},
+                                                cancelReasons.reason,
+                                                cancelReasons.other
+                                        );
+                                        notifyGuaranteeCancelled({
+                                                id,
+                                                matricula: data.matricula || rowData.matricula || "",
+                                                plan: data.plan || rowData.plan || "",
+                                                reason: cancellationReasonText,
+                                                userName: currentUserName,
+                                        });
 
                                         setConfirmLabel("Garantía cancelada", true);
                                         pendingConfirmContext = null;
@@ -4503,6 +4564,29 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
+                function syncManagementActionsAvailability(panel) {
+                        if (!managementModal) {
+                                return;
+                        }
+                        const estadoClase =
+                                (panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || "")
+                                        .toLowerCase();
+                        const isCancelled = estadoClase === "cancelada";
+                        const toggleAction = (selector) => {
+                                const btn = managementModal.querySelector(selector);
+                                if (!btn) return;
+                                btn.hidden = isCancelled;
+                                if (isCancelled) {
+                                        btn.setAttribute("aria-hidden", "true");
+                                } else {
+                                        btn.removeAttribute("aria-hidden");
+                                }
+                        };
+
+                        toggleAction('[data-management-action="cancel-for-nonpayment"]');
+                        toggleAction('[data-management-action="certificate-error"]');
+                }
+
                 function formatDateIsoLocal(value) {
                         const date = value instanceof Date ? value : new Date(value);
                         if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
@@ -4510,6 +4594,49 @@ const ADD_DOC_KEY = "add-document";
                         }
                         const pad = (v) => String(v).padStart(2, "0");
                         return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+                }
+
+                function resolveCancelReasons(context = {}) {
+                        const selected =
+                                typeof context.cancelReason === "string"
+                                        ? context.cancelReason.trim()
+                                        : "";
+                        const other =
+                                typeof context.cancelOtherReason === "string"
+                                        ? context.cancelOtherReason.trim()
+                                        : "";
+                        const isOther = selected === "Otra causa";
+                        return {
+                                reason: isOther && other ? other : selected,
+                                other: isOther ? other : "",
+                        };
+                }
+
+                function resolveCancellationReasonText(detailData = {}, fallbackReason = "", fallbackOther = "") {
+                        const estado =
+                                (detailData && typeof detailData === "object"
+                                        ? detailData.estado_garantia || detailData
+                                        : {}) || {};
+                        const reason =
+                                (typeof estado.motivo_cancelacion === "string"
+                                        ? estado.motivo_cancelacion.trim()
+                                        : "") ||
+                                (typeof detailData.motivo_cancelacion === "string"
+                                        ? detailData.motivo_cancelacion.trim()
+                                        : "") ||
+                                fallbackReason;
+                        const other =
+                                (typeof estado.otra_causa === "string" ? estado.otra_causa.trim() : "") ||
+                                (typeof detailData.otra_causa === "string" ? detailData.otra_causa.trim() : "") ||
+                                fallbackOther;
+
+                        if (reason && reason !== "Otra causa") {
+                                return reason;
+                        }
+                        if (reason === "Otra causa" && other) {
+                                return other;
+                        }
+                        return reason || other || "";
                 }
 
                 function syncManagementNotesEmptyState() {
@@ -5042,6 +5169,7 @@ const ADD_DOC_KEY = "add-document";
 
                         syncManagementDetailFields(activePanel);
                         syncManagementNotesEmptyState();
+                        syncManagementActionsAvailability(activePanel);
                 }
 
                 function openManagementModal(trigger) {
@@ -6534,6 +6662,12 @@ const ADD_DOC_KEY = "add-document";
                         card.className = "guarantee-card";
                         if (view.id) {
                                 card.dataset.id = view.id;
+                        }
+                        if (view.estadoClase) {
+                                card.dataset.estadoclase = view.estadoClase;
+                        }
+                        if (view.estadoLabel) {
+                                card.dataset.estado = view.estadoLabel;
                         }
                         const statusClasses = ["guarantee-card__status"];
                         if (view.estadoClase) {
@@ -9417,6 +9551,57 @@ const ADD_DOC_KEY = "add-document";
               `${docsListHtml}` +
           `</section>`;
     const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
+    const vehicleSectionHtml = isCancelada
+        ? ""
+        : `<section class="detail__section">` +
+              `<h3>Datos del vehículo</h3>` +
+              `<ul>` +
+                  `<li class="detail__item"><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>` +
+                  `<li class="detail__item"><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>` +
+                  `<li class="detail__item${recargoClass("kilometros")}"><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>` +
+                  `<li class="detail__item${recargoClass("antiguedad")}"><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>` +
+                  `${antiguedadRowHtml}` +
+                  `<li class="detail__item"><strong>Matrícula:</strong> ${pickField("matricula")}</li>` +
+                  `<li class="detail__item"><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>` +
+                  `<li class="detail__item"><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>` +
+              `</ul>` +
+          `</section>`;
+    const technicalSectionHtml = isCancelada
+        ? ""
+        : `<section class="detail__section">` +
+              `<h3>Detalles técnicos</h3>` +
+              `<ul>` +
+                  `<li class="detail__item${recargoClass("combustible")}"><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>` +
+                  `<li class="detail__item${recargoClass("cambio")}"><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>` +
+                  `${traccionRowHtml}` +
+                  `<li class="detail__item${recargoClass("potencia")}"><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>` +
+                  `<li class="detail__item"><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>` +
+              `</ul>` +
+          `</section>`;
+    const customerSectionHtml = isCancelada
+        ? ""
+        : `<section class="detail__section detail__section--datos_cliente">`
+              + `<h3>Datos del cliente</h3>`
+              + (hasBuyerInfo
+                    ? `
+                        <ul>
+                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
+                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
+                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
+                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
+                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
+                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
+                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
+
+                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
+                        </ul>
+                        ${renderFastActions(
+                            data.telefono_comprador ?? rowData.telefono_comprador,
+                            data.email_comprador ?? rowData.email_comprador
+                        )}
+                    `
+                    : `<p class="detail__alert-section">Faltan datos del cliente</p>`)
+              + `</section>`;
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
     const showManagementHub = canAccessManagementHub;
@@ -9690,8 +9875,9 @@ const ADD_DOC_KEY = "add-document";
         if (numeric === null) return "";
         return numeric.toFixed(2).replace(".", ",");
     };
+    const canShowInlineUtilities = !(isProfesional || isParticular);
     const inlineUtilitiesHtml =
-        canAccessManagementHub || inlineCountdownHtml
+        canShowInlineUtilities && (canAccessManagementHub || inlineCountdownHtml)
             ? `<div class="detail__inline-utilities">` +
                   `${inlineCountdownHtml}` +
                   `${canAccessManagementHub
@@ -9909,50 +10095,10 @@ const ADD_DOC_KEY = "add-document";
                                 </div>
                         </section>`
                         : ""}
-                <section class="detail__section">
-                        <h3>Datos del vehículo</h3>
-                        <ul>
-                                <li class="detail__item"><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
-                                <li class="detail__item"><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
-                                <li class="detail__item${recargoClass("kilometros")}"><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
-                                <li class="detail__item${recargoClass("antiguedad")}"><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
-                                ${antiguedadRowHtml}
-                                <li class="detail__item"><strong>Matrícula:</strong> ${pickField("matricula")}</li>
-                                <li class="detail__item"><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
-                                <li class="detail__item"><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
-                        </ul>
-                </section>
-                <section class="detail__section">
-                        <h3>Detalles técnicos</h3>
-                        <ul>
-                                <li class="detail__item${recargoClass("combustible")}"><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
-                                <li class="detail__item${recargoClass("cambio")}"><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
-                                ${traccionRowHtml}
-                                <li class="detail__item${recargoClass("potencia")}"><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
-                                <li class="detail__item"><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
-                        </ul>
-                </section>
+                ${vehicleSectionHtml}
+                ${technicalSectionHtml}
                 ${docsSectionHtml}
-                <section class="detail__section detail__section--datos_cliente">
-                        <h3>Datos del cliente</h3>
-                        ${hasBuyerInfo
-                            ? `<ul>
-                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
-                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
-                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
-                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
-                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
-                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
-                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
-                        
-                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
-                        </ul>
-                        ${renderFastActions(
-                                data.telefono_comprador ?? rowData.telefono_comprador,
-                                data.email_comprador ?? rowData.email_comprador
-                        )}`
-                            : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
-                </section>
+                ${customerSectionHtml}
                 ${sinFinalActionsHtml}
         </div>`;
     }
@@ -10079,16 +10225,25 @@ const ADD_DOC_KEY = "add-document";
                 const cancelText = cancelDateLabel
                     ? `La garantía ha sido cancelada el ${cancelDateLabel}.`
                     : "La garantía ha sido cancelada.";
-                const cancelNote = `${cancelText} Ponte en contacto con ${cancelTarget}.`;
-                const reasonDisplay = cancellationReason === "Otra causa"
-                    ? cancellationOther
-                    : cancellationReason;
+                const contactLine = `Ponte en contacto con ${cancelTarget}.`;
+                const cancelNoteHtml =
+                    `<p class="detail__payment-note detail__payment-note--cancelled">` +
+                        `<span class="detail__payment-note-icon" aria-hidden="true">${warningIcon}</span>` +
+                        `<span class="detail__payment-note-text">` +
+                            `${cancelText}<br>` +
+                            `<span class="detail__payment-note-subtext">${contactLine}</span>` +
+                        `</span>` +
+                    `</p>`;
+                const reasonDisplay = cancellationReason && cancellationReason !== "Otra causa"
+                    ? cancellationReason
+                    : (cancellationOther || cancellationReason);
                 const reasonHtml = reasonDisplay
                     ? `<p class="detail__payment-note detail__payment-note--cancelled-reason">` +
-                      `Motivo: ${escapeHtml(reasonDisplay)}</p>`
+                      `<span class="detail__payment-note-label">Motivo:</span> ` +
+                      `<span class="detail__payment-note-value">${escapeHtml(reasonDisplay)}</span></p>`
                     : "";
                 return `<section class="detail__section detail__section--payment">` +
-                        `<p class="detail__payment-note detail__payment-note--cancelled">${cancelNote}</p>` +
+                        `${cancelNoteHtml}` +
                         `${reasonHtml}` +
                         `</section>`;
             }
@@ -10209,49 +10364,10 @@ const ADD_DOC_KEY = "add-document";
                                 </div>
                         </section>`
                         : ""}
-                <section class="detail__section">
-                        <h3>Datos del vehículo</h3>
-                        <ul>
-                                <li class="detail__item"><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
-                                <li class="detail__item"><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
-                                <li class="detail__item${recargoClass("kilometros")}"><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
-                                <li class="detail__item${recargoClass("antiguedad")}"><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
-                                ${antiguedadRowHtml}
-                                <li class="detail__item"><strong>Matrícula:</strong> ${pickField("matricula")}</li>
-                                <li class="detail__item"><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
-                                <li class="detail__item"><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
-                        </ul>
-                </section>
-                <section class="detail__section">
-                        <h3>Detalles técnicos</h3>
-                        <ul>
-                                <li class="detail__item${recargoClass("combustible")}"><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
-                                <li class="detail__item${recargoClass("cambio")}"><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
-                                ${traccionRowHtml}
-                                <li class="detail__item${recargoClass("potencia")}"><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
-                                <li class="detail__item"><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
-                        </ul>
-                </section>
+                ${vehicleSectionHtml}
+                ${technicalSectionHtml}
                 ${docsSectionHtml}
-                <section class="detail__section detail__section--datos_cliente">
-                        <h3>Datos del cliente</h3>
-                        <ul>
-                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
-                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
-                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
-                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
-                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
-                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
-                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
-                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
-                        </ul>
-                        ${renderFastActions(
-                                data.telefono_comprador ?? rowData.telefono_comprador,
-                                data.email_comprador ?? rowData.email_comprador,
-                                "telefono_comprador",
-                                "email_comprador"
-                        )}
-                </section>
+                ${customerSectionHtml}
                 ${actionsHtml}
                 ${deleteActionHtml}
         </div>
