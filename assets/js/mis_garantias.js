@@ -1,6 +1,7 @@
 import { AVAILABLE_DOCS } from "./modules/docs-config.js";
 
 const ADD_DOC_KEY = "add-document";
+const CANCELLED_CERTIFICATE_GENERATION_DISABLED = true; // TODO: reactivar generación de certificado cancelado cuando el backend esté listo
 
 (() => {
         "use strict";
@@ -3043,6 +3044,45 @@ const ADD_DOC_KEY = "add-document";
                         dispatchNotificationEvent(detail);
                 }
 
+                function notifyGuaranteeCancelled(context = {}) {
+                        if (!notificationsRoot) {
+                                return;
+                        }
+                        const matricula = formatNotificationMetaText(context.matricula);
+                        const plan = formatNotificationMetaText(context.plan);
+                        const reason = formatNotificationMetaText(context.reason);
+                        const guaranteeId = formatNotificationMetaText(context.id);
+                        const meta = [];
+                        if (matricula) {
+                                meta.push({ label: "Matrícula", text: matricula });
+                        }
+                        if (plan) {
+                                meta.push({ label: "Plan", text: plan });
+                        }
+                        if (reason) {
+                                meta.push({ label: "Motivo", text: reason });
+                        }
+                        if (guaranteeId) {
+                                meta.push({ label: "ID", text: `#${guaranteeId}` });
+                        }
+                        const safePlate = matricula ? escapeHtml(matricula) : "";
+                        const body = safePlate
+                                ? `La garantía <strong>${safePlate}</strong> fue cancelada.`
+                                : "Se ha cancelado una garantía.";
+                        const detail = {
+                                id: Date.now(),
+                                title: "Garantía cancelada",
+                                body,
+                                icon_slug: "cancel_guarantee",
+                                icon_svg: deleteNotificationIcon,
+                                badge: "Garantías",
+                                tone: "warning",
+                                meta,
+                                created_at: new Date().toISOString(),
+                        };
+                        dispatchNotificationEvent(detail);
+                }
+
                 function parseDisplayDate(value) {
                         if (typeof value !== "string") {
                                 return null;
@@ -3759,6 +3799,49 @@ const ADD_DOC_KEY = "add-document";
                                 "";
                         const originalLabel = confirmBtn?.textContent?.trim() || "Cancelar garantía";
 
+                        const buildCancelledDetailSnapshot = () => {
+                                const cached = detailCache.get(id) || {};
+                                const cancelDisplay = formatDate(todayIso).display;
+                                const snapshot = {
+                                        ...cached,
+                                        estado: {
+                                                value: "cancelada",
+                                                label: "Cancelada",
+                                        },
+                                        estado_garantia: {
+                                                ...(cached.estado_garantia || {}),
+                                                estado_contratacion: "cancelada",
+                                                fecha_cancelacion: todayIso,
+                                                fecha_cancelacion_fmt: cancelDisplay || todayIso,
+                                                motivo_cancelacion: cancelReasons.reason || "",
+                                                otra_causa: cancelReasons.other || "",
+                                        },
+                                };
+
+                                if (
+                                        !CANCELLED_CERTIFICATE_GENERATION_DISABLED &&
+                                        Array.isArray(cached.documents)
+                                ) {
+                                        snapshot.documents = cached.documents.map((doc) => {
+                                                if (!doc || doc.key !== "certificate") return doc;
+                                                const cancelDate =
+                                                        snapshot.estado_garantia.fecha_cancelacion_fmt || todayIso;
+                                                return {
+                                                        ...doc,
+                                                        title: "Certificado cancelado",
+                                                        downloadLabel:
+                                                                doc.downloadLabel ||
+                                                                "Descargar certificado cancelado",
+                                                        is_cancelled_certificate: true,
+                                                        cancel_date: cancelDate,
+                                                        cancel_date_fmt: cancelDate,
+                                                };
+                                        });
+                                }
+
+                                return normalizeDetailData(snapshot);
+                        };
+
                         const setConfirmLabel = (text, disabled) => {
                                 if (!confirmBtn) return;
                                 confirmBtn.textContent = text;
@@ -3769,19 +3852,19 @@ const ADD_DOC_KEY = "add-document";
 
                         const todayIso = formatDateIsoLocal(new Date());
                         const cancelReasons = resolveCancelReasons(context);
-                                const body = {
-                                        id,
-                                        uuid,
-                                        data: {
-                                                estado_garantia: {
-                                                        estado_contratacion: "cancelada",
-                                                        fecha_cancelacion: todayIso,
-                                                        motivo_cancelacion: cancelReasons.reason || "",
-                                                        otra_causa: cancelReasons.other || "",
-                                                },
+                        const body = {
+                                id,
+                                uuid,
+                                data: {
+                                        estado_garantia: {
+                                                estado_contratacion: "cancelada",
+                                                fecha_cancelacion: todayIso,
+                                                motivo_cancelacion: cancelReasons.reason || "",
+                                                otra_causa: cancelReasons.other || "",
                                         },
-                                        notify_customer: Boolean(context.notifyCustomer),
-                                };
+                                },
+                                notify_customer: Boolean(context.notifyCustomer),
+                        };
 
                         fetch(`${restRoot}go/v1/guarantees/autosave`, {
                                 method: "POST",
@@ -3811,14 +3894,33 @@ const ADD_DOC_KEY = "add-document";
                                                 }
                                                 throw new Error(message);
                                         }
-                                        return res.json();
+
+                                        try {
+                                                return await res.json();
+                                        } catch (parseError) {
+                                                let rawError = "";
+                                                try {
+                                                        rawError = await res.text();
+                                                } catch (textError) {
+                                                        rawError = "";
+                                                }
+                                                return { __rawError: rawError };
+                                        }
                                 })
                                 .then((json) => {
                                         const detailResponse = json?.detail || json;
-                                        if (!detailResponse) {
-                                                return;
+                                        const fallbackDetail = buildCancelledDetailSnapshot();
+                                        let data = detailResponse
+                                                ? normalizeDetailData(detailResponse)
+                                                : null;
+                                        const lacksState =
+                                                !data ||
+                                                typeof data !== "object" ||
+                                                !data.estado ||
+                                                !data.estado_garantia;
+                                        if (lacksState) {
+                                                data = fallbackDetail;
                                         }
-                                        const data = normalizeDetailData(detailResponse);
                                         detailCache.set(id, data);
 
                                         if (!row || !row.isConnected) {
@@ -3835,12 +3937,27 @@ const ADD_DOC_KEY = "add-document";
                                                 const badge = row.querySelector(".guarantees-list__badge");
                                                 if (badge) {
                                                         badge.className =
-                                                                "guarantees-list__badge guarantees-list__badge--" + newEstadoClase;
+                                                                "guarantees-list__badge guarantees-list__badge--" +
+                                                                newEstadoClase;
                                                         badge.textContent = newEstadoLabel;
                                                 }
                                         }
 
                                         const rowData = row ? buildRowData(row) : {};
+                                        const card = mobileCardsMap.get(id);
+                                        if (card) {
+                                                card.dataset.estado = newEstadoLabel;
+                                                card.dataset.estadoclase = newEstadoClase;
+                                                const status = card.querySelector(".guarantee-card__status");
+                                                if (status) {
+                                                        status.textContent = newEstadoLabel;
+                                                        status.className =
+                                                                "guarantee-card__status guarantee-card__status--" +
+                                                                newEstadoClase;
+                                                }
+                                                ensureCardRealtimeBadge(card, false);
+                                                card.classList.remove("guarantee-card--is-new");
+                                        }
                                         const targetPanel = panel || document.querySelector(".guarantee-detail__panel.active");
                                         if (targetPanel) {
                                                 targetPanel.innerHTML = renderFullDetail(data, rowData);
@@ -3867,6 +3984,62 @@ const ADD_DOC_KEY = "add-document";
                                         );
                                         setConfirmLabel("Garantía cancelada", true);
                                         pendingConfirmContext = null;
+                                        notifyGuaranteeCancelled({
+                                                id,
+                                                matricula: data.matricula || rowData.matricula,
+                                                plan: data.plan || rowData.plan,
+                                                reason: cancellationReasonText,
+                                        });
+                                        listCache.forEach((entry, key) => {
+                                                if (!entry || !Array.isArray(entry.data)) {
+                                                        return;
+                                                }
+                                                let touched = false;
+                                                const updated = entry.data.map((item) => {
+                                                        if (!item || (item.id || item.ID || "") + "" !== id + "") {
+                                                                return item;
+                                                        }
+                                                        touched = true;
+                                                        const next = { ...item };
+                                                        next.estado = {
+                                                                value: newEstadoValue,
+                                                                label: newEstadoLabel,
+                                                        };
+                                                        next.estado_garantia = {
+                                                                ...(item.estado_garantia || {}),
+                                                                estado_contratacion: "cancelada",
+                                                                fecha_cancelacion: todayIso,
+                                                                fecha_cancelacion_fmt:
+                                                                        formatDate(todayIso).display || todayIso,
+                                                                motivo_cancelacion: cancelReasons.reason || "",
+                                                                otra_causa: cancelReasons.other || "",
+                                                        };
+                                                        if (next.detail && typeof next.detail === "object") {
+                                                                next.detail = {
+                                                                        ...next.detail,
+                                                                        estado_garantia: {
+                                                                                ...(next.detail.estado_garantia || {}),
+                                                                                estado_contratacion: "cancelada",
+                                                                                fecha_cancelacion: todayIso,
+                                                                                fecha_cancelacion_fmt:
+                                                                                        formatDate(todayIso).display ||
+                                                                                        todayIso,
+                                                                                motivo_cancelacion:
+                                                                                        cancelReasons.reason || "",
+                                                                                otra_causa: cancelReasons.other || "",
+                                                                        },
+                                                                };
+                                                        }
+                                                        return next;
+                                                });
+                                                if (touched) {
+                                                        listCache.set(key, { ...entry, data: updated });
+                                                }
+                                        });
+                                        persistListCacheSnapshot(listCache);
+                                        if (json && typeof json.__rawError === "string" && json.__rawError.trim() !== "") {
+                                                console.warn("Cancel guarantee response contained non-JSON payload", json.__rawError);
+                                        }
                                         window.setTimeout(() => {
                                                 closeModal();
                                         }, 1200);
@@ -9482,7 +9655,8 @@ const ADD_DOC_KEY = "add-document";
         .map((doc) => {
             const key = typeof doc.key === "string" && doc.key !== "" ? doc.key : doc.row ? `extra-${doc.row}` : "";
             const base = key && docsConfigMap.has(key) ? docsConfigMap.get(key) : null;
-            const enforcedCancelledLabel = isCancelada && key === "certificate";
+            const enforcedCancelledLabel =
+                !CANCELLED_CERTIFICATE_GENERATION_DISABLED && isCancelada && key === "certificate";
             const isCancelledCertificate = Boolean(
                 doc.is_cancelled_certificate || doc.cancelled_certificate
             ) || enforcedCancelledLabel;
