@@ -3043,6 +3043,45 @@ const ADD_DOC_KEY = "add-document";
                         dispatchNotificationEvent(detail);
                 }
 
+                function notifyGuaranteeCancelled(context = {}) {
+                        if (!notificationsRoot) {
+                                return;
+                        }
+                        const matricula = formatNotificationMetaText(context.matricula);
+                        const plan = formatNotificationMetaText(context.plan);
+                        const guaranteeId = formatNotificationMetaText(context.id);
+                        const reason = formatNotificationMetaText(context.reason);
+                        const meta = [];
+                        if (matricula) {
+                                meta.push({ label: "Matrícula", text: matricula });
+                        }
+                        if (plan) {
+                                meta.push({ label: "Plan", text: plan });
+                        }
+                        if (guaranteeId) {
+                                meta.push({ label: "ID", text: `#${guaranteeId}` });
+                        }
+                        if (reason) {
+                                meta.push({ label: "Motivo", text: reason });
+                        }
+                        const safePlate = matricula ? escapeHtml(matricula) : "";
+                        const body = safePlate
+                                ? `La garantía <strong>${safePlate}</strong> ha sido cancelada.`
+                                : "La garantía ha sido cancelada.";
+                        const detail = {
+                                id: Date.now(),
+                                title: "Garantía cancelada",
+                                body,
+                                icon_slug: "delete",
+                                icon_svg: deleteNotificationIcon,
+                                badge: "Garantías",
+                                tone: "danger",
+                                meta,
+                                created_at: new Date().toISOString(),
+                        };
+                        dispatchNotificationEvent(detail);
+                }
+
                 function parseDisplayDate(value) {
                         if (typeof value !== "string") {
                                 return null;
@@ -3769,19 +3808,19 @@ const ADD_DOC_KEY = "add-document";
 
                         const todayIso = formatDateIsoLocal(new Date());
                         const cancelReasons = resolveCancelReasons(context);
-                                const body = {
-                                        id,
-                                        uuid,
-                                        data: {
-                                                estado_garantia: {
-                                                        estado_contratacion: "cancelada",
-                                                        fecha_cancelacion: todayIso,
-                                                        motivo_cancelacion: cancelReasons.reason || "",
-                                                        otra_causa: cancelReasons.other || "",
-                                                },
+                        const body = {
+                                id,
+                                uuid,
+                                data: {
+                                        estado_garantia: {
+                                                estado_contratacion: "cancelada",
+                                                fecha_cancelacion: todayIso,
+                                                motivo_cancelacion: cancelReasons.reason || "",
+                                                otra_causa: cancelReasons.other || "",
                                         },
-                                        notify_customer: Boolean(context.notifyCustomer),
-                                };
+                                },
+                                notify_customer: Boolean(context.notifyCustomer),
+                        };
 
                         fetch(`${restRoot}go/v1/guarantees/autosave`, {
                                 method: "POST",
@@ -3814,62 +3853,89 @@ const ADD_DOC_KEY = "add-document";
                                         return res.json();
                                 })
                                 .then((json) => {
-                                        const detailResponse = json?.detail || json;
-                                        if (!detailResponse) {
-                                                return;
-                                        }
-                                        const data = normalizeDetailData(detailResponse);
-                                        detailCache.set(id, data);
+                                        const refreshDetail = () =>
+                                                fetch(`${restRoot}go/v1/guarantees/${id}`, {
+                                                        headers: { "X-WP-Nonce": restNonce },
+                                                }).then((res) => (res.ok ? res.json() : null));
 
-                                        if (!row || !row.isConnected) {
-                                                row = findRowById(id);
-                                        }
+                                        return refreshDetail()
+                                                .catch(() => null)
+                                                .then((finalDetail) => {
+                                                        let data = null;
+                                                        try {
+                                                                data = normalizeDetailData(finalDetail || json?.detail || json || {});
+                                                        } catch (normalizationError) {
+                                                                console.error("Error normalizing cancelled guarantee detail", normalizationError);
+                                                        }
 
-                                        const newEstadoValue = (data.estado && data.estado.value) || "cancelada";
-                                        const newEstadoLabel = (data.estado && data.estado.label) || "Cancelada";
-                                        const newEstadoClase = normalizeEstadoClase(newEstadoValue);
+                                                        if (data) {
+                                                                detailCache.set(id, data);
+                                                        }
 
-                                        if (row) {
-                                                row.dataset.estadoclase = newEstadoClase;
-                                                row.dataset.estado = newEstadoLabel;
-                                                const badge = row.querySelector(".guarantees-list__badge");
-                                                if (badge) {
-                                                        badge.className =
-                                                                "guarantees-list__badge guarantees-list__badge--" + newEstadoClase;
-                                                        badge.textContent = newEstadoLabel;
-                                                }
-                                        }
+                                                        if (!row || !row.isConnected) {
+                                                                row = findRowById(id);
+                                                        }
 
-                                        const rowData = row ? buildRowData(row) : {};
-                                        const targetPanel = panel || document.querySelector(".guarantee-detail__panel.active");
-                                        if (targetPanel) {
-                                                targetPanel.innerHTML = renderFullDetail(data, rowData);
-                                                  targetPanel.dataset.matricula =
-                                                          data.matricula || rowData.matricula || "";
-                                                  targetPanel.dataset.plan = data.plan || rowData.plan || "";
-                                                  targetPanel.dataset.estado = newEstadoLabel;
-                                                  targetPanel.dataset.estadoclase = newEstadoClase;
-                                                  targetPanel.dataset.loadedId = id;
-                                                  targetPanel.dataset.uuid = data.uuid || targetPanel.dataset.uuid || "";
-                                                  hydrateManagementDataset(targetPanel, data, rowData);
-                                                syncManagementDetailFields(targetPanel);
-                                                setupTransferCountdown(targetPanel);
-                                                syncPdfModalDocs(targetPanel);
-                                                updateManagementHeaderFromDetail(targetPanel);
-                                                syncManagementActionsAvailability(targetPanel);
-                                                showDetailToast(targetPanel, "Garantía cancelada.");
-                                        }
+                                                        const newEstadoValue = (data?.estado && data.estado.value) || "cancelada";
+                                                        const newEstadoLabel = (data?.estado && data.estado.label) || "Cancelada";
+                                                        const newEstadoClase = normalizeEstadoClase(newEstadoValue);
 
-                                        const cancellationReasonText = resolveCancellationReasonText(
-                                                data?.estado_garantia || {},
-                                                cancelReasons.reason,
-                                                cancelReasons.other
-                                        );
-                                        setConfirmLabel("Garantía cancelada", true);
-                                        pendingConfirmContext = null;
-                                        window.setTimeout(() => {
-                                                closeModal();
-                                        }, 1200);
+                                                        if (row) {
+                                                                row.dataset.estadoclase = newEstadoClase;
+                                                                row.dataset.estado = newEstadoLabel;
+                                                                const badge = row.querySelector(".guarantees-list__badge");
+                                                                if (badge) {
+                                                                        badge.className =
+                                                                                "guarantees-list__badge guarantees-list__badge--" + newEstadoClase;
+                                                                        badge.textContent = newEstadoLabel;
+                                                                }
+                                                        }
+
+                                                        const rowData = row ? buildRowData(row) : {};
+                                                        const targetPanel = panel || document.querySelector(".guarantee-detail__panel.active");
+                                                        if (targetPanel && data) {
+                                                                try {
+                                                                        targetPanel.innerHTML = renderFullDetail(data, rowData);
+                                                                        targetPanel.dataset.matricula =
+                                                                                data.matricula || rowData.matricula || "";
+                                                                        targetPanel.dataset.plan = data.plan || rowData.plan || "";
+                                                                        targetPanel.dataset.estado = newEstadoLabel;
+                                                                        targetPanel.dataset.estadoclase = newEstadoClase;
+                                                                        targetPanel.dataset.loadedId = id;
+                                                                        targetPanel.dataset.uuid = data.uuid || targetPanel.dataset.uuid || "";
+                                                                        hydrateManagementDataset(targetPanel, data, rowData);
+                                                                        syncManagementDetailFields(targetPanel);
+                                                                        setupTransferCountdown(targetPanel);
+                                                                        syncPdfModalDocs(targetPanel);
+                                                                        updateManagementHeaderFromDetail(targetPanel);
+                                                                        syncManagementActionsAvailability(targetPanel);
+                                                                        showDetailToast(targetPanel, "Garantía cancelada.");
+                                                                } catch (renderError) {
+                                                                        console.error("Error rendering cancelled guarantee detail", renderError);
+                                                                        showDetailToast(
+                                                                                targetPanel,
+                                                                                "Se ha cancelado la garantía, pero no se pudo refrescar el detalle."
+                                                                        );
+                                                                }
+                                                        }
+
+                                                        const cancellationReasonText = resolveCancellationReasonText(
+                                                                data?.estado_garantia || {},
+                                                                cancelReasons.reason,
+                                                                cancelReasons.other
+                                                        );
+                                                        notifyGuaranteeCancelled({
+                                                                id,
+                                                                matricula: data?.matricula || rowData.matricula || "",
+                                                                plan: data?.plan || rowData.plan || "",
+                                                                reason: cancellationReasonText,
+                                                        });
+                                                        setConfirmLabel("Garantía cancelada", true);
+                                                        pendingConfirmContext = null;
+                                                        window.setTimeout(() => {
+                                                                closeModal();
+                                                        }, 1200);
+                                                });
                                 })
                                 .catch((error) => {
                                         const message =
