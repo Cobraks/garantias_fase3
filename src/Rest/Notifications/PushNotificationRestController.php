@@ -99,7 +99,9 @@ class PushNotificationRestController
         $roles = (array) $user->roles;
 
         return in_array('go_director_comercial', $roles, true)
-            || in_array('go_garantias', $roles, true);
+            || in_array('go_garantias', $roles, true)
+            || in_array('go_comercial', $roles, true)
+            || in_array('go_gestor_comercial', $roles, true);
     }
 
     public function list_notifications(WP_REST_Request $request)
