@@ -114,7 +114,8 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
                 nonce: "<?php echo esc_js(wp_create_nonce('wp_rest')); ?>"
             },
             user: {
-                role: "<?php echo esc_js($js_user_role); ?>"
+                role: "<?php echo esc_js($js_user_role); ?>",
+                name: "<?php echo esc_js($display_name ?? ''); ?>"
             },
             icons: {
                 pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
@@ -529,6 +530,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
                         }
                         ?>",
                 currentUserId: <?php echo (int) get_current_user_id(); ?>,
+                name: "<?php echo esc_js($display_name ?? ''); ?>",
                 companyName: "<?php echo esc_js($current_user_company_name); ?>",
                 companyTypeLabel: "<?php echo esc_js($current_user_company_type_label); ?>"
             },
