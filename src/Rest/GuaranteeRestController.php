@@ -939,6 +939,38 @@ class GuaranteeRestController
         }
     }
 
+    private static function prewarm_cancelled_certificate(int $post_id, string $cancel_date = ''): void
+    {
+        $existing_hash = get_post_meta($post_id, self::CANCELLED_CERTIFICATE_HASH_META, true);
+        if ($existing_hash) {
+            return;
+        }
+
+        $original_hash = get_post_meta($post_id, 'documentacion_certificado_hash', true);
+        if (!$original_hash) {
+            return;
+        }
+
+        $original_binary = PrivateDocsManager::retrieve($original_hash, 'pdf');
+        if (!$original_binary) {
+            return;
+        }
+
+        $formatted_date = $cancel_date !== ''
+            ? self::format_cancellation_date($cancel_date)
+            : self::format_cancellation_date(self::get_cancellation_date($post_id));
+
+        $overlay_binary = self::build_cancelled_certificate_overlay($original_binary, $formatted_date);
+        if (!$overlay_binary) {
+            return;
+        }
+
+        $new_hash = PrivateDocsManager::store($overlay_binary, 'pdf');
+        if ($new_hash) {
+            update_post_meta($post_id, self::CANCELLED_CERTIFICATE_HASH_META, $new_hash);
+        }
+    }
+
     private static function load_public_document_binary(array $document)
     {
         $attachment_id = isset($document['attachment_id']) ? (int) $document['attachment_id'] : 0;
@@ -3399,8 +3431,10 @@ class GuaranteeRestController
                 'reason'       => $estado['motivo_cancelacion'] ?? '',
                 'other_reason' => $estado['otra_causa'] ?? '',
                 'vendor_id'    => $context_vendor_id,
+                'cancel_date'  => $estado['fecha_cancelacion'] ?? '',
             ];
             self::log_cancellation_event($post_id, $cancellation_context);
+            self::prewarm_cancelled_certificate($post_id, $estado['fecha_cancelacion'] ?? '');
         }
 
         $should_stamp_contract_date = in_array($new_contract_state, ['activada', 'pendiente_pago'], true);
