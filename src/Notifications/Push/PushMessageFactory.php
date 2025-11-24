@@ -278,10 +278,13 @@ class PushMessageFactory
             $meta[] = $this->meta_entry(__('Motivo', 'garantias-online-360vo'), $reason);
         }
 
+        $guarantee_id = isset($record['guarantee_id']) ? (int) $record['guarantee_id'] : 0;
+        $context['vehicle_plate'] = $plate;
+
         return [
             'title' => $title,
             'body'  => $body,
-            'link'  => $this->resolve_guarantee_link($plate),
+            'link'  => $this->build_guarantee_link($guarantee_id, $context),
             'icon'      => Svg::data_uri('cancel_guarantee'),
             'icon_slug' => 'cancel_guarantee',
             'tone'      => 'warning',

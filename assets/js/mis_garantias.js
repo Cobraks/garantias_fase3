@@ -3854,6 +3854,21 @@ const ADD_DOC_KEY = "add-document";
                                                 typeof window !== "undefined" &&
                                                 typeof window.dispatchEvent === "function"
                                         ) {
+                                                try {
+                                                        console.log(
+                                                                "[GO360][cancel] Notificación de cancelación registrada, refrescando panel",
+                                                                {
+                                                                        id,
+                                                                        plate:
+                                                                                data.matricula ||
+                                                                                rowData.matricula ||
+                                                                                "",
+                                                                        reason: cancelReasons.reason || "",
+                                                                }
+                                                        );
+                                                } catch (logError) {
+                                                        // noop
+                                                }
                                                 window.dispatchEvent(
                                                         new CustomEvent("go360:notifications:refresh")
                                                 );
